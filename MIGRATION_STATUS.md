@@ -6,7 +6,9 @@ Step 0 — Prepare mutable state containers: DONE
 Step 1 — core.js: DONE
 Step 2 — lang-detect.js: DONE
 Step 3 — ai-client.js: DONE (startAiTask deferred to Step 8, see MODULARIZATION_PLAN.md)
-Step 4 — selection.js: PARTIAL (core piece DONE, merged, production-verified — see recon below for the remaining 6 pieces still to classify/move)
+Step 4 — selection.js: DONE (all genuinely selection.js content extracted; see recon below —
+  what looked like 2 more ambiguous pieces turned out to be 100% navigation.js/pdf-zoom-pan.js
+  content on closer reading, correctly left in place for Steps 9/11)
 Step 5 — pdf-render.js: PENDING
 Step 6 — tts.js: PENDING
 Step 7 — translation.js: PENDING
@@ -23,13 +25,12 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 4 partial (selection.js core piece)
-Last successful PR: #12 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/12)
-Last successful commit: 9bd99dd (merged to main as 986fec7)
+Last successful step: Step 4 (fully complete)
+Last successful PR: #15 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/15)
+Last successful commit: cc7f84f (merged to main as eb3981c)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — 3 fresh cache-disabled
-  reloads, zero console errors, core.js/lang-detect.js/selection.js/ai-client.js all confirmed
-  loaded and typeof sentenceRangeAt === 'function'
+  reloads, zero console errors, typeof selectWordAtPoint/rangeBetweenWords both 'function'
 
 ## Mechanism correction (read before continuing any step)
 
@@ -45,6 +46,21 @@ ReferenceError immediately on page load. This exact mistake happened once alread
 incident below) — grep the block you are about to move for top-level non-declaration
 statements (`grep -n "^[a-zA-Z(!]" js/candidate.js` after de-indenting, then eyeball each hit)
 BEFORE finalizing a step, not after.
+
+**Two more mechanism notes learned during Step 4** (both empirically verified, not guessed):
+- **Appending to an already-loaded file needs NO new `<script src>` tag.** If a file was already
+  given its own `<script src="js/x.js">` earlier in the document, and you later extract MORE
+  content into that same file, just delete the lines from index.html — do NOT insert another
+  `<script src="js/x.js">` at the new extraction point. A second tag re-executes the whole file,
+  causing `SyntaxError: Identifier '...' has already been declared`. This mistake was made and
+  self-caught (via the routine `grep -n "<script\|</script>"` well-formedness check) while
+  building PR #14 — caught before any test ran, so no incident resulted, but check for it deliberately.
+- **Listener registration order across files is usually fine for *deferred* (event-driven) code,
+  unlike top-level code.** Moving an `addEventListener` callback to an earlier-loading file only
+  matters if another listener *of the same event type on the same element* depends on firing
+  before/after it. Capture-phase listeners always fire before bubble-phase ones on the same
+  element (when the real target is a descendant) regardless of registration order/file — check
+  this specifically before moving any listener, don't assume file position drives event order.
 
 ## Incident: production ReferenceError after Steps 1–3 (found and fixed same session)
 
@@ -65,54 +81,41 @@ proof of correctness for this migration. Always also do a real production smoke 
 page load(s) with cache disabled, checking window.onerror/console) after every merge, before
 marking a step DONE. This is now a permanent addition to the per-step workflow, not optional.
 
-Next step: Step 4 continuation — pieces 3, 4, 6, 7 below (piece 1 DONE, pieces 2/5 deferred
-  to their own Steps 9/11 as originally planned)
+## Step 4 final recon (complete — for historical reference / pattern for future steps)
 
-## Note on Step 4's complexity (detailed recon done, extraction NOT yet started)
+Lines that originally looked like one interleaved 1029-1980ish block turned out, on actually
+reading every listener body (not just grepping function names), to be:
 
-Unlike Steps 1–3 (each one contiguous block of lines), lines ~1029-1980 interleave FOUR
-different future modules' content, confirmed by actually reading the code (not just grepping
-function names) as of commit 5a8e85b. Line numbers below WILL have shifted after Step 4's own
-`<script src>` splices for earlier pieces — re-grep before each individual cut, don't trust
-these numbers once you start editing:
+1. **DONE (PR #12)**: selection.js core — caretRangeAt, blockAncestorOf, anchorCaret,
+   paragraphRangeAt, pdfNearestSpan, pdfTextSpans, pdfVisualGroup, buildSentenceRangesFromSpans,
+   sentenceRangeAt, wrapRangeInSpans, unwrapSpans, showSelectionHighlight,
+   clearSelectionHighlight, wordToSentenceEndRangeAt, selectRangeAndTranslate, selectWordAtPoint.
+2. **Left in place for Step 9**: navigation.js — columnStep, paginateContainer,
+   goToPageInChapter, updateProgressText, bookKeyFor, saveBookmark, loadBookmark, goNext, goPrev.
+3. **DONE (PR #15)**: the main `els.mainArea` click listener (word-tap-to-translate falling
+   through to page-turn-by-zone/immersive-toggle) — genuinely mixed responsibility, moved as one
+   unit into selection.js since word-tap is its own stated priority.
+4. **Left in place for Step 9**: "ЖЕСТИ ДЛЯ ТЕЛЕФОНА/ПЛАНШЕТА" — on actually reading it, this
+   turned out to be 100% navigation (swipe-to-turn-page via touch/wheel calling goNext/goPrev) —
+   NOT a selection/navigation mix as originally guessed from the section title alone. The
+   original long-press-to-select behavior was explicitly removed per the code's own comment
+   ("Власне довге утримання прибрано") and replaced by the ⤢ expand button in the tooltip.
+5. **Left in place for Step 11**: "КЕРУВАННЯ PDF МИШЕЮ" through `endPdfPointer` — pdf-zoom-pan.js
+   (rerenderPdfAtCurrentZoom, pdfAnchor, layoutPdfZoom, applyPdfZoom, setPdfScale,
+   cancelPdfRender/Interaction, pinchMetrics, paintPdfGesture, endPdfPointer, etc).
+6. **Left in place for Step 11/9**: on actually reading it, this turned out to be 100%
+   pdf-zoom-pan.js (`pdfBlockClick`-suppression capture-phase click listener, `#pdf-fit`
+   onchange) plus one navigation-adjacent `window.resize` listener (paginateContainer/
+   goToPageInChapter + PDF rerender) — again NOT a selection-mixed piece as originally guessed.
+7. **DONE (PR #14)**: wordBoundsAt, drag-selection-by-word pointerdown/pointermove/pointerup
+   (stylus/mouse), rangeBetweenWords.
 
-1. **DONE (PR #12, commit 9bd99dd)**: selection.js core — comment "ВИДІЛЕННЯ РЕЧЕННЯ/АБЗАЦУ
-   ПАЛЬЦЕМ" through end of `selectWordAtPoint`. Included caretRangeAt, blockAncestorOf,
-   anchorCaret, paragraphRangeAt, pdfNearestSpan, pdfTextSpans, pdfVisualGroup,
-   buildSentenceRangesFromSpans, sentenceRangeAt, wrapRangeInSpans, unwrapSpans,
-   showSelectionHighlight, clearSelectionHighlight, wordToSentenceEndRangeAt,
-   selectRangeAndTranslate, selectWordAtPoint. Now lives in js/selection.js.
-2. **~1400-1495**: navigation.js — columnStep, paginateContainer, goToPageInChapter,
-   updateProgressText, bookKeyFor, saveBookmark, loadBookmark, goNext, goPrev. NOT selection,
-   belongs to Step 9. Contiguous block, safe to extract on its own schedule.
-3. **~1496-1546**: `els.mainArea.addEventListener('click', ...)` — a genuinely MIXED
-   responsibility handler: word-tap-to-translate (selection: selectWordAtPoint/sentenceRangeAt/
-   handleWordOrSelection) falls through to page-turn-by-tap-zone (navigation: goPrev/goNext) and
-   immersive-mode toggle when not in translate mode or no word found. Read in full before
-   deciding its home — it is NOT safe to split this listener itself across files; it must move
-   as one unit into whichever file becomes its home (leaning selection.js, since the word-tap
-   path is the code's own stated priority, but this is a judgment call, not settled).
-4. **~1548-1612**: "ЖЕСТИ ДЛЯ ТЕЛЕФОНА/ПЛАНШЕТА" section — touchstart/touchmove/touchend/wheel
-   listeners for swipe-to-turn-page and pull-down-to-open-menu gestures, plus clearLongPress.
-   Read each listener body before classifying — likely a mix of navigation (swipe-to-turn) and
-   selection (long-press-to-select-sentence); do not assume it's all one thing.
-5. **~1613-1826**: "КЕРУВАННЯ PDF МИШЕЮ" through `endPdfPointer` — this is pdf-zoom-pan.js
-   (Step 11) territory: rerenderPdfAtCurrentZoom, rememberPdfFocus, pdfBaseScale, pdfAnchor,
-   restorePdfAnchor, layoutPdfZoom, applyPdfZoom, persistPdfZoom, setPdfScale, cancelPdfRender,
-   cancelPdfInteraction, pinchMetrics, paintPdfGesture, endPdfPointer, plus their own
-   pointerdown/scroll listeners. NOT selection. Leave in place for Step 11.
-6. **~1827-1848**: a second `els.mainArea` click listener (capture phase, `pdfBlockClick` gesture
-   suppression — pdf-zoom-pan.js), `#pdf-fit` onchange (pdf-zoom-pan/navigation mix), and a
-   `window.resize` listener that itself mixes PDF-rerender and pagination
-   (paginateContainer/goToPageInChapter) — another cross-cutting piece needing a judgment call.
-7. **~1853-1980+**: "ВИДІЛЕННЯ ПЕРЕТЯГУВАННЯМ ЗІ ЗНАЧКОМ ПО СЛОВАХ" — wordBoundsAt, and
-   pointerdown/pointermove/pointerup for stylus/mouse drag-selection, then rangeBetweenWords.
-   This IS selection.js, contiguous within itself, clean cut.
+**Lesson for future steps**: section-title comments (e.g. "ЖЕСТИ ДЛЯ ТЕЛЕФОНА/ПЛАНШЕТА") are not
+reliable classifiers on their own — two pieces initially flagged as "mixed, needs a judgment
+call" turned out, once actually read function-by-function, to have zero content belonging to
+the step in question. Always read the full body before deciding a piece needs a hard judgment
+call; don't assume ambiguity from a comment header alone.
 
-**Recommendation for whoever continues Step 4**: do piece 1 and piece 7 first (both clean,
-contiguous, unambiguous selection.js content, no judgment calls needed) as their own
-commit/PR/test/merge/smoke-test cycle. Then separately decide and handle pieces 3, 4, 6 (the
-cross-cutting orchestrators) as a follow-up within the same step, reading each listener body in
-full before deciding its file — do not guess. Piece 2 (navigation.js) and piece 5
-(pdf-zoom-pan.js) can be left completely alone for now and handled in their own dedicated
-Steps 9 and 11 respectively, exactly as originally planned.
+Next step: Step 5 — pdf-render.js (initPdf, renderPdfPage, updatePdfScrubber, commitPdfScrub).
+Re-grep fresh line numbers before starting — do not reuse any numbers from this file, several
+steps' worth of extraction have shifted everything since they were last accurate.
