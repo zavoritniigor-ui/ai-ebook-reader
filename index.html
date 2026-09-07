@@ -73,24 +73,32 @@
         button, label.btn {
             background: transparent; color: var(--text-color); border: 1px solid var(--border-color);
             height: var(--control-h); padding: 0 13px; border-radius: var(--radius-sm); cursor: pointer;
-            font-size: 13.5px; font-weight: 500; transition: background-color .15s, border-color .15s, color .15s;
+            font-size: 13.5px; font-weight: 500; transition: background-color .15s, border-color .15s, color .15s, transform .1s;
             white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            -webkit-tap-highlight-color: transparent;
         }
         button:hover, label.btn:hover { background: var(--hover-color); }
+        /* Тактильний відгук на дотик/клік — одна спільна деталь, яка одразу робить весь
+           застосунок "живішим" на планшеті, де немає курсора й hover не спрацьовує. */
+        button:active, label.btn:active { transform: scale(0.96); }
         /* Явна первинна дія — відкрити файл. Єдина суцільно залита кнопка в хедері, тому
            саме на ній погляд зупиняється першим. */
-        label.btn {
+        label.btn, .btn-primary {
             background: var(--accent-color); color: var(--accent-contrast); border-color: var(--accent-color);
             font-weight: 600;
         }
-        label.btn:hover { filter: brightness(1.08); }
-        /* Первинна кнопка дії поза хедером (напр. "Зберегти" у налаштуваннях ключа) —
-           той самий залитий стиль, що й "Відкрити", для однакової мови кнопок у застосунку. */
-        .btn-primary {
-            background: var(--accent-color); color: var(--accent-contrast); border-color: var(--accent-color);
-            font-weight: 600; padding: 0 20px;
+        label.btn:hover, .btn-primary:hover { filter: brightness(1.08); background: var(--accent-color); }
+        .btn-primary { padding: 0 20px; }
+        /* Вторинна дія — помітна, але не тягне на себе погляд першою (скасувати, дії в
+           панелях AI/граматики). Привид (ghost) — найтихіша дія: закрити, другорядна іконка. */
+        .btn-secondary {
+            background: var(--surface-2); color: var(--text-color); border-color: var(--border-color); font-weight: 600;
         }
-        .btn-primary:hover { filter: brightness(1.08); background: var(--accent-color); }
+        .btn-secondary:hover { background: var(--hover-color); }
+        .btn-ghost { background: transparent; color: var(--text-muted); border-color: transparent; }
+        .btn-ghost:hover { background: var(--hover-color); color: var(--text-color); }
+        .btn-danger { background: rgba(220,53,69,0.1); color: #dc3545; border-color: rgba(220,53,69,0.3); font-weight: 600; }
+        .btn-danger:hover { background: rgba(220,53,69,0.18); }
         button.icon-btn { background: transparent; color: var(--text-color); font-weight: 500; }
         button.icon-btn.compact { width: var(--control-h); padding: 0; font-size: 15px; }
         button.active-mode {
@@ -198,10 +206,10 @@
         #tts-controls button:active { background: rgba(30,30,30,0.6); }
         #tts-toggle { width: 66px; height: 66px; font-size: 20px; }
 
-        /* PDF на десктопі використовує всю ширину вікна: обмеження 900px і великі відступи
-           потрібні для тексту, що переливається, але для сторінки PDF вони лише марнують
-           простір. Нижче 900px (телефон/планшет) правило не діє — там усе як було. */
-        @media (min-width: 901px) {
+        /* PDF на планшеті й десктопі використовує всю ширину вікна: обмеження 900px і великі
+           відступи потрібні для тексту, що переливається, але для сторінки PDF вони лише
+           марнують простір. Нижче 641px (телефон) правило не діє — там усе як було. */
+        @media (min-width: 641px) {
             body.pdf-mode #reader-container { max-width: 100%; padding: 8px; }
             body.pdf-mode:not(.mode-translate-on) #reader-container { cursor: grab; }
         }
@@ -215,11 +223,16 @@
                      box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
         body.ink-mode #ink-tools { display: flex; }
         .ink-btn { background: rgba(255,255,255,0.14); color: #fff; border: none;
-                   width: 40px; height: 40px; border-radius: 50%; font-size: 17px; cursor: pointer; }
+                   width: 40px; height: 40px; border-radius: 50%; font-size: 17px; cursor: pointer;
+                   transition: background-color .15s, transform .1s; }
+        .ink-btn:hover { background: rgba(255,255,255,0.24); }
+        .ink-btn:active { transform: scale(0.92); }
         #ink-done { width: auto; padding: 0 16px; border-radius: 20px; background: #10a37f; font-size: 14px; }
+        #ink-done:hover { background: #12b78e; }
         .ink-btn.active { background: #10a37f; }
         .ink-colors { display: flex; gap: 5px; }
-        .ink-color { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+        .ink-color { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: transform .1s; }
+        .ink-color:hover { transform: scale(1.12); }
         .ink-color.active { border-color: #fff; }
 
         /* Виділення прямокутної області сторінки (для перевірки вправи через AI) */
@@ -375,17 +388,30 @@
         .side-panel.ready .panel-tab { background: rgba(25, 135, 84, 0.14); }
         
         /* Вміст панелей */
-        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border-color); background: var(--hover-color); }
-        .close-panel-btn { background: var(--border-color); color: var(--text-color); border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 6px 12px; border-radius: 6px; }
-        .panel-content { flex: 1; padding: 25px; overflow-y: auto; font-size: 18px; line-height: 1.6; }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center; padding: 14px 14px 14px 22px;
+            border-bottom: 1px solid var(--border-color); background: var(--surface-2); flex-shrink: 0;
+        }
+        .panel-header h3 { font-size: 16px; font-weight: 700; letter-spacing: -.1px; }
+        /* Кругла "тиха" кнопка закриття — сучасніша за текстову пігулку "✖ Закрити" і
+           звичніша для планшета: єдиний ×, легко влучити пальцем (44×44). */
+        .close-panel-btn {
+            background: transparent; color: var(--text-muted); border: none; font-size: 17px; font-weight: 400;
+            cursor: pointer; width: 40px; height: 40px; border-radius: 50%; padding: 0; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; transition: background-color .15s, color .15s;
+        }
+        .close-panel-btn:hover { background: var(--hover-color); color: var(--text-color); }
+        .close-panel-btn:active { transform: scale(0.9); }
+        .panel-content { flex: 1; padding: 22px 24px; overflow-y: auto; font-size: 18px; line-height: 1.6; }
         /* Оформлення довідкової статті граматики (таблиця дієвідмінювання, стислі рубрики) */
-        #grammar-content { font-size: 16px; line-height: 1.45; }
-        .panel-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 15px; }
-        .panel-content th, .panel-content td { border: 1px solid var(--border-color); padding: 4px 8px; text-align: left; }
-        .panel-content th { background: var(--hover-color); }
-        .panel-content ul, .panel-content ol { padding-left: 20px; margin: 4px 0; }
-        .panel-content li { margin: 2px 0; }
-        .panel-content p { margin: 5px 0; }
+        #grammar-content { font-size: 16px; line-height: 1.5; }
+        .panel-content b, .panel-content strong { color: var(--text-color); }
+        .panel-content table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 15px; border-radius: var(--radius-sm); overflow: hidden; }
+        .panel-content th, .panel-content td { border: 1px solid var(--border-color); padding: 8px 10px; text-align: left; }
+        .panel-content th { background: var(--surface-2); font-weight: 600; }
+        .panel-content ul, .panel-content ol { padding-left: 22px; margin: 6px 0; }
+        .panel-content li { margin: 3px 0; }
+        .panel-content p { margin: 8px 0; }
         
         /* Кольорові позначки рівнів CEFR — від зеленого (простіше) до червоного (складніше) */
         .lvl { display: inline-block; padding: 1px 9px; border-radius: 10px; font-weight: bold;
@@ -397,8 +423,9 @@
         .lvl[data-l="C1"] { background: #c0392b; }
         .lvl[data-l="C2"] { background: #7d2b8b; }
         /* Блоки спрощення — з кольоровою смугою того ж рівня */
-        .lvl-block { margin: 10px 0; padding: 9px 12px; border-radius: 8px;
-                     border-left: 4px solid var(--border-color); background: var(--hover-color); }
+        .lvl-block { margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md);
+                     border-left: 4px solid var(--border-color); background: var(--surface-2);
+                     box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
         .lvl-block::before { content: attr(data-l); display: inline-block; margin-right: 8px;
                              padding: 1px 8px; border-radius: 9px; font-size: 12px;
                              font-weight: bold; color: #fff; background: #888; }
@@ -417,7 +444,8 @@
            тому в режимі PDF це обмеження знімаємо. */
         body.pdf-mode #reader-container { scrollbar-width: auto; scrollbar-color: rgba(110,110,110,0.75) rgba(128,128,128,0.18); contain: none; }
         /* Дієслова з речення — кнопками; під ними ряд часів для відмінювання */
-        .verb-card { margin: 10px 0; padding: 10px 12px; border-radius: 8px; background: var(--hover-color); border-left: 4px solid #10a37f; }
+        .verb-card { margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2);
+                     border-left: 4px solid #10a37f; box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
         /* Ряд дієслів закріплений унизу панелі: він не прокручується разом із текстом,
            тому дієслова лишаються під рукою навіть коли розбір довгий. */
         .verb-bar { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap;
@@ -433,21 +461,56 @@
         .verb-focus { border-left-color: #0d6efd; }
         .verb-head { margin-bottom: 8px; font-size: 17px; }
         .verb-forme { font-size: 13px; color: var(--text-color); opacity: .75; font-style: italic; }
-        .panel-translation { margin-top: 14px; padding: 10px 12px; border-radius: 8px;
-                             background: var(--hover-color); border-left: 4px solid var(--accent-color);
-                             font-size: 16px; line-height: 1.45; }
+        .panel-translation { margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-md);
+                             background: var(--surface-2); border-left: 4px solid var(--accent-color);
+                             font-size: 16px; line-height: 1.5; box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
         #ask-content { cursor: text; }
-        .panel-actions { padding: 10px 15px 0; display: flex; gap: 8px; flex-wrap: wrap; }
-        .panel-action-btn { background: var(--border-color); color: var(--text-color); border: none; padding: 9px 14px; border-radius: 8px; font-size: 14px; cursor: pointer; }
-        .chat-input-area { padding: 15px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; background: var(--hover-color); align-items: center; flex-shrink: 0; }
-        .chat-input-area input { flex: 1; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 16px;}
-        .mic-btn { background: var(--border-color); color: var(--text-color); border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 18px; transition: 0.2s; }
-        .mic-btn.recording { background: #dc3545 !important; color: white !important; animation: pulse 1s infinite; }
+        .panel-actions { padding: 12px 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+        .panel-action-btn {
+            background: var(--surface-2); color: var(--text-color); border: 1px solid var(--border-color);
+            padding: 0 14px; height: 40px; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 600; cursor: pointer;
+        }
+        .panel-action-btn:hover { background: var(--hover-color); }
+        .chat-input-area { padding: 14px 16px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; background: var(--surface-2); align-items: center; flex-shrink: 0; }
+        .chat-input-area input {
+            flex: 1; height: 44px; padding: 0 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);
+            background: var(--panel-bg); color: var(--text-color); font-size: 16px;
+        }
+        .mic-btn {
+            background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
+            width: 44px; height: 44px; padding: 0; border-radius: 50%; cursor: pointer; font-size: 18px; transition: .2s;
+        }
+        .mic-btn:hover { background: var(--hover-color); }
+        .mic-btn.recording { background: #dc3545 !important; color: white !important; border-color: #dc3545 !important; animation: pulse 1s infinite; }
 
         /* МОБІЛЬНА АДАПТАЦІЯ (ПОВНИЙ ЕКРАН ДЛЯ ПАНЕЛЕЙ) */
-        @media (max-width: 900px) {
+        /* ===== ПЛАНШЕТ (641–1180px, портрет і альбом) =====
+           Свідомо НЕ копія телефонного режиму: тут досить ширини для горизонтальної
+           панелі інструментів у пару рядків і для бічних панелей-"листів", що не
+           ховають книгу повністю — це і є те, чого не вистачало під плаНшет. */
+        @media (min-width: 641px) and (max-width: 1180px) {
+            .header-controls button, .header-controls label.btn, .header-controls select {
+                height: 44px; font-size: 14px;
+            }
+            .toolbar-group { gap: 8px; row-gap: 8px; }
+            nav { width: min(320px, 42vw); }
+            #toc-list li { padding: 13px 14px; font-size: 15.5px; }
+            #reader-container { padding: 40px 44px; }
+
+            /* Бічні панелі — акуратний "лист" замість повного екрана: книгу й далі
+               трохи видно позаду, це відчувається як застосунок, а не інший екран. */
+            .side-panel { width: min(440px, 62vw); height: 88vh; top: 6vh; }
+            #grammar-panel, #ask-panel { border-radius: var(--radius-lg); }
+
+            /* Плаваючі інструменти (TTS/перо) — трохи більші кнопки під палець. */
+            #ink-tools { padding: 10px 14px; gap: 10px; }
+            .ink-btn { width: 44px; height: 44px; }
+        }
+
+        /* ===== ТЕЛЕФОН (до 640px) ===== */
+        @media (max-width: 640px) {
             header#app-header { padding: 0; min-height: 0; }
-            /* Меню на телефоні/планшеті: рівна сітка замість хаотично відцентрованих рядків.
+            /* Меню на телефоні: рівна сітка замість хаотично відцентрованих рядків.
                Групи розділені тонкою лінією-заголовком замість вертикальної риски —
                на всю ширину вона читається краще, ніж бордер збоку. */
             .header-controls { display: flex; flex-direction: column; gap: 0; background: var(--panel-bg); padding: 10px 16px 14px 62px; }
@@ -470,7 +533,7 @@
             .workspace { margin-top: 55px; height: calc(100vh - 55px); }
             main { padding: 0; }
             #reader-container { padding: 20px 15px; border-radius: 0; max-width: 100%; box-shadow: none; }
-            
+
             /* Повноекранний режим: футер (розділ/сторінка/вперед/назад) за замовчуванням
                прихований і виїжджає як тимчасове підменю, викликане прозорою ручкою знизу. */
             footer#app-footer { transform: translateY(100%); }
@@ -481,11 +544,11 @@
                 border-radius: 48px 48px 0 0; z-index: 10001; cursor: pointer;
             }
             body.footer-open #footer-handle { display: none; }
-            
+
             /* На мобільному панелі відкриваються на весь екран; ховання — тим самим
                зсувом на 100% власної ширини, що й на десктопі. */
             .side-panel { width: 100vw; height: 100vh; top: 0; border-radius: 0; z-index: 20000; }
-            
+
             /* Коли панель відкрита, ховаємо її язичок */
             .side-panel.expanded .panel-tab { display: none; }
         }
@@ -495,14 +558,16 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         #settings-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index:30000; justify-content:center; align-items:center; }
         .modal-content {
-            background: var(--panel-bg); padding: 28px; border-radius: var(--radius-lg); width: 90%; max-width: 440px;
+            position: relative; background: var(--panel-bg); padding: 28px; border-radius: var(--radius-lg);
+            width: 90%; max-width: 460px; max-height: 86vh; overflow-y: auto;
             box-shadow: 0 24px 60px -20px rgba(0,0,0,0.5); border: 1px solid var(--border-color);
         }
-        .modal-content h3 { font-size: 16px; }
+        .modal-content h3 { font-size: 16px; padding-right: 30px; }
         .modal-content input {
-            width: 100%; height: 42px; padding: 0 12px; margin: 12px 0 6px; border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm); background: var(--bg-color); color: var(--text-color); font-size: 14px;
+            width: 100%; height: 44px; padding: 0 12px; margin: 12px 0 6px; border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); background: var(--bg-color); color: var(--text-color); font-size: 15px;
         }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
         .key-link { display: inline-block; font-size: 13px; color: var(--accent-color); text-decoration: none; }
         .key-link:hover { text-decoration: underline; }
         .key-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
@@ -587,7 +652,7 @@
             <div id="ask-tab" class="panel-tab" data-i18n-title="tAskPanel"></div>
             <div class="panel-header">
                 <h3 data-i18n="panelAsk">🤖 Пояснення слова</h3>
-                <button class="close-panel-btn" onclick="document.getElementById('ask-panel').classList.remove('expanded')" data-i18n="close">✖ Закрити</button>
+                <button class="close-panel-btn" onclick="document.getElementById('ask-panel').classList.remove('expanded')" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
             <div id="ask-content" class="panel-content">
                 <div style="text-align:center; padding-top: 50px; color: gray;" data-i18n="askHint">…</div>
@@ -598,12 +663,12 @@
                 <button id="btn-translate-panel" class="panel-action-btn" data-i18n="btnTranslatePanel">🌐 Перекласти</button>
             </div>
             <div class="chat-input-area">
-                <select id="mic-lang" style="padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
+                <select id="mic-lang" style="height:44px; max-width:76px;">
                     <option value="uk-UA">UK</option><option value="en-US">EN</option><option value="fr-FR">FR</option><option value="ru-RU">RU</option>
                 </select>
                 <button class="mic-btn" id="mic-btn">🎤</button>
                 <input type="text" id="ask-input" data-i18n-ph="ask">
-                <button id="ask-send-btn" style="background:var(--accent-color); color:white; border:none; padding:12px 18px; border-radius:6px; cursor:pointer;">➤</button>
+                <button id="ask-send-btn" class="btn-primary" style="width:44px; height:44px; padding:0; border-radius:50%; font-size:16px;">➤</button>
             </div>
         </div>
 
@@ -612,7 +677,7 @@
             <div id="grammar-tab" class="panel-tab" data-i18n-title="tGrammarPanel"></div>
             <div class="panel-header">
                 <h3 data-i18n="panelGrammar">📝 Граматика</h3>
-                <button class="close-panel-btn" onclick="document.getElementById('grammar-panel').classList.remove('expanded')" data-i18n="close">✖ Закрити</button>
+                <button class="close-panel-btn" onclick="document.getElementById('grammar-panel').classList.remove('expanded')" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
             <div class="tense-bar" id="tense-bar">
                 <button data-t="indicatif présent">présent</button>
@@ -663,8 +728,9 @@
         <button id="next-btn" data-i18n="next">Вперед ▶</button>
     </footer>
 
-    <div id="settings-modal">
+    <div id="settings-modal" onclick="if (event.target === this) closeKeySettings()">
         <div class="modal-content">
+            <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" onclick="closeKeySettings()" data-i18n="close" data-i18n-title="tClose">✕</button>
             <h3 data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
             <input type="password" id="api-key-input" placeholder="AIza...">
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="key-link">aistudio.google.com/apikey</a>
@@ -674,7 +740,8 @@
             <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="key-link">console.groq.com/keys</a>
             <div class="key-hint" data-i18n="keyNote">Якщо вказано ключ Groq, він використовується для всіх запитів AI — відповідь приходить помітно швидше. Інакше працює Gemini.</div>
 
-            <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+            <div class="modal-footer">
+                <button class="btn-ghost" onclick="closeKeySettings()" data-i18n="cancel">Скасувати</button>
                 <button class="btn-primary" onclick="saveApiKey()" data-i18n="save">Зберегти</button>
             </div>
         </div>
@@ -1033,7 +1100,9 @@
             translating:    { uk: 'Переклад...',    en: 'Translating...', fr: 'Traduction...',  ru: 'Перевод...' },
             panelAsk:       { uk: '🤖 Пояснення слова', en: '🤖 Word explanation', fr: '🤖 Explication du mot', ru: '🤖 Объяснение слова' },
             panelGrammar:   { uk: '📝 Граматика',   en: '📝 Grammar',     fr: '📝 Grammaire',   ru: '📝 Грамматика' },
-            close:          { uk: '✖ Закрити',      en: '✖ Close',        fr: '✖ Fermer',       ru: '✖ Закрыть' },
+            close:          { uk: '✕',               en: '✕',              fr: '✕',              ru: '✕' },
+            tClose:         { uk: 'Закрити',         en: 'Close',          fr: 'Fermer',         ru: 'Закрыть' },
+            cancel:         { uk: 'Скасувати',       en: 'Cancel',         fr: 'Annuler',        ru: 'Отмена' },
             askHint:        { uk: 'Тапніть слово й натисніть «Запитай AI» — значення, вживання та сталі сполучення.',
                               en: 'Tap a word and press “Ask AI” — meaning, usage and common collocations.',
                               fr: 'Touchez un mot et appuyez sur « Demander à l’IA » — sens, usage et expressions courantes.',
@@ -4207,6 +4276,9 @@ RÈGLES IMPÉRATIVES :
             document.getElementById('api-key-input').value = state.apiKey || '';
             document.getElementById('groq-key-input').value = state.groqKey || '';
             document.getElementById('settings-modal').style.display = 'flex';
+        }
+        function closeKeySettings() {
+            document.getElementById('settings-modal').style.display = 'none';
         }
         function saveApiKey() {
             state.apiKey = document.getElementById('api-key-input').value.trim();
