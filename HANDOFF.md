@@ -13,17 +13,19 @@ Before starting or resuming work, every agent must read:
 
 ## Current handoff
 
-Active agent: none
-Current step: unknown
-Current branch: unknown
-Current task status: idle
-Last completed action: none
-Last successful commit: none
-Last PR: none
-Last CI result: none
-Last production result: none
-Uncommitted work: none
-Next required action: read MIGRATION_STATUS.md and continue from the first incomplete step
+Active agent: Claude Code
+Current step: Step 1 — core.js (in progress)
+Current branch: dev
+Current task status: active, working autonomously per AUTONOMOUS_MIGRATION.md
+Last completed action: Step 0 (mutable state containers) — DONE, merged to main via PR #4
+Last successful commit: 5a85de7 on dev (merged to main as f933e65)
+Last PR: #4, merged
+Last CI result: green (see MIGRATION_STATUS.md for a flaky-check note on the push-triggered duplicate run)
+Last production result: verified live, smoke-tested, zero console errors
+Uncommitted work: none at time of writing this entry
+Next required action: extract core.js (state/els/i18n/storage/safeHtml/escapeHtml/async-tasks/net helpers)
+  per MODULARIZATION_PLAN.md step 1, re-expose required symbols on window for test compatibility,
+  run both local test suites, then commit/push/PR/CI/merge/verify exactly as Step 0 did
 
 ## Handoff rules
 
