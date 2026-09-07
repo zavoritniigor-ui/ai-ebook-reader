@@ -1,0 +1,62 @@
+# Browser profiles must live outside the project/webroot.
+/AI Ebook Dev*/
+/[Pp]rofiles/
+/[Bb]rowser-profiles/
+/[Cc]hrome-profile*/
+/[Cc]hromium-profile*/
+/playwright/.auth/
+
+# Secrets and local configuration (never commit API credentials).
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+/secrets/
+/credentials*.json
+/api-keys*
+
+# Dependencies, caches and generated output; vendor/ is intentionally tracked.
+node_modules/
+.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+
+# Temporary files, browser crash dumps, logs and editor artifacts.
+/tmp/
+/temp/
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+*~
+core
+core.*
+*.dmp
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Private reading material and local backups.
+/books/
+/private/
+/backups/
+*.epub
+*.pdf
+*.docx
+*.fb2
+*.rtf
