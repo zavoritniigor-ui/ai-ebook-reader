@@ -11,9 +11,17 @@
  */
 'use strict';
 
-// Змінюйте цей номер версії щоразу, коли міняється склад APP_SHELL — стара
-// версія кешу видаляється при активації нового service worker'а (крок "activate").
-const CACHE_NAME = 'ai-reader-shell-v1';
+// Змінюйте цей номер версії щоразу, коли міняється склад APP_SHELL або логіка
+// fetch-обробника — стара версія кешу видаляється при активації нового
+// service worker'а (крок "activate").
+const CACHE_NAME = 'ai-reader-shell-v4';
+
+// Скільки чекати на мережу для НАВІГАЦІЇ (сама сторінка), перш ніж показати
+// закешовану версію. Досить коротко, щоб застосунок відчувався швидким навіть на
+// поганому зв'язку, і досить довго, щоб не відкидати мережу заради кешу вже за
+// секунду. Це і є той запобіжник, що не дає встановленому PWA надовго застрягти
+// на старій (потенційно вразливій) версії index.html.
+const NAVIGATION_TIMEOUT_MS = 3500;
 
 const APP_SHELL = [
     './',
@@ -21,10 +29,11 @@ const APP_SHELL = [
     './manifest.webmanifest',
     './icons/icon-192.png',
     './icons/icon-512.png',
+    './archive-guard.worker.js',
     './vendor/jszip-3.10.1.min.js',
     './vendor/mammoth-1.6.0.browser.min.js',
-    './vendor/pdf-3.11.174.min.js',
-    './vendor/pdf-3.11.174.worker.min.js'
+    './vendor/pdf-6.3.289.min.mjs',
+    './vendor/pdf-6.3.289.worker.min.mjs'
 ];
 
 self.addEventListener('install', (event) => {
@@ -45,6 +54,38 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// Навігація (сам HTML-документ, включно зі стартом standalone-PWA) — мережа-спочатку
+// з коротким таймаутом: онлайн-користувач завжди отримує code з сервера (а не вчорашню
+// версію з кешу), офлайн чи повільна мережа — останню робочу закешовану. Саме тут жив
+// ризик, що встановлений на планшеті PWA місяцями працює зі старою версією index.html.
+async function networkFirstForNavigation(req) {
+    const networkPromise = fetch(req).then((res) => {
+        if (res && res.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, res.clone()));
+        }
+        return res;
+    }).catch(() => null);
+
+    const timedOut = await Promise.race([
+        networkPromise.then(() => false),
+        new Promise((resolve) => setTimeout(() => resolve(true), NAVIGATION_TIMEOUT_MS))
+    ]);
+
+    if (!timedOut) {
+        const res = await networkPromise;
+        if (res && res.ok) return res;
+    }
+
+    // Мережа не встигла вчасно, впала або відповіла помилкою — власний кеш, а якщо
+    // саме цього шляху там ще нема, фолбек на закешований index.html (той самий "app
+    // shell" для будь-якої навігації). networkPromise й далі виконується у фоні й сам
+    // оновить кеш, коли (якщо) таки відповість, — наступний запуск уже буде свіжим.
+    const cached = (await caches.match(req)) || (await caches.match('./index.html')) || (await caches.match('./'));
+    if (cached) return cached;
+    const late = await networkPromise;
+    return late || new Response('Offline', { status: 503, statusText: 'Offline' });
+}
+
 self.addEventListener('fetch', (event) => {
     const req = event.request;
 
@@ -55,12 +96,17 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(req.url);
     if (url.origin !== self.location.origin) return;
 
+    if (req.mode === 'navigate') {
+        event.respondWith(networkFirstForNavigation(req));
+        return;
+    }
+
+    // Versioned/статичні файли (vendor-бібліотеки з номером версії в імені, іконки,
+    // архів-воркер): кеш-спочатку — застаріла версія тут не страшна, оновлення
+    // бібліотеки й так означає нову назву файла.
     event.respondWith(
         caches.match(req).then((cached) => {
             const network = fetch(req).then((res) => {
-                // Оновлюємо кеш свіжою копією статичного файла — наступного разу
-                // офлайн-версія буде вже не застарілою (без окремого механізму
-                // "оновлень", просто тихе доповнення кешу на льоту).
                 if (res && res.ok) {
                     const copy = res.clone();
                     caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
