@@ -314,3 +314,23 @@ Do not finish with only:
 or
 
 “tests passed”.
+## Agent handoff
+
+Before starting or resuming work, always read `HANDOFF.md`.
+
+Before stopping because of token limits, context limits, session end, interruption, or blocker, update `HANDOFF.md` with the exact current state.
+
+Record:
+- current step;
+- current branch;
+- completed work;
+- unfinished work;
+- modified files;
+- commit hash;
+- PR number;
+- CI status;
+- production status;
+- exact next action.
+
+Do not rely on conversation memory when resuming work.
+Use `HANDOFF.md`, `MIGRATION_STATUS.md`, and Git state as the source of truth.
