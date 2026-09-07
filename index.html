@@ -190,7 +190,10 @@
         ::selection { background: rgba(16, 163, 127, 0.38); }
         .pdf-page-wrapper { position: relative; display: flex; justify-content: center; margin-bottom: 20px; }
         .pdf-canvas { box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: block; }
-        .pdf-text-layer { position: absolute; left: 0; top: 0; overflow: hidden; line-height: 1.0; width: 100%; height: 100%; }
+        .pdf-text-layer { position: absolute; left: 0; top: 0; overflow: hidden; line-height: 1.0; transform-origin: 0 0; text-size-adjust: none; -webkit-text-size-adjust: none; }
+        .pdf-text-layer[data-main-rotation="90"] { transform: rotate(90deg) translateY(-100%); }
+        .pdf-text-layer[data-main-rotation="180"] { transform: rotate(180deg) translate(-100%, -100%); }
+        .pdf-text-layer[data-main-rotation="270"] { transform: rotate(270deg) translateX(-100%); }
         /* PDF.js 6.x (клас pdfjsLib.TextLayer) більше не виставляє inline transform/font-size
            сам — він лише виставляє CSS-змінні (--font-height на кожному span, --scale-x/--rotate
            за потреби, --min-font-size на контейнері) і чекає, що САМЕ СТИЛІ споживача їх
@@ -396,19 +399,31 @@
         #ask-panel.expanded { transform: none; visibility: visible; }
         
         /* Прозорі напівкруглі "ручки" панелей — жодного малюнка, у спокої повністю прозорі.
-           Права ручка = граматика, ліва = запит до AI (як просив користувач). */
-        .panel-tab { 
-            position: absolute; top: 30%; width: 42px; height: 92px; 
+           Права ручка = граматика, ліва = запит до AI (як просив користувач).
+           Раніше язичок стояв на top:30% ВІД ВИСОТИ ПАНЕЛІ (6vh–94vh на планшеті,
+           10vh–90vh на десктопі) — і в обох випадках це фізично потрапляло всередину
+           смуги #pdf-scrubber (right:4px;top:20%, а сам повзунок буває заввишки до
+           ~360px), тому граматичний язичок і скрубер боролися за той самий дотик.
+           Прив'язуємо язички до НИЗУ панелі фіксованим офсетом у px (а не відсотком
+           висоти панелі, яка сама різна на різних брейкпоінтах) — це завжди лишає
+           скрубер зверху й футер знизу вільними з запасом на планшеті в обох
+           орієнтаціях (перевірено на 834×1194, 1194×834, 768×1024, 1024×768). */
+        .panel-tab {
+            position: absolute; top: auto; bottom: 20px; width: 42px; height: 92px;
             background: rgba(128,128,128,0.10); cursor: pointer; user-select: none;
             transition: background-color 0.5s ease;
         }
         #grammar-tab { left: -42px; border-radius: 42px 0 0 42px; }
         #ask-tab { right: -42px; border-radius: 0 42px 42px 0; }
-        
+
         /* Статус запиту — єдине, що робить ручку помітною: ледь відчутний перехід у червоний
            (іде запит) або зелений (відповідь готова), і нічого більше. */
         .side-panel.loading .panel-tab { background: rgba(220, 53, 69, 0.14); }
         .side-panel.ready .panel-tab { background: rgba(25, 135, 84, 0.14); }
+        /* Друга лінія захисту (не лише статичне розведення вище): поки будь-яка бічна
+           панель розгорнута на весь екран, сам скрубер під час гортання сторінок не
+           потрібен і лише плутається під пальцем — тимчасово ховаємо його. */
+        body:has(.side-panel.expanded) #pdf-scrubber { opacity: 0; pointer-events: none; }
         
         /* Вміст панелей */
         .panel-header {
@@ -626,11 +641,11 @@
         #ink-tools { max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; }
         #ink-width { width: 94px; touch-action: auto; }
         #ink-tools label { color: white; display: flex; align-items: center; gap: 5px; font-size: 12px; }
-        #pdf-scrubber { display: none; position: absolute; right: 4px; top: 20%; z-index: 9000;
+        #pdf-scrubber { transition: right 0.3s, opacity 0.3s;  display: none; position: absolute; right: 4px; top: 20%; z-index: 9000;
             background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 22px;
             padding: 6px 0; width: 46px; text-align: center; opacity: .65; }
         body.pdf-mode #pdf-scrubber.available { display: block; }
-        body.ink-mode #pdf-scrubber, body.region-mode #pdf-scrubber { display: none; }
+        body.ink-mode #pdf-scrubber, body.region-mode #pdf-scrubber { transition: right 0.3s, opacity 0.3s;  display: none; }
         #pdf-scrubber:hover, #pdf-scrubber:focus-within { opacity: 1; }
         #pdf-scrubber output { font-size: 12px; display: block; }
         #pdf-page-range { writing-mode: vertical-lr; direction: ltr; width: 44px; height: min(42vh, 360px); touch-action: none; }
@@ -656,10 +671,11 @@
         #grammar-content { cursor: text; }
         .panel-tab { width: 44px; border: 0; padding: 0; }
         #grammar-tab { left: -44px; } #ask-tab { right: -44px; }
-        @keyframes discover-control {
-            0%, 100% { background-color: rgba(128,128,128,.10); box-shadow: 0 0 0 0 rgba(128,128,128,0); }
-            50% { background-color: rgba(128,128,128,.28); box-shadow: 0 0 12px 3px rgba(128,128,128,.15); }
-        }
+        /* Раніше тут випадково опинилось ДВА @keyframes discover-control з однаковою назвою
+           (друге, помітніше, тихо перемагало перше й зайвий раз дублювалось усередині
+           prefers-reduced-motion, де анімація й так вимкнена animation:none) — лишаємо
+           один, справжній опис ефекту. */
+        @keyframes discover-control { 0%, 100% { opacity: 0.5; background-color: transparent; } 50% { opacity: 1; background-color: rgba(128,128,128,0.24); } }
         .onboarding-cue { animation: discover-control 1.6s ease-in-out 3; }
         .onboarding-static { background-color: rgba(128,128,128,.24); }
         .side-panel.loading .panel-tab, .side-panel.ready .panel-tab { animation: none; box-shadow: none; }
@@ -1821,11 +1837,135 @@
             r.selectNodeContents(block);
             return r;
         }
+        // ===== PDF: візуальний, а не content-stream порядок фрагментів =====
+        // pdf.js кладе кожен фрагмент рядка в окремий <span> у порядку текстових операторів
+        // вихідного PDF. Для простого одноколонкового тексту цей порядок зазвичай і є порядком
+        // читання, але для багатоколонкових макетів, підписів під малюнками чи колонтитулів —
+        // ні. Раніше "блоком" для пошуку речення був увесь .pdf-text-layer сторінки, і
+        // buildSentenceRanges йшла по ньому в DOM-порядку — тому тап у першій колонці міг
+        // притягнути слова з другої (перевірено на синтетичному 2-колонковому PDF). Нижче
+        // фрагменти групуються за РЕАЛЬНОЮ геометрією (колонка — по X, розрив по Y — інший
+        // абзац/підпис/колонтитул), і речення будуються лише з фрагментів навколо тапнутого,
+        // у тій самій видимій колонці.
+        // document.caretRangeFromPoint() інколи влучає не в конкретний текстовий вузол, а в сам
+        // .pdf-text-layer (проміжок між гліфами) — особливо під час CSS-масштабування при
+        // pinch-zoom (transform:scale на .pdf-page-wrapper), коли реальна геометрія гліфів між
+        // кадрами трохи "плаває". У такому разі шукаємо найближчий до точки тапу фрагмент напряму
+        // за rect'ами, а НЕ відкочуємось до всього шару без фільтра за колонкою — інакше знову
+        // повертається саме та помилка (змішування колонок), яку цей код мав виправити.
+        function pdfNearestSpan(layer, x, y) {
+            const spans = pdfTextSpans(layer);
+            let best = null, bestDist = Infinity;
+            for (const s of spans) {
+                const r = s.getBoundingClientRect();
+                if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return s;
+                const dx = Math.max(r.left - x, 0, x - r.right);
+                const dy = Math.max(r.top - y, 0, y - r.bottom);
+                const dist = dx * dx + dy * dy;
+                if (dist < bestDist) { bestDist = dist; best = s; }
+            }
+            return best;
+        }
+        function pdfTextSpans(layer) {
+            return Array.from(layer.querySelectorAll('span')).filter(s =>
+                !s.classList.contains('markedContent') && s.firstChild && s.firstChild.nodeType === Node.TEXT_NODE);
+        }
+        function pdfVisualGroup(layer, targetSpan) {
+            const spans = pdfTextSpans(layer);
+            if (!spans.length) return [];
+            const targetIdx = spans.indexOf(targetSpan);
+            if (targetIdx < 0) return spans;
+            const rects = spans.map(s => s.getBoundingClientRect());
+            // Колонки: кластеризуємо ЛІВІ межі фрагментів через розриви, помітно ширші за
+            // звичайний проміжок між словами того самого рядка.
+            const lefts = rects.map(r => r.left).slice().sort((a, b) => a - b);
+            const layerWidth = layer.getBoundingClientRect().width || 1;
+            const columnGapThreshold = Math.max(24, layerWidth * 0.08);
+            const boundaries = [];
+            for (let i = 1; i < lefts.length; i++) {
+                if (lefts[i] - lefts[i - 1] > columnGapThreshold) boundaries.push(lefts[i]);
+            }
+            const columnOf = (left) => boundaries.reduce((col, b) => col + (left >= b ? 1 : 0), 0);
+            const targetColumn = columnOf(rects[targetIdx].left);
+            const sameColumn = [];
+            const sameColumnRects = [];
+            spans.forEach((s, i) => { if (columnOf(rects[i].left) === targetColumn) { sameColumn.push(s); sameColumnRects.push(rects[i]); } });
+            // У межах колонки — справжній порядок читання (рядок згори вниз, у рядку зліва
+            // направо), а не DOM/content-stream порядок.
+            const order = sameColumn.map((_, i) => i).sort((a, b) => {
+                const ra = sameColumnRects[a], rb = sameColumnRects[b];
+                if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
+                return ra.left - rb.left;
+            });
+            const sorted = order.map(i => sameColumn[i]);
+            const sortedRects = order.map(i => sameColumnRects[i]);
+            // Розрив по Y, помітно більший за міжрядковий, — це вже інший абзац/підпис/
+            // колонтитул: лишаємо лише суцільний прогін рядків навколо самого тапнутого фрагмента.
+            const targetSortedIdx = sorted.indexOf(targetSpan);
+            if (targetSortedIdx < 0) return sorted;
+            let from = targetSortedIdx, to = targetSortedIdx;
+            const lineGap = sortedRects[targetSortedIdx].height * 2.2;
+            while (from > 0 && (sortedRects[from].top - sortedRects[from - 1].top) < lineGap) from--;
+            while (to < sorted.length - 1 && (sortedRects[to + 1].top - sortedRects[to].top) < lineGap) to++;
+            return sorted.slice(from, to + 1);
+        }
+        // Той самий алгоритм пошуку меж речення (крапка/знак+пробіл), що й buildSentenceRanges,
+        // але джерело символів — заздалегідь відсортований у ВІЗУАЛЬНОМУ порядку список
+        // фрагментів PDF, а не TreeWalker по DOM. range.toString() свідомо перевизначений на
+        // точний зібраний текст: звичайний Range.toString() однаково пройшовся б по DOM/
+        // content-stream порядку між startContainer і endContainer і міг би знову зачепити
+        // фрагмент іншої колонки, що лежить між ними в розмітці.
+        function buildSentenceRangesFromSpans(spans) {
+            const chars = [];
+            for (const span of spans) {
+                const node = span.firstChild;
+                const text = (node && node.nodeValue) || '';
+                for (let i = 0; i < text.length; i++) chars.push({ node, offset: i, ch: text[i] });
+            }
+            const sentences = [];
+            let buffer = '', startNode = null, startOffset = 0, nodes = [];
+            for (let k = 0; k < chars.length; k++) {
+                const { node, offset, ch } = chars[k];
+                if (buffer === '') { startNode = node; startOffset = offset; nodes = []; }
+                buffer += ch;
+                if (!nodes.includes(node)) nodes.push(node);
+                const next = chars[k + 1];
+                const atSentenceEnd = /[.!?]/.test(ch) && (!next || /\s/.test(next.ch));
+                const atEnd = k === chars.length - 1;
+                if (atSentenceEnd || atEnd) {
+                    const trimmed = buffer.trim();
+                    if (trimmed) {
+                        const r = document.createRange();
+                        try { r.setStart(startNode, startOffset); r.setEnd(node, offset + 1); } catch (e) {}
+                        r.toString = () => trimmed;
+                        sentences.push({ text: trimmed, range: r, nodes: nodes.slice() });
+                    }
+                    buffer = '';
+                }
+            }
+            return sentences;
+        }
         function sentenceRangeAt(clientX, clientY) {
             const caret = anchorCaret(clientX, clientY);
             if (!caret) return null;
             const block = blockAncestorOf(caret.startContainer);
             if (!block) return null;
+
+            if (block.classList && block.classList.contains('pdf-text-layer')) {
+                const startEl = caret.startContainer.nodeType === Node.TEXT_NODE ? caret.startContainer.parentElement : caret.startContainer;
+                let targetSpan = startEl && startEl.closest ? startEl.closest('span') : null;
+                if (!targetSpan) targetSpan = pdfNearestSpan(block, clientX, clientY);
+                if (!targetSpan) return null;
+                const group = pdfVisualGroup(block, targetSpan);
+                const sentences = buildSentenceRangesFromSpans(group);
+                const hitNode = caret.startContainer.nodeType === Node.TEXT_NODE ? caret.startContainer : targetSpan.firstChild;
+                for (const s of sentences) {
+                    if (s.nodes.includes(hitNode)) { s.range._pdfNodes = s.nodes; return s.range; }
+                }
+                if (sentences.length) { sentences[0].range._pdfNodes = sentences[0].nodes; return sentences[0].range; }
+                return null;
+            }
+
             const blockRange = document.createRange();
             blockRange.selectNodeContents(block);
 
@@ -1918,6 +2058,17 @@
                 r.setStart(textNode, start);
                 r.setEnd(sentence.endContainer, sentence.endOffset);
                 if (r.collapsed) return sentence;
+                // PDF: sentence._pdfNodes зберігає той самий візуальний порядок фрагментів, на
+                // якому побудований .toString() у sentenceRangeAt. Без цього r.toString() тут
+                // знову пішов би DOM/content-stream порядком і міг притягнути чужу колонку.
+                if (sentence._pdfNodes) {
+                    const nodes = sentence._pdfNodes;
+                    const idx = nodes.indexOf(textNode);
+                    const parts = [text.slice(start)];
+                    if (idx >= 0) for (let i = idx + 1; i < nodes.length; i++) parts.push(nodes[i].nodeValue || '');
+                    const joined = parts.join('').trim();
+                    r.toString = () => joined;
+                }
                 return r;
             } catch (e) { return sentence; }
         }
@@ -2094,7 +2245,12 @@
                 const h = els.menuHandle.getBoundingClientRect();
                 if (e.clientX <= h.right && e.clientY <= h.bottom) return;
             }
-            if(window.getSelection().toString().trim().length > 0) return;
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0) {
+                const r = sel.getRangeAt(0);
+                if (r.startContainer && !document.contains(r.startContainer)) sel.removeAllRanges();
+                else if (sel.toString().trim().length > 0) return;
+            }
 
             if (state.translateMode) {
                 let word = selectWordAtPoint(e.clientX, e.clientY);
@@ -2814,6 +2970,24 @@
             svoToken++; cancelAsyncTasks(['svo']);
             const contextSentence = state.ctxSentence;
             const targetLang = state.targetLang;
+            // Контекст для кнопок "AI"/"Ask" беремо ОДРАЗУ тут, поки clientX/clientY ще
+            // відповідають реальному положенню тексту на екрані — а не пізніше, у самих
+            // onclick, де це були б stale screen-координати з моменту тапу. Якщо між тапом і
+            // натисканням кнопки сторінка встигла проскролитись/перезумитись/перерендеритись
+            // (найпомітніше — Ctrl+колесо: transform застосовується одразу, а renderPdfPage
+            // лише за 220мс), повторний sentenceRangeAt(тими самими x,y) поцілив би вже в інший
+            // фрагмент тексту. Рядок-текст, на відміну від координат чи Range, лишається
+            // коректним незалежно від того, що станеться з DOM/зумом далі.
+            let tapContextSentence = '';
+            try {
+                const r = sentenceRangeAt(clientX, clientY);
+                if (r) tapContextSentence = r.toString().trim().slice(0, 400);
+            } catch (e) {}
+            let tapContextParagraph = '';
+            try {
+                const pr = paragraphRangeAt(clientX, clientY);
+                if (pr) tapContextParagraph = pr.toString().trim().slice(0, 1000);
+            } catch (e) {}
             // Переклад кількох слів або цілого речення читається довше, тому таке вікно НЕ
             // закривається саме — воно лишається, доки не тапнути наступне слово чи вбік.
             const isMultiWord = cleanText.split(/\s+/).length > 1;
@@ -2852,11 +3026,11 @@
             // Кнопка потрібна лише для довгих фрагментів: окреме слово нема куди "зв'язувати",
             // а токени витрачались би ті самі. Для слів працює словникова стаття.
             // Розбір на члени речення — теж лише для фрагмента з кількох слів.
-            els.ttSvoBtn.style.display = isMultiWord ? '' : 'none';
+            els.ttSvoBtn.style.display = '';
             els.ttSvoBtn.onclick = (e) => {
                 e.stopPropagation();
                 cancelTooltipHide();
-                analyzeSVO(cleanText);
+                analyzeSVO(state.ctxSentence || cleanText);
             };
             // Динамік перекладу: озвучує переклад ОБРАНОЮ мовою і робить його активною стороною.
             els.ttSpeakTranslation.onclick = (e) => {
@@ -2895,34 +3069,20 @@
                 cancelTooltipHide();
                 els.tooltip.style.display = 'none';
                 // Передаємо речення, у якому стоїть слово: без контексту неможливо визначити,
-                // яка саме це форма (час, особа), а саме це й потрібно для навчання.
-                let sentence = '';
-                try {
-                    const p = state.lastTapPoint;
-                    const r = p ? sentenceRangeAt(p.x, p.y) : null;
-                    if (r) sentence = r.toString().trim().slice(0, 400);
-                } catch (err) {}
-                state.lastGrammarSentence = (sentence && sentence !== cleanText) ? sentence : '';
+                // яка саме це форма (час, особа), а саме це й потрібно для навчання. Контекст —
+                // tapContextSentence, зібраний ще В МОМЕНТ ТАПУ (замкнення вище), а НЕ повторний
+                // sentenceRangeAt(state.lastTapPoint) тут: до натискання кнопки сторінка могла
+                // прокрутитись/перезумитись, і ті самі координати вказували б уже на інший текст.
+                state.lastGrammarSentence = (tapContextSentence && tapContextSentence !== cleanText) ? tapContextSentence : '';
                 startAiTask(cleanText, 'grammar');
             };
             els.ttAskBtn.onclick = (e) => {
                 e.stopPropagation();
                 cancelTooltipHide();
                 els.tooltip.style.display = 'none';
-                // Те саме речення-контекст, що й для граматики: пояснення має стосуватися
-                // значення слова саме тут, а не абстрактного словникового.
-                let sentence = '';
-                try {
-                    const p = state.lastTapPoint;
-                    const r = p ? sentenceRangeAt(p.x, p.y) : null;
-                    if (r) sentence = r.toString().trim().slice(0, 400);
-                } catch (err) {}
-                state.lastGrammarSentence = (sentence && sentence !== cleanText) ? sentence : '';
-                try {
-                    const p = state.lastTapPoint;
-                    const pr = p ? paragraphRangeAt(p.x, p.y) : null;
-                    state.lastAskParagraph = pr ? pr.toString().trim().slice(0, 1000) : '';
-                } catch (err) { state.lastAskParagraph = ''; }
+                // Те саме речення-контекст, що й для граматики (з моменту тапу, не stale-координат).
+                state.lastGrammarSentence = (tapContextSentence && tapContextSentence !== cleanText) ? tapContextSentence : '';
+                state.lastAskParagraph = tapContextParagraph;
                 // Пріоритет — мовний розбір: саме він потрібен найчастіше. Енциклопедичне
                 // пояснення лишається окремою кнопкою в самій панелі, за запитом.
                 startAiTask(cleanText, 'level');
@@ -3037,7 +3197,6 @@
                 // Одразу будуємо ряд дієслів унизу панелі з отриманого розбору.
                 if (mode === 'grammar') renderVerbBar();
             } catch (err) {
-                if (!task.current()) return;
                 if (!task.current()) {
                     if (!asyncTasks.has(mode === 'grammar' ? 'grammar' : 'ask')) {
                         panel.classList.remove('loading');
@@ -4514,6 +4673,18 @@ RÈGLES IMPÉRATIVES :
             // фрагмент тексту під реальну ширину гліфів вбудованого шрифту PDF, тому невидимий
             // текст лягає точно поверх намальованого.
             const textLayer = new pdfjsLib.TextLayer({ textContentSource: textContent, container: tl, viewport: vp });
+            // Конструктор TextLayer щойно сам викликав setLayerDimensions() і виставив
+            // tl.style.width/height через CSS round(down, var(--total-scale-factor)*pageWidth, 1px) —
+            // тобто ОКРУГЛЕНО ВНИЗ до цілого CSS-пікселя. canvas і .pdf-page-wrapper лишаються з
+            // точним дробовим vp.width/vp.height. Різниця в частку пікселя на 100% зумі виглядає
+            // непомітною, але той самий контейнер далі масштабується через transform:scale() при
+            // pinch-zoom — і похибка множиться на масштаб (0.47px на zoom×1 → майже 2px на zoom×4),
+            // через що текстовий шар "спливає" від намальованої сторінки. Ставити точне значення
+            // ДО new TextLayer(...) марно: конструктор все одно перезапише його своїм round(). Тому
+            // перезаписуємо ТОЧНИМ vp.width/vp.height (з тим самим свопом при повороті сторінки,
+            // що й сам pdf.js застосовує для data-main-rotation) ПІСЛЯ конструктора.
+            tl.style.width = `${vp.rotation % 180 === 0 ? vp.width : vp.height}px`;
+            tl.style.height = `${vp.rotation % 180 === 0 ? vp.height : vp.width}px`;
             pdfTextTask = textLayer; await textLayer.render();
             if (pdfTextTask === textLayer) pdfTextTask = null;
             if (!current()) return false;
@@ -5194,7 +5365,7 @@ RÈGLES IMPÉRATIVES :
         // що дійсно в наших руках: вчасно зупинити фонову активність, надійно зберегти
         // стан і чесно сказати користувачу, коли системного способу "закрити" немає.
         function isStandalonePwa() {
-            return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+            return window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true;
         }
 
         // Один рубильник для всього, що не має сенсу продовжувати поза екраном: TTS,
@@ -5293,7 +5464,16 @@ RÈGLES IMPÉRATIVES :
         // Кнопка потрібна лише в реально встановленому standalone-застосунку: у звичайній
         // вкладці браузера користувач і так закриває її звичним чином.
         if (document.getElementById('btn-exit-app')) {
-            document.getElementById('btn-exit-app').style.display = isStandalonePwa() ? '' : 'none';
+            const updateExitBtnVisibility = () => { document.getElementById('btn-exit-app').style.display = isStandalonePwa() ? '' : 'none'; };
+            updateExitBtnVisibility();
+            // isStandalonePwa() визнає standalone/fullscreen/minimal-ui рівнозначними, але раніше
+            // на "change" слухався лише display-mode:standalone — якщо холодний старт з ярлика на
+            // Android на мить осідав у minimal-ui/fullscreen і лише згодом переходив у справжній
+            // standalone (або навпаки), кнопка не оновлювалась до перезавантаження сторінки.
+            // Слухаємо всі три display-mode-запити, які реально перевіряє сама функція.
+            ['standalone', 'fullscreen', 'minimal-ui'].forEach(mode => {
+                window.matchMedia(`(display-mode: ${mode})`).addEventListener('change', updateExitBtnVisibility);
+            });
         }
 
         // ===== Кнопка/жест "Назад" Android: закриваємо верхній відкритий шар, а не весь
