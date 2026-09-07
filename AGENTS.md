@@ -1,5 +1,17 @@
 # AI Ebook Reader — Agent Rules
+## Autonomous migration
 
+For modularization work, always read and follow:
+
+- `AUTONOMOUS_MIGRATION.md`
+- `MIGRATION_STATUS.md`
+- `MODULARIZATION_PLAN.md`
+
+Determine the current migration step from `MIGRATION_STATUS.md`, not from conversation memory.
+
+If modularization has been started, continue automatically from the first incomplete step until completion, following `AUTONOMOUS_MIGRATION.md`.
+
+Do not skip completed steps and do not repeat steps already marked `DONE` unless verification proves the recorded status is wrong.
 ## Project workflow
 
 - Work only in the `dev` branch.
