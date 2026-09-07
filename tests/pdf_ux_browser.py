@@ -131,6 +131,6 @@ check('phone bottom sheet bounded', "(()=>{const r=els.tooltip.getBoundingClient
 # Background aborts pending PDF work; state remains persisted.
 c.js("window.__task=beginAsyncTask('test-background');window.__before=__renders;setPdfScale(3);document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('pagehide'))")
 settle()
-check('background cancels render/tasks and persists',"__task.signal.aborted && pdfRenderTask===null && pdfTextTask===null && pdfPointers.size===0 && Number(localStorage.reader_pdf_scale)===3")
+check('background cancels render/tasks and persists',"__task.signal.aborted && pdfTasks.render===null && pdfTasks.text===null && pdfPointers.size===0 && Number(localStorage.reader_pdf_scale)===3")
 check('no application errors','__errors.length===0')
 print('ALL CHECKS PASSED')

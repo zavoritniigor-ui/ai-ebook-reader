@@ -2,7 +2,7 @@
 
 Current phase: Modularization
 
-Step 0 — Prepare mutable state containers: PENDING
+Step 0 — Prepare mutable state containers: IN PROGRESS
 Step 1 — core.js: PENDING
 Step 2 — lang-detect.js: PENDING
 Step 3 — ai-client.js: PENDING

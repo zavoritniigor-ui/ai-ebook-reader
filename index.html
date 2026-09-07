@@ -958,15 +958,21 @@
             return output.innerHTML;
         }
 
-        let bookEpoch = 0, renderEpoch = 0;
-        let pdfRenderTask = null, pdfLoadingTask = null, pdfTextTask = null;
+        // Мутовний контейнер (а не окремі let), щоб майбутні ES-модулі могли імпортувати
+        // об'єкт і читати/писати його поля напряму — на відміну від голого let,
+        // імпортований binding не можна переприсвоїти ззовні модуля.
+        const readerEpoch = { book: 0, render: 0 };
+        // Той самий патерн: один мутовний об'єкт замість трьох окремих let, які раніше
+        // переприсвоювались із трьох різних логічних ділянок коду (рендер PDF,
+        // скасування zoom/pan-взаємодії, фонове призупинення застосунку).
+        const pdfTasks = { render: null, loading: null, text: null };
         const asyncTasks = new Map();
         function beginAsyncTask(key) {
             asyncTasks.get(key)?.controller.abort();
             const controller = new AbortController();
-            const epoch = bookEpoch, target = state.targetLang;
+            const epoch = readerEpoch.book, target = state.targetLang;
             const task = { controller, signal: controller.signal,
-                current: () => asyncTasks.get(key) === task && epoch === bookEpoch && target === state.targetLang && !controller.signal.aborted };
+                current: () => asyncTasks.get(key) === task && epoch === readerEpoch.book && target === state.targetLang && !controller.signal.aborted };
             asyncTasks.set(key, task);
             return task;
         }
@@ -2476,9 +2482,9 @@
             rerenderPdfAtCurrentZoom();
         }
         function cancelPdfRender() {
-            ++renderEpoch;
-            pdfRenderTask?.cancel(); pdfRenderTask = null;
-            pdfTextTask?.cancel(); pdfTextTask = null;
+            ++readerEpoch.render;
+            pdfTasks.render?.cancel(); pdfTasks.render = null;
+            pdfTasks.text?.cancel(); pdfTasks.text = null;
         }
         function cancelPdfInteraction() {
             clearTimeout(wheelZoomTimer); cancelAnimationFrame(pdfFrame); pdfFrame = 0;
@@ -3719,7 +3725,7 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
             const key = `${src}>${tgt}`;
             if (localTranslators.has(key)) return localTranslators.get(key);
 
-            const epoch = bookEpoch;
+            const epoch = readerEpoch.book;
             const p = (async () => {
                 try {
                     const availability = await Translator.availability({ sourceLanguage: src, targetLanguage: tgt });
@@ -3730,7 +3736,7 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
                         sourceLanguage: src, targetLanguage: tgt,
                         monitor(m) {
                             m.addEventListener('downloadprogress', (e) => {
-                                if (epoch !== bookEpoch) return;
+                                if (epoch !== readerEpoch.book) return;
                                 const pct = Math.round((e.loaded || 0) * 100);
                                 els.progress.textContent = `${t('loading')} ${pct}%`;
                             });
@@ -4555,16 +4561,16 @@ RÈGLES IMPÉRATIVES :
             stopDictation(); stopOnboarding();
             e.target.value = ''; // Permit retrying the same file after an error.
             if (file.size > MAX_BOOK_FILE_BYTES) { showReaderError(new Error(t('fileTooLarge'))); return; }
-            const epoch = ++bookEpoch; ++renderEpoch;
+            const epoch = ++readerEpoch.book; ++readerEpoch.render;
             clearTimeout(wheelZoomTimer); clearTimeout(resizeTimer);
             clearLongPress(); clearTimeout(touchSelTimer);
             dragSel = null; state.dragRange = null; state.touchSelecting = false;
             isPanning = false; inkDrawing = false; inkCurrent = null; regionStart = null;
-            cancelPdfInteraction(); closeCropPreview(); pdfTextTask?.cancel(); pdfTextTask = null; state.pdfZoom = 1;
+            cancelPdfInteraction(); closeCropPreview(); pdfTasks.text?.cancel(); pdfTasks.text = null; state.pdfZoom = 1;
             cancelAsyncTasks(); invalidateSelection();
             stopGlobalTTS(); stopTooltipSpeech();
-            pdfRenderTask?.cancel(); pdfRenderTask = null;
-            if (pdfLoadingTask) { pdfLoadingTask.destroy().catch(() => {}); pdfLoadingTask = null; }
+            pdfTasks.render?.cancel(); pdfTasks.render = null;
+            if (pdfTasks.loading) { pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null; }
             else if (state.pdfDoc) state.pdfDoc.destroy().catch(() => {});
             state.pdfDoc = null; state.epubZip = null; state.spine = []; state.txtLines = [];
             state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
@@ -4591,33 +4597,33 @@ RÈGLES IMPÉRATIVES :
                 }
                 else throw new Error(t('unsupportedFormat'));
             } catch (err) {
-                if (epoch !== bookEpoch) return;
+                if (epoch !== readerEpoch.book) return;
                 state.format = null; state.totalPages = 0; els.toc.replaceChildren();
                 showReaderError(err);
             }
         });
 
-        async function initPdf(file, epoch = bookEpoch) {
+        async function initPdf(file, epoch = readerEpoch.book) {
             if (!window.pdfjsLib) throw new Error('Не завантажено бібліотеку PDF. Перевірте з’єднання та оновіть сторінку.');
             const data = await file.arrayBuffer();
-            if (epoch !== bookEpoch) return;
+            if (epoch !== readerEpoch.book) return;
             // isEvalSupported прибрано разом з переходом на PDF.js 6.x: єдиний код, що колись
             // використовував eval (PostScriptCompiler для PDF-функцій), сама бібліотека видалила
             // як мертвий — тепер eval у PDF.js не використовується взагалі, і цей прапорець
             // нізвідки не читається (тож заборона eval гарантована безумовно, без опції).
             const loading = pdfjsLib.getDocument({ data });
-            pdfLoadingTask = loading;
+            pdfTasks.loading = loading;
             const doc = await loading.promise;
-            if (epoch !== bookEpoch) { await doc.destroy(); return; }
+            if (epoch !== readerEpoch.book) { await doc.destroy(); return; }
             state.pdfDoc = doc; state.totalPages = doc.numPages;
             const bm = loadBookmark();
             const startPage = (bm && bm.format === 'pdf' && bm.currentIndex >= 1 && bm.currentIndex <= state.totalPages) ? bm.currentIndex : 1;
             await renderPdfPage(startPage);
-            if (epoch === bookEpoch && bm?.pdfFocus && Number.isFinite(bm.pdfFocus.x) && Number.isFinite(bm.pdfFocus.y)) {
+            if (epoch === readerEpoch.book && bm?.pdfFocus && Number.isFinite(bm.pdfFocus.x) && Number.isFinite(bm.pdfFocus.y)) {
                 const center = pdfAnchor();
                 if (center) restorePdfAnchor({ ...center, x: Math.max(0,Math.min(1,bm.pdfFocus.x)), y: Math.max(0,Math.min(1,bm.pdfFocus.y)) });
             }
-            if (epoch !== bookEpoch) return;
+            if (epoch !== readerEpoch.book) return;
             enterMobileFullScreenIfNeeded();
         }
         async function renderPdfPage(pageNum, options = {}) {
@@ -4625,10 +4631,10 @@ RÈGLES IMPÉRATIVES :
             if (isSpeakingGlobal) stopGlobalTTS();
             invalidateSelection();
             if (!options.preserve) cancelPdfInteraction();
-            const epoch = bookEpoch, render = ++renderEpoch, doc = state.pdfDoc;
-            const current = () => !document.hidden && epoch === bookEpoch && render === renderEpoch && doc === state.pdfDoc;
-            pdfRenderTask?.cancel(); pdfRenderTask = null;
-            pdfTextTask?.cancel(); pdfTextTask = null;
+            const epoch = readerEpoch.book, render = ++readerEpoch.render, doc = state.pdfDoc;
+            const current = () => !document.hidden && epoch === readerEpoch.book && render === readerEpoch.render && doc === state.pdfDoc;
+            pdfTasks.render?.cancel(); pdfTasks.render = null;
+            pdfTasks.text?.cancel(); pdfTasks.text = null;
             const requestedScale = state.pdfScale, requestedFit = state.pdfFit;
             try {
             const page = await doc.getPage(pageNum);
@@ -4685,8 +4691,8 @@ RÈGLES IMPÉRATIVES :
             // що й сам pdf.js застосовує для data-main-rotation) ПІСЛЯ конструктора.
             tl.style.width = `${vp.rotation % 180 === 0 ? vp.width : vp.height}px`;
             tl.style.height = `${vp.rotation % 180 === 0 ? vp.height : vp.width}px`;
-            pdfTextTask = textLayer; await textLayer.render();
-            if (pdfTextTask === textLayer) pdfTextTask = null;
+            pdfTasks.text = textLayer; await textLayer.render();
+            if (pdfTasks.text === textLayer) pdfTasks.text = null;
             if (!current()) return false;
             w.appendChild(tl);
 
@@ -4705,10 +4711,10 @@ RÈGLES IMPÉRATIVES :
                 // сторінку в лівому верхньому куті canvas'а замість того, щоб заповнити його.
                 transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
             });
-            pdfRenderTask = task;
+            pdfTasks.render = task;
             await task.promise;
             if (!current()) return false;
-            pdfRenderTask = null;
+            pdfTasks.render = null;
 
             // Keep the old transformed page until both new layers are ready. Capture
             // the latest center here, so a pan during rendering also survives the swap.
@@ -4728,10 +4734,10 @@ RÈGLES IMPÉRATIVES :
             return true;
             } catch (err) {
                 // RenderingCancelledException — скасований canvas-рендер (page.render()); AbortException —
-                // скасований текстовий шар (pdfTextTask?.cancel() у TextLayer, PDF.js 6.x). Обидва — очікуване
+                // скасований текстовий шар (pdfTasks.text?.cancel() у TextLayer, PDF.js 6.x). Обидва — очікуване
                 // самоскасування при швидкому гортанні сторінок, а не реальна помилка.
                 if (!current() || err.name === 'RenderingCancelledException' || err.name === 'AbortException') return false;
-                pdfRenderTask = null; showReaderError(err); return false;
+                pdfTasks.render = null; showReaderError(err); return false;
             }
         }
 
@@ -4793,7 +4799,7 @@ RÈGLES IMPÉRATIVES :
                 const finish = (fn, val) => { if (settled) return; settled = true; clearTimeout(timer); worker.terminate(); fn(val); };
                 const timer = setTimeout(() => finish(reject, new Error('Перевірку архіву перервано за часом.')), 30000);
                 worker.onmessage = ({ data }) => {
-                    if (epoch !== bookEpoch) { finish(reject, new DOMException('Cancelled', 'AbortError')); return; }
+                    if (epoch !== readerEpoch.book) { finish(reject, new DOMException('Cancelled', 'AbortError')); return; }
                     if (data && data.buffer) finish(resolve, data.buffer);
                     else finish(reject, new Error((data && data.error) || t('archiveGuardFailed')));
                 };
@@ -4807,16 +4813,16 @@ RÈGLES IMPÉRATIVES :
         }
 
         // ОНОВЛЕНИЙ НАДІЙНИЙ ПАРСЕР EPUB
-        async function initEpub(file, epoch = bookEpoch) {
+        async function initEpub(file, epoch = readerEpoch.book) {
             if (typeof JSZip === 'undefined') throw new Error('Не завантажено бібліотеку EPUB. Перевірте з’єднання та оновіть сторінку.');
             const verified = await runArchiveGuard(file, epoch);
-            if (epoch !== bookEpoch) return;
+            if (epoch !== readerEpoch.book) return;
             const zip = await new JSZip().loadAsync(verified || file);
-            if (epoch !== bookEpoch) return;
+            if (epoch !== readerEpoch.book) return;
             const container = zip.file('META-INF/container.xml');
             if (!container) throw new Error('Некоректний EPUB: відсутній container.xml.');
             const xml = await container.async("text");
-            if (epoch !== bookEpoch) return; 
+            if (epoch !== readerEpoch.book) return; 
             const parser = new DOMParser(); const docXml = parser.parseFromString(xml, "text/xml");
             const rootfile = docXml.getElementsByTagName('rootfile')[0];
             if (!rootfile || docXml.querySelector('parsererror')) throw new Error('Некоректний опис EPUB.');
@@ -4824,7 +4830,7 @@ RÈGLES IMPÉRATIVES :
             if (!opfPath || !zip.file(opfPath)) throw new Error('Не знайдено опис книги EPUB.');
             const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : "";
             const doc = parser.parseFromString(await zip.file(opfPath).async("text"), "text/xml");
-            if (epoch !== bookEpoch) return;
+            if (epoch !== readerEpoch.book) return;
             if (doc.querySelector('parsererror')) throw new Error('Некоректний опис книги EPUB.');
             state.epubZip = zip; 
             const man = Object.create(null); const items = doc.getElementsByTagName("item");
@@ -4845,14 +4851,14 @@ RÈGLES IMPÉRATIVES :
             const bm = loadBookmark();
             const startIdx = (bm && bm.format === 'epub' && bm.currentIndex >= 0 && bm.currentIndex < state.spine.length) ? bm.currentIndex : 0;
             await loadEpubChapter(startIdx, false, bm ? bm.pageInChapter : null);
-            if (epoch !== bookEpoch) return;
+            if (epoch !== readerEpoch.book) return;
             enterMobileFullScreenIfNeeded();
         }
         
         async function loadEpubChapter(idx, toEnd = false, startPage = null) {
             if(idx < 0 || idx >= state.spine.length || !state.epubZip) return;
-            const epoch = bookEpoch, render = ++renderEpoch;
-            const current = () => epoch === bookEpoch && render === renderEpoch;
+            const epoch = readerEpoch.book, render = ++readerEpoch.render;
+            const current = () => epoch === readerEpoch.book && render === readerEpoch.render;
             invalidateSelection();
             if (isSpeakingGlobal) stopGlobalTTS();
             state.currentIndex = idx;
@@ -4899,14 +4905,14 @@ RÈGLES IMPÉRATIVES :
         // ========== ІНШІ ФОРМАТИ КНИЖОК ==========
         // Усі вони зводяться до одного: отримати HTML і показати його сторінками так само,
         // як розділ EPUB. Тому далі працює вже наявна пагінація, переклад і озвучення.
-        async function initRichDoc(file, ext, epoch = bookEpoch) {
+        async function initRichDoc(file, ext, epoch = readerEpoch.book) {
             let bodyHtml = '';
 
             if (ext === 'docx') {
                 if (typeof mammoth === 'undefined') throw new Error(t('unsupportedFormat'));
                 // DOCX теж ZIP-контейнер — та сама перевірка, що й для EPUB.
                 const verifiedDocx = await runArchiveGuard(file, epoch);
-                if (epoch !== bookEpoch) return;
+                if (epoch !== readerEpoch.book) return;
                 const docxBuffer = verifiedDocx || await file.arrayBuffer();
                 const res = await mammoth.convertToHtml({ arrayBuffer: docxBuffer });
                 bodyHtml = res.value || '';
@@ -4921,7 +4927,7 @@ RÈGLES IMPÉRATIVES :
                 bodyHtml = rtfToHtml(await file.text());
             }
 
-            if (epoch !== bookEpoch) return;
+            if (epoch !== readerEpoch.book) return;
             if (!bodyHtml.trim()) throw new Error(t('emptyDoc'));
 
             // Розбиваємо на розділи по заголовках — щоб працював зміст і навігація.
@@ -4960,14 +4966,14 @@ RÈGLES IMPÉRATIVES :
         function renderDocChapter(idx, toEnd = false, startPage = null) {
             if (isSpeakingGlobal) stopGlobalTTS();
             if (!state.docChapters || idx < 0 || idx >= state.docChapters.length) return;
-            const render = ++renderEpoch;
+            const render = ++readerEpoch.render;
             invalidateSelection();
             state.currentIndex = idx;
             els.pages.innerHTML = state.docChapters[idx];
             state.extractedTextForTTS = els.pages.innerText;
             updateSourceLang();
             requestAnimationFrame(() => {
-                if (render !== renderEpoch) return;
+                if (render !== readerEpoch.render) return;
                 paginateContainer();
                 const target = toEnd ? state.totalPagesInChapter - 1 : (startPage != null ? startPage : 0);
                 goToPageInChapter(target, false);
@@ -5005,9 +5011,9 @@ RÈGLES IMPÉRATIVES :
                     .map(p => `<p>${escapeHtml(p)}</p>`).join('');
         }
 
-        async function initTxt(file, epoch = bookEpoch) {
+        async function initTxt(file, epoch = readerEpoch.book) {
             const text = await file.text();
-            if (epoch !== bookEpoch) return;
+            if (epoch !== readerEpoch.book) return;
             state.txtLines = text.split(/\r?\n/); state.totalPages = Math.ceil(state.txtLines.length / 50);
             buildToc(state.totalPages, "Блок", i => { renderTxtPage(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
             const bm = loadBookmark();
@@ -5017,7 +5023,7 @@ RÈGLES IMPÉRATIVES :
         }
         function renderTxtPage(pageIdx, toEnd = false, startPage = null) {
             if (pageIdx < 0 || pageIdx >= state.totalPages) return;
-            const render = ++renderEpoch;
+            const render = ++readerEpoch.render;
             invalidateSelection();
             if (isSpeakingGlobal) stopGlobalTTS();
             state.currentIndex = pageIdx; const chunk = state.txtLines.slice(pageIdx * 50, (pageIdx + 1) * 50).join('\n');
@@ -5025,7 +5031,7 @@ RÈGLES IMPÉRATIVES :
             const block = document.createElement('div'); block.className = 'txt-block'; block.textContent = chunk; els.pages.appendChild(block); state.extractedTextForTTS = chunk;
             updateSourceLang();
             requestAnimationFrame(() => {
-                if (render !== renderEpoch) return;
+                if (render !== readerEpoch.render) return;
                 paginateContainer();
                 const target = toEnd ? state.totalPagesInChapter - 1 : (startPage != null ? startPage : 0);
                 goToPageInChapter(target, false);
@@ -5381,7 +5387,7 @@ RÈGLES IMPÉRATIVES :
             stopTooltipSpeech();
             stopDictation(); clearAlignment(); stopOnboarding();
             cancelAsyncTasks();
-            pdfRenderTask?.cancel(); pdfRenderTask = null;
+            pdfTasks.render?.cancel(); pdfTasks.render = null;
         }
         // Усе, що варто мати збереженим ДО того, як Android може вивантажити сторінку з
         // пам'яті. Дешево й безпечно викликати повторно — просто перезаписує ті самі ключі.
