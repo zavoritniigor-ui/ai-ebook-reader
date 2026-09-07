@@ -14,7 +14,7 @@
 // Змінюйте цей номер версії щоразу, коли міняється склад APP_SHELL або логіка
 // fetch-обробника — стара версія кешу видаляється при активації нового
 // service worker'а (крок "activate").
-const CACHE_NAME = 'ai-reader-shell-v5';
+const CACHE_NAME = 'ai-reader-shell-v6';
 
 // Скільки чекати на мережу для НАВІГАЦІЇ (сама сторінка), перш ніж показати
 // закешовану версію. Досить коротко, щоб застосунок відчувався швидким навіть на
@@ -30,6 +30,7 @@ const APP_SHELL = [
     './icons/icon-192.png',
     './icons/icon-512.png',
     './js/core.js',
+    './js/lang-detect.js',
     './archive-guard.worker.js',
     './vendor/jszip-3.10.1.min.js',
     './vendor/mammoth-1.6.0.browser.min.js',
