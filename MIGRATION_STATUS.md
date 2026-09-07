@@ -6,7 +6,7 @@ Step 0 — Prepare mutable state containers: DONE
 Step 1 — core.js: DONE
 Step 2 — lang-detect.js: DONE
 Step 3 — ai-client.js: DONE (startAiTask deferred to Step 8, see MODULARIZATION_PLAN.md)
-Step 4 — selection.js: PENDING
+Step 4 — selection.js: PARTIAL (core piece DONE, merged, production-verified — see recon below for the remaining 6 pieces still to classify/move)
 Step 5 — pdf-render.js: PENDING
 Step 6 — tts.js: PENDING
 Step 7 — translation.js: PENDING
@@ -23,12 +23,13 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: urgent fix after Step 3 (production ReferenceError, see below)
-Last successful PR: #10 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/10)
-Last successful commit: 777e4a7 (merged to main as 9a6bd88)
+Last successful step: Step 4 partial (selection.js core piece)
+Last successful PR: #12 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/12)
+Last successful commit: 9bd99dd (merged to main as 986fec7)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — 3 fresh cache-disabled
-  reloads, zero console errors
+  reloads, zero console errors, core.js/lang-detect.js/selection.js/ai-client.js all confirmed
+  loaded and typeof sentenceRangeAt === 'function'
 
 ## Mechanism correction (read before continuing any step)
 
@@ -64,7 +65,8 @@ proof of correctness for this migration. Always also do a real production smoke 
 page load(s) with cache disabled, checking window.onerror/console) after every merge, before
 marking a step DONE. This is now a permanent addition to the per-step workflow, not optional.
 
-Next step: Step 4 — selection.js
+Next step: Step 4 continuation — pieces 3, 4, 6, 7 below (piece 1 DONE, pieces 2/5 deferred
+  to their own Steps 9/11 as originally planned)
 
 ## Note on Step 4's complexity (detailed recon done, extraction NOT yet started)
 
@@ -74,12 +76,12 @@ function names) as of commit 5a8e85b. Line numbers below WILL have shifted after
 `<script src>` splices for earlier pieces — re-grep before each individual cut, don't trust
 these numbers once you start editing:
 
-1. **~1032-1399**: selection.js core — comment "ВИДІЛЕННЯ РЕЧЕННЯ/АБЗАЦУ ПАЛЬЦЕМ" through end of
-   `selectWordAtPoint`. Clean, contiguous, matches the original plan. Includes caretRangeAt,
-   blockAncestorOf, anchorCaret, paragraphRangeAt, pdfNearestSpan, pdfTextSpans, pdfVisualGroup,
+1. **DONE (PR #12, commit 9bd99dd)**: selection.js core — comment "ВИДІЛЕННЯ РЕЧЕННЯ/АБЗАЦУ
+   ПАЛЬЦЕМ" through end of `selectWordAtPoint`. Included caretRangeAt, blockAncestorOf,
+   anchorCaret, paragraphRangeAt, pdfNearestSpan, pdfTextSpans, pdfVisualGroup,
    buildSentenceRangesFromSpans, sentenceRangeAt, wrapRangeInSpans, unwrapSpans,
    showSelectionHighlight, clearSelectionHighlight, wordToSentenceEndRangeAt,
-   selectRangeAndTranslate, selectWordAtPoint.
+   selectRangeAndTranslate, selectWordAtPoint. Now lives in js/selection.js.
 2. **~1400-1495**: navigation.js — columnStep, paginateContainer, goToPageInChapter,
    updateProgressText, bookKeyFor, saveBookmark, loadBookmark, goNext, goPrev. NOT selection,
    belongs to Step 9. Contiguous block, safe to extract on its own schedule.
