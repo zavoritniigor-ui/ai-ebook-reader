@@ -45,6 +45,9 @@ test-results/
 *~
 core
 core.*
+# core.* above targets Unix core-dump files, but it also matches js/core.js —
+# the tracked application module added during modularization. Exempt it explicitly.
+!/js/core.js
 *.dmp
 .DS_Store
 Thumbs.db
