@@ -2853,6 +2853,17 @@ Rules:
 - "note": a SHORT note in UKRAINIAN (one brief sentence, or "" if nothing special) mentioning negation, passive voice, question/inversion, missing object, or a non-SVO structure, when relevant. Leave "" for a plain simple sentence with nothing notable.`;
         }
 
+        // Дуже рідкісний збіг: AI не дав придатної відповіді, а місцевий резерв теж не
+        // впорався з реченням (напр. незнайомий формі дієслова). Без цього користувач
+        // бачив би просто зникнення індикатора "Розбираю…" без жодного пояснення.
+        function showSvoFailureNote() {
+            const line = document.createElement('div');
+            line.className = 'tt-svo-line';
+            line.innerHTML = `<span class="tt-note">${escapeHtml(t('error'))}</span>`;
+            els.ttTranslation.appendChild(line);
+            const a = state.tooltipAnchor;
+            if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+        }
         let svoToken = 0;
         async function analyzeSVO(sentence) {
             const myToken = ++svoToken;
@@ -2894,11 +2905,11 @@ Rules:
                 // знайшовся дослівно в тексті (перефразував) — це помилка розбору, а не
                 // "немає ключа", тому тут доречний саме резервний МІСЦЕВИЙ розбір, а не
                 // мовчазне зникнення індикатора.
-                if (!applySVOParts(parts)) tryLocalFallback();
+                if (!applySVOParts(parts) && !tryLocalFallback()) showSvoFailureNote();
             } catch (e) {
                 if (myToken !== svoToken || !task.current()) return;
                 legend.remove();
-                tryLocalFallback();
+                if (!tryLocalFallback()) showSvoFailureNote();
             }
         }
 
