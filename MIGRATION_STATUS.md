@@ -9,7 +9,7 @@ Step 3 — ai-client.js: DONE (startAiTask deferred to Step 8, see MODULARIZATIO
 Step 4 — selection.js: DONE (all genuinely selection.js content extracted; see recon below —
   what looked like 2 more ambiguous pieces turned out to be 100% navigation.js/pdf-zoom-pan.js
   content on closer reading, correctly left in place for Steps 9/11)
-Step 5 — pdf-render.js: PENDING
+Step 5 — pdf-render.js: DONE
 Step 6 — tts.js: PENDING
 Step 7 — translation.js: PENDING
 Step 8 — grammar-svo.js: PENDING (now also carries startAiTask, deferred from Step 3)
@@ -25,12 +25,16 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 4 (fully complete)
-Last successful PR: #15 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/15)
-Last successful commit: cc7f84f (merged to main as eb3981c)
+Last successful step: Step 5 (pdf-render.js)
+Last successful PR: #17 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/17)
+Last successful commit: c44a3b7 (merged to main as d7da64e)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — 3 fresh cache-disabled
-  reloads, zero console errors, typeof selectWordAtPoint/rangeBetweenWords both 'function'
+  reloads with zero console errors, PLUS an actual PDF load-and-render test (synthetic PDF,
+  real initPdf() call): text extracted correctly, exactly 1 canvas + 1 text-layer produced,
+  zero console errors. This is the first step where an idle-load smoke test wasn't enough on
+  its own (PDF rendering needs to actually be exercised, not just "app loads") — worth doing
+  this fuller check again for Steps 11 (pdf-zoom-pan), 12 (pdf-ink), 13 (pdf-crop).
 
 ## Mechanism correction (read before continuing any step)
 
@@ -116,6 +120,10 @@ call" turned out, once actually read function-by-function, to have zero content 
 the step in question. Always read the full body before deciding a piece needs a hard judgment
 call; don't assume ambiguity from a comment header alone.
 
-Next step: Step 5 — pdf-render.js (initPdf, renderPdfPage, updatePdfScrubber, commitPdfScrub).
-Re-grep fresh line numbers before starting — do not reuse any numbers from this file, several
-steps' worth of extraction have shifted everything since they were last accurate.
+Next step: Step 6 — tts.js (voice selection, speakText/speakInLang, sentence playback/
+highlight, TTS control buttons). Re-grep fresh line numbers before starting. Note:
+`buildSentenceRanges` (non-PDF sentence splitting, used by both TTS sentence-stepping and by
+selection.js's sentenceRangeAt) needs a decision — per MODULARIZATION_PLAN.md's dependency
+graph it can live in tts.js and be called from selection.js's already-extracted code (a
+forward/backward reference across files is fine either way since it's used inside function
+bodies, never at top level) — read its actual call sites fresh before deciding, don't assume.

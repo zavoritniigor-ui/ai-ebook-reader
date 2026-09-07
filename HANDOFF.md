@@ -14,33 +14,32 @@ Before starting or resuming work, every agent must read:
 ## Current handoff
 
 Active agent: Claude Code
-Current step: Step 5 — pdf-render.js (not yet started)
+Current step: Step 6 — tts.js (not yet started)
 Current branch: dev
 Current task status: idle (paused at a clean, fully-shipped checkpoint; not blocked)
-Last completed action: Step 4 is now FULLY DONE (not partial). Two of the remaining pieces
-  initially flagged as "mixed, needs judgment call" turned out, on actually reading them fully,
-  to be 100% navigation.js/pdf-zoom-pan.js content with zero selection.js material — left in
-  place for Steps 9/11 as originally planned. See MIGRATION_STATUS.md's "Step 4 final recon"
-  for the complete breakdown of all 7 pieces and where each ended up.
-Last successful commit: cc7f84f on dev (merged to main as eb3981c)
-Last PR: #15, merged
+Last completed action: Step 5 (pdf-render.js: initPdf, renderPdfPage, updatePdfScrubber,
+  commitPdfScrub) extracted, tested, merged, production-verified with an actual PDF
+  load-and-render (not just an idle-load check) - text extracted correctly, 1 canvas + 1
+  text-layer produced, zero errors. Step 4 (selection.js) is also fully done as of the prior
+  entry, all 19-step plan through Step 5 is green.
+Last successful commit: c44a3b7 on dev (merged to main as d7da64e)
+Last PR: #17, merged
 Last CI result: green
-Last production result: verified live — 3 fresh cache-disabled reloads, zero console errors,
-  typeof selectWordAtPoint/rangeBetweenWords both 'function'
+Last production result: verified live - 3 fresh cache-disabled reloads zero errors, PLUS a real
+  synthetic-PDF render test against production (see MIGRATION_STATUS.md for why this step
+  needed more than an idle-load check, and which future steps should repeat it)
 Uncommitted work: none at time of writing this entry
 IMPORTANT for the next agent: read the "Mechanism correction" section at the top of
-  MIGRATION_STATUS.md before extracting anything further — it now has THREE learned lessons
-  (top-level-execution-order ReferenceError risk; don't add a second `<script src>` tag when
-  appending to an already-loaded file; listener registration order rarely matters for deferred/
-  event-driven code, but check capture-vs-bubble specifically when two listeners share an
-  element). Also: local test suites alone are not sufficient - always do a real production
-  smoke test (fresh reload, cache disabled, check for console errors) after merging, before
-  marking any step/piece DONE.
-Next required action: Step 5 (pdf-render.js: initPdf, renderPdfPage, updatePdfScrubber,
-  commitPdfScrub). Re-grep fresh line numbers first (they have shifted after every Step 4
-  piece) — do not trust any line numbers recorded in MIGRATION_STATUS.md, they're all stale
-  the moment any edit happens. Read the surrounding code before cutting, per the Step 4 lesson:
-  don't assume a section's scope from its comment header alone.
+  MIGRATION_STATUS.md before extracting anything further (three learned lessons documented
+  there). Also: for PDF-touching steps (11 pdf-zoom-pan, 12 pdf-ink, 13 pdf-crop), an idle-load
+  smoke test is NOT enough - actually load and render a synthetic PDF against production and
+  check the result, the way Step 5 did, not just "zero console errors on load".
+Next required action: Step 6 (tts.js: voice selection/loadVoices cluster already sits in
+  core.js per the Step 1 extraction boundary - see if it's worth relocating now or leave as-is;
+  speakText/speakInLang/setSpeakSide/sentence playback+highlight/TTS control buttons). Re-grep
+  fresh line numbers first. Decide where `buildSentenceRanges` lives (used by both TTS
+  sentence-stepping and already-extracted selection.js's sentenceRangeAt) - read its actual
+  call sites before deciding, don't assume from MODULARIZATION_PLAN.md's graph alone.
 
 ## Handoff rules
 
