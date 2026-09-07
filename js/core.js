@@ -360,7 +360,11 @@ function saveVoiceChoices() {
         writeStored('reader_voices_manual', JSON.stringify(state.voiceChosenByUser));
     } catch (e) {}
 }
-if (typeof ttsSynth !== 'undefined') { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
+// Виклик loadVoices() (нижче за визначенням) навмисно НЕ тут: loadVoices -> ...
+// -> restoreVoiceSelectValue -> pageLang(), а pageLang визначена в lang-detect.js,
+// який завантажується ПІСЛЯ core.js (окремий класичний <script>, без спільного
+// hoisting між файлами). Сам виклик перенесено в index.html одразу після
+// підключення lang-detect.js — див. коментар там.
 // ========== МОВА ІНТЕРФЕЙСУ ==========
 // Написи задаються атрибутами data-i18n / data-i18n-title / data-i18n-ph у розмітці,
 // а тут лежать усі переклади. Динамічні написи (кнопки-перемикачі, індикатор

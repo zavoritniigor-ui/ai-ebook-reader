@@ -938,6 +938,13 @@
     </script>
     <script src="js/lang-detect.js"></script>
     <script>
+        // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
+        // core.js: усередині він доходить до pageLang() (js/lang-detect.js), яка на момент
+        // виконання core.js ще не існує — окремі класичні <script> НЕ поділяють hoisting
+        // одне з одним, лише спільний "script scope" для вже ВИКОНАНОГО коду. lang-detect.js
+        // вище вже завантажений і виконаний, тож тут виклик безпечний.
+        if (typeof ttsSynth !== 'undefined') { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
+
         // Хто зараз озвучується у вікні перекладу: 'orig' | 'tr' | null. Потрібно, щоб
         // повторне натискання того самого динаміка зупиняло відтворення.
         function stopTooltipSpeech() {
