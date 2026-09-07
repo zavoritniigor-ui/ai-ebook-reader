@@ -1,0 +1,17 @@
+{
+  "name": "AI Ebook Reader",
+  "short_name": "AI Reader",
+  "description": "Читання книг (EPUB, PDF, TXT, DOCX, FB2, RTF, HTML) з перекладом слів і речень, граматичним розбором та озвученням тексту.",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "uk",
+  "background_color": "#f5f5f3",
+  "theme_color": "#f5f5f3",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

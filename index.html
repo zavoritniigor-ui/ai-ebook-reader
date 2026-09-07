@@ -3,16 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Enterprise Reader v19.2: Tooltip Fix</title>
-    <meta name="theme-color" content="#ffffff">
-    
-    <link rel="manifest" href='data:application/manifest+json;utf8,{"name":"AI Reader","short_name":"Reader","display":"standalone","start_url":".","background_color":"#f8f9fa","theme_color":"#ffffff","icons":[{"src":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzBkNmVmZCIvPjx0ZXh0IHg9IjUwIiB5PSI2NCIgZm9udC1zaXplPSI1MCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UjwvdGV4dD48L3N2Zz4=","sizes":"512x512","type":"image/svg+xml"}]}'>
+    <title>AI Ebook Reader</title>
+    <meta name="theme-color" content="#f5f5f3">
+    <meta name="description" content="Читання книг з перекладом, граматичним розбором і озвученням тексту.">
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-    
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+    <link rel="icon" href="icons/icon-512.png" sizes="512x512" type="image/png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <script src="vendor/jszip-3.10.1.min.js"></script>
+    <script src="vendor/mammoth-1.6.0.browser.min.js"></script>
+    <script src="vendor/pdf-3.11.174.min.js"></script>
+    <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf-3.11.174.worker.min.js';</script>
+
     <style>
         :root {
             --bg-color: #f5f5f3; --text-color: #1f2328; --text-muted: #6b7280;
@@ -4461,6 +4465,17 @@ RÈGLES IMPÉRATIVES :
         // Застосовуємо мову інтерфейсу на старті — уже після того, як усі функції визначені.
         document.documentElement.lang = state.uiLang;
         applyI18n();
+
+        // PWA: реєструємо service worker лише на справжньому http(s)-походженні —
+        // під file:// (як під час локальної розробки з диска) браузер узагалі не
+        // дає його зареєструвати, тож перевіряємо протокол заздалегідь, аби не
+        // засмічувати консоль очікуваною помилкою. Реєстрація — після повного
+        // завантаження сторінки, щоб не забирати час у першого рендеру й читання.
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
     </script>
 </body>
 </html>
