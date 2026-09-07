@@ -1,0 +1,128 @@
+name: Ebook Reader CI
+
+on:
+  push:
+    branches: [ "main", "dev", "staging", "test" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Checking standalone JS files..."
+          node --check sw.js
+          node --check archive-guard.worker.js
+          
+          echo "Extracting inline JS from index.html..."
+          python3 -c '
+          import html.parser
+          import sys
+
+          class ScriptExtractor(html.parser.HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.in_script = False
+                  self.scripts = []
+                  self.current_script = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == "script":
+                      is_src = any(attr[0] == "src" for attr in attrs)
+                      type_attr = next((attr[1] for attr in attrs if attr[0] == "type"), "text/javascript")
+                      if not is_src and type_attr in ("text/javascript", "module", "application/javascript"):
+                          self.in_script = True
+                          self.current_script = []
+              def handle_endtag(self, tag):
+                  if tag == "script" and self.in_script:
+                      self.in_script = False
+                      self.scripts.append("".join(self.current_script))
+              def handle_data(self, data):
+                  if self.in_script:
+                      self.current_script.append(data)
+
+          with open("index.html") as f:
+              parser = ScriptExtractor()
+              parser.feed(f.read())
+              
+          if not parser.scripts:
+              print("WARNING: No inline script blocks found in index.html!")
+              sys.exit(1)
+              
+          print(f"Extracted {len(parser.scripts)} inline script blocks.")
+          for i, script in enumerate(parser.scripts):
+              with open(f"inline_script_{i}.js", "w") as out:
+                  out.write(script)
+          '
+          
+          echo "Checking inline JS blocks..."
+          # If no files matched, the loop won"t execute if we use shopt -s nullglob
+          shopt -s nullglob
+          for js_file in inline_script_*.js; do
+              echo "Checking $js_file..."
+              node --check "$js_file"
+          done
+
+      - name: Run Tests (Server, Chrome, Python)
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          # 1. Start HTTP Server
+          echo "Starting HTTP Server..."
+          python3 -m http.server 8765 --bind 127.0.0.1 > http_server.log 2>&1 &
+          SERVER_PID=$!
+          
+          # 2. Start Headless Chrome
+          echo "Finding Chrome binary..."
+          if command -v google-chrome >/dev/null 2>&1; then
+              CHROME_BIN="google-chrome"
+          elif command -v google-chrome-stable >/dev/null 2>&1; then
+              CHROME_BIN="google-chrome-stable"
+          else
+              echo "Error: Google Chrome not found."
+              exit 1
+          fi
+          
+          echo "Starting Headless Chrome ($CHROME_BIN)..."
+          mkdir -p /tmp/pdf-ux-test-profile
+          $CHROME_BIN --headless --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
+          CHROME_PID=$!
+          
+          # Ensure cleanup of background processes when this step exits (success or failure)
+          trap "echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
+          
+          # 3. Wait for services
+          echo "Waiting for HTTP server (PID $SERVER_PID) to respond on port 8765..."
+          timeout 10 bash -c 'until curl -s http://127.0.0.1:8765 > /dev/null; do sleep 0.5; done'
+          echo "HTTP server is running."
+          
+          echo "Waiting for Chrome CDP (PID $CHROME_PID) on port 9222..."
+          timeout 15 bash -c 'until curl -s http://127.0.0.1:9222/json > /dev/null; do sleep 0.5; done'
+          echo "Chrome CDP is ready."
+          
+          # 4. Run tests
+          echo "Running pdf_ux_browser.py..."
+          python3 -u tests/pdf_ux_browser.py
+          
+          echo "Running learning_ux_browser.py..."
+          python3 -u tests/learning_ux_browser.py
+          
+          echo "All tests passed successfully!"
