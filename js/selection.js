@@ -535,3 +535,77 @@ function rangeBetweenWords(a, b) {
         return r.collapsed ? null : r;
     } catch (e) { return null; }
 }
+
+
+/* selection.js (продовження) — головний тап-обробник "переклад слова АБО гортання
+ * сторінки": у режимі "Вивчення" тап по слову шукає слово/речення й відкриває
+ * переклад (selectWordAtPoint/sentenceRangeAt/handleWordOrSelection); якщо слова
+ * під пальцем нема (чи режим вимкнений) — тап трактується як гортання сторінки
+ * за зоною екрана (goPrev/goNext) або перемикач "immersive mode".
+ *
+ * Дійсно мішана відповідальність (selection+navigation+UI) — лишається як ОДИН
+ * listener (не можна розділити без дублювання проверок e.target.closest(...) і
+ * порядку early-return), перенесена в selection.js, бо тап-по-слову — це її
+ * власний пріоритет за коментарем у самому коді. goPrev/goNext/handleWordOrSelection
+ * ще визначені в index.html (навігація/ui-tooltip.js — майбутні кроки) — це safe,
+ * бо виклик відбувається лише в момент реального кліку користувача, вже ПІСЛЯ
+ * того, як весь застосунок довантажився, а не одразу при виконанні цього файлу.
+ *
+ * Перевірено окремо: інший click-listener на els.mainArea (index.html, capture-
+ * фаза, придушення кліку під час PDF-жестів) спрацьовує РАНІШЕ цього незалежно
+ * від порядку реєстрації чи файлу — капчур-фаза завжди випереджає bubble-фазу
+ * для одного й того самого елемента, коли реальна ціль кліку — його нащадок.
+ */
+
+els.mainArea.addEventListener('click', (e) => {
+    if (e.target.closest('#pdf-scrubber')) return;
+    if (state.inkMode) return;   // у режимі письма тап малює, а не перекладає
+    if (state.suppressNextClick) { state.suppressNextClick = false; return; } // клік після свайпу — ігноруємо
+    if(e.target.closest('#word-tooltip') || e.target.closest('.side-panel') || e.target.closest('nav') || e.target.closest('#menu-handle') || e.target.closest('#footer-handle') || e.target.closest('#tts-controls')) return;
+    // Зона язичка меню (лівий верхній кут) — тут ніколи не спрацьовує переклад слова.
+    if (els.menuHandle) {
+        const h = els.menuHandle.getBoundingClientRect();
+        if (e.clientX <= h.right && e.clientY <= h.bottom) return;
+    }
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+        const r = sel.getRangeAt(0);
+        if (r.startContainer && !document.contains(r.startContainer)) sel.removeAllRanges();
+        else if (sel.toString().trim().length > 0) return;
+    }
+
+    if (state.translateMode) {
+        let word = selectWordAtPoint(e.clientX, e.clientY);
+        if (word) {
+            // Новий тап скидає підсвітку попереднього фрагмента.
+            clearSelectionHighlight();
+            state.lastTapPoint = { x: e.clientX, y: e.clientY };
+            state.expandLevel = 0;
+
+            // Речення, у якому стоїть слово, потрібне двічі: за ним визначається мова
+            // (у двомовній книзі сторінка не показник) і в ньому шукаються фразові
+            // дієслова англійської.
+            let lookup = word;
+            try {
+                const sr = sentenceRangeAt(e.clientX, e.clientY);
+                state.ctxSentence = sr ? sr.toString().trim().slice(0, 400) : '';
+                if (state.ctxSentence && detectLang(state.ctxSentence).startsWith('en')) {
+                    const phrasal = detectPhrasalVerb(word, state.ctxSentence);
+                    if (phrasal) lookup = phrasal;
+                }
+            } catch (err) { state.ctxSentence = ''; }
+            handleWordOrSelection(lookup, e.clientX, e.clientY);
+            return;
+        }
+        if (state.format === 'pdf') return; // клік в режимі вивчення по PDF не повинен ще й гортати сторінку
+    }
+
+    const rect = els.mainArea.getBoundingClientRect(); const x = e.clientX - rect.left;
+    if (x < rect.width * 0.20) goPrev(); 
+    else if (x > rect.width * 0.80) goNext();
+    else {
+        document.body.classList.toggle('immersive-mode');
+        if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
+    }
+});
+
