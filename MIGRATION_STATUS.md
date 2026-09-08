@@ -15,7 +15,7 @@ Step 7 — translation.js: DONE
 Step 8 — grammar-svo.js: DONE (carried startAiTask, deferred from Step 3)
 Step 9 — navigation.js: DONE
 Step 10 — formats.js: DONE (also folded buildToc into js/navigation.js)
-Step 11 — pdf-zoom-pan.js: PENDING
+Step 11 — pdf-zoom-pan.js: DONE
 Step 12 — pdf-ink.js: PENDING
 Step 13 — pdf-crop.js: PENDING
 Step 14 — dictation.js: PENDING
@@ -25,17 +25,18 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 10 — formats.js
-Last successful PR: #29 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/29)
-Last successful commit: 0a6c1b7 (merged to main)
+Last successful step: Step 11 — pdf-zoom-pan.js
+Last successful PR: #31 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/31)
+Last successful commit: f2be919 (merged to main)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 10 js/*.js scripts present in the correct classic-script order
-  including the new formats.js, every extracted function present as a real global and exercised
-  live (loaded a real synthetic TXT file through initTxt() end to end, confirming correct
-  pagination and TOC population via buildToc()), AND a genuine network-level offline reload
-  (CDP Network.emulateNetworkConditions offline:true) that still loaded the full app correctly
-  from cache (readyState complete, initTxt defined, correct title, all 10 scripts present).
+  load (zero console errors), all 11 js/*.js scripts present in the correct classic-script order
+  including the new pdf-zoom-pan.js, every extracted function present as a real global and
+  exercised live (loaded a real synthetic PDF through initPdf() and drove setPdfScale() through
+  it, confirming actual zoom state change 1 -> 1.5 with fit switching to 'free'), AND a genuine
+  network-level offline reload (CDP Network.emulateNetworkConditions offline:true) that still
+  loaded the full app correctly from cache (readyState complete, setPdfScale defined, correct
+  title, all 11 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -342,24 +343,40 @@ when a user actually opens a book of that format. All local suites green. Produc
 with the usual battery, including a real synthetic TXT file loaded end to end through
 initTxt() live against production (correct pagination and TOC population).
 
-## Step 11 next
+## Step 11 — pdf-zoom-pan.js: DONE (PR #31)
 
-pdf-zoom-pan.js is the next extraction. Per Step 4's final recon (section above) and
-MODULARIZATION_PLAN.md's original map (line numbers there are long stale — re-grep fresh):
+Extracted one fully contiguous block into js/pdf-zoom-pan.js, loaded right after
+js/navigation.js (the exact position this content already occupied — entire first stretch of
+that reopened script block, same collapse-the-tag pattern Steps 8-10 already used):
 rerenderPdfAtCurrentZoom, rememberPdfFocus, pdfBaseScale, pdfAnchor, restorePdfAnchor,
 layoutPdfZoom, applyPdfZoom, persistPdfZoom, setPdfScale, cancelPdfRender, cancelPdfInteraction,
 pinchMetrics, paintPdfGesture, endPdfPointer, the pdfPointers Map and its pointer/wheel
 listeners, the pdfBlockClick-suppression capture-phase click listener, and the `#pdf-fit`
-onchange handler — all confirmed 100% pdf-zoom-pan.js content back during Step 4's recon (see
-that section for the exact reasoning: two pieces that looked "mixed" from their section-title
-comments alone turned out to have zero selection-related material once actually read).
+onchange handler. Exactly matched Step 4's own recon (100% pdf-zoom-pan.js, zero
+selection-related material) with nothing else interleaved.
 
-This step's own window-resize listener already lives in js/navigation.js (Step 9) and calls
-into cancelPdfInteraction/renderPdfPage from there as a forward reference inside its callback
-— once pdf-zoom-pan.js lands, that reference resolves to an earlier-loading file instead of a
-later one, which only improves the existing safe pattern, nothing to fix. Re-grep fresh line
-numbers before each cut. Preserve classic execution order; after changing any js/*.js file,
-run `python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
-(`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the same kind of
-non-contiguous interleaving Steps 7-9 hit; read full function bodies before assuming a piece
-belongs elsewhere (mechanism-correction lesson from Step 4).
+js/navigation.js's window-resize listener (Step 9) reads pdfViewFocus, which is declared here
+— that forward reference now resolves to an earlier-loading file instead of a later one,
+which only improves the existing safe pattern (the read only ever happens inside the resize
+callback, deferred). No top-level forward-reference risk otherwise: only declarations and
+event-listener registrations in the moved range. All local suites green, including
+pdf_ux_browser.py's extensive zoom/pinch/pan coverage. Production verified with the usual
+battery, including a real synthetic PDF loaded via initPdf() and zoomed via setPdfScale()
+live against production (confirmed actual state.pdfZoom change, not just typeof-defined).
+
+## Step 12 next
+
+pdf-ink.js is the next extraction: inkCanvas, inkPageKey, inkStrokes, saveInk, loadInk,
+redrawInk, inkPoint, updateInkWidth, bindInkCanvas, inkEraseAt, updateInkTools (see
+MODULARIZATION_PLAN.md's map for where these originally were — line numbers long stale,
+re-grep fresh). js/pdf-zoom-pan.js's cancelPdfInteraction and the touch-pointer gesture
+handlers already forward-reference inkDrawing/inkCurrent/redrawInk/saveInk from inside their
+own callbacks — once pdf-ink.js lands, check whether those references still resolve
+correctly (they should, since deferred calls don't care about file load order) and whether
+inkDrawing/inkCurrent/regionStart/regionBox — currently bare top-level state, not yet
+identified which module they belong to — need to move too or stay as shared state. Re-grep
+fresh line numbers before each cut. Preserve classic execution order; after changing any
+js/*.js file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions
+before testing (`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the
+same kind of non-contiguous interleaving Steps 7-9 hit; read full function bodies before
+assuming a piece belongs elsewhere (mechanism-correction lesson from Step 4).

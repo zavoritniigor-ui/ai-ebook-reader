@@ -14,22 +14,21 @@ Before starting or resuming work, every agent must read:
 ## Current handoff
 
 Active agent: Claude Code
-Current step: Step 11 — pdf-zoom-pan.js (starting now)
+Current step: Step 12 — pdf-ink.js (starting now)
 Current branch: dev
 Current task status: active
 
-Last completed action: Step 10 — extracted js/formats.js (PR #29): runArchiveGuard,
-  initEpub/loadEpubChapter, initRichDoc/splitIntoChapters/renderDocChapter, fb2ToHtml,
-  rtfToHtml, initTxt/renderTxtPage — one fully contiguous block. Also completed the buildToc
-  fold-in flagged by Step 9's deviation note: appended to js/navigation.js (no new tag),
-  since it's format-agnostic and shared by all three loaders (openFooterMenu/closeFooterMenu/
-  enterMobileFullScreenIfNeeded, the other three functions that same plan entry named, are
-  still left for Step 15 — they're genuinely tangled with ui-tooltip.js material, see
-  MIGRATION_STATUS.md's deviation section). All local suites green. Production verified:
-  fresh load zero errors, all 10 js/*.js scripts in correct order including formats.js, every
-  extracted function present as a real global, and a real synthetic TXT file loaded end to end
-  through initTxt() live against production (correct pagination and TOC), genuine
-  network-level offline reload working.
+Last completed action: Step 11 — extracted js/pdf-zoom-pan.js (PR #31): the whole PDF mouse/
+  touch zoom-and-pan cluster (rerenderPdfAtCurrentZoom, pdfAnchor/restorePdfAnchor/
+  layoutPdfZoom/applyPdfZoom, pinchMetrics/paintPdfGesture, setPdfScale, cancelPdfRender/
+  cancelPdfInteraction, endPdfPointer, the pdfPointers Map and its listeners, the
+  pdfBlockClick click-suppressor, #pdf-fit's onchange) — one fully contiguous block, exactly
+  matching Step 4's own recon (100% pdf-zoom-pan.js, zero selection-related material). All
+  local suites green including pdf_ux_browser.py's extensive zoom/pinch/pan coverage.
+  Production verified: fresh load zero errors, all 11 js/*.js scripts in correct order
+  including pdf-zoom-pan.js, every extracted function present as a real global, and a real
+  synthetic PDF zoomed via setPdfScale() live against production (confirmed actual
+  state.pdfZoom change 1 -> 1.5), genuine network-level offline reload working.
 
 **Scope note (read this):** Codex's own audit record said "the user's explicit scope ends
 here — do not resume autonomous migration after this audit." The user then directly and
@@ -38,12 +37,12 @@ repeated instruction was followed and is recorded as intentional in MIGRATION_ST
 "IMPORTANT — scope note" section. If you are resuming later and the user hasn't otherwise
 confirmed this, it's worth a quick check rather than assuming silently either way.
 
-Last successful commit: 0a6c1b7 on dev (merged to main)
-Last PR: #29, merged
+Last successful commit: f2be919 on dev (merged to main)
+Last PR: #31, merged
 Last CI result: green
-Last production result: verified live — fresh load zero errors, all 10 js/*.js scripts present
-  in correct order, every formats.js function present as a global, a real TXT file loaded
-  end to end via initTxt(), genuine network-level offline reload loaded the full app correctly
+Last production result: verified live — fresh load zero errors, all 11 js/*.js scripts present
+  in correct order, every pdf-zoom-pan.js function present as a global, a real PDF zoomed via
+  setPdfScale() live, genuine network-level offline reload loaded the full app correctly
 Uncommitted work: none at time of writing this entry
 IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" section (four
   learned lessons) before extracting. Also: after changing any js/*.js file, run
@@ -52,13 +51,12 @@ IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" 
   with anything from browser_cdp.py's socket layer (not an assertion), that's a transport bug —
   see MIGRATION_STATUS.md's "CI flake found and fixed during Step 6" before assuming it's a
   flake and just rerunning.
-Next required action: Step 11 (pdf-zoom-pan.js: rerenderPdfAtCurrentZoom, rememberPdfFocus,
-  pdfBaseScale, pdfAnchor, restorePdfAnchor, layoutPdfZoom, applyPdfZoom, persistPdfZoom,
-  setPdfScale, cancelPdfRender, cancelPdfInteraction, pinchMetrics, paintPdfGesture,
-  endPdfPointer, the pdfPointers Map/pointer/wheel listeners, the pdfBlockClick capture-phase
-  click listener, and the #pdf-fit onchange handler — all confirmed 100% pdf-zoom-pan.js
-  content back in Step 4's recon). Re-grep fresh line numbers first. See MIGRATION_STATUS.md's
-  "Step 11 next" section.
+Next required action: Step 12 (pdf-ink.js: inkCanvas, inkPageKey, inkStrokes, saveInk,
+  loadInk, redrawInk, inkPoint, updateInkWidth, bindInkCanvas, inkEraseAt, updateInkTools).
+  Check whether inkDrawing/inkCurrent/regionStart/regionBox (bare top-level state read by
+  js/pdf-zoom-pan.js's cancelPdfInteraction and touch-gesture handlers) need to move too or
+  stay shared. Re-grep fresh line numbers first. See MIGRATION_STATUS.md's "Step 12 next"
+  section.
 
 ## Handoff rules
 
