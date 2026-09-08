@@ -10,7 +10,7 @@ Step 4 — selection.js: DONE (all genuinely selection.js content extracted; see
   what looked like 2 more ambiguous pieces turned out to be 100% navigation.js/pdf-zoom-pan.js
   content on closer reading, correctly left in place for Steps 9/11)
 Step 5 — pdf-render.js: DONE
-Step 6 — tts.js: IN PROGRESS
+Step 6 — tts.js: DONE
 Step 7 — translation.js: PENDING
 Step 8 — grammar-svo.js: PENDING (now also carries startAiTask, deferred from Step 3)
 Step 9 — navigation.js: PENDING
@@ -25,16 +25,64 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Retrospective audit of Steps 0–4 (see dedicated section below)
-Last successful PR: #19 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/19)
-Last successful commit: 1644d0d (merged to main as 70d1029)
-Last CI result: green
+Last successful step: Step 6 — tts.js
+Last successful PR: #21 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/21)
+Last successful commit: 86e6aa2 (merged to main as 5660e7e)
+Last CI result: green (see "CI flake found and fixed during Step 6" below — took two failed
+  attempts and a real test-infra root-cause fix to get there, not a rerun-until-green shortcut)
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), a real synthetic-PDF load-and-render via initPdf() (text extracted
-  correctly, 1 canvas produced), SW registration confirmed active, AND a genuine network-level
-  offline reload (CDP Network.emulateNetworkConditions offline:true, not just SW bypass) that
-  still loaded the full app correctly from cache (readyState complete, initPdf defined, correct
-  title) — this is the first production check to actually exercise the offline path end to end.
+  load (zero console errors), all 6 js/*.js scripts present in the correct classic-script order
+  including the new tts.js, every extracted TTS function present as a real global and startTTS()
+  exercised live (built a real sentence queue and played it via speechSynthesis with zero thrown
+  errors), SW confirmed active and controlling the page after a short activation wait, AND a
+  genuine network-level offline reload (CDP Network.emulateNetworkConditions offline:true) that
+  still loaded the full app correctly from cache (readyState complete, initPdf/startTTS defined,
+  correct title, all 6 scripts present).
+
+## Step 6 — tts.js: DONE (PR #21)
+
+Extracted stopTooltipSpeech/updateSpeakerIcons/bindUtterance/speakText/speakInLang (tooltip
+speech), setSpeakSide/updateSpeakSideUI, and the sentence playback/highlight/control cluster
+(buildSentenceRanges, ttsHighlightSupported/setTtsHighlight/clearTtsHighlight,
+pageIndexForRange, updateTtsButtons, stopGlobalTTS, pauseTTS, resumeTTS, speakCurrentSentence,
+stepSentence, startTTS, updateAltVoicesBtn, and the tts button/toggle onclick handlers) into
+js/tts.js, loaded right after js/lang-detect.js (same position as the first of the three pieces
+in the original file). Voice selection/quality (loadVoices, pickBestVoice, pickVoicePair,
+voices, ttsSynth) stayed in js/core.js exactly as already decided during Step 1 — tts.js just
+consumes those as globals.
+
+Verified the only top-level immediate-execution statement in the moved range
+(`updateAltVoicesBtn();`) only depends on core.js (els/state/t), so running it earlier in
+document order than before is safe — same mechanism-lesson check as every prior step. Ran
+`tools/version_app_shell.py` after creating js/tts.js to add its content hash to both
+index.html and sw.js's APP_SHELL.
+
+### CI flake found and fixed during Step 6
+
+Both PR #20 (docs-only) and PR #21 (this step) hit `MemoryError` in `tests/browser_cdp.py`'s
+`read()`, inside `migration_audit_browser.py`, on GitHub's runner only — never once locally
+(ran the full suite 6+ times locally across both PRs, always green). Root cause: `call()`'s
+read loop assumed one WebSocket frame == one complete message, with no FIN-bit or opcode check.
+That silently works until the server fragments a message or interleaves a ping/pong control
+frame between a request and its response — which `Network.*` events (only
+migration_audit_browser.py enables the Network domain) apparently do more often under the
+GitHub runner's load/timing than locally. A continuation frame's payload byte then gets
+misread as a brand-new frame header, desyncing the stream, until a garbage 2-byte length
+decodes to a huge number and `recv()` tries to allocate for it.
+
+PR #20's docs-only rerun happened to pass clean (the fragmentation is timing-dependent, not
+guaranteed every run). PR #21 failed the SAME way twice in a row — a real, reproducible-under-CI
+bug, not a one-off — so a third blind rerun was not the right call. Fixed
+`tests/browser_cdp.py` to reassemble messages by FIN bit (`_read_message()`), following
+continuation frames and swallowing ping/pong/close control frames (replying pong) instead of
+assuming single-frame messages. Verified with 4 consecutive local runs of
+migration_audit_browser.py plus the other two suites, all green, then pushed straight to the
+already-open PR #21 (no new PR needed) and it passed CI clean.
+
+**Takeaway for future steps**: if `migration_audit_browser.py` (or any suite using
+`Network.enable`) fails in CI with anything from `browser_cdp.py`'s socket layer, that's a
+transport bug, not a test assertion failing — check whether it reproduces on rerun/locally
+before assuming it's a flake, since this one didn't past the first look.
 
 ## IMPORTANT — scope note on resuming after the retrospective audit
 
@@ -162,13 +210,14 @@ call" turned out, once actually read function-by-function, to have zero content 
 the step in question. Always read the full body before deciding a piece needs a hard judgment
 call; don't assume ambiguity from a comment header alone.
 
-## Step 6 in progress
+## Step 7 next
 
-tts.js: voice selection (loadVoices/pickBestVoice/etc — already landed in js/core.js back in
-Step 1's mechanical range-cut, left there deliberately rather than moved again — see js/core.js
-header), speakText/speakInLang/setSpeakSide/updateSpeakSideUI, and the sentence
-playback/highlight/TTS-control-button cluster (buildSentenceRanges, stepSentence, startTTS,
-etc). Re-grep fresh line numbers before each cut — everything has shifted after the audit's
-edits to index.html/js/core.js/js/selection.js/js/pdf-render.js. Preserve classic execution
-order; after changing any js/*.js file, run `python3 tools/version_app_shell.py` to refresh the
-content-hash versions before testing (the audit's new versioning scheme requires this).
+translation.js is the next extraction. Re-grep fresh line numbers before each cut — everything
+shifts after every prior step's edits. Preserve classic execution order; after changing any
+js/*.js file (adding or extracting more into one), run `python3 tools/version_app_shell.py` to
+refresh the content-hash versions before testing (required since the retrospective audit's
+versioning scheme landed in PR #19 — `tests/app_shell_versions.py` fails CI on drift). See
+RETRO_AUDIT.md's dependency inventory for what translation.js is known to touch: ai-client.js's
+machineTranslate/aiTranslateText call inline translateLocally/buildTranslationExtras/
+validateAlignment — read the actual current boundaries fresh rather than trusting that note's
+line-independent description.
