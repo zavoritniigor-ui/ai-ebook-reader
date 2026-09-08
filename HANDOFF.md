@@ -14,23 +14,19 @@ Before starting or resuming work, every agent must read:
 ## Current handoff
 
 Active agent: Claude Code
-Current step: Step 14 — dictation.js (starting now)
+Current step: Step 15 — ui-tooltip.js (starting now)
 Current branch: dev
 Current task status: active
 
-Last completed action: Step 13 — extracted js/pdf-crop.js (PR #35): region-mode
-  state/drawing (regionStart/regionBox, exitRegionMode, the overlay pointer handlers),
-  cropPdfRegion, the crop preview dialog (openCropPreview/closeCropPreview + Save PNG/Share/
-  Copy PNG/send-to-AI wiring), and checkExerciseImage (stays here despite calling AI vision,
-  per the plan's own footnote — only ever invoked from the crop flow). Resolved Step 12's
-  open question: regionStart/regionBox are pdf-crop.js's own state, not ink's. All local
-  suites green, including every crop-specific pdf_ux_browser.py case (one
-  migration_audit_browser.py run hit the known one-off SW-cache-transition timing artifact
-  already documented in Step 7's notes — clean on immediate rerun). Production verified:
-  fresh load zero errors, all 13 js/*.js scripts in correct order including pdf-crop.js,
-  every extracted function present as a real global, and a real region cropped out of a real
-  synthetic PDF page live against production (genuine PNG data URL), genuine network-level
-  offline reload working.
+Last completed action: Step 14 — extracted js/dictation.js (PR #37): the entire content of
+  its script block (updateDictationUI, stopDictation, startDictationSession, toggleDictation
+  + mic-button/panel-close wiring). All local suites green, including every dictation-specific
+  learning_ux_browser.py case. Hit the Chrome-CDP-startup-timeout CI flake (see the
+  "ci-chrome-cdp-startup-flake" session memory — third occurrence of this exact pattern,
+  resolved by one rerun as always). Production verified: fresh load zero errors, all 14
+  js/*.js scripts in correct order including dictation.js, every extracted function present
+  as a real global and exercised live (updateDictationUI()/toggleDictation() called directly,
+  confirmed real state mutation), genuine network-level offline reload working.
 
 **Scope note (read this):** Codex's own audit record said "the user's explicit scope ends
 here — do not resume autonomous migration after this audit." The user then directly and
@@ -39,12 +35,12 @@ repeated instruction was followed and is recorded as intentional in MIGRATION_ST
 "IMPORTANT — scope note" section. If you are resuming later and the user hasn't otherwise
 confirmed this, it's worth a quick check rather than assuming silently either way.
 
-Last successful commit: 2d1b309 on dev (merged to main)
-Last PR: #35, merged
-Last CI result: green
-Last production result: verified live — fresh load zero errors, all 13 js/*.js scripts present
-  in correct order, every pdf-crop.js function present as a global, a real region cropped to
-  PNG live, genuine network-level offline reload loaded the full app correctly
+Last successful commit: 35cbb45 on dev (merged to main)
+Last PR: #37, merged
+Last CI result: green (after one rerun for the Chrome-CDP-startup-timeout flake)
+Last production result: verified live — fresh load zero errors, all 14 js/*.js scripts present
+  in correct order, every dictation.js function present as a global and exercised live,
+  genuine network-level offline reload loaded the full app correctly
 Uncommitted work: none at time of writing this entry
 IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" section (four
   learned lessons) before extracting. Also: after changing any js/*.js file, run
@@ -52,11 +48,16 @@ IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" 
   `tests/app_shell_versions.py` will fail CI. And: if migration_audit_browser.py fails in CI
   with anything from browser_cdp.py's socket layer (not an assertion), that's a transport bug —
   see MIGRATION_STATUS.md's "CI flake found and fixed during Step 6" before assuming it's a
-  flake and just rerunning.
-Next required action: Step 14 (dictation.js: updateDictationUI, stopDictation,
-  startDictationSession, toggleDictation — sits at the top of the reopened script block
-  right after js/ai-client.js's own tag). Re-grep fresh line numbers first. See
-  MIGRATION_STATUS.md's "Step 14 next" section.
+  flake and just rerunning; if a job instead times out waiting for Chrome's CDP port before any
+  test even runs, that's the separate, purely infra "ci-chrome-cdp-startup-flake" — safe to
+  rerun once, but treat two-in-a-row on the same PR as worth investigating for real.
+Next required action: Step 15 (ui-tooltip.js: scheduleTooltipHide, cancelTooltipHide,
+  positionTooltip, repositionTooltip, openKeySettings, closeKeySettings, saveApiKey —
+  handleWordOrSelection/translatePanelPoint from the same original plan entry already moved to
+  js/translation.js in Step 7). Also pick up the footer-menu functions deferred since Step 9
+  (openFooterMenu/closeFooterMenu/enterMobileFullScreenIfNeeded) if the actual code now
+  supports a clean split. Re-grep fresh line numbers first. See MIGRATION_STATUS.md's
+  "Step 15 next" section.
 
 ## Handoff rules
 

@@ -18,24 +18,26 @@ Step 10 — formats.js: DONE (also folded buildToc into js/navigation.js)
 Step 11 — pdf-zoom-pan.js: DONE
 Step 12 — pdf-ink.js: DONE
 Step 13 — pdf-crop.js: DONE
-Step 14 — dictation.js: PENDING
+Step 14 — dictation.js: DONE
 Step 15 — ui-tooltip.js: PENDING
 Step 16 — onboarding.js: PENDING
 Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 13 — pdf-crop.js
-Last successful PR: #35 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/35)
-Last successful commit: 2d1b309 (merged to main)
-Last CI result: green
+Last successful step: Step 14 — dictation.js
+Last successful PR: #37 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/37)
+Last successful commit: 35cbb45 (merged to main)
+Last CI result: green (after one rerun — hit the Chrome-CDP-startup-timeout infra flake, third
+  occurrence of that specific pattern; see the memory note "ci-chrome-cdp-startup-flake" and
+  MIGRATION_STATUS.md's own CI-flake precedent from Step 6 for how these are told apart)
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 13 js/*.js scripts present in the correct classic-script order
-  including the new pdf-crop.js, every extracted function present as a real global and exercised
-  live (cropped a real region out of a real synthetic PDF page, got back a genuine PNG data URL,
-  opened/closed the preview dialog), AND a genuine network-level offline reload (CDP
-  Network.emulateNetworkConditions offline:true) that still loaded the full app correctly from
-  cache (readyState complete, cropPdfRegion defined, correct title, all 13 scripts present).
+  load (zero console errors), all 14 js/*.js scripts present in the correct classic-script order
+  including the new dictation.js, every extracted function present as a real global and exercised
+  live (updateDictationUI()/toggleDictation() called directly, confirming real state mutation),
+  AND a genuine network-level offline reload (CDP Network.emulateNetworkConditions offline:true)
+  that still loaded the full app correctly from cache (readyState complete, toggleDictation
+  defined, correct title, all 14 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -405,15 +407,38 @@ specific pdf_ux_browser.py case. Production verified with the usual battery, inc
 region cropped out of a real synthetic PDF page live against production (genuine PNG data
 URL, preview dialog opened/closed correctly).
 
-## Step 14 next
+## Step 14 — dictation.js: DONE (PR #37)
 
-dictation.js is the next extraction: updateDictationUI, stopDictation, startDictationSession,
-toggleDictation (see MODULARIZATION_PLAN.md's map — line numbers long stale, re-grep fresh).
-This cluster sits right at the top of the reopened script block after js/ai-client.js's own
-tag (dictation was always the first content there — Steps 12/13 both extracted pieces that
-came AFTER it in the same block, never touching it). Re-grep fresh line numbers before each
-cut. Preserve classic execution order; after changing any js/*.js file, run
-`python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
-(`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the same kind of
-non-contiguous interleaving Steps 7-9 hit; read full function bodies before assuming a piece
-belongs elsewhere (mechanism-correction lesson from Step 4).
+Extracted the entire content of its script block (dictation was always alone there — Steps
+12/13 had already lifted out everything that came after it in the same block, never touching
+it) into js/dictation.js, loaded right after js/ai-client.js: updateDictationUI,
+stopDictation, startDictationSession, toggleDictation, and the mic-button/panel-close wiring.
+
+No forward-reference risk: the one top-level immediate statement
+(`if (!SpeechRecognitionCtor || !micSecureOk) els.micBtn.style.display = 'none';`) only
+touches state declared in the same file and els.micBtn (core.js, already loaded). All local
+suites green, including every dictation-specific learning_ux_browser.py case. Hit the known
+Chrome-CDP-startup-timeout CI flake (see the "ci-chrome-cdp-startup-flake" session memory and
+Step 6's own CI-flake precedent for how these are distinguished from a real bug) — third
+occurrence of that exact pattern, resolved by one rerun as before. Production verified with
+the usual battery, including updateDictationUI()/toggleDictation() called directly live
+against production, confirming real global-state mutation.
+
+## Step 15 next
+
+ui-tooltip.js is the next extraction. Per MODULARIZATION_PLAN.md's original map (line numbers
+long stale, re-grep fresh): scheduleTooltipHide, cancelTooltipHide, positionTooltip,
+repositionTooltip, openKeySettings, closeKeySettings, saveApiKey. Two entries from that same
+plan line — handleWordOrSelection and translatePanelPoint — are already DONE, having moved to
+js/translation.js back in Step 7 (translation was judged their dominant purpose; see that
+step's own section above). **Also pick up the footer-menu functions deferred since Step 9**
+(openFooterMenu, closeFooterMenu, enterMobileFullScreenIfNeeded — see "Deviation from
+MODULARIZATION_PLAN.md's navigation.js list" above): read the actual current code for the
+pointerdown listener that closes both the footer menu and the translation tooltip in one
+function body, and decide from that reading alone whether it splits cleanly into ui-tooltip.js
+now or needs to stay mixed a while longer — don't assume either way from this note. Re-grep
+fresh line numbers before each cut. Preserve classic execution order; after changing any
+js/*.js file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions
+before testing (`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the
+same kind of non-contiguous interleaving Steps 7-9 hit; read full function bodies before
+assuming a piece belongs elsewhere (mechanism-correction lesson from Step 4).
