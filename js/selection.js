@@ -674,7 +674,9 @@ els.mainArea.addEventListener('click', (e) => {
                     if (phrasal) lookup = phrasal;
                 }
             } catch (err) { state.ctxSentence = ''; }
-            handleWordOrSelection(lookup, e.clientX, e.clientY);
+            let rect = null;
+            try { if (state.lastWordNode && state.lastWordNode.getBoundingClientRect) rect = state.lastWordNode.getBoundingClientRect(); } catch (err) {}
+            handleWordOrSelection(lookup, e.clientX, e.clientY, rect);
             return;
         }
         if (state.format === 'pdf') return; // клік в режимі вивчення по PDF не повинен ще й гортати сторінку
