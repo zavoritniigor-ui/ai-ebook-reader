@@ -19,25 +19,24 @@ Step 11 — pdf-zoom-pan.js: DONE
 Step 12 — pdf-ink.js: DONE
 Step 13 — pdf-crop.js: DONE
 Step 14 — dictation.js: DONE
-Step 15 — ui-tooltip.js: PENDING
+Step 15 — ui-tooltip.js: DONE
 Step 16 — onboarding.js: PENDING
 Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 14 — dictation.js
-Last successful PR: #37 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/37)
-Last successful commit: 35cbb45 (merged to main)
-Last CI result: green (after one rerun — hit the Chrome-CDP-startup-timeout infra flake, third
-  occurrence of that specific pattern; see the memory note "ci-chrome-cdp-startup-flake" and
-  MIGRATION_STATUS.md's own CI-flake precedent from Step 6 for how these are told apart)
+Last successful step: Step 15 — ui-tooltip.js
+Last successful PR: #39 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/39)
+Last successful commit: 2e6fe69 (merged to main)
+Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 14 js/*.js scripts present in the correct classic-script order
-  including the new dictation.js, every extracted function present as a real global and exercised
-  live (updateDictationUI()/toggleDictation() called directly, confirming real state mutation),
-  AND a genuine network-level offline reload (CDP Network.emulateNetworkConditions offline:true)
-  that still loaded the full app correctly from cache (readyState complete, toggleDictation
-  defined, correct title, all 14 scripts present).
+  load (zero console errors), all 15 js/*.js scripts present in the correct classic-script order
+  including the new ui-tooltip.js, every extracted function present as a real global and
+  exercised live (positionTooltip() actually moved the tooltip element, openFooterMenu()/
+  closeFooterMenu() toggled the real footer-open class, openKeySettings()/closeKeySettings()
+  toggled the real settings-modal display), AND a genuine network-level offline reload (CDP
+  Network.emulateNetworkConditions offline:true) that still loaded the full app correctly from
+  cache (readyState complete, positionTooltip defined, correct title, all 15 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -424,19 +423,42 @@ occurrence of that exact pattern, resolved by one rerun as before. Production ve
 the usual battery, including updateDictationUI()/toggleDictation() called directly live
 against production, confirming real global-state mutation.
 
-## Step 15 next
+## Step 15 — ui-tooltip.js: DONE (PR #39)
 
-ui-tooltip.js is the next extraction. Per MODULARIZATION_PLAN.md's original map (line numbers
-long stale, re-grep fresh): scheduleTooltipHide, cancelTooltipHide, positionTooltip,
-repositionTooltip, openKeySettings, closeKeySettings, saveApiKey. Two entries from that same
-plan line — handleWordOrSelection and translatePanelPoint — are already DONE, having moved to
-js/translation.js back in Step 7 (translation was judged their dominant purpose; see that
-step's own section above). **Also pick up the footer-menu functions deferred since Step 9**
-(openFooterMenu, closeFooterMenu, enterMobileFullScreenIfNeeded — see "Deviation from
-MODULARIZATION_PLAN.md's navigation.js list" above): read the actual current code for the
-pointerdown listener that closes both the footer menu and the translation tooltip in one
-function body, and decide from that reading alone whether it splits cleanly into ui-tooltip.js
-now or needs to stay mixed a while longer — don't assume either way from this note. Re-grep
+Extracted two pieces into js/ui-tooltip.js, loaded right after js/pdf-zoom-pan.js (piece A was
+the entire remaining content of that reopened script block, so it collapsed into
+ui-tooltip.js's own tag — same pattern Steps 8-10/12/14 already used):
+
+- Footer submenu + translation-tooltip lifecycle together in one piece: openFooterMenu/
+  closeFooterMenu, the pointer-type detection gating Android's native selection popup,
+  enterMobileFullScreenIfNeeded, the menu-handle listener, scheduleTooltipHide/
+  cancelTooltipHide, positionTooltip/repositionTooltip. **Resolved the Step 9 deviation**: read
+  the actual code and found the single pointerdown listener that closes things on an outside
+  tap closes BOTH the footer menu and the tooltip in one function body — they're the same kind
+  of transient overlay with the same dismiss rule, so kept together here rather than split
+  toward navigation.js as the original stale plan guessed.
+- The key-settings modal (openKeySettings/closeKeySettings/saveApiKey) — a small, clean middle
+  piece, matching the plan's own classification.
+
+handleWordOrSelection and translatePanelPoint, also named under ui-tooltip.js in the original
+plan, were not touched here — already DONE, moved to js/translation.js in Step 7.
+
+No forward-reference risk: the two top-level immediate statements
+(`document.body.appendChild(els.tooltip);` and the `if (els.footerHandle)`/
+`if (els.menuHandle)` guarded listener registrations) only touch els.* (core.js, already
+loaded) and document.body (always exists by this point). All local suites green. Production
+verified with the usual battery, including positionTooltip()/openFooterMenu()/
+closeFooterMenu()/openKeySettings()/closeKeySettings() all called directly live against
+production, confirming real DOM/state mutation.
+
+## Step 16 next
+
+onboarding.js is the next extraction: stopOnboarding, rememberOnboarding,
+scheduleReaderOnboarding, plus the onboardingGroups object and ONBOARDING_KEY constant (see
+MODULARIZATION_PLAN.md's map — line numbers long stale, re-grep fresh). This cluster sits
+right after the prev-btn/next-btn wiring, in the same reopened block as the zoom-in/zoom-out/
+theme-select handlers and the (now-moved) key-settings functions — re-read the current
+boundaries fresh rather than assuming where this step's material starts and ends. Re-grep
 fresh line numbers before each cut. Preserve classic execution order; after changing any
 js/*.js file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions
 before testing (`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the
