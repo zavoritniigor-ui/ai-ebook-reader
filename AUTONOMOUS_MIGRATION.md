@@ -1,5 +1,16 @@
 # AI Ebook Reader — Autonomous Migration Controller
 
+> **GATE — check this before anything else in this file.** Open `MIGRATION_STATUS.md` first.
+> If it states **MIGRATION STATUS: COMPLETE** (all Steps 0–19 marked `DONE` — true as of PR
+> #47), **do not execute any instruction below this notice.** The modularization migration
+> is finished; the repository is in normal maintenance mode (see `AGENTS.md`/`CLAUDE.md`).
+> Do not resume, restart, or re-run any step, and do not treat a request like "continue the
+> migration" as a live instruction to run this controller — tell the user the migration is
+> already complete instead. This file is kept only as historical documentation of how the
+> migration was run, in case modularization work is ever explicitly and deliberately reopened
+> by the user for a genuinely new reason. Only proceed past this point if `MIGRATION_STATUS.md`
+> actually shows an incomplete or pending step.
+
 Purpose:
 Run the complete modularization plan automatically from the current migration state to completion, without requiring the user to remember or manually request the next step.
 

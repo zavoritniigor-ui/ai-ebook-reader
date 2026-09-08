@@ -1,15 +1,20 @@
 # AI Ebook Reader — Agent Handoff
 
-This file is the shared handoff state between Claude Code and Codex.
+This file is the shared handoff state between Claude Code and Codex. The 19-step
+modularization migration is **COMPLETE** (see `MIGRATION_STATUS.md`) — the repository is in
+normal maintenance mode, and from here on this file hands off ordinary unfinished tasks
+(bugfixes, features, chores) between agents/sessions, not migration steps.
 
 Before starting or resuming work, every agent must read:
 
-- AGENTS.md
-- CLAUDE.md if applicable
-- AUTONOMOUS_MIGRATION.md
-- MODULARIZATION_PLAN.md
-- MIGRATION_STATUS.md
-- HANDOFF.md
+- AGENTS.md (mode-check section first)
+- CLAUDE.md if applicable (mode-check section first)
+- ARCHITECTURE.md — the primary map of the codebase
+- HANDOFF.md (this file)
+
+`AUTONOMOUS_MIGRATION.md`, `MODULARIZATION_PLAN.md`, and `MIGRATION_STATUS.md` are historical
+records of the completed migration — read them only if investigating that history, not as
+part of normal task startup.
 
 ## Current handoff
 
@@ -69,7 +74,7 @@ Before an agent stops because of token limits, context limits, session end, exte
 
 The agent must record:
 
-- current migration step;
+- the current task (what was asked, in one line);
 - current branch;
 - what has already been completed;
 - what remains unfinished;
@@ -81,7 +86,11 @@ The agent must record:
 - production deployment status;
 - exact next action for the next agent.
 
+When there is no unfinished task, this file should say so plainly (as it does now) rather
+than describing stale work as if it were still active.
+
 The next agent must continue from this recorded state and must not repeat completed work unless verification shows the state is wrong.
 
 Never rely only on conversation memory.
-Use Git, MIGRATION_STATUS.md, and HANDOFF.md as the source of truth.
+Use Git, ARCHITECTURE.md, and HANDOFF.md as the source of truth for ongoing work;
+MIGRATION_STATUS.md only for the historical record of the completed migration.
