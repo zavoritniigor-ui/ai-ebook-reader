@@ -572,30 +572,3 @@ function translatePanelPoint(e, root) {
 els.askContent.addEventListener('click', e => translatePanelPoint(e, els.askContent));
 els.grammarContent.addEventListener('click', e => translatePanelPoint(e, els.grammarContent));
 
-// Переклад усього фрагмента, який зараз показано в панелі.
-document.getElementById('btn-translate-panel').onclick = async () => {
-    if (els.askPanel.classList.contains('loading')) return;
-    const task = beginAsyncTask('panelTranslate');
-    const panelTask = asyncTasks.get('ask');
-    els.askContent.querySelectorAll('.panel-translation').forEach(n => n.remove());
-    const text = (els.askContent.innerText || '').trim();
-    if (!text) { alert(t('selectFirst')); return; }
-    const box = document.createElement('div');
-    box.className = 'panel-translation'; box.textContent = t('translating');
-    els.askContent.appendChild(box);
-    const current = () => task.current() && box.isConnected && panelTask === asyncTasks.get('ask');
-    const src = langForText(text).slice(0, 2);
-    try {
-        let out = await aiTranslateText(text.slice(0, 2000), src, task.signal);
-        if (!current()) return;
-        if (!out) out = (await machineTranslate(text.slice(0, 1500), src, true, task.signal)).plain;
-        if (current()) box.textContent = out || t('error');
-    } catch (err) {
-        if (!current()) {
-            if (!asyncTasks.has('panelTranslate') && box.isConnected && panelTask === asyncTasks.get('ask')) box.textContent = 'Запит скасовано';
-            return;
-        }
-        box.textContent = err.message || t('error');
-    }
-};
-

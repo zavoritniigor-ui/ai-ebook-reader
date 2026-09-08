@@ -158,6 +158,7 @@ if (document.getElementById('btn-exit-app')) {
 const OVERLAY_LAYERS = [
     { name: 'crop', test: () => cropDialog.open },
     { name: 'modal', test: () => document.getElementById('settings-modal').style.display === 'flex' },
+    { name: 'classroom', test: () => document.getElementById('classroom-modal').style.display === 'flex' },
     { name: 'region', test: () => document.body.classList.contains('region-mode') },
     { name: 'ink', test: () => document.body.classList.contains('ink-mode') },
     { name: 'tooltip', test: () => els.tooltip.style.display === 'flex' },
@@ -171,6 +172,14 @@ function closeTopOverlay(name) {
     switch (name) {
         case 'crop': closeCropPreview(); break;
         case 'modal': closeKeySettings(); break;
+        // На відміну від кнопки "← Назад" усередині модалки (яка ходить курс →
+        // завдання → вкладення покроково), апаратний/жестовий Android Back
+        // закриває модалку ЦІЛКОМ одразу — усі інші шари тут так само завжди
+        // повністю закриваються по одному натисканню, і syncOverlayHistory()
+        // рахує глибину саме за цим припущенням (countOpenOverlays() до/після
+        // мають різнитись рівно на 1); часткова навігація всередині одного й
+        // того ж шару зламала б цей рахунок.
+        case 'classroom': closeClassroomModal(); break;
         case 'region': exitRegionMode(); break;
         case 'ink': state.inkMode = false; document.body.classList.remove('ink-mode'); break;
         case 'tooltip': cancelTooltipHide(); els.tooltip.style.display = 'none'; break;
@@ -195,7 +204,7 @@ window.addEventListener('popstate', () => {
 });
 try {
     const overlayObserver = new MutationObserver(syncOverlayHistory);
-    [cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, els.sidebar, document.getElementById('settings-modal')]
+    [cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, els.sidebar, document.getElementById('settings-modal'), document.getElementById('classroom-modal')]
         .forEach((el) => el && overlayObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'open'] }));
 } catch (e) {}
 

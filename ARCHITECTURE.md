@@ -9,12 +9,12 @@ full history and reasoning behind every decision mentioned here; this file state
 ## The shape of the app
 
 `index.html` is a thin shell: markup, `<style>`, the vendor `<script>` tags (JSZip, Mammoth,
-PDF.js), and eighteen ordered `<script src="js/...">` tags — one per module, in a fixed load
+PDF.js), and nineteen ordered `<script src="js/...">` tags — one per module, in a fixed load
 order that matters (see "Load order" below). Exactly one fragment of application code is
 still inline in `index.html` rather than in a module, and it has to stay that way — see
 "The one inline exception" below.
 
-`sw.js` is a minimal service worker: it precaches the app shell (index.html, the 18 modules,
+`sw.js` is a minimal service worker: it precaches the app shell (index.html, the 19 modules,
 vendor files, icons) under a content-derived cache name and serves navigation requests
 network-first with a fallback to cache. `tools/version_app_shell.py` and
 `tests/app_shell_versions.py` keep the two files' version identifiers honest — see
@@ -61,7 +61,7 @@ it during the migration would have been an unplanned behavior change.
 core.js → lang-detect.js → tts.js → selection.js → navigation.js → pdf-zoom-pan.js →
 ui-tooltip.js → translation.js → grammar-svo.js → ai-client.js → dictation.js →
 pdf-ink.js → pdf-crop.js → pdf-render.js → formats.js → onboarding.js → main.js →
-pwa-lifecycle.js
+google-classroom.js → pwa-lifecycle.js
 ```
 
 Three positions in this order are load-bearing, not arbitrary:
@@ -71,11 +71,17 @@ Three positions in this order are load-bearing, not arbitrary:
   triggered.
 - **`main.js` cannot load early.** Its startup bootstrap call `applyI18n()` makes top-level
   immediate calls into `updateAltVoicesBtn`/`updateTtsButtons` (`tts.js`), `updateProgressText`
-  (`navigation.js`), and `updateDictationUI` (`dictation.js`). `main.js` loads second-to-last,
-  after every module whose functions it calls immediately at startup.
+  (`navigation.js`), and `updateDictationUI` (`dictation.js`). `main.js` loads after every
+  module whose functions it calls immediately at startup.
 - **`pwa-lifecycle.js` loads last.** Its overlay-history `MutationObserver` setup references
   `pdf-crop.js`'s `cropDialog` directly in a top-level array literal (not inside a callback),
   so `pdf-crop.js` must already have run. Loading this file last is what makes that safe.
+
+`google-classroom.js` sits between `main.js` and `pwa-lifecycle.js`, but — like "everything
+else" below — neither position is load-bearing: it calls `main.js`'s `openBookFile` only from
+inside `onclick` handlers, and `pwa-lifecycle.js`'s `OVERLAY_LAYERS`/`closeTopOverlay` reference
+its `closeClassroomModal` the same deferred way (from inside the `popstate` handler), so this
+would stay safe even if reordered.
 
 Everything else in the order reflects where each module's content happened to sit in the
 original monolithic file — there was rarely a hard requirement to load module A before module
@@ -144,8 +150,9 @@ actually read).
 | `pdf-render.js` | `initPdf` (opens a PDF.js document), `renderPdfPage` (canvas + text layer + ink layer render with epoch/render tokens against stale async responses), and the page scrubber. |
 | `formats.js` | Book format loaders: `runArchiveGuard` (Worker-based ZIP-bomb/zip-slip check before JSZip/Mammoth ever see an EPUB/DOCX), `initEpub`/`initRichDoc` (Mammoth)/`initTxt`, `fb2ToHtml`, `rtfToHtml`. |
 | `onboarding.js` | First-run discovery cues for the Ask/Grammar/TOC buttons (`scheduleReaderOnboarding`/`rememberOnboarding`/`stopOnboarding`), shown once per profile via `onboardingState`. |
-| `main.js` | Cross-module bootstrap wiring that doesn't belong to any one feature: reader-settings restore (UI language/theme/target language/voice), the Learn-mode toggle, Ask-panel mic/send wiring, **the file-upload format-detection dispatcher** (the actual "open a book" entry point, calling into `formats.js`/`pdf-render.js` by extension), zoom/theme/nav button wiring, and the final `updateDictationUI()`/`applyI18n()` startup calls. |
-| `pwa-lifecycle.js` | Everything about being an installed PWA: `stopBackgroundActivity` (the one switch for TTS/mic/AI-requests/PDF-render when backgrounded), `persistCriticalState`, the exit-app button, the Android-Back overlay stack (`OVERLAY_LAYERS`/`syncOverlayHistory`), the "update available" banner, service worker registration, and the `document.body.inert`-until-`load` gate (see "Known incidents"). |
+| `main.js` | Cross-module bootstrap wiring that doesn't belong to any one feature: reader-settings restore (UI language/theme/target language/voice), the Learn-mode toggle, Ask-panel mic/send wiring, **`openBookFile(file)`** (the actual "open a book" entry point — resets all reader state, then dispatches to `formats.js`/`pdf-render.js` by file extension; called by the manual `<input type=file>` handler here AND by `google-classroom.js` for a file fetched from Drive, so neither the reset logic nor the format dispatch is duplicated), zoom/theme/nav button wiring, and the final `updateDictationUI()`/`applyI18n()` startup calls. |
+| `google-classroom.js` | Google sign-in (Google Identity Services token client) plus read-only Google Classroom/Drive REST calls: course list → coursework/materials list → Drive-file attachments → `main.js`'s `openBookFile` opens the fetched (or, for native Google Docs/Slides, PDF-exported) file directly, no manual download. Minimal scopes only (`classroom.*.readonly` + `drive.file`, never `drive.readonly`) — see the file's own top comment before widening them. Owns the `#classroom-modal` UI and its own module-local state (`googleAuth`, `classroomStack`) — no globals beyond calling `openBookFile`. |
+| `pwa-lifecycle.js` | Everything about being an installed PWA: `stopBackgroundActivity` (the one switch for TTS/mic/AI-requests/PDF-render when backgrounded), `persistCriticalState`, the exit-app button, the Android-Back overlay stack (`OVERLAY_LAYERS`/`syncOverlayHistory` — includes the `classroom` layer, which fully closes the modal on Android Back rather than stepping back one level internally, to keep the overlay-depth counter's "exactly one layer closes per Back press" invariant intact), the "update available" banner, service worker registration, and the `document.body.inert`-until-`load` gate (see "Known incidents"). |
 
 ## Resolved plan deviations
 
@@ -198,6 +205,7 @@ extraction — both are **settled**, not open questions:
 | `tests/language_paren_browser.py` | `lang-detect.js`'s parenthetical-translation-pair detection (`bonjour (hello)`, `hello (bonjour)`, nested parens) plus flat (non-parenthetical) mixed-language regression cases, so the paren-aware split can't silently break the plain sentence path. |
 | `tests/language_context_browser.py` | `lang-detect.js`'s context-aware clustering for local EN/FR phrases with **no** parentheses (`The French word maison means house.`, `Il est très important to pronounce it correctly.`), the test-only `debugLanguageSegments` inspection (token scores/tiers, segment boundaries, chosen TTS locale), a mixed EN/FR TTS voice-selection smoke test, and a guard that parenthesis segmentation stays unaffected. |
 | `tests/ask_ai_language_browser.py` | "Запитай AI" → "Мовний розбір" (`grammar-svo.js`'s `buildLanguageLevelPrompt`, via `lang-detect.js`'s `fragmentLangInContext`): the tapped/selected fragment's own language must drive the A2/B1 simplification language, not the language of a nearby inline translation (a bilingual sentence's translation is often longer than the original, so whole-context "majority characters" detection picked the wrong side). Covers the prompt builder directly and the real tap → button → AI-call wiring. |
+| `tests/google_classroom_browser.py` | `google-classroom.js`'s full sign-in → courses → coursework/materials → attachment → open-in-Reader flow, with Google Identity Services and the Classroom/Drive REST calls mocked (real `accounts.google.com` network-blocked so the mock is never raced by a real script load). Asserts the requested OAuth scope is exactly the minimal read-only set (and never includes `drive.readonly`), that a native Google Doc is exported to PDF rather than fetched as-is, that an already-supported format (PDF/TXT) is fetched directly via `alt=media`, that the opened file really renders (PDF text layer, `detectLang` on the new content), and that the modal participates correctly in the Android-Back overlay stack. |
 | `tests/browser_cdp.py` | Not a test suite itself — the shared minimal CDP client (`CDP`) and synthetic-PDF fixture (`pdf_bytes`) all four suites import. Its WebSocket frame reader was rewritten during Step 6 to reassemble fragmented frames (see below); a genuine bug, not the same thing as the CI-only Chrome-startup flake below. |
 
 **Two known CI-only flakes**, both distinguished from real bugs and documented so a future
