@@ -229,15 +229,13 @@ function showUpdateBanner() {
 // засмічувати консоль очікуваною помилкою. Реєстрація — після повного
 // завантаження сторінки, щоб не забирати час у першого рендеру й читання.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-    // controllerchange надійно спрацьовує лише тоді, коли сторінку ВЖЕ
-    // контролював якийсь service worker і браузер перемкнув на іншу версію —
-    // тобто це саме "реальне оновлення". На перше-ліпше встановлення (коли
-    // контролера ще не було) ця подія в принципі не приходить, тож окремо
-    // перевіряти "перша це інсталяція чи ні" не потрібно — сам API вже це робить.
-    // Один-єдиний addEventListener на весь час життя сторінки — і викликаємо
-    // register() теж рівно один раз нижче, тож повторної реєстрації не буде.
+    // clients.claim() also sends controllerchange on the first installation.
+    // Only replacing an existing controller means an update is available.
+    let hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-        showUpdateBanner();
+        const isUpdate = hadController;
+        hadController = !!navigator.serviceWorker.controller;
+        if (isUpdate && hadController) showUpdateBanner();
     });
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then((registration) => {

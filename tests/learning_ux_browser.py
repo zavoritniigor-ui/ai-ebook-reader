@@ -28,8 +28,7 @@ def js(s):return c.js(s)
 def check(name,s):
  r=js(s);assert r is True,(name,r);print('PASS',name,flush=True)
 def tap(x,y):
- c.call('Input.dispatchTouchEvent',type='touchStart',touchPoints=[dict(x=x,y=y,id=1)])
- c.call('Input.dispatchTouchEvent',type='touchEnd',touchPoints=[])
+ c.touch_tap(x,y)
 def settle():pause(.25)
 check('application initialized','typeof toggleDictation==="function" && __errors.length===0')
 js("els.askPanel.classList.add('expanded');els.askInput.value='My question:';toggleDictation();recognition.final('First part');recognition.interim('still thinking')")
@@ -76,8 +75,21 @@ for name,source,target,links in cases:
  check(name+' target click flashes source',"alignmentFlash.children.length>0 && !!els.ttTranslation.querySelector('.alignment-active')")
 # Reverse uses the real reader touch stream; no new lookup/network call.
 pos=js("(()=>{const r=sourceAlignmentRanges(activeAlignment.links[0])[0].getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
-js('window.__calls=__prompts.length;clearAlignmentFlash()');tap(pos['x'],pos['y']);settle()
-check('source tap flashes translation without second lookup',"__prompts.length===__calls && !!els.ttTranslation.querySelector('.alignment-active')")
+js("""window.__calls=__prompts.length;clearAlignmentFlash();
+window.__alignmentEvents=[];
+for(const name of ['pointerdown','pointerup','click'])document.addEventListener(name,e=>__alignmentEvents.push({name,t:performance.now(),source:alignmentSourceAt(e.clientX,e.clientY),suppress:state.suppressNextClick}),{once:true,capture:true});
+window.__alignmentTapSeen=new Promise(resolve=>{
+ let timer;
+ const observer=new MutationObserver(()=>{
+  if(els.ttTranslation.querySelector('.alignment-active')){clearTimeout(timer);observer.disconnect();resolve(true);}
+ });
+ // Start the observation deadline with the gesture, not a separate CDP command.
+ document.addEventListener('pointerdown',()=>{
+  timer=setTimeout(()=>{observer.disconnect();resolve(false);},2000);
+ },{once:true,capture:true});
+ observer.observe(els.ttTranslation,{subtree:true,attributes:true,attributeFilter:['class']});
+});void 0;""");tap(pos['x'],pos['y']);settle()
+check('source tap flashes translation without second lookup',"(async()=>await __alignmentTapSeen && __prompts.length===__calls || {events:__alignmentEvents,calls:__prompts.length,before:__calls})()")
 check('no positional fallback for repeated or invalid spans',"validateAlignment('a a cat','кіт',[{source:['a'],target:'кіт',confidence:'high'},{source:['dog'],target:'кіт',confidence:'high'}]).length===0")
 check('low confidence and substrings rejected',"validateAlignment('theater','театр',[{source:['the'],target:'театр',confidence:'high'},{source:['theater'],target:'театр',confidence:'low'}]).length===0")
 check('overlapping target links rejected',"validateAlignment('a cat sleeps','кіт спить',[{source:['cat'],target:'кіт',confidence:'high'},{source:['sleeps'],target:'кіт спить',confidence:'high'}]).length===0")

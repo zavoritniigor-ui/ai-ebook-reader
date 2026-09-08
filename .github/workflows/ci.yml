@@ -31,6 +31,7 @@ jobs:
           echo "Checking standalone JS files..."
           for js_file in js/*.js; do node --check "$js_file"; done
           python3 tests/app_shell_versions.py
+          python3 tests/browser_cdp_transport.py
           node --check sw.js
           node --check archive-guard.worker.js
           

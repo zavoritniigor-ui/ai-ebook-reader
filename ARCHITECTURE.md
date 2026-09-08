@@ -27,8 +27,8 @@ Every `js/*.js` file is loaded as a plain classic script
 every one of them declares its top-level functions and `let`/`const` bindings as ordinary
 globals, the same way the original single-file `index.html` always worked. This was a
 deliberate correction made during Step 1, not the original migration plan (which assumed ES
-modules with `import`/`export`) — the two vendor scripts (JSZip, Mammoth) and the PDF.js
-worker-configuration script are also classic/inline scripts sharing this same global scope,
+modules with `import`/`export`) — the two vendor scripts (JSZip, Mammoth) are classic scripts; PDF.js and its inline
+worker-configuration script use type="module" and deferred execution,
 and if the extracted modules used `type="module"`, they would execute in *deferred* timing
 (always after the document finishes parsing) while the rest of the classic scripts execute
 *synchronously, in document order, as the parser reaches them* — meaning a classic script
@@ -103,16 +103,15 @@ application logic left in `index.html` outside a `<script src>` tag.
 
 A huge fraction of the calls between modules only work because they're **deferred** —
 wrapped in a function body, event handler, or `async` callback — rather than executed
-immediately at parse time. A deferred reference to a name defined in a *later-loading* module
-is safe, because by the time the callback actually runs (a user interaction, a timer, a
-promise resolution), every classic script in the document has already executed and every
-name is already a real global. This is the single mechanism that lets the module graph below
+immediately at parse time. A reference to a name in a *later-loading* module is safe only after that module has
+initialized. The body remains inert until load to prevent early user input; timers and
+promise callbacks still require their dependencies to exist when they fire. This is the single mechanism that lets the module graph below
 be far more circular than a traditional import graph would allow. Two examples worth knowing
 by name, because they were specifically identified and verified during the migration rather
 than assumed:
 
 - **`pdf-render.js`'s `pdfAnchor`**: called only inside async callbacks in `pdf-render.js`,
-  even though `pdfAnchor` itself is defined in `pdf-zoom-pan.js`, which loads *after*
+  with `pdfAnchor` defined in `pdf-zoom-pan.js`, which currently loads *before*
   `pdf-render.js`. Verified safe because the call never happens at top level.
 - **`selection.js` ↔ `translation.js`**: `selection.js` (loads earlier) forward-calls
   `handleWordOrSelection` (defined in `translation.js`, loads later) from inside its own

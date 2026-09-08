@@ -18,55 +18,43 @@ part of normal task startup.
 
 ## Current handoff
 
-Active agent: none — **the 19-step modularization migration is COMPLETE**
+Active agent: Codex
 Current branch: dev
-Current task status: idle (no migration work remains)
+Current task status: IN PROGRESS — finish RETRO_AUDIT (maintenance only; no migration).
+Baseline commit: 81a2012. Earlier audit fixes were already merged in PR #19; migration
+subsequently completed through PR #47. Do not redo those extractions.
 
-Last completed action: Step 19 — added ARCHITECTURE.md (PR #47), documentation only. This
-  was the final step. index.html is a ~900-line thin shell (markup, styles, 18 ordered
-  `<script src="js/...">` tags, plus exactly one documented still-inline fragment) and
-  ARCHITECTURE.md now records the module map, the classic-script mechanism, load order,
-  cross-module dependencies, resolved plan deviations, known incidents, test coverage, and
-  the content-hash versioning scheme. Final production smoke test after merge: fresh load
-  zero errors, all 18 scripts in correct order, a real synthetic PDF loaded and rendered,
-  service worker active, and a genuine network-level offline reload all confirmed live
-  against https://ai-ebook-reader.pages.dev/. See MIGRATION_STATUS.md's "Migration complete"
-  section for the full step-by-step summary with every PR number.
+Confirmed findings 12–17 are fixed: exact PDF glyph fallback; live/stable PDF audit
+fixture; CDP EOF handling; false first-install update banner; completed selection highlight
+preservation; nested PDF highlight wrappers removed words from flow and used the wrong
+font (79 px measured drift). Minimal CSS preserves flow/font/transforms; regression compares
+every glyph at 100%/250% plus pan. No feature work or migration extraction.
 
-**If a future session is asked to "continue the migration" or "start the next step": there
-is no next step.** Read ARCHITECTURE.md first for the current shape of the codebase, and
-MIGRATION_STATUS.md's "Migration complete" section for how it got there. Any further work on
-this codebase is normal feature/bugfix work, not migration work — follow AGENTS.md's general
-rules (root-cause debugging, module-boundary respect, the two required local test suites
-before every commit, the standard branch/PR/CI/merge/production-verify workflow) rather than
-this file's step-by-step pattern.
+All required local suites PASS: pdf_ux_browser, learning_ux_browser, migration_audit_browser,
+app_shell_versions; both browser_cdp_transport tests PASS. Audit includes cold/hard reload,
+real two-column PDF geometry, AI abort, cleanup, offline PDF render, installability/icons,
+and clean console. Ready for commit/PR; baseline 81a2012; CI/release pending.
+Production client on 9335 prepared by /tmp/retro_upgrade.py for real worker replacement.
 
-**Scope note (historical, kept for the record):** Codex's own audit record said "the user's
-explicit scope ends here — do not resume autonomous migration after this audit," referring to
-the point after the retrospective audit (PR #19). The user then directly and explicitly told
-a Claude Code session (twice) to continue anyway and start Step 6, which was followed and
-carried the migration through to completion here. Recorded in MIGRATION_STATUS.md's
-"IMPORTANT — scope note" section for anyone auditing how this codebase reached its current
-shape.
+Production baseline serves correct baseline module hashes, HTML must-revalidate. Chromium
+reports no installation errors, manifest clean, PNG dimensions correct, active SW.
+User additionally reports PDF offset, stale update and Android install issue; PDF offset is
+confirmed/fixed. Browser/install symptom requested asynchronously; no server install blocker.
 
-Last successful commit: 8c0b986 on dev (merged to main as 6e296db)
-Last PR: #47, merged
-Last CI result: green (after one rerun for the documented Chrome-CDP-startup-timeout flake)
-Last production result: verified live — fresh load zero errors, all 18 js/*.js scripts
-  present in correct order, a real synthetic PDF rendered, service worker active, genuine
-  network-level offline reload loaded the full app correctly
-Uncommitted work: none at time of writing this entry
-IMPORTANT for the next agent (general reference, not migration-specific): read
-  ARCHITECTURE.md before touching any js/*.js file. If you ever DO change one, run
-  `python3 tools/version_app_shell.py` before testing — the versioning scheme requires this
-  or `tests/app_shell_versions.py` will fail CI. And: if migration_audit_browser.py fails in
-  CI with anything from browser_cdp.py's socket layer (not an assertion), that's a transport
-  bug — see MIGRATION_STATUS.md's "CI flake found and fixed during Step 6" before assuming
-  it's a flake and just rerunning; if a job instead times out waiting for Chrome's CDP port
-  before any test even runs, that's the separate, purely infra "ci-chrome-cdp-startup-flake"
-  (also in ARCHITECTURE.md's test coverage section) — safe to rerun once, but treat two-in-a-
-  row on the same PR as worth investigating for real.
-Next required action: none. The migration is done. Wait for the user's next actual request.
+Modified files: index.html, sw.js, js/selection.js, js/pwa-lifecycle.js,
+tests/migration_audit_browser.py, tests/browser_cdp.py, tests/browser_cdp_transport.py,
+tests/pdf_ux_browser.py, tests/learning_ux_browser.py, .github/workflows/ci.yml,
+ARCHITECTURE.md, RETRO_AUDIT.md, MIGRATION_STATUS.md, HANDOFF.md.
+Unrelated untracked debug_pdf.mjs, dups.txt, test_pdf.html, test_pdf.mjs, viewer.css are NOT
+part of this work and must remain untouched/unstaged.
+
+Environment: HTTP server 8765; isolated Chrome 9335 /tmp/reader-retro-final-9335,
+9336 /tmp/reader-retro-final-9336. Use READER_CDP_PORT and NO_PROXY=127.0.0.1,localhost.
+Do not use someone else's browser on 9222.
+
+Exact next action: finish all required tests; commit only relevant files, push dev, PR/main,
+required CI test green, auto-merge; verify production content, actual SW replacement banner,
+full production audit including offline real PDF; mark audit COMPLETE and this handoff idle.
 
 ## Handoff rules
 

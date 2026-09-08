@@ -114,8 +114,10 @@ touch('touchStart',[(1,coords['x'],coords['y'])]);touch('touchMove',[(1,coords['
 check('real scrubber touch matches preview page', 'state.currentIndex===Number(pdfPageRange.value) && !pdfBlockClick')
 # Both fit modes coexist with the free scale.
 c.js("document.getElementById('pdf-fit').value='page';document.getElementById('pdf-fit').dispatchEvent(new Event('change'))");settle()
+c.wait('__pendingRenders===0')
 check('fit page in landscape', "(()=>{const r=els.pages.getBoundingClientRect();return r.height<=els.container.clientHeight && r.width<=els.container.clientWidth})()")
 c.js("document.getElementById('pdf-fit').value='width';document.getElementById('pdf-fit').dispatchEvent(new Event('change'))");settle()
+c.wait('__pendingRenders===0')
 check('fit width restores 100%', "state.pdfScale===1 && els.container.scrollWidth<=els.container.clientWidth+1")
 # Native modal joins Claude's Android Back overlay stack.
 c.js("openCropPreview(cropPdfRegion({left:100,top:100,width:300,height:300}))");settle()

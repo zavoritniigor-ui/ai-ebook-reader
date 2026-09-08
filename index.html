@@ -208,6 +208,11 @@
             font-size: calc(var(--total-scale-factor, 1) * var(--min-font-size, 1) * var(--font-height, 0px));
             transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(calc(1 / var(--min-font-size, 1)));
         }
+        /* Highlight wrappers stay in the PDF item's text flow. Applying item
+           positioning/transforms again shifts every following glyph off the canvas. */
+        .pdf-text-layer .word-visited, .pdf-text-layer .sel-word {
+            position: static; font: inherit; transform: none;
+        }
         .pdf-text-layer .markedContent { display: contents; }
         .mode-translate .pdf-text-layer span { pointer-events: auto; cursor: text; }
 
@@ -891,7 +896,7 @@
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
     <script src="js/tts.js?v=acafd96cc392"></script>
-    <script src="js/selection.js?v=f1bc170d29d8"></script>
+    <script src="js/selection.js?v=673c404a303c"></script>
     <script src="js/navigation.js?v=85973c0a546d"></script>
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
     <script src="js/ui-tooltip.js?v=24fafda1df3c"></script>
@@ -905,6 +910,6 @@
     <script src="js/formats.js?v=7fdd67290f8e"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/main.js?v=6efddd5a8ba7"></script>
-    <script src="js/pwa-lifecycle.js?v=a6f5fd747625"></script>
+    <script src="js/pwa-lifecycle.js?v=b9824003afbb"></script>
 </body>
 </html>
