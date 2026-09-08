@@ -14,7 +14,7 @@ Step 6 — tts.js: DONE
 Step 7 — translation.js: DONE
 Step 8 — grammar-svo.js: DONE (carried startAiTask, deferred from Step 3)
 Step 9 — navigation.js: DONE
-Step 10 — formats.js: PENDING
+Step 10 — formats.js: DONE (also folded buildToc into js/navigation.js)
 Step 11 — pdf-zoom-pan.js: PENDING
 Step 12 — pdf-ink.js: PENDING
 Step 13 — pdf-crop.js: PENDING
@@ -25,18 +25,17 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 9 — navigation.js
-Last successful PR: #27 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/27)
-Last successful commit: 4982a9b (merged to main)
+Last successful step: Step 10 — formats.js
+Last successful PR: #29 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/29)
+Last successful commit: 0a6c1b7 (merged to main)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 9 js/*.js scripts present in the correct classic-script order
-  including the new navigation.js, every extracted function present as a real global and
-  exercised live (paginated a real synthetic text block and drove goNext()/goPrev() through it,
-  confirming state.pageInChapter actually advances/retreats), AND a genuine network-level
-  offline reload (CDP Network.emulateNetworkConditions offline:true) that still loaded the full
-  app correctly from cache (readyState complete, goNext defined, correct title, all 9 scripts
-  present).
+  load (zero console errors), all 10 js/*.js scripts present in the correct classic-script order
+  including the new formats.js, every extracted function present as a real global and exercised
+  live (loaded a real synthetic TXT file through initTxt() end to end, confirming correct
+  pagination and TOC population via buildToc()), AND a genuine network-level offline reload
+  (CDP Network.emulateNetworkConditions offline:true) that still loaded the full app correctly
+  from cache (readyState complete, initTxt defined, correct title, all 10 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -324,16 +323,43 @@ small function, no entanglement) — earmarked to fold into js/navigation.js as 
 addendum during Step 10 (formats.js), since Step 10 already touches its three call sites
 (the epub/txt/doc chapter loaders) directly.
 
-## Step 10 next
+## Step 10 — formats.js: DONE (PR #29)
 
-formats.js is the next extraction: runArchiveGuard, initEpub, loadEpubChapter, initRichDoc,
-splitIntoChapters, renderDocChapter, fb2ToHtml, rtfToHtml, initTxt, renderTxtPage (see
-MODULARIZATION_PLAN.md's map for where these were originally, though line numbers are long
-stale — re-grep fresh). Also fold in `buildToc` (see the deviation note above) as a small
-addendum to js/navigation.js while this step is already reading the exact code that calls it.
-Re-grep fresh line numbers before each cut — everything shifts after every prior step's
-edits. Preserve classic execution order; after changing any js/*.js file, run
-`python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
+Extracted one clean, fully contiguous block into js/formats.js, loaded right after
+js/pdf-render.js (the exact position this content already occupied — it was the entire first
+stretch of that reopened script block, same collapse-the-tag pattern Steps 8/9 already used):
+runArchiveGuard, initEpub/loadEpubChapter, initRichDoc/splitIntoChapters/renderDocChapter,
+fb2ToHtml, rtfToHtml, initTxt/renderTxtPage.
+
+Also completed the gap flagged in Step 9's deviation note: `buildToc` folded into
+js/navigation.js (append only, no new `<script>` tag) since it's a small, format-agnostic
+TOC-list builder shared by all three loaders, matching MODULARIZATION_PLAN.md's original
+classification (unlike the footer-menu functions in that same plan entry, which are genuinely
+tangled with ui-tooltip.js material and still await Step 15's own reading).
+
+No forward-reference risk: only function declarations in the moved range, all invoked later
+when a user actually opens a book of that format. All local suites green. Production verified
+with the usual battery, including a real synthetic TXT file loaded end to end through
+initTxt() live against production (correct pagination and TOC population).
+
+## Step 11 next
+
+pdf-zoom-pan.js is the next extraction. Per Step 4's final recon (section above) and
+MODULARIZATION_PLAN.md's original map (line numbers there are long stale — re-grep fresh):
+rerenderPdfAtCurrentZoom, rememberPdfFocus, pdfBaseScale, pdfAnchor, restorePdfAnchor,
+layoutPdfZoom, applyPdfZoom, persistPdfZoom, setPdfScale, cancelPdfRender, cancelPdfInteraction,
+pinchMetrics, paintPdfGesture, endPdfPointer, the pdfPointers Map and its pointer/wheel
+listeners, the pdfBlockClick-suppression capture-phase click listener, and the `#pdf-fit`
+onchange handler — all confirmed 100% pdf-zoom-pan.js content back during Step 4's recon (see
+that section for the exact reasoning: two pieces that looked "mixed" from their section-title
+comments alone turned out to have zero selection-related material once actually read).
+
+This step's own window-resize listener already lives in js/navigation.js (Step 9) and calls
+into cancelPdfInteraction/renderPdfPage from there as a forward reference inside its callback
+— once pdf-zoom-pan.js lands, that reference resolves to an earlier-loading file instead of a
+later one, which only improves the existing safe pattern, nothing to fix. Re-grep fresh line
+numbers before each cut. Preserve classic execution order; after changing any js/*.js file,
+run `python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
 (`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the same kind of
 non-contiguous interleaving Steps 7-9 hit; read full function bodies before assuming a piece
 belongs elsewhere (mechanism-correction lesson from Step 4).
