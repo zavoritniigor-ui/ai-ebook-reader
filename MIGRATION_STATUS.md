@@ -22,24 +22,28 @@ Step 14 — dictation.js: DONE
 Step 15 — ui-tooltip.js: DONE
 Step 16 — onboarding.js: DONE
 Step 17 — pwa-lifecycle.js: DONE
-Step 18 — main.js + remove old inline code: PENDING
+Step 18 — main.js + remove old inline code: DONE (index.html is now a thin shell)
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 17 — pwa-lifecycle.js
-Last successful PR: #43 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/43)
-Last successful commit: b0e0f7f (merged to main)
+Last successful step: Step 18 — main.js + remove old inline code
+Last successful PR: #45 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/45)
+Last successful commit: 03c1af0 (merged to main)
 Last CI result: green
-Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — EXTRA-thorough
-  given this step's flagged risk: fresh cache-disabled load (zero console errors, body.inert
-  false after load), all 17 js/*.js scripts present in the correct classic-script order
-  including the new pwa-lifecycle.js, every extracted function present as a real global, a
-  real synthetic PDF loaded then genuinely cancelled by a real `visibilitychange` 'hidden'
-  event dispatch (not just a direct function call), the overlay back-stack correctly counting
-  an open panel and dropping to zero once closed, showToast()/showUpdateBanner() creating real
-  visible DOM, service worker confirmed active, AND a genuine network-level offline reload
-  (CDP Network.emulateNetworkConditions offline:true) that still loaded the full app correctly
-  from cache (readyState complete, stopBackgroundActivity defined, correct title, all 17
+Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
+  load (zero console errors), all 18 js/*.js scripts present in the correct classic-script order
+  including the new main.js, every piece of wiring confirmed correct (uiLang/targetLang/theme
+  reflecting stored preferences, mic/prev/next buttons wired to the right real functions,
+  translateBtn handler present), AND a REAL 'change' event dispatched on the file-upload input
+  with a real File, correctly running the whole format-detection-and-load pipeline end to end
+  (state.format/bookKey/rendered page text all correct) live against production, plus the usual
+  genuine network-level offline reload (CDP Network.emulateNetworkConditions offline:true) that
+  still loaded the full app correctly from cache (readyState complete, correct title, all 18
   scripts present).
+
+**index.html is now a thin shell**: markup, styles, and eighteen ordered `<script src="js/...">`
+tags, plus exactly one still-inline fragment (the documented lang-detect.js voice-loading
+trigger, which must stay inline for the incident-fix reason recorded in the "Incident" section
+below). Every other line of application logic now lives in a named module under js/.
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -501,41 +505,78 @@ false after a genuine page load - all live against production, in addition to th
 offline-reload check. All local suites green, including the background-abort and offline/SW
 cases in migration_audit_browser.py.
 
-## Step 18 next — main.js + remove old inline code (final assembly step, budget extra care)
+## Step 18 — main.js + remove old inline code: DONE (PR #45)
 
-After Step 17, index.html's only remaining INLINE (non-`<script src>`) code is these
-scattered bootstrap/wiring fragments, in document order (re-verify line numbers fresh, this
-is a snapshot from just after Step 17 landed):
+Consolidated the five scattered inline fragments identified below into one classic
+`<script src="js/main.js">`, loaded right after js/onboarding.js and right before
+js/pwa-lifecycle.js: general reader-settings restore/onchange wiring (uiLang/theme/
+targetLang/voiceSelect), the "Learn mode" toggle, Ask-panel mic/send wiring, the file-upload
+format-detection dispatcher (exactly the cross-module wiring MODULARIZATION_PLAN.md names as
+main.js's job), zoom/theme-select/prev/next button wiring, and the startup bootstrap calls
+(updateDictationUI/applyI18n) that must run last. One now-orphaned comment (describing
+word-detection code that had already moved to js/selection.js back in Step 4) was dropped
+rather than carried forward with no code attached. The lang-detect.js voice-loading trigger
+was correctly left exactly where it's always been — nothing to do with main.js's concerns.
 
-1. Right after js/core.js's tag: UI-language select wiring, theme/"Вивчення" mode restore,
-   `els.translateBtn.onclick` (mode toggle).
-2. The `if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }` trigger -
-   MUST stay exactly where it is, right after js/lang-detect.js's tag (see the "Incident"
-   section above - this is the exact bug that already happened once).
-3. A short fragment right after js/tts.js's tag (re-check what's actually there now).
-4. The file-upload bootstrap: `els.upload.addEventListener('change', async (e) => {...})` -
-   the actual "open a book" dispatcher that calls into initEpub/initPdf/initTxt/initRichDoc
-   (js/formats.js, js/pdf-render.js) based on file extension. This is explicitly named in
-   MODULARIZATION_PLAN.md as main.js's own cross-module wiring responsibility.
-5. zoom-in/zoom-out/theme-select/prev-btn/next-btn onclick wiring (right after
-   js/formats.js's tag) - never conclusively assigned to any of Steps 6-17; decide here
-   whether this is main.js material or deserves its own small home.
-6. `updateDictationUI(); document.documentElement.lang = state.uiLang; applyI18n();` - the
-   startup bootstrap calls, deliberately left inline throughout Steps 14-17 because they must
-   run after every relevant module has loaded. These belong at the very END of main.js's own
-   content, not moved earlier.
+The real risk here was ordering, not cut-and-paste: main.js's tag can't load early, because
+applyI18n() makes top-level immediate calls into functions from js/tts.js, js/navigation.js
+and js/dictation.js. A first attempt placed the tag right after core.js (matching where the
+FIRST fragment used to sit) and was caught and corrected — by re-deriving the ordering
+constraint, not by a failed test — before any test ran. Final position: exactly where the
+bootstrap-call fragment already was.
 
-Plus: `state`/`els` construction and everything else already living in js/core.js from Step 1
-- re-read js/core.js's own header comment and MODULARIZATION_PLAN.md's original main.js
-description ("bootstrap: import усіх модулів у правильному порядку, крос-модульний wiring")
-before deciding exactly what "removing the old inline code" means at this stage: there may be
-nothing left to literally delete from index.html beyond collapsing these fragments into
-js/main.js's own `<script src>` tag, since by now nearly everything else already has a real
-module home. This step is explicitly flagged as needing extra care and re-reading rather than
-being rushed through the same mechanical pattern as Steps 1-17 - the risk here is architectural
-(getting the final bootstrap order right) rather than a simple cut-and-paste. Preserve classic
-execution order above all; after changing any js/*.js file, run
-`python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
-(`tests/app_shell_versions.py` fails CI on drift otherwise). Run the full local suite plus a
-full production smoke test (including the offline reload) before calling this step done, and
-update ARCHITECTURE.md as part of finishing it if that hasn't already been started in Step 19.
+Verified extensively beyond the usual battery given the step's importance: initial UI state
+(language/theme/target-language) confirmed reflecting stored preferences, the Learn-mode
+toggle flips state both ways, zoom buttons actually change state.fontSize, mic/prev/next
+buttons wired to the correct real functions, and — the most direct proof the reordering is
+correct — a REAL 'change' event dispatched on the file-upload input with a real File
+correctly ran the whole format-detection pipeline end to end, live both locally and against
+production. All local suites green, including "classic execution order and no duplicate
+scripts" and three "cold/hard reload" cases in migration_audit_browser.py that would have
+surfaced a ReferenceError from a bad ordering immediately.
+
+**index.html is now a thin shell**: markup, styles, and eighteen ordered `<script src>` tags,
+plus exactly one still-inline fragment (the lang-detect.js voice trigger, staying inline for
+the Step 1-3 incident-fix reason recorded above).
+
+## Step 19 next — final ARCHITECTURE.md (documentation only, much lighter than the extraction
+steps)
+
+ARCHITECTURE.md does not exist yet in the repo — this step creates it from scratch. Per
+AGENTS.md's own stated purpose ("ensure that future agents can locate the correct code
+without scanning the entire application"), it should cover:
+
+- The module map: all 18 js/*.js files, one line each, naming what each one owns (this
+  MIGRATION_STATUS.md file already has that information scattered across 18 "Step N — X.js:
+  DONE" sections above — consolidate it, don't re-derive it from scratch).
+- The classic-script-not-ES-module mechanism and why (see js/core.js's own header comment
+  and the "Mechanism correction" section above for the canonical explanation) - this is the
+  single most important fact a future agent needs before touching any js/*.js file.
+- The exact script load order in index.html and why it's fixed (the lang-detect.js voice
+  trigger's position, and main.js/pwa-lifecycle.js needing to load last - both documented
+  above under their own step sections).
+- Cross-module dependency notes worth calling out explicitly: js/translation.js's
+  handleWordOrSelection is forward-called by js/selection.js; js/pdf-crop.js's checkExerciseImage
+  calls js/ai-client.js's callAIVision; js/pwa-lifecycle.js's MutationObserver references
+  js/pdf-crop.js's cropDialog directly (only safe because pwa-lifecycle.js loads last); the
+  voice-selection cluster living in js/core.js rather than js/tts.js (Step 1's deliberate
+  choice, kept ever since).
+- Known remaining scope notes still open: the footer-menu functions
+  (openFooterMenu/closeFooterMenu/enterMobileFullScreenIfNeeded) that Step 9's deviation left
+  in js/ui-tooltip.js rather than js/navigation.js (see "Deviation from
+  MODULARIZATION_PLAN.md's navigation.js list" above) — Step 15 resolved this by keeping them
+  in ui-tooltip.js for good, so this is settled, not still open; note it as a resolved
+  deviation, not a TODO.
+- Test coverage map: which of pdf_ux_browser.py / learning_ux_browser.py /
+  migration_audit_browser.py / app_shell_versions.py covers what, and the two known CI-only
+  flakes documented above (the fixed browser_cdp.py WebSocket bug from Step 6, and the
+  ongoing-but-harmless Chrome-CDP-startup-timeout infra flake — see the session memory note
+  "ci-chrome-cdp-startup-flake").
+- The content-hash versioning mechanism (tools/version_app_shell.py / sw.js's APP_SHELL /
+  tests/app_shell_versions.py) and that it must be rerun after touching any js/*.js file.
+
+This step is documentation-only — no code changes, no js/*.js edits, no new tests. Still run
+the two required local suites once as a final sanity check before considering the whole
+migration complete (nothing should have changed since Step 18's own verification, but confirm
+rather than assume). Follow the same commit/push/PR/CI/merge workflow as every other step.
+When this lands, the 19-step modularization migration is complete.
