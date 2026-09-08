@@ -307,32 +307,44 @@ function updateSourceLang() {
     els.pages.lang = state.sourceLang.slice(0, 2);
 }
 function pageLang() { return state.sourceLang || 'en-US'; }
-// Мова КОНКРЕТНОГО тапнутого слова чи виділеного фрагмента. Якщо він є всередині
-// відомого речення-контексту (state.ctxSentence) — шукаємо його точну позицію там і
-// беремо мову саме того відрізка (найточніше: "car" у "Il reste car il pleut" і
-// "car" у "I love my car" отримають РІЗНУ мову, хоч слово те саме). Якщо контексту
-// немає або фрагмент довший за нього — фрагмент говорить сам за себе.
+// Мова КОНКРЕТНОГО фрагмента в межах ЯВНО переданого контексту (речення чи ширше):
+// шукаємо точну позицію фрагмента в контексті й беремо мову САМЕ ТОГО відрізка за
+// найбільшим перекриттям (найточніше: "car" у "Il reste car il pleut" і "car" у "I
+// love my car" отримають РІЗНУ мову, хоч слово те саме). Це і є те, чого не дає
+// detectLang(context) — детект мови ВСЬОГО контексту "за більшістю символів": для
+// двомовного речення з перекладом у дужках ("The house is big (La maison est
+// grande)."), де переклад довший за оригінал, detectLang(context) поверне мову
+// ПЕРЕКЛАДУ, хоча користувача цікавить мова САМЕ виділеного фрагмента. Повертає
+// 'fr'/'en'/код кирилиці, або null — якщо фрагмент не знайдено чи контексту нема
+// (виклик має тоді сам вирішити запасний варіант, напр. detectLang(fragment)).
+function fragmentLangInContext(fragment, context) {
+    const clean = (fragment || '').trim();
+    if (!clean || !context || context.length < clean.length) return null;
+    const idx = context.toLowerCase().indexOf(clean.toLowerCase());
+    if (idx === -1) return null;
+    const cyr = cyrillicLang(context);
+    if (cyr) return cyr;
+    const segs = buildLanguageSegments(context, pageLang().slice(0, 2));
+    const from = idx, to = idx + clean.length;
+    let pos = 0, best = null, bestOverlap = 0;
+    for (const s of segs) {
+        const segEnd = pos + s.text.length;
+        const overlap = Math.min(segEnd, to) - Math.max(pos, from);
+        if (overlap > bestOverlap) { bestOverlap = overlap; best = s.lang; }
+        pos = segEnd;
+    }
+    return best;
+}
+// Мова КОНКРЕТНОГО тапнутого слова чи виділеного фрагмента, у контексті речення,
+// в якому воно стоїть (state.ctxSentence) — тонкий виклик fragmentLangInContext
+// вище. Якщо контексту немає, фрагмент довший за нього, чи позицію не знайдено —
+// фрагмент говорить сам за себе (detectLang).
 function langForText(text) {
     const clean = text.trim();
     if (!clean) return pageLang();
-    const ctx = state.ctxSentence;
-    if (ctx && ctx.length >= clean.length) {
-        const idx = ctx.toLowerCase().indexOf(clean.toLowerCase());
-        if (idx !== -1) {
-            const cyr = cyrillicLang(ctx);
-            if (cyr) return cyr;
-            const segs = buildLanguageSegments(ctx, pageLang().slice(0, 2));
-            const from = idx, to = idx + clean.length;
-            let pos = 0, best = null, bestOverlap = 0;
-            for (const s of segs) {
-                const segEnd = pos + s.text.length;
-                const overlap = Math.min(segEnd, to) - Math.max(pos, from);
-                if (overlap > bestOverlap) { bestOverlap = overlap; best = s.lang; }
-                pos = segEnd;
-            }
-            if (best) return best === 'fr' ? 'fr-FR' : 'en-US';
-        }
-    }
+    const found = fragmentLangInContext(clean, state.ctxSentence);
+    if (found === 'fr' || found === 'en') return found === 'fr' ? 'fr-FR' : 'en-US';
+    if (found) return found; // код кирилиці (uk-UA/ru-RU)
     return detectLang(clean);
 }
 function voiceForLangCode(lang2) {
