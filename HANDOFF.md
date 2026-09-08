@@ -14,23 +14,26 @@ Before starting or resuming work, every agent must read:
 ## Current handoff
 
 Active agent: Claude Code
-Current step: Step 18 — main.js + remove old inline code (final assembly, budget extra care)
+Current step: Step 19 — final ARCHITECTURE.md (documentation only, closes out the migration)
 Current branch: dev
 Current task status: active
 
-Last completed action: Step 17 — extracted js/pwa-lifecycle.js (PR #43): the entire
-  remainder of the document — isStandalonePwa, stopBackgroundActivity, persistCriticalState,
-  exitApp/showToast, the Android-Back overlay stack (OVERLAY_LAYERS/topOpenOverlay/
-  countOpenOverlays/closeTopOverlay/syncOverlayHistory), showUpdateBanner, SW registration/
-  update wiring, and the body.inert-until-'load' gate. Loaded LAST, after every other classic
-  script — this matters: its MutationObserver setup references js/pdf-crop.js's `cropDialog`
-  directly in a top-level array literal (not inside a callback), which only works because
-  this file's tag stays at the very end. Extra production verification given the flagged
-  risk: a real `visibilitychange` 'hidden' event (not a direct function call) genuinely
-  cancelled an in-progress PDF render, the overlay stack correctly counted/dropped, showToast/
-  showUpdateBanner created real DOM, SW confirmed active, plus the standard offline-reload
-  check. All local suites green, including the background-abort and offline/SW cases. See
-  MIGRATION_STATUS.md's "Step 17 — pwa-lifecycle.js: DONE" section for full detail.
+Last completed action: Step 18 — extracted js/main.js (PR #45), the final assembly step:
+  consolidated five scattered inline fragments (reader-settings restore/wiring, Learn-mode
+  toggle, Ask-panel mic/send wiring, the file-upload format-detection dispatcher, zoom/theme/
+  prev-next button wiring, and the startup bootstrap calls that must run last) into one
+  <script src="js/main.js">. The real risk was ordering, not cut-and-paste: caught and fixed
+  a wrong tag position (right after core.js, matching where the FIRST fragment used to sit)
+  before any test ran, by re-deriving that applyI18n() needs js/tts.js/js/navigation.js/
+  js/dictation.js already loaded. Final position: right before js/pwa-lifecycle.js's tag,
+  exactly where the bootstrap-call fragment already was. Verified extensively: a REAL
+  'change' event dispatched on the file-upload input with a real File correctly ran the
+  whole format-detection pipeline end to end, live both locally and against production, plus
+  all the usual UI-wiring checks. All local suites green including three "cold/hard reload"
+  cases that would have caught a bad ordering immediately. **index.html is now a thin shell**
+  — markup, styles, 18 ordered `<script src>` tags, plus exactly one still-inline fragment
+  (the lang-detect.js voice trigger, staying inline for the Step 1-3 incident-fix reason).
+  See MIGRATION_STATUS.md's "Step 18 — main.js: DONE" section for full detail.
 
 **Scope note (read this):** Codex's own audit record said "the user's explicit scope ends
 here — do not resume autonomous migration after this audit." The user then directly and
@@ -39,17 +42,17 @@ repeated instruction was followed and is recorded as intentional in MIGRATION_ST
 "IMPORTANT — scope note" section. If you are resuming later and the user hasn't otherwise
 confirmed this, it's worth a quick check rather than assuming silently either way.
 
-Last successful commit: b0e0f7f on dev (merged to main)
-Last PR: #43, merged
+Last successful commit: 03c1af0 on dev (merged to main)
+Last PR: #45, merged
 Last CI result: green
-Last production result: verified live, extra-thoroughly given Step 17's flagged risk — fresh
-  load zero errors, body.inert false after load, all 17 js/*.js scripts present in correct
-  order, every pwa-lifecycle.js function present as a global, a real visibilitychange event
-  genuinely cancelling an in-progress PDF render, overlay stack/toast/banner/SW all confirmed
-  live, genuine network-level offline reload loaded the full app correctly
+Last production result: verified live — fresh load zero errors, all 18 js/*.js scripts
+  present in correct order, all main.js wiring confirmed correct, a REAL dispatched file-
+  upload 'change' event ran the format-detection pipeline end to end, genuine network-level
+  offline reload loaded the full app correctly
 Uncommitted work: none at time of writing this entry
 IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" section (four
-  learned lessons) before extracting. Also: after changing any js/*.js file, run
+  learned lessons) — still worth reading even for a docs-only step, for context. Also: if this
+  session ever needs to touch a js/*.js file again for any reason, run
   `python3 tools/version_app_shell.py` before testing — the versioning scheme requires this or
   `tests/app_shell_versions.py` will fail CI. And: if migration_audit_browser.py fails in CI
   with anything from browser_cdp.py's socket layer (not an assertion), that's a transport bug —
@@ -57,14 +60,11 @@ IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" 
   flake and just rerunning; if a job instead times out waiting for Chrome's CDP port before any
   test even runs, that's the separate, purely infra "ci-chrome-cdp-startup-flake" — safe to
   rerun once, but treat two-in-a-row on the same PR as worth investigating for real.
-Next required action: Step 18 (main.js + remove old inline code) — the final assembly step.
-  **Budget extra care and re-reading rather than the same mechanical cut-and-paste pattern as
-  Steps 1-17.** See MIGRATION_STATUS.md's "Step 18 next" section for the concrete, freshly-
-  verified inventory of every scrap of inline code still left in index.html after Step 17
-  (the file-upload dispatcher, the fragile lang-detect.js voice-loading trigger that must NOT
-  move, the startup bootstrap calls that must run last, and a few small onclick-wiring
-  fragments never conclusively assigned to any earlier step). Re-grep fresh line numbers
-  first — don't trust that inventory's line numbers, only its content list.
+Next required action: Step 19 (final ARCHITECTURE.md) — documentation only, no code changes.
+  See MIGRATION_STATUS.md's "Step 19 next" section for exactly what it needs to cover (module
+  map, the classic-script mechanism, load order, cross-module dependency notes, test coverage
+  map, the content-hash versioning mechanism). This is the LAST step of the 19-step
+  modularization migration — when it lands, the whole migration is complete.
 
 ## Handoff rules
 
