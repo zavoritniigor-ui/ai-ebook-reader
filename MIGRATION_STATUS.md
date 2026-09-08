@@ -21,22 +21,25 @@ Step 13 — pdf-crop.js: DONE
 Step 14 — dictation.js: DONE
 Step 15 — ui-tooltip.js: DONE
 Step 16 — onboarding.js: DONE
-Step 17 — pwa-lifecycle.js: PENDING
+Step 17 — pwa-lifecycle.js: DONE
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 16 — onboarding.js
-Last successful PR: #41 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/41)
-Last successful commit: c768530 (merged to main)
+Last successful step: Step 17 — pwa-lifecycle.js
+Last successful PR: #43 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/43)
+Last successful commit: b0e0f7f (merged to main)
 Last CI result: green
-Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 16 js/*.js scripts present in the correct classic-script order
-  including the new onboarding.js, every extracted function present as a real global and
-  exercised live (rememberOnboarding()/scheduleReaderOnboarding()/stopOnboarding() called
-  directly, confirming real onboardingState persistence and timer scheduling), AND a genuine
-  network-level offline reload (CDP Network.emulateNetworkConditions offline:true) that still
-  loaded the full app correctly from cache (readyState complete, scheduleReaderOnboarding
-  defined, correct title, all 16 scripts present).
+Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — EXTRA-thorough
+  given this step's flagged risk: fresh cache-disabled load (zero console errors, body.inert
+  false after load), all 17 js/*.js scripts present in the correct classic-script order
+  including the new pwa-lifecycle.js, every extracted function present as a real global, a
+  real synthetic PDF loaded then genuinely cancelled by a real `visibilitychange` 'hidden'
+  event dispatch (not just a direct function call), the overlay back-stack correctly counting
+  an open panel and dropping to zero once closed, showToast()/showUpdateBanner() creating real
+  visible DOM, service worker confirmed active, AND a genuine network-level offline reload
+  (CDP Network.emulateNetworkConditions offline:true) that still loaded the full app correctly
+  from cache (readyState complete, stopBackgroundActivity defined, correct title, all 17
+  scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -467,28 +470,72 @@ verified with the usual battery, including rememberOnboarding()/scheduleReaderOn
 stopOnboarding() called directly live against production, confirming real state persistence
 and timer scheduling.
 
-## Step 17 next
+## Step 17 — pwa-lifecycle.js: DONE (PR #43)
 
-pwa-lifecycle.js is the next extraction: isStandalonePwa, stopBackgroundActivity,
-persistCriticalState, exitApp, showToast, topOpenOverlay, countOpenOverlays, closeTopOverlay,
-syncOverlayHistory, showUpdateBanner, plus OVERLAY_LAYERS and swRegistration (see
-MODULARIZATION_PLAN.md's map — line numbers long stale, re-grep fresh). Starts right where
-onboarding.js's old piece ended, at the "PWA: ЖИТТЄВИЙ ЦИКЛ ЗАСТОСУНКУ" header comment.
+Extracted the entire remainder of the document (everything from the "PWA: ЖИТТЄВИЙ ЦИКЛ
+ЗАСТОСУНКУ" header through the final `window.addEventListener('load', ...)` line, right up
+against the closing `</script></body></html>`) into js/pwa-lifecycle.js, loaded last, after
+js/onboarding.js: isStandalonePwa, stopBackgroundActivity, persistCriticalState, exitApp,
+showToast, the Android-Back overlay stack (OVERLAY_LAYERS/topOpenOverlay/countOpenOverlays/
+closeTopOverlay/syncOverlayHistory), showUpdateBanner, the service-worker registration/
+update-check/controllerchange wiring (swRegistration), and the retrospective audit's
+body.inert-until-'load' gate.
 
-**This step needs extra care per AGENTS.md/CLAUDE.md's own list of risk-sensitive areas**
-(PWA lifecycle, service worker, persistence are named explicitly). stopBackgroundActivity in
-particular is a hub function already referenced by name throughout this migration (it calls
-cancelDragSelection/cancelPdfInteraction/cancelPdfRender/cancelAsyncTasks/stopGlobalTTS/
-stopTooltipSpeech and resets isPanning/inkDrawing/inkCurrent/regionStart across nearly every
-already-extracted module) — read its full current body fresh before moving it, don't assume
-it still matches any description from earlier in this file. swRegistration is also almost
-certainly read by the service-worker-update-banner logic and possibly by main.js's own SW
-registration call (Step 18) - check both directions of that reference before cutting. Test
-extra thoroughly: run the full local suite, and do a real production smoke test that
-specifically covers backgrounding (visibilitychange), the update banner, and a genuine
-network-level offline reload, not just the usual battery. Re-grep fresh line numbers before
-each cut. Preserve classic execution order; after changing any js/*.js file, run
+Treated as higher-risk per AGENTS.md/CLAUDE.md, with correspondingly extra verification (see
+below). One genuine forward-reference issue was found and confirmed safe rather than assumed:
+the MutationObserver setup directly references `cropDialog` (js/pdf-crop.js) in a top-level
+array literal, not inside a callback - this only works because pwa-lifecycle.js's tag stays
+at the very end of the document, after every other classic `<script>`, so `cropDialog`
+already exists by the time this line runs. This would NOT be safe if this file's tag were
+ever moved earlier. Confirmed both directions of the two other cross-file references:
+js/dictation.js already forward-calls showToast() (defined here) only from inside its own
+recognition.onerror/onend callbacks, and the inline `onclick="exitApp()"` button attribute
+resolves as a plain global at click time - both pre-existing deferred patterns.
+
+Extra production verification beyond the usual battery: a real synthetic PDF was loaded then
+genuinely cancelled by an actual `visibilitychange` 'hidden' event dispatch (not just calling
+stopBackgroundActivity() directly), the overlay stack was confirmed to count an open panel
+and drop to zero once closed, showToast()/showUpdateBanner() were confirmed to create real
+visible DOM, the service worker was confirmed active, and document.body.inert was confirmed
+false after a genuine page load - all live against production, in addition to the standard
+offline-reload check. All local suites green, including the background-abort and offline/SW
+cases in migration_audit_browser.py.
+
+## Step 18 next — main.js + remove old inline code (final assembly step, budget extra care)
+
+After Step 17, index.html's only remaining INLINE (non-`<script src>`) code is these
+scattered bootstrap/wiring fragments, in document order (re-verify line numbers fresh, this
+is a snapshot from just after Step 17 landed):
+
+1. Right after js/core.js's tag: UI-language select wiring, theme/"Вивчення" mode restore,
+   `els.translateBtn.onclick` (mode toggle).
+2. The `if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }` trigger -
+   MUST stay exactly where it is, right after js/lang-detect.js's tag (see the "Incident"
+   section above - this is the exact bug that already happened once).
+3. A short fragment right after js/tts.js's tag (re-check what's actually there now).
+4. The file-upload bootstrap: `els.upload.addEventListener('change', async (e) => {...})` -
+   the actual "open a book" dispatcher that calls into initEpub/initPdf/initTxt/initRichDoc
+   (js/formats.js, js/pdf-render.js) based on file extension. This is explicitly named in
+   MODULARIZATION_PLAN.md as main.js's own cross-module wiring responsibility.
+5. zoom-in/zoom-out/theme-select/prev-btn/next-btn onclick wiring (right after
+   js/formats.js's tag) - never conclusively assigned to any of Steps 6-17; decide here
+   whether this is main.js material or deserves its own small home.
+6. `updateDictationUI(); document.documentElement.lang = state.uiLang; applyI18n();` - the
+   startup bootstrap calls, deliberately left inline throughout Steps 14-17 because they must
+   run after every relevant module has loaded. These belong at the very END of main.js's own
+   content, not moved earlier.
+
+Plus: `state`/`els` construction and everything else already living in js/core.js from Step 1
+- re-read js/core.js's own header comment and MODULARIZATION_PLAN.md's original main.js
+description ("bootstrap: import усіх модулів у правильному порядку, крос-модульний wiring")
+before deciding exactly what "removing the old inline code" means at this stage: there may be
+nothing left to literally delete from index.html beyond collapsing these fragments into
+js/main.js's own `<script src>` tag, since by now nearly everything else already has a real
+module home. This step is explicitly flagged as needing extra care and re-reading rather than
+being rushed through the same mechanical pattern as Steps 1-17 - the risk here is architectural
+(getting the final bootstrap order right) rather than a simple cut-and-paste. Preserve classic
+execution order above all; after changing any js/*.js file, run
 `python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
-(`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the same kind of
-non-contiguous interleaving Steps 7-9 hit; read full function bodies before assuming a piece
-belongs elsewhere (mechanism-correction lesson from Step 4).
+(`tests/app_shell_versions.py` fails CI on drift otherwise). Run the full local suite plus a
+full production smoke test (including the offline reload) before calling this step done, and
+update ARCHITECTURE.md as part of finishing it if that hasn't already been started in Step 19.
