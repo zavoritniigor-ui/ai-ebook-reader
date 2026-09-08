@@ -29,6 +29,15 @@ const FR_DIACRITIC_RE = /[àâäéèêëïîôöùûüçœæ]/i;
 // такі слова нехай успадковують мову сусіднього відрізка (див. buildLanguageSegments).
 const FR_WORDS = new Set(('le la les un une des du de et est sont était étaient dans pour avec sans sur sous qui que quoi ce cette ces cet au aux par plus très tu je vous nous ils elles il elle ne pas sa ses leur leurs mais donc si comme tout tous toute toutes bien aussi encore déjà chez vers entre où quand comment pourquoi alors toujours jamais peu beaucoup assez trop chaque quel quelle quels quelles celui celle ceux celles voici voilà afin lorsque puisque malgré parmi depuis pendant être avoir fait faire cela ça ici là oui non').split(' '));
 const EN_WORDS = new Set(('the and is are was were of for with without off that this these those to at by from you we they he she it not his her their its but so as all very also still about into over than then i will would can could should must shall do does did have has had been being there here when where why how because although though while during each every which whose who whom what no yes hello').split(' '));
+// Поза службовими словами — невелика, свідомо КОРОТКА добірка звичайної лексики,
+// яка в навчальних (двомовних) текстах трапляється постійно і при цьому НІКОЛИ
+// не є двозначною (на відміну від "restaurant"/"important"/"menu" — тих самих
+// когнатів в обох мовах, які нижче розпізнаються через контекст, а не список).
+// bonjour/merci/maison — базова лексика будь-якого підручника французької;
+// means — англійське дієслово саме для пояснень-глос на кшталт "X means Y",
+// які й є типовим способом дати переклад БЕЗ дужок.
+const FR_COMMON_WORDS = new Set('bonjour bonsoir merci salut maison madame monsieur mademoiselle'.split(' '));
+const EN_COMMON_WORDS = new Set('means'.split(' '));
 // Слабкі орфографічні ознаки (закінчення/буквосполучення) — самі по собі НЕ
 // достатні, щоб вважати слово "певним" (див. STRONG_MIN нижче), лише додатковий бал.
 const FR_SHAPE_RE = /(eaux?$|eux$|oir$|oire$|aient$|ais$|ez$|ent$|ique$|té$|tion$|aison$|ance$|ence$|euse$|ette$|eur$|ère$|ien$|ienne$|ois$|elle$|ille|ouill|jour|oux$|ault$|gn[aeiou]|^qu[aeiou])/i;
@@ -42,8 +51,20 @@ function scoreWord(w) {
     if (FR_ELISION_RE.test(w)) fr += 5;
     if (FR_DIACRITIC_RE.test(w)) fr += 5;
     const core = w.replace(FR_ELISION_RE, '');
-    if (FR_WORDS.has(w) || (core !== w && FR_WORDS.has(core))) fr += 4;
-    if (EN_WORDS.has(w)) en += 4;
+    const isFrWord = x => FR_WORDS.has(x) || FR_COMMON_WORDS.has(x);
+    const isEnWord = x => EN_WORDS.has(x) || EN_COMMON_WORDS.has(x);
+    if (isFrWord(w) || (core !== w && isFrWord(core))) fr += 4;
+    if (isEnWord(w)) en += 4;
+    // Дефісні конструкції (allez-vous, peut-être, est-ce, y-a-t-il) LANG_TOKEN_RE
+    // лишає ОДНИМ токеном — жодна з частин ізольовано ніколи не звіряється зі
+    // словником. Перевіряємо кожну частину окремо: так "vous" у "allez-vous"
+    // впізнається як службове слово, навіть якщо ціле дефісне слово в жоден
+    // список не входить.
+    if (w.indexOf('-') !== -1) {
+        const parts = w.split('-');
+        if (parts.some(isFrWord)) fr = Math.max(fr, 4);
+        if (parts.some(isEnWord)) en = Math.max(en, 4);
+    }
     if (FR_SHAPE_RE.test(w)) fr += 1;
     if (EN_SHAPE_RE.test(w)) en += 1;
     return { fr, en };
@@ -69,26 +90,66 @@ function classifyTokens(tokens) {
         return Object.assign({ fr, en, tier }, tok);
     });
 }
-// Базова мова речення: голосуємо не за окремими якорями, а за КЛАСТЕРАМИ сильних
-// якорів (сусідні токени тієї самої мови, розрив ≤1, рахуються як один голос).
-// Так короткий французький вкраплений вислів на 2-3 службових слова (напр. "tout
-// le") не переважує єдине "the" перед ним лише тому, що в ньому більше слів —
-// а речення, де французьких кластерів справді більше, коректно визначається як
-// французьке навіть без жодного діакритичного знака.
-function sentenceBaseLang(classified, priorLang2) {
-    let frClusters = 0, enClusters = 0, curLang = null, gap = 0;
-    for (const tok of classified) {
-        if (!tok.isWord) continue;
-        const lang = tok.tier === 'strong-fr' ? 'fr' : tok.tier === 'strong-en' ? 'en' : null;
-        if (lang) {
-            if (lang !== curLang || gap > 1) { if (lang === 'fr') frClusters++; else enClusters++; }
-            curLang = lang; gap = 0;
-        } else if (curLang) {
-            gap++;
-            if (gap > 1) curLang = null;
+// Контекстне вікно: скільки поспіль НЕЙТРАЛЬНИХ (без жодного власного сигналу)
+// токенів можна "перестрибнути" всередині одного мовного кластера, перш ніж
+// вважати його завершеним — це і є контекст 1-3 сусідніх токенів для
+// двозначних когнатів (restaurant, important, menu: самі по собі 0/0, але
+// коли кластер ПІДТВЕРДЖУЄТЬСЯ токеном тієї самої мови по інший бік розриву,
+// вони потрапляють у той самий відрізок). Токен ПРОТИЛЕЖНОЇ мови (навіть
+// слабкий) — це реальний доказ проти, а не просто відсутність доказу, тому
+// одразу завершує поточний кластер і починає новий, незалежно від розриву.
+const MAX_CLUSTER_GAP = 2;
+// Один прохід по словах реченняня збирає їх у кластери ОДНІЄЇ мови: сусідні
+// токени тієї самої мови (сильні чи слабкі — обидва вважаються "доказом",
+// слабкий лише не може ВІДКРИТИ кластер сам по собі, якщо це єдиний доказ у
+// реченні, див. pickBaseLang) зливаються в один кластер. Кластер, що так і не
+// отримав жодного СИЛЬНОГО токена (hasStrong=false), — це саме той випадок
+// одного випадкового слабкого орфографічного збігу (напр. "information" зі
+// своїм "-tion" в англійському реченні): він лишається кластером для повноти
+// картини, але ніколи не переважує базову мову і ніколи не вирізається як
+// "острівець" чужої мови (див. pickBaseLang/findForeignRuns).
+function computeClusters(classified) {
+    const idx = [];
+    classified.forEach((t, i) => { if (t.isWord) idx.push(i); });
+    const clusters = [];
+    let cur = null;
+    const closeCur = () => { if (cur) { clusters.push({ lang: cur.lang, from: cur.from, to: cur.to, hasStrong: cur.hasStrong }); cur = null; } };
+    for (const i of idx) {
+        const tier = classified[i].tier;
+        const lang = tier === 'strong-fr' || tier === 'weak-fr' ? 'fr' : tier === 'strong-en' || tier === 'weak-en' ? 'en' : null;
+        if (lang === null) {
+            if (cur) { cur.gap++; if (cur.gap > MAX_CLUSTER_GAP) closeCur(); }
+            continue;
+        }
+        if (cur && cur.lang === lang) {
+            cur.to = i; cur.gap = 0;
+            if (tier.startsWith('strong')) cur.hasStrong = true;
+        } else {
+            closeCur();
+            cur = { lang, from: i, to: i, hasStrong: tier.startsWith('strong'), gap: 0 };
         }
     }
-    if (!frClusters && !enClusters) {
+    closeCur();
+    return clusters;
+}
+// Базова мова речення: голосуємо не за окремими якорями, а за КЛАСТЕРАМИ з
+// принаймні одним СИЛЬНИМ токеном (кластери лише зі слабким орфографічним
+// збігом у голосуванні участі не беруть — див. коментар вище). Так короткий
+// французький вкраплений вислів на 2-3 службових слова не переважує єдине
+// "the" перед ним лише тому, що в ньому більше слів, а речення, де французьких
+// кластерів справді більше, коректно визначається як французьке. При РІВНОСТІ
+// (типова "навчальна" структура — фраза однією мовою, за нею пояснення чи
+// переклад іншою) перемагає мова ПЕРШОГО за текстом кластера: те, чим речення
+// відкривається, — граматичний "хребет", а рівнозначний кластер після нього —
+// швидше вставлена глоса/переклад, ніж продовження тієї самої думки.
+function pickBaseLang(clusters, classified, priorLang2) {
+    let frCount = 0, enCount = 0, firstLang = null;
+    for (const c of clusters) {
+        if (!c.hasStrong) continue;
+        if (c.lang === 'fr') frCount++; else enCount++;
+        if (!firstLang) firstLang = c.lang;
+    }
+    if (!frCount && !enCount) {
         // Жодного НАДІЙНОГО якоря в реченні — це трапляється з короткими репліками
         // на кшталт "Bonjour !", де саме слово впізнається лише слабко (без
         // діакритики й поза словником службових слів). Тоді порівнюємо навіть
@@ -102,48 +163,17 @@ function sentenceBaseLang(classified, priorLang2) {
         if (wfr !== wen) return wfr > wen ? 'fr' : 'en';
         return priorLang2 === 'fr' ? 'fr' : 'en';
     }
-    if (frClusters === enClusters) return priorLang2 === 'fr' ? 'fr' : 'en';
-    return frClusters > enClusters ? 'fr' : 'en';
+    if (frCount === enCount) return firstLang;
+    return frCount > enCount ? 'fr' : 'en';
 }
-// Шукає в реченні "острівці" мови, ПРОТИЛЕЖНОЇ до базової: ядро — суцільний прогін
-// сильних/слабких токенів іноземної мови (у будь-який бік від першого знайденого
-// сильного якоря), плюс одне "пільгове" сусіднє нейтральне слово з боку, де ядро
-// впирається саме в СИЛЬНИЙ якір (так "bonjour tout le monde" ловиться цілком:
-// "tout"/"le" — сильні, "bonjour" тягнеться як слабкий, "monde" — пільгове сусіднє).
-function findForeignRuns(classified, base) {
-    const otherStrong = base === 'fr' ? 'strong-en' : 'strong-fr';
-    const otherWeak = base === 'fr' ? 'weak-en' : 'weak-fr';
-    const idx = [];
-    classified.forEach((t, i) => { if (t.isWord) idx.push(i); });
-    const runs = [];
-    let k = 0;
-    while (k < idx.length) {
-        if (classified[idx[k]].tier !== otherStrong) { k++; continue; }
-        let lo = k, hi = k;
-        while (hi + 1 < idx.length) {
-            const tier = classified[idx[hi + 1]].tier;
-            if (tier === otherStrong || tier === otherWeak) hi++; else break;
-        }
-        while (lo - 1 >= 0) {
-            const tier = classified[idx[lo - 1]].tier;
-            if (tier === otherStrong || tier === otherWeak) lo--; else break;
-        }
-        // Пільгу (сусіднє нейтральне слово без жодного власного сигналу) даємо лише
-        // багатослівному ядру — одне-єдине іноземне слово (напр. "château" саме
-        // серед англійського тексту) не повинно тягнути за собою сусіда без причини.
-        if (hi > lo && classified[idx[lo]].tier === otherStrong && lo - 1 >= 0 && classified[idx[lo - 1]].tier === 'neutral') lo--;
-        if (hi > lo && classified[idx[hi]].tier === otherStrong && hi + 1 < idx.length && classified[idx[hi + 1]].tier === 'neutral') hi++;
-        runs.push({ from: idx[lo], to: idx[hi] });
-        k = hi + 1;
-    }
-    // Ядра, що впритул чи майже впритул одне до одного — об'єднуємо.
-    const merged = [];
-    for (const r of runs) {
-        const last = merged[merged.length - 1];
-        if (last && r.from <= last.to + 2) last.to = r.to; else merged.push(Object.assign({}, r));
-    }
-    const lang = base === 'fr' ? 'en' : 'fr';
-    return merged.map(r => Object.assign({ lang }, r));
+// "Острівці" мови, ПРОТИЛЕЖНОЇ до базової: усі кластери іншої мови, що мають
+// принаймні один сильний якір. Кластер без жодного сильного токена (лише
+// випадковий слабкий орфографічний збіг) НІКОЛИ не вирізається — інакше кожне
+// англійське слово з "-tion"/"-ance" в суто англійському реченні ставало б
+// хибним французьким "острівцем".
+function findForeignRuns(clusters, base) {
+    const other = base === 'fr' ? 'en' : 'fr';
+    return clusters.filter(c => c.lang === other && c.hasStrong).map(c => ({ lang: other, from: c.from, to: c.to }));
 }
 // Аналізує текст як ОДИН суцільний потік токенів (без урахування дужок) і ділить
 // його на впорядковані мовні відрізки {lang:'fr'|'en', text}, зберігаючи оригінальні
@@ -153,8 +183,9 @@ function findForeignRuns(classified, base) {
 function buildFlatSegments(text, priorLang2) {
     const classified = classifyTokens(tokenizeForLang(text));
     if (!classified.some(t => t.isWord)) return [{ lang: priorLang2 === 'fr' ? 'fr' : 'en', text }];
-    const base = sentenceBaseLang(classified, priorLang2);
-    const runs = findForeignRuns(classified, base);
+    const clusters = computeClusters(classified);
+    const base = pickBaseLang(clusters, classified, priorLang2);
+    const runs = findForeignRuns(clusters, base);
     const segments = [];
     let curLang = base, buf = '', runPtr = 0;
     const flush = () => { if (buf) segments.push({ lang: curLang, text: buf }); buf = ''; };
@@ -316,4 +347,22 @@ function voiceForText(text) {
     const lang = langForText(text);
     const key = lang.startsWith('fr') ? 'fr' : lang.startsWith('uk') ? 'uk' : lang.startsWith('ru') ? 'ru' : 'en';
     return { lang, voice: voiceForLangCode(key).voice };
+}
+
+// ТІЛЬКИ ДЛЯ ТЕСТІВ: детальна діагностика мовної евристики — token-level
+// EN/FR бали й обраний тип (tier), знайдені кластери, підсумкові сегменти з
+// межами (символьні офсети у вихідному тексті) та TTS locale, обраний для
+// кожного сегмента. У жодному UI-шляху не використовується — існує лише щоб
+// тестам було що звіряти окрім самого фінального результату.
+function debugLanguageSegments(text, priorLang2) {
+    const tokens = classifyTokens(tokenizeForLang(text)).map(t =>
+        t.isWord ? { token: t.text, en: t.en, fr: t.fr, tier: t.tier } : { token: t.text, isSeparator: true });
+    const segments = buildLanguageSegments(text, priorLang2);
+    let pos = 0;
+    const segmentInfo = segments.map(s => {
+        const from = pos, to = pos + s.text.length;
+        pos = to;
+        return { lang: s.lang, text: s.text, from, to, ttsLocale: voiceForLangCode(s.lang).lang };
+    });
+    return { tokens, segments: segmentInfo };
 }
