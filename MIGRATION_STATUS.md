@@ -17,7 +17,7 @@ Step 9 — navigation.js: DONE
 Step 10 — formats.js: DONE (also folded buildToc into js/navigation.js)
 Step 11 — pdf-zoom-pan.js: DONE
 Step 12 — pdf-ink.js: DONE
-Step 13 — pdf-crop.js: PENDING
+Step 13 — pdf-crop.js: DONE
 Step 14 — dictation.js: PENDING
 Step 15 — ui-tooltip.js: PENDING
 Step 16 — onboarding.js: PENDING
@@ -25,17 +25,17 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 12 — pdf-ink.js
-Last successful PR: #33 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/33)
-Last successful commit: 6788997 (merged to main)
+Last successful step: Step 13 — pdf-crop.js
+Last successful PR: #35 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/35)
+Last successful commit: 2d1b309 (merged to main)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 12 js/*.js scripts present in the correct classic-script order
-  including the new pdf-ink.js, every extracted function present as a real global and exercised
-  live (pushed a real stroke through inkStrokes()/saveInk()/loadInk()/redrawInk() against a real
-  synthetic PDF, confirming it persists), AND a genuine network-level offline reload (CDP
+  load (zero console errors), all 13 js/*.js scripts present in the correct classic-script order
+  including the new pdf-crop.js, every extracted function present as a real global and exercised
+  live (cropped a real region out of a real synthetic PDF page, got back a genuine PNG data URL,
+  opened/closed the preview dialog), AND a genuine network-level offline reload (CDP
   Network.emulateNetworkConditions offline:true) that still loaded the full app correctly from
-  cache (readyState complete, saveInk defined, correct title, all 12 scripts present).
+  cache (readyState complete, cropPdfRegion defined, correct title, all 13 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -387,16 +387,32 @@ pdf_ux_browser.py cases (fine ink in page coordinates, pinch rollback, ink survi
 rerender). Production verified with the usual battery, including a real stroke pushed
 through inkStrokes()/saveInk()/loadInk()/redrawInk() live against production.
 
-## Step 13 next
+## Step 13 — pdf-crop.js: DONE (PR #35)
 
-pdf-crop.js is the next extraction: exitRegionMode, closeCropPreview, openCropPreview,
-cropPdfRegion, checkExerciseImage (see MODULARIZATION_PLAN.md's map — line numbers long
-stale, re-grep fresh). Per the plan's own footnote, checkExerciseImage calls AI vision
-(js/ai-client.js's callAIVision) but stays in pdf-crop.js since it's only ever called from
-the crop flow — a deferred call, safe regardless of file order, same pattern as everywhere
-else. regionStart/regionBox (see Step 12's note above) are this step's own state, sitting
-right after where the ink cluster used to be. Re-grep fresh line numbers before each cut.
-Preserve classic execution order; after changing any js/*.js file, run
+Extracted one contiguous block — the entire first content of its reopened script block, same
+collapse-the-tag pattern Steps 8-10/12 already used — into js/pdf-crop.js, loaded right after
+js/pdf-ink.js: regionStart/regionBox state and the region-overlay pointer handlers,
+exitRegionMode, cropPdfRegion, openCropPreview/closeCropPreview and the crop dialog's Save
+PNG/Share/Copy PNG/send-to-AI button wiring, and checkExerciseImage (per the plan's own
+footnote, stays here despite calling js/ai-client.js's callAIVision — only ever invoked from
+the crop flow, a deferred forward reference, safe regardless of file order). Resolved Step
+12's open question: regionStart/regionBox are pdf-crop.js's own state, not ink's.
+
+No forward-reference risk: only declarations, assignments and event-listener registrations
+in the moved range (one onclick assignment references a function declared later in the SAME
+script - ordinary same-script hoisting). All local suites green, including every crop-
+specific pdf_ux_browser.py case. Production verified with the usual battery, including a real
+region cropped out of a real synthetic PDF page live against production (genuine PNG data
+URL, preview dialog opened/closed correctly).
+
+## Step 14 next
+
+dictation.js is the next extraction: updateDictationUI, stopDictation, startDictationSession,
+toggleDictation (see MODULARIZATION_PLAN.md's map — line numbers long stale, re-grep fresh).
+This cluster sits right at the top of the reopened script block after js/ai-client.js's own
+tag (dictation was always the first content there — Steps 12/13 both extracted pieces that
+came AFTER it in the same block, never touching it). Re-grep fresh line numbers before each
+cut. Preserve classic execution order; after changing any js/*.js file, run
 `python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
 (`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the same kind of
 non-contiguous interleaving Steps 7-9 hit; read full function bodies before assuming a piece
