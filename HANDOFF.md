@@ -14,24 +14,22 @@ Before starting or resuming work, every agent must read:
 ## Current handoff
 
 Active agent: Claude Code
-Current step: Step 10 — formats.js, also folds in buildToc for navigation.js (starting now)
+Current step: Step 11 — pdf-zoom-pan.js (starting now)
 Current branch: dev
 Current task status: active
 
-Last completed action: Step 9 — extracted js/navigation.js (PR #27): pagination/bookmark/
-  goNext/goPrev, the touch/wheel page-turn gesture cluster, and the mixed-format window
-  resize handler. Found a real deviation from MODULARIZATION_PLAN.md's original file map
-  while doing it: the plan listed openFooterMenu/closeFooterMenu/enterMobileFullScreenIfNeeded/
-  buildToc under navigation.js too, but the first three are actually tangled with ui-tooltip.js
-  material (a single pointerdown listener closes both the footer menu and the translation
-  tooltip) — left in place for Step 15 to sort out on its own reading, not moved on the stale
-  plan's say-so. buildToc IS clean and earmarked to fold into navigation.js during Step 10
-  instead (see MIGRATION_STATUS.md's "Deviation from MODULARIZATION_PLAN.md's navigation.js
-  list" section — read it before Step 15). All local suites green on the first try. Production
-  verified: fresh load zero errors, all 9 js/*.js scripts in correct order including
-  navigation.js, every extracted function present as a real global, and a real synthetic
-  multi-page text block paginated with goNext()/goPrev() actually driven through it live
-  against production, genuine network-level offline reload working.
+Last completed action: Step 10 — extracted js/formats.js (PR #29): runArchiveGuard,
+  initEpub/loadEpubChapter, initRichDoc/splitIntoChapters/renderDocChapter, fb2ToHtml,
+  rtfToHtml, initTxt/renderTxtPage — one fully contiguous block. Also completed the buildToc
+  fold-in flagged by Step 9's deviation note: appended to js/navigation.js (no new tag),
+  since it's format-agnostic and shared by all three loaders (openFooterMenu/closeFooterMenu/
+  enterMobileFullScreenIfNeeded, the other three functions that same plan entry named, are
+  still left for Step 15 — they're genuinely tangled with ui-tooltip.js material, see
+  MIGRATION_STATUS.md's deviation section). All local suites green. Production verified:
+  fresh load zero errors, all 10 js/*.js scripts in correct order including formats.js, every
+  extracted function present as a real global, and a real synthetic TXT file loaded end to end
+  through initTxt() live against production (correct pagination and TOC), genuine
+  network-level offline reload working.
 
 **Scope note (read this):** Codex's own audit record said "the user's explicit scope ends
 here — do not resume autonomous migration after this audit." The user then directly and
@@ -40,12 +38,12 @@ repeated instruction was followed and is recorded as intentional in MIGRATION_ST
 "IMPORTANT — scope note" section. If you are resuming later and the user hasn't otherwise
 confirmed this, it's worth a quick check rather than assuming silently either way.
 
-Last successful commit: 4982a9b on dev (merged to main)
-Last PR: #27, merged
+Last successful commit: 0a6c1b7 on dev (merged to main)
+Last PR: #29, merged
 Last CI result: green
-Last production result: verified live — fresh load zero errors, all 9 js/*.js scripts present
-  in correct order, every navigation function present as a global and exercised live with a
-  real page-turn, genuine network-level offline reload loaded the full app correctly
+Last production result: verified live — fresh load zero errors, all 10 js/*.js scripts present
+  in correct order, every formats.js function present as a global, a real TXT file loaded
+  end to end via initTxt(), genuine network-level offline reload loaded the full app correctly
 Uncommitted work: none at time of writing this entry
 IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" section (four
   learned lessons) before extracting. Also: after changing any js/*.js file, run
@@ -54,10 +52,13 @@ IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" 
   with anything from browser_cdp.py's socket layer (not an assertion), that's a transport bug —
   see MIGRATION_STATUS.md's "CI flake found and fixed during Step 6" before assuming it's a
   flake and just rerunning.
-Next required action: Step 10 (formats.js: runArchiveGuard, initEpub, loadEpubChapter,
-  initRichDoc, splitIntoChapters, renderDocChapter, fb2ToHtml, rtfToHtml, initTxt,
-  renderTxtPage), plus folding buildToc into js/navigation.js. Re-grep fresh line numbers
-  first. See MIGRATION_STATUS.md's "Step 10 next" and the deviation note right above it.
+Next required action: Step 11 (pdf-zoom-pan.js: rerenderPdfAtCurrentZoom, rememberPdfFocus,
+  pdfBaseScale, pdfAnchor, restorePdfAnchor, layoutPdfZoom, applyPdfZoom, persistPdfZoom,
+  setPdfScale, cancelPdfRender, cancelPdfInteraction, pinchMetrics, paintPdfGesture,
+  endPdfPointer, the pdfPointers Map/pointer/wheel listeners, the pdfBlockClick capture-phase
+  click listener, and the #pdf-fit onchange handler — all confirmed 100% pdf-zoom-pan.js
+  content back in Step 4's recon). Re-grep fresh line numbers first. See MIGRATION_STATUS.md's
+  "Step 11 next" section.
 
 ## Handoff rules
 
