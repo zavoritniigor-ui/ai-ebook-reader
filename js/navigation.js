@@ -190,3 +190,10 @@ window.addEventListener('resize', () => {
     }, 250);
 });
 
+// Будує список змісту (розділ/сторінка/блок) для бічної панелі — спільний хелпер
+// для всіх трьох завантажувачів форматів (js/formats.js), не специфічний для
+// жодного з них, тому лишається тут разом з рештою навігації.
+function buildToc(count, prefix, callback) {
+    els.toc.innerHTML = ""; for (let i = 0; i < count; i++) { const li = document.createElement("li"); li.textContent = `${prefix} ${i + 1}`; li.onclick = () => callback(i); els.toc.appendChild(li); }
+}
+
