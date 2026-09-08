@@ -195,6 +195,7 @@ extraction — both are **settled**, not open questions:
 | `tests/learning_ux_browser.py` | Translation/alignment, grammar/SVO analysis, dictation, onboarding cues — the non-PDF "learning" features. |
 | `tests/migration_audit_browser.py` | Cross-cutting correctness that the other two suites don't reach: classic script execution order, cold/hard reload behavior, sanitization, async task cancellation/epoch handling, AI provider fallback, real PDF cold-start rendering and multi-column sentence extraction, offline shell completeness, and genuine service-worker/offline behavior (the only suite that does **not** bypass the service worker). |
 | `tests/app_shell_versions.py` | Fails CI if `index.html`'s script query-string versions and `sw.js`'s `APP_SHELL` entries have drifted apart — see "Content-hash versioning" below. |
+| `tests/language_paren_browser.py` | `lang-detect.js`'s parenthetical-translation-pair detection (`bonjour (hello)`, `hello (bonjour)`, nested parens) plus flat (non-parenthetical) mixed-language regression cases, so the paren-aware split can't silently break the plain sentence path. |
 | `tests/browser_cdp.py` | Not a test suite itself — the shared minimal CDP client (`CDP`) and synthetic-PDF fixture (`pdf_bytes`) all four suites import. Its WebSocket frame reader was rewritten during Step 6 to reassemble fragmented frames (see below); a genuine bug, not the same thing as the CI-only Chrome-startup flake below. |
 
 **Two known CI-only flakes**, both distinguished from real bugs and documented so a future
