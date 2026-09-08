@@ -1,0 +1,229 @@
+# AI Ebook Reader — Architecture
+
+This file exists so a future agent (or Codex, or a human) can locate the code responsible
+for a given feature without scanning the entire application. It is the end result of the
+19-step modularization migration tracked in `MIGRATION_STATUS.md` — read that file for the
+full history and reasoning behind every decision mentioned here; this file states the
+*current* shape only.
+
+## The shape of the app
+
+`index.html` is a thin shell: markup, `<style>`, the vendor `<script>` tags (JSZip, Mammoth,
+PDF.js), and eighteen ordered `<script src="js/...">` tags — one per module, in a fixed load
+order that matters (see "Load order" below). Exactly one fragment of application code is
+still inline in `index.html` rather than in a module, and it has to stay that way — see
+"The one inline exception" below.
+
+`sw.js` is a minimal service worker: it precaches the app shell (index.html, the 18 modules,
+vendor files, icons) under a content-derived cache name and serves navigation requests
+network-first with a fallback to cache. `tools/version_app_shell.py` and
+`tests/app_shell_versions.py` keep the two files' version identifiers honest — see
+"Content-hash versioning" below.
+
+## Why every module is a classic `<script>`, not an ES module
+
+Every `js/*.js` file is loaded as a plain classic script
+(`<script src="js/x.js?v=hash"></script>` — no `type="module"`, no `defer`, no `async`), and
+every one of them declares its top-level functions and `let`/`const` bindings as ordinary
+globals, the same way the original single-file `index.html` always worked. This was a
+deliberate correction made during Step 1, not the original migration plan (which assumed ES
+modules with `import`/`export`) — the two vendor scripts (JSZip, Mammoth) and the PDF.js
+worker-configuration script are also classic/inline scripts sharing this same global scope,
+and if the extracted modules used `type="module"`, they would execute in *deferred* timing
+(always after the document finishes parsing) while the rest of the classic scripts execute
+*synchronously, in document order, as the parser reaches them* — meaning a classic script
+appearing later in the document than a `type="module"` script one still runs *before* it in
+practice. Splitting the app across the two mechanisms would have made execution order
+backwards from what the code actually needs, and would have required exposing every function
+the browser-based test harness calls (`initPdf`, `state`, `sentenceRangeAt`, etc.) as
+`window.x = x` shims, since ES module scope doesn't leak into the global scope the way classic
+scripts do.
+
+**The practical consequence for anyone editing a module**: classic `<script>` tags share one
+script *scope* for code that has already executed, but they do **not** hoist function
+declarations *across* files — hoisting only happens within a single script tag's own text. If
+a file contains a **top-level (not inside a function body) statement** that calls something
+defined in a file loaded *later* in the document, it throws `ReferenceError` immediately on
+page load. This exact mistake happened once in production (see "Known incidents" below) and
+must be checked for before finishing any edit to a module: grep the file for top-level
+non-declaration statements and verify every name they reference is either declared earlier in
+the same file, declared in an earlier-loading module, or — the common and safe case — only
+referenced from *inside* a function body or event-handler callback, where it's fine regardless
+of file order because the callback won't run until long after every script has loaded (see
+"Deferred references" below).
+
+None of the modules use `'use strict'` — the original file never was strict mode, and adding
+it during the migration would have been an unplanned behavior change.
+
+## Load order (index.html)
+
+```
+core.js → lang-detect.js → tts.js → selection.js → navigation.js → pdf-zoom-pan.js →
+ui-tooltip.js → translation.js → grammar-svo.js → ai-client.js → dictation.js →
+pdf-ink.js → pdf-crop.js → pdf-render.js → formats.js → onboarding.js → main.js →
+pwa-lifecycle.js
+```
+
+Three positions in this order are load-bearing, not arbitrary:
+
+- **`lang-detect.js` must load before the one inline exception fires** (see below) — it's
+  second in the list specifically so `pageLang()` exists before `loadVoices()` is first
+  triggered.
+- **`main.js` cannot load early.** Its startup bootstrap call `applyI18n()` makes top-level
+  immediate calls into `updateAltVoicesBtn`/`updateTtsButtons` (`tts.js`), `updateProgressText`
+  (`navigation.js`), and `updateDictationUI` (`dictation.js`). `main.js` loads second-to-last,
+  after every module whose functions it calls immediately at startup.
+- **`pwa-lifecycle.js` loads last.** Its overlay-history `MutationObserver` setup references
+  `pdf-crop.js`'s `cropDialog` directly in a top-level array literal (not inside a callback),
+  so `pdf-crop.js` must already have run. Loading this file last is what makes that safe.
+
+Everything else in the order reflects where each module's content happened to sit in the
+original monolithic file — there was rarely a hard requirement to load module A before module
+B; most cross-module calls are "deferred references" (below) and don't care about order. Don't
+assume the *current* order is the only correct one, but don't reorder it casually either — the
+three constraints above are real, and reordering risks reintroducing the Step 1–3 incident.
+
+## The one inline exception
+
+Right after `lang-detect.js`'s `<script src>` tag, `index.html` still has one small inline
+`<script>` block:
+
+```js
+if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
+```
+
+This is the **first call to `loadVoices()`** (defined in `core.js`), and it deliberately sits
+here rather than inside `core.js` itself, because `loadVoices()` internally reaches
+`pageLang()` (`lang-detect.js`) — which doesn't exist yet at the point `core.js` itself
+executes. Moving this one line back into `core.js`, or moving it earlier than `lang-detect.js`,
+reproduces the exact bug described below under "Known incidents". It is the **only** piece of
+application logic left in `index.html` outside a `<script src>` tag.
+
+## Deferred references (the pattern that makes cross-module calls safe)
+
+A huge fraction of the calls between modules only work because they're **deferred** —
+wrapped in a function body, event handler, or `async` callback — rather than executed
+immediately at parse time. A deferred reference to a name defined in a *later-loading* module
+is safe, because by the time the callback actually runs (a user interaction, a timer, a
+promise resolution), every classic script in the document has already executed and every
+name is already a real global. This is the single mechanism that lets the module graph below
+be far more circular than a traditional import graph would allow. Two examples worth knowing
+by name, because they were specifically identified and verified during the migration rather
+than assumed:
+
+- **`pdf-render.js`'s `pdfAnchor`**: called only inside async callbacks in `pdf-render.js`,
+  even though `pdfAnchor` itself is defined in `pdf-zoom-pan.js`, which loads *after*
+  `pdf-render.js`. Verified safe because the call never happens at top level.
+- **`selection.js` ↔ `translation.js`**: `selection.js` (loads earlier) forward-calls
+  `handleWordOrSelection` (defined in `translation.js`, loads later) from inside its own
+  tap/click event handlers — and, in the other direction, `translation.js`'s
+  `handleWordOrSelection` calls into `grammar-svo.js`'s `analyzeSVO`/`startAiTask` (loads
+  later still), also only from inside `onclick` closures set up when the tooltip is shown.
+
+## Module map
+
+One line each, in load order. "Owns" means this is where the function/feature actually lives
+today; it does not always match the original `MODULARIZATION_PLAN.md` guess (see "Resolved
+plan deviations" below for the two places the plan turned out to be wrong once the code was
+actually read).
+
+| Module | Owns |
+|---|---|
+| `core.js` | `state`/`els`, i18n (`I18N`/`t`/`applyI18n`), storage helpers (`readStored`/`writeStored`/`readStoredNumber`), async-task bookkeeping (`beginAsyncTask`/`cancelAsyncTasks`), `fetchWithTimeout`/`aiText`/`waitForResult`, `readerEpoch`/`pdfTasks` state containers, `invalidateSelection`, `showReaderError`, sanitization (`safeHtml`/`escapeHtml`), and — deliberately, not moved to `tts.js` — the whole voice-selection cluster (`voiceQualityScore`/`pickBestVoice`/`pickVoicePair`/`loadVoices`/`saveVoiceChoices`, plus `ttsSynth`/`voices`). |
+| `lang-detect.js` | EN/FR language detection heuristics (`detectLang`, `pageLang`, `langForText`, `buildLanguageSegments`, `voiceForLangCode`/`voiceForText`) and their supporting tables. |
+| `tts.js` | Tooltip speech (`stopTooltipSpeech`/`bindUtterance`/`speakText`/`speakInLang`), which side is spoken (`setSpeakSide`), and the sentence playback/highlight/control cluster (`buildSentenceRanges`, `startTTS`/`stopGlobalTTS`/`pauseTTS`/`resumeTTS`/`stepSentence`, the "two voices" toggle). Voice *selection* itself is in `core.js` (see above). |
+| `selection.js` | Caret/range geometry (`caretRangeAt`/`paragraphRangeAt`/`sentenceRangeAt`/`wrapRangeInSpans`), PDF text-layer span handling (`pdfTextSpans`/`pdfVisualGroup`/`buildSentenceRangesFromSpans`), word/drag selection (`selectWordAtPoint`, `wordBoundsAt`/`rangeBetweenWords`), and the main tap/click listener that dispatches to translation. |
+| `navigation.js` | CSS-column pagination (`columnStep`/`paginateContainer`/`goToPageInChapter`), the bookmark (`saveBookmark`/`loadBookmark`), `goNext`/`goPrev`, touch/wheel page-turn gestures, the mixed-format window-resize handler, and `buildToc` (shared by all three format loaders, folded in during Step 10). |
+| `pdf-zoom-pan.js` | PDF mouse/touch zoom and pan: wheel+Ctrl zoom, pinch-to-zoom, drag-to-pan, `setPdfScale`/`applyPdfZoom`/`rerenderPdfAtCurrentZoom`, the `pdfPointers` gesture-owning Map, the `pdfBlockClick` click-suppressor, `#pdf-fit`'s handler. |
+| `ui-tooltip.js` | The translation tooltip's position/lifecycle (`positionTooltip`/`repositionTooltip`/`scheduleTooltipHide`), the footer submenu (`openFooterMenu`/`closeFooterMenu`) kept *with* the tooltip rather than in `navigation.js` (see "Resolved plan deviations"), and the key-settings modal (`openKeySettings`/`closeKeySettings`/`saveApiKey`). |
+| `translation.js` | Word/selection → translation: alignment highlighting (`validateAlignment`/`installAlignment`/`flashAlignment`), the core `handleWordOrSelection` tap handler, on-device translation via Chrome's Translator API (`translateLocally`), English phrasal-verb detection (`detectPhrasalVerb`), and translating inside the AI panels (`translatePanelPoint`). |
+| `grammar-svo.js` | The Grammar/Ask AI panels: `startAiTask` (the actual AI request/response flow — deferred here from Step 3), the AI prompt builders, verb conjugation UI, and SVO sentence-part analysis (`analyzeSVO`/`applySVOParts`). |
+| `ai-client.js` | `callAI`/`callAIVision`, the Gemini/Groq provider selection and vision fallback, `aiAvailable`, `sanitizeAI`. Does **not** contain `startAiTask` (see `grammar-svo.js`) or `machineTranslate`/`aiTranslateText` (see `translation.js`). |
+| `dictation.js` | Speech-to-text for the Ask panel: `updateDictationUI`, `stopDictation` (finalizes interim text exactly once), `startDictationSession` (bounded auto-restart), `toggleDictation`. |
+| `pdf-ink.js` | Writing over the PDF page: the canvas layer and per-page relative-coordinate stroke storage (`inkStrokes`/`saveInk`/`loadInk`/`redrawInk`), drawing/erasing input, pen tool controls. |
+| `pdf-crop.js` | Page-region selection and crop: `exitRegionMode`/`cropPdfRegion`, the crop preview dialog (Save PNG/Share/Copy PNG), and `checkExerciseImage` (calls `ai-client.js`'s vision API, kept here since it's only ever invoked from the crop flow). |
+| `pdf-render.js` | `initPdf` (opens a PDF.js document), `renderPdfPage` (canvas + text layer + ink layer render with epoch/render tokens against stale async responses), and the page scrubber. |
+| `formats.js` | Book format loaders: `runArchiveGuard` (Worker-based ZIP-bomb/zip-slip check before JSZip/Mammoth ever see an EPUB/DOCX), `initEpub`/`initRichDoc` (Mammoth)/`initTxt`, `fb2ToHtml`, `rtfToHtml`. |
+| `onboarding.js` | First-run discovery cues for the Ask/Grammar/TOC buttons (`scheduleReaderOnboarding`/`rememberOnboarding`/`stopOnboarding`), shown once per profile via `onboardingState`. |
+| `main.js` | Cross-module bootstrap wiring that doesn't belong to any one feature: reader-settings restore (UI language/theme/target language/voice), the Learn-mode toggle, Ask-panel mic/send wiring, **the file-upload format-detection dispatcher** (the actual "open a book" entry point, calling into `formats.js`/`pdf-render.js` by extension), zoom/theme/nav button wiring, and the final `updateDictationUI()`/`applyI18n()` startup calls. |
+| `pwa-lifecycle.js` | Everything about being an installed PWA: `stopBackgroundActivity` (the one switch for TTS/mic/AI-requests/PDF-render when backgrounded), `persistCriticalState`, the exit-app button, the Android-Back overlay stack (`OVERLAY_LAYERS`/`syncOverlayHistory`), the "update available" banner, service worker registration, and the `document.body.inert`-until-`load` gate (see "Known incidents"). |
+
+## Resolved plan deviations
+
+The original `MODULARIZATION_PLAN.md` was written by reading `index.html` once, before any
+extraction happened, and guessed at file boundaries from line numbers and section-title
+comments. Two guesses turned out to be wrong once the actual code was read carefully during
+extraction — both are **settled**, not open questions:
+
+- **`openFooterMenu`/`closeFooterMenu`/`enterMobileFullScreenIfNeeded`** were filed under
+  `navigation.js` in the original plan. They live in `ui-tooltip.js` instead: the actual code
+  has a single `pointerdown` listener that closes both the footer menu *and* the translation
+  tooltip on an outside tap — they're the same kind of transient overlay with the same dismiss
+  rule, and splitting one function across two files for the plan's sake wasn't worth it.
+- Two pieces that Step 4's recon initially flagged as "mixed, needs a judgment call" (the
+  touch-gesture section and the PDF-mouse-control section) turned out, once every listener
+  body was actually read rather than just the section-title comment, to be 100%
+  `navigation.js`/`pdf-zoom-pan.js` content with zero selection-related material. Lesson kept
+  in `MIGRATION_STATUS.md`: section-title comments are not reliable classifiers on their own.
+
+## Known incidents (why some of the above rules exist)
+
+- **`ReferenceError: pageLang is not defined` in production (Steps 1–3).** `core.js`
+  originally contained the *immediate* call `loadVoices()` at its own top level, which
+  transitively calls `pageLang()` — moved to `lang-detect.js` in a later step, which hadn't
+  loaded yet at the point `core.js` executed. Local test suites didn't catch this because
+  headless Chrome's fresh profile returns an empty voice list, short-circuiting the code path
+  that reaches the failing call — only a real production smoke test caught it. Fixed by moving
+  only the one-line *invocation* to right after `lang-detect.js` loads (see "The one inline
+  exception" above); the function *definitions* stayed in `core.js`. This is why a full
+  production smoke test (not just the local suites) is mandatory after every module change,
+  and why that one inline trigger line must never move.
+- **Input reaching handlers before PDF.js's module finished loading (found during the
+  retrospective audit, Steps 0–4).** On a slow cold start, classic scripts could expose their
+  callbacks before the `type="module"` PDF.js script and its worker-configuration script had
+  actually finished. Fixed by keeping `document.body.inert = true` until the `load` event
+  fires (see `pwa-lifecycle.js`'s last line) — no user interaction is possible until every
+  script, module or classic, has run.
+- **`PDFDocumentProxy.destroy()` removed in PDF.js 6.3.289** (found during the same audit): a
+  stale-completion cleanup path called `.destroy()` on a document proxy that no longer has
+  that method. Fixed by destroying the owning `PDFDocumentLoadingTask` instead.
+
+## Test coverage map
+
+| Suite | Covers |
+|---|---|
+| `tests/pdf_ux_browser.py` | PDF-specific UX: zoom/pinch/pan, the ink layer, crop, the page scrubber, background-cancellation of in-flight PDF work. |
+| `tests/learning_ux_browser.py` | Translation/alignment, grammar/SVO analysis, dictation, onboarding cues — the non-PDF "learning" features. |
+| `tests/migration_audit_browser.py` | Cross-cutting correctness that the other two suites don't reach: classic script execution order, cold/hard reload behavior, sanitization, async task cancellation/epoch handling, AI provider fallback, real PDF cold-start rendering and multi-column sentence extraction, offline shell completeness, and genuine service-worker/offline behavior (the only suite that does **not** bypass the service worker). |
+| `tests/app_shell_versions.py` | Fails CI if `index.html`'s script query-string versions and `sw.js`'s `APP_SHELL` entries have drifted apart — see "Content-hash versioning" below. |
+| `tests/browser_cdp.py` | Not a test suite itself — the shared minimal CDP client (`CDP`) and synthetic-PDF fixture (`pdf_bytes`) all four suites import. Its WebSocket frame reader was rewritten during Step 6 to reassemble fragmented frames (see below); a genuine bug, not the same thing as the CI-only Chrome-startup flake below. |
+
+**Two known CI-only flakes**, both distinguished from real bugs and documented so a future
+agent doesn't have to re-diagnose them:
+
+- **Fixed, real bug**: `tests/browser_cdp.py`'s original WebSocket reader assumed one frame
+  equals one complete message. Under `Network.enable`'s heavier event traffic on the GitHub
+  runner (never reproduced locally), a fragmented frame desynced the byte stream and eventually
+  crashed with `MemoryError`. Fixed during Step 6 by reassembling messages by the FIN bit and
+  swallowing ping/pong/close control frames.
+- **Ongoing, infra-only, not a bug**: a `timeout 15` wait for Chrome's CDP port to open
+  sometimes expires before any test code even runs — pure GitHub-runner resource contention,
+  seen on both docs-only and code-changing PRs, always resolved by a single `gh run rerun
+  --failed`. Two-in-a-row on the *same* PR is worth investigating for real rather than
+  rerunning blindly (that's exactly how the WebSocket bug above was originally caught).
+
+## Content-hash versioning
+
+`sw.js`'s cache-busting no longer relies on manually bumping `CACHE_NAME`. Instead:
+
+- `tools/version_app_shell.py` computes a SHA-256-derived hash of every file in `js/*.js` and
+  rewrites the `?v=<hash>` query string on that file's `<script src>` tag in `index.html` *and*
+  its entry in `sw.js`'s `APP_SHELL` array, then derives `CACHE_NAME` itself from a hash of the
+  resulting `index.html`.
+- **Run this after touching any `js/*.js` file, before running the test suites** —
+  `tests/app_shell_versions.py` fails CI if the two files' version strings don't match what the
+  actual file contents hash to.
+- The offline shell (service worker cache) and the live `index.html` are always paired as one
+  version identity this way — a stale cached JS file can never run against a freshly-fetched
+  `index.html` or vice versa, which was the root cause of one of the retrospective audit's
+  findings (`RETRO_AUDIT.md` finding #1).
