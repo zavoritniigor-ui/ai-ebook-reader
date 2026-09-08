@@ -14,20 +14,24 @@ Before starting or resuming work, every agent must read:
 ## Current handoff
 
 Active agent: Claude Code
-Current step: Step 9 — navigation.js (starting now)
+Current step: Step 10 — formats.js, also folds in buildToc for navigation.js (starting now)
 Current branch: dev
 Current task status: active
 
-Last completed action: Step 8 — extracted js/grammar-svo.js (PR #25), finally landing
-  startAiTask (deferred since Step 3). Four pieces — see MIGRATION_STATUS.md's "Step 8 —
-  grammar-svo.js: DONE" section. Notably, one piece (AI panel tabs + startAiTask + SVO
-  cluster) was the ENTIRE remaining content of the script block Step 7's translation.js tag
-  had reopened into, so that block's open/close tags collapsed directly into grammar-svo.js's
-  own <script src> tag. All local suites green on the first try (no flakes this time).
-  Production verified: fresh load zero errors, all 8 js/*.js scripts in correct order
-  including grammar-svo.js, every extracted function present as a real global and exercised
-  live (buildGrammarPrompt/localSVO on a real French sentence), genuine network-level offline
-  reload working.
+Last completed action: Step 9 — extracted js/navigation.js (PR #27): pagination/bookmark/
+  goNext/goPrev, the touch/wheel page-turn gesture cluster, and the mixed-format window
+  resize handler. Found a real deviation from MODULARIZATION_PLAN.md's original file map
+  while doing it: the plan listed openFooterMenu/closeFooterMenu/enterMobileFullScreenIfNeeded/
+  buildToc under navigation.js too, but the first three are actually tangled with ui-tooltip.js
+  material (a single pointerdown listener closes both the footer menu and the translation
+  tooltip) — left in place for Step 15 to sort out on its own reading, not moved on the stale
+  plan's say-so. buildToc IS clean and earmarked to fold into navigation.js during Step 10
+  instead (see MIGRATION_STATUS.md's "Deviation from MODULARIZATION_PLAN.md's navigation.js
+  list" section — read it before Step 15). All local suites green on the first try. Production
+  verified: fresh load zero errors, all 9 js/*.js scripts in correct order including
+  navigation.js, every extracted function present as a real global, and a real synthetic
+  multi-page text block paginated with goNext()/goPrev() actually driven through it live
+  against production, genuine network-level offline reload working.
 
 **Scope note (read this):** Codex's own audit record said "the user's explicit scope ends
 here — do not resume autonomous migration after this audit." The user then directly and
@@ -36,12 +40,12 @@ repeated instruction was followed and is recorded as intentional in MIGRATION_ST
 "IMPORTANT — scope note" section. If you are resuming later and the user hasn't otherwise
 confirmed this, it's worth a quick check rather than assuming silently either way.
 
-Last successful commit: e713595 on dev (merged to main)
-Last PR: #25, merged
+Last successful commit: 4982a9b on dev (merged to main)
+Last PR: #27, merged
 Last CI result: green
-Last production result: verified live — fresh load zero errors, all 8 js/*.js scripts present
-  in correct order, every grammar/SVO function present as a global and exercised live,
-  genuine network-level offline reload loaded the full app correctly
+Last production result: verified live — fresh load zero errors, all 9 js/*.js scripts present
+  in correct order, every navigation function present as a global and exercised live with a
+  real page-turn, genuine network-level offline reload loaded the full app correctly
 Uncommitted work: none at time of writing this entry
 IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" section (four
   learned lessons) before extracting. Also: after changing any js/*.js file, run
@@ -50,11 +54,10 @@ IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" 
   with anything from browser_cdp.py's socket layer (not an assertion), that's a transport bug —
   see MIGRATION_STATUS.md's "CI flake found and fixed during Step 6" before assuming it's a
   flake and just rerunning.
-Next required action: Step 9 (navigation.js). Re-grep fresh line numbers first. See
-  MIGRATION_STATUS.md's "Step 9 next" section — the material was already identified by name
-  back in Step 4's recon (columnStep/paginateContainer/goToPageInChapter/goNext/goPrev/etc and
-  the touch-gesture swipe cluster), now sitting as contiguous blocks at the top of
-  selection.js's inline region.
+Next required action: Step 10 (formats.js: runArchiveGuard, initEpub, loadEpubChapter,
+  initRichDoc, splitIntoChapters, renderDocChapter, fb2ToHtml, rtfToHtml, initTxt,
+  renderTxtPage), plus folding buildToc into js/navigation.js. Re-grep fresh line numbers
+  first. See MIGRATION_STATUS.md's "Step 10 next" and the deviation note right above it.
 
 ## Handoff rules
 
