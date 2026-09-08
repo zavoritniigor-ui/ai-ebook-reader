@@ -21,54 +21,52 @@ part of normal task startup.
 Status: **idle**. No unfinished implementation, audit or release task.
 Current branch: dev.
 
-Task: after the parenthetical translation-pair fix (PR #52), the user asked for the SAME
-kind of local EN/FR phrase detection WITHOUT parentheses — "The French word maison means
-house.", "Il est très important to pronounce it correctly.", "Comment allez-vous? means How
-are you?" — where a local French (or English) phrase was getting swallowed by the sentence's
-dominant language. Explicit requirement: don't break the parenthesis feature; add context
-(1-3 neighboring tokens) so ambiguous cognates (restaurant, important, menu) resolve from
-context, not word lists; add test-only debug inspection.
+Task: user reported "Запитай AI" → "Мовний розбір" (CEFR A2/B1 simplification) producing the
+simplified sentences in the WRONG language — select a French sentence, get English
+simplification, and vice versa. Root cause: `buildLanguageLevelPrompt` (`js/grammar-svo.js`)
+picked the source language via `detectLang(sentence || fragment)` — the DOMINANT language of
+the whole context sentence "by majority character count." For a bilingual sentence with an
+inline translation in parentheses ("The house is big (La maison est grande)."), the
+translation is often LONGER than the original, so `detectLang` returned the translation's
+language instead of the tapped fragment's own. Fixed with a new `fragmentLangInContext
+(fragment, context)` in `js/lang-detect.js` that finds the fragment's own POSITION in the
+context and reads the segment there (via `buildLanguageSegments`) instead of voting over the
+whole context; `langForText` refactored to use it (no behavior change for existing callers);
+`buildLanguageLevelPrompt` now calls it first, falling back to the old `detectLang` only when
+the fragment can't be positionally located. Full reasoning in PR #57's description and the
+`js/lang-detect.js`/`js/grammar-svo.js` commit.
 
-Root cause, same shape as the parenthesis fix: `findForeignRuns` required a STRONG
-opposite-tier token to seed a foreign run and only bridged ONE neutral neighbor for a
-multi-word core, so a local phrase with just a weak signal (maison) or an ambiguous cognate
-with none at all (important, allez-vous) either got swallowed by the base language or split
-at the wrong boundary. Fixed by replacing `sentenceBaseLang`/`findForeignRuns` with a unified
-`computeClusters` pass (bridges up to 2 neutral tokens inside a cluster if later reconfirmed
-— the context window) + `pickBaseLang` (only clusters with a real strong anchor vote; ties go
-to the FIRST cluster in reading order, not the book language) + hyphen-part checking in
-`scoreWord` (recovers "vous" inside "allez-vous") + a small curated `FR_COMMON_WORDS`/
-`EN_COMMON_WORDS` list for genuinely unambiguous vocabulary (bonjour/merci/maison/means).
-Genuinely ambiguous cognates are deliberately NOT listed — they resolve via the context
-mechanism only. Full reasoning in the PR #54 description and the `js/lang-detect.js` commit.
+Changed: `js/lang-detect.js` (new `fragmentLangInContext`, `langForText` refactored to use
+it), `js/grammar-svo.js` (`buildLanguageLevelPrompt` uses `fragmentLangInContext`),
+`ARCHITECTURE.md` (module-map + new test-coverage row), `.github/workflows/ci.yml` (wired in
+the new suite), `tests/ask_ai_language_browser.py` (new), versioned shell (`index.html`/
+`sw.js` via `tools/version_app_shell.py`).
 
-Changed: `js/lang-detect.js` (computeClusters/pickBaseLang/findForeignRuns rewritten,
-scoreWord hyphen-part check, FR_COMMON_WORDS/EN_COMMON_WORDS, new debugLanguageSegments
-test-only diagnostic), `ARCHITECTURE.md` (new test-coverage row), `.github/workflows/ci.yml`
-(wired in the new suite), `tests/language_context_browser.py` (new), versioned shell
-(`index.html`/`sw.js` via `tools/version_app_shell.py`).
+**Squash-merge history-disconnect note (recurring — same as PR #54/#55)**: before opening
+PR #57, `git merge --no-ff origin/main` into dev was needed again to keep the PR mergeable
+(squash-merges on `main` aren't ancestors of `dev`'s own commits even with identical
+content). Do this — a real merge commit, never a rebase, never a force-push — right before
+opening any new PR if `gh pr view <n> --json mergeable,mergeStateStatus` shows
+CONFLICTING/DIRTY or the auto-merge sits stuck on BEHIND.
 
-**Note for the next agent**: PR #54 initially showed as CONFLICTING/DIRTY even though the
-actual diff applied cleanly — squash-merging PR #52/#53 created new commits on `main`
-(ff33f08/1785a99) not connected by parent links to dev's own commits (24847aa/d55b5b0), even
-though the content is identical, so GitHub's mergeability check used the older true common
-ancestor (34aa822) and saw phantom conflicts on lines both sides added independently. Fixed
-with a real merge commit (`git merge --no-ff origin/main` into dev, resolving the handful of
-trivial textual conflicts by keeping dev's side, which was already a strict superset) —
-**not** a rebase and **not** a force-push, per the repo's history rules. If a future PR from
-dev shows CONFLICTING/DIRTY right after a squash-merge lands on main, this is almost
-certainly the same phenomenon; the fix is the same merge-commit approach, or periodically
-merging `origin/main` into `dev` right after each squash-merge to keep history connected.
+**Also encountered (not a real bug, a test-harness gotcha)**: reusing the SAME headless
+Chrome profile/tab across multiple separate CDP test-script invocations can spuriously throw
+`ReferenceError: <function> is not defined` on the second/third script even with
+`Network.setBypassServiceWorker` — some interaction between the service worker install and a
+`Page.navigate` in a re-used tab. Not seen when each script gets a fresh `--user-data-dir`
+profile (or is the only script run against that profile). Doesn't affect CI, which always
+starts a fresh profile per run.
 
-Release code commit: 9c7c1ad (rebased content) merged via merge commit 5d7a009 on dev;
-PR #54 MERGED (squash); main release commit 0f14583.
+Release code commit: 24f91d8 merged via merge commit 791ad40 on dev; PR #57 MERGED (squash);
+main release commit 8cc67c0.
 CI: required `test` check PASS on both dev pushes and the PR.
 Local: PDF UX, learning UX, migration audit, app-shell versions and CDP transport tests PASS,
-`tests/language_paren_browser.py` (13/13, unaffected) PASS, new
-`tests/language_context_browser.py` (17/17 checks) PASS.
-Production: `https://ai-ebook-reader.pages.dev/` serves `lang-detect.js?v=e14a6d0ff9df`
-(matches the merged commit); both `language_context_browser.py` and
-`language_paren_browser.py` re-run directly against production — all PASS, no console errors.
+`tests/language_paren_browser.py` and `tests/language_context_browser.py` (unaffected) PASS,
+new `tests/ask_ai_language_browser.py` (9/9 checks) PASS.
+Production: `https://ai-ebook-reader.pages.dev/` serves `lang-detect.js?v=5ce1fc05ac06` and
+`grammar-svo.js?v=77341cc54170` (match the merged commit); `ask_ai_language_browser.py`,
+`language_paren_browser.py` and `language_context_browser.py` all re-run directly against
+production (fresh Chrome profiles) — all PASS, no console errors.
 
 An untracked draft `tests/language_tts_browser.py` still exists (not mine, not committed,
 not wired into CI) — left untouched per "don't overwrite another agent's uncommitted work".
