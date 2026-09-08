@@ -523,7 +523,23 @@ const I18N = {
     voicesFr:       { uk: 'Французька',     en: 'French',         fr: 'Français',       ru: 'Французский' },
     voicesEn:       { uk: 'Англійська',     en: 'English',        fr: 'Anglais',        ru: 'Английский' },
     voicesUk:       { uk: 'Українська',     en: 'Ukrainian',      fr: 'Ukrainien',      ru: 'Украинский' },
-    voicesRu:       { uk: 'Російська',      en: 'Russian',        fr: 'Russe',          ru: 'Русский' }
+    voicesRu:       { uk: 'Російська',      en: 'Russian',        fr: 'Russe',          ru: 'Русский' },
+    btnClassroom:   { uk: '🎓 Classroom',   en: '🎓 Classroom',   fr: '🎓 Classroom',   ru: '🎓 Classroom' },
+    tClassroom:     { uk: 'Google Classroom', en: 'Google Classroom', fr: 'Google Classroom', ru: 'Google Classroom' },
+    classroomTitle: { uk: '🎓 Google Classroom', en: '🎓 Google Classroom', fr: '🎓 Google Classroom', ru: '🎓 Google Classroom' },
+    classroomSignIn: { uk: 'Увійти через Google', en: 'Sign in with Google', fr: 'Se connecter avec Google', ru: 'Войти через Google' },
+    classroomSignInHint: { uk: 'Увійдіть шкільним акаунтом Google, щоб відкривати файли з курсів Classroom напряму в рідері — без завантаження вручну.',
+                      en: 'Sign in with your school Google account to open files from your Classroom courses directly in the reader — no manual download.',
+                      fr: 'Connectez-vous avec votre compte Google scolaire pour ouvrir les fichiers de vos cours Classroom directement dans le lecteur — sans téléchargement manuel.',
+                      ru: 'Войдите школьным аккаунтом Google, чтобы открывать файлы из курсов Classroom прямо в ридере — без ручной загрузки.' },
+    classroomBack:  { uk: '← Назад',        en: '← Back',         fr: '← Retour',       ru: '← Назад' },
+    classroomSignOut: { uk: 'Вийти',        en: 'Sign out',       fr: 'Se déconnecter', ru: 'Выйти' },
+    classroomNoCourses: { uk: 'Активних курсів не знайдено.', en: 'No active courses found.', fr: 'Aucun cours actif trouvé.', ru: 'Активные курсы не найдены.' },
+    classroomNoWork: { uk: 'Немає завдань чи матеріалів.', en: 'No coursework or materials.', fr: 'Aucun devoir ni support de cours.', ru: 'Нет заданий или материалов.' },
+    classroomNoAttachments: { uk: 'Тут немає файлів, які можна відкрити.', en: 'No openable files here.', fr: 'Aucun fichier ouvrable ici.', ru: 'Здесь нет файлов, которые можно открыть.' },
+    classroomOpenError: { uk: 'Не вдалося відкрити файл із Google Drive.', en: 'Could not open the file from Google Drive.', fr: 'Impossible d’ouvrir le fichier depuis Google Drive.', ru: 'Не удалось открыть файл из Google Drive.' },
+    classroomAuthError: { uk: 'Помилка входу через Google. Спробуйте ще раз.', en: 'Google sign-in error. Please try again.', fr: 'Erreur de connexion Google. Réessayez.', ru: 'Ошибка входа через Google. Попробуйте снова.' },
+    classroomAttachmentsCount: { uk: 'файлів', en: 'files', fr: 'fichiers', ru: 'файлов' }
 };
 function t(key) {
     const e = I18N[key];

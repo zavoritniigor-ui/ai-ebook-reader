@@ -139,4 +139,7 @@ jobs:
           echo "Running ask_ai_language_browser.py..."
           python3 -u tests/ask_ai_language_browser.py
 
+          echo "Running google_classroom_browser.py..."
+          python3 -u tests/google_classroom_browser.py
+
           echo "All tests passed successfully!"

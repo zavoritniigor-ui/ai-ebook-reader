@@ -107,10 +107,15 @@ els.askInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') els.ask
 // випадково чи навмисно підсунутий файл на кілька гігабайт міг би підвісити
 // вкладку — особливо помітно на планшеті з обмеженою пам'яттю.
 const MAX_BOOK_FILE_BYTES = 300 * 1024 * 1024;
-els.upload.addEventListener('change', async (e) => {
-    const file = e.target.files[0]; if (!file) return;
+// Єдина точка входу "відкрити книгу файлом" — раніше жила лише всередині
+// обробника <input type=file>. Винесена сюди (Крок Google Classroom), щоб той
+// самий шлях (той самий скид стану, той самий диспетчер форматів за
+// розширенням) використовував і ручний вибір файла, і файл, звантажений з
+// Google Drive (js/google-classroom.js) — Reader не має знати, ЗВІДКИ прийшов
+// File, лише що з ним робити.
+async function openBookFile(file) {
+    if (!file) return;
     stopDictation(); stopOnboarding();
-    e.target.value = ''; // Permit retrying the same file after an error.
     if (file.size > MAX_BOOK_FILE_BYTES) { showReaderError(new Error(t('fileTooLarge'))); return; }
     const epoch = ++readerEpoch.book; ++readerEpoch.render;
     clearTimeout(wheelZoomTimer); clearTimeout(resizeTimer);
@@ -152,6 +157,11 @@ els.upload.addEventListener('change', async (e) => {
         state.format = null; state.totalPages = 0; els.toc.replaceChildren();
         showReaderError(err);
     }
+}
+els.upload.addEventListener('change', async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    e.target.value = ''; // Permit retrying the same file after an error.
+    await openBookFile(file);
 });
 
 document.getElementById('zoom-in').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); } else { state.fontSize += 2; writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; paginateContainer(); goToPageInChapter(state.pageInChapter, false); } };
