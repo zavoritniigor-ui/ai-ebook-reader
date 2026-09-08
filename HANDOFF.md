@@ -18,43 +18,31 @@ part of normal task startup.
 
 ## Current handoff
 
-Active agent: Codex
-Current branch: dev
-Current task status: IN PROGRESS — finish RETRO_AUDIT (maintenance only; no migration).
-Baseline commit: 81a2012. Earlier audit fixes were already merged in PR #19; migration
-subsequently completed through PR #47. Do not redo those extractions.
+Status: **idle**. No unfinished implementation, audit or release task.
+Current branch: dev. RETRO_AUDIT is COMPLETE; Steps 0–4 retrospectively verified.
+All confirmed findings 1–17 are FIXED. No feature work or migration extraction performed.
 
-Confirmed findings 12–17 are fixed: exact PDF glyph fallback; live/stable PDF audit
-fixture; CDP EOF handling; false first-install update banner; completed selection highlight
-preservation; nested PDF highlight wrappers removed words from flow and used the wrong
-font (79 px measured drift). Minimal CSS preserves flow/font/transforms; regression compares
-every glyph at 100%/250% plus pan. No feature work or migration extraction.
+Completed: PDF wrapper drift (~79 px), exact glyph caret fallback, completed highlight
+preservation, first-install update banner, and test fixture/transport/timing fixes.
+Changed modules: index.html PDF CSS, js/selection.js, js/pwa-lifecycle.js; versioned shell,
+regression tests/CI and audit documentation. Details and reproductions: RETRO_AUDIT.md.
 
-All required local suites PASS: pdf_ux_browser, learning_ux_browser, migration_audit_browser,
-app_shell_versions; both browser_cdp_transport tests PASS. Audit includes cold/hard reload,
-real two-column PDF geometry, AI abort, cleanup, offline PDF render, installability/icons,
-and clean console. Ready for commit/PR; baseline 81a2012; CI/release pending.
-Production client on 9335 prepared by /tmp/retro_upgrade.py for real worker replacement.
+Release code commit: 8cc1e13. Synchronized dev release head: d59cfa6 (identical tree).
+PR #50 MERGED; main release commit 85496af32ea4046e4615bebe21e91968926767d4.
+CI: required push 34256779640 and PR 34256783010 PASS; main 34256942126 PASS.
+Local: PDF UX, learning UX, migration audit, app-shell versions and two CDP transport tests PASS.
+Production: Cloudflare deployment 3a2cd43d-9ff0-457f-aeec-bcfed2a95782 SUCCESS.
+HTML/SW/all 18 modules match release; actual existing-client worker update/banner/reload,
+production cold/hard reload, two-column real PDF selection, offline reload and real PDF
+worker/render, installability/icons and clean console all PASS.
 
-Production baseline serves correct baseline module hashes, HTML must-revalidate. Chromium
-reports no installation errors, manifest clean, PNG dimensions correct, active SW.
-User additionally reports PDF offset, stale update and Android install issue; PDF offset is
-confirmed/fixed. Browser/install symptom requested asynchronously; no server install blocker.
+Android: no Chromium installability/manifest/icon error on production; physical tablet
+installation and the user's own PDF remain manual device verification. Browser/install
+symptom was requested; no confirmed server-side install blocker remains.
 
-Modified files: index.html, sw.js, js/selection.js, js/pwa-lifecycle.js,
-tests/migration_audit_browser.py, tests/browser_cdp.py, tests/browser_cdp_transport.py,
-tests/pdf_ux_browser.py, tests/learning_ux_browser.py, .github/workflows/ci.yml,
-ARCHITECTURE.md, RETRO_AUDIT.md, MIGRATION_STATUS.md, HANDOFF.md.
-Unrelated untracked debug_pdf.mjs, dups.txt, test_pdf.html, test_pdf.mjs, viewer.css are NOT
-part of this work and must remain untouched/unstaged.
-
-Environment: HTTP server 8765; isolated Chrome 9335 /tmp/reader-retro-final-9335,
-9336 /tmp/reader-retro-final-9336. Use READER_CDP_PORT and NO_PROXY=127.0.0.1,localhost.
-Do not use someone else's browser on 9222.
-
-Exact next action: finish all required tests; commit only relevant files, push dev, PR/main,
-required CI test green, auto-merge; verify production content, actual SW replacement banner,
-full production audit including offline real PDF; mark audit COMPLETE and this handoff idle.
+Unrelated local scratch files remain untouched/unstaged: debug_pdf.mjs, dups.txt,
+test_pdf.html, test_pdf.mjs, viewer.css. No uncommitted application changes.
+Exact next action: none. Wait for a new user task; do not restart migration.
 
 ## Handoff rules
 

@@ -1,6 +1,8 @@
 # Retrospective audit — completion verification
 
-Audit status: IN PROGRESS (2026-09-08). Earlier fixes landed in PR #19; the current
+Audit status: COMPLETE (2026-09-08). All confirmed findings 1–17 are FIXED.
+Steps 0–4 have passed retrospective verification; no feature work or new migration step.
+Earlier fixes landed in PR #19; the completion
 maintenance verification uses baseline 81a2012 after all migration steps completed.
 The sections below first preserve the original Steps 0–4 review, then record current findings.
 
@@ -158,7 +160,7 @@ AI requests use fake credentials with transport mocks; no real provider calls or
 
 Local final verification: PDF UX, learning UX, migration audit, app-shell versions and
 both CDP transport tests PASS. HTTP cold/hard/offline startup and real two-column PDF
-geometry/rendering pass with clean console. CI/production release verification pending.
+geometry/rendering pass with clean console. Required CI and production release verification PASS (see release evidence below).
 
 14. **FIXED — a disconnected CDP socket could spin forever.** A closed socket returns empty
     bytes; `read()` kept retrying without progress. The deterministic transport test failed
@@ -208,8 +210,8 @@ and actual icon dimensions locally and on production.
 
 Production before release served the current baseline modules (including selection f1bc170d29d8,
 PWA lifecycle a6f5fd747625), with HTML max-age=0,must-revalidate. Current uncommitted fixes
-cannot appear there until PR/CI/merge/deployment. Final verification will compare content
-and test a real worker replacement, then cold/offline reload.
+cannot appear there until PR/CI/merge/deployment. Final verification compared all production content, passed a real worker replacement,
+then cold/hard/offline reload with real PDF rendering.
 
 Alignment observation deadline now starts with pointerdown itself: starting it during an
 earlier CDP setup command could expire before the touch even began when the client was
@@ -220,3 +222,31 @@ so a delayed client reply cannot stretch the intended tap into the app's 380ms l
 A deterministic transport test requires both frames before the first reply, handles an
 interleaved event and reversed reply order. Diagnostic pointerdown/up/click timestamps are
 retained on assertion failure. No application gesture thresholds or assertions changed.
+
+## Completion evidence — 2026-09-08
+
+- Fix commit `8cc1e13`; synchronized dev head `d59cfa6` has identical content.
+- PR #50 merged through protected normal/auto-merge workflow at 17:24:49 UTC;
+  main merge commit `85496af32ea4046e4615bebe21e91968926767d4`.
+- Required `test` checks PASS: push 34256779640, PR 34256783010.
+  Main post-merge CI 34256942126 PASS. One previous-head PR runner timed out waiting
+  for Chrome CDP before launching the app (exit124); parallel identical-content push
+  and both final-head runs passed. No application assertions bypassed or relaxed.
+- Cloudflare Pages deployment 3a2cd43d-9ff0-457f-aeec-bcfed2a95782 SUCCESS.
+- Production https://ai-ebook-reader.pages.dev/: HTML (following the normal index.html
+  redirect), sw.js and all 18 modules matched local release bytes exactly.
+- A pre-existing production client received exactly one real controllerchange, displayed
+  the update banner and reloaded the new version through its button.
+- Full `READER_AUDIT_URL=https://ai-ebook-reader.pages.dev/` migration audit PASS:
+  cold start, two hard reloads, script order, null voice preference, AI abort/fallback,
+  cancellation/ownership, real synthetic two-column PDF, exact offsets, repeated taps,
+  unchanged glyph geometry after highlights at zoom/pan, clean console and no rejections.
+- Active service worker; offline document reload and actual PDF.js worker/canvas/text-layer
+  rendering PASS. Production manifest/installability/icon checks PASS.
+- Local required PDF UX, learning UX, migration audit, app-shell versions and two CDP
+  transport regressions PASS. PDF UX includes 400% word tap/translation placement and
+  24 render cycles with stable DOM/listener counts.
+
+No confirmed issue remains unfixed; no external blocker to this release. Physical Android
+installation and the user's particular PDF remain manual device checks, not claims inferred
+from desktop emulation. The server-side installability investigation found no defect.

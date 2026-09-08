@@ -625,7 +625,8 @@ When this lands, the 19-step modularization migration is complete.
 
 Maintenance audit requested explicitly by the user after the completed migration. The
 original PR #19 is preserved as historical fact; no migration step has been reopened.
-Current audit: IN PROGRESS, final local checks/release pending. Original findings 1–11
+Current audit: COMPLETE. Steps 0–4 retrospectively verified; all confirmed issues FIXED.
+Original findings 1–11
 remain fixed. Newly reproduced and fixed: exact-glyph PDF element-caret fallback, invalid
 PDF lifecycle/layout in the smoke fixture, CDP EOF spin, and first-install SW update banner, and idle drag cleanup removing completed highlights.
 See RETRO_AUDIT.md findings 12–16 and the expanded browser/transport regression tests.
@@ -635,3 +636,10 @@ selection wrappers inherited absolute PDF item positioning and a system font, mo
 glyphs ~79 px. CSS now preserves text flow/font; zoom/pan geometry regression added.
 Android installability on production has no Chromium/manifest/icon errors; physical device
 symptom requested, with no confirmed server-side installation blocker.
+
+Completion release: PR #50 merged (85496af3), required push/PR and main CI green,
+Cloudflare deployment successful. All required local suites and full production audit
+passed, including real multi-column PDF glyph geometry, active SW, cold/hard reload,
+actual existing-client update, offline reload/real PDF render, and clean console.
+All findings 1–17 FIXED; no confirmed unresolved issue or external release blocker.
+See RETRO_AUDIT.md for exact reproduction, root causes, fixes and release evidence.
