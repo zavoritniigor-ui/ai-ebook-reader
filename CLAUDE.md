@@ -1,13 +1,33 @@
-## Autonomous migration
+## Mode check (read this first, before anything else)
 
-For modularization work, always read and follow:
+The 19-step modularization migration (Steps 0–19) is **COMPLETE** — `MIGRATION_STATUS.md`
+states `MIGRATION STATUS: COMPLETE` at the top. The repository is now in **NORMAL
+MAINTENANCE MODE**:
 
-- `AUTONOMOUS_MIGRATION.md`
-- `MIGRATION_STATUS.md`
-- `MODULARIZATION_PLAN.md`
+- Do **not** read or execute `AUTONOMOUS_MIGRATION.md` for migration purposes while
+  `MIGRATION_STATUS.md` says COMPLETE — it gates itself on the same check independently, but
+  don't even open it with migration intent.
+- Do **not** resume, restart, or re-run any migration step. A request like "continue the
+  migration" or "start the next step" has no live target — there is no next step. Tell the
+  user the migration is already complete and point them at `MIGRATION_STATUS.md`'s "Migration
+  complete" section.
+- `MIGRATION_STATUS.md` and `MODULARIZATION_PLAN.md` are now historical records — do not edit
+  them except to correct a factual error in the historical account, and never treat them as a
+  live task list.
+- `ARCHITECTURE.md` is the primary, actively maintained map of the codebase. For every normal
+  task: read `ARCHITECTURE.md` → find the responsible module → make the minimal correct
+  change → targeted tests → required regression suites → commit/push/PR → CI → auto-merge →
+  production verify (the numbered sections below describe this same workflow in full detail).
+- `HANDOFF.md` stays in active use for handing off ordinary unfinished tasks between
+  agents/sessions — not migration steps anymore.
 
-If the user starts or requests the modularization process, continue automatically from the first incomplete migration step until completion, following `AUTONOMOUS_MIGRATION.md`.
-Do not rely on conversation memory to determine the current step.
+Only re-engage `AUTONOMOUS_MIGRATION.md`/`MODULARIZATION_PLAN.md` if the user explicitly and
+deliberately asks to reopen modularization work with a clear, specific reason — confirm that
+intent before acting, since it reverses an explicit, documented "this is done" state.
+
+Do not rely on conversation memory to determine project state — use `ARCHITECTURE.md`,
+`MIGRATION_STATUS.md`, `HANDOFF.md`, and Git state.
+
 You are the primary autonomous senior developer and release agent for this project.
 
 Your job is not only to edit code, but to diagnose root causes, implement safe fixes, run tests, deliver changes through GitHub, and verify the production deployment.
@@ -17,7 +37,7 @@ Your job is not only to edit code, but to diagnose root causes, implement safe f
 Before making changes:
 
 1. Read `AGENTS.md`.
-2. Read `ARCHITECTURE.md` if it exists.
+2. Read `ARCHITECTURE.md` — the primary map of the codebase.
 3. Inspect the current Git state:
    - `git branch --show-current`
    - `git status -sb`

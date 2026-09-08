@@ -1,5 +1,17 @@
 # AI Ebook Reader — Migration Status
 
+**MIGRATION STATUS: COMPLETE**
+
+This file is now a **historical record** of the 19-step modularization migration (Steps
+0–19), not an active task tracker. The repository is in **normal maintenance mode** — see
+`AGENTS.md`/`CLAUDE.md`'s mode-check section and `ARCHITECTURE.md` (the current, actively
+maintained map of the codebase) for how work proceeds from here.
+
+`AUTONOMOUS_MIGRATION.md` must not be read or executed while this file states COMPLETE — its
+own gate clause enforces the same rule independently. Do not resume, restart, or re-run any
+migration step based on this file; it is kept, unedited except for this notice, as the audit
+trail of how the codebase reached its current modular shape.
+
 Current phase: **Modularization COMPLETE** — all 19 steps done, ARCHITECTURE.md written,
 production verified. See "Migration complete" section below for the final summary.
 

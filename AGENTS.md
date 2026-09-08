@@ -1,17 +1,45 @@
 # AI Ebook Reader — Agent Rules
-## Autonomous migration
 
-For modularization work, always read and follow:
+## Mode check (read this first, before anything else)
 
-- `AUTONOMOUS_MIGRATION.md`
-- `MIGRATION_STATUS.md`
-- `MODULARIZATION_PLAN.md`
+The 19-step modularization migration (Steps 0–19) is **COMPLETE** — check `MIGRATION_STATUS.md`
+to confirm (it says `MIGRATION STATUS: COMPLETE` at the top). The repository is now in
+**NORMAL MAINTENANCE MODE**:
 
-Determine the current migration step from `MIGRATION_STATUS.md`, not from conversation memory.
+- Do **not** read or execute `AUTONOMOUS_MIGRATION.md`. It gates itself on the same
+  `MIGRATION_STATUS.md` check, but do not even open it for migration purposes while that file
+  says COMPLETE.
+- Do **not** resume, restart, or re-run any migration step, and do not treat a request like
+  "continue the migration" or "start the next step" as a live instruction — there is no next
+  step. Tell the user the migration is already complete and point them at
+  `MIGRATION_STATUS.md`'s "Migration complete" section instead.
+- `MIGRATION_STATUS.md` and `MODULARIZATION_PLAN.md` are now **historical records**, kept for
+  audit purposes — do not edit them except to correct a factual error in the historical
+  account, and never treat them as a live task list.
+- `ARCHITECTURE.md` is the **primary, actively maintained map of the codebase**. Use it for
+  every normal task from here on (see "Normal task workflow" below).
+- `HANDOFF.md` remains in active use — but now for handing off ordinary unfinished tasks
+  between agents/sessions, not migration steps.
 
-If modularization has been started, continue automatically from the first incomplete step until completion, following `AUTONOMOUS_MIGRATION.md`.
+Only re-engage `AUTONOMOUS_MIGRATION.md`/`MODULARIZATION_PLAN.md` if the user explicitly and
+deliberately asks to reopen modularization work with a clear, specific reason (e.g. splitting
+an oversized module further) — and even then, confirm that intent before acting, since it
+reverses an explicit, documented "this is done" state.
 
-Do not skip completed steps and do not repeat steps already marked `DONE` unless verification proves the recorded status is wrong.
+## Normal task workflow (maintenance mode)
+
+For any regular bugfix, feature request, or change:
+
+1. Read `ARCHITECTURE.md` to find the module responsible for the affected functionality.
+2. Make the minimal correct change in that module (see "Project structure" below).
+3. Run the targeted test(s) for the change, then the required regression suites (see
+   "Testing" below).
+4. Commit on `dev` → push → open/update a PR to `main` → wait for CI → auto-merge → verify
+   production (see "Automated release flow" and "Production verification" below).
+
+The rest of this file's sections (project workflow, project structure, testing, git hygiene,
+release flow, production verification, when to stop, completion criteria, final report, agent
+handoff) describe this same workflow in full detail and still apply exactly as written.
 ## Project workflow
 
 - Work only in the `dev` branch.
@@ -25,7 +53,7 @@ Do not skip completed steps and do not repeat steps already marked `DONE` unless
 
 ## Project structure
 
-- Before editing code, read `ARCHITECTURE.md` if it exists.
+- Before editing code, read `ARCHITECTURE.md` — the primary map of the codebase.
 - Work only in the module related to the task whenever possible.
 - Do not scan or refactor unrelated modules without a clear reason.
 - Do not perform large refactors unless explicitly requested.
