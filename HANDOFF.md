@@ -14,22 +14,29 @@ Before starting or resuming work, every agent must read:
 ## Current handoff
 
 Active agent: Claude Code
-Current step: Step 16 — onboarding.js (starting now)
+Current step: Step 17 — pwa-lifecycle.js (starting now — HIGHER RISK, read below)
 Current branch: dev
 Current task status: active
 
-Last completed action: Step 15 — extracted js/ui-tooltip.js (PR #39): footer submenu +
-  translation-tooltip lifecycle in one piece (openFooterMenu/closeFooterMenu, pointer-type
-  detection, enterMobileFullScreenIfNeeded, scheduleTooltipHide/cancelTooltipHide,
-  positionTooltip/repositionTooltip) and the key-settings modal
-  (openKeySettings/closeKeySettings/saveApiKey). Resolved the Step 9 deviation for real this
-  time: read the actual code and found the footer-menu and tooltip-closing logic genuinely
-  share one pointerdown listener, so they stay together in ui-tooltip.js rather than splitting
-  toward navigation.js as the original plan guessed. All local suites green. Production
-  verified: fresh load zero errors, all 15 js/*.js scripts in correct order including
-  ui-tooltip.js, every extracted function present as a real global and exercised live
-  (positionTooltip/openFooterMenu/closeFooterMenu/openKeySettings/closeKeySettings all
-  confirmed mutating real DOM/state), genuine network-level offline reload working.
+Last completed action: Step 16 — extracted js/onboarding.js (PR #41): ONBOARDING_KEY/
+  onboardingState, onboardingGroups, scheduleReaderOnboarding, stopOnboarding,
+  rememberOnboarding — one contiguous middle piece. All local suites green, including every
+  onboarding-specific learning_ux_browser.py case. Production verified: fresh load zero
+  errors, all 16 js/*.js scripts in correct order including onboarding.js, every extracted
+  function present as a real global and exercised live (rememberOnboarding/
+  scheduleReaderOnboarding/stopOnboarding all confirmed mutating real state and scheduling a
+  real timer), genuine network-level offline reload working.
+
+**IMPORTANT — Step 17 is a higher-risk step.** AGENTS.md/CLAUDE.md name PWA lifecycle,
+service worker, and persistence as areas needing extra caution. stopBackgroundActivity in
+particular is a hub function that calls into nearly every already-extracted module
+(cancelDragSelection/cancelPdfInteraction/cancelPdfRender/cancelAsyncTasks/stopGlobalTTS/
+stopTooltipSpeech, resets isPanning/inkDrawing/inkCurrent/regionStart) — read its full current
+body fresh, don't trust any earlier description of it. swRegistration needs checking in both
+directions (who sets it, who reads it — likely including main.js's own SW registration in
+Step 18). Test this step extra thoroughly: full local suite plus a production smoke test that
+specifically exercises backgrounding (visibilitychange), the update banner, and a genuine
+offline reload, not just the standard battery.
 
 **Scope note (read this):** Codex's own audit record said "the user's explicit scope ends
 here — do not resume autonomous migration after this audit." The user then directly and
@@ -38,11 +45,11 @@ repeated instruction was followed and is recorded as intentional in MIGRATION_ST
 "IMPORTANT — scope note" section. If you are resuming later and the user hasn't otherwise
 confirmed this, it's worth a quick check rather than assuming silently either way.
 
-Last successful commit: 2e6fe69 on dev (merged to main)
-Last PR: #39, merged
+Last successful commit: c768530 on dev (merged to main)
+Last PR: #41, merged
 Last CI result: green
-Last production result: verified live — fresh load zero errors, all 15 js/*.js scripts present
-  in correct order, every ui-tooltip.js function present as a global and exercised live,
+Last production result: verified live — fresh load zero errors, all 16 js/*.js scripts present
+  in correct order, every onboarding.js function present as a global and exercised live,
   genuine network-level offline reload loaded the full app correctly
 Uncommitted work: none at time of writing this entry
 IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" section (four
@@ -54,10 +61,12 @@ IMPORTANT for the next agent: read MIGRATION_STATUS.md's "Mechanism correction" 
   flake and just rerunning; if a job instead times out waiting for Chrome's CDP port before any
   test even runs, that's the separate, purely infra "ci-chrome-cdp-startup-flake" — safe to
   rerun once, but treat two-in-a-row on the same PR as worth investigating for real.
-Next required action: Step 16 (onboarding.js: stopOnboarding, rememberOnboarding,
-  scheduleReaderOnboarding, onboardingGroups, ONBOARDING_KEY — sits right after the
-  prev-btn/next-btn wiring, in the same reopened block as zoom-in/zoom-out/theme-select).
-  Re-grep fresh line numbers first. See MIGRATION_STATUS.md's "Step 16 next" section.
+Next required action: Step 17 (pwa-lifecycle.js: isStandalonePwa, stopBackgroundActivity,
+  persistCriticalState, exitApp, showToast, topOpenOverlay, countOpenOverlays,
+  closeTopOverlay, syncOverlayHistory, showUpdateBanner, OVERLAY_LAYERS, swRegistration —
+  starts at the "PWA: ЖИТТЄВИЙ ЦИКЛ ЗАСТОСУНКУ" header, right where onboarding.js's old piece
+  ended). Read the scope note above about extra caution before starting. Re-grep fresh line
+  numbers first. See MIGRATION_STATUS.md's "Step 17 next" section.
 
 ## Handoff rules
 

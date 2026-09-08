@@ -20,23 +20,23 @@ Step 12 — pdf-ink.js: DONE
 Step 13 — pdf-crop.js: DONE
 Step 14 — dictation.js: DONE
 Step 15 — ui-tooltip.js: DONE
-Step 16 — onboarding.js: PENDING
+Step 16 — onboarding.js: DONE
 Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 15 — ui-tooltip.js
-Last successful PR: #39 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/39)
-Last successful commit: 2e6fe69 (merged to main)
+Last successful step: Step 16 — onboarding.js
+Last successful PR: #41 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/41)
+Last successful commit: c768530 (merged to main)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 15 js/*.js scripts present in the correct classic-script order
-  including the new ui-tooltip.js, every extracted function present as a real global and
-  exercised live (positionTooltip() actually moved the tooltip element, openFooterMenu()/
-  closeFooterMenu() toggled the real footer-open class, openKeySettings()/closeKeySettings()
-  toggled the real settings-modal display), AND a genuine network-level offline reload (CDP
-  Network.emulateNetworkConditions offline:true) that still loaded the full app correctly from
-  cache (readyState complete, positionTooltip defined, correct title, all 15 scripts present).
+  load (zero console errors), all 16 js/*.js scripts present in the correct classic-script order
+  including the new onboarding.js, every extracted function present as a real global and
+  exercised live (rememberOnboarding()/scheduleReaderOnboarding()/stopOnboarding() called
+  directly, confirming real onboardingState persistence and timer scheduling), AND a genuine
+  network-level offline reload (CDP Network.emulateNetworkConditions offline:true) that still
+  loaded the full app correctly from cache (readyState complete, scheduleReaderOnboarding
+  defined, correct title, all 16 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -451,16 +451,44 @@ verified with the usual battery, including positionTooltip()/openFooterMenu()/
 closeFooterMenu()/openKeySettings()/closeKeySettings() all called directly live against
 production, confirming real DOM/state mutation.
 
-## Step 16 next
+## Step 16 — onboarding.js: DONE (PR #41)
 
-onboarding.js is the next extraction: stopOnboarding, rememberOnboarding,
-scheduleReaderOnboarding, plus the onboardingGroups object and ONBOARDING_KEY constant (see
-MODULARIZATION_PLAN.md's map — line numbers long stale, re-grep fresh). This cluster sits
-right after the prev-btn/next-btn wiring, in the same reopened block as the zoom-in/zoom-out/
-theme-select handlers and the (now-moved) key-settings functions — re-read the current
-boundaries fresh rather than assuming where this step's material starts and ends. Re-grep
-fresh line numbers before each cut. Preserve classic execution order; after changing any
-js/*.js file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions
-before testing (`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the
-same kind of non-contiguous interleaving Steps 7-9 hit; read full function bodies before
-assuming a piece belongs elsewhere (mechanism-correction lesson from Step 4).
+Extracted one contiguous middle piece (zoom-in/zoom-out/theme-select/prev-btn/next-btn wiring
+stays before it, the updateDictationUI()/applyI18n() startup bootstrap calls stay right after
+it — deliberately inline, same reasoning as the tts.js voice bootstrap) into js/onboarding.js,
+loaded right after js/formats.js: ONBOARDING_KEY/onboardingState, onboardingGroups,
+scheduleReaderOnboarding, stopOnboarding, rememberOnboarding.
+
+No forward-reference risk: no top-level immediate calls in the moved range, only
+declarations, a try/catch initializer, and for-loops registering event listeners/
+MutationObservers (deferred), all against els.* elements already built in core.js. All local
+suites green, including every onboarding-specific learning_ux_browser.py case. Production
+verified with the usual battery, including rememberOnboarding()/scheduleReaderOnboarding()/
+stopOnboarding() called directly live against production, confirming real state persistence
+and timer scheduling.
+
+## Step 17 next
+
+pwa-lifecycle.js is the next extraction: isStandalonePwa, stopBackgroundActivity,
+persistCriticalState, exitApp, showToast, topOpenOverlay, countOpenOverlays, closeTopOverlay,
+syncOverlayHistory, showUpdateBanner, plus OVERLAY_LAYERS and swRegistration (see
+MODULARIZATION_PLAN.md's map — line numbers long stale, re-grep fresh). Starts right where
+onboarding.js's old piece ended, at the "PWA: ЖИТТЄВИЙ ЦИКЛ ЗАСТОСУНКУ" header comment.
+
+**This step needs extra care per AGENTS.md/CLAUDE.md's own list of risk-sensitive areas**
+(PWA lifecycle, service worker, persistence are named explicitly). stopBackgroundActivity in
+particular is a hub function already referenced by name throughout this migration (it calls
+cancelDragSelection/cancelPdfInteraction/cancelPdfRender/cancelAsyncTasks/stopGlobalTTS/
+stopTooltipSpeech and resets isPanning/inkDrawing/inkCurrent/regionStart across nearly every
+already-extracted module) — read its full current body fresh before moving it, don't assume
+it still matches any description from earlier in this file. swRegistration is also almost
+certainly read by the service-worker-update-banner logic and possibly by main.js's own SW
+registration call (Step 18) - check both directions of that reference before cutting. Test
+extra thoroughly: run the full local suite, and do a real production smoke test that
+specifically covers backgrounding (visibilitychange), the update banner, and a genuine
+network-level offline reload, not just the usual battery. Re-grep fresh line numbers before
+each cut. Preserve classic execution order; after changing any js/*.js file, run
+`python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
+(`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the same kind of
+non-contiguous interleaving Steps 7-9 hit; read full function bodies before assuming a piece
+belongs elsewhere (mechanism-correction lesson from Step 4).
