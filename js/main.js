@@ -55,7 +55,6 @@ els.targetLang.onchange = (e) => {
         if (panel.classList.contains('loading')) panel.querySelector('.panel-content').textContent = t('selectFirst');
         panel.classList.remove('loading');
     });
-    els.askContent.querySelectorAll('.panel-translation').forEach(n => n.remove());
     els.grammarContent.querySelectorAll('.verb-focus').forEach(n => n.remove());
     writeStored('reader_target_lang', state.targetLang);
     // Кеш не скидаємо: ключі містять мову, тому переклади різними мовами не змішуються
