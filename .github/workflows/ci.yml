@@ -29,6 +29,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "Checking standalone JS files..."
+          for js_file in js/*.js; do node --check "$js_file"; done
+          python3 tests/app_shell_versions.py
           node --check sw.js
           node --check archive-guard.worker.js
           
@@ -125,4 +127,6 @@ jobs:
           echo "Running learning_ux_browser.py..."
           python3 -u tests/learning_ux_browser.py
           
+          python3 -u tests/migration_audit_browser.py
+
           echo "All tests passed successfully!"

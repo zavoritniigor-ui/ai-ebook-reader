@@ -7,10 +7,8 @@
  *
  * Класичний <script src>, НЕ ES-модуль — див. js/core.js. Залежить від core.js
  * (state/els/invalidateSelection) і ai-client.js/lang-detect.js НЕ потребує напряму.
- * ПРИМІТКА: drag-виділення стилусом/мишею (wordBoundsAt/rangeBetweenWords) і
- * головний tap-обробник (els.mainArea 'click') лишаються в index.html поки що —
- * вони фізично переплетені з navigation.js/pdf-zoom-pan.js кодом і потребують
- * окремого, обережнішого перенесення (див. MIGRATION_STATUS.md, розділ Step 4).
+ * Drag і click listeners також тут; navigation/PDF gesture callbacks лишаються
+ * в index.html. invalidateSelection живе в core.js і скасовує drag перед reset.
  */
 
 // ========== ВИДІЛЕННЯ РЕЧЕННЯ / АБЗАЦУ ПАЛЬЦЕМ ==========
@@ -110,7 +108,8 @@ function pdfNearestSpan(layer, x, y) {
 }
 function pdfTextSpans(layer) {
     return Array.from(layer.querySelectorAll('span')).filter(s =>
-        !s.classList.contains('markedContent') && s.firstChild && s.firstChild.nodeType === Node.TEXT_NODE);
+        !s.classList.contains('markedContent') && s.textContent.trim() &&
+        !s.parentElement.closest('span:not(.markedContent)'));
 }
 function pdfVisualGroup(layer, targetSpan) {
     const spans = pdfTextSpans(layer);
@@ -160,16 +159,26 @@ function pdfVisualGroup(layer, targetSpan) {
 function buildSentenceRangesFromSpans(spans) {
     const chars = [];
     for (const span of spans) {
-        const node = span.firstChild;
-        const text = (node && node.nodeValue) || '';
-        for (let i = 0; i < text.length; i++) chars.push({ node, offset: i, ch: text[i] });
+        const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+            const text = node.nodeValue || '';
+            for (let i = 0; i < text.length; i++) chars.push({ node, offset: i, ch: text[i], span });
+        }
+        // PDF text items/lines need a separator even when the stream omits spaces.
+        if (chars.length && !/\s/.test(chars.at(-1).ch)) chars.push({ ...chars.at(-1), ch: ' ', separator: true });
     }
     const sentences = [];
-    let buffer = '', startNode = null, startOffset = 0, nodes = [];
+    let buffer = '', startNode = null, startOffset = 0, nodes = [], pieces = [];
     for (let k = 0; k < chars.length; k++) {
         const { node, offset, ch } = chars[k];
-        if (buffer === '') { startNode = node; startOffset = offset; nodes = []; }
+        if (buffer === '') { startNode = node; startOffset = offset; nodes = []; pieces = []; }
         buffer += ch;
+        if (!chars[k].separator) {
+            const last = pieces.at(-1);
+            if (last && last.node === node) last.end = offset + 1;
+            else pieces.push({ node, start: offset, end: offset + 1, span: chars[k].span });
+        }
         if (!nodes.includes(node)) nodes.push(node);
         const next = chars[k + 1];
         const atSentenceEnd = /[.!?]/.test(ch) && (!next || /\s/.test(next.ch));
@@ -179,6 +188,7 @@ function buildSentenceRangesFromSpans(spans) {
             if (trimmed) {
                 const r = document.createRange();
                 try { r.setStart(startNode, startOffset); r.setEnd(node, offset + 1); } catch (e) {}
+                r._pdfPieces = pieces.map(p => ({ ...p }));
                 r.toString = () => trimmed;
                 sentences.push({ text: trimmed, range: r, nodes: nodes.slice() });
             }
@@ -195,14 +205,14 @@ function sentenceRangeAt(clientX, clientY) {
 
     if (block.classList && block.classList.contains('pdf-text-layer')) {
         const startEl = caret.startContainer.nodeType === Node.TEXT_NODE ? caret.startContainer.parentElement : caret.startContainer;
-        let targetSpan = startEl && startEl.closest ? startEl.closest('span') : null;
+        let targetSpan = pdfTextSpans(block).find(s => s === startEl || s.contains(startEl));
         if (!targetSpan) targetSpan = pdfNearestSpan(block, clientX, clientY);
         if (!targetSpan) return null;
         const group = pdfVisualGroup(block, targetSpan);
         const sentences = buildSentenceRangesFromSpans(group);
         const hitNode = caret.startContainer.nodeType === Node.TEXT_NODE ? caret.startContainer : targetSpan.firstChild;
         for (const s of sentences) {
-            if (s.nodes.includes(hitNode)) { s.range._pdfNodes = s.nodes; return s.range; }
+            if (s.range._pdfPieces.some(p => p.node === hitNode && (hitNode !== caret.startContainer || (caret.startOffset >= p.start && caret.startOffset < p.end)))) { s.range._pdfNodes = s.nodes; return s.range; }
         }
         if (sentences.length) { sentences[0].range._pdfNodes = sentences[0].nodes; return sentences[0].range; }
         return null;
@@ -229,6 +239,14 @@ const SEL_HL_NAME = 'sel-current';
 // разом із ним.
 function wrapRangeInSpans(range, className) {
     const spans = [];
+    if (range._pdfPieces) {
+        for (const p of range._pdfPieces.slice().reverse()) {
+            const part = document.createRange();
+            part.setStart(p.node, p.start); part.setEnd(p.node, p.end);
+            spans.push(...wrapRangeInSpans(part, className));
+        }
+        return spans;
+    }
     const root = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
         ? range.commonAncestorContainer : range.commonAncestorContainer.parentNode;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -297,6 +315,18 @@ function wordToSentenceEndRangeAt(clientX, clientY) {
 
     try {
         const r = document.createRange();
+        if (sentence._pdfPieces) {
+            const idx = sentence._pdfPieces.findIndex(p => p.node === textNode && start < p.end);
+            if (idx < 0) return sentence;
+            r._pdfPieces = sentence._pdfPieces.slice(idx).map(p => ({ ...p }));
+            r._pdfPieces[0].start = Math.max(start, r._pdfPieces[0].start);
+            const first = r._pdfPieces[0], last = r._pdfPieces.at(-1);
+            r.setStart(first.node, first.start); r.setEnd(last.node, last.end);
+            const joined = r._pdfPieces.map((p, i, all) => (i && p.span !== all[i - 1].span ? ' ' : '') + p.node.nodeValue.slice(p.start, p.end)).join('').trim();
+            r.toString = () => joined;
+            return r;
+        }
+
         r.setStart(textNode, start);
         r.setEnd(sentence.endContainer, sentence.endOffset);
         if (r.collapsed) return sentence;
@@ -417,10 +447,24 @@ function wordBoundsAt(clientX, clientY) {
     return { node, start: s, end: e };
 }
 
+function cancelDragSelection() {
+    clearTimeout(touchSelTimer); touchSelTimer = null;
+    dragSel = null; dragMoved = false; state.dragRange = null;
+    state.touchSelecting = false;
+    els.container.style.touchAction = '';
+    if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
+}
+document.addEventListener('pointercancel', cancelDragSelection);
+document.addEventListener('pointerup', e => {
+    if (!els.mainArea.contains(e.target)) cancelDragSelection();
+});
+window.addEventListener('blur', cancelDragSelection);
+
 let dragSel = null;   // { node, start, end } — слово, з якого почалось виділення
 let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 
 els.mainArea.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
     if (state.format === 'pdf' && !els.container.contains(e.target)) return;
     if (state.inkMode || (state.format === 'pdf' && e.pointerType === 'touch')) return;      // PDF touch belongs to zoom/pan
     if (state.inkMode) return;
@@ -429,6 +473,7 @@ els.mainArea.addEventListener('pointerdown', (e) => {
     if (e.target.closest('#word-tooltip') || e.target.closest('.side-panel') ||
         e.target.closest('#tts-controls') || e.target.closest('nav') || e.target.closest('header')) return;
 
+    cancelDragSelection();
     dragStartX = e.clientX; dragStartY = e.clientY; dragMoved = false;
 
     if (e.pointerType === 'touch') {
@@ -493,6 +538,7 @@ els.mainArea.addEventListener('pointermove', (e) => {
 els.mainArea.addEventListener('pointerup', (e) => {
     clearTimeout(touchSelTimer); touchSelTimer = null;
     if (state.touchSelecting) {
+        touchStartTime = 0; // pointerup precedes touchend: do not turn the page after selection
         state.touchSelecting = false;
         els.container.style.touchAction = (state.format === 'pdf') ? '' : 'pan-y';
     }
@@ -512,6 +558,8 @@ els.mainArea.addEventListener('pointerup', (e) => {
     state.lastSelectedRange = r.cloneRange();
     // Протягування завершено — тепер можна перемалювати точно (у PDF обгорткою).
     showSelectionHighlight(r);
+    state.lastWordNode = null; state.ctxSentence = text.slice(0, 400);
+    state.lastSelectionText = text;
     let rect = null;
     try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
     handleWordOrSelection(text, e.clientX, e.clientY, rect);

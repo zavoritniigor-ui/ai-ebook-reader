@@ -115,6 +115,7 @@ function cancelAsyncTasks(keys = Array.from(asyncTasks.keys())) {
     for (const key of keys) { asyncTasks.get(key)?.controller.abort(); asyncTasks.delete(key); }
 }
 function invalidateSelection() {
+    cancelDragSelection();
     state.lookupToken++;
     svoToken++;
     cancelAsyncTasks(['lookup', 'svo']);
@@ -151,7 +152,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 45000) {
         const response = await fetch(url, { ...options, signal: controller.signal });
         // Keep the timeout active while the response body is downloading as well.
         const body = await response.arrayBuffer();
-        return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+        return new Response([204, 205, 304].includes(response.status) ? null : body, { status: response.status, statusText: response.statusText, headers: response.headers });
     } catch (err) {
         if (timedOut) throw new Error('Сервер не відповів вчасно. Спробуйте ще раз.');
         if (err.name === 'AbortError') throw err;
@@ -194,7 +195,7 @@ const state = {
         catch (e) { return { en: null, fr: null, uk: null, ru: null }; }
     })(),
     voiceChosenByUser: (() => {
-        try { return JSON.parse(readStored('reader_voices_manual') || '{}'); } catch (e) { return {}; }
+        try { const value = JSON.parse(readStored('reader_voices_manual') || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch (e) { return {}; }
     })(),
     apiKey: readStored('reader_gemini_key') || '', groqKey: readStored('reader_groq_key') || '', translationCache: {}, lastAskContext: "",
     pageInChapter: 0, totalPagesInChapter: 1, bookKey: null, suppressNextClick: false,
@@ -309,6 +310,7 @@ function pickBestVoice(langPrefix, pool) {
     return candidates[0];
 }
 function loadVoices() {
+    if (!ttsSynth) return;
     voices = ttsSynth.getVoices(); if (voices.length === 0) return;
     els.voiceSelect.innerHTML = '';
     // Показуємо мови книги (англійська/французька) + українську для озвучення перекладу.

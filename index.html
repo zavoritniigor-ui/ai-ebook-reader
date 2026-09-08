@@ -689,7 +689,7 @@
         }
     </style>
 </head>
-<body data-theme="light">
+<body data-theme="light" inert>
 
     <div id="menu-handle" data-i18n-title="tMenu"></div>
     <header id="app-header">
@@ -880,7 +880,7 @@
         </div>
     </div>
 
-    <script src="js/core.js"></script>
+    <script src="js/core.js?v=9c5a32634c1a"></script>
     <script>
         // Мова інтерфейсу: застосовуємо збережений вибір і перемальовуємо всі написи.
         els.uiLang.value = state.uiLang;
@@ -936,14 +936,14 @@
             ttsSynth.cancel(); ttsSynth.speak(u);
         };
     </script>
-    <script src="js/lang-detect.js"></script>
+    <script src="js/lang-detect.js?v=79fe3afd9cfa"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
         // core.js: усередині він доходить до pageLang() (js/lang-detect.js), яка на момент
         // виконання core.js ще не існує — окремі класичні <script> НЕ поділяють hoisting
         // одне з одним, лише спільний "script scope" для вже ВИКОНАНОГО коду. lang-detect.js
         // вище вже завантажений і виконаний, тож тут виклик безпечний.
-        if (typeof ttsSynth !== 'undefined') { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
+        if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
 
         // Хто зараз озвучується у вікні перекладу: 'orig' | 'tr' | null. Потрібно, щоб
         // повторне натискання того самого динаміка зупиняло відтворення.
@@ -1030,7 +1030,7 @@
         // pdfjsLib.TextLayer застосовує CSS-трансформації (scaleX/rotate) — бо Selection API
         // завжди звіряється з реально відмальованою геометрією, а не з "плоскою" розкладкою.
     </script>
-    <script src="js/selection.js"></script>
+    <script src="js/selection.js?v=f1bc170d29d8"></script>
     <script>
         // ========== СПРАВЖНЯ ПАГІНАЦІЯ (окремі сторінки замість безкінечного скролу) ==========
         // Для epub/txt текст розкладається в CSS-колонку шириною на весь контейнер: кожна
@@ -1423,6 +1423,7 @@
         // Переналаштування пагінації при зміні розміру екрана (поворот планшета/телефона)
         let resizeTimer;
         window.addEventListener('resize', () => {
+            if (document.body.inert) return;
             const focus = pdfViewFocus;
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(() => {
@@ -2208,7 +2209,7 @@ Rules:
             return true;
         }
     </script>
-    <script src="js/ai-client.js"></script>
+    <script src="js/ai-client.js?v=a7a5f853ab94"></script>
     <script>
         // ========== ЛОКАЛЬНИЙ ПЕРЕКЛАДАЧ CHROME (офлайн, без ключа) ==========
         // Chrome має вбудовану модель перекладу, що працює прямо на пристрої. Важливо:
@@ -3068,7 +3069,7 @@ RÈGLES IMPÉRATIVES :
             stopGlobalTTS(); stopTooltipSpeech();
             pdfTasks.render?.cancel(); pdfTasks.render = null;
             if (pdfTasks.loading) { pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null; }
-            else if (state.pdfDoc) state.pdfDoc.destroy().catch(() => {});
+            else if (state.pdfDoc) state.pdfDoc.loadingTask.destroy().catch(() => {});
             state.pdfDoc = null; state.epubZip = null; state.spine = []; state.txtLines = [];
             state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
             state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = '';
@@ -3100,7 +3101,7 @@ RÈGLES IMPÉRATIVES :
             }
         });
     </script>
-    <script src="js/pdf-render.js"></script>
+    <script src="js/pdf-render.js?v=7d5c650a8f84"></script>
     <script>
         // Перевірка ZIP-контейнера (EPUB/DOCX) в окремому Worker'і ДО того, як його
         // побачить JSZip/Mammoth на головному потоці: справжні (а не заявлені в
@@ -3711,6 +3712,13 @@ RÈGLES IMPÉRATIVES :
         // Викликається і з подій видимості, і з кнопки "Вийти" — тому кожен крок тут
         // навмисно самодостатній і безпечний при повторному виклику.
         function stopBackgroundActivity() {
+            cancelDragSelection();
+            if (pdfTasks.loading && !state.pdfDoc) {
+                ++readerEpoch.book;
+                pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null;
+                state.format = null; state.totalPages = 0;
+                els.pages.textContent = 'Відкриття PDF скасовано. Відкрийте файл повторно.';
+            }
             cancelPdfInteraction(); cancelPdfRender();
             clearTimeout(resizeTimer); clearTimeout(scrubTimer); scrubDragging = false;
             regionStart = null; regionBox.style.display = 'none';
@@ -3909,6 +3917,9 @@ RÈGLES IMPÉRATIVES :
                 }).catch(() => {});
             });
         }
+        // Classic files expose callbacks before later files/module PDF.js finish.
+        // Enable input only after the entire application has initialized.
+        window.addEventListener('load', () => { document.body.inert = false; }, { once: true });
     </script>
 </body>
 </html>

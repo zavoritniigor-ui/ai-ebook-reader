@@ -12,16 +12,24 @@
 
 async function initPdf(file, epoch = readerEpoch.book) {
     if (!window.pdfjsLib) throw new Error('Не завантажено бібліотеку PDF. Перевірте з’єднання та оновіть сторінку.');
-    const data = await file.arrayBuffer();
-    if (epoch !== readerEpoch.book) return;
+    // Track the file-read phase too, before PDF.js has a loading task to destroy.
+    let cancelled = false;
+    const reading = { destroy: async () => { cancelled = true; } };
+    pdfTasks.loading = reading;
+    let data;
+    try { data = await file.arrayBuffer(); }
+    finally { if (pdfTasks.loading === reading) pdfTasks.loading = null; }
+    if (cancelled || epoch !== readerEpoch.book) return;
     // isEvalSupported прибрано разом з переходом на PDF.js 6.x: єдиний код, що колись
     // використовував eval (PostScriptCompiler для PDF-функцій), сама бібліотека видалила
     // як мертвий — тепер eval у PDF.js не використовується взагалі, і цей прапорець
     // нізвідки не читається (тож заборона eval гарантована безумовно, без опції).
     const loading = pdfjsLib.getDocument({ data });
     pdfTasks.loading = loading;
-    const doc = await loading.promise;
-    if (epoch !== readerEpoch.book) { await doc.destroy(); return; }
+    let doc;
+    try { doc = await loading.promise; }
+    catch (err) { if (pdfTasks.loading === loading) pdfTasks.loading = null; throw err; }
+    if (epoch !== readerEpoch.book) { await loading.destroy(); return; }
     state.pdfDoc = doc; state.totalPages = doc.numPages;
     const bm = loadBookmark();
     const startPage = (bm && bm.format === 'pdf' && bm.currentIndex >= 1 && bm.currentIndex <= state.totalPages) ? bm.currentIndex : 1;
@@ -98,8 +106,9 @@ async function renderPdfPage(pageNum, options = {}) {
     // що й сам pdf.js застосовує для data-main-rotation) ПІСЛЯ конструктора.
     tl.style.width = `${vp.rotation % 180 === 0 ? vp.width : vp.height}px`;
     tl.style.height = `${vp.rotation % 180 === 0 ? vp.height : vp.width}px`;
-    pdfTasks.text = textLayer; await textLayer.render();
-    if (pdfTasks.text === textLayer) pdfTasks.text = null;
+    pdfTasks.text = textLayer;
+    try { await textLayer.render(); }
+    finally { if (pdfTasks.text === textLayer) pdfTasks.text = null; }
     if (!current()) return false;
     w.appendChild(tl);
 
@@ -119,9 +128,9 @@ async function renderPdfPage(pageNum, options = {}) {
         transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
     });
     pdfTasks.render = task;
-    await task.promise;
+    try { await task.promise; }
+    finally { if (pdfTasks.render === task) pdfTasks.render = null; }
     if (!current()) return false;
-    pdfTasks.render = null;
 
     // Keep the old transformed page until both new layers are ready. Capture
     // the latest center here, so a pan during rendering also survives the swap.
