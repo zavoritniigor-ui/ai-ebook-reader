@@ -10,11 +10,14 @@ class CDP:
         key = base64.b64encode(os.urandom(16)).decode()
         self.sock.sendall(f'GET {u.path} HTTP/1.1\r\nHost: {u.netloc}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n'.encode())
         h = b''
-        while not h.endswith(b'\r\n\r\n'): h += self.sock.recv(1)
+        while not h.endswith(b'\r\n\r\n'): h += self.read(1)
         assert b'101 ' in h, h
     def read(self, n):
         data = b''
-        while len(data) < n: data += self.sock.recv(n-len(data))
+        while len(data) < n:
+            chunk = self.sock.recv(n-len(data))
+            if not chunk: raise ConnectionError('CDP socket closed while reading a frame')
+            data += chunk
         return data
     def _send_frame(self, payload, opcode=0x1):
         n = len(payload)
@@ -51,6 +54,19 @@ class CDP:
             if data.get('id') == self.seq:
                 if 'error' in data: raise RuntimeError(data['error'])
                 return data.get('result',{})
+    def touch_tap(self, x, y):
+        # Queue both ends before waiting for CDP acknowledgements. A descheduled
+        # client between two call()s must not turn a tap into a 380ms long press.
+        pending = set()
+        for kind, points in [('touchStart', [dict(x=x, y=y, id=1)]), ('touchEnd', [])]:
+            self.seq += 1; pending.add(self.seq)
+            self._send_frame(json.dumps(dict(id=self.seq, method='Input.dispatchTouchEvent',
+                params=dict(type=kind, touchPoints=points))).encode())
+        while pending:
+            data = json.loads(self._read_message())
+            if data.get('id') in pending:
+                pending.remove(data['id'])
+                if 'error' in data: raise RuntimeError(data['error'])
     def wait(self, expression, timeout=20):
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:

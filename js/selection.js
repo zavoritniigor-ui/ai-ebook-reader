@@ -16,12 +16,43 @@
 // автоматично: досить утримати палець на будь-якому слові. Показуємо результат як
 // звичайне виділення браузера — знайома візуальна реакція, і жодних змін у DOM.
 function caretRangeAt(clientX, clientY) {
-    if (document.caretRangeFromPoint) return document.caretRangeFromPoint(clientX, clientY);
-    if (document.caretPositionFromPoint) {
+    let range = null;
+    if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(clientX, clientY);
+    else if (document.caretPositionFromPoint) {
         const pos = document.caretPositionFromPoint(clientX, clientY);
-        if (pos) { const r = document.createRange(); r.setStart(pos.offsetNode, pos.offset); r.collapse(true); return r; }
+        if (pos) { range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); range.collapse(true); }
     }
-    return null;
+    // During transformed PDF hit-testing Chrome may return the layer element,
+    // not a text offset. Recover the nearest glyph within that PDF item only.
+    if (range && range.startContainer.nodeType === Node.ELEMENT_NODE) {
+        const layer = range.startContainer.closest('.pdf-text-layer');
+        const span = layer && pdfNearestSpan(layer, clientX, clientY);
+        if (span) return pdfCaretInSpan(span, clientX, clientY) || range;
+    }
+    return range;
+}
+function pdfCaretInSpan(span, x, y) {
+    const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
+    const glyph = document.createRange();
+    let node, best = null, distance = Infinity;
+    while (node = walker.nextNode()) {
+        for (let offset = 0; offset < node.length; offset++) {
+            glyph.setStart(node, offset); glyph.setEnd(node, offset + 1);
+            for (const rect of glyph.getClientRects()) {
+                if (!rect.width || !rect.height) continue;
+                const dx = Math.max(rect.left - x, 0, x - rect.right);
+                const dy = Math.max(rect.top - y, 0, y - rect.bottom);
+                const d = dx * dx + dy * dy;
+                if (d < distance) { distance = d; best = { node, offset }; }
+                if (d === 0) break;
+            }
+            if (distance === 0) break;
+        }
+        if (distance === 0) break;
+    }
+    if (!best) return null;
+    glyph.setStart(best.node, best.offset); glyph.collapse(true);
+    return glyph;
 }
 // Найближчий БЛОК, у межах якого шукаємо речення. Визначаємо за реальним display,
 // а не за списком тегів: після тапу слово загорнуте у власний <span class="word-visited">,
@@ -448,11 +479,12 @@ function wordBoundsAt(clientX, clientY) {
 }
 
 function cancelDragSelection() {
+    const hadDragHighlight = !!state.dragRange;
     clearTimeout(touchSelTimer); touchSelTimer = null;
     dragSel = null; dragMoved = false; state.dragRange = null;
     state.touchSelecting = false;
     els.container.style.touchAction = '';
-    if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
+    if (hadDragHighlight && typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
 }
 document.addEventListener('pointercancel', cancelDragSelection);
 document.addEventListener('pointerup', e => {

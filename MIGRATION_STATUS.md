@@ -620,3 +620,18 @@ the two required local suites once as a final sanity check before considering th
 migration complete (nothing should have changed since Step 18's own verification, but confirm
 rather than assume). Follow the same commit/push/PR/CI/merge workflow as every other step.
 When this lands, the 19-step modularization migration is complete.
+
+## RETRO_AUDIT completion verification — 2026-09-08
+
+Maintenance audit requested explicitly by the user after the completed migration. The
+original PR #19 is preserved as historical fact; no migration step has been reopened.
+Current audit: IN PROGRESS, final local checks/release pending. Original findings 1–11
+remain fixed. Newly reproduced and fixed: exact-glyph PDF element-caret fallback, invalid
+PDF lifecycle/layout in the smoke fixture, CDP EOF spin, and first-install SW update banner, and idle drag cleanup removing completed highlights.
+See RETRO_AUDIT.md findings 12–16 and the expanded browser/transport regression tests.
+
+Additional user-reported PDF offset confirmed and FIXED (finding 17): nested visited-word/
+selection wrappers inherited absolute PDF item positioning and a system font, moving later
+glyphs ~79 px. CSS now preserves text flow/font; zoom/pan geometry regression added.
+Android installability on production has no Chromium/manifest/icon errors; physical device
+symptom requested, with no confirmed server-side installation blocker.
