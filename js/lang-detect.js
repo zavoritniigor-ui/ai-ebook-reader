@@ -145,11 +145,12 @@ function findForeignRuns(classified, base) {
     const lang = base === 'fr' ? 'en' : 'fr';
     return merged.map(r => Object.assign({ lang }, r));
 }
-// Головна функція: ділить довільний текст на впорядковані мовні відрізки
-// {lang:'fr'|'en', text}, зберігаючи оригінальні пробіли й пунктуацію. Використовується
-// і для визначення мови (детект = найдовший за символами відрізок), і для TTS
-// (кожен відрізок озвучується власним голосом).
-function buildLanguageSegments(text, priorLang2) {
+// Аналізує текст як ОДИН суцільний потік токенів (без урахування дужок) і ділить
+// його на впорядковані мовні відрізки {lang:'fr'|'en', text}, зберігаючи оригінальні
+// пробіли й пунктуацію. Це те, чим раніше була buildLanguageSegments цілком — тепер
+// це внутрішній "плоский" крок, який buildLanguageSegments викликає для кожної
+// дужкової дільниці окремо (див. нижче чому).
+function buildFlatSegments(text, priorLang2) {
     const classified = classifyTokens(tokenizeForLang(text));
     if (!classified.some(t => t.isWord)) return [{ lang: priorLang2 === 'fr' ? 'fr' : 'en', text }];
     const base = sentenceBaseLang(classified, priorLang2);
@@ -164,13 +165,86 @@ function buildLanguageSegments(text, priorLang2) {
         if (tok.isWord && runPtr < runs.length && i === runs[runPtr].to) { flush(); curLang = base; runPtr++; }
     }
     flush();
-    // Захисне злиття сусідніх відрізків однієї мови (на межі це рідко, але дешево).
+    return mergeAdjacentSameLang(segments);
+}
+// Захисне злиття сусідніх відрізків однієї мови (на межі це рідко, але дешево) —
+// використовується і всередині одного "плоского" аналізу, і після складання
+// дужкових дільниць докупи.
+function mergeAdjacentSameLang(segments) {
     const out = [];
     for (const s of segments) {
         const last = out[out.length - 1];
         if (last && last.lang === s.lang) last.text += s.text; else out.push(Object.assign({}, s));
     }
     return out;
+}
+// Ділить текст на дільниці верхнього рівня: звичайний текст і дужкові групи
+// "(...)" (з урахуванням вкладеності — вкладені дужки лишаються ВСЕРЕДИНІ inner
+// і розбираються рекурсією, а не тут). Дужка сама по собі ніколи не входить у
+// слово (LANG_TOKEN_RE), тому сканувати сирий текст посимвольно безпечно.
+function splitTopLevelParens(text) {
+    const parts = [];
+    let i = 0, start = 0;
+    while (i < text.length) {
+        if (text[i] !== '(') { i++; continue; }
+        if (i > start) parts.push({ paren: false, text: text.slice(start, i) });
+        let depth = 1, j = i + 1;
+        while (j < text.length && depth > 0) {
+            if (text[j] === '(') depth++;
+            else if (text[j] === ')') depth--;
+            j++;
+        }
+        const closed = depth === 0;
+        parts.push({ paren: true, open: '(', close: closed ? ')' : '', inner: text.slice(i + 1, closed ? j - 1 : j) });
+        i = start = j;
+    }
+    if (start < text.length) parts.push({ paren: false, text: text.slice(start) });
+    return parts;
+}
+// Приклеює дужки назад до першого/останнього відрізка вмісту — так, щоб
+// конкатенація відрізків завжди давала точно вихідний текст.
+function wrapParenSegments(segs, open, close, fallbackLang) {
+    if (!segs.length) return [{ lang: fallbackLang === 'fr' ? 'fr' : 'en', text: open + close }];
+    const wrapped = segs.map(s => Object.assign({}, s));
+    wrapped[0].text = open + wrapped[0].text;
+    wrapped[wrapped.length - 1].text += close;
+    return wrapped;
+}
+// Головна функція: ділить довільний текст на впорядковані мовні відрізки. Текст у
+// дужках у навчальних книгах зазвичай є ПЕРЕКЛАДОМ сусіднього слова/фрази —
+// "bonjour (hello)", "hello (bonjour)" — а не продовженням тієї самої мови. Плоский
+// аналіз цього не бачить: один сильний якір деінде в реченні визначає ЄДИНУ базову
+// мову для всього рядка, і коротке слово в дужках без власного сильного сигналу
+// (як "bonjour" чи "house") просто успадковує її. Тому кожна дужкова дільниця
+// аналізується ОКРЕМО, і якщо в ній самій немає жодного надійного сигналу (нічия
+// між fr/en) — вважаємо її перекладом сусіда: підказка мови для такого випадку —
+// мова, ПРОТИЛЕЖНА щойно визначеній мові попередньої дільниці, а не мова книги.
+function buildLanguageSegments(text, priorLang2) {
+    const parts = splitTopLevelParens(text);
+    if (parts.length === 1 && !parts[0].paren) return buildFlatSegments(text, priorLang2);
+    const out = [];
+    let lastLang = null;
+    for (const part of parts) {
+        let segs;
+        if (part.paren) {
+            const innerPrior = lastLang ? (lastLang === 'fr' ? 'en' : 'fr') : priorLang2;
+            segs = wrapParenSegments(buildLanguageSegments(part.inner, innerPrior), part.open, part.close, innerPrior);
+        } else {
+            if (!part.text) continue;
+            // Звичайний текст (не в дужках) — це не переклад сусіда, а продовження
+            // того самого речення, тому на нічиї він орієнтується на мову КНИГИ, а
+            // не на "протилежну" (та підказка — лише для вмісту дужок).
+            segs = buildFlatSegments(part.text, priorLang2);
+        }
+        for (const s of segs) out.push(s);
+        // Порожній чи суто пунктуаційний фрагмент (сама дужка, розділювач) не несе
+        // жодного слова — не даємо йому підмінити "останню реальну мову" для протилежної
+        // підказки наступній дільниці.
+        if (/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(part.paren ? part.inner : part.text)) {
+            lastLang = segs[segs.length - 1].lang;
+        }
+    }
+    return mergeAdjacentSameLang(out);
 }
 
 // Кирилицю (українська/російська) відсіюємо ще до аналізу FR/EN — інша писемність,
