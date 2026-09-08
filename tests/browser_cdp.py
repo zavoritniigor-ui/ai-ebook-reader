@@ -16,16 +16,38 @@ class CDP:
         data = b''
         while len(data) < n: data += self.sock.recv(n-len(data))
         return data
+    def _send_frame(self, payload, opcode=0x1):
+        n = len(payload)
+        header = bytes([0x80 | opcode, 0x80 | n]) if n < 126 else bytes([0x80 | opcode, 0xfe])+struct.pack('!H',n) if n < 65536 else bytes([0x80 | opcode, 0xff])+struct.pack('!Q',n)
+        mask = os.urandom(4)
+        self.sock.sendall(header+mask+bytes(c^mask[i%4] for i,c in enumerate(payload)))
+    def _read_message(self):
+        # A single logical WebSocket message may arrive as several frames (the
+        # server fragments large payloads — Network.* events under heavy traffic
+        # routinely do this in CI, even when they never do locally), and ping/pong
+        # control frames can be interleaved between them. A reader that assumes
+        # "one frame == one message" misparses a continuation frame's payload as a
+        # brand-new header, desyncing the stream and eventually treating garbage
+        # bytes as a frame length (observed in CI as a MemoryError from a huge
+        # bogus length). Reassemble by FIN bit instead, and swallow control frames.
+        payload = b''
+        while True:
+            b0, b1 = self.read(2)
+            fin, opcode, n = b0 & 0x80, b0 & 0x0f, b1 & 0x7f
+            if n == 126: n = struct.unpack('!H', self.read(2))[0]
+            elif n == 127: n = struct.unpack('!Q', self.read(8))[0]
+            chunk = self.read(n)
+            if opcode == 0x8: raise ConnectionError('CDP WebSocket closed: ' + repr(chunk))
+            if opcode == 0x9: self._send_frame(chunk, opcode=0xA); continue  # ping -> pong
+            if opcode == 0xA: continue                                       # pong, ignore
+            payload += chunk
+            if fin: return payload
     def call(self, method, **params):
         self.seq += 1
-        msg = json.dumps(dict(id=self.seq, method=method, params=params)).encode(); n = len(msg)
-        header = bytes([0x81, 0x80 | n]) if n < 126 else bytes([0x81, 0xfe])+struct.pack('!H',n) if n < 65536 else bytes([0x81,0xff])+struct.pack('!Q',n)
-        mask = os.urandom(4); self.sock.sendall(header+mask+bytes(c^mask[i%4] for i,c in enumerate(msg)))
+        msg = json.dumps(dict(id=self.seq, method=method, params=params)).encode()
+        self._send_frame(msg)
         while True:
-            a,b = self.read(2); n = b&127
-            if n == 126: n = struct.unpack('!H',self.read(2))[0]
-            if n == 127: n = struct.unpack('!Q',self.read(8))[0]
-            data = json.loads(self.read(n))
+            data = json.loads(self._read_message())
             if data.get('id') == self.seq:
                 if 'error' in data: raise RuntimeError(data['error'])
                 return data.get('result',{})
