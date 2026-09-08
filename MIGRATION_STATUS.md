@@ -12,7 +12,7 @@ Step 4 — selection.js: DONE (all genuinely selection.js content extracted; see
 Step 5 — pdf-render.js: DONE
 Step 6 — tts.js: DONE
 Step 7 — translation.js: DONE
-Step 8 — grammar-svo.js: PENDING (now also carries startAiTask, deferred from Step 3)
+Step 8 — grammar-svo.js: DONE (carried startAiTask, deferred from Step 3)
 Step 9 — navigation.js: PENDING
 Step 10 — formats.js: PENDING
 Step 11 — pdf-zoom-pan.js: PENDING
@@ -25,17 +25,17 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 7 — translation.js
-Last successful PR: #23 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/23)
-Last successful commit: 59a4806 (merged to main)
+Last successful step: Step 8 — grammar-svo.js
+Last successful PR: #25 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/25)
+Last successful commit: e713595 (merged to main)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 7 js/*.js scripts present in the correct classic-script order
-  including the new translation.js, every extracted alignment/translation function present as a
-  real global and exercised live (validateAlignment/detectPhrasalVerb returning correct results),
-  AND a genuine network-level offline reload (CDP Network.emulateNetworkConditions offline:true)
-  that still loaded the full app correctly from cache (readyState complete, startTTS/
-  validateAlignment defined, correct title, all 7 scripts present).
+  load (zero console errors), all 8 js/*.js scripts present in the correct classic-script order
+  including the new grammar-svo.js, every extracted function present as a real global and
+  exercised live (buildGrammarPrompt/localSVO returning correct results on a real French
+  sentence), AND a genuine network-level offline reload (CDP Network.emulateNetworkConditions
+  offline:true) that still loaded the full app correctly from cache (readyState complete,
+  startAiTask defined, correct title, all 8 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -120,6 +120,35 @@ core.js (already loaded) and standard DOM APIs.
 One local `migration_audit_browser.py` run hit a one-off service-worker-cache-transition
 timing artifact (this session's long-lived local Chrome profile had accumulated state across
 many prior test runs) - passed clean on 3 immediate reruns, not a code regression.
+
+## Step 8 — grammar-svo.js: DONE (PR #25)
+
+Extracted four pieces into js/grammar-svo.js, loaded right after js/translation.js:
+
+- Grammar/Ask tab handlers, startAiTask (finally landed here, deferred all the way from
+  Step 3 - see MODULARIZATION_PLAN.md), and the whole SVO cluster (flattenRange,
+  rangeForSlice, clearSvoHighlights, localSVO, buildSvoPrompt, showSvoFailureNote, analyzeSVO,
+  applySVOParts). This piece turned out to be the ENTIRE remaining content of the script block
+  that translation.js's Step 7 tag had reopened into - so that block's open/close tags
+  collapsed directly into grammar-svo.js's own `<script src>` tag rather than staying as an
+  empty pass-through pair.
+- The AI prompt builders: buildGrammarPrompt, buildConjugationPrompt, buildAskPrompt,
+  buildLanguageLevelPrompt.
+- The "Мовний розбір"/"Пояснення" trigger buttons (call startAiTask).
+- Verb conjugation: collectVerbsFromAnalysis, renderVerbBar, highlightActiveVerb, showVerb,
+  selectVerb, and the tense-bar click listener.
+
+Left in place, now reading as contiguous blocks with this material lifted out from around
+them: dictation (Step 14) and PDF ink/crop (Steps 12/13).
+
+No top-level forward-reference risk: only declarations and onclick/addEventListener
+registrations in the moved range. startAiTask/showVerb call callAI/aiAvailable
+(js/ai-client.js, loaded after this file) only inside their own async bodies - the same
+deferred-call pattern already relied on for pdfAnchor, and, in the other direction, for
+js/translation.js/js/selection.js forward-calling into this very file.
+
+All local suites green on the first try this time (no flakes). Production verified with the
+usual battery, including a real French-sentence localSVO() call live against production.
 
 ## IMPORTANT — scope note on resuming after the retrospective audit
 
@@ -247,23 +276,21 @@ call" turned out, once actually read function-by-function, to have zero content 
 the step in question. Always read the full body before deciding a piece needs a hard judgment
 call; don't assume ambiguity from a comment header alone.
 
-## Step 8 next
+## Step 9 next
 
-grammar-svo.js is the next extraction, and it also carries startAiTask (deferred from Step 3 -
-see MODULARIZATION_PLAN.md). Re-grep fresh line numbers before each cut — everything shifts
-after every prior step's edits. Preserve classic execution order; after changing any js/*.js
-file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions before
-testing (`tests/app_shell_versions.py` fails CI on drift otherwise).
+navigation.js is the next extraction. Re-grep fresh line numbers before each cut — everything
+shifts after every prior step's edits. Preserve classic execution order; after changing any
+js/*.js file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions
+before testing (`tests/app_shell_versions.py` fails CI on drift otherwise).
 
-Known material, from Step 7's recon (read actual current boundaries fresh, don't trust these
-line-independent names): the "AI ПАНЕЛІ (ЯЗИЧКИ)" tab handlers, startAiTask, the "ЗАПИТ ДЛЯ
-ПАНЕЛІ" prompt builders (buildGrammarPrompt, buildConjugationPrompt, buildAskPrompt,
-buildLanguageLevelPrompt), the "ДІЄСЛОВА: ВИБІР І ВІДМІНЮВАННЯ" verb-conjugation cluster
-(collectVerbsFromAnalysis, renderVerbBar, highlightActiveVerb, showVerb, selectVerb), and the
-"РОЗБІР РЕЧЕННЯ: ПІДМЕТ / ПРИСУДОК / ДОДАТОК" SVO cluster (flattenRange, rangeForSlice,
-clearSvoHighlights, localSVO, buildSvoPrompt, showSvoFailureNote, analyzeSVO,
-applySVOParts) — all still sit in index.html's selection.js- and ai-client.js-inline regions,
-now reading as contiguous blocks since Step 7 lifted the translation-specific material out
-from around them. Watch for the same kind of non-contiguous interleaving Step 7 hit; read full
-function bodies before assuming a piece belongs elsewhere (mechanism-correction lesson from
-Step 4).
+Known material, from Step 4's final recon (see that section above — read actual current
+boundaries fresh, line numbers there are long stale): columnStep, paginateContainer,
+goToPageInChapter, updateProgressText, bookKeyFor, saveBookmark, loadBookmark, goNext, goPrev
+(all confirmed 100% navigation, no selection-related content, back when Step 4 first read
+them), plus the "ЖЕСТИ ДЛЯ ТЕЛЕФОНА/ПЛАНШЕТА" touch/wheel swipe-to-turn-page cluster and the
+window.resize listener that also lives with it (also confirmed 100% navigation back in Step
+4's recon). Both clusters now sit at the top of index.html's selection.js-inline region
+(right after js/selection.js's own tag), since every step since Step 4 extracted material
+from further down the document. Watch for the same kind of non-contiguous interleaving Steps
+7 and 8 hit; read full function bodies before assuming a piece belongs elsewhere
+(mechanism-correction lesson from Step 4).
