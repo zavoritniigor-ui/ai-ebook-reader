@@ -413,7 +413,17 @@ function buildLanguageLevelPrompt(fragment, sentence, langName) {
     // Мова оригіналу визначає, якою мовою робити спрощення: англійське речення
     // спрощується англійською, французьке — французькою. Раніше спрощення завжди
     // видавалось французькою, навіть для англійського тексту.
-    const src = detectLang(sentence || fragment);
+    //
+    // detectLang(sentence||fragment) визначає мову ВСЬОГО контексту "за більшістю
+    // символів" — і саме тому ламався якраз на двомовних реченнях із перекладом У
+    // ДУЖКАХ ("The house is big (La maison est grande)."): переклад часто ДОВШИЙ за
+    // оригінал, тож detectLang діставав мову ПЕРЕКЛАДУ, а не самого фрагмента, який
+    // тапнув/виділив користувач — фрагмент англійською йшов у AI як "французькою", і
+    // навпаки. fragmentLangInContext шукає позицію САМЕ фрагмента в контексті й бере
+    // мову лише того відрізка; на detectLang лишаємось тільки коли фрагмент не
+    // знайдено в контексті (позиційний метод незастосовний).
+    const found = fragmentLangInContext(fragment, sentence || fragment);
+    const src = found === 'fr' ? 'fr-FR' : found === 'en' ? 'en-US' : detectLang(sentence || fragment);
     const srcName = src.startsWith('fr') ? 'французькою' : 'англійською';
     return `Мовний розбір фрагмента ${srcName}: "${fragment}".${ctx}
 Пояснення давай ${langName}, у форматі HTML (без markdown, без \`\`\`). Стисло, без води.
