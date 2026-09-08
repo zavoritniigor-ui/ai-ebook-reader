@@ -11,7 +11,7 @@ Step 4 — selection.js: DONE (all genuinely selection.js content extracted; see
   content on closer reading, correctly left in place for Steps 9/11)
 Step 5 — pdf-render.js: DONE
 Step 6 — tts.js: DONE
-Step 7 — translation.js: PENDING
+Step 7 — translation.js: DONE
 Step 8 — grammar-svo.js: PENDING (now also carries startAiTask, deferred from Step 3)
 Step 9 — navigation.js: PENDING
 Step 10 — formats.js: PENDING
@@ -25,19 +25,17 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 6 — tts.js
-Last successful PR: #21 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/21)
-Last successful commit: 86e6aa2 (merged to main as 5660e7e)
-Last CI result: green (see "CI flake found and fixed during Step 6" below — took two failed
-  attempts and a real test-infra root-cause fix to get there, not a rerun-until-green shortcut)
+Last successful step: Step 7 — translation.js
+Last successful PR: #23 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/23)
+Last successful commit: 59a4806 (merged to main)
+Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 6 js/*.js scripts present in the correct classic-script order
-  including the new tts.js, every extracted TTS function present as a real global and startTTS()
-  exercised live (built a real sentence queue and played it via speechSynthesis with zero thrown
-  errors), SW confirmed active and controlling the page after a short activation wait, AND a
-  genuine network-level offline reload (CDP Network.emulateNetworkConditions offline:true) that
-  still loaded the full app correctly from cache (readyState complete, initPdf/startTTS defined,
-  correct title, all 6 scripts present).
+  load (zero console errors), all 7 js/*.js scripts present in the correct classic-script order
+  including the new translation.js, every extracted alignment/translation function present as a
+  real global and exercised live (validateAlignment/detectPhrasalVerb returning correct results),
+  AND a genuine network-level offline reload (CDP Network.emulateNetworkConditions offline:true)
+  that still loaded the full app correctly from cache (readyState complete, startTTS/
+  validateAlignment defined, correct title, all 7 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -83,6 +81,45 @@ already-open PR #21 (no new PR needed) and it passed CI clean.
 `Network.enable`) fails in CI with anything from `browser_cdp.py`'s socket layer, that's a
 transport bug, not a test assertion failing — check whether it reproduces on rerun/locally
 before assuming it's a flake, since this one didn't past the first look.
+
+## Step 7 — translation.js: DONE (PR #23)
+
+Extracted seven non-contiguous pieces (the material was interleaved with Step 8 grammar/AI
+content throughout the selection.js- and ai-client.js-inline regions) into js/translation.js,
+loaded right after js/selection.js:
+
+- Alignment (original<->translation highlight, CSS Custom Highlight API): exactSpan,
+  validateAlignment, rangeAtTextOffsets, clearAlignmentFlash/clearAlignment,
+  sourceAlignmentRanges, installAlignment, flashAlignment, alignmentSourceAt, and their
+  click/keydown/scroll/resize listeners.
+- handleWordOrSelection: the core tap/selection -> translation flow. It also wires the
+  tooltip's TTS/SVO/AI/Ask/expand buttons, but translation is its stated dominant purpose -
+  same call Step 4 made for the mixed word-tap click listener (placed in selection.js because
+  word-tap was its stated priority). The button handlers only reach into other modules from
+  inside onclick closures, never immediately, so file order doesn't matter for them.
+- mainTranslationText, buildTranslationExtras.
+- On-device translation (Chrome's Translator API): localTranslationSupported,
+  getLocalTranslator, translateLocally. js/ai-client.js's machineTranslate already
+  forward-called translateLocally before this move (it used to be defined later in the
+  document than ai-client.js's own tag) - moving it earlier only improves that ordering.
+- English phrasal-verb detection for translation quality (PHRASAL_VERBS tables,
+  verbBaseForms, detectPhrasalVerb), called from js/selection.js's word-tap handler.
+- Translating inside the AI panels: translatePanelPoint and the "Перекласти" button handler.
+
+Left in place, now reading as contiguous blocks with the translation pieces lifted out from
+around them: the grammar/ask tab onclick handlers, startAiTask, the AI prompt builders, and
+the SVO analysis cluster (all genuinely Step 8 material).
+
+Confirmed both directions of an already-established forward-reference pattern are safe:
+selection.js already called handleWordOrSelection before it existed anywhere but inline
+index.html (now translation.js, loaded even later) purely from inside its own event-handler
+closures - and this step's alignmentFlash DOM-creation/append and event-listener registrations
+are the only top-level immediate statements in the moved range, both depending only on
+core.js (already loaded) and standard DOM APIs.
+
+One local `migration_audit_browser.py` run hit a one-off service-worker-cache-transition
+timing artifact (this session's long-lived local Chrome profile had accumulated state across
+many prior test runs) - passed clean on 3 immediate reruns, not a code regression.
 
 ## IMPORTANT — scope note on resuming after the retrospective audit
 
@@ -210,14 +247,23 @@ call" turned out, once actually read function-by-function, to have zero content 
 the step in question. Always read the full body before deciding a piece needs a hard judgment
 call; don't assume ambiguity from a comment header alone.
 
-## Step 7 next
+## Step 8 next
 
-translation.js is the next extraction. Re-grep fresh line numbers before each cut — everything
-shifts after every prior step's edits. Preserve classic execution order; after changing any
-js/*.js file (adding or extracting more into one), run `python3 tools/version_app_shell.py` to
-refresh the content-hash versions before testing (required since the retrospective audit's
-versioning scheme landed in PR #19 — `tests/app_shell_versions.py` fails CI on drift). See
-RETRO_AUDIT.md's dependency inventory for what translation.js is known to touch: ai-client.js's
-machineTranslate/aiTranslateText call inline translateLocally/buildTranslationExtras/
-validateAlignment — read the actual current boundaries fresh rather than trusting that note's
-line-independent description.
+grammar-svo.js is the next extraction, and it also carries startAiTask (deferred from Step 3 -
+see MODULARIZATION_PLAN.md). Re-grep fresh line numbers before each cut — everything shifts
+after every prior step's edits. Preserve classic execution order; after changing any js/*.js
+file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions before
+testing (`tests/app_shell_versions.py` fails CI on drift otherwise).
+
+Known material, from Step 7's recon (read actual current boundaries fresh, don't trust these
+line-independent names): the "AI ПАНЕЛІ (ЯЗИЧКИ)" tab handlers, startAiTask, the "ЗАПИТ ДЛЯ
+ПАНЕЛІ" prompt builders (buildGrammarPrompt, buildConjugationPrompt, buildAskPrompt,
+buildLanguageLevelPrompt), the "ДІЄСЛОВА: ВИБІР І ВІДМІНЮВАННЯ" verb-conjugation cluster
+(collectVerbsFromAnalysis, renderVerbBar, highlightActiveVerb, showVerb, selectVerb), and the
+"РОЗБІР РЕЧЕННЯ: ПІДМЕТ / ПРИСУДОК / ДОДАТОК" SVO cluster (flattenRange, rangeForSlice,
+clearSvoHighlights, localSVO, buildSvoPrompt, showSvoFailureNote, analyzeSVO,
+applySVOParts) — all still sit in index.html's selection.js- and ai-client.js-inline regions,
+now reading as contiguous blocks since Step 7 lifted the translation-specific material out
+from around them. Watch for the same kind of non-contiguous interleaving Step 7 hit; read full
+function bodies before assuming a piece belongs elsewhere (mechanism-correction lesson from
+Step 4).
