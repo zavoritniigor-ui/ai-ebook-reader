@@ -16,7 +16,7 @@ Step 8 — grammar-svo.js: DONE (carried startAiTask, deferred from Step 3)
 Step 9 — navigation.js: DONE
 Step 10 — formats.js: DONE (also folded buildToc into js/navigation.js)
 Step 11 — pdf-zoom-pan.js: DONE
-Step 12 — pdf-ink.js: PENDING
+Step 12 — pdf-ink.js: DONE
 Step 13 — pdf-crop.js: PENDING
 Step 14 — dictation.js: PENDING
 Step 15 — ui-tooltip.js: PENDING
@@ -25,18 +25,17 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 11 — pdf-zoom-pan.js
-Last successful PR: #31 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/31)
-Last successful commit: f2be919 (merged to main)
+Last successful step: Step 12 — pdf-ink.js
+Last successful PR: #33 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/33)
+Last successful commit: 6788997 (merged to main)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 11 js/*.js scripts present in the correct classic-script order
-  including the new pdf-zoom-pan.js, every extracted function present as a real global and
-  exercised live (loaded a real synthetic PDF through initPdf() and drove setPdfScale() through
-  it, confirming actual zoom state change 1 -> 1.5 with fit switching to 'free'), AND a genuine
-  network-level offline reload (CDP Network.emulateNetworkConditions offline:true) that still
-  loaded the full app correctly from cache (readyState complete, setPdfScale defined, correct
-  title, all 11 scripts present).
+  load (zero console errors), all 12 js/*.js scripts present in the correct classic-script order
+  including the new pdf-ink.js, every extracted function present as a real global and exercised
+  live (pushed a real stroke through inkStrokes()/saveInk()/loadInk()/redrawInk() against a real
+  synthetic PDF, confirming it persists), AND a genuine network-level offline reload (CDP
+  Network.emulateNetworkConditions offline:true) that still loaded the full app correctly from
+  cache (readyState complete, saveInk defined, correct title, all 12 scripts present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -364,19 +363,41 @@ pdf_ux_browser.py's extensive zoom/pinch/pan coverage. Production verified with 
 battery, including a real synthetic PDF loaded via initPdf() and zoomed via setPdfScale()
 live against production (confirmed actual state.pdfZoom change, not just typeof-defined).
 
-## Step 12 next
+## Step 12 — pdf-ink.js: DONE (PR #33)
 
-pdf-ink.js is the next extraction: inkCanvas, inkPageKey, inkStrokes, saveInk, loadInk,
-redrawInk, inkPoint, updateInkWidth, bindInkCanvas, inkEraseAt, updateInkTools (see
-MODULARIZATION_PLAN.md's map for where these originally were — line numbers long stale,
-re-grep fresh). js/pdf-zoom-pan.js's cancelPdfInteraction and the touch-pointer gesture
-handlers already forward-reference inkDrawing/inkCurrent/redrawInk/saveInk from inside their
-own callbacks — once pdf-ink.js lands, check whether those references still resolve
-correctly (they should, since deferred calls don't care about file load order) and whether
-inkDrawing/inkCurrent/regionStart/regionBox — currently bare top-level state, not yet
-identified which module they belong to — need to move too or stay as shared state. Re-grep
-fresh line numbers before each cut. Preserve classic execution order; after changing any
-js/*.js file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions
-before testing (`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the
-same kind of non-contiguous interleaving Steps 7-9 hit; read full function bodies before
-assuming a piece belongs elsewhere (mechanism-correction lesson from Step 4).
+Extracted one contiguous block — a middle piece, not the start of its script block
+(dictation stays before it, PDF region/crop stays after it) — into js/pdf-ink.js, loaded
+right after js/ai-client.js: inkCanvas, inkPageKey, inkStrokes, saveInk, loadInk, redrawInk,
+inkPoint, updateInkWidth, bindInkCanvas, inkEraseAt, updateInkTools, plus the pen/eraser/
+color/undo/clear/done button wiring.
+
+Resolved the open question from Step 11's own notes: inkDrawing/inkCurrent are this file's
+own state, not shared with anything — js/pdf-zoom-pan.js's cancelPdfInteraction and its
+touch-gesture handlers only read them inside their own callback bodies (deferred), so file
+load order never mattered and needed no change. regionStart/regionBox, read right after the
+ink cluster (in the "ВИДІЛЕННЯ ОБЛАСТІ" section immediately following it), turned out to be
+pdf-crop.js's own state instead — confirmed while reading the splice boundary, not moved
+with this step.
+
+The only top-level immediate call in the moved range
+(`inkWidth.oninput = updateInkWidth; updateInkWidth();`) only touches a static DOM element
+and writeStored (core.js, already loaded) — same safe-immediate-call pattern already used by
+tts.js's updateAltVoicesBtn(). All local suites green, including the ink-specific
+pdf_ux_browser.py cases (fine ink in page coordinates, pinch rollback, ink surviving
+rerender). Production verified with the usual battery, including a real stroke pushed
+through inkStrokes()/saveInk()/loadInk()/redrawInk() live against production.
+
+## Step 13 next
+
+pdf-crop.js is the next extraction: exitRegionMode, closeCropPreview, openCropPreview,
+cropPdfRegion, checkExerciseImage (see MODULARIZATION_PLAN.md's map — line numbers long
+stale, re-grep fresh). Per the plan's own footnote, checkExerciseImage calls AI vision
+(js/ai-client.js's callAIVision) but stays in pdf-crop.js since it's only ever called from
+the crop flow — a deferred call, safe regardless of file order, same pattern as everywhere
+else. regionStart/regionBox (see Step 12's note above) are this step's own state, sitting
+right after where the ink cluster used to be. Re-grep fresh line numbers before each cut.
+Preserve classic execution order; after changing any js/*.js file, run
+`python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
+(`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the same kind of
+non-contiguous interleaving Steps 7-9 hit; read full function bodies before assuming a piece
+belongs elsewhere (mechanism-correction lesson from Step 4).
