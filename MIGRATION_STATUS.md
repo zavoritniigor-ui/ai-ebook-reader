@@ -13,7 +13,7 @@ Step 5 — pdf-render.js: DONE
 Step 6 — tts.js: DONE
 Step 7 — translation.js: DONE
 Step 8 — grammar-svo.js: DONE (carried startAiTask, deferred from Step 3)
-Step 9 — navigation.js: PENDING
+Step 9 — navigation.js: DONE
 Step 10 — formats.js: PENDING
 Step 11 — pdf-zoom-pan.js: PENDING
 Step 12 — pdf-ink.js: PENDING
@@ -25,17 +25,18 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 8 — grammar-svo.js
-Last successful PR: #25 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/25)
-Last successful commit: e713595 (merged to main)
+Last successful step: Step 9 — navigation.js
+Last successful PR: #27 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/27)
+Last successful commit: 4982a9b (merged to main)
 Last CI result: green
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 8 js/*.js scripts present in the correct classic-script order
-  including the new grammar-svo.js, every extracted function present as a real global and
-  exercised live (buildGrammarPrompt/localSVO returning correct results on a real French
-  sentence), AND a genuine network-level offline reload (CDP Network.emulateNetworkConditions
-  offline:true) that still loaded the full app correctly from cache (readyState complete,
-  startAiTask defined, correct title, all 8 scripts present).
+  load (zero console errors), all 9 js/*.js scripts present in the correct classic-script order
+  including the new navigation.js, every extracted function present as a real global and
+  exercised live (paginated a real synthetic text block and drove goNext()/goPrev() through it,
+  confirming state.pageInChapter actually advances/retreats), AND a genuine network-level
+  offline reload (CDP Network.emulateNetworkConditions offline:true) that still loaded the full
+  app correctly from cache (readyState complete, goNext defined, correct title, all 9 scripts
+  present).
 
 ## Step 6 — tts.js: DONE (PR #21)
 
@@ -149,6 +150,34 @@ js/translation.js/js/selection.js forward-calling into this very file.
 
 All local suites green on the first try this time (no flakes). Production verified with the
 usual battery, including a real French-sentence localSVO() call live against production.
+
+## Step 9 — navigation.js: DONE (PR #27)
+
+Extracted three pieces into js/navigation.js, loaded right after js/selection.js (the block's
+own first content, same position it always had):
+
+- Pagination via CSS columns (columnStep, paginateContainer, goToPageInChapter,
+  updateProgressText), the bookmark (bookKeyFor, saveBookmark, loadBookmark), goNext/goPrev.
+- Touch/wheel page-turn gestures on els.mainArea — confirmed 100% navigation content back
+  during Step 4's recon (no selection-related material despite the "ЖЕСТИ ДЛЯ
+  ТЕЛЕФОНА/ПЛАНШЕТА" section title), just not extracted until now.
+- The window resize handler. Genuinely mixed (PDF branch calls cancelPdfInteraction/
+  renderPdfPage, pdf-zoom-pan.js/Step 11 material) but it's one listener with an if/else for
+  both formats, and Step 4's own recon already flagged it "navigation-adjacent" rather than
+  worth splitting - kept as one piece here rather than fragmenting a single listener across
+  two files.
+
+Also cleaned up an empty pass-through `<script></script>` pair a purely mechanical
+close/insert/reopen would have left behind (the extracted piece was the entire first content
+of that reopened block) - same situation Step 8 hit, resolved the same way there.
+
+No forward-reference risk: only declarations and event-listener registrations in the moved
+range. The resize listener reads pdfViewFocus (still declared later in index.html, Step 11
+material) only inside its own callback - deferred, load order doesn't matter.
+
+All local suites green on the first try. Production verified with the usual battery, including
+a real synthetic multi-page text block paginated and driven through goNext()/goPrev() live
+against production, confirming actual page advancement (not just typeof-defined functions).
 
 ## IMPORTANT — scope note on resuming after the retrospective audit
 
@@ -276,21 +305,35 @@ call" turned out, once actually read function-by-function, to have zero content 
 the step in question. Always read the full body before deciding a piece needs a hard judgment
 call; don't assume ambiguity from a comment header alone.
 
-## Step 9 next
+## Deviation from MODULARIZATION_PLAN.md's navigation.js list — read before Step 15
 
-navigation.js is the next extraction. Re-grep fresh line numbers before each cut — everything
-shifts after every prior step's edits. Preserve classic execution order; after changing any
-js/*.js file, run `python3 tools/version_app_shell.py` to refresh the content-hash versions
-before testing (`tests/app_shell_versions.py` fails CI on drift otherwise).
+The original plan (written before any extraction happened, by line-number guess) listed
+`openFooterMenu`, `closeFooterMenu`, `enterMobileFullScreenIfNeeded` and `buildToc` under
+navigation.js alongside the pagination/goNext/goPrev material Step 9 actually extracted.
+Step 9 deliberately did NOT take the first three: reading the actual code, they sit in a
+region tangled with pointer-type detection (`lastPointerType`/`finger-input`), Android
+select/contextmenu suppression, and a single big `pointerdown` listener that closes BOTH the
+footer menu AND the word-translation tooltip in one function body — none of which is
+navigation, all of which is ui-tooltip.js (Step 15) territory. Splitting that listener to
+extract just the footer-menu half wasn't worth the risk for two one-line functions. **When
+Step 15 (ui-tooltip.js) is done, either fold openFooterMenu/closeFooterMenu/
+enterMobileFullScreenIfNeeded into it (matching what the code actually is) or, if closer
+reading says otherwise, into navigation.js as the plan originally said — decide from the
+actual code, not from this note.** `buildToc`, by contrast, IS clean and self-contained (one
+small function, no entanglement) — earmarked to fold into js/navigation.js as a small
+addendum during Step 10 (formats.js), since Step 10 already touches its three call sites
+(the epub/txt/doc chapter loaders) directly.
 
-Known material, from Step 4's final recon (see that section above — read actual current
-boundaries fresh, line numbers there are long stale): columnStep, paginateContainer,
-goToPageInChapter, updateProgressText, bookKeyFor, saveBookmark, loadBookmark, goNext, goPrev
-(all confirmed 100% navigation, no selection-related content, back when Step 4 first read
-them), plus the "ЖЕСТИ ДЛЯ ТЕЛЕФОНА/ПЛАНШЕТА" touch/wheel swipe-to-turn-page cluster and the
-window.resize listener that also lives with it (also confirmed 100% navigation back in Step
-4's recon). Both clusters now sit at the top of index.html's selection.js-inline region
-(right after js/selection.js's own tag), since every step since Step 4 extracted material
-from further down the document. Watch for the same kind of non-contiguous interleaving Steps
-7 and 8 hit; read full function bodies before assuming a piece belongs elsewhere
-(mechanism-correction lesson from Step 4).
+## Step 10 next
+
+formats.js is the next extraction: runArchiveGuard, initEpub, loadEpubChapter, initRichDoc,
+splitIntoChapters, renderDocChapter, fb2ToHtml, rtfToHtml, initTxt, renderTxtPage (see
+MODULARIZATION_PLAN.md's map for where these were originally, though line numbers are long
+stale — re-grep fresh). Also fold in `buildToc` (see the deviation note above) as a small
+addendum to js/navigation.js while this step is already reading the exact code that calls it.
+Re-grep fresh line numbers before each cut — everything shifts after every prior step's
+edits. Preserve classic execution order; after changing any js/*.js file, run
+`python3 tools/version_app_shell.py` to refresh the content-hash versions before testing
+(`tests/app_shell_versions.py` fails CI on drift otherwise). Watch for the same kind of
+non-contiguous interleaving Steps 7-9 hit; read full function bodies before assuming a piece
+belongs elsewhere (mechanism-correction lesson from Step 4).
