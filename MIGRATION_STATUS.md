@@ -1,6 +1,7 @@
 # AI Ebook Reader — Migration Status
 
-Current phase: Modularization (resumed after retrospective audit — see note below)
+Current phase: **Modularization COMPLETE** — all 19 steps done, ARCHITECTURE.md written,
+production verified. See "Migration complete" section below for the final summary.
 
 Step 0 — Prepare mutable state containers: DONE
 Step 1 — core.js: DONE
@@ -23,22 +24,49 @@ Step 15 — ui-tooltip.js: DONE
 Step 16 — onboarding.js: DONE
 Step 17 — pwa-lifecycle.js: DONE
 Step 18 — main.js + remove old inline code: DONE (index.html is now a thin shell)
-Step 19 — final ARCHITECTURE.md: PENDING
+Step 19 — final ARCHITECTURE.md: DONE
 
-Last successful step: Step 18 — main.js + remove old inline code
-Last successful PR: #45 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/45)
-Last successful commit: 03c1af0 (merged to main)
-Last CI result: green
+Last successful step: Step 19 — final ARCHITECTURE.md (migration complete)
+Last successful PR: #47 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/47)
+Last successful commit: 8c0b986 (merged to main as 6e296db)
+Last CI result: green (after one rerun for the documented Chrome-CDP-startup-timeout flake)
 Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
-  load (zero console errors), all 18 js/*.js scripts present in the correct classic-script order
-  including the new main.js, every piece of wiring confirmed correct (uiLang/targetLang/theme
-  reflecting stored preferences, mic/prev/next buttons wired to the right real functions,
-  translateBtn handler present), AND a REAL 'change' event dispatched on the file-upload input
-  with a real File, correctly running the whole format-detection-and-load pipeline end to end
-  (state.format/bookKey/rendered page text all correct) live against production, plus the usual
-  genuine network-level offline reload (CDP Network.emulateNetworkConditions offline:true) that
-  still loaded the full app correctly from cache (readyState complete, correct title, all 18
-  scripts present).
+  load (zero console errors), all 18 js/*.js scripts present in the correct classic-script order,
+  a real synthetic PDF loaded and rendered (text extracted, 2 canvases), AND a genuine network-
+  level offline reload (CDP Network.emulateNetworkConditions offline:true) that still loaded the
+  full app correctly from cache (readyState complete, initPdf defined, correct title, all 18
+  scripts present, service worker confirmed active).
+
+## Migration complete
+
+All 19 steps of the modularization migration are done. `index.html` went from a ~5600-line
+monolith to a ~900-line thin shell (markup, styles, eighteen ordered `<script src="js/...">`
+tags, and exactly one documented still-inline fragment) plus eighteen named,
+independently-readable modules under `js/`. `ARCHITECTURE.md` now exists and documents the
+module map, the classic-script mechanism, load order, cross-module dependencies, resolved
+plan deviations, known incidents, test coverage, and the content-hash versioning scheme — see
+that file for anything a future agent needs before touching this codebase again.
+
+**Step-by-step summary** (PR numbers, in order): Step 0 mutable-state-containers prep → Step 1
+core.js → Step 2 lang-detect.js → Step 3 ai-client.js → Step 4 selection.js (PRs #12/#14/#15)
+→ Step 5 pdf-render.js → *retrospective audit of Steps 0-4, PR #19* → Step 6 tts.js (PR #21,
+plus a real tests/browser_cdp.py WebSocket-reassembly bug fix) → Step 7 translation.js (PR
+#23) → Step 8 grammar-svo.js (PR #25) → Step 9 navigation.js (PR #27) → Step 10 formats.js
+(PR #29) → Step 11 pdf-zoom-pan.js (PR #31) → Step 12 pdf-ink.js (PR #33) → Step 13
+pdf-crop.js (PR #35) → Step 14 dictation.js (PR #37) → Step 15 ui-tooltip.js (PR #39) → Step
+16 onboarding.js (PR #41) → Step 17 pwa-lifecycle.js (PR #43, higher-risk step, extra
+verification) → Step 18 main.js + remove old inline code (PR #45, the final assembly step) →
+Step 19 ARCHITECTURE.md (PR #47). Every extraction step's own commit was accompanied by a
+docs-update PR recording it (PRs #20/#22/#24/#26/#28/#30/#32/#34/#36/#38/#40/#42/#44/#46) —
+see each step's own dedicated section above in this file for the full reasoning,
+forward-reference analysis, and verification detail behind that step.
+
+No functional behavior changed anywhere in this migration — every step was verified
+line-for-line as a pure code-motion, with production smoke tests (including genuine
+network-level offline reloads) after every single merge, and two genuine bugs found and
+fixed along the way that were unrelated to the migration's own mechanics: the
+`tests/browser_cdp.py` WebSocket frame-reassembly bug (Step 6) and everything in
+`RETRO_AUDIT.md` (the retrospective audit between Steps 5 and 6).
 
 **index.html is now a thin shell**: markup, styles, and eighteen ordered `<script src="js/...">`
 tags, plus exactly one still-inline fragment (the documented lang-detect.js voice-loading
