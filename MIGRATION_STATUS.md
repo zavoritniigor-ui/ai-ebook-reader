@@ -1,6 +1,6 @@
 # AI Ebook Reader — Migration Status
 
-Current phase: Modularization
+Current phase: Modularization (resumed after retrospective audit — see note below)
 
 Step 0 — Prepare mutable state containers: DONE
 Step 1 — core.js: DONE
@@ -10,7 +10,7 @@ Step 4 — selection.js: DONE (all genuinely selection.js content extracted; see
   what looked like 2 more ambiguous pieces turned out to be 100% navigation.js/pdf-zoom-pan.js
   content on closer reading, correctly left in place for Steps 9/11)
 Step 5 — pdf-render.js: DONE
-Step 6 — tts.js: PENDING
+Step 6 — tts.js: IN PROGRESS
 Step 7 — translation.js: PENDING
 Step 8 — grammar-svo.js: PENDING (now also carries startAiTask, deferred from Step 3)
 Step 9 — navigation.js: PENDING
@@ -25,16 +25,47 @@ Step 17 — pwa-lifecycle.js: PENDING
 Step 18 — main.js + remove old inline code: PENDING
 Step 19 — final ARCHITECTURE.md: PENDING
 
-Last successful step: Step 5 (pdf-render.js)
-Last successful PR: #17 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/17)
-Last successful commit: c44a3b7 (merged to main as d7da64e)
+Last successful step: Retrospective audit of Steps 0–4 (see dedicated section below)
+Last successful PR: #19 (https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/19)
+Last successful commit: 1644d0d (merged to main as 70d1029)
 Last CI result: green
-Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — 3 fresh cache-disabled
-  reloads with zero console errors, PLUS an actual PDF load-and-render test (synthetic PDF,
-  real initPdf() call): text extracted correctly, exactly 1 canvas + 1 text-layer produced,
-  zero console errors. This is the first step where an idle-load smoke test wasn't enough on
-  its own (PDF rendering needs to actually be exercised, not just "app loads") — worth doing
-  this fuller check again for Steps 11 (pdf-zoom-pan), 12 (pdf-ink), 13 (pdf-crop).
+Last production deploy: verified live at https://ai-ebook-reader.pages.dev/ — fresh cache-disabled
+  load (zero console errors), a real synthetic-PDF load-and-render via initPdf() (text extracted
+  correctly, 1 canvas produced), SW registration confirmed active, AND a genuine network-level
+  offline reload (CDP Network.emulateNetworkConditions offline:true, not just SW bypass) that
+  still loaded the full app correctly from cache (readyState complete, initPdf defined, correct
+  title) — this is the first production check to actually exercise the offline path end to end.
+
+## IMPORTANT — scope note on resuming after the retrospective audit
+
+Codex's own record of this audit (see git history / the audit section below) explicitly stated:
+"Do not resume autonomous migration after this audit: the user's explicit scope ends here" —
+i.e. Codex understood from the user that the migration should STAY PAUSED after the audit
+landed. The user then directly instructed a different session (Claude Code) to continue and
+start Step 6, twice, explicitly. That direct, repeated, current instruction was treated as
+authoritative and the migration was resumed. **If you are a future agent reading this and the
+user has not since confirmed this was intentional, it is worth a quick check with the user
+rather than assuming either direction silently** — the scope boundary was real and explicit,
+not a misunderstanding, so its reversal should stay visible rather than get silently overwritten.
+
+## Retrospective audit of Steps 0–4 — DONE (PR #19)
+
+Performed by Codex per explicit user request, landed by Claude Code after finding it stable
+and green (see HANDOFF.md for the handoff details of that landing). Full findings and root
+causes are in `RETRO_AUDIT.md` (11 numbered issues: PWA cache/HTML version mismatch now fixed
+with content-hash versioning in both index.html and sw.js's APP_SHELL; a cold-start crash from
+malformed stored voice preferences; three separate multi-column PDF sentence-extraction bugs;
+uncancelled drag/long-press state; PDF loading outliving background cancellation; a
+`fetchWithTimeout` bug mis-reporting empty-body HTTP statuses as connection failures; test
+harness timing/coverage gaps; a cross-script early-input timing bug; and a real PDF.js 6.3.289
+API-removal bug — `PDFDocumentProxy` no longer has `destroy()`).
+
+Local tests before landing: `pdf_ux_browser.py` 34/34, `learning_ux_browser.py` 58/58,
+`app_shell_versions.py` PASS, `migration_audit_browser.py` (new, from the audit) 24/24 — all
+run against the actual uncommitted audit changes before committing anything, not assumed green.
+
+No new migration extraction was performed during the audit itself — Step 5 remained the last
+extraction step until Step 6 resumed afterward (see above).
 
 ## Mechanism correction (read before continuing any step)
 
@@ -65,6 +96,15 @@ BEFORE finalizing a step, not after.
   before/after it. Capture-phase listeners always fire before bubble-phase ones on the same
   element (when the real target is a descendant) regardless of registration order/file — check
   this specifically before moving any listener, don't assume file position drives event order.
+
+**A fourth note, learned handling concurrent multi-agent edits**: if `git status`/`git diff`
+shows uncommitted changes you did not make, check file mtimes for real recency (`stat -c '%Y'`)
+before assuming the tree is safe to touch — a few seconds old means another agent is actively
+writing right now; don't edit those files. If it has been quiet for a real stretch (multiple
+minutes, confirmed by re-checking, not assumed), it is reasonable to verify the work (read its
+own audit notes if any, run the full test suite against it) and land it yourself through the
+normal commit/PR/CI/merge/production-verify pipeline if it passes — don't leave verified-good,
+un-owned work sitting uncommitted indefinitely, and don't silently discard it either.
 
 ## Incident: production ReferenceError after Steps 1–3 (found and fixed same session)
 
@@ -104,6 +144,8 @@ reading every listener body (not just grepping function names), to be:
    NOT a selection/navigation mix as originally guessed from the section title alone. The
    original long-press-to-select behavior was explicitly removed per the code's own comment
    ("Власне довге утримання прибрано") and replaced by the ⤢ expand button in the tooltip.
+   (Note: the retrospective audit found non-PDF touch long-press still exists in selection.js
+   despite that comment — see RETRO_AUDIT.md's "Other audited behavior" section.)
 5. **Left in place for Step 11**: "КЕРУВАННЯ PDF МИШЕЮ" through `endPdfPointer` — pdf-zoom-pan.js
    (rerenderPdfAtCurrentZoom, pdfAnchor, layoutPdfZoom, applyPdfZoom, setPdfScale,
    cancelPdfRender/Interaction, pinchMetrics, paintPdfGesture, endPdfPointer, etc).
@@ -120,10 +162,13 @@ call" turned out, once actually read function-by-function, to have zero content 
 the step in question. Always read the full body before deciding a piece needs a hard judgment
 call; don't assume ambiguity from a comment header alone.
 
-Next step: Step 6 — tts.js (voice selection, speakText/speakInLang, sentence playback/
-highlight, TTS control buttons). Re-grep fresh line numbers before starting. Note:
-`buildSentenceRanges` (non-PDF sentence splitting, used by both TTS sentence-stepping and by
-selection.js's sentenceRangeAt) needs a decision — per MODULARIZATION_PLAN.md's dependency
-graph it can live in tts.js and be called from selection.js's already-extracted code (a
-forward/backward reference across files is fine either way since it's used inside function
-bodies, never at top level) — read its actual call sites fresh before deciding, don't assume.
+## Step 6 in progress
+
+tts.js: voice selection (loadVoices/pickBestVoice/etc — already landed in js/core.js back in
+Step 1's mechanical range-cut, left there deliberately rather than moved again — see js/core.js
+header), speakText/speakInLang/setSpeakSide/updateSpeakSideUI, and the sentence
+playback/highlight/TTS-control-button cluster (buildSentenceRanges, stepSentence, startTTS,
+etc). Re-grep fresh line numbers before each cut — everything has shifted after the audit's
+edits to index.html/js/core.js/js/selection.js/js/pdf-render.js. Preserve classic execution
+order; after changing any js/*.js file, run `python3 tools/version_app_shell.py` to refresh the
+content-hash versions before testing (the audit's new versioning scheme requires this).
