@@ -60,14 +60,23 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 document.addEventListener('pointerdown', (e) => {
+    let closedPopup = false;
     if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
+        if (els.tooltip.style.display !== 'none') closedPopup = true;
         cancelTooltipHide();
         els.tooltip.style.display = 'none';
         state.tooltipPersistent = false;
         stopTooltipSpeech();     // закрили вікно — озвучення теж зупиняємо
         clearSelectionHighlight();
     }
-    if (document.body.classList.contains('footer-open') && !e.target.closest('#app-footer') && !e.target.closest('#footer-handle')) closeFooterMenu();
+    if (document.body.classList.contains('footer-open') && !e.target.closest('#app-footer') && !e.target.closest('#footer-handle')) {
+        closeFooterMenu();
+        closedPopup = true;
+    }
+    if (closedPopup) {
+        state.tooltipJustClosed = true;
+        setTimeout(() => state.tooltipJustClosed = false, 100);
+    }
 });
 
 // Повноекранний режим на телефоні/планшеті: після відкриття книги ховаємо header —

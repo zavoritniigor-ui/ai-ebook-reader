@@ -147,13 +147,13 @@ async function openBookFile(file) {
     state.oldBookKey = oldBookKeyFor(file);
     state.docChapters = null;
     loadInk();
-    const ext = file.name.split('.').pop().toLowerCase();
+    const ext = /\.fb2\.zip$/i.test(file.name) ? 'fb2.zip' : file.name.split('.').pop().toLowerCase();
     try {
         if (ext === 'epub') { state.format = 'epub'; document.body.classList.remove('pdf-mode'); await initEpub(file, epoch); }
         else if (ext === 'pdf') { state.format = 'pdf'; document.body.classList.add('pdf-mode'); await initPdf(file, epoch); }
-        else if (ext === 'txt' || ext === 'md') { state.format = 'txt'; document.body.classList.remove('pdf-mode'); await initTxt(file, epoch); }
+        else if (ext === 'txt') { state.format = 'txt'; document.body.classList.remove('pdf-mode'); await initTxt(file, epoch); }
         // Формати, що зводяться до готового HTML: Word, FictionBook, веб-сторінка, RTF.
-        else if (['docx', 'fb2', 'html', 'htm', 'rtf'].includes(ext)) {
+        else if (['docx', 'fb2', 'fb2.zip', 'md', 'markdown', 'html', 'htm', 'rtf'].includes(ext)) {
             state.format = 'txt'; document.body.classList.remove('pdf-mode');
             await initRichDoc(file, ext, epoch);
         }

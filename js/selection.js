@@ -445,6 +445,19 @@ function selectWordAtPoint(clientX, clientY) {
         const wordRange = document.createRange();
         wordRange.setStart(textNode, start);
         wordRange.setEnd(textNode, end);
+        
+        const rects = wordRange.getClientRects();
+        let hit = false;
+        const margin = window.innerWidth <= 1180 ? 20 : 15;
+        for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+            if (clientX >= r.left - margin && clientX <= r.right + margin &&
+                clientY >= r.top - margin && clientY <= r.bottom + margin) {
+                hit = true; break;
+            }
+        }
+        if (!hit) return null;
+
         const span = document.createElement('span');
         span.className = 'word-visited';
         wordRange.surroundContents(span);
@@ -691,9 +704,15 @@ els.mainArea.addEventListener('click', (e) => {
             let rect = null;
             try { if (state.lastWordNode && state.lastWordNode.getBoundingClientRect) rect = state.lastWordNode.getBoundingClientRect(); } catch (err) {}
             handleWordOrSelection(lookup, e.clientX, e.clientY, rect);
+            state.tooltipJustClosed = false; // успішний виклик перекладу — скасовуємо блокування
             return;
         }
         if (state.format === 'pdf') return; // клік в режимі вивчення по PDF не повинен ще й гортати сторінку
+    }
+
+    if (state.tooltipJustClosed) {
+        state.tooltipJustClosed = false;
+        return; // тапнули на чисте поле, щоб ТІЛЬКИ закрити вікно перекладу (не гортати сторінку)
     }
 
     const rect = els.mainArea.getBoundingClientRect(); const x = e.clientX - rect.left;
