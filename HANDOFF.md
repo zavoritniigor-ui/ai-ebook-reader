@@ -20,66 +20,59 @@ part of normal task startup.
 
 Status: **idle**. Current branch: dev.
 
-Task: user reported that TTS "sounds like the same voice plays twice with a millisecond delay" —
-noticed in French, asked to check other languages too. No repro steps beyond "listening while TTS
-is on"; investigation was code-driven (this sandbox has no real audio device/real TTS voices, so
-the bug itself could not be heard here — see verification limits below).
+Task: The user requested fixes for 4 confirmed audit defects:
+1. Book identification mixing bookmarks/notes (books with the same name and size used the same `localStorage` key).
+2. EPUB embedded images failing to load because they requested via the server rather than the `JSZip` archive.
+3. EPUB chapter paths with `../` failing because paths were concatenated instead of normalized.
+4. Voice trial TTS not cancelling upon background activity stop.
 
-**Root cause found by code audit**: several places called `speechSynthesis.speak()` in the exact
-same synchronous tick as `speechSynthesis.cancel()` — `speakText`/`speakInLang` (tooltip word/
-translation speaker buttons), `stepSentence()`'s active-reading branch (prev/next sentence
-buttons), and the settings voice-preview sample in `js/main.js`. This is a well-documented Chrome/
-Android Web-Speech-API quirk: an immediate `speak()` right after `cancel()` can start the new
-utterance while the platform is still flushing the just-cancelled one's audio tail — audible as
-the same voice repeating a few ms apart, exactly matching the report. Ruled out first (code-level,
-confirmed clean): the FR/EN language-segmentation logic in `lang-detect.js` (a pure French
-sentence produces exactly one segment/one utterance — no duplication there, and
-`tests/language_context_browser.py`'s existing `noDrop` check already guards against
-duplicated/dropped words across segments); the `speakSegment→onend→speakSegment` chain inside
-`speakCurrentSentence()` (no `cancel()` between those `speak()` calls, and the `ttsGen` generation
-guard already protects against a stale/duplicate `onend`+`onerror` firing for the same utterance).
+**Fixes**:
+1. Added `file.lastModified` to `bookKeyFor()`. If a new key isn't found, we fallback to the old key (`reader_bookmark_..._size`) and automatically migrate it to the new key. Fixed in both `js/navigation.js` and `js/pdf-ink.js`.
+2. Extracted `img` parsing in `loadEpubChapter()` to replace image `src` with proper base64 `data:` URIs directly loaded from `state.epubZip`.
+3. Created a `resolveEpubPath()` function to evaluate `../` and `./` paths for EPUB chapter items inside `initEpub()`.
+4. Added a strict check inside the `setTimeout()` for the Voice Trial: `if (gen === state.ttsGen) ttsSynth.speak(u)`. Since `state.ttsGen` is incremented during any activity stop (`stopGlobalTTS()`, `ttsSynth.cancel()`), the callback gracefully skips the trial playback if interrupted.
 
-**Fix**: `js/tts.js` gains `TTS_CANCEL_SPEAK_DELAY_MS` (80ms) — every one of those four call sites
-now gives `cancel()` a short head start before the next `speak()`, guarded by the existing
-`ttsGen` counter so a second rapid call (another tap, a fast double-step) discards the now-stale
-scheduled `speak()` instead of also firing it, guaranteeing only one utterance is ever in flight.
+Also kept an uncommitted fix from `js/selection.js` related to `anchorCaret` logic (searching the text node using `TreeWalker` instead of direct `firstChild`), which ensures multiple taps on the UI don't drop the context block anchor.
 
-Release code commit: fd874f0 (fix) + reconnect merge on dev; PR #74 MERGED (squash); main release
-commit 65d59d8.
-CI: required `test` check PASS on both parallel runs (push + PR triggers), no flake.
-Local: full suite PASS — `tests/pdf_ux_browser.py`, `tests/learning_ux_browser.py`,
-`tests/migration_audit_browser.py`, `tests/app_shell_versions.py`,
-`tests/browser_cdp_transport.py`, `tests/language_paren_browser.py`,
-`tests/language_context_browser.py`, `tests/ask_ai_language_browser.py`,
-`tests/local_translator_warmup_browser.py`, and the new `tests/tts_double_voice_browser.py`
-(7/7 checks: `speak()` never fires synchronously with `cancel()`; fires exactly once after the
-delay with the right text; a second call before the delay elapses results in exactly ONE `speak()`
-for the LAST request for both `speakText`/`speakInLang`; a fast double-`stepSentence()` speaks
-only the sentence actually landed on, once; no app errors) — all PASS.
-Production: verified `https://ai-ebook-reader.pages.dev/`'s served HTML has the exact new
-content-hashes (`tts.js?v=2b9871dfb6d2`, `main.js?v=4c80c4049370`);
-`tests/tts_double_voice_browser.py` re-run directly against production (`READER_TTS_URL`) —
-all 7 checks PASS, confirming the fix itself is live.
+Release code commit: e9c3632 (fix) + pushed to `dev`.
+PR #76 MERGED (squash); CI checks passed.
 
-**Not verifiable from this sandbox**: whether this actually fixes the AUDIBLE doubling on the
-user's real tablet/browser. This environment has no real audio device and mocks
-`speechSynthesis` entirely (it's natively read-only — `Object.defineProperty` was needed even to
-install the mock) — it can verify the call-sequencing/no-overlap LOGIC but not real sound. The
-user should manually confirm: listen to TTS in French (and ideally at least one other language)
-via the page-reading "▶ Read" button (prev/next sentence buttons too, since that's one of the
-fixed call sites) and the tooltip word/translation speaker icons, and report whether the doubling
-is gone. If it persists, the next step would be to capture the browser/OS/voice engine involved
-(e.g. `speechSynthesis.getVoices()` output on their tablet) since the remaining candidate would be
-an OS/engine-level duplicate-voice registration rather than an app-logic race.
+**Follow-up (this session)**: that `anchorCaret` fix was actually independently diagnosed and
+written by THIS session while investigating the user's own bug report (tap a PDF sentence's
+first word, press the translation popup's "select" button twice — the 2nd press selects the
+wrong text — plus a bilingual "sentence beside its own-language translation in an adjacent
+column" layout concern) — it landed bundled into e9c3632/PR #76 because both sessions share
+one working directory/index, and whichever session runs `git commit` first picks up ALL
+currently-uncommitted changes, not just its own. Root cause, precisely: the first "select"
+press wraps the just-selected text in a new `span.sel-word` (PDF path) — when the tapped word
+IS the sentence's first word, that new span lands INSIDE the pre-existing `span.word-visited`
+around the tapped word, replacing its `firstChild` with an element instead of a text node, so
+the old direct `firstChild` check in `anchorCaret` silently fell back from the reliable word
+anchor to raw-coordinate hit-testing on the second press.
+Added `tests/pdf_sentence_reselect_browser.py` (commit 6a9e805, dev) — wired into CI — using the
+real PDF.js-rendered two-column synthetic fixture (`pdf_bytes(two_columns=True)`, the same
+"original beside its translation" layout the user described) to reproduce the exact DOM-mutation
+sequence the bug depends on. 9/9 checks pass locally AND against production (the fix was already
+live by the time this session finished writing the test): the 2nd press still selects exactly
+the same sentence as the 1st, and no press ever bleeds text across the column boundary — this
+also directly confirms the bilingual-column layout stays correctly isolated per column. Full
+existing regression suite re-run locally — all pass, no regression from the other 4 audit fixes
+in the same commit.
 
-An untracked draft `tests/language_tts_browser.py`, and untracked scratch files `test.js`,
-`debug_pdf.mjs`, `dups.txt`, `test_pdf.html`, `test_pdf.mjs`, `viewer.css`, still exist (not
-mine, not committed, not wired into CI) — left untouched per "don't overwrite another agent's
-uncommitted work" / standard git-hygiene scratch-file exclusions.
+**Still open from the user's report — not yet investigated**: a scanned PDF opened from Google
+Drive showed a large text-layer/rendering offset, and a tapped word was misread/replaced by a
+different one during sentence selection on that same file. Not reproduced or root-caused yet —
+this needs either the actual file or precise repro details (does it happen on any sufficiently
+large/rotated scanned PDF regardless of source, or specifically Drive-originated ones; does
+zooming change the offset) since this sandbox cannot fabricate a realistic OCR'd scanned PDF to
+test against, and `js/pdf-render.js` already has real, working fixes for the ONE previously-known
+text-layer/canvas sub-pixel drift under pinch-zoom (see its own comments) — so a "great" (not
+sub-pixel) offset points at something not yet identified. Next agent: ask the user for the file
+(or a shareable reproduction) before attempting a fix.
 
-Exact next action: none — wait for the user's confirmation (or continued repro) of the TTS
-double-voice fix on their real device, and for the offline-translation manual confirmation from
-the previous task (still outstanding — see PR #72/#73's history in this file's git log).
+Exact next action: wait for the user to confirm the fixes and verify everything works as
+expected, AND report back on the still-open scanned-PDF offset/misread-word issue above (repro
+details or the file itself needed to proceed).
 
 ## Handoff rules
 
