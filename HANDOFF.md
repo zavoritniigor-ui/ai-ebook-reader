@@ -37,7 +37,42 @@ Also kept an uncommitted fix from `js/selection.js` related to `anchorCaret` log
 Release code commit: e9c3632 (fix) + pushed to `dev`.
 PR #76 MERGED (squash); CI checks passed.
 
-Exact next action: wait for the user to confirm the fixes and verify everything works as expected.
+**Follow-up (this session)**: that `anchorCaret` fix was actually independently diagnosed and
+written by THIS session while investigating the user's own bug report (tap a PDF sentence's
+first word, press the translation popup's "select" button twice — the 2nd press selects the
+wrong text — plus a bilingual "sentence beside its own-language translation in an adjacent
+column" layout concern) — it landed bundled into e9c3632/PR #76 because both sessions share
+one working directory/index, and whichever session runs `git commit` first picks up ALL
+currently-uncommitted changes, not just its own. Root cause, precisely: the first "select"
+press wraps the just-selected text in a new `span.sel-word` (PDF path) — when the tapped word
+IS the sentence's first word, that new span lands INSIDE the pre-existing `span.word-visited`
+around the tapped word, replacing its `firstChild` with an element instead of a text node, so
+the old direct `firstChild` check in `anchorCaret` silently fell back from the reliable word
+anchor to raw-coordinate hit-testing on the second press.
+Added `tests/pdf_sentence_reselect_browser.py` (commit 6a9e805, dev) — wired into CI — using the
+real PDF.js-rendered two-column synthetic fixture (`pdf_bytes(two_columns=True)`, the same
+"original beside its translation" layout the user described) to reproduce the exact DOM-mutation
+sequence the bug depends on. 9/9 checks pass locally AND against production (the fix was already
+live by the time this session finished writing the test): the 2nd press still selects exactly
+the same sentence as the 1st, and no press ever bleeds text across the column boundary — this
+also directly confirms the bilingual-column layout stays correctly isolated per column. Full
+existing regression suite re-run locally — all pass, no regression from the other 4 audit fixes
+in the same commit.
+
+**Still open from the user's report — not yet investigated**: a scanned PDF opened from Google
+Drive showed a large text-layer/rendering offset, and a tapped word was misread/replaced by a
+different one during sentence selection on that same file. Not reproduced or root-caused yet —
+this needs either the actual file or precise repro details (does it happen on any sufficiently
+large/rotated scanned PDF regardless of source, or specifically Drive-originated ones; does
+zooming change the offset) since this sandbox cannot fabricate a realistic OCR'd scanned PDF to
+test against, and `js/pdf-render.js` already has real, working fixes for the ONE previously-known
+text-layer/canvas sub-pixel drift under pinch-zoom (see its own comments) — so a "great" (not
+sub-pixel) offset points at something not yet identified. Next agent: ask the user for the file
+(or a shareable reproduction) before attempting a fix.
+
+Exact next action: wait for the user to confirm the fixes and verify everything works as
+expected, AND report back on the still-open scanned-PDF offset/misread-word issue above (repro
+details or the file itself needed to proceed).
 
 ## Handoff rules
 
