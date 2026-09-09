@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **release in progress**. Branch: `dev`.
+Status: **idle**. Branch: `dev`. PR #79 merged, production verified.
 
 Task: User approved the supplied format-expansion plan (`go`); implementing its
 first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
@@ -52,13 +52,54 @@ pass. Follow-up: d53cb75 + synchronization 6eeb9e6, PR #79 open. One CI run
 passed, another exposed a reproducible pre-existing PDF test setup race: a
 viewport resize render invalidated the tapped word between assertions. The test
 now waits for a quiet render interval after initPdf, without changing its selection
-assertions or the production PDF code. Next: push this test correction, wait for
-CI/auto-merge on #79, then run production format and offline/PDF smoke checks.
+assertions or the production PDF code. PR #79 MERGED (squash) as main release
+commit 8602091 — CI green, production verified (script hashes match).
+
+**Separate concurrent fix (this session), bundled into the same PR #79 since both
+sessions pushed to `dev`)**: the user shared a screenshot of a real bilingual
+textbook PDF page (French left column, English right column, row-aligned —
+translation printed directly opposite each original sentence) with several lines
+carrying an inline bold marker word mid-sentence ("Premièrement,"/"First," — the
+same "Firstly/Secondly/..." style real bilingual books use). Selecting a sentence
+grabbed text from BOTH columns at once, and words on the tapped column were
+sometimes read/detected with the OTHER column's language.
+
+Root cause: `js/selection.js`'s `pdfVisualGroup()` decided column membership by
+clustering each individual PDF text fragment's own left edge — but a PDF splits a
+line into a new fragment wherever the style changes mid-sentence, and that
+fragment's own left edge (deep inside the line) says nothing about which column
+the whole line belongs to. Pooling every fragment's left edge together let these
+mid-line values interfere with the true column boundary. A naive "group by Y
+first" fix doesn't work either: the two columns' lines are often at the EXACT
+same height (row-aligned translation), so Y-only grouping merges both columns
+into one row immediately.
+
+Fix: two-stage clustering — Y-bands first (can span both columns' same-height
+lines), then within each band, cut into per-column "segments" wherever the gap
+between one fragment's RIGHT edge and the next's LEFT edge exceeds the threshold
+(a real column gutter, vs. a same-line style break where the cursor continues
+with near-zero gap). Only each segment's own start-X feeds the column-clustering
+step, so inline style breaks no longer pollute it.
+Commit 0804cd1 on dev (merged into main via #79, 8602091). Tests:
+`tests/pdf_bilingual_columns_browser.py` (new, wired into CI, 10/10 checks) using
+a new `bilingual_pdf_bytes()` fixture in `tests/browser_cdp.py` built with an
+ACTUAL font change (Helvetica → Helvetica-Bold) and runs shown continuously (no
+repositioning between them), so fragment gaps come out realistically small within
+a line and large across the true gutter — confirmed the test genuinely fails
+without the fix (reverted locally, re-ran, restored). Full existing suite
+(including the earlier, differently-shaped `pdf_sentence_reselect_browser.py`)
+re-run locally and against production after merge — all pass.
 
 Unrelated untracked scratch files and tests/language_tts_browser.py are untouched.
 
 Still open separately: the reported scanned-PDF text-layer offset/misread word
-needs the actual affected file or a reproducible fixture. Do not claim it is fixed.
+(a DIFFERENT PDF, image-based/OCR'd, from Google Drive — not the text-based
+bilingual-column PDF above) needs the actual affected file or a reproducible
+fixture. Do not claim it is fixed.
+
+Exact next action: wait for the user to confirm the bilingual-column selection
+fix on their real book, and provide the scanned-PDF file (or precise repro
+details) for the still-open offset/misread-word issue above.
 
 ## Handoff rules
 
