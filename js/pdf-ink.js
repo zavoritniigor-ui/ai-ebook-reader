@@ -32,7 +32,16 @@ function saveInk() {
 function loadInk() {
     state.ink = {};
     if (!state.bookKey) return;
-    try { state.ink = JSON.parse(readStored('ink_' + state.bookKey) || '{}'); } catch (e) { state.ink = {}; }
+    try {
+        let raw = readStored('ink_' + state.bookKey);
+        if (!raw && state.oldBookKey) {
+            raw = readStored('ink_' + state.oldBookKey);
+            if (raw) {
+                try { writeStored('ink_' + state.bookKey, raw); localStorage.removeItem('ink_' + state.oldBookKey); } catch (e) {}
+            }
+        }
+        state.ink = JSON.parse(raw || '{}');
+    } catch (e) { state.ink = {}; }
 }
 function redrawInk() {
     const cv = inkCanvas();
