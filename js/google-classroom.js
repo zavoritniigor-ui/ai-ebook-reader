@@ -24,7 +24,7 @@
 // консолі (ai-ebook-reader.pages.dev, localhost для розробки), а не на
 // прихованості цього рядка. OAuth consent screen: External + Testing (доступ
 // лише для акаунтів, явно доданих як test users в консолі).
-const GOOGLE_CLIENT_ID = '1057119342659-vu464ei1v7ophbcuufbe8muhd9nb3fng.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID =  '1057119342659-vu464ei1v7ophbcuufbe8muhd9nb3fng.apps.googleusercontent.com';
 
 // Мінімальний набір дозволів: лише читання курсів і завдань/матеріалів (жодного
 // запису, здачі робіт, оцінок чи коментарів), плюс drive.file замість
