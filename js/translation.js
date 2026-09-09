@@ -373,7 +373,12 @@ function buildTranslationExtras(data, mainTranslation) {
 const localTranslators = new Map();     // 'fr>uk' → Promise<Translator>
 function localTranslationSupported() { return typeof self !== 'undefined' && 'Translator' in self; }
 
-async function getLocalTranslator(src, tgt) {
+// showProgress: чи писати відсоток завантаження в els.progress — це той самий
+// елемент, що й "сторінка X з Y". Годиться лише коли користувач АКТИВНО чекає на
+// переклад (справжній виклик з translateLocally); тихий фоновий "розігрів" з
+// warmLocalTranslator() нижче не повинен на мить підмінювати індикатор читання
+// довільним відсотком завантаження мовного пакета, поки людина просто читає.
+async function getLocalTranslator(src, tgt, showProgress = false) {
     if (!localTranslationSupported() || src === tgt) return null;
     const key = `${src}>${tgt}`;
     if (localTranslators.has(key)) return localTranslators.get(key);
@@ -388,6 +393,7 @@ async function getLocalTranslator(src, tgt) {
             return await Translator.create({
                 sourceLanguage: src, targetLanguage: tgt,
                 monitor(m) {
+                    if (!showProgress) return;
                     m.addEventListener('downloadprogress', (e) => {
                         if (epoch !== readerEpoch.book) return;
                         const pct = Math.round((e.loaded || 0) * 100);
@@ -405,11 +411,27 @@ async function getLocalTranslator(src, tgt) {
 // Переклад локальною моделлю. Повертає рядок або null, якщо недоступно.
 async function translateLocally(text, src, tgt) {
     try {
-        const tr = await getLocalTranslator(src, tgt);
+        const tr = await getLocalTranslator(src, tgt, true);
         if (!tr) return null;
         const out = await tr.translate(text);
         return (out || '').trim() || null;
     } catch (e) { return null; }
+}
+// Заздалегідь запускає завантаження мовного пакета — щоб офлайн-переклад
+// (Translator API) справді був готовий, коли зникне мережа. Без цього
+// getLocalTranslator() практично ніколи не викликався, поки був онлайн: коли є
+// ключ AI й мережа, aiTranslateText() завжди встигає першим, і machineTranslate/
+// translateLocally узагалі не доходили до виконання — а самé завантаження
+// моделі теж потребує мережі, тому "перший офлайн-переклад" завжди програвав.
+// Викликається з updateSourceLang() (js/lang-detect.js, щоразу коли визначається
+// мова книги/розділу) і зі зміни цільової мови (js/main.js) — двох єдиних місць,
+// де відомі ОБИДВІ мови пари заздалегідь. Fire-and-forget: результат не потрібен,
+// важливо лише дати старт завантаженню якомога раніше.
+function warmLocalTranslator(srcLang, tgtLang) {
+    if (!localTranslationSupported() || !navigator.onLine) return;
+    const src = (srcLang || '').slice(0, 2), tgt = (tgtLang || '').slice(0, 2);
+    if (!src || !tgt || src === tgt) return;
+    getLocalTranslator(src, tgt).catch(() => {});
 }
 
 // ========== ФРАЗОВІ ДІЄСЛОВА (англійська) ==========
