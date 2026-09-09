@@ -20,30 +20,9 @@ part of normal task startup.
 
 Status: **idle**. Current branch: dev.
 
-Task: The user requested fixes for 4 confirmed audit defects:
-1. Book identification mixing bookmarks/notes (books with the same name and size used the same `localStorage` key).
-2. EPUB embedded images failing to load because they requested via the server rather than the `JSZip` archive.
-3. EPUB chapter paths with `../` failing because paths were concatenated instead of normalized.
-4. Voice trial TTS not cancelling upon background activity stop.
+Task: The user requested that tapping on empty space (margins, whitespace) should *only* close the translation window if it's open, without triggering translation for the nearest word or performing a page turn/immersive mode toggle.
 
 **Fixes**:
-1. Added `file.lastModified` to `bookKeyFor()`. If a new key isn't found, we fallback to the old key (`reader_bookmark_..._size`) and automatically migrate it to the new key. Fixed in both `js/navigation.js` and `js/pdf-ink.js`.
-2. Extracted `img` parsing in `loadEpubChapter()` to replace image `src` with proper base64 `data:` URIs directly loaded from `state.epubZip`.
-3. Created a `resolveEpubPath()` function to evaluate `../` and `./` paths for EPUB chapter items inside `initEpub()`.
-4. Added a strict check inside the `setTimeout()` for the Voice Trial: `if (gen === state.ttsGen) ttsSynth.speak(u)`. Since `state.ttsGen` is incremented during any activity stop (`stopGlobalTTS()`, `ttsSynth.cancel()`), the callback gracefully skips the trial playback if interrupted.
-
-Also kept an uncommitted fix from `js/selection.js` related to `anchorCaret` logic (searching the text node using `TreeWalker` instead of direct `firstChild`), which ensures multiple taps on the UI don't drop the context block anchor.
-
-Release code commit: e9c3632 (fix) + pushed to `dev`.
-PR #76 MERGED (squash); CI checks passed.
-
-**Follow-up (this session)**: that `anchorCaret` fix was actually independently diagnosed and
-written by THIS session while investigating the user's own bug report (tap a PDF sentence's
-first word, press the translation popup's "select" button twice — the 2nd press selects the
-wrong text — plus a bilingual "sentence beside its own-language translation in an adjacent
-column" layout concern) — it landed bundled into e9c3632/PR #76 because both sessions share
-one working directory/index, and whichever session runs `git commit` first picks up ALL
-currently-uncommitted changes, not just its own. Root cause, precisely: the first "select"
 press wraps the just-selected text in a new `span.sel-word` (PDF path) — when the tapped word
 IS the sentence's first word, that new span lands INSIDE the pre-existing `span.word-visited`
 around the tapped word, replacing its `firstChild` with an element instead of a text node, so
