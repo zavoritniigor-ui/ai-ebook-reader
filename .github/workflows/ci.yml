@@ -145,4 +145,7 @@ jobs:
           echo "Running tts_double_voice_browser.py..."
           python3 -u tests/tts_double_voice_browser.py
 
+          echo "Running pdf_sentence_reselect_browser.py..."
+          python3 -u tests/pdf_sentence_reselect_browser.py
+
           echo "All tests passed successfully!"
