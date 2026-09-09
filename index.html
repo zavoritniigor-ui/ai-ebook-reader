@@ -612,35 +612,6 @@
         .key-link:hover { text-decoration: underline; }
         .key-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
 
-        /* Google Classroom: ширша модалка (списки курсів/завдань/файлів), решта
-           стилю успадковується від .modal-content вище. */
-        .modal-content.wide { max-width: 640px; }
-        #classroom-modal .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-        #classroom-modal .modal-header h3 { padding-right: 0; margin: 0; }
-        .classroom-list { list-style: none; padding: 0; margin: 10px 0 0; max-height: 65vh; overflow-y: auto; }
-        .classroom-list li { padding: 13px 14px; border-radius: var(--radius-sm); cursor: pointer; border-bottom: 1px solid var(--border-color); }
-        .classroom-list li:hover { background: var(--hover-color); }
-        .classroom-list li:last-child { border-bottom: none; }
-        .classroom-list li.classroom-empty { cursor: default; color: var(--text-muted); }
-        .classroom-list li.classroom-empty:hover { background: transparent; }
-        .classroom-item-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
-
-        /* Картка завдання/матеріалу: сама картка НЕ клікабельна (клікабельні лише
-           вкладення всередині неї), тому знімаємо курсор/hover, успадковані від
-           .classroom-list li вище. Компактно навіть на телефоні: без зайвих
-           відступів, короткий опис в 1-2 рядки. */
-        .classroom-list li.classroom-card { cursor: default; padding: 12px 14px; }
-        .classroom-list li.classroom-card:hover { background: transparent; }
-        .classroom-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-        .classroom-card-title { font-size: 14.5px; font-weight: 600; line-height: 1.3; }
-        .classroom-badge { flex-shrink: 0; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
-        .classroom-badge-work { background: rgba(13,110,253,0.15); color: #0d6efd; }
-        .classroom-badge-material { background: rgba(108,117,125,0.18); color: var(--text-muted); }
-        .classroom-card-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 5px; line-height: 1.4; }
-        .classroom-attachments { list-style: none; padding: 0; margin: 8px 0 0; }
-        .classroom-attachments li.classroom-attachment { padding: 8px 10px; margin-top: 4px; border: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
-        .classroom-attachments li.classroom-attachment:hover { background: var(--hover-color); }
-
         /* Чесне повідомлення замість фейкового "закриття" застосунку: коли платформа не
            дозволяє скрипту самому завершити standalone-вікно, кажемо про це прямо. */
         #reader-toast {
@@ -729,7 +700,6 @@
                 <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tToc" data-i18n="tocIcon">☰</button>
                 <label class="btn" for="file-upload" data-i18n="open">📂 Відкрити</label>
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.html,.htm,.rtf,.md">
-                <button class="btn" id="btn-classroom" data-i18n="btnClassroom" data-i18n-title="tClassroom">🎓 Classroom</button>
             </div>
             <div class="toolbar-group">
                 <button class="icon-btn" id="btn-tts" data-i18n="read">🔊 Читати</button>
@@ -911,40 +881,7 @@
         </div>
     </div>
 
-    <div id="classroom-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index:30000; justify-content:center; align-items:center;" onclick="if (event.target === this) closeClassroomModal()">
-        <div class="modal-content wide">
-            <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" id="classroom-close-btn" data-i18n="close" data-i18n-title="tClose">✕</button>
-            <div class="modal-header">
-                <button id="classroom-back-btn" class="btn-ghost" style="display:none;" data-i18n="classroomBack">← Назад</button>
-                <h3 data-i18n="classroomTitle">🎓 Google Classroom</h3>
-                <button id="classroom-signout-btn" class="btn-ghost" style="display:none; font-size:12px;" data-i18n="classroomSignOut">Вийти</button>
-            </div>
-
-            <div id="classroom-view-signin" class="classroom-view">
-                <p class="key-hint" data-i18n="classroomSignInHint">Увійдіть шкільним акаунтом Google, щоб відкривати файли з курсів Classroom напряму в рідері — без завантаження вручну.</p>
-                <button id="classroom-signin-btn" class="btn-primary" data-i18n="classroomSignIn">Увійти через Google</button>
-            </div>
-
-            <div id="classroom-view-loading" class="classroom-view" style="display:none; text-align:center; padding:34px 0;">
-                <div class="spinner-large"></div>
-            </div>
-
-            <div id="classroom-view-error" class="classroom-view" style="display:none;">
-                <p class="key-hint" id="classroom-error-text"></p>
-            </div>
-
-            <div id="classroom-view-courses" class="classroom-view" style="display:none;">
-                <ul id="classroom-courses-list" class="classroom-list"></ul>
-            </div>
-
-            <div id="classroom-view-coursework" class="classroom-view" style="display:none;">
-                <ul id="classroom-coursework-list" class="classroom-list"></ul>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="js/core.js?v=0c984947cd03"></script>
+    <script src="js/core.js?v=9c5a32634c1a"></script>
     <script src="js/lang-detect.js?v=5ce1fc05ac06"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -968,8 +905,7 @@
     <script src="js/pdf-render.js?v=7d5c650a8f84"></script>
     <script src="js/formats.js?v=7fdd67290f8e"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/main.js?v=006eba871c69"></script>
-    <script src="js/google-classroom.js?v=d3bedb203542"></script>
-    <script src="js/pwa-lifecycle.js?v=7070c58598f0"></script>
+    <script src="js/main.js?v=27be9815134b"></script>
+    <script src="js/pwa-lifecycle.js?v=b9824003afbb"></script>
 </body>
 </html>
