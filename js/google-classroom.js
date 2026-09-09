@@ -2,11 +2,12 @@
  * матеріали → прикріплений файл → напряму в Reader, без ручного завантаження.
  *
  * Мінімальні дозволи (навмисно, не "все, що дозволено"): лише READ-ONLY
- * Classroom-scope'и (курси, власні/викладацькі завдання, матеріали — без
- * здачі робіт, оцінок чи редагування) і drive.file — вужчий за drive.readonly,
- * НЕ дає доступу до всього Google Диска користувача. Див. GOOGLE_SCOPES і
- * коментар біля openDriveFile() щодо того, чому саме ці scope і що робити,
- * якщо drive.file виявиться замалим на реальному акаунті.
+ * Classroom-scope'и для студентського потоку (власні курси, власні завдання,
+ * матеріали курсу — без здачі робіт, оцінок чи редагування; без вчительського
+ * scope на ЧУЖІ роботи, який тут нікому не потрібен) і drive.file — вужчий за
+ * drive.readonly, НЕ дає доступу до всього Google Диска користувача. Див.
+ * GOOGLE_SCOPES і коментар біля openDriveFile() щодо того, чому саме ці scope
+ * і що робити, якщо drive.file виявиться замалим на реальному акаунті.
  *
  * Класичний <script src>, НЕ ES-модуль — див. js/core.js. Завантажується
  * одразу після js/main.js: викликає його openBookFile() (той самий вхід, що
@@ -17,27 +18,40 @@
  * останнім.
  */
 
-// ЗАМІНІТЬ на свій OAuth 2.0 Client ID (тип Web application) з Google Cloud
-// Console → APIs & Services → Credentials. Це НЕ секрет — Client ID
-// призначений саме для клієнтського коду; безпека тримається на "Authorized
-// JavaScript origins" у консолі (ai-ebook-reader.pages.dev, localhost для
-// розробки), а не на прихованості цього рядка.
-const GOOGLE_CLIENT_ID = 'REPLACE_WITH_YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+// OAuth 2.0 Client ID (тип Web application) з Google Cloud Console → APIs &
+// Services → Credentials. Це НЕ секрет — Client ID призначений саме для
+// клієнтського коду; безпека тримається на "Authorized JavaScript origins" у
+// консолі (ai-ebook-reader.pages.dev, localhost для розробки), а не на
+// прихованості цього рядка. OAuth consent screen: External + Testing (доступ
+// лише для акаунтів, явно доданих як test users в консолі).
+const GOOGLE_CLIENT_ID = '1057119342659-vu464ei1v7ophbcuufbe8muhd9nb3fng.apps.googleusercontent.com';
 
 // Мінімальний набір дозволів: лише читання курсів і завдань/матеріалів (жодного
 // запису, здачі робіт, оцінок чи коментарів), плюс drive.file замість
 // drive.readonly. За задумом Google, drive.file відкриває доступ саме до
 // файлів, з якими застосунок уже працював у цій сесії — а ідентифікатор
 // файла ми отримуємо через саму Classroom API, а не вгадуємо чи скануємо
-// весь Диск. Це ЄДИНЕ місце, яке варто змінити, якщо на реальному шкільному
-// акаунті виявиться, що конкретне вкладення не відкривається під drive.file
-// (Google десь вимагає, щоб файл був явно "відкритий" через Picker, а не
-// лише знайдений через іншу API) — тоді додайте
-// 'https://www.googleapis.com/auth/drive.readonly' замість 'drive.file'.
+// весь Диск.
+//
+// БЕЗ classroom.coursework.students.readonly: цей scope відкриває вчительський
+// перегляд ЧУЖИХ (студентських) робіт у курсах, де користувач викладає, — для
+// суто студентського read-only потоку (переглянути СВОЇ курси/завдання) він не
+// потрібен, тож не запитуємо його, аби consent-екран лишався якомога коротшим.
+// Якщо застосунок колись знадобиться й викладачам для перегляду студентських
+// робіт (не просто матеріалів курсу — ті вже покриті courseworkmaterials
+// нижче), цей scope треба буде повернути.
+//
+// Це ЄДИНЕ місце, яке варто змінити, якщо на реальному шкільному акаунті
+// виявиться, що конкретне вкладення не відкривається під drive.file (Google
+// десь вимагає, щоб файл був явно "відкритий" через Picker, а не лише
+// знайдений через іншу API) — тоді додайте
+// 'https://www.googleapis.com/auth/drive.readonly' замість 'drive.file'. НЕ
+// робіть цю заміну заздалегідь "про всяк випадок" — лише якщо реальний тест
+// відкриття вкладення справді впаде з 403 і буде показано, що причина саме в
+// drive.file.
 const GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/classroom.courses.readonly',
     'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
-    'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
     'https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly',
     'https://www.googleapis.com/auth/drive.file'
 ].join(' ');
