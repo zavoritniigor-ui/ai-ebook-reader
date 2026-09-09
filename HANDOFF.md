@@ -48,8 +48,12 @@ PR #78 merged as 77fe77c after CI passed. Final integration review found that
 cross-node reflow selection needed the same margin hit check as the retained UI
 fix. Follow-up adds that check, safe failure for invalid SVG namespaces/dimensions,
 and reflow for fonts that finish after the timeout. All 22 targeted format checks
-pass. Next: commit/push the follow-up, create the next dev-to-main PR, wait for CI
-and auto-merge, then run production format and offline/PDF smoke checks.
+pass. Follow-up: d53cb75 + synchronization 6eeb9e6, PR #79 open. One CI run
+passed, another exposed a reproducible pre-existing PDF test setup race: a
+viewport resize render invalidated the tapped word between assertions. The test
+now waits for a quiet render interval after initPdf, without changing its selection
+assertions or the production PDF code. Next: push this test correction, wait for
+CI/auto-merge on #79, then run production format and offline/PDF smoke checks.
 
 Unrelated untracked scratch files and tests/language_tts_browser.py are untouched.
 

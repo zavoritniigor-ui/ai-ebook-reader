@@ -241,3 +241,8 @@ Marked rendering, inert SVG rasterization and resource-aware reflow.
 `navigation.js` stores character offsets alongside legacy page bookmarks;
 `selection.js` indexes reflowable words across inline text nodes.
 `tests/formats_browser.py` covers these paths with synthetic fixtures in CI.
+
+`pdf_sentence_reselect_browser.py` waits for a quiet PDF render interval after
+mobile viewport setup. The navigation resize debounce can otherwise invalidate
+the test selection after `initPdf` resolves; this was reproduced during format
+release CI, then isolated to test setup rather than sentence expansion.
