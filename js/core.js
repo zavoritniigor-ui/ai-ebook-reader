@@ -539,7 +539,11 @@ const I18N = {
     classroomNoAttachments: { uk: 'Тут немає файлів, які можна відкрити.', en: 'No openable files here.', fr: 'Aucun fichier ouvrable ici.', ru: 'Здесь нет файлов, которые можно открыть.' },
     classroomOpenError: { uk: 'Не вдалося відкрити файл із Google Drive.', en: 'Could not open the file from Google Drive.', fr: 'Impossible d’ouvrir le fichier depuis Google Drive.', ru: 'Не удалось открыть файл из Google Drive.' },
     classroomAuthError: { uk: 'Помилка входу через Google. Спробуйте ще раз.', en: 'Google sign-in error. Please try again.', fr: 'Erreur de connexion Google. Réessayez.', ru: 'Ошибка входа через Google. Попробуйте снова.' },
-    classroomAttachmentsCount: { uk: 'файлів', en: 'files', fr: 'fichiers', ru: 'файлов' }
+    classroomAttachmentsCount: { uk: 'файлів', en: 'files', fr: 'fichiers', ru: 'файлов' },
+    classroomTypeAssignment: { uk: 'Завдання', en: 'Assignment', fr: 'Devoir', ru: 'Задание' },
+    classroomTypeMaterial: { uk: 'Матеріал', en: 'Material', fr: 'Support', ru: 'Материал' },
+    classroomDue:   { uk: 'Термін здачі', en: 'Due', fr: 'À rendre', ru: 'Срок сдачи' },
+    classroomPublished: { uk: 'Опубліковано', en: 'Published', fr: 'Publié', ru: 'Опубликовано' }
 };
 function t(key) {
     const e = I18N[key];
