@@ -57,6 +57,16 @@ function runArchiveGuard(file, epoch) {
     });
 }
 
+function resolveEpubPath(baseDir, relativePath) {
+    const parts = baseDir.split('/').filter(Boolean);
+    const relParts = relativePath.split('/').filter(Boolean);
+    for (const p of relParts) {
+        if (p === '..') parts.pop();
+        else if (p !== '.') parts.push(p);
+    }
+    return parts.join('/');
+}
+
 // ОНОВЛЕНИЙ НАДІЙНИЙ ПАРСЕР EPUB
 async function initEpub(file, epoch = readerEpoch.book) {
     if (typeof JSZip === 'undefined') throw new Error('Не завантажено бібліотеку EPUB. Перевірте з’єднання та оновіть сторінку.');
@@ -86,7 +96,7 @@ async function initEpub(file, epoch = readerEpoch.book) {
         const id = refs[i].getAttribute("idref"); 
         if(man[id]) {
             let cleanPath = man[id].split('#')[0].split('?')[0];
-            state.spine.push(opfDir + cleanPath); 
+            state.spine.push(resolveEpubPath(opfDir, cleanPath)); 
         }
     }
     if(state.spine.length === 0) throw new Error(t('noChapters'));
@@ -126,8 +136,30 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null) {
         if(!fileObj) {
             els.pages.innerHTML = `<div style="color:red;text-align:center;padding:50px;">${t('chapterMissing')}</div>`;
         } else {
-            const data = await fileObj.async("text");
+            let data = await fileObj.async("text");
             if (!current()) return;
+            
+            const chapterDir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/') + 1) : "";
+            const tempDoc = new DOMParser().parseFromString(data, "text/html");
+            const imgs = tempDoc.getElementsByTagName('img');
+            for (const img of imgs) {
+                const src = img.getAttribute('src');
+                if (src && !/^https?:\/\/|^data:/i.test(src)) {
+                    const cleanSrc = src.split('#')[0].split('?')[0];
+                    let imgPath = resolveEpubPath(chapterDir, cleanSrc);
+                    try { imgPath = decodeURIComponent(imgPath); } catch(e){}
+                    const imgFile = state.epubZip.file(imgPath) || state.epubZip.file(resolveEpubPath(chapterDir, cleanSrc));
+                    if (imgFile) {
+                        const base64 = await imgFile.async("base64");
+                        const ext = imgPath.split('.').pop().toLowerCase();
+                        const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : ext === 'avif' ? 'image/avif' : 'image/jpeg';
+                        img.setAttribute('src', `data:${mime};base64,${base64}`);
+                    }
+                }
+            }
+            data = tempDoc.body.innerHTML;
+            if (!current()) return;
+            
             els.pages.innerHTML = safeHtml(data);
         }
         state.extractedTextForTTS = els.pages.innerText;

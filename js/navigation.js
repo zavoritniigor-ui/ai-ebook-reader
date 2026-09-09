@@ -83,7 +83,8 @@ function updateProgressText() {
 }
 
 // ========== ЗАКЛАДКА (запам'ятовує місце в книзі) ==========
-function bookKeyFor(file) { return 'reader_bookmark_' + file.name + '_' + file.size; }
+function bookKeyFor(file) { return 'reader_bookmark_' + file.name + '_' + file.size + '_' + (file.lastModified || 0); }
+function oldBookKeyFor(file) { return 'reader_bookmark_' + file.name + '_' + file.size; }
 function saveBookmark() {
     if (!state.bookKey) return;
     scheduleReaderOnboarding();
@@ -92,7 +93,14 @@ function saveBookmark() {
 function loadBookmark() {
     if (!state.bookKey) return null;
     try {
-        const raw = readStored(state.bookKey); const bm = raw ? JSON.parse(raw) : null;
+        let raw = readStored(state.bookKey);
+        if (!raw && state.oldBookKey) {
+            raw = readStored(state.oldBookKey);
+            if (raw) {
+                try { writeStored(state.bookKey, raw); localStorage.removeItem(state.oldBookKey); } catch (e) {}
+            }
+        }
+        const bm = raw ? JSON.parse(raw) : null;
         return bm && Number.isInteger(bm.currentIndex) && Number.isInteger(bm.pageInChapter) && bm.pageInChapter >= 0 ? bm : null;
     } catch (e) { return null; }
 }

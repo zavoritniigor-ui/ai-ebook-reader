@@ -79,9 +79,11 @@ els.voiceSelect.onchange = e => {
     const u = new SpeechSynthesisUtterance(samples[code] || 'Test');
     u.voice = v; u.lang = v.lang; u.rate = 0.95;
     ttsSynth.cancel();
+    state.ttsGen++;
+    const gen = state.ttsGen;
     // Затримка перед speak() — див. TTS_CANCEL_SPEAK_DELAY_MS у js/tts.js (той самий
     // "подвійний голос" на Android/Chrome, якщо speak() іде відразу за cancel()).
-    setTimeout(() => ttsSynth.speak(u), TTS_CANCEL_SPEAK_DELAY_MS);
+    setTimeout(() => { if (gen === state.ttsGen) ttsSynth.speak(u); }, TTS_CANCEL_SPEAK_DELAY_MS);
 };
 
 // РЕЖИМ ВИВЧЕННЯ ТА ZERO-MEMORY
@@ -142,6 +144,7 @@ async function openBookFile(file) {
     els.pages.innerHTML = `<div style="text-align:center;">${t('loading')}</div>`;
     if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
     state.bookKey = bookKeyFor(file);
+    state.oldBookKey = oldBookKeyFor(file);
     state.docChapters = null;
     loadInk();
     const ext = file.name.split('.').pop().toLowerCase();

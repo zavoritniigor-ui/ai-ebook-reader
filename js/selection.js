@@ -87,13 +87,27 @@ function blockAncestorOf(node) {
 }
 // Опорна точка для виділення: спершу — запам'ятований вузол слова (надійно, бо не
 // залежить від того, чи не накрило вікно перекладу точку тапу), інакше — координати.
+// Шукаємо ПЕРШИЙ текстовий вузол ВСЕРЕДИНІ node через TreeWalker, а не перевіряємо
+// node.firstChild напряму: у PDF кнопка "виділити" (wordToSentenceEndRangeAt →
+// showSelectionHighlight → wrapRangeInSpans) обгортає щойно виділений текст ще одним
+// span.sel-word — і якщо перше натискання виділило рівно тапнуте слово, цей новий
+// span опиняється ВСЕРЕДИНІ .word-visited, підмінюючи його firstChild з текстового
+// вузла на елемент. Пряма перевірка firstChild після цього провалювалась, і другий
+// клік "виділити" непомітно скочувався з надійного якоря на неточний пошук за
+// координатами (caretRangeAt) — звідси й неправильне виділення речення саме при
+// ПОВТОРНОМУ натисканні. TreeWalker знаходить перший текстовий вузол незалежно від
+// будь-якої додаткової обгортки всередині.
 function anchorCaret(clientX, clientY) {
     const node = state.lastWordNode;
-    if (node && node.isConnected && node.firstChild && node.firstChild.nodeType === Node.TEXT_NODE) {
-        const r = document.createRange();
-        r.setStart(node.firstChild, 0);
-        r.collapse(true);
-        return r;
+    if (node && node.isConnected) {
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        const textNode = walker.nextNode();
+        if (textNode) {
+            const r = document.createRange();
+            r.setStart(textNode, 0);
+            r.collapse(true);
+            return r;
+        }
     }
     return caretRangeAt(clientX, clientY);
 }
