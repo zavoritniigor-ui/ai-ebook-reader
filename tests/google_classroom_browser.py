@@ -102,9 +102,15 @@ signin_result = js('''(async()=>{
              courseText: list.textContent };
 })()''')
 assert 'classroom.courses.readonly' in signin_result['scope'], signin_result
+assert 'classroom.coursework.me.readonly' in signin_result['scope'], signin_result
+assert 'classroom.courseworkmaterials.readonly' in signin_result['scope'], signin_result
 assert 'drive.file' in signin_result['scope'], signin_result
 # Requirement: minimal Drive permissions — never request the broad drive.readonly.
 assert 'drive.readonly' not in signin_result['scope'], signin_result
+# Requirement: this is a student-only read-only flow — classroom.coursework.
+# students.readonly (teacher visibility into OTHER students' work) is not
+# needed and must not be requested.
+assert 'classroom.coursework.students.readonly' not in signin_result['scope'], signin_result
 assert signin_result['coursesShown'], signin_result
 assert 'Français A2' in signin_result['courseText'], signin_result
 print('PASS sign-in requests only minimal, read-only scopes and shows courses', flush=True)
