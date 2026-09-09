@@ -411,6 +411,16 @@ function selectRangeAndTranslate(range, clientX, clientY) {
 function selectWordAtPoint(clientX, clientY) {
     const range = caretRangeAt(clientX, clientY);
     if (!range || !range.startContainer || range.startContainer.nodeType !== Node.TEXT_NODE) return null;
+    if (state.format !== 'pdf' && els.pages.contains(range.startContainer)) {
+        const bounds = reflowWordBounds(range.startContainer, range.startOffset);
+        if (!bounds) return null;
+        const wordRange = rangeBetweenWords(bounds, bounds);
+        if (!wordRange) return null;
+        const word = wordRange.toString();
+        const spans = wrapRangeInSpans(wordRange, 'word-visited');
+        state.lastWordNode = spans[0] || null;
+        return word;
+    }
 
     // Уже підсвічене слово клікнули повторно — повертаємо його, але ОБОВ'ЯЗКОВО
     // оновлюємо якір. Без цього якір лишався на слові з попереднього тапу, і
@@ -490,9 +500,39 @@ function selectWordAtPoint(clientX, clientY) {
 // будується вручну й обидва кінці притягуються до меж слів, тому виділення росте
 // рівно по одному слову.
 const IS_WORD_CH = (ch) => ch && /[\p{L}\p{N}'’-]/u.test(ch);
+// Index the current block across inline formatting. Rebuild after highlight
+// mutations, keeping DOM UTF-16 offsets while matching Unicode code points.
+function reflowWordBounds(node, offset) {
+    const root = blockAncestorOf(node);
+    const pieces = []; let text = '', point = -1;
+    function walk(el) {
+        if (el.nodeType === Node.TEXT_NODE) {
+            if (el === node) point = text.length + offset;
+            pieces.push({ node: el, start: text.length, end: text.length + el.length });
+            text += el.nodeValue; return;
+        }
+        if (el.nodeType !== Node.ELEMENT_NODE) return;
+        const boundary = el !== root && /^(BR|IMG|P|DIV|SECTION|LI|TD|TH|H[1-6])$/.test(el.tagName);
+        if (boundary) text += '\n';
+        for (const child of el.childNodes) walk(child);
+        if (boundary) text += '\n';
+    }
+    walk(root);
+    if (point < 0) return null;
+    for (const match of text.matchAll(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*(?:['’\u02bc-][\p{L}\p{N}][\p{L}\p{N}\p{M}]*)*/gu)) {
+        const start = match.index, end = start + match[0].length;
+        if (point < start) return null;
+        if (point > end) continue;
+        const first = pieces.find(p => start >= p.start && start < p.end);
+        const last = pieces.find(p => end > p.start && end <= p.end);
+        return first && last ? { node: first.node, start: start - first.start, endNode: last.node, end: end - last.start } : null;
+    }
+    return null;
+}
 function wordBoundsAt(clientX, clientY) {
     const r = caretRangeAt(clientX, clientY);
     if (!r || r.startContainer.nodeType !== Node.TEXT_NODE) return null;
+    if (state.format !== 'pdf' && els.pages.contains(r.startContainer)) return reflowWordBounds(r.startContainer, r.startOffset);
     const node = r.startContainer, text = node.nodeValue || '';
     let s = r.startOffset, e = r.startOffset;
     while (s > 0 && IS_WORD_CH(text[s - 1])) s--;
@@ -638,7 +678,7 @@ function rangeBetweenWords(a, b) {
         const first = aFirst ? a : b, last = aFirst ? b : a;
         const r = document.createRange();
         r.setStart(first.node, first.start);
-        r.setEnd(last.node, last.end);
+        r.setEnd(last.endNode || last.node, last.end);
         return r.collapsed ? null : r;
     } catch (e) { return null; }
 }
@@ -723,4 +763,3 @@ els.mainArea.addEventListener('click', (e) => {
         if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
     }
 });
-

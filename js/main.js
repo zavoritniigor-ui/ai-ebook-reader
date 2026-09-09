@@ -134,6 +134,7 @@ async function openBookFile(file) {
     if (pdfTasks.loading) { pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null; }
     else if (state.pdfDoc) state.pdfDoc.loadingTask.destroy().catch(() => {});
     state.pdfDoc = null; state.epubZip = null; state.spine = []; state.txtLines = [];
+    state.bookTextOffset = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
     state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = '';
     state.activeVerb = null; state.verbs = []; state.inkMode = false;
@@ -170,8 +171,8 @@ els.upload.addEventListener('change', async (e) => {
     await openBookFile(file);
 });
 
-document.getElementById('zoom-in').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); } else { state.fontSize += 2; writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; paginateContainer(); goToPageInChapter(state.pageInChapter, false); } };
-document.getElementById('zoom-out').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom - 0.25); } else { state.fontSize = Math.max(12, state.fontSize - 2); writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; paginateContainer(); goToPageInChapter(state.pageInChapter, false); } };
+document.getElementById('zoom-in').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); } else { state.fontSize += 2; writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; repaginateBook(); } };
+document.getElementById('zoom-out').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom - 0.25); } else { state.fontSize = Math.max(12, state.fontSize - 2); writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; repaginateBook(); } };
 document.getElementById('theme-select').onchange = (e) => {
     document.body.setAttribute('data-theme', e.target.value);
     writeStored('reader_theme', e.target.value);

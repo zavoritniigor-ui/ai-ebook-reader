@@ -71,13 +71,14 @@ function resolveEpubPath(baseDir, relativePath) {
 
 // All reflowable loaders wait for actual image decoding and fonts. The timeout
 // prevents a dead remote image from blocking reading; late loads reflow again.
-async function settleBookLayout(current, target) {
+async function settleBookLayout(current, target, textOffset = null) {
     let ready = false;
     const reflow = () => {
         if (!current()) return;
+        const offset = ready ? state.bookTextOffset : textOffset;
         const page = ready ? state.pageInChapter : target;
         paginateContainer();
-        goToPageInChapter(page === -1 ? state.totalPagesInChapter - 1 : page, false);
+        goToPageInChapter(page === -1 ? state.totalPagesInChapter - 1 : (pageForBookTextOffset(offset) ?? page), false);
     };
     const pending = Array.from(els.pages.querySelectorAll('img')).map(img => {
         img.loading = 'eager';
@@ -138,6 +139,7 @@ async function bookSvgPng(source) {
     let width = parseFloat(svg.getAttribute('width')) || view[2] || 800;
     let height = parseFloat(svg.getAttribute('height')) || view[3] || 600;
     if (!(width > 0 && height > 0)) return '';
+    if (!svg.hasAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     const scale = Math.min(1, 2048 / Math.max(width, height));
     width = Math.max(1, Math.round(width * scale)); height = Math.max(1, Math.round(height * scale));
     svg.setAttribute('width', width); svg.setAttribute('height', height);
@@ -200,12 +202,12 @@ async function initEpub(file, epoch = readerEpoch.book) {
     buildToc(state.totalPages, "Розділ", (i) => { loadEpubChapter(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'epub' && bm.currentIndex >= 0 && bm.currentIndex < state.spine.length) ? bm.currentIndex : 0;
-    await loadEpubChapter(startIdx, false, bm ? bm.pageInChapter : null);
+    await loadEpubChapter(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
     if (epoch !== readerEpoch.book) return;
     enterMobileFullScreenIfNeeded();
 }
 
-async function loadEpubChapter(idx, toEnd = false, startPage = null) {
+async function loadEpubChapter(idx, toEnd = false, startPage = null, textOffset = null) {
     if(idx < 0 || idx >= state.spine.length || !state.epubZip) return;
     const epoch = readerEpoch.book, render = ++readerEpoch.render;
     const current = () => epoch === readerEpoch.book && render === readerEpoch.render;
@@ -214,13 +216,9 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null) {
     state.currentIndex = idx;
 
     try {
-        const rawPath = state.spine[idx];
-        let filePath = rawPath;
-        // decodeURIComponent throws on malformed sequences (e.g. a literal "%" in a filename).
-        // That used to abort the whole function silently — now we just fall back to the raw path.
-        try { filePath = decodeURIComponent(rawPath); } catch (e) { filePath = rawPath; }
-
-        let fileObj = state.epubZip.file(filePath) || state.epubZip.file(rawPath);
+        // resolveEpubPath already decoded the URI once. A second decode would
+        // select the wrong entry for names containing literal percent escapes.
+        const fileObj = state.epubZip.file(state.spine[idx]);
 
         if(!fileObj) {
             els.pages.innerHTML = `<div style="color:red;text-align:center;padding:50px;">${t('chapterMissing')}</div>`;
@@ -256,7 +254,7 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null) {
         }
         state.extractedTextForTTS = els.pages.innerText;
         updateSourceLang();   // мова книги — перевизначається на кожному розділі
-        await settleBookLayout(current, toEnd ? -1 : (startPage ?? 0));
+        await settleBookLayout(current, toEnd ? -1 : (startPage ?? 0), textOffset);
     } catch (err) {
         if (!current()) return;
         // Any unexpected failure now shows a message instead of leaving the reader
@@ -314,7 +312,7 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
     });
     const bm = loadBookmark();
     const startIdx = (bm && bm.currentIndex >= 0 && bm.currentIndex < state.totalPages) ? bm.currentIndex : 0;
-    await renderDocChapter(startIdx, false, bm ? bm.pageInChapter : null);
+    await renderDocChapter(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
     if (epoch !== readerEpoch.book) return;
     enterMobileFullScreenIfNeeded();
 }
@@ -336,7 +334,7 @@ function splitIntoChapters(holder) {
     return chapters.length ? chapters : [holder.innerHTML];
 }
 
-async function renderDocChapter(idx, toEnd = false, startPage = null) {
+async function renderDocChapter(idx, toEnd = false, startPage = null, textOffset = null) {
     if (isSpeakingGlobal) stopGlobalTTS();
     if (!state.docChapters || idx < 0 || idx >= state.docChapters.length) return;
     const render = ++readerEpoch.render;
@@ -345,7 +343,7 @@ async function renderDocChapter(idx, toEnd = false, startPage = null) {
     els.pages.innerHTML = state.docChapters[idx];
     state.extractedTextForTTS = els.pages.innerText;
     updateSourceLang();
-    await settleBookLayout(() => render === readerEpoch.render, toEnd ? -1 : (startPage ?? 0));
+    await settleBookLayout(() => render === readerEpoch.render, toEnd ? -1 : (startPage ?? 0), textOffset);
 }
 
 // FB2 → HTML: у FictionBook свої назви тегів, зіставляємо їх зі звичайними.
@@ -394,10 +392,11 @@ async function initTxt(file, epoch = readerEpoch.book) {
     buildToc(state.totalPages, "Блок", i => { renderTxtPage(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'txt' && bm.currentIndex >= 0 && bm.currentIndex < state.totalPages) ? bm.currentIndex : 0;
-    renderTxtPage(startIdx, false, bm ? bm.pageInChapter : null);
+    await renderTxtPage(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
+    if (epoch !== readerEpoch.book) return;
     enterMobileFullScreenIfNeeded();
 }
-function renderTxtPage(pageIdx, toEnd = false, startPage = null) {
+async function renderTxtPage(pageIdx, toEnd = false, startPage = null, textOffset = null) {
     if (pageIdx < 0 || pageIdx >= state.totalPages) return;
     const render = ++readerEpoch.render;
     invalidateSelection();
@@ -406,10 +405,5 @@ function renderTxtPage(pageIdx, toEnd = false, startPage = null) {
     els.pages.replaceChildren();
     const block = document.createElement('div'); block.className = 'txt-block'; block.textContent = chunk; els.pages.appendChild(block); state.extractedTextForTTS = chunk;
     updateSourceLang();
-    requestAnimationFrame(() => {
-        if (render !== readerEpoch.render) return;
-        paginateContainer();
-        const target = toEnd ? state.totalPagesInChapter - 1 : (startPage != null ? startPage : 0);
-        goToPageInChapter(target, false);
-    });
+    await settleBookLayout(() => render === readerEpoch.render, toEnd ? -1 : (startPage ?? 0), textOffset);
 }

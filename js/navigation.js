@@ -32,6 +32,52 @@ function columnStep() {
     return Math.round(els.pages.clientWidth) + PAGE_GAP;
 }
 
+// Character offsets are stable across font/viewport changes and highlight spans.
+// Geometry only resolves the offset to a screen column at render time.
+function bookTextOffsetAtPage() {
+    const left = els.pages.getBoundingClientRect().left;
+    const target = state.pageInChapter * columnStep();
+    const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT);
+    let node, offset = 0;
+    while ((node = walker.nextNode())) {
+        if (!node.length) continue;
+        const r = document.createRange(); r.selectNodeContents(node);
+        const visible = Array.from(r.getClientRects()).find(rect => rect.width && rect.left - left >= target - 1);
+        if (visible) {
+            if (visible.left - left >= target + columnStep() - 1) return null;
+            let lo = 0, hi = node.length - 1;
+            while (lo < hi) {
+                const mid = Math.floor((lo + hi) / 2);
+                r.setStart(node, mid); r.setEnd(node, mid + 1);
+                if (r.getBoundingClientRect().left - left < target - 1) lo = mid + 1;
+                else hi = mid;
+            }
+            return offset + lo;
+        }
+        offset += node.length;
+    }
+    return null;
+}
+function pageForBookTextOffset(offset) {
+    if (!Number.isInteger(offset) || offset < 0) return null;
+    const left = els.pages.getBoundingClientRect().left;
+    const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+        if (offset < node.length) {
+            const r = document.createRange(); r.setStart(node, offset); r.setEnd(node, offset + 1);
+            return Math.max(0, Math.floor((r.getBoundingClientRect().left - left + 1) / columnStep()));
+        }
+        offset -= node.length;
+    }
+    return null;
+}
+function repaginateBook() {
+    const offset = state.bookTextOffset;
+    paginateContainer();
+    goToPageInChapter(pageForBookTextOffset(offset) ?? state.pageInChapter, false);
+}
+
 function paginateContainer() {
     if (state.format === 'pdf') return;
     state.measuredStep = 0;   // старий крок від попереднього розділу більше не дійсний
@@ -73,6 +119,7 @@ function goToPageInChapter(p, animate = true) {
         els.pages.classList.remove('anim');
     }
     els.pages.style.transform = `translate3d(${-(p * columnStep())}px, 0, 0)`;
+    state.bookTextOffset = bookTextOffsetAtPage();
     updateProgressText();
     saveBookmark();
 }
@@ -88,7 +135,7 @@ function oldBookKeyFor(file) { return 'reader_bookmark_' + file.name + '_' + fil
 function saveBookmark() {
     if (!state.bookKey) return;
     scheduleReaderOnboarding();
-    try { writeStored(state.bookKey, JSON.stringify({ format: state.format, currentIndex: state.currentIndex, pageInChapter: state.pageInChapter, pdfFocus: state.format === 'pdf' ? pdfAnchor() : undefined })); } catch (e) {}
+    try { writeStored(state.bookKey, JSON.stringify({ format: state.format, currentIndex: state.currentIndex, pageInChapter: state.pageInChapter, textOffset: state.format !== 'pdf' ? state.bookTextOffset : undefined, pdfFocus: state.format === 'pdf' ? pdfAnchor() : undefined })); } catch (e) {}
 }
 function loadBookmark() {
     if (!state.bookKey) return null;
@@ -194,7 +241,7 @@ window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
         if (state.format === 'pdf') { if (state.pdfDoc && !document.hidden) { cancelPdfInteraction(); renderPdfPage(state.currentIndex, { preserve: true, focus }); } }
-        else if (state.format) { paginateContainer(); goToPageInChapter(state.pageInChapter, false); }
+        else if (state.format) repaginateBook();
     }, 250);
 });
 
@@ -204,4 +251,3 @@ window.addEventListener('resize', () => {
 function buildToc(count, prefix, callback) {
     els.toc.innerHTML = ""; for (let i = 0; i < count; i++) { const li = document.createElement("li"); li.textContent = `${prefix} ${i + 1}`; li.onclick = () => callback(i); els.toc.appendChild(li); }
 }
-

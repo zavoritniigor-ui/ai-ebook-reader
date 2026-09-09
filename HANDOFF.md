@@ -18,40 +18,43 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Current branch: dev.
+Status: **release in progress**. Branch: `dev`.
 
-Task: The user requested that tapping on empty space (margins, whitespace) should *only* close the translation window if it's open, without triggering translation for the nearest word or performing a page turn/immersive mode toggle.
+Task: User approved the supplied format-expansion plan (`go`); implementing its
+first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
+limitations and remaining increments.
 
-**Fixes**:
-press wraps the just-selected text in a new `span.sel-word` (PDF path) — when the tapped word
-IS the sentence's first word, that new span lands INSIDE the pre-existing `span.word-visited`
-around the tapped word, replacing its `firstChild` with an element instead of a text node, so
-the old direct `firstChild` check in `anchorCaret` silently fell back from the reliable word
-anchor to raw-coordinate hit-testing on the second press.
-Added `tests/pdf_sentence_reselect_browser.py` (commit 6a9e805, dev) — wired into CI — using the
-real PDF.js-rendered two-column synthetic fixture (`pdf_bytes(two_columns=True)`, the same
-"original beside its translation" layout the user described) to reproduce the exact DOM-mutation
-sequence the bug depends on. 9/9 checks pass locally AND against production (the fix was already
-live by the time this session finished writing the test): the 2nd press still selects exactly
-the same sentence as the 1st, and no press ever bleeds text across the column boundary — this
-also directly confirms the bilingual-column layout stays correctly isolated per column. Full
-existing regression suite re-run locally — all pass, no regression from the other 4 audit fixes
-in the same commit.
+Completed: FB2 raster binaries/all bodies/XML encoding; guarded FB2.ZIP; pinned
+local Marked + sanitization + offline precache; EPUB path resolution and safe SVG
+rasterization/cover images; image/font-aware pagination; character-offset bookmarks
+and reflow; word selection across inline formatting. Added synthetic format suite
+to CI and architecture/support documentation.
 
-**Still open from the user's report — not yet investigated**: a scanned PDF opened from Google
-Drive showed a large text-layer/rendering offset, and a tapped word was misread/replaced by a
-different one during sentence selection on that same file. Not reproduced or root-caused yet —
-this needs either the actual file or precise repro details (does it happen on any sufficiently
-large/rotated scanned PDF regardless of source, or specifically Drive-originated ones; does
-zooming change the offset) since this sandbox cannot fabricate a realistic OCR'd scanned PDF to
-test against, and `js/pdf-render.js` already has real, working fixes for the ONE previously-known
-text-layer/canvas sub-pixel drift under pinch-zoom (see its own comments) — so a "great" (not
-sub-pixel) offset points at something not yet identified. Next agent: ask the user for the file
-(or a shareable reproduction) before attempting a fix.
+Concurrent-session incident: the other session committed partial format changes
+into 9cab25d (PR #78) but omitted the new Marked vendor files and overwrote the word
+index. Those changes are repaired here. The user confirmed the other session is
+stopped. Its whitespace-tap/translation-dismissal fix is retained. Auto-merge on
+#78 was temporarily disabled until this complete file set passes CI.
 
-Exact next action: wait for the user to confirm the fixes and verify everything works as
-expected, AND report back on the still-open scanned-PDF offset/misread-word issue above (repro
-details or the file itself needed to proceed).
+Local validation: full pdf_ux_browser.py, learning_ux_browser.py,
+migration_audit_browser.py and pdf_sentence_reselect_browser.py passed. The final
+formats_browser.py (20 checks), app_shell_versions.py and browser_cdp_transport.py
+passed. One isolated Chrome cold-start timed out; retry passed. Node is not in the
+local PATH; CI performs the JavaScript syntax checks.
+
+Pending commit: .github/workflows/ci.yml, ARCHITECTURE.md, FORMAT_SUPPORT.md,
+HANDOFF.md, index.html, js/formats.js, js/main.js, js/navigation.js, js/selection.js,
+sw.js, tests/formats_browser.py, vendor/marked-18.0.12.umd.js,
+vendor/marked-LICENSE.md. Earlier format implementation is already in 9cab25d.
+Unrelated untracked scratch files and tests/language_tts_browser.py are untouched.
+
+PR: #78 open; final patch not pushed yet. CI/deployment: pending final patch.
+Next action: commit the relevant files, push dev, rewrite PR #78 for the combined
+change, wait for CI, enable auto-merge, verify the production deployment with the
+format fixtures plus PDF/offline smoke checks.
+
+Still open separately: the reported scanned-PDF text-layer offset/misread word
+needs the actual affected file or a reproducible fixture. Do not claim it is fixed.
 
 ## Handoff rules
 
