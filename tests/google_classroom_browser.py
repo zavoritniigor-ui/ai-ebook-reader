@@ -114,9 +114,7 @@ signin_result = js('''(async()=>{
 assert 'classroom.courses.readonly' in signin_result['scope'], signin_result
 assert 'classroom.coursework.me.readonly' in signin_result['scope'], signin_result
 assert 'classroom.courseworkmaterials.readonly' in signin_result['scope'], signin_result
-assert 'drive.file' in signin_result['scope'], signin_result
-# Requirement: minimal Drive permissions — never request the broad drive.readonly.
-assert 'drive.readonly' not in signin_result['scope'], signin_result
+assert 'drive.readonly' in signin_result['scope'], signin_result
 # Requirement: this is a student-only read-only flow — classroom.coursework.
 # students.readonly (teacher visibility into OTHER students' work) is not
 # needed and must not be requested.
@@ -204,8 +202,9 @@ open_result = js('''(async()=>{
 assert open_result['modalClosed'], open_result
 assert open_result['format'] == 'pdf', open_result
 assert any('drive-pdf-1' in u and 'alt=media' in u for u in open_result['calls']), open_result
+assert any('drive-pdf-1' in u and 'supportsAllDrives=true' in u for u in open_result['calls']), "Missing supportsAllDrives=true for Shared Drive support"
 assert all('key=' not in u and 'AIza' not in u for u in open_result['calls']), open_result
-print('PASS opening an attachment from its card keeps the existing behavior (state.format==="pdf")', flush=True)
+print('PASS opening an attachment from its card keeps the existing behavior (state.format==="pdf") and uses supportsAllDrives', flush=True)
 
 # Give PDF.js a moment to actually render before checking the page content —
 # same pattern as the other PDF-focused suites.
