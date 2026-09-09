@@ -1,5 +1,7 @@
-/* google-classroom.js — вхід через Google + Classroom/Drive: курс → завдання й
- * матеріали → прикріплений файл → напряму в Reader, без ручного завантаження.
+/* google-classroom.js — вхід через Google + Classroom/Drive: курс → картки
+ * завдань/матеріалів (назва, тип, дата, короткий опис і вкладення просто під
+ * карткою) → відкриття файла напряму в Reader, без ручного завантаження й без
+ * окремого екрана для самих файлів.
  *
  * Мінімальні дозволи (навмисно, не "все, що дозволено"): лише READ-ONLY
  * Classroom-scope'и для студентського потоку (власні курси, власні завдання,
@@ -24,7 +26,7 @@
 // консолі (ai-ebook-reader.pages.dev, localhost для розробки), а не на
 // прихованості цього рядка. OAuth consent screen: External + Testing (доступ
 // лише для акаунтів, явно доданих як test users в консолі).
-const GOOGLE_CLIENT_ID =  '1057119342659-vu464ei1v7ophbcuufbe8muhd9nb3fng.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '1057119342659-vu464ei1v7ophbcuufbe8muhd9nb3fng.apps.googleusercontent.com';
 
 // Мінімальний набір дозволів: лише читання курсів і завдань/матеріалів (жодного
 // запису, здачі робіт, оцінок чи коментарів), плюс drive.file замість
@@ -62,8 +64,7 @@ const classroomViews = {
     loading: document.getElementById('classroom-view-loading'),
     error: document.getElementById('classroom-view-error'),
     courses: document.getElementById('classroom-view-courses'),
-    coursework: document.getElementById('classroom-view-coursework'),
-    attachments: document.getElementById('classroom-view-attachments')
+    coursework: document.getElementById('classroom-view-coursework')
 };
 const classroomBackBtn = document.getElementById('classroom-back-btn');
 const classroomSignOutBtn = document.getElementById('classroom-signout-btn');
@@ -94,17 +95,18 @@ function openClassroomModal() {
     if (isGoogleSignedIn()) loadCourses(); else showClassroomView('signin');
 }
 function closeClassroomModal() { classroomModal.style.display = 'none'; }
-// Один крок назад у навігації курс → завдання → вкладення; на найвищому рівні
-// (список курсів, стек порожній) — закриває всю модалку. Викликається і з
-// кнопки "Назад" тут-таки, і з апаратної/жестової Android Back через
-// js/pwa-lifecycle.js (OVERLAY_LAYERS) — той самий крок в обох випадках.
+// Один крок назад у навігації курс → завдання/матеріали (вкладення тепер
+// показуються ОДРАЗУ під карткою, без окремого екрана — навігаційних рівнів
+// лишилось лише два). На найвищому рівні (список курсів, стек порожній) —
+// закриває всю модалку. Викликається і з кнопки "Назад" тут-таки, і з
+// апаратної/жестової Android Back через js/pwa-lifecycle.js (OVERLAY_LAYERS)
+// — той самий крок в обох випадках.
 function classroomGoBackOrClose() {
     const prev = classroomStack.pop();
     // Порожній стек — ми вже на найвищому рівні (список курсів або вхід):
     // нікуди повертатись, тож "Назад" закриває всю модалку.
     if (!prev) { closeClassroomModal(); return; }
-    if (prev.view === 'courses') { loadCourses(); return; }
-    if (prev.view === 'coursework') { classroomCurrentCourse = prev.course; loadCourseWork(prev.course); }
+    loadCourses();
 }
 document.getElementById('btn-classroom').onclick = openClassroomModal;
 document.getElementById('classroom-close-btn').onclick = closeClassroomModal;
@@ -211,39 +213,76 @@ function extractDriveAttachments(item) {
         title: m.driveFile.driveFile.title || item.title || ''
     }));
 }
+// Термін здачі (лише в courseWork, курс не має його) або, якщо його нема чи
+// це матеріал, дата публікації — тим самим "date when available" з задачі.
+// Рядок, готовий до показу, або '' якщо жодної дати нема взагалі.
+function classroomDateLine(item) {
+    const locale = ({ uk: 'uk-UA', en: 'en-US', fr: 'fr-FR', ru: 'ru-RU' })[state.uiLang] || 'uk-UA';
+    const fmt = (d) => isNaN(d) ? '' : d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+    if (item.kind === 'courseWork' && item.dueDate) {
+        const d = new Date(item.dueDate.year, (item.dueDate.month || 1) - 1, item.dueDate.day || 1);
+        const s = fmt(d);
+        if (s) return `${t('classroomDue')}: ${s}`;
+    }
+    const created = item.creationTime || item.updateTime;
+    if (created) { const s = fmt(new Date(created)); if (s) return `${t('classroomPublished')}: ${s}`; }
+    return '';
+}
+// Короткий опис — компактно, не на весь екран: обрізаємо, а не показуємо
+// повний текст (він може бути на кілька абзаців).
+function classroomShortDescription(text, max = 140) {
+    const clean = (text || '').trim().replace(/\s+/g, ' ');
+    if (!clean) return '';
+    return clean.length <= max ? clean : clean.slice(0, max - 1).trimEnd() + '…';
+}
+// Кожна картка одразу показує все, що просили: назву, тип (Завдання/Матеріал),
+// дату, короткий опис і вкладення ПІД карткою — без окремого екрана для файлів
+// (клік по вкладенню одразу відкриває його, як і раніше через openDriveFile).
 function renderCourseWork(items) {
     const list = document.getElementById('classroom-coursework-list');
     list.innerHTML = '';
     if (!items.length) { list.innerHTML = `<li class="classroom-empty">${escapeHtml(t('classroomNoWork'))}</li>`; showClassroomView('coursework', { showBack: true }); return; }
     for (const item of items) {
         const li = document.createElement('li');
-        li.textContent = item.title || '—';
-        const count = extractDriveAttachments(item).length;
-        if (count) {
-            const sub = document.createElement('div'); sub.className = 'classroom-item-sub';
-            sub.textContent = `📎 ${count} ${t('classroomAttachmentsCount')}`;
-            li.appendChild(sub);
+        li.className = 'classroom-card';
+
+        const head = document.createElement('div'); head.className = 'classroom-card-head';
+        const titleEl = document.createElement('span'); titleEl.className = 'classroom-card-title';
+        titleEl.textContent = item.title || '—';
+        const badge = document.createElement('span');
+        badge.className = 'classroom-badge ' + (item.kind === 'courseWork' ? 'classroom-badge-work' : 'classroom-badge-material');
+        badge.textContent = item.kind === 'courseWork' ? t('classroomTypeAssignment') : t('classroomTypeMaterial');
+        head.appendChild(titleEl); head.appendChild(badge);
+        li.appendChild(head);
+
+        const dateLine = classroomDateLine(item);
+        if (dateLine) {
+            const meta = document.createElement('div'); meta.className = 'classroom-item-sub';
+            meta.textContent = dateLine;
+            li.appendChild(meta);
         }
-        li.onclick = () => {
-            classroomStack.push({ view: 'coursework', course: classroomCurrentCourse });
-            renderAttachments(item);
-        };
+
+        const shortDesc = classroomShortDescription(item.description);
+        if (shortDesc) {
+            const desc = document.createElement('div'); desc.className = 'classroom-card-desc';
+            desc.textContent = shortDesc;
+            li.appendChild(desc);
+        }
+
+        const attachments = extractDriveAttachments(item);
+        if (attachments.length) {
+            const ul = document.createElement('ul'); ul.className = 'classroom-attachments';
+            for (const att of attachments) {
+                const aLi = document.createElement('li'); aLi.className = 'classroom-attachment';
+                aLi.textContent = '📄 ' + att.title;
+                aLi.onclick = () => openDriveFile(att.id, att.title);
+                ul.appendChild(aLi);
+            }
+            li.appendChild(ul);
+        }
         list.appendChild(li);
     }
     showClassroomView('coursework', { showBack: true });
-}
-function renderAttachments(item) {
-    const list = document.getElementById('classroom-attachments-list');
-    list.innerHTML = '';
-    const attachments = extractDriveAttachments(item);
-    if (!attachments.length) { list.innerHTML = `<li class="classroom-empty">${escapeHtml(t('classroomNoAttachments'))}</li>`; showClassroomView('attachments', { showBack: true }); return; }
-    for (const att of attachments) {
-        const li = document.createElement('li');
-        li.textContent = '📄 ' + att.title;
-        li.onclick = () => openDriveFile(att.id, att.title);
-        list.appendChild(li);
-    }
-    showClassroomView('attachments', { showBack: true });
 }
 
 // ===== ВІДКРИТТЯ ФАЙЛА DRIVE НАПРЯМУ В READER =====
