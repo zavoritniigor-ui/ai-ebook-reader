@@ -37,6 +37,16 @@ function updateSpeakerIcons() {
 // cancel(), приходив із запізненням, бачив ту саму сторону ('orig') і скидав щойно
 // виставлену позначку — через це кнопка зупинки для оригіналу не спрацьовувала.
 let utterSeq = 0;
+// Скільки чекати між cancel() і наступним speak() (мс). На Android/Chrome негайний
+// speak() одразу після cancel() інколи встигає заграти РАЗОМ із "хвостом" щойно
+// скасованої фрази — почута людиною як той самий голос, що звучить двічі з
+// мілісекундною затримкою (саме так і був описаний цей дефект). Коротка затримка дає
+// платформі дійсно зупинити попередню фразу, перш ніж почати нову — непомітна для
+// вуха пауза, зате без накладання. Використовується скрізь, де новий speak() іде
+// одразу за cancel() (speakText/speakInLang нижче, stepSentence(), і проба голосу в
+// js/main.js) — саме ці місця, а НЕ ланцюжок speakSegment→onend→speakSegment у
+// speakCurrentSentence(), бо там speak() нового відрізка йде без жодного cancel().
+const TTS_CANCEL_SPEAK_DELAY_MS = 80;
 function bindUtterance(u, side, fullText, offset) {
     if (!side) return;
     const myId = ++utterSeq;
@@ -60,12 +70,16 @@ function bindUtterance(u, side, fullText, offset) {
 }
 function speakText(text, side, offset) {
     state.ttsGen++;    // наш cancel не має рухати чергу читання вголос
+    const gen = state.ttsGen;
     ttsSynth.cancel();
     const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
     const { lang, voice } = voiceForText(text);
     u.lang = lang; if (voice) u.voice = voice; u.rate = 0.95;
     bindUtterance(u, side, text, offset);
-    ttsSynth.speak(u);
+    // Затримка перед speak() — див. TTS_CANCEL_SPEAK_DELAY_MS вище. Перевірка gen
+    // після паузи: якщо за цей час фразу вже скасували (ще один tap, stopTooltipSpeech)
+    // — не запускаємо озвучення, яке вже нікому не потрібне.
+    setTimeout(() => { if (gen === state.ttsGen) ttsSynth.speak(u); }, TTS_CANCEL_SPEAK_DELAY_MS);
 }
 // Озвучення ЗАДАНОЮ мовою — для перекладу, бо його мову ми знаємо точно й вона не
 // залежить від мови книги (автовизначення тут дало б хибний голос).
@@ -73,6 +87,7 @@ const LANG_TAGS = { uk: 'uk-UA', en: 'en-US', fr: 'fr-FR', ru: 'ru-RU' };
 function speakInLang(text, langCode, side, offset) {
     if (!text) return;
     state.ttsGen++;
+    const gen = state.ttsGen;
     ttsSynth.cancel();
     const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
     u.lang = LANG_TAGS[langCode] || langCode;
@@ -80,7 +95,7 @@ function speakInLang(text, langCode, side, offset) {
     if (voice) u.voice = voice;
     u.rate = 0.95;
     bindUtterance(u, side, text, offset);
-    ttsSynth.speak(u);
+    setTimeout(() => { if (gen === state.ttsGen) ttsSynth.speak(u); }, TTS_CANCEL_SPEAK_DELAY_MS);
 }
 
 // ========== ЯКА СТОРОНА ОЗВУЧУЄТЬСЯ (оригінал чи переклад) ==========
@@ -277,8 +292,10 @@ function stepSentence(delta) {
     }
     if (!state.ttsPaused) {
         state.ttsGen++;             // поточну фразу обриваємо свідомо
+        const gen = state.ttsGen;
         ttsSynth.cancel();
-        speakCurrentSentence();
+        // Затримка перед новим speakCurrentSentence() — див. TTS_CANCEL_SPEAK_DELAY_MS.
+        setTimeout(() => { if (gen === state.ttsGen) speakCurrentSentence(); }, TTS_CANCEL_SPEAK_DELAY_MS);
     }
 }
 

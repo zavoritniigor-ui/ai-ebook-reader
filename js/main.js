@@ -78,7 +78,10 @@ els.voiceSelect.onchange = e => {
     const samples = { fr: 'Bonjour, ceci est ma voix.', en: 'Hello, this is my voice.', uk: 'Вітаю, це мій голос.', ru: 'Здравствуйте, это мой голос.' };
     const u = new SpeechSynthesisUtterance(samples[code] || 'Test');
     u.voice = v; u.lang = v.lang; u.rate = 0.95;
-    ttsSynth.cancel(); ttsSynth.speak(u);
+    ttsSynth.cancel();
+    // Затримка перед speak() — див. TTS_CANCEL_SPEAK_DELAY_MS у js/tts.js (той самий
+    // "подвійний голос" на Android/Chrome, якщо speak() іде відразу за cancel()).
+    setTimeout(() => ttsSynth.speak(u), TTS_CANCEL_SPEAK_DELAY_MS);
 };
 
 // РЕЖИМ ВИВЧЕННЯ ТА ZERO-MEMORY
