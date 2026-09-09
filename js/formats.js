@@ -85,7 +85,7 @@ async function settleBookLayout(current, target, textOffset = null) {
         img.addEventListener('load', () => { if (ready) reflow(); }, { once: true });
         return img.decode().catch(() => {});
     });
-    pending.push(document.fonts.ready);
+    pending.push(document.fonts.ready.then(() => { if (ready) reflow(); }));
     let timer;
     await Promise.race([Promise.all(pending), new Promise(resolve => { timer = setTimeout(resolve, 3000); })]);
     clearTimeout(timer);
@@ -135,10 +135,11 @@ async function bookSvgPng(source) {
         return out;
     }
     const svg = copy(xml.documentElement);
+    if (!svg) return '';
     const view = (svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
     let width = parseFloat(svg.getAttribute('width')) || view[2] || 800;
     let height = parseFloat(svg.getAttribute('height')) || view[3] || 600;
-    if (!(width > 0 && height > 0)) return '';
+    if (!(Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0)) return '';
     if (!svg.hasAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     const scale = Math.min(1, 2048 / Math.max(width, height));
     width = Math.max(1, Math.round(width * scale)); height = Math.max(1, Math.round(height * scale));

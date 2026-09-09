@@ -38,16 +38,18 @@ stopped. Its whitespace-tap/translation-dismissal fix is retained. Auto-merge on
 
 Local validation: full pdf_ux_browser.py, learning_ux_browser.py,
 migration_audit_browser.py and pdf_sentence_reselect_browser.py passed. The final
-formats_browser.py (20 checks), app_shell_versions.py and browser_cdp_transport.py
+formats_browser.py (22 checks), app_shell_versions.py and browser_cdp_transport.py
 passed. One isolated Chrome cold-start timed out; retry passed. Node is not in the
 local PATH; CI performs the JavaScript syntax checks.
 
 Release implementation: a83a75a, pushed to origin/dev. Earlier format code is
-also in 9cab25d. All 20 format checks, full local suites and GitHub CI passed.
-PR #78 has the combined release description and auto-merge enabled. Merging
-origin/main (d67fd05) required resolving only this handoff document; code merged
-without conflicts. Next: push the merge, wait for CI/auto-merge, then verify the
-production deployment. Production still has the previous release at this point.
+also in 9cab25d. All initial 20 format checks, full local suites and GitHub CI passed.
+PR #78 merged as 77fe77c after CI passed. Final integration review found that
+cross-node reflow selection needed the same margin hit check as the retained UI
+fix. Follow-up adds that check, safe failure for invalid SVG namespaces/dimensions,
+and reflow for fonts that finish after the timeout. All 22 targeted format checks
+pass. Next: commit/push the follow-up, create the next dev-to-main PR, wait for CI
+and auto-merge, then run production format and offline/PDF smoke checks.
 
 Unrelated untracked scratch files and tests/language_tts_browser.py are untouched.
 

@@ -416,6 +416,11 @@ function selectWordAtPoint(clientX, clientY) {
         if (!bounds) return null;
         const wordRange = rangeBetweenWords(bounds, bounds);
         if (!wordRange) return null;
+        // A caret can snap to nearby text even when the tap is in a margin.
+        // Keep the whitespace-dismissal fix on this cross-node path as well.
+        if (!Array.from(wordRange.getClientRects()).some(rect =>
+            rect.width && rect.height && clientX >= rect.left - 1 && clientX <= rect.right + 1 &&
+            clientY >= rect.top - 1 && clientY <= rect.bottom + 1)) return null;
         const word = wordRange.toString();
         const spans = wrapRangeInSpans(wordRange, 'word-visited');
         state.lastWordNode = spans[0] || null;
