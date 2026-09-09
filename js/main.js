@@ -134,6 +134,7 @@ async function openBookFile(file) {
     if (pdfTasks.loading) { pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null; }
     else if (state.pdfDoc) state.pdfDoc.loadingTask.destroy().catch(() => {});
     state.pdfDoc = null; state.epubZip = null; state.spine = []; state.txtLines = [];
+    state.bookTextOffset = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
     state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = '';
     state.activeVerb = null; state.verbs = []; state.inkMode = false;
@@ -147,13 +148,13 @@ async function openBookFile(file) {
     state.oldBookKey = oldBookKeyFor(file);
     state.docChapters = null;
     loadInk();
-    const ext = file.name.split('.').pop().toLowerCase();
+    const ext = /\.fb2\.zip$/i.test(file.name) ? 'fb2.zip' : file.name.split('.').pop().toLowerCase();
     try {
         if (ext === 'epub') { state.format = 'epub'; document.body.classList.remove('pdf-mode'); await initEpub(file, epoch); }
         else if (ext === 'pdf') { state.format = 'pdf'; document.body.classList.add('pdf-mode'); await initPdf(file, epoch); }
-        else if (ext === 'txt' || ext === 'md') { state.format = 'txt'; document.body.classList.remove('pdf-mode'); await initTxt(file, epoch); }
+        else if (ext === 'txt') { state.format = 'txt'; document.body.classList.remove('pdf-mode'); await initTxt(file, epoch); }
         // Формати, що зводяться до готового HTML: Word, FictionBook, веб-сторінка, RTF.
-        else if (['docx', 'fb2', 'html', 'htm', 'rtf'].includes(ext)) {
+        else if (['docx', 'fb2', 'fb2.zip', 'md', 'markdown', 'html', 'htm', 'rtf'].includes(ext)) {
             state.format = 'txt'; document.body.classList.remove('pdf-mode');
             await initRichDoc(file, ext, epoch);
         }
@@ -170,8 +171,8 @@ els.upload.addEventListener('change', async (e) => {
     await openBookFile(file);
 });
 
-document.getElementById('zoom-in').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); } else { state.fontSize += 2; writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; paginateContainer(); goToPageInChapter(state.pageInChapter, false); } };
-document.getElementById('zoom-out').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom - 0.25); } else { state.fontSize = Math.max(12, state.fontSize - 2); writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; paginateContainer(); goToPageInChapter(state.pageInChapter, false); } };
+document.getElementById('zoom-in').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); } else { state.fontSize += 2; writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; repaginateBook(); } };
+document.getElementById('zoom-out').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom - 0.25); } else { state.fontSize = Math.max(12, state.fontSize - 2); writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; repaginateBook(); } };
 document.getElementById('theme-select').onchange = (e) => {
     document.body.setAttribute('data-theme', e.target.value);
     writeStored('reader_theme', e.target.value);

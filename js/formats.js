@@ -58,13 +58,110 @@ function runArchiveGuard(file, epoch) {
 }
 
 function resolveEpubPath(baseDir, relativePath) {
+    try { relativePath = decodeURIComponent(relativePath.split(/[?#]/)[0]); } catch (e) {}
+    if (/^[a-z][a-z0-9+.-]*:|^[\/\\]|[\u0000-\u001f\\]/i.test(relativePath)) return '';
     const parts = baseDir.split('/').filter(Boolean);
     const relParts = relativePath.split('/').filter(Boolean);
     for (const p of relParts) {
-        if (p === '..') parts.pop();
+        if (p === '..') { if (!parts.length) return ''; parts.pop(); }
         else if (p !== '.') parts.push(p);
     }
     return parts.join('/');
+}
+
+// All reflowable loaders wait for actual image decoding and fonts. The timeout
+// prevents a dead remote image from blocking reading; late loads reflow again.
+async function settleBookLayout(current, target, textOffset = null) {
+    let ready = false;
+    const reflow = () => {
+        if (!current()) return;
+        const offset = ready ? state.bookTextOffset : textOffset;
+        const page = ready ? state.pageInChapter : target;
+        paginateContainer();
+        goToPageInChapter(page === -1 ? state.totalPagesInChapter - 1 : (pageForBookTextOffset(offset) ?? page), false);
+    };
+    const pending = Array.from(els.pages.querySelectorAll('img')).map(img => {
+        img.loading = 'eager';
+        img.addEventListener('load', () => { if (ready) reflow(); }, { once: true });
+        return img.decode().catch(() => {});
+    });
+    pending.push(document.fonts.ready);
+    let timer;
+    await Promise.race([Promise.all(pending), new Promise(resolve => { timer = setTimeout(resolve, 3000); })]);
+    clearTimeout(timer);
+    await new Promise(requestAnimationFrame);
+    reflow(); ready = true;
+}
+
+function parseFb2(text) {
+    const xml = new DOMParser().parseFromString(text, 'application/xml');
+    if (xml.querySelector('parsererror') || xml.documentElement.localName !== 'FictionBook') throw new Error('Некоректний FB2.');
+    const images = new Map();
+    for (const binary of xml.getElementsByTagNameNS('*', 'binary')) {
+        const mime = (binary.getAttribute('content-type') || '').toLowerCase();
+        const data = binary.textContent.replace(/\s/g, '');
+        if (/^image\/(png|jpeg|gif|webp|avif)$/.test(mime) && /^[a-z0-9+/]+={0,2}$/i.test(data)) {
+            images.set(binary.id || binary.getAttribute('id'), `data:${mime};base64,${data}`);
+        }
+    }
+    return Array.from(xml.getElementsByTagNameNS('*', 'body')).map(body => fb2ToHtml(body, images)).join('');
+}
+
+async function readBookXml(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let encoding = 'utf-8';
+    if (bytes[0] === 255 && bytes[1] === 254) encoding = 'utf-16le';
+    else if (bytes[0] === 254 && bytes[1] === 255) encoding = 'utf-16be';
+    else encoding = new TextDecoder().decode(bytes.slice(0, 200)).match(/<\?xml[^>]*encoding\s*=\s*["']([^"']+)/i)?.[1] || encoding;
+    return new TextDecoder(encoding, { fatal: true }).decode(bytes);
+}
+
+// Rasterize a deliberately small, inert SVG subset. No foreignObject, scripts,
+// CSS, URLs, animation or external references ever reach the image decoder.
+async function bookSvgPng(source) {
+    const xml = new DOMParser().parseFromString(source, 'image/svg+xml');
+    if (xml.querySelector('parsererror') || xml.documentElement.localName !== 'svg') return '';
+    const ns = 'http://www.w3.org/2000/svg';
+    const tags = new Set('svg g path rect circle ellipse line polyline polygon text tspan title desc'.split(' '));
+    const attrs = new Set('viewBox width height x y x1 x2 y1 y2 cx cy r rx ry d points fill stroke stroke-width opacity fill-opacity stroke-opacity transform font-size text-anchor'.split(' '));
+    function copy(node) {
+        if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.nodeValue);
+        if (node.nodeType !== Node.ELEMENT_NODE || node.namespaceURI !== ns || !tags.has(node.localName)) return null;
+        const out = document.createElementNS(ns, node.localName);
+        for (const attr of node.attributes) {
+            if (attrs.has(attr.name) && /^[\w\s.,#%()+-]+$/.test(attr.value) && !/url/i.test(attr.value)) out.setAttribute(attr.name, attr.value);
+        }
+        for (const child of node.childNodes) { const clean = copy(child); if (clean) out.appendChild(clean); }
+        return out;
+    }
+    const svg = copy(xml.documentElement);
+    const view = (svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+    let width = parseFloat(svg.getAttribute('width')) || view[2] || 800;
+    let height = parseFloat(svg.getAttribute('height')) || view[3] || 600;
+    if (!(width > 0 && height > 0)) return '';
+    if (!svg.hasAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const scale = Math.min(1, 2048 / Math.max(width, height));
+    width = Math.max(1, Math.round(width * scale)); height = Math.max(1, Math.round(height * scale));
+    svg.setAttribute('width', width); svg.setAttribute('height', height);
+    const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
+    try {
+        const img = new Image(); img.src = url; await img.decode();
+        const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        return canvas.toDataURL('image/png');
+    } catch (e) { return ''; }
+    finally { URL.revokeObjectURL(url); }
+}
+
+async function epubImage(zip, chapterDir, src) {
+    if (/^data:image\/(png|jpeg|gif|webp|avif);base64,/i.test(src)) return src;
+    const path = resolveEpubPath(chapterDir, src);
+    const entry = path && zip.file(path);
+    if (!entry) return '';
+    const ext = path.split('.').pop().toLowerCase();
+    if (ext === 'svg') return bookSvgPng(await entry.async('text'));
+    const mime = { png: 'png', jpg: 'jpeg', jpeg: 'jpeg', gif: 'gif', webp: 'webp', avif: 'avif' }[ext];
+    return mime ? `data:image/${mime};base64,${await entry.async('base64')}` : '';
 }
 
 // ОНОВЛЕНИЙ НАДІЙНИЙ ПАРСЕР EPUB
@@ -105,12 +202,12 @@ async function initEpub(file, epoch = readerEpoch.book) {
     buildToc(state.totalPages, "Розділ", (i) => { loadEpubChapter(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'epub' && bm.currentIndex >= 0 && bm.currentIndex < state.spine.length) ? bm.currentIndex : 0;
-    await loadEpubChapter(startIdx, false, bm ? bm.pageInChapter : null);
+    await loadEpubChapter(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
     if (epoch !== readerEpoch.book) return;
     enterMobileFullScreenIfNeeded();
 }
 
-async function loadEpubChapter(idx, toEnd = false, startPage = null) {
+async function loadEpubChapter(idx, toEnd = false, startPage = null, textOffset = null) {
     if(idx < 0 || idx >= state.spine.length || !state.epubZip) return;
     const epoch = readerEpoch.book, render = ++readerEpoch.render;
     const current = () => epoch === readerEpoch.book && render === readerEpoch.render;
@@ -119,19 +216,9 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null) {
     state.currentIndex = idx;
 
     try {
-        const rawPath = state.spine[idx];
-        let filePath = rawPath;
-        // decodeURIComponent throws on malformed sequences (e.g. a literal "%" in a filename).
-        // That used to abort the whole function silently — now we just fall back to the raw path.
-        try { filePath = decodeURIComponent(rawPath); } catch (e) { filePath = rawPath; }
-
-        let fileObj = state.epubZip.file(filePath) || state.epubZip.file(rawPath);
-
-        if(!fileObj) {
-            const allFiles = Object.keys(state.epubZip.files);
-            const fuzzyMatch = allFiles.find(name => name.endsWith(filePath) || name.endsWith(rawPath));
-            if(fuzzyMatch) fileObj = state.epubZip.file(fuzzyMatch);
-        }
+        // resolveEpubPath already decoded the URI once. A second decode would
+        // select the wrong entry for names containing literal percent escapes.
+        const fileObj = state.epubZip.file(state.spine[idx]);
 
         if(!fileObj) {
             els.pages.innerHTML = `<div style="color:red;text-align:center;padding:50px;">${t('chapterMissing')}</div>`;
@@ -139,23 +226,26 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null) {
             let data = await fileObj.async("text");
             if (!current()) return;
             
-            const chapterDir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/') + 1) : "";
+            const zip = state.epubZip;
+            const chapterDir = fileObj.name.includes('/') ? fileObj.name.substring(0, fileObj.name.lastIndexOf('/') + 1) : "";
             const tempDoc = new DOMParser().parseFromString(data, "text/html");
+            // Common EPUB covers wrap a raster image in SVG. Resolve that image
+            // through the archive; standalone vector art uses the inert subset.
+            for (const svg of Array.from(tempDoc.querySelectorAll('svg'))) {
+                const embedded = svg.querySelector('image');
+                const src = embedded ? await epubImage(zip, chapterDir, embedded.getAttribute('href') || embedded.getAttribute('xlink:href') || '') : await bookSvgPng(svg.outerHTML);
+                const img = tempDoc.createElement('img');
+                if (src) img.setAttribute('src', src);
+                img.alt = svg.querySelector('title')?.textContent || '';
+                svg.replaceWith(img);
+                if (!current()) return;
+            }
             const imgs = tempDoc.getElementsByTagName('img');
             for (const img of imgs) {
-                const src = img.getAttribute('src');
-                if (src && !/^https?:\/\/|^data:/i.test(src)) {
-                    const cleanSrc = src.split('#')[0].split('?')[0];
-                    let imgPath = resolveEpubPath(chapterDir, cleanSrc);
-                    try { imgPath = decodeURIComponent(imgPath); } catch(e){}
-                    const imgFile = state.epubZip.file(imgPath) || state.epubZip.file(resolveEpubPath(chapterDir, cleanSrc));
-                    if (imgFile) {
-                        const base64 = await imgFile.async("base64");
-                        const ext = imgPath.split('.').pop().toLowerCase();
-                        const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : ext === 'avif' ? 'image/avif' : 'image/jpeg';
-                        img.setAttribute('src', `data:${mime};base64,${base64}`);
-                    }
-                }
+                const src = await epubImage(zip, chapterDir, img.getAttribute('src') || '');
+                img.removeAttribute('src'); img.removeAttribute('srcset');
+                if (src) img.setAttribute('src', src);
+                if (!current()) return;
             }
             data = tempDoc.body.innerHTML;
             if (!current()) return;
@@ -164,12 +254,7 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null) {
         }
         state.extractedTextForTTS = els.pages.innerText;
         updateSourceLang();   // мова книги — перевизначається на кожному розділі
-        requestAnimationFrame(() => {
-            if (!current()) return;
-            paginateContainer();
-            const target = toEnd ? state.totalPagesInChapter - 1 : (startPage != null ? startPage : 0);
-            goToPageInChapter(target, false);
-        });
+        await settleBookLayout(current, toEnd ? -1 : (startPage ?? 0), textOffset);
     } catch (err) {
         if (!current()) return;
         // Any unexpected failure now shows a message instead of leaving the reader
@@ -193,11 +278,19 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
         const docxBuffer = verifiedDocx || await file.arrayBuffer();
         const res = await mammoth.convertToHtml({ arrayBuffer: docxBuffer });
         bodyHtml = res.value || '';
-    } else if (ext === 'fb2') {
-        // FictionBook — це XML: беремо <body> і перетворюємо його теги на HTML.
-        const xml = new DOMParser().parseFromString(await file.text(), 'application/xml');
-        const body = xml.querySelector('body');
-        bodyHtml = body ? fb2ToHtml(body) : '';
+    } else if (ext === 'fb2' || ext === 'fb2.zip') {
+        if (ext === 'fb2.zip') {
+            const verified = await runArchiveGuard(file, epoch);
+            if (epoch !== readerEpoch.book) return;
+            const zip = await JSZip.loadAsync(verified || file);
+            const books = Object.values(zip.files).filter(entry => !entry.dir && /\.fb2$/i.test(entry.name));
+            if (books.length !== 1) throw new Error('FB2.ZIP має містити рівно одну книгу FB2.');
+            file = new Blob([await books[0].async('uint8array')]);
+        }
+        if (epoch !== readerEpoch.book) return;
+        bodyHtml = parseFb2(await readBookXml(file));
+    } else if (ext === 'md' || ext === 'markdown') {
+        bodyHtml = marked.parse(await file.text(), { async: false, gfm: true });
     } else if (ext === 'html' || ext === 'htm') {
         bodyHtml = await file.text();
     } else if (ext === 'rtf') {
@@ -219,7 +312,8 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
     });
     const bm = loadBookmark();
     const startIdx = (bm && bm.currentIndex >= 0 && bm.currentIndex < state.totalPages) ? bm.currentIndex : 0;
-    renderDocChapter(startIdx, false, bm ? bm.pageInChapter : null);
+    await renderDocChapter(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
+    if (epoch !== readerEpoch.book) return;
     enterMobileFullScreenIfNeeded();
 }
 
@@ -240,7 +334,7 @@ function splitIntoChapters(holder) {
     return chapters.length ? chapters : [holder.innerHTML];
 }
 
-function renderDocChapter(idx, toEnd = false, startPage = null) {
+async function renderDocChapter(idx, toEnd = false, startPage = null, textOffset = null) {
     if (isSpeakingGlobal) stopGlobalTTS();
     if (!state.docChapters || idx < 0 || idx >= state.docChapters.length) return;
     const render = ++readerEpoch.render;
@@ -249,25 +343,28 @@ function renderDocChapter(idx, toEnd = false, startPage = null) {
     els.pages.innerHTML = state.docChapters[idx];
     state.extractedTextForTTS = els.pages.innerText;
     updateSourceLang();
-    requestAnimationFrame(() => {
-        if (render !== readerEpoch.render) return;
-        paginateContainer();
-        const target = toEnd ? state.totalPagesInChapter - 1 : (startPage != null ? startPage : 0);
-        goToPageInChapter(target, false);
-    });
+    await settleBookLayout(() => render === readerEpoch.render, toEnd ? -1 : (startPage ?? 0), textOffset);
 }
 
 // FB2 → HTML: у FictionBook свої назви тегів, зіставляємо їх зі звичайними.
-function fb2ToHtml(node) {
+function fb2ToHtml(node, images = new Map()) {
     const map = { section: 'div', title: 'h2', p: 'p', emphasis: 'em', strong: 'b',
                   subtitle: 'h3', epigraph: 'blockquote', 'empty-line': 'br', poem: 'div', stanza: 'p', v: 'div' };
     let out = '';
     node.childNodes.forEach(ch => {
         if (ch.nodeType === Node.TEXT_NODE) { out += escapeHtml(ch.nodeValue); return; }
         if (ch.nodeType !== Node.ELEMENT_NODE) return;
-        const tag = map[ch.tagName.toLowerCase()];
-        if (!tag) { out += fb2ToHtml(ch); return; }
-        out += tag === 'br' ? '<br>' : `<${tag}>${fb2ToHtml(ch)}</${tag}>`;
+        const name = ch.localName.toLowerCase();
+        const href = ch.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || ch.getAttribute('href') || '';
+        if (name === 'image') {
+            const src = images.get(href.slice(1));
+            if (href.startsWith('#') && src) out += `<img src="${src}" alt="${escapeHtml(ch.getAttribute('title') || '')}">`;
+            return;
+        }
+        const tag = name === 'a' ? 'a' : map[name];
+        if (!tag) { out += fb2ToHtml(ch, images); return; }
+        const attrs = (ch.getAttribute('id') ? ` id="${escapeHtml(ch.getAttribute('id'))}"` : '') + (tag === 'a' ? ` href="${escapeHtml(href)}"` : '');
+        out += tag === 'br' ? '<br>' : `<${tag}${attrs}>${fb2ToHtml(ch, images)}</${tag}>`;
     });
     return out;
 }
@@ -295,10 +392,11 @@ async function initTxt(file, epoch = readerEpoch.book) {
     buildToc(state.totalPages, "Блок", i => { renderTxtPage(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'txt' && bm.currentIndex >= 0 && bm.currentIndex < state.totalPages) ? bm.currentIndex : 0;
-    renderTxtPage(startIdx, false, bm ? bm.pageInChapter : null);
+    await renderTxtPage(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
+    if (epoch !== readerEpoch.book) return;
     enterMobileFullScreenIfNeeded();
 }
-function renderTxtPage(pageIdx, toEnd = false, startPage = null) {
+async function renderTxtPage(pageIdx, toEnd = false, startPage = null, textOffset = null) {
     if (pageIdx < 0 || pageIdx >= state.totalPages) return;
     const render = ++readerEpoch.render;
     invalidateSelection();
@@ -307,10 +405,5 @@ function renderTxtPage(pageIdx, toEnd = false, startPage = null) {
     els.pages.replaceChildren();
     const block = document.createElement('div'); block.className = 'txt-block'; block.textContent = chunk; els.pages.appendChild(block); state.extractedTextForTTS = chunk;
     updateSourceLang();
-    requestAnimationFrame(() => {
-        if (render !== readerEpoch.render) return;
-        paginateContainer();
-        const target = toEnd ? state.totalPagesInChapter - 1 : (startPage != null ? startPage : 0);
-        goToPageInChapter(target, false);
-    });
+    await settleBookLayout(() => render === readerEpoch.render, toEnd ? -1 : (startPage ?? 0), textOffset);
 }

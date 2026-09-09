@@ -14,6 +14,7 @@
 
     <script src="vendor/jszip-3.10.1.min.js"></script>
     <script src="vendor/mammoth-1.6.0.browser.min.js"></script>
+    <script src="vendor/marked-18.0.12.umd.js"></script>
     <!-- PDF.js 6.x розповсюджується лише як ES-модуль (.mjs) — окремої "класичної"
          глобальної збірки більше не існує. Сам pdf.min.mjs при виконанні робить
          globalThis.pdfjsLib = {...}, тому нижче достатньо звичайного модульного
@@ -179,6 +180,7 @@
         }
         /* Простий .txt зберігає власні переноси рядків — вирівнювання по краях тут лише
            зіпсувало б вигляд, тому залишаємо як є. */
+        body:not(.pdf-mode) #reader-pages img { max-width: 100%; max-height: 90%; width: auto; height: auto; object-fit: contain; break-inside: avoid; }
         #reader-pages .txt-block { white-space: pre-wrap; text-align: initial; hyphens: manual; }
         #reader-pages { height: 100%; transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1); }
         /* will-change вмикаємо ЛИШЕ на час анімації: постійно піднятий на GPU багатоколонковий
@@ -699,7 +701,7 @@
             <div class="toolbar-group">
                 <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tToc" data-i18n="tocIcon">☰</button>
                 <label class="btn" for="file-upload" data-i18n="open">📂 Відкрити</label>
-                <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.html,.htm,.rtf,.md">
+                <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown">
             </div>
             <div class="toolbar-group">
                 <button class="icon-btn" id="btn-tts" data-i18n="read">🔊 Читати</button>
@@ -892,10 +894,10 @@
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
     <script src="js/tts.js?v=2b9871dfb6d2"></script>
-    <script src="js/selection.js?v=5b59d971f469"></script>
-    <script src="js/navigation.js?v=1bf59928539a"></script>
+    <script src="js/selection.js?v=9fa0679aae52"></script>
+    <script src="js/navigation.js?v=310792008e41"></script>
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
-    <script src="js/ui-tooltip.js?v=24fafda1df3c"></script>
+    <script src="js/ui-tooltip.js?v=74da86198059"></script>
     <script src="js/translation.js?v=59e0973c2adc"></script>
     <script src="js/grammar-svo.js?v=4961aebc5067"></script>
     <script src="js/ai-client.js?v=a7a5f853ab94"></script>
@@ -903,9 +905,9 @@
     <script src="js/pdf-ink.js?v=7ab822ef42a8"></script>
     <script src="js/pdf-crop.js?v=93672612bda6"></script>
     <script src="js/pdf-render.js?v=7d5c650a8f84"></script>
-    <script src="js/formats.js?v=90e8e3c23020"></script>
+    <script src="js/formats.js?v=7d7dba987d3b"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/main.js?v=9e22741dc330"></script>
+    <script src="js/main.js?v=6f8b7aa72c6f"></script>
     <script src="js/pwa-lifecycle.js?v=b9824003afbb"></script>
 </body>
 </html>

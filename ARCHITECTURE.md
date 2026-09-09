@@ -232,3 +232,12 @@ agent doesn't have to re-diagnose them:
   version identity this way — a stale cached JS file can never run against a freshly-fetched
   `index.html` or vice versa, which was the root cause of one of the retrospective audit's
   findings (`RETRO_AUDIT.md` finding #1).
+
+## Format expansion (maintenance)
+
+See `FORMAT_SUPPORT.md` for implemented capabilities and explicit limits.
+`formats.js` also handles guarded FB2.ZIP, XML encoding and binary images, pinned
+Marked rendering, inert SVG rasterization and resource-aware reflow.
+`navigation.js` stores character offsets alongside legacy page bookmarks;
+`selection.js` indexes reflowable words across inline text nodes.
+`tests/formats_browser.py` covers these paths with synthetic fixtures in CI.
