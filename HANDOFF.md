@@ -42,16 +42,14 @@ formats_browser.py (20 checks), app_shell_versions.py and browser_cdp_transport.
 passed. One isolated Chrome cold-start timed out; retry passed. Node is not in the
 local PATH; CI performs the JavaScript syntax checks.
 
-Pending commit: .github/workflows/ci.yml, ARCHITECTURE.md, FORMAT_SUPPORT.md,
-HANDOFF.md, index.html, js/formats.js, js/main.js, js/navigation.js, js/selection.js,
-sw.js, tests/formats_browser.py, vendor/marked-18.0.12.umd.js,
-vendor/marked-LICENSE.md. Earlier format implementation is already in 9cab25d.
-Unrelated untracked scratch files and tests/language_tts_browser.py are untouched.
+Release implementation: a83a75a, pushed to origin/dev. Earlier format code is
+also in 9cab25d. All 20 format checks, full local suites and GitHub CI passed.
+PR #78 has the combined release description and auto-merge enabled. Merging
+origin/main (d67fd05) required resolving only this handoff document; code merged
+without conflicts. Next: push the merge, wait for CI/auto-merge, then verify the
+production deployment. Production still has the previous release at this point.
 
-PR: #78 open; final patch not pushed yet. CI/deployment: pending final patch.
-Next action: commit the relevant files, push dev, rewrite PR #78 for the combined
-change, wait for CI, enable auto-merge, verify the production deployment with the
-format fixtures plus PDF/offline smoke checks.
+Unrelated untracked scratch files and tests/language_tts_browser.py are untouched.
 
 Still open separately: the reported scanned-PDF text-layer offset/misread word
 needs the actual affected file or a reproducible fixture. Do not claim it is fixed.
