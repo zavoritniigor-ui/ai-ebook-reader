@@ -18,82 +18,76 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle** on the implementation side — but see "Needs a human action" below, Stage 1
-still cannot be exercised end to end without it. No other unfinished implementation, audit or
-release task. Current branch: dev.
+Status: **idle** on the implementation side for this task. The overall Stage 1 Classroom
+feature is still pending its first real human sign-in verification (see prior entries in git
+history for that checklist — unchanged, still outstanding). Current branch: dev.
 
-Task (continuation of the Stage 1 Classroom/Drive work): user supplied the real Google OAuth
-2.0 Client ID and asked to (a) fill it into `js/google-classroom.js`, (b) verify whether
-`classroom.coursework.students.readonly` is actually needed for a student-only read-only flow
-and drop it if not, (c) run the sign-in/courses/coursework/attachment flow, (d) NOT widen
-`drive.file` to `drive.readonly` unless a real attachment test fails with 403 and drive.file is
-shown to be the cause. All done: Client ID filled in
-(`1057119342659-vu464ei1v7ophbcuufbe8muhd9nb3fng.apps.googleusercontent.com`);
-`classroom.coursework.students.readonly` removed (it grants teacher-role visibility into
-*other* students' coursework — not needed to view one's own courses/coursework as a student;
-`classroom.coursework.me.readonly` and `classroom.courseworkmaterials.readonly` already cover
-this flow); `drive.file` left unchanged. Full reasoning in PR #62's description and the
-`js/google-classroom.js` commit.
+Task: user asked to improve the Classroom UI — the coursework list previously showed only a
+title + attachment count, and clicking it opened a SEPARATE screen listing just attached file
+names with zero context. Fixed by collapsing both screens into one: each course's coursework/
+materials now render as a single compact card showing title, a type badge (Assignment for
+courseWork, Material for courseWorkMaterial), a due date (assignments) or published date
+(everything else) when available, a short (~140 char) description when present, and its Drive
+attachments listed directly underneath — clicking one opens it exactly as before (same
+`openDriveFile`, unchanged). The separate attachments view/list and `renderAttachments()` are
+gone entirely; `classroomGoBackOrClose()` dropped the now-unreachable branch for that
+navigation depth (courses ↔ coursework is the only level left). Full reasoning in PR #64's
+description and the `js/google-classroom.js` commit ("group attachments under their
+coursework/material card").
 
-**Needs a human action before this is FULLY exercised**: the mocked test suite
-(`tests/google_classroom_browser.py`, 12/12) and a real-SDK check (below) both pass, but a
-genuine interactive human sign-in through an actual browser has still never happened. This
-session verified as much as is programmatically possible from a sandboxed CDP environment:
-loaded the real (unblocked) `accounts.google.com/gsi/client` against the real Client ID,
-called `ensureTokenClient()` — it initializes without error and returns a working client
-(confirms the Client ID itself is accepted by Google's SDK). Calling `requestAccessToken()`
-correctly reaches Google's real OAuth endpoint but fails with `popup_failed_to_open` —
-an EXPECTED environment limitation (headless/CDP-driven browsers cannot supply the genuine
-user-gesture Google requires to open the sign-in popup), NOT a Client-ID, scope, or origin
-problem. The actual next step is a human doing this in a real browser:
-1. Open the app, click "🎓 Classroom" → "Увійти через Google" → sign in with a test-user
-   Google Workspace account (must be added as a test user in the OAuth consent screen —
-   audience is External + Testing, not yet in production/verified).
-2. Confirm "My courses" lists real courses.
-3. Click a course, confirm coursework/materials list appears.
-4. Click a Drive-attached file, confirm it opens directly in the Reader with formatting intact.
-If step 4 fails with a 403 specifically (not a different error), that is the one condition
-under which `drive.file` (in `GOOGLE_SCOPES`, `js/google-classroom.js`) should be widened to
-`drive.readonly` — do not make that change speculatively, only after seeing that exact
-failure.
+**Shared-workspace note (still relevant)**: at the time this entry was written, another agent
+had UNCOMMITTED changes in progress on this SAME `js/google-classroom.js` file — better error
+messages surfaced from failed Google API calls (`googleApiFetch` now tries to read and append
+the API's own JSON error message), and guard clauses for a missing `course.id`/`fileId` in
+`loadCourseWork`/`openDriveFile`. This session's own commit (the card UI change) was made and
+pushed BEFORE those uncommitted edits appeared, so they layered on top of it in the working
+tree — left completely untouched per "don't overwrite another agent's uncommitted work." The
+next agent to touch this file should `git status`/`git diff` it first to see whether that work
+has since been committed, and must not silently discard it if not.
 
-Changed (this task only — see PR #60's HANDOFF entry, still below the fold in git history,
-for everything else Stage 1 touched): `js/google-classroom.js` (real Client ID, trimmed
-`GOOGLE_SCOPES`, updated comments), `tests/google_classroom_browser.py` (explicit assertions
-that the two needed scopes ARE requested and the removed one is NOT), versioned shell
-(`index.html`/`sw.js` via `tools/version_app_shell.py`).
+Changed (this task only): `js/google-classroom.js` (card rendering: `classroomDateLine`,
+`classroomShortDescription`, rewritten `renderCourseWork`, removed `renderAttachments`),
+`index.html` (removed the `#classroom-view-attachments` div, new `.classroom-card`/
+`.classroom-badge`/`.classroom-card-desc`/`.classroom-attachments` CSS), `js/core.js` (new
+i18n: `classroomTypeAssignment`, `classroomTypeMaterial`, `classroomDue`, `classroomPublished`),
+`ARCHITECTURE.md` (module map + test-coverage row), `tests/google_classroom_browser.py`
+(rewritten for the single-screen structure, 15/15 checks), versioned shell (`index.html`/
+`sw.js` via `tools/version_app_shell.py`).
 
 **Squash-merge history-disconnect (recurring, every PR this session)**: `git merge --no-ff
-origin/main` into dev was needed again before opening the PR — clean this time, no conflicts.
-Keep doing this — a real merge commit, never a rebase, never a force-push — right before
-opening any new PR if `mergeable`/`mergeStateStatus` shows CONFLICTING/DIRTY/BEHIND.
+origin/main` into dev was needed again before opening the PR — clean, no conflicts. Keep doing
+this — a real merge commit, never a rebase, never a force-push — right before opening any new
+PR if `mergeable`/`mergeStateStatus` shows CONFLICTING/DIRTY/BEHIND.
 
-**CI flake hit this time (known, see MEMORY.md-equivalent knowledge for this repo)**: one of
-the two parallel `test` runs on the PR failed with exit code 124 — `timeout 15` waiting for
-Chrome's CDP port never resolved. Reran with `gh run rerun <id> --failed`; passed clean the
-second time. Not a real bug, pure GitHub-runner resource contention on Chrome startup. Two-in-
-a-row on the *same* PR would be worth investigating for real rather than rerunning blindly.
+**Another agent had already opened PR #64 from `dev`** (for their own `chore(auth): verify
+Google OAuth Client ID for production` commit) by the time this session went to open a PR —
+rather than creating a duplicate, this session's commit was pushed onto the same `dev` branch
+and PR #64's title/body were updated (via `gh api ... -X PATCH`, since `gh pr edit` still
+errors on an unrelated GraphQL Projects-classic deprecation) to describe both changes. If
+`gh pr create` ever says a PR from dev already exists, update that PR rather than fighting it.
 
-Release code commit: 9d70411 (feature) + 18a903d (reconnect merge) on dev; PR #62 MERGED
-(squash); main release commit 0965e23.
-CI: required `test` check PASS on both parallel runs (after one rerun for the flake above).
+Release code commit: 8571f90 (feature) + 7880295 (reconnect merge) on dev; PR #64 MERGED
+(squash, bundled with another agent's Client-ID-verification commit); main release commit
+118c3aa.
+CI: required `test` check PASS on both parallel runs, no flake this time.
 Local: PDF UX, learning UX, migration audit, app-shell versions and CDP transport tests PASS,
 language_paren/language_context/ask_ai_language suites (unaffected) PASS,
-`tests/google_classroom_browser.py` (12/12, now asserting the trimmed scope list) PASS.
-Production: `https://ai-ebook-reader.pages.dev/` serves `google-classroom.js?v=5fbaaed33089`
-(matches the merged commit); `google_classroom_browser.py` re-run directly against
-production (fresh Chrome profile) — 12/12 PASS; the real-SDK `ensureTokenClient()` check
-(unblocked `accounts.google.com`) also re-run directly against production — same result
-(initializes cleanly with the real Client ID and the trimmed scope string).
+`tests/google_classroom_browser.py` (15/15, rewritten for the card UI) PASS.
+Production: `https://ai-ebook-reader.pages.dev/` serves `google-classroom.js?v=74d0409990a9`
+(matches the merged commit); `google_classroom_browser.py` re-run directly against production
+(fresh Chrome profile) — 15/15 PASS, no console errors. Also visually verified the card layout
+at a 390×844 mobile viewport via a CDP screenshot — compact, legible, no overflow.
 
 An untracked draft `tests/language_tts_browser.py` still exists (not mine, not committed,
 not wired into CI) — left untouched per "don't overwrite another agent's uncommitted work".
 
 Unrelated local scratch files remain untouched/unstaged: debug_pdf.mjs, dups.txt,
-test_pdf.html, test_pdf.mjs, viewer.css. No uncommitted application changes.
-Exact next action: a human needs to run the 4-step real-browser sign-in checklist above with
-an actual Google Workspace test-user account. If it all works, Stage 1 is genuinely done. If
-step 4 403s, report back with the exact error before anyone widens the Drive scope.
+test_pdf.html, test_pdf.mjs, viewer.css. No uncommitted application changes from this session
+(see the shared-workspace note above for another agent's in-progress, uncommitted edits to
+js/google-classroom.js that were present at handoff time).
+Exact next action: unchanged from before this task — a human still needs to run the real-
+browser Google sign-in checklist (see PR #60/#62's HANDOFF entries in git history) with an
+actual Google Workspace test-user account. This UI change doesn't affect that checklist.
 
 ## Handoff rules
 
