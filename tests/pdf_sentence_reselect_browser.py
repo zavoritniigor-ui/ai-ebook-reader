@@ -31,7 +31,7 @@ pause(1)
 
 def check(name, expr):
     value = c.js(expr)
-    assert value is True, (name, value)
+    assert value is True, (name, value, c.js('({selection:state.lastSelectionText,tap:state.lastTapPoint,render:readerEpoch.render,pending:window.__pendingPdfRenders})'))
     print('PASS', name, flush=True)
 
 
@@ -46,10 +46,21 @@ loaded = c.js(f'''(async()=>{{
     state.translateMode=true; els.pages.classList.add('mode-translate');
     window.__errors=[]; window.addEventListener('error',e=>__errors.push(e.message));
     window.__lookups=[]; handleWordOrSelection=(word,x,y)=>{{__lookups.push(word)}};
+    window.__pendingPdfRenders=0; window.__lastPdfRender=performance.now();
+    const originalRender=renderPdfPage;
+    renderPdfPage=async(...args)=>{{
+        __pendingPdfRenders++; __lastPdfRender=performance.now();
+        try {{ return await originalRender(...args); }}
+        finally {{ __pendingPdfRenders--; __lastPdfRender=performance.now(); }}
+    }};
     const file=new File([Uint8Array.from(atob('{data}'),c=>c.charCodeAt(0))],'fixture.pdf');
     await initPdf(file); return {{pages:state.totalPages, text:els.pages.textContent}};
 }})()''')
 assert 'Left sentence 0' in loaded['text'] and 'Right sentence 0' in loaded['text'], loaded
+# Mobile viewport/fullscreen setup can queue navigation.js's 250ms resize
+# debounce AFTER initPdf resolves. A resulting render invalidates selection;
+# wait for a quiet render interval before starting the selection-only scenario.
+c.wait('__pendingPdfRenders===0 && performance.now()-__lastPdfRender>400')
 
 # Tap the FIRST word ("Left") of the LEFT column's first sentence — exactly the
 # scenario the user described.

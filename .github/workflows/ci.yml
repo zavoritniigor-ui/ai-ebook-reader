@@ -150,4 +150,7 @@ jobs:
           echo "Running pdf_sentence_reselect_browser.py..."
           python3 -u tests/pdf_sentence_reselect_browser.py
 
+          echo "Running pdf_bilingual_columns_browser.py..."
+          python3 -u tests/pdf_bilingual_columns_browser.py
+
           echo "All tests passed successfully!"
