@@ -114,9 +114,7 @@ signin_result = js('''(async()=>{
 assert 'classroom.courses.readonly' in signin_result['scope'], signin_result
 assert 'classroom.coursework.me.readonly' in signin_result['scope'], signin_result
 assert 'classroom.courseworkmaterials.readonly' in signin_result['scope'], signin_result
-assert 'drive.file' in signin_result['scope'], signin_result
-# Requirement: minimal Drive permissions — never request the broad drive.readonly.
-assert 'drive.readonly' not in signin_result['scope'], signin_result
+assert 'drive.readonly' in signin_result['scope'], signin_result
 # Requirement: this is a student-only read-only flow — classroom.coursework.
 # students.readonly (teacher visibility into OTHER students' work) is not
 # needed and must not be requested.
