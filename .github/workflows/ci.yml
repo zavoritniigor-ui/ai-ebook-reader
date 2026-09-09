@@ -139,4 +139,7 @@ jobs:
           echo "Running ask_ai_language_browser.py..."
           python3 -u tests/ask_ai_language_browser.py
 
+          echo "Running local_translator_warmup_browser.py..."
+          python3 -u tests/local_translator_warmup_browser.py
+
           echo "All tests passed successfully!"

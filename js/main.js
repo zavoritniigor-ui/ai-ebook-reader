@@ -59,6 +59,9 @@ els.targetLang.onchange = (e) => {
     writeStored('reader_target_lang', state.targetLang);
     // Кеш не скидаємо: ключі містять мову, тому переклади різними мовами не змішуються
     // і при поверненні до попередньої мови показуються миттєво.
+    // Нова цільова мова — новий напрямок пари для локального перекладача; той самий
+    // "розігрів" мовного пакета, що й у updateSourceLang() (js/lang-detect.js).
+    warmLocalTranslator(pageLang(), state.targetLang);
 };
 
 els.voiceSelect.onchange = e => {
