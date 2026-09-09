@@ -204,8 +204,9 @@ open_result = js('''(async()=>{
 assert open_result['modalClosed'], open_result
 assert open_result['format'] == 'pdf', open_result
 assert any('drive-pdf-1' in u and 'alt=media' in u for u in open_result['calls']), open_result
+assert any('drive-pdf-1' in u and 'supportsAllDrives=true' in u for u in open_result['calls']), "Missing supportsAllDrives=true for Shared Drive support"
 assert all('key=' not in u and 'AIza' not in u for u in open_result['calls']), open_result
-print('PASS opening an attachment from its card keeps the existing behavior (state.format==="pdf")', flush=True)
+print('PASS opening an attachment from its card keeps the existing behavior (state.format==="pdf") and uses supportsAllDrives', flush=True)
 
 # Give PDF.js a moment to actually render before checking the page content —
 # same pattern as the other PDF-focused suites.

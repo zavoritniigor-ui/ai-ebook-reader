@@ -43,19 +43,17 @@ const GOOGLE_CLIENT_ID = '1057119342659-vu464ei1v7ophbcuufbe8muhd9nb3fng.apps.go
 // робіт (не просто матеріалів курсу — ті вже покриті courseworkmaterials
 // нижче), цей scope треба буде повернути.
 //
-// Це ЄДИНЕ місце, яке варто змінити, якщо на реальному шкільному акаунті
-// виявиться, що конкретне вкладення не відкривається під drive.file (Google
-// десь вимагає, щоб файл був явно "відкритий" через Picker, а не лише
-// знайдений через іншу API) — тоді додайте
-// 'https://www.googleapis.com/auth/drive.readonly' замість 'drive.file'. НЕ
-// робіть цю заміну заздалегідь "про всяк випадок" — лише якщо реальний тест
-// відкриття вкладення справді впаде з 403 і буде показано, що причина саме в
-// drive.file.
+// Root Cause of 404s on Drive Attachments:
+// The `drive.file` scope restricts access ONLY to files the app created or files
+// the user explicitly opened using Google Picker. For Classroom attachments created
+// by teachers, the app bypasses the Picker (fetching IDs via Classroom API). This
+// causes the Drive API to return a 404 Not Found (instead of 403) to hide the file's
+// existence. We MUST use `drive.readonly` to access them.
 const GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/classroom.courses.readonly',
     'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
     'https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly',
-    'https://www.googleapis.com/auth/drive.file'
+    'https://www.googleapis.com/auth/drive.readonly'
 ].join(' ');
 
 const classroomModal = document.getElementById('classroom-modal');
@@ -318,7 +316,7 @@ async function openDriveFile(fileId, suggestedTitle) {
     if (!fileId) { classroomError('File ID is missing'); return; }
     showClassroomView('loading', { showBack: true });
     try {
-        const meta = await (await googleApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size`)).json();
+        const meta = await (await googleApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size&supportsAllDrives=true`)).json();
         const name = meta.name || suggestedTitle || 'document';
         let blob, ext;
         if (DRIVE_EXPORT_MIME[meta.mimeType]) {
@@ -326,7 +324,7 @@ async function openDriveFile(fileId, suggestedTitle) {
             blob = await (await googleApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(exportMime)}`, 60000)).blob();
             ext = 'pdf';
         } else if (DRIVE_DIRECT_MIME[meta.mimeType]) {
-            blob = await (await googleApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, 60000)).blob();
+            blob = await (await googleApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`, 60000)).blob();
             ext = DRIVE_DIRECT_MIME[meta.mimeType];
         } else {
             throw new Error(t('unsupportedFormat'));
