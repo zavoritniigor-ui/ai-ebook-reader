@@ -97,3 +97,67 @@ def pdf_bytes(two_columns=False):
     data+=b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets[1:])
     return data+f'trailer << /Size {len(objs)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF'.encode()
 
+def bilingual_pdf_bytes():
+    """A single-page, two-column bilingual-textbook-style fixture: French on the
+    left, its English translation on the right, row-aligned like a real parallel
+    text. Several lines carry an inline bold word (Helvetica-Bold via a font
+    change) in the MIDDLE of the sentence, e.g. "..., **Premierement**, ...", the
+    same style break real bilingual books use for "Firstly/Secondly/..." markers —
+    reproduced with runs shown CONTINUOUSLY (no repositioning Td between them, so
+    positions stay genuinely adjacent, exactly like a real PDF generator would lay
+    them out) rather than at hand-picked X offsets, which would create artificial
+    gaps a column-detection test could pass against for the wrong reason."""
+    objs = [
+        b'<< /Type /Catalog /Pages 2 0 R >>',
+        b'',
+        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
+    ]
+    left_lines = [
+        [('F1', "Je n'etais pas satisfait du")],
+        [('F1', "service a votre hotel.")],
+        [('F2', "Premierement,"), ('F1', " le personnel netait pas")],
+        [('F1', "attentif: par exemple, on a")],
+        [('F1', "oublie de me reveiller le")],
+        [('F1', "premier matin.")],
+        [('F2', "Deuxiemement,"), ('F1', " ma chambre na")],
+        [('F1', "pas ete nettoyee pendant deux")],
+        [('F1', "jours.")],
+    ]
+    right_lines = [
+        [('F1', "I was not at all satisfied")],
+        [('F1', "with the service at your hotel.")],
+        [('F2', "First,"), ('F1', " the personnel were not")],
+        [('F1', "attentive: for example, they")],
+        [('F1', "forgot to wake me up on the")],
+        [('F1', "first morning.")],
+        [('F2', "Secondly,"), ('F1', " my room was not")],
+        [('F1', "cleaned for two days.")],
+    ]
+    def line_ops(x, y, runs):
+        parts = [f"BT {x} {y} Td"]
+        for font, text in runs:
+            esc = text.replace('\\', r'\\').replace('(', r'\(').replace(')', r'\)')
+            parts.append(f" /{font} 11 Tf ({esc}) Tj")
+        parts.append(" ET")
+        return ''.join(parts)
+    ops = []
+    y = 740
+    for row in left_lines:
+        ops.append(line_ops(45, y, row)); y -= 20
+    y = 740
+    for row in right_lines:
+        ops.append(line_ops(305, y, row)); y -= 20
+    stream = ('\n'.join(ops)).encode()
+    page_obj_num, stream_obj_num = 5, 6
+    objs.append(f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents {stream_obj_num} 0 R >>'.encode())
+    objs.append(f'<< /Length {len(stream)} >>\nstream\n'.encode() + stream + b'\nendstream')
+    objs[1] = f'<< /Type /Pages /Count 1 /Kids [{page_obj_num} 0 R] >>'.encode()
+    data = b'%PDF-1.4\n'; offsets = [0]
+    for i, obj in enumerate(objs, 1):
+        offsets.append(len(data)); data += f'{i} 0 obj\n'.encode() + obj + b'\nendobj\n'
+    xref = len(data)
+    data += f'xref\n0 {len(objs)+1}\n0000000000 65535 f \n'.encode()
+    data += b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets[1:])
+    return data + f'trailer << /Size {len(objs)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF'.encode()
+

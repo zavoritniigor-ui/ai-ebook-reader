@@ -162,20 +162,57 @@ function pdfVisualGroup(layer, targetSpan) {
     const targetIdx = spans.indexOf(targetSpan);
     if (targetIdx < 0) return spans;
     const rects = spans.map(s => s.getBoundingClientRect());
-    // Колонки: кластеризуємо ЛІВІ межі фрагментів через розриви, помітно ширші за
-    // звичайний проміжок між словами того самого рядка.
-    const lefts = rects.map(r => r.left).slice().sort((a, b) => a - b);
+    // Колонки визначаються у ДВА кроки, не за лівими межами окремих фрагментів
+    // напряму: рядок часто розбитий на кілька фрагментів через зміну стилю ПОСЕРЕД
+    // рядка (напівжирне "Premièrement," посеред речення тощо, як у навчальних
+    // двомовних книгах) — такий фрагмент починається глибоко ВСЕРЕДИНІ рядка, і його
+    // власна ліва межа нічого не каже про те, до якої колонки належить рядок. А
+    // просте групування "спершу за Y" (без урахування X) теж не підходить: у
+    // двомовній книзі рядок оригіналу й рядок перекладу зазвичай лежать РІВНО на
+    // тій самій висоті (переклад надруковано навпроти, рядок у рядок) — тож звичайне
+    // Y-групування об'єднало б обидві колонки в один "рядок".
+    // Крок 1 — Y-СМУГИ: фрагменти на приблизно однаковій висоті (це можуть бути
+    // фрагменти з ОБОХ колонок одразу, якщо рядки вирівняні один навпроти одного).
+    // Крок 2 — усередині кожної Y-смуги фрагменти сортуються за X і розрізаються на
+    // "сегменти" там, де проміжок між ПРАВИМ краєм одного фрагмента й ЛІВИМ краєм
+    // наступного помітно більший за звичайний міжслівний — це і є межа колонок.
+    // Фрагменти одного стильового розриву посеред рядка (з попереднім вони СТИКУються
+    // впритул, без такого розриву) лишаються в ОДНОМУ сегменті, а не поділяються.
+    // Лише СТАРТОВА X-позиція кожного такого сегмента (не кожного фрагмента) далі йде
+    // в кластеризацію колонок — тому текст перед стильовим розривом більше не отруює
+    // її випадковими серединними X-значеннями.
     const layerWidth = layer.getBoundingClientRect().width || 1;
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
-    const boundaries = [];
-    for (let i = 1; i < lefts.length; i++) {
-        if (lefts[i] - lefts[i - 1] > columnGapThreshold) boundaries.push(lefts[i]);
+    const bands = [];
+    for (const i of rects.map((_, idx) => idx).sort((a, b) => rects[a].top - rects[b].top)) {
+        const r = rects[i];
+        const band = bands.find(band => Math.abs(r.top - band.top) <= Math.min(r.height, band.height) * 0.6);
+        if (band) band.indices.push(i);
+        else bands.push({ top: r.top, height: r.height, indices: [i] });
     }
-    const columnOf = (left) => boundaries.reduce((col, b) => col + (left >= b ? 1 : 0), 0);
-    const targetColumn = columnOf(rects[targetIdx].left);
+    const segments = []; // { left, indices: [] }
+    for (const band of bands) {
+        const byLeft = band.indices.slice().sort((a, b) => rects[a].left - rects[b].left);
+        let seg = null;
+        for (const i of byLeft) {
+            const r = rects[i];
+            if (seg && r.left - seg.right <= columnGapThreshold) { seg.indices.push(i); seg.right = Math.max(seg.right, r.right); }
+            else { seg = { left: r.left, right: r.right, indices: [i] }; segments.push(seg); }
+        }
+    }
+    const segLeft = segments.map(s => s.left);
+    const segsByLeft = segLeft.map((_, i) => i).sort((a, b) => segLeft[a] - segLeft[b]);
+    const segColumn = new Array(segments.length).fill(0);
+    for (let k = 1; k < segsByLeft.length; k++) {
+        const prev = segsByLeft[k - 1], cur = segsByLeft[k];
+        segColumn[cur] = segColumn[prev] + (segLeft[cur] - segLeft[prev] > columnGapThreshold ? 1 : 0);
+    }
+    const spanSeg = new Array(spans.length);
+    segments.forEach((seg, si) => seg.indices.forEach(i => spanSeg[i] = si));
+    const targetColumn = segColumn[spanSeg[targetIdx]];
     const sameColumn = [];
     const sameColumnRects = [];
-    spans.forEach((s, i) => { if (columnOf(rects[i].left) === targetColumn) { sameColumn.push(s); sameColumnRects.push(rects[i]); } });
+    spans.forEach((s, i) => { if (segColumn[spanSeg[i]] === targetColumn) { sameColumn.push(s); sameColumnRects.push(rects[i]); } });
     // У межах колонки — справжній порядок читання (рядок згори вниз, у рядку зліва
     // направо), а не DOM/content-stream порядок.
     const order = sameColumn.map((_, i) => i).sort((a, b) => {
