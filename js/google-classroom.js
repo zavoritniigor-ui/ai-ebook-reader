@@ -152,7 +152,15 @@ function googleSignOut() {
 async function googleApiFetch(url, timeoutMs = 45000) {
     const res = await fetchWithTimeout(url, { headers: { Authorization: 'Bearer ' + googleAuth.token } }, timeoutMs);
     if (res.status === 401) { googleAuth.token = null; googleAuth.expiresAt = 0; throw new Error(t('classroomAuthError')); }
-    if (!res.ok) throw new Error('Google API ' + res.status);
+    if (!res.ok) {
+        let msg = 'Google API ' + res.status;
+        try {
+            const errData = await res.json();
+            if (errData.error && errData.error.message) msg += ': ' + errData.error.message;
+        } catch (e) {}
+        console.error(`Google API request failed: GET ${url} -> ${msg}`);
+        throw new Error(msg);
+    }
     return res;
 }
 async function loadCourses() {
@@ -187,11 +195,12 @@ function renderCourses(courses) {
     showClassroomView('courses', { showBack: false });
 }
 async function loadCourseWork(course) {
+    if (!course || !course.id) { classroomError('Course ID is missing'); return; }
     showClassroomView('loading', { showBack: true });
     try {
         const [workData, materialData] = await Promise.all([
-            googleApiFetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?pageSize=100`).then(r => r.json()).catch(() => ({})),
-            googleApiFetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWorkMaterials?pageSize=100`).then(r => r.json()).catch(() => ({}))
+            googleApiFetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?pageSize=100`).then(r => r.json()).catch(e => { console.warn(e); return {}; }),
+            googleApiFetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWorkMaterials?pageSize=100`).then(r => r.json()).catch(e => { console.warn(e); return {}; })
         ]);
         // Google API повертає ключ в однині для courseWorkMaterials — тримаємо
         // обидва варіанти на випадок майбутньої зміни.
@@ -306,6 +315,7 @@ const DRIVE_EXPORT_MIME = {
     'application/vnd.google-apps.presentation': 'application/pdf'
 };
 async function openDriveFile(fileId, suggestedTitle) {
+    if (!fileId) { classroomError('File ID is missing'); return; }
     showClassroomView('loading', { showBack: true });
     try {
         const meta = await (await googleApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size`)).json();
