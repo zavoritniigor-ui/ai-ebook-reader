@@ -68,7 +68,8 @@ result = c.js('''(async()=>{
     // handleWordOrSelection also fires its own tooltip-translation AI call; the
     // "Запитай AI" prompt is whatever gets added AFTER that settles and the button
     // is clicked, not necessarily the first one captured overall.
-    await handleWordOrSelection(''' + json.dumps(fragment) + ''', 150, 200);
+    const rect = els.pages.firstChild.getBoundingClientRect();
+    await handleWordOrSelection(''' + json.dumps(fragment) + ''', rect.left + 10, rect.top + 10);
     const before=window.__prompts.length;
     els.ttAskBtn.onclick({stopPropagation(){}});
     await new Promise(r=>setTimeout(r,50));
