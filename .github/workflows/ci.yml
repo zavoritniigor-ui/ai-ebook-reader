@@ -156,4 +156,7 @@ jobs:
           echo "Running pdf_bilingual_columns_browser.py..."
           python3 -u tests/pdf_bilingual_columns_browser.py
 
+          echo "Running pdf_hitbox_stateless_browser.py..."
+          python3 -u tests/pdf_hitbox_stateless_browser.py
+
           echo "All tests passed successfully!"
