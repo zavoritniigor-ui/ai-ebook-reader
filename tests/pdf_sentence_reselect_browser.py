@@ -73,6 +73,7 @@ pos = c.js('''(()=>{
 touch('touchStart', [(1, pos['x'], pos['y'])]); touch('touchEnd', []); pause(.3)
 check('tap resolves to the first word of the left column', "window.__lookups.at(-1)==='Left'")
 check('the real tap set lastTapPoint (used by the expand button, not our own)', 'state.lastTapPoint && state.expandLevel===0')
+check('the real tap records only that PDF word occurrence', 'calculateCurrentPageStats().helped===1')
 
 # The three presses of the translation popup's "select" button, exactly as
 # wired in js/translation.js's els.ttExpandBtn.onclick (which is only actually
@@ -81,32 +82,35 @@ check('the real tap set lastTapPoint (used by the expand button, not our own)', 
 # exercised directly here instead of via a DOM .click()).
 c.js('''
     state.expandLevel = 1;
-    selectRangeAndTranslate(wordToSentenceEndRangeAt(state.lastTapPoint.x, state.lastTapPoint.y), state.lastTapPoint.x, state.lastTapPoint.y);
+    selectRangeAndTranslate(wordToSentenceEndRangeAt(state.lastTapPoint.x, state.lastTapPoint.y), state.lastTapPoint.x, state.lastTapPoint.y, 'phrase_translation');
 ''')
 check('1st press selects exactly the tapped sentence', '''
     state.lastSelectionText === 'Left sentence 0.'
 ''')
 check('1st press does not bleed into the right column', "!state.lastSelectionText.includes('Right')")
 check('1st press does not overrun into the next sentence', "!state.lastSelectionText.includes('Second sentence')")
+check('1st press maps the selected phrase to its two word occurrences', 'calculateCurrentPageStats().helped===2')
 
 # 2nd press: this is the exact repro — same tap point, same word, but the DOM
 # now has an extra span.sel-word nested inside span.word-visited from the 1st
 # press's highlight.
 c.js('''
     state.expandLevel = 2;
-    selectRangeAndTranslate(sentenceRangeAt(state.lastTapPoint.x, state.lastTapPoint.y), state.lastTapPoint.x, state.lastTapPoint.y);
+    selectRangeAndTranslate(sentenceRangeAt(state.lastTapPoint.x, state.lastTapPoint.y), state.lastTapPoint.x, state.lastTapPoint.y, 'sentence_translation');
 ''')
 check('2nd press still selects exactly the same sentence (the actual bug)', '''
     state.lastSelectionText === 'Left sentence 0.'
 ''')
 check('2nd press does not bleed into the right column', "!state.lastSelectionText.includes('Right')")
+check('2nd press reuses the same two occurrence IDs', 'calculateCurrentPageStats().helped===2')
 
 # 3rd press: paragraph fallback — must not crash, and must still not be empty.
 c.js('''
     state.expandLevel = 3;
-    selectRangeAndTranslate(paragraphRangeAt(state.lastTapPoint.x, state.lastTapPoint.y), state.lastTapPoint.x, state.lastTapPoint.y);
+    selectRangeAndTranslate(paragraphRangeAt(state.lastTapPoint.x, state.lastTapPoint.y), state.lastTapPoint.x, state.lastTapPoint.y, 'paragraph_translation');
 ''')
 check('3rd press (paragraph) still produces non-empty text', 'state.lastSelectionText.length > 0')
+check('3rd press records paragraph coverage without exceeding page total', '(()=>{const s=calculateCurrentPageStats();return s.helped>=2&&s.helped<=s.total})()')
 
 check('no application errors', 'window.__errors.length===0 || JSON.stringify(window.__errors)')
 print('ALL PDF SENTENCE RESELECT CHECKS PASSED', flush=True)

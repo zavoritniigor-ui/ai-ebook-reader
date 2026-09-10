@@ -466,6 +466,7 @@ function buildLanguageLevelPrompt(fragment, sentence, langName) {
 document.getElementById('btn-lang-level').onclick = () => {
     const frag = state.lastAskContext || state.lastGrammarSentence;
     if (!frag) { alert(t('selectFirst')); return; }
+    if (lastReaderHelpContext) recordHelpForSpan(lastReaderHelpContext, 'ask_ai');
     startAiTask(frag, 'level');
     els.askPanel.classList.add('expanded');
 };
@@ -475,6 +476,7 @@ document.getElementById('btn-lang-level').onclick = () => {
 document.getElementById('btn-explain').onclick = () => {
     const frag = state.lastAskContext || state.lastGrammarSentence;
     if (!frag) { alert(t('selectFirst')); return; }
+    if (lastReaderHelpContext) recordHelpForSpan(lastReaderHelpContext, 'ask_ai');
     startAiTask(frag, 'ask');
     els.askPanel.classList.add('expanded');
 };
