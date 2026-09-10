@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `dev`. PR #82 merged, production verified.
+Status: **idle**. Branch: `dev`. PR #84 merged, production verified.
 
 Task: User approved the supplied format-expansion plan (`go`); implementing its
 first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
@@ -163,12 +163,47 @@ Still open separately: the reported scanned-PDF text-layer offset/misread word (
 image-based/OCR'd, from Google Drive — not the text-based bilingual-column PDF from the earlier
 entry) needs the actual affected file or a reproducible fixture. Do not claim it is fixed.
 
+**PDF word-hitbox "stateless" fix (this session)**: user reported that in the PDF reader, tapping
+blank white space near a word does nothing — UNTIL that word has been tapped once. After that,
+the SAME blank spot (reported radius: 3-4 cm) reopens that word's translation popup, even after
+the popup was closed; several previously-tapped edge words leave behind several such dead zones.
+
+Root cause: `js/selection.js`'s `selectWordAtPoint()` had an "already-highlighted word tapped
+again" fast path — meant only for literally re-tapping the SAME already-selected word — that
+returned a `.word-visited` match immediately with NO distance check at all, unlike a fresh
+(never-selected) word, which is always validated via `isPointInRects()` (10px tolerance in PDF).
+Since `.word-visited` is intentionally PERMANENT (the app's "already looked up" reading aid,
+never removed when the popup closes) and `pdfNearestSpan()` has no maximum search distance by
+design (needed to recover from pdf.js's coordinate snapping during pinch-zoom), any blank-space
+tap for which that word happened to be the geometrically nearest text — no matter the distance —
+fell through this unguarded shortcut. Confirmed empirically (not just reasoned) before writing
+the fix: `caretRangeAt()` at the identical blank point resolves to plain unwrapped text before
+selection (correctly rejected downstream) and to text inside `.word-visited` after selection
+(bypassing the check entirely).
+
+Fix: the fast path now runs the same `isPointInRects()` check the fresh-word path already uses,
+using the highlighted word's own rects. No distance constants reduced, no arbitrary px offsets,
+no document-specific exceptions, PDF coordinate/geometry logic (`pdfNearestSpan`/`pdfCaretInSpan`/
+`pdfVisualGroup`) untouched.
+Commit `c9b9fb8` on dev; reconnect-merge `334eead`; merged into main via PR #84 (`eac16b0`).
+Tests: `tests/pdf_hitbox_stateless_browser.py` (new, wired into CI, 17 checks) using a new
+`edge_words_pdf_bytes()` fixture in `tests/browser_cdp.py` (one word hard against each page
+margin, one isolated lower on the page) and real touch dispatch (the actual mobile tap path,
+including the popup's own document-level close listener in `js/ui-tooltip.js`): blank taps before
+selection, same-spot-after-close, 5/10/20/40/300px margins, left-edge word, right-edge word,
+multiple previously-selected words, and a direct `selectWordAtPoint()` call at the touchstart/
+pointerdown level. Confirmed the test genuinely fails without the fix (reverted locally, re-ran —
+AssertionError on the right-edge check, restored). Full existing suite re-run — all pass. CI green
+on both runs (fresh checkout, so the other session's uncommitted `lang-detect.js` WIP — see below
+— had no bearing on it). Production verified: `selection.js?v=649429fd17c4` matches, and
+`tests/pdf_hitbox_stateless_browser.py` re-run directly against production — all 17 pass.
+
 Exact next action: wait for the user's real-device confirmation that the TTS echo is actually
 gone now (this sandbox has no real audio/real Android TTS engine to verify against); wait for
-confirmation on the bilingual-column selection fix; provide the scanned-PDF file (or precise
-repro details) for the still-open offset/misread-word issue; and whoever picks up the other
-session's `js/lang-detect.js` WIP should check the `"gare"` regression noted above before
-committing it.
+confirmation on the bilingual-column selection fix AND the word-hitbox fix above on their real
+tablet; provide the scanned-PDF file (or precise repro details) for the still-open offset/
+misread-word issue; and whoever picks up the other session's `js/lang-detect.js` WIP should check
+the `"gare"` regression noted above before committing it.
 
 ## Handoff rules
 
