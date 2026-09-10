@@ -161,3 +161,27 @@ def bilingual_pdf_bytes():
     data += b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets[1:])
     return data + f'trailer << /Size {len(objs)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF'.encode()
 
+def edge_words_pdf_bytes():
+    """A single-page fixture with one word hard against the LEFT margin and one
+    hard against the RIGHT margin on the same line, plus isolated words above/
+    below with generous blank space around all of them — built for testing that
+    a blank-space click/tap never resolves to a nearby (or previously selected)
+    word, at any margin distance, including page edges."""
+    objs = [b'<< /Type /Catalog /Pages 2 0 R >>', b'', b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
+    ops = [
+        "BT /F1 14 Tf 45 740 Td (LeftEdge) Tj ET",
+        "BT /F1 14 Tf 500 740 Td (RightEdge) Tj ET",
+        "BT /F1 14 Tf 270 400 Td (MiddleWord) Tj ET",
+    ]
+    stream = ('\n'.join(ops)).encode()
+    objs.append(b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>')
+    objs.append(f'<< /Length {len(stream)} >>\nstream\n'.encode() + stream + b'\nendstream')
+    objs[1] = b'<< /Type /Pages /Count 1 /Kids [4 0 R] >>'
+    data = b'%PDF-1.4\n'; offsets = [0]
+    for i, obj in enumerate(objs, 1):
+        offsets.append(len(data)); data += f'{i} 0 obj\n'.encode() + obj + b'\nendobj\n'
+    xref = len(data)
+    data += f'xref\n0 {len(objs)+1}\n0000000000 65535 f \n'.encode()
+    data += b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets[1:])
+    return data + f'trailer << /Size {len(objs)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF'.encode()
+
