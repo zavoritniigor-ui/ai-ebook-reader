@@ -77,7 +77,7 @@ els.voiceSelect.onchange = e => {
     // Коротка проба — щоб одразу почути, який голос обрано.
     const samples = { fr: 'Bonjour, ceci est ma voix.', en: 'Hello, this is my voice.', uk: 'Вітаю, це мій голос.', ru: 'Здравствуйте, это мой голос.' };
     const u = new SpeechSynthesisUtterance(samples[code] || 'Test');
-    u.voice = v; u.lang = v.lang; u.rate = 0.95;
+    setUtteranceVoice(u, v.lang, v); u.rate = 0.95;
     ttsSynth.cancel();
     state.ttsGen++;
     const gen = state.ttsGen;

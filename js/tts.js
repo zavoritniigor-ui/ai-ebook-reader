@@ -47,6 +47,24 @@ let utterSeq = 0;
 // js/main.js) — саме ці місця, а НЕ ланцюжок speakSegment→onend→speakSegment у
 // speakCurrentSentence(), бо там speak() нового відрізка йде без жодного cancel().
 const TTS_CANCEL_SPEAK_DELAY_MS = 80;
+// Узгоджує utterance.lang із САМИМ ГОЛОСОМ, а не з нашою власною канонічною назвою
+// мови ('fr-FR'/'uk-UA' тощо): якщо голос уже вибрано, синтезатор орієнтується САМЕ
+// на utterance.voice, а utterance.lang, що йому суперечить (ми ставимо канонічне
+// 'fr-FR', а реальний обраний голос насправді має власний .lang 'fr-CA' чи якийсь
+// інший варіант, бо pickBestVoice/voiceForLangCode шукають голос лише за ПРЕФІКСОМ
+// мови, не за точним її кодом) — на Android це відомий спосіб заплутати міст до
+// системного синтезатора: він намагається задовольнити ОБИДВІ вказівки одразу (і
+// голос, і lang) і в підсумку озвучує фразу ДВІЧІ — той самий голос ніби з луною,
+// майже без затримки між копіями. Саме це описав користувач, і саме тому окремий
+// TTS_CANCEL_SPEAK_DELAY_MS вище (для cancel()+speak() поспіль) не усував ефект:
+// причина цього дефекту геть інша, і трапляється й там, де жодного cancel() перед
+// speak() немає (сам ланцюжок speakSegment у speakCurrentSentence()). Коли голосу
+// нема (voice===null) — синтезатор сам підбирає системний голос САМЕ ЗА
+// utterance.lang, тому в цьому єдиному випадку лишаємо нашу канонічну назву мови.
+function setUtteranceVoice(u, lang, voice) {
+    if (voice) { u.voice = voice; u.lang = voice.lang; }
+    else u.lang = lang;
+}
 function bindUtterance(u, side, fullText, offset) {
     if (!side) return;
     const myId = ++utterSeq;
@@ -74,7 +92,7 @@ function speakText(text, side, offset) {
     ttsSynth.cancel();
     const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
     const { lang, voice } = voiceForText(text);
-    u.lang = lang; if (voice) u.voice = voice; u.rate = 0.95;
+    setUtteranceVoice(u, lang, voice); u.rate = 0.95;
     bindUtterance(u, side, text, offset);
     // Затримка перед speak() — див. TTS_CANCEL_SPEAK_DELAY_MS вище. Перевірка gen
     // після паузи: якщо за цей час фразу вже скасували (ще один tap, stopTooltipSpeech)
@@ -90,9 +108,8 @@ function speakInLang(text, langCode, side, offset) {
     const gen = state.ttsGen;
     ttsSynth.cancel();
     const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
-    u.lang = LANG_TAGS[langCode] || langCode;
     const voice = voices.find(v => v.voiceURI === state.selectedVoiceURIByLang[langCode]) || pickBestVoice(langCode, voices);
-    if (voice) u.voice = voice;
+    setUtteranceVoice(u, LANG_TAGS[langCode] || langCode, voice);
     u.rate = 0.95;
     bindUtterance(u, side, text, offset);
     setTimeout(() => { if (gen === state.ttsGen) ttsSynth.speak(u); }, TTS_CANCEL_SPEAK_DELAY_MS);
@@ -263,13 +280,12 @@ function speakCurrentSentence() {
         if (!text) { speakSegment(); return; }
         const utterance = new SpeechSynthesisUtterance(text);
         const { lang, voice } = voiceForLangCode(seg.lang);
-        utterance.lang = lang;
         let chosen = voice;
         if (state.altVoices) {
             const pair = pickVoicePair(seg.lang);
             if (pair) chosen = pair[sentenceIndex % 2];
         }
-        if (chosen) utterance.voice = chosen;
+        setUtteranceVoice(utterance, lang, chosen);
         utterance.rate = 0.95;
         utterance.onend = speakSegment;
         utterance.onerror = speakSegment;
