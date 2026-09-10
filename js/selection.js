@@ -455,9 +455,7 @@ function selectWordAtPoint(clientX, clientY) {
         if (!wordRange) return null;
         // A caret can snap to nearby text even when the tap is in a margin.
         // Keep the whitespace-dismissal fix on this cross-node path as well.
-        if (!Array.from(wordRange.getClientRects()).some(rect =>
-            rect.width && rect.height && clientX >= rect.left - 1 && clientX <= rect.right + 1 &&
-            clientY >= rect.top - 1 && clientY <= rect.bottom + 1)) return null;
+        if (!isPointInRects(clientX, clientY, wordRange.getClientRects(), 2)) return null;
         const word = wordRange.toString();
         const spans = wrapRangeInSpans(wordRange, 'word-visited');
         state.lastWordNode = spans[0] || null;
@@ -498,17 +496,7 @@ function selectWordAtPoint(clientX, clientY) {
         wordRange.setStart(textNode, start);
         wordRange.setEnd(textNode, end);
         
-        const rects = wordRange.getClientRects();
-        let hit = false;
-        const margin = window.innerWidth <= 1180 ? 20 : 15;
-        for (let i = 0; i < rects.length; i++) {
-            const r = rects[i];
-            if (clientX >= r.left - margin && clientX <= r.right + margin &&
-                clientY >= r.top - margin && clientY <= r.bottom + margin) {
-                hit = true; break;
-            }
-        }
-        if (!hit) return null;
+        if (!isPointInRects(clientX, clientY, wordRange.getClientRects(), state.format === 'pdf' ? 10 : 2)) return null;
 
         const span = document.createElement('span');
         span.className = 'word-visited';
@@ -541,6 +529,21 @@ function selectWordAtPoint(clientX, clientY) {
 // стрибком захоплює цілі рядки — звідси й "гра в кота і мишку". Тут діапазон
 // будується вручну й обидва кінці притягуються до меж слів, тому виділення росте
 // рівно по одному слову.
+
+// Утиліта для суворої перевірки: чи потрапляє клік дійсно у межі слова,
+// а не у відступ (margin/padding) абзацу на рівні блоку.
+function isPointInRects(clientX, clientY, rects, margin = 2) {
+    for (let i = 0; i < rects.length; i++) {
+        const r = rects[i];
+        if (r.width && r.height &&
+            clientX >= r.left - margin && clientX <= r.right + margin &&
+            clientY >= r.top - margin && clientY <= r.bottom + margin) {
+            return true;
+        }
+    }
+    return false;
+}
+
 const IS_WORD_CH = (ch) => ch && /[\p{L}\p{N}'’-]/u.test(ch);
 // Index the current block across inline formatting. Rebuild after highlight
 // mutations, keeping DOM UTF-16 offsets while matching Unicode code points.
@@ -574,7 +577,15 @@ function reflowWordBounds(node, offset) {
 function wordBoundsAt(clientX, clientY) {
     const r = caretRangeAt(clientX, clientY);
     if (!r || r.startContainer.nodeType !== Node.TEXT_NODE) return null;
-    if (state.format !== 'pdf' && els.pages.contains(r.startContainer)) return reflowWordBounds(r.startContainer, r.startOffset);
+    if (state.format !== 'pdf' && els.pages.contains(r.startContainer)) {
+        const wBounds = reflowWordBounds(r.startContainer, r.startOffset);
+        if (!wBounds) return null;
+        const rTest = document.createRange();
+        rTest.setStart(wBounds.node, wBounds.start);
+        rTest.setEnd(wBounds.endNode || wBounds.node, wBounds.end);
+        if (!isPointInRects(clientX, clientY, rTest.getClientRects(), 2)) return null;
+        return wBounds;
+    }
     const node = r.startContainer, text = node.nodeValue || '';
     let s = r.startOffset, e = r.startOffset;
     while (s > 0 && IS_WORD_CH(text[s - 1])) s--;
@@ -584,7 +595,12 @@ function wordBoundsAt(clientX, clientY) {
         s = e;
         while (e < text.length && IS_WORD_CH(text[e])) e++;
     }
-    return { node, start: s, end: e };
+    const wBounds = { node, start: s, end: e };
+    const rTest = document.createRange();
+    rTest.setStart(wBounds.node, wBounds.start);
+    rTest.setEnd(wBounds.endNode || wBounds.node, wBounds.end);
+    if (!isPointInRects(clientX, clientY, rTest.getClientRects(), state.format === 'pdf' ? 10 : 2)) return null;
+    return wBounds;
 }
 
 function cancelDragSelection() {
