@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `dev`. PR #84 merged, production verified.
+Status: **idle**. Branch: `dev`. PR #87 merged, production verified.
 
 Task: User approved the supplied format-expansion plan (`go`); implementing its
 first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
@@ -198,12 +198,69 @@ on both runs (fresh checkout, so the other session's uncommitted `lang-detect.js
 — had no bearing on it). Production verified: `selection.js?v=649429fd17c4` matches, and
 `tests/pdf_hitbox_stateless_browser.py` re-run directly against production — all 17 pass.
 
-Exact next action: wait for the user's real-device confirmation that the TTS echo is actually
-gone now (this sandbox has no real audio/real Android TTS engine to verify against); wait for
-confirmation on the bilingual-column selection fix AND the word-hitbox fix above on their real
-tablet; provide the scanned-PDF file (or precise repro details) for the still-open offset/
-misread-word issue; and whoever picks up the other session's `js/lang-detect.js` WIP should check
-the `"gare"` regression noted above before committing it.
+**Reading stats feature landed (concurrent session, PR #86, `0900c8b`)**: "Add reading stats,
+four languages, and grammar rules" — a new `js/learning-stats.js` (per-page word/vocabulary
+coverage popover, CEFR bands, persisted per book) plus four new interface/target languages
+(Chinese, Korean, Hindi, Irish) and French/English grammar-rule prompts for Ask AI. Not this
+session's own work — see PR #86 itself and `ARCHITECTURE.md`'s `learning-stats.js` row for
+details.
+
+**Reading stats position-independence fix (this session)**: user asked for an explicit audit of
+that new feature's page-statistics logic for position-dependent counting — reported that tapping
+words near a page's end, then returning to its beginning, made the statistics appear to "reset"
+toward 100% independent, as if help given near the bottom stopped counting.
+
+Confirmed the suspicion: `tokenIsOnCurrentPage()` DID use position-dependent logic for
+reflowable formats (PDF already always returned `true` unconditionally) — it tested each
+candidate word's `getClientRects()` against `els.container`'s LIVE `getBoundingClientRect()`
+("is this word in the on-screen viewport right now") instead of the reader's own stable,
+already-tracked `state.pageInChapter`. Both the page's total word count AND which specific taps
+got recorded went through this same filter. Confirmed reproducible with a completely realistic
+trigger: toggling immersive-mode (a normal, frequent interaction) changes `#reader-container`'s
+actual height, and with the old check this alone changed a page's word count (153→142 in one
+measured run) with zero navigation and zero change to `state.pageInChapter`. Cleanly isolated
+this from a SEPARATE, deeper, pre-existing issue found during the same investigation and
+deliberately left UNFIXED (out of scope for "page statistics logic," per the user's own "do not
+modify unrelated functionality"): `#reader-pages { height: 100% }` means the browser's own CSS
+column layout silently re-flows all content across columns whenever the container resizes,
+independent of `state.pageInChapter`/`totalPagesInChapter` — a pagination/resize-sync issue, not
+a stats-computation one. Whoever picks this up next: it's a real, separate bug worth its own
+task, not something this fix touches.
+
+Fix: `tokenIsOnCurrentPage()` now calls `pageIndexForRange()` (`js/tts.js`) — the same stable,
+computed column-index function TTS auto-page-turn already trusts — compared against
+`state.pageInChapter`, instead of live viewport geometry.
+Commit `f8ba55a` on dev (bundled with the concurrent session's own further, interleaved work on
+`js/selection.js`/`js/translation.js`/`js/grammar-svo.js` — centralizing help-recording through
+one `recordHelpForSpan` call per entry point — since both were mixed in the same working tree and
+couldn't be cleanly separated; full suite passed with everything combined); reconnect-merge
+`7dfd7e4`; merged into main via PR #87 (`e5760ec`).
+Tests: `tests/learning_stats_position_independence_browser.py` (new, wired into CI, 18/18
+checks) uses a REAL multi-page markdown document with genuine CSS-column pagination
+(`goToPageInChapter`) — unlike the sibling `learning_stats_languages_grammar_browser.py` suite's
+PDF-shaped stub, which always short-circuits `true` in `tokenIsOnCurrentPage()` and could never
+have exercised this path (explaining why the existing suite never caught it). The definitive,
+isolated check freezes the actual rendered layout (`els.pages` keeps its real measured height)
+and shrinks ONLY `els.container`'s reported rect — total stays unaffected when nothing about the
+real layout changed; confirmed (by temporarily reinstalling the old implementation at runtime)
+that this exact manipulation is what the old code got wrong (153→51 in one run). Also covers the
+full required reproduction: bottom/middle/top taps; scroll to bottom/top; navigate away and back;
+random tap order; explicit random-vs-sequential-order equivalence; 10 random-position taps with
+repeated scrolling and a simulated popup close; word taps combined with a paragraph translation;
+revisiting a page after visiting another; paragraphs selected out of order. Confirmed the test
+genuinely fails without the fix. Full existing suite re-run — all pass. CI green on both runs.
+Production verified: `learning-stats.js?v=67246f255f39` matches, and
+`tests/learning_stats_position_independence_browser.py` re-run directly against production — all
+18 pass.
+
+Exact next action: wait for the user's real-device confirmation that the TTS echo, the
+bilingual-column selection fix, and the word-hitbox fix are actually resolved on their tablet
+(this sandbox has no real audio/Android TTS engine or physical touchscreen to verify against);
+provide the scanned-PDF file (or precise repro details) for the still-open offset/misread-word
+issue; whoever picks up the other session's `js/lang-detect.js` WIP should check the `"gare"`
+regression noted in the previous entry before committing it (may already be resolved — re-check
+against the current committed state first); and the CSS-column-reflow-on-resize issue noted above
+is a real, separate, still-open bug worth its own task.
 
 ## Handoff rules
 
