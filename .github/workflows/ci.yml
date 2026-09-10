@@ -127,6 +127,8 @@ jobs:
           
           echo "Running learning_ux_browser.py..."
           python3 -u tests/learning_ux_browser.py
+
+          python3 -u tests/learning_stats_languages_grammar_browser.py
           
           python3 -u tests/migration_audit_browser.py
 

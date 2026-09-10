@@ -178,6 +178,24 @@ function readStoredNumber(key, fallback, min, max) {
     const n = parseFloat(readStored(key));
     return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
 }
+// One registry drives selectors, translation/AI language names and TTS locales.
+// Browser-provided translation and speech engines may still report a pair/voice
+// unavailable; callers keep their existing graceful fallback behavior.
+const LANGUAGE_CONFIG = {
+    uk: { locale: 'uk-UA', aiName: 'українською', promptName: 'Ukrainian' },
+    en: { locale: 'en-US', aiName: 'англійською', promptName: 'English' },
+    fr: { locale: 'fr-FR', aiName: 'французькою', promptName: 'French' },
+    ru: { locale: 'ru-RU', aiName: 'російською', promptName: 'Russian' },
+    zh: { locale: 'zh-CN', aiName: 'китайською (спрощеною)', promptName: 'Simplified Chinese' },
+    ko: { locale: 'ko-KR', aiName: 'корейською', promptName: 'Korean' },
+    hi: { locale: 'hi-IN', aiName: 'гінді', promptName: 'Hindi' },
+    ga: { locale: 'ga-IE', aiName: 'ірландською', promptName: 'Irish' }
+};
+const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG);
+function storedLanguage(key, fallback) {
+    const value = readStored(key);
+    return SUPPORTED_LANGUAGE_CODES.includes(value) ? value : fallback;
+}
 const state = {
     format: null, currentIndex: 0, totalPages: 0,
     // Масштаб PDF, розмір шрифту й режим "Вивчення" переживають перезапуск застосунку —
@@ -191,8 +209,8 @@ const state = {
     selectedVoiceURIByLang: (() => {
         // Голоси, обрані користувачем, зберігаються між сеансами — раніше вибір
         // жив лише до перезавантаження сторінки.
-        try { return Object.assign({ en: null, fr: null, uk: null, ru: null }, JSON.parse(readStored('reader_voices') || '{}')); }
-        catch (e) { return { en: null, fr: null, uk: null, ru: null }; }
+        try { return Object.assign(Object.fromEntries(SUPPORTED_LANGUAGE_CODES.map(code => [code, null])), JSON.parse(readStored('reader_voices') || '{}')); }
+        catch (e) { return Object.fromEntries(SUPPORTED_LANGUAGE_CODES.map(code => [code, null])); }
     })(),
     voiceChosenByUser: (() => {
         try { const value = JSON.parse(readStored('reader_voices_manual') || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch (e) { return {}; }
@@ -200,8 +218,8 @@ const state = {
     apiKey: readStored('reader_gemini_key') || '', groqKey: readStored('reader_groq_key') || '', translationCache: {}, lastAskContext: "",
     pageInChapter: 0, totalPagesInChapter: 1, bookKey: null, suppressNextClick: false,
     ttsQueue: [], ttsIndex: 0, ttsPaused: false, ttsGen: 0, pdfZoom: 1, lastTapPoint: null, expandLevel: 0, lastWordNode: null,
-    targetLang: readStored('reader_target_lang') || 'uk',
-    uiLang: readStored('reader_ui_lang') || 'uk',
+    targetLang: storedLanguage('reader_target_lang', 'uk'),
+    uiLang: storedLanguage('reader_ui_lang', 'uk'),
     speakSide: readStored('reader_speak_side') || 'original',
     lastGrammarSentence: '', lastAskParagraph: '', activeVerb: null, activeTense: 'indicatif présent', verbs: [], docChapters: null,
     refinedKeys: new Set(),
@@ -252,7 +270,7 @@ const VOICE_POOR_RE = /compact|eloquence|espeak|pico|festival|sapi\s?4|robot|cla
 // Найвища якість — нейромережеві голоси конкретних платформ.
 const VOICE_TOP_RE  = /neural|natural|wavenet|studio|journey|siri|premium|enhanced/i;
 // Улюблена локаль для кожної мови: fr-FR звучить звичніше за fr-CA, en-US за en-IN.
-const PREFERRED_LOCALE = { fr: ['fr-fr', 'fr-ca'], en: ['en-us', 'en-gb'], uk: ['uk-ua'], ru: ['ru-ru'] };
+const PREFERRED_LOCALE = { fr: ['fr-fr', 'fr-ca'], en: ['en-us', 'en-gb'], uk: ['uk-ua'], ru: ['ru-ru'], zh: ['zh-cn', 'zh-tw'], ko: ['ko-kr'], hi: ['hi-in'], ga: ['ga-ie'] };
 
 function voiceQualityScore(v) {
     let s = 0;
@@ -314,7 +332,7 @@ function loadVoices() {
     voices = ttsSynth.getVoices(); if (voices.length === 0) return;
     els.voiceSelect.innerHTML = '';
     // Показуємо мови книги (англійська/французька) + українську для озвучення перекладу.
-    const groups = { fr: t('voicesFr'), en: t('voicesEn'), uk: t('voicesUk'), ru: t('voicesRu') };
+    const groups = Object.fromEntries(SUPPORTED_LANGUAGE_CODES.map(code => [code, t('voices' + code[0].toUpperCase() + code.slice(1))]));
     for (const [code, title] of Object.entries(groups)) {
         const list = voices.filter(v => v.lang.toLowerCase().startsWith(code))
                            .sort((a, b) => voiceQualityScore(b) - voiceQualityScore(a));
@@ -337,7 +355,7 @@ function loadVoices() {
     // Автовибір найкращого голосу для кожної мови. Система часто підвантажує
     // якісні (серверні) голоси із запізненням, тому автовибір ПЕРЕГЛЯДАЄТЬСЯ, поки
     // користувач не зробив власний вибір: якщо з'явився кращий — беремо його.
-    ['fr', 'en', 'uk', 'ru'].forEach(code => {
+    SUPPORTED_LANGUAGE_CODES.forEach(code => {
         if (state.voiceChosenByUser[code]) return;      // ручний вибір не чіпаємо
         const best = pickBestVoice(code, voices);
         if (!best) return;
@@ -352,7 +370,7 @@ function loadVoices() {
 }
 // У полі показуємо голос тієї мови, якою зараз книга — саме його й буде чути.
 function restoreVoiceSelectValue() {
-    const key = pageLang().startsWith('fr') ? 'fr' : 'en';
+    const key = pageLang().slice(0, 2).toLowerCase();
     const uri = state.selectedVoiceURIByLang[key];
     if (uri) els.voiceSelect.value = uri;
 }
@@ -523,11 +541,50 @@ const I18N = {
     voicesFr:       { uk: 'Французька',     en: 'French',         fr: 'Français',       ru: 'Французский' },
     voicesEn:       { uk: 'Англійська',     en: 'English',        fr: 'Anglais',        ru: 'Английский' },
     voicesUk:       { uk: 'Українська',     en: 'Ukrainian',      fr: 'Ukrainien',      ru: 'Украинский' },
-    voicesRu:       { uk: 'Російська',      en: 'Russian',        fr: 'Russe',          ru: 'Русский' }
+    voicesRu:       { uk: 'Російська',      en: 'Russian',        fr: 'Russe',           ru: 'Русский' },
+    voicesZh:       { uk: 'Китайська (спрощена)', en: 'Chinese (Simplified)', fr: 'Chinois (simplifié)', ru: 'Китайский (упрощённый)' },
+    voicesKo:       { uk: 'Корейська',       en: 'Korean',         fr: 'Coréen',          ru: 'Корейский' },
+    voicesHi:       { uk: 'Гінді',           en: 'Hindi',          fr: 'Hindi',           ru: 'Хинди' },
+    voicesGa:       { uk: 'Ірландська',      en: 'Irish',          fr: 'Irlandais',       ru: 'Ирландский' },
+    statsTitle:     { uk: 'Розуміння прочитаного', en: 'Reading comprehension', fr: 'Compréhension écrite', ru: 'Понимание прочитанного' },
+    statsReading:   { uk: 'Прочитано без допомоги', en: 'Read without help', fr: 'Lu sans aide', ru: 'Прочитано без помощи' },
+    statsReadWithoutHelp: { uk: 'Прочитано без допомоги', en: 'Read without help', fr: 'Lu sans aide', ru: 'Прочитано без помощи' },
+    statsHelpRequested: { uk: 'Запитано допомогу', en: 'Help requested', fr: 'Aide demandée', ru: 'Запрошена помощь' },
+    statsPageWords: { uk: 'Слів на сторінці', en: 'Words on page', fr: 'Mots sur la page', ru: 'Слов на странице' },
+    statsIndependentWords: { uk: 'Без допомоги', en: 'Without help', fr: 'Sans aide', ru: 'Без помощи' },
+    statsUniqueTapped: { uk: 'Унікальних слів із запитом', en: 'Unique words tapped', fr: 'Mots uniques touchés', ru: 'Уникальных слов с запросом' },
+    statsTappedVocabulary: { uk: 'Лексика із запитом', en: 'Tapped vocabulary', fr: 'Vocabulaire touché', ru: 'Лексика с запросом' },
+    statsUnknown: { uk: 'Не класифіковано', en: 'Unclassified', fr: 'Non classé', ru: 'Не классифицировано' },
+    statsUnknownShort: { uk: 'Інше', en: 'Other', fr: 'Autre', ru: 'Другое' },
+    statsNoHelp: { uk: 'Ще немає запитів допомоги', en: 'No help requests yet', fr: 'Aucune demande d’aide', ru: 'Запросов помощи пока нет' }
 };
+
+// Additional interface locales extend the existing dictionary. Keys not yet
+// given a locale-specific diagnostic safely fall back to English, never to a
+// misleading or broken placeholder.
+const I18N_EXTRA = {
+    zh: {
+        toc:'☰ 目录',open:'📂 打开',loading:'加载中…',read:'🔊 朗读',pause:'⏸ 暂停',resume:'▶ 继续',altVoicesOn:'👥 双语音：开',altVoicesOff:'👥 双语音：关',learnOn:'🔮 学习：开',learnOff:'🔮 学习：关',themeLight:'浅色',themeSepia:'棕褐色',themeDark:'深色',aiKey:'🔑 AI 密钥',noBook:'尚未加载图书',welcome:'点击“打开”加载图书（EPUB、PDF 或 TXT）。',btnSentence:'句子 ⤢',btnAsk:'🤖 询问 AI',btnGrammar:'✨ 语法',translating:'翻译中…',panelAsk:'🤖 词语解释',panelGrammar:'📝 语法',tClose:'关闭',cancel:'取消',askHint:'点击词语并选择“询问 AI”，查看含义、用法和常见搭配。',grammarHint:'选择词语并点击“语法”进行分析。',prev:'◀ 上一页',next:'下一页 ▶',waiting:'等待中…',keyTitle:'🔑 Google AI Studio (Gemini) 密钥',save:'保存',ask:'输入问题…',generating:'生成中…',error:'错误',chapter:'章节',block:'段落',of:'共',page:'页',tMenu:'显示/隐藏菜单',tToc:'目录',tAiKey:'AI 密钥（Gemini / Groq）',tExitApp:'退出应用',exitFallback:'数据已保存。你可以使用系统按钮或手势关闭应用。',updateAvailable:'有新版本可用。',updateReload:'更新',archiveGuardFailed:'无法验证文件安全性。请重试或重新加载页面。',tAltVoices:'朗读时交替使用两个语音',tStudyMode:'学习模式：可点击词语',tZoomOut:'缩小文字',tZoomIn:'放大文字',tTheme:'主题',tVoice:'语音',tTargetLang:'翻译语言',tUiLang:'界面语言',tExpand:'扩展：句末 → 整句 → 段落',tSvo:'显示主语、谓语和宾语',tSpeakTr:'朗读翻译',tSpeakOrig:'朗读原文',tAskPanel:'AI 助手',tGrammarPanel:'语法',tPrevSent:'上一句',tPlayPause:'暂停/继续',tNextSent:'下一句',tFooter:'章节 · 页面 · 前后翻页',tStop:'停止朗读',unsupportedFormat:'不支持此格式。',fileTooLarge:'文件过大（最大 300 MB）。',emptyDoc:'文件中未找到文本。',pickVerb:'请先在分析中选择动词。',btnInk:'✏️ 书写',done:'完成',clearPageAsk:'清除此页上的全部书写内容？',btnRegion:'✂️ 区域',regionHint:'选择 PDF 区域',regionPdfOnly:'区域截取仅适用于 PDF。',regionFail:'无法截取该区域。',checking:'正在检查练习…',btnExplain:'📖 解释',btnTranslatePanel:'🌐 翻译',btnLangLevel:'📘 语言分析',selectFirst:'请先点击词语或选择文本中的句子。',keyFaster:'（更快）',needKey:'请在设置中输入 AI 密钥！',needKeySvo:'句子分析需要 AI 密钥。',analysing:'正在分析句子…',approx:'（离线近似）',svoSubject:'主语',svoVerb:'谓语',svoObject:'宾语',svoCoi:'间接宾语',more:'更多',alreadyIn:'文本已经是',oneVoice:'此设备只有一个法语语音，交替效果可能不明显。',micDenied:'麦克风访问被拒绝。',micNoSpeech:'未检测到语音，请重试。',micNotFound:'未找到麦克风。',dictationStart:'开始听写',dictationStop:'停止听写',dictationListening:'正在聆听… 可以暂停。■ 停止。',dictationStopped:'听写已停止。文字仍保留在输入框中。',micNetwork:'语音识别时出现网络问题。',noChapters:'未找到章节。',chapterMissing:'归档中未找到章节。',voicesFr:'法语',voicesEn:'英语',voicesUk:'乌克兰语',voicesRu:'俄语',voicesZh:'中文（简体）',voicesKo:'韩语',voicesHi:'印地语',voicesGa:'爱尔兰语',statsTitle:'阅读理解',statsReading:'无需帮助阅读',statsReadWithoutHelp:'无需帮助阅读',statsHelpRequested:'请求帮助',statsPageWords:'本页词数',statsIndependentWords:'无需帮助',statsUniqueTapped:'点击的唯一词语',statsTappedVocabulary:'点击词汇',statsUnknown:'未分类',statsUnknownShort:'其他',statsNoHelp:'尚未请求帮助'
+    },
+    ko: {
+        toc:'☰ 목차',open:'📂 열기',loading:'불러오는 중…',read:'🔊 읽기',pause:'⏸ 일시정지',resume:'▶ 계속',altVoicesOn:'👥 두 음성: 켬',altVoicesOff:'👥 두 음성: 끔',learnOn:'🔮 학습: 켬',learnOff:'🔮 학습: 끔',themeLight:'밝게',themeSepia:'세피아',themeDark:'어둡게',aiKey:'🔑 AI 키',noBook:'책을 불러오지 않았습니다',welcome:'“열기”를 눌러 책(EPUB, PDF 또는 TXT)을 불러오세요.',btnSentence:'문장 ⤢',btnAsk:'🤖 AI에게 묻기',btnGrammar:'✨ 문법',translating:'번역 중…',panelAsk:'🤖 단어 설명',panelGrammar:'📝 문법',tClose:'닫기',cancel:'취소',askHint:'단어를 탭하고 “AI에게 묻기”를 눌러 뜻과 용법을 확인하세요.',grammarHint:'단어를 선택하고 “문법”을 눌러 분석하세요.',prev:'◀ 이전',next:'다음 ▶',waiting:'대기 중…',keyTitle:'🔑 Google AI Studio (Gemini) 키',save:'저장',ask:'무엇이든 물어보세요…',generating:'생성 중…',error:'오류',chapter:'장',block:'블록',of:'중',page:'쪽',tMenu:'메뉴 표시/숨기기',tToc:'목차',tAiKey:'AI 키 (Gemini / Groq)',tExitApp:'앱 종료',exitFallback:'데이터가 저장되었습니다. 시스템 버튼이나 제스처로 앱을 닫을 수 있습니다.',updateAvailable:'새 앱 버전을 사용할 수 있습니다.',updateReload:'업데이트',archiveGuardFailed:'파일 안전성을 확인할 수 없습니다. 다시 시도하거나 페이지를 새로고침하세요.',tAltVoices:'읽는 동안 두 음성 번갈아 사용',tStudyMode:'학습 모드: 단어를 탭할 수 있습니다',tZoomOut:'글자 작게',tZoomIn:'글자 크게',tTheme:'테마',tVoice:'음성',tTargetLang:'번역 언어',tUiLang:'인터페이스 언어',tExpand:'확장: 문장 끝 → 전체 문장 → 문단',tSvo:'주어, 동사, 목적어 표시',tSpeakTr:'번역 읽기',tSpeakOrig:'원문 읽기',tAskPanel:'AI 도우미',tGrammarPanel:'문법',tPrevSent:'이전 문장',tPlayPause:'일시정지/계속',tNextSent:'다음 문장',tFooter:'장 · 쪽 · 이전/다음',tStop:'읽기 중지',unsupportedFormat:'지원되지 않는 형식입니다.',fileTooLarge:'파일이 너무 큽니다(최대 300MB).',emptyDoc:'파일에서 텍스트를 찾지 못했습니다.',pickVerb:'먼저 분석에서 동사를 선택하세요.',btnInk:'✏️ 쓰기',done:'완료',clearPageAsk:'이 페이지의 필기를 모두 지울까요?',btnRegion:'✂️ 영역',regionHint:'PDF 영역을 선택하세요',regionPdfOnly:'영역 캡처는 PDF에서만 작동합니다.',regionFail:'해당 영역을 캡처할 수 없습니다.',checking:'연습 문제 확인 중…',btnExplain:'📖 설명',btnTranslatePanel:'🌐 번역',btnLangLevel:'📘 언어 분석',selectFirst:'먼저 단어를 탭하거나 문장을 선택하세요.',keyFaster:'(더 빠름)',needKey:'설정에서 AI 키를 입력하세요!',needKeySvo:'문장 분석에는 AI 키가 필요합니다.',analysing:'문장 분석 중…',approx:'(오프라인 근사)',svoSubject:'주어',svoVerb:'동사',svoObject:'목적어',svoCoi:'간접 목적어',more:'더 보기',alreadyIn:'텍스트 언어:',oneVoice:'이 기기에는 프랑스어 음성이 하나뿐이라 교대 효과가 없을 수 있습니다.',micDenied:'마이크 접근이 거부되었습니다.',micNoSpeech:'음성이 감지되지 않았습니다. 다시 시도하세요.',micNotFound:'마이크를 찾을 수 없습니다.',dictationStart:'받아쓰기 시작',dictationStop:'받아쓰기 중지',dictationListening:'듣는 중… 잠시 멈춰도 됩니다. ■ 중지.',dictationStopped:'받아쓰기가 중지되었습니다. 텍스트는 입력란에 남아 있습니다.',micNetwork:'음성 인식 중 네트워크 문제가 발생했습니다.',noChapters:'장을 찾지 못했습니다.',chapterMissing:'보관 파일에서 장을 찾지 못했습니다.',voicesFr:'프랑스어',voicesEn:'영어',voicesUk:'우크라이나어',voicesRu:'러시아어',voicesZh:'중국어(간체)',voicesKo:'한국어',voicesHi:'힌디어',voicesGa:'아일랜드어',statsTitle:'독해',statsReading:'도움 없이 읽음',statsReadWithoutHelp:'도움 없이 읽음',statsHelpRequested:'도움 요청',statsPageWords:'페이지 단어 수',statsIndependentWords:'도움 없이',statsUniqueTapped:'탭한 고유 단어',statsTappedVocabulary:'탭한 어휘',statsUnknown:'미분류',statsUnknownShort:'기타',statsNoHelp:'아직 도움 요청이 없습니다'
+    },
+    hi: {
+        toc:'☰ विषय-सूची',open:'📂 खोलें',loading:'लोड हो रहा है…',read:'🔊 पढ़ें',pause:'⏸ रोकें',resume:'▶ जारी रखें',altVoicesOn:'👥 दो आवाज़ें: चालू',altVoicesOff:'👥 दो आवाज़ें: बंद',learnOn:'🔮 अध्ययन: चालू',learnOff:'🔮 अध्ययन: बंद',themeLight:'हल्का',themeSepia:'सेपिया',themeDark:'गहरा',aiKey:'🔑 AI कुंजी',noBook:'कोई पुस्तक लोड नहीं है',welcome:'पुस्तक (EPUB, PDF या TXT) लोड करने के लिए “खोलें” दबाएँ।',btnSentence:'वाक्य ⤢',btnAsk:'🤖 AI से पूछें',btnGrammar:'✨ व्याकरण',translating:'अनुवाद हो रहा है…',panelAsk:'🤖 शब्द की व्याख्या',panelGrammar:'📝 व्याकरण',tClose:'बंद करें',cancel:'रद्द करें',askHint:'शब्द पर टैप करके अर्थ और प्रयोग के लिए “AI से पूछें” दबाएँ।',grammarHint:'शब्द चुनें और विश्लेषण के लिए “व्याकरण” दबाएँ।',prev:'◀ पीछे',next:'आगे ▶',waiting:'प्रतीक्षा…',keyTitle:'🔑 Google AI Studio (Gemini) कुंजी',save:'सहेजें',ask:'कुछ भी पूछें…',generating:'बनाया जा रहा है…',error:'त्रुटि',chapter:'अध्याय',block:'खंड',of:'में से',page:'पृष्ठ',tMenu:'मेनू दिखाएँ/छिपाएँ',tToc:'विषय-सूची',tAiKey:'AI कुंजी (Gemini / Groq)',tExitApp:'ऐप से बाहर निकलें',exitFallback:'डेटा सहेज लिया गया है। सिस्टम बटन या जेस्चर से ऐप बंद करें।',updateAvailable:'ऐप का नया संस्करण उपलब्ध है।',updateReload:'अपडेट करें',archiveGuardFailed:'फ़ाइल की सुरक्षा जाँची नहीं जा सकी। फिर प्रयास करें।',tAltVoices:'पढ़ते समय दो आवाज़ें बदलें',tStudyMode:'अध्ययन मोड: शब्द टैप किए जा सकते हैं',tZoomOut:'छोटा पाठ',tZoomIn:'बड़ा पाठ',tTheme:'थीम',tVoice:'आवाज़',tTargetLang:'अनुवाद भाषा',tUiLang:'इंटरफ़ेस भाषा',tExpand:'बढ़ाएँ: वाक्य का अंत → पूरा वाक्य → अनुच्छेद',tSvo:'कर्ता, क्रिया और कर्म दिखाएँ',tSpeakTr:'अनुवाद सुनाएँ',tSpeakOrig:'मूल पाठ सुनाएँ',tAskPanel:'AI सहायक',tGrammarPanel:'व्याकरण',tPrevSent:'पिछला वाक्य',tPlayPause:'रोकें/जारी रखें',tNextSent:'अगला वाक्य',tFooter:'अध्याय · पृष्ठ · पीछे/आगे',tStop:'पढ़ना बंद करें',unsupportedFormat:'फ़ॉर्मेट समर्थित नहीं है।',fileTooLarge:'फ़ाइल बहुत बड़ी है (अधिकतम 300 MB)।',emptyDoc:'फ़ाइल में कोई पाठ नहीं मिला।',pickVerb:'पहले विश्लेषण में कोई क्रिया चुनें।',btnInk:'✏️ लिखें',done:'पूर्ण',clearPageAsk:'इस पृष्ठ की सारी लिखावट मिटाएँ?',btnRegion:'✂️ क्षेत्र',regionHint:'PDF का क्षेत्र चुनें',regionPdfOnly:'क्षेत्र कैप्चर केवल PDF में काम करता है।',regionFail:'वह क्षेत्र कैप्चर नहीं हो सका।',checking:'अभ्यास जाँचा जा रहा है…',btnExplain:'📖 व्याख्या',btnTranslatePanel:'🌐 अनुवाद',btnLangLevel:'📘 भाषा विश्लेषण',selectFirst:'पहले किसी शब्द पर टैप करें या वाक्य चुनें।',keyFaster:'(तेज़)',needKey:'सेटिंग में AI कुंजी दर्ज करें!',needKeySvo:'वाक्य विश्लेषण के लिए AI कुंजी चाहिए।',analysing:'वाक्य का विश्लेषण…',approx:'(ऑफ़लाइन अनुमान)',svoSubject:'कर्ता',svoVerb:'क्रिया',svoObject:'कर्म',svoCoi:'अप्रत्यक्ष कर्म',more:'और',alreadyIn:'पाठ पहले से',oneVoice:'इस डिवाइस पर केवल एक फ़्रेंच आवाज़ है—बदलाव सुनाई नहीं देगा।',micDenied:'माइक्रोफ़ोन की अनुमति नहीं मिली।',micNoSpeech:'कोई आवाज़ नहीं मिली, फिर प्रयास करें।',micNotFound:'माइक्रोफ़ोन नहीं मिला।',dictationStart:'डिक्टेशन शुरू करें',dictationStop:'डिक्टेशन रोकें',dictationListening:'सुन रहा है… विराम ले सकते हैं। ■ रोकें।',dictationStopped:'डिक्टेशन रुक गया। पाठ इनपुट में सुरक्षित है।',micNetwork:'वाणी पहचान के दौरान नेटवर्क समस्या।',noChapters:'कोई अध्याय नहीं मिला।',chapterMissing:'आर्काइव में अध्याय नहीं मिला।',voicesFr:'फ़्रेंच',voicesEn:'अंग्रेज़ी',voicesUk:'यूक्रेनी',voicesRu:'रूसी',voicesZh:'चीनी (सरलीकृत)',voicesKo:'कोरियाई',voicesHi:'हिन्दी',voicesGa:'आयरिश',statsTitle:'पठन-बोध',statsReading:'बिना सहायता पढ़ा',statsReadWithoutHelp:'बिना सहायता पढ़ा',statsHelpRequested:'सहायता माँगी',statsPageWords:'पृष्ठ पर शब्द',statsIndependentWords:'बिना सहायता',statsUniqueTapped:'टैप किए गए अनोखे शब्द',statsTappedVocabulary:'टैप की गई शब्दावली',statsUnknown:'अवर्गीकृत',statsUnknownShort:'अन्य',statsNoHelp:'अभी कोई सहायता अनुरोध नहीं'
+    },
+    ga: {
+        toc:'☰ Clár',open:'📂 Oscail',loading:'Á luchtú…',read:'🔊 Léigh',pause:'⏸ Cuir ar sos',resume:'▶ Lean ar aghaidh',altVoicesOn:'👥 Dhá ghuth: ANN',altVoicesOff:'👥 Dhá ghuth: AS',learnOn:'🔮 Staidéar: ANN',learnOff:'🔮 Staidéar: AS',themeLight:'Geal',themeSepia:'Seipia',themeDark:'Dorcha',aiKey:'🔑 Eochair AI',noBook:'Níl leabhar luchtaithe',welcome:'Brúigh “Oscail” chun leabhar (EPUB, PDF nó TXT) a luchtú.',btnSentence:'abairt ⤢',btnAsk:'🤖 Fiafraigh de AI',btnGrammar:'✨ Gramadach',translating:'Á aistriú…',panelAsk:'🤖 Míniú focal',panelGrammar:'📝 Gramadach',tClose:'Dún',cancel:'Cealaigh',askHint:'Tapáil focal agus brúigh “Fiafraigh de AI” chun brí agus úsáid a fheiceáil.',grammarHint:'Roghnaigh focal agus brúigh “Gramadach” chun anailís a dhéanamh air.',prev:'◀ Siar',next:'Ar aghaidh ▶',waiting:'Ag fanacht…',keyTitle:'🔑 Eochair Google AI Studio (Gemini)',save:'Sábháil',ask:'Cuir ceist…',generating:'Á ghiniúint…',error:'Earráid',chapter:'Caibidil',block:'Bloc',of:'as',page:'lch.',tMenu:'Taispeáin/folaigh an roghchlár',tToc:'Clár',tAiKey:'Eochair AI (Gemini / Groq)',tExitApp:'Scoir den aip',exitFallback:'Sábháladh na sonraí. Is féidir an aip a dhúnadh leis an gcnaipe córais nó gotha.',updateAvailable:'Tá leagan nua den aip ar fáil.',updateReload:'Nuashonraigh',archiveGuardFailed:'Níorbh fhéidir sábháilteacht an chomhaid a dheimhniú. Bain triail eile as.',tAltVoices:'Malartaigh dhá ghuth agus tú ag léamh',tStudyMode:'Mód staidéir: is féidir focail a thapáil',tZoomOut:'Téacs níos lú',tZoomIn:'Téacs níos mó',tTheme:'Téama',tVoice:'Guth',tTargetLang:'Teanga aistriúcháin',tUiLang:'Teanga an chomhéadain',tExpand:'Leathnaigh: deireadh abairte → abairt iomlán → alt',tSvo:'Taispeáin ainmní, briathar agus cuspóir',tSpeakTr:'Léigh an t-aistriúchán',tSpeakOrig:'Léigh an buntéacs',tAskPanel:'Cúntóir AI',tGrammarPanel:'Gramadach',tPrevSent:'An abairt roimhe',tPlayPause:'Sos / lean ar aghaidh',tNextSent:'An chéad abairt eile',tFooter:'Caibidil · leathanach · siar/ar aghaidh',tStop:'Stop ag léamh',unsupportedFormat:'Ní thacaítear leis an bhformáid.',fileTooLarge:'Tá an comhad rómhór (uasmhéid 300 MB).',emptyDoc:'Níor aimsíodh téacs sa chomhad.',pickVerb:'Roghnaigh briathar san anailís ar dtús.',btnInk:'✏️ Scríobh',done:'Déanta',clearPageAsk:'Scrios gach rud scríofa ar an leathanach seo?',btnRegion:'✂️ Réigiún',regionHint:'Roghnaigh réigiún PDF',regionPdfOnly:'Ní oibríonn gabháil réigiúin ach le PDF.',regionFail:'Níorbh fhéidir an réigiún sin a ghabháil.',checking:'An cleachtadh á sheiceáil…',btnExplain:'📖 Mínigh',btnTranslatePanel:'🌐 Aistrigh',btnLangLevel:'📘 Anailís teanga',selectFirst:'Tapáil focal nó roghnaigh abairt sa téacs ar dtús.',keyFaster:'(níos tapúla)',needKey:'Cuir an eochair AI isteach sna socruithe!',needKeySvo:'Tá eochair AI de dhíth le haghaidh anailís abairte.',analysing:'An abairt á hanailísiú…',approx:'(meastachán as líne)',svoSubject:'ainmní',svoVerb:'briathar',svoObject:'cuspóir',svoCoi:'cuspóir indíreach',more:'tuilleadh',alreadyIn:'tá an téacs cheana i',oneVoice:'Níl ach guth Fraincise amháin ar an ngléas seo—ní bheidh an malartú soiléir.',micDenied:'Diúltaíodh rochtain ar an micreafón.',micNoSpeech:'Níor braitheadh caint; bain triail eile as.',micNotFound:'Níor aimsíodh micreafón.',dictationStart:'Tosaigh deachtú',dictationStop:'Stop deachtú',dictationListening:'Ag éisteacht… Is féidir sosanna a ghlacadh. ■ chun stopadh.',dictationStopped:'Stopadh an deachtú. Tá an téacs fós sa réimse.',micNetwork:'Fadhb líonra le linn aithint cainte.',noChapters:'Níor aimsíodh caibidlí.',chapterMissing:'Níor aimsíodh an chaibidil sa chartlann.',voicesFr:'Fraincis',voicesEn:'Béarla',voicesUk:'Úcráinis',voicesRu:'Rúisis',voicesZh:'Sínis Shimplithe',voicesKo:'Cóiréis',voicesHi:'Hiondúis',voicesGa:'Gaeilge',statsTitle:'Tuiscint léitheoireachta',statsReading:'Léite gan chabhair',statsReadWithoutHelp:'Léite gan chabhair',statsHelpRequested:'Cabhair iarrtha',statsPageWords:'Focail ar an leathanach',statsIndependentWords:'Gan chabhair',statsUniqueTapped:'Focail uathúla tapáilte',statsTappedVocabulary:'Stór focal tapáilte',statsUnknown:'Gan rangú',statsUnknownShort:'Eile',statsNoHelp:'Níl aon iarratas cabhrach fós'
+    }
+};
+for (const [locale, values] of Object.entries(I18N_EXTRA)) {
+    for (const [key, value] of Object.entries(values)) if (I18N[key]) I18N[key][locale] = value;
+}
+for (const entry of Object.values(I18N)) {
+    for (const locale of SUPPORTED_LANGUAGE_CODES) if (!entry[locale]) entry[locale] = entry.en || entry.uk;
+}
 function t(key) {
     const e = I18N[key];
-    return e ? (e[state.uiLang] || e.uk) : key;
+    return e ? (e[state.uiLang] || e.en || e.uk) : key;
 }
 function applyI18n() {
     document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
@@ -542,11 +599,12 @@ function applyI18n() {
     els.askTab.setAttribute('aria-label', t('tAskPanel'));
     els.grammarTab.setAttribute('aria-label', t('tGrammarPanel'));
     if (typeof loadVoices === 'function') loadVoices();   // назви груп голосів
+    if (typeof refreshReadingStats === 'function') refreshReadingStats();
 }
 
 
 // Обрана мова застосовується скрізь: і до перекладу слів/речень, і до відповідей AI.
-const LANG_NAMES = { uk: 'українською', en: 'англійською', fr: 'французькою', ru: 'російською' };
+const LANG_NAMES = Object.fromEntries(Object.entries(LANGUAGE_CONFIG).map(([code, config]) => [code, config.aiName]));
 
 // escapeHtml перенесено сюди з мовно-нейтральної секції нижче в основному
 // файлі (raw HTML-екранування для довіреного тексту в innerHTML) — суто

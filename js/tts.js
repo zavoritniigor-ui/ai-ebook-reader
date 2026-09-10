@@ -101,7 +101,7 @@ function speakText(text, side, offset) {
 }
 // Озвучення ЗАДАНОЮ мовою — для перекладу, бо його мову ми знаємо точно й вона не
 // залежить від мови книги (автовизначення тут дало б хибний голос).
-const LANG_TAGS = { uk: 'uk-UA', en: 'en-US', fr: 'fr-FR', ru: 'ru-RU' };
+const LANG_TAGS = Object.fromEntries(Object.entries(LANGUAGE_CONFIG).map(([code, config]) => [code, config.locale]));
 function speakInLang(text, langCode, side, offset) {
     if (!text) return;
     state.ttsGen++;

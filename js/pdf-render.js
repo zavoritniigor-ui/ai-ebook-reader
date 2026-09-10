@@ -146,6 +146,7 @@ async function renderPdfPage(pageNum, options = {}) {
     updatePdfScrubber(); persistPdfZoom();
     els.progress.textContent = `${pageNum} ${t('of')} ${state.totalPages}`;
     updateSourceLang();   // текстовий шар PDF готовий — визначаємо мову сторінки
+    refreshReadingStats();
     saveBookmark();
     return true;
     } catch (err) {
