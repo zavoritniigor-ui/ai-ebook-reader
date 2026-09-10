@@ -57,7 +57,7 @@ function rangeAtTextOffsets(root, start, end) {
     }
     return null;
 }
-let activeAlignment = null, alignmentTimer;
+let activeAlignment = null, alignmentTimer, lastReaderHelpContext = null;
 const alignmentFlash = document.createElement('div'); alignmentFlash.id = 'alignment-flash';
 alignmentFlash.setAttribute('aria-hidden', 'true'); document.body.appendChild(alignmentFlash);
 function clearAlignmentFlash() {
@@ -129,11 +129,21 @@ document.addEventListener('click', e => {
 document.addEventListener('scroll', clearAlignmentFlash, true);
 window.addEventListener('resize', clearAlignmentFlash);
 
-async function handleWordOrSelection(text, clientX, clientY, anchorRect) {
+async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpContext = null, helpSource = null) {
     const cleanText = text.trim(); if (!cleanText) return;
     clearAlignment();
+    const isMultiWord = cleanText.split(/\s+/).length > 1;
     const lookupNode = state.lastSelectedRange?.startContainer || state.lastWordNode;
     const lookupRoot = [els.pages, els.askContent, els.grammarContent].find(root => lookupNode && root.contains(lookupNode)) || els.pages;
+    // Normal callers resolve the span before highlighting mutates it. This fallback
+    // keeps direct/future translation entry points on the same centralized API.
+    if (!helpContext) {
+        const selected = state.lastSelectedRange;
+        const readerTarget = selected && els.pages.contains(selected.startContainer) && els.pages.contains(selected.endContainer)
+            ? selected : state.lastWordNode && els.pages.contains(state.lastWordNode) ? state.lastWordNode : null;
+        if (readerTarget) helpContext = recordHelpForSpan(readerTarget, helpSource || (isMultiWord ? 'phrase_translation' : 'word_tap'));
+    }
+    if (helpContext) lastReaderHelpContext = helpContext;
     const task = beginAsyncTask('lookup');
     svoToken++; cancelAsyncTasks(['svo']);
     const contextSentence = state.ctxSentence;
@@ -158,7 +168,6 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect) {
     } catch (e) {}
     // Переклад кількох слів або цілого речення читається довше, тому таке вікно НЕ
     // закривається саме — воно лишається, доки не тапнути наступне слово чи вбік.
-    const isMultiWord = cleanText.split(/\s+/).length > 1;
     state.tooltipPersistent = isMultiWord;
     state.speakResume = null;      // нове слово — стара позиція вже не має сенсу
     // Автоозвучення йде тією стороною, чий динамік натискали останнім: оригінал —
@@ -198,6 +207,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect) {
     els.ttSvoBtn.onclick = (e) => {
         e.stopPropagation();
         cancelTooltipHide();
+        if (helpContext) recordHelpForSpan(helpContext, 'grammar');
         analyzeSVO(state.ctxSentence || cleanText);
     };
     // Динамік перекладу: озвучує переклад ОБРАНОЮ мовою і робить його активною стороною.
@@ -222,13 +232,13 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect) {
         if (!p) return;
         if (state.expandLevel === 0) {
             state.expandLevel = 1;
-            selectRangeAndTranslate(wordToSentenceEndRangeAt(p.x, p.y), p.x, p.y);
+            selectRangeAndTranslate(wordToSentenceEndRangeAt(p.x, p.y), p.x, p.y, 'phrase_translation');
         } else if (state.expandLevel === 1) {
             state.expandLevel = 2;
-            selectRangeAndTranslate(sentenceRangeAt(p.x, p.y), p.x, p.y);
+            selectRangeAndTranslate(sentenceRangeAt(p.x, p.y), p.x, p.y, 'sentence_translation');
         } else {
             state.expandLevel = 3;
-            selectRangeAndTranslate(paragraphRangeAt(p.x, p.y), p.x, p.y);
+            selectRangeAndTranslate(paragraphRangeAt(p.x, p.y), p.x, p.y, 'paragraph_translation');
         }
     };
 
@@ -236,6 +246,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect) {
         e.stopPropagation();
         cancelTooltipHide();
         els.tooltip.style.display = 'none';
+        if (helpContext) recordHelpForSpan(helpContext, 'grammar');
         // Передаємо речення, у якому стоїть слово: без контексту неможливо визначити,
         // яка саме це форма (час, особа), а саме це й потрібно для навчання. Контекст —
         // tapContextSentence, зібраний ще В МОМЕНТ ТАПУ (замкнення вище), а НЕ повторний
@@ -248,6 +259,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect) {
         e.stopPropagation();
         cancelTooltipHide();
         els.tooltip.style.display = 'none';
+        if (helpContext) recordHelpForSpan(helpContext, 'ask_ai');
         // Те саме речення-контекст, що й для граматики (з моменту тапу, не stale-координат).
         state.lastGrammarSentence = (tapContextSentence && tapContextSentence !== cleanText) ? tapContextSentence : '';
         state.lastAskParagraph = tapContextParagraph;
@@ -593,4 +605,3 @@ function translatePanelPoint(e, root) {
 }
 els.askContent.addEventListener('click', e => translatePanelPoint(e, els.askContent));
 els.grammarContent.addEventListener('click', e => translatePanelPoint(e, els.grammarContent));
-

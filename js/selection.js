@@ -427,10 +427,12 @@ function wordToSentenceEndRangeAt(clientX, clientY) {
     } catch (e) { return sentence; }
 }
 
-function selectRangeAndTranslate(range, clientX, clientY) {
+function selectRangeAndTranslate(range, clientX, clientY, sourceType = 'phrase_translation') {
     if (!range) return false;
     const text = range.toString().trim();
     if (!text) return false;
+    // Resolve source offsets before PDF highlighting splits the text-layer nodes.
+    const helpContext = recordHelpForSpan(range, sourceType);
     // Власна підсвітка, а не системне виділення: воно викликає вікно пошуку Chrome.
     showSelectionHighlight(range);
     state.lastSelectionText = text;
@@ -441,7 +443,7 @@ function selectRangeAndTranslate(range, clientX, clientY) {
     // Межі самого виділення — за ними вікно перекладу стане над або під реченням.
     let rect = null;
     try { const r = range.getBoundingClientRect(); if (r && (r.width || r.height)) rect = r; } catch (e) {}
-    handleWordOrSelection(text, clientX, clientY, rect);
+    handleWordOrSelection(text, clientX, clientY, rect, helpContext, sourceType);
     return true;
 }
 
@@ -722,6 +724,9 @@ els.mainArea.addEventListener('pointerup', (e) => {
     if (!r) return;
     const text = r.toString().trim();
     if (!text) return;
+    // Capture source occurrence IDs while the drag Range still references the
+    // untouched reader text layer.
+    const helpContext = recordHelpForSpan(r, 'phrase_translation');
     state.suppressNextClick = true;   // інакше слідом спрацює ще й тап по слову
     // Одне слово — звичайний шлях (зі словниковою статтею); кілька — як фрагмент.
     state.lastTapPoint = { x: e.clientX, y: e.clientY };
@@ -733,7 +738,7 @@ els.mainArea.addEventListener('pointerup', (e) => {
     state.lastSelectionText = text;
     let rect = null;
     try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
-    handleWordOrSelection(text, e.clientX, e.clientY, rect);
+    handleWordOrSelection(text, e.clientX, e.clientY, rect, helpContext, 'phrase_translation');
 });
 
 // Діапазон від слова A до слова B у правильному порядку, з межами по словах.
@@ -796,11 +801,12 @@ els.mainArea.addEventListener('click', (e) => {
     if (state.translateMode) {
         let word = selectWordAtPoint(e.clientX, e.clientY);
         if (word) {
-            // Record the exact source occurrence before phrasal-verb expansion changes
-            // the lookup text. The statistics module deduplicates repeat taps locally.
-            trackWordHelp(word, state.lastWordNode);
+            // Resolve the exact occurrence before phrasal-verb expansion changes the
+            // lookup text. Repeated taps remain the same source occurrence.
+            const helpContext = recordHelpForSpan(state.lastWordNode, 'word_tap');
             // Новий тап скидає підсвітку попереднього фрагмента.
             clearSelectionHighlight();
+            state.lastSelectedRange = null;
             state.lastTapPoint = { x: e.clientX, y: e.clientY };
             state.expandLevel = 0;
 
@@ -818,7 +824,7 @@ els.mainArea.addEventListener('click', (e) => {
             } catch (err) { state.ctxSentence = ''; }
             let rect = null;
             try { if (state.lastWordNode && state.lastWordNode.getBoundingClientRect) rect = state.lastWordNode.getBoundingClientRect(); } catch (err) {}
-            handleWordOrSelection(lookup, e.clientX, e.clientY, rect);
+            handleWordOrSelection(lookup, e.clientX, e.clientY, rect, helpContext, 'word_tap');
             state.tooltipJustClosed = false; // успішний виклик перекладу — скасовуємо блокування
             return;
         }

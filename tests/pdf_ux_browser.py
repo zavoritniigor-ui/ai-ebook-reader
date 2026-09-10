@@ -84,6 +84,7 @@ c.js("state.inkMode=false;document.body.classList.remove('ink-mode');state.trans
 pos=c.js("(()=>{const r=els.pages.querySelector('.pdf-text-layer span').getBoundingClientRect();return {x:r.left+20,y:r.top+r.height/2}})()")
 touch('touchStart',[(1,pos['x'],pos['y'])]);touch('touchEnd',[]);settle()
 check('tap word at 400% opens translation','__lookup.length>0 && els.tooltip.style.display==="flex"')
+check('real PDF word tap records one exact help occurrence','calculateCurrentPageStats().helped===1')
 check('translation screen overlay bounded',"(()=>{const r=els.tooltip.getBoundingClientRect();return els.tooltip.parentElement===document.body && r.left>=0 && r.top>=0 && r.right<=innerWidth && r.bottom<=innerHeight})()")
 # Crop capture includes ink; actual crop selection through pointer stream.
 c.js("invalidateSelection();document.getElementById('btn-region').click();window.__vision=0;callAIVision=async(prompt,data)=>{__vision++;window.__visionData=data;return 'Test response'}")

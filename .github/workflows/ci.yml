@@ -129,7 +129,10 @@ jobs:
           python3 -u tests/learning_ux_browser.py
 
           python3 -u tests/learning_stats_languages_grammar_browser.py
-          
+
+          echo "Running learning_stats_position_independence_browser.py..."
+          python3 -u tests/learning_stats_position_independence_browser.py
+
           python3 -u tests/migration_audit_browser.py
 
           python3 -u tests/formats_browser.py
