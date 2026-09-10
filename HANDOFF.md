@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `dev`. PR #79 merged, production verified.
+Status: **idle**. Branch: `dev`. PR #82 merged, production verified.
 
 Task: User approved the supplied format-expansion plan (`go`); implementing its
 first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
@@ -90,16 +90,85 @@ without the fix (reverted locally, re-ran, restored). Full existing suite
 (including the earlier, differently-shaped `pdf_sentence_reselect_browser.py`)
 re-run locally and against production after merge — all pass.
 
-Unrelated untracked scratch files and tests/language_tts_browser.py are untouched.
+**Separately, two more concurrent commits landed from the other session** while this one was
+working: `4add2b3`/`2f9890c` ("enforce strict pointer distance check across all word selection
+paths" + a CI-coordinate fix), merged as PR #81 (`5dea158`). Unrelated to anything below;
+mentioned only so the commit hashes in this file's history make sense.
 
-Still open separately: the reported scanned-PDF text-layer offset/misread word
-(a DIFFERENT PDF, image-based/OCR'd, from Google Drive — not the text-based
-bilingual-column PDF above) needs the actual affected file or a reproducible
-fixture. Do not claim it is fixed.
+**TTS "doubled voice" — round 2 (this session)**: the user reported the echo/doubled-voice
+symptom (see the earlier PR #74 entry, now superseded further down this file's git history)
+PERSISTED even after that fix, and asked to check everything related to speech again.
 
-Exact next action: wait for the user to confirm the bilingual-column selection
-fix on their real book, and provide the scanned-PDF file (or precise repro
-details) for the still-open offset/misread-word issue above.
+Root cause, separate and additional to PR #74's cancel()-timing fix: every real speak site
+(`speakText`, `speakInLang`, `speakCurrentSentence`'s per-segment loop in `js/tts.js`) set
+`utterance.lang` from our own hardcoded canonical language string (`LANG_TAGS`/
+`voiceForLangCode`'s `fullLang`, e.g. `'fr-FR'`) while setting `utterance.voice` independently
+from whichever real voice `pickBestVoice`/the user's saved choice resolved to. `pickBestVoice`
+only filters by a 2-letter language PREFIX, so a device's actual best French voice can
+genuinely be `fr-CA`, not `fr-FR` — meaning `utterance.lang` and `utterance.voice.lang` can
+disagree. A mismatched `lang`/`voice` pair on a `SpeechSynthesisUtterance` is a documented way
+to confuse Android's bridge to the system TTS engine into trying to satisfy BOTH signals at
+once, which can play the utterance twice, nearly simultaneously. Unlike PR #74's bug, this also
+happens with ZERO `cancel()` involved (the plain `speakSegment`→`onend`→`speakSegment` chain
+during ordinary continuous page reading) — likely the DOMINANT path, since continuous reading
+is how most TTS listening actually happens, which is why PR #74's fix alone didn't fully
+resolve the report. The one place that already did this correctly (by coincidence) was the
+settings voice-preview sample in `js/main.js` — its correctness is exactly what pointed at the
+fix.
+
+Fix: `setUtteranceVoice(u, lang, voice)` in `js/tts.js` — always derives `utterance.lang` from
+the ACTUALLY SELECTED voice's own `.lang` when a voice was found, falling back to the canonical
+`lang` string only when no voice was resolved. Applied at all three real speak sites plus the
+voice-preview sample (now sharing the helper instead of duplicating the already-correct logic).
+Commit `d212bff` on dev (cherry-picked there after an initial commit accidentally landed on
+local `main` — caught before pushing, `main` reset back to `origin/main`, no bad push happened);
+reconnect-merge `4448e24`; merged into main via PR #82 (`371ea98`).
+Tests: `tests/tts_lang_voice_mismatch_browser.py` (new, wired into CI, 6/6 checks) mocks two
+voices whose own `.lang` deliberately differs from the canonical mapping (`fr-CA` instead of
+`fr-FR`, `en-GB` instead of `en-US` — the exact real-world mismatch scenario) and proves
+`utterance.lang` always ends up matching `utterance.voice.lang` at all three real speak sites.
+Confirmed the test genuinely fails without the fix (reverted locally, re-ran — timed out because
+`setUtteranceVoice` no longer existed, restored). Full existing suite re-run — all pass. CI green
+on both runs. Production verified: `tts.js?v=1f9cc32ecc47`/`main.js?v=bfbc1f4193d2` match, and
+`tests/tts_lang_voice_mismatch_browser.py` re-run directly against production — all 6 pass.
+
+**Shared-workspace note for the next agent**: this session hit the other agent's `git
+checkout`/reset activity on the SAME physical working tree multiple times this round —
+(1) an in-progress edit to `js/selection.js` briefly vanished and had to be reapplied after
+being overwritten mid-task; (2) the local `dev`/`main` branch pointers got shuffled by the other
+session's own sync commands while this session was mid-commit, causing one commit to land on
+local `main` by mistake (caught and fixed as noted above, nothing was pushed); (3) the other
+session has an ACTIVE, UNCOMMITTED edit to `js/lang-detect.js` (adds `œ`/`Œ` ligature support to
+the FR/EN tokenizer regex and several words to `EN_WORDS`, including `'french'`) that is NOT
+part of any commit referenced here and was deliberately left untouched — **note for whoever
+commits it next**: with that WIP applied, `tests/language_context_browser.py`'s
+`"French: Où est la gare?"` case fails (`gare` gets misclassified as English) — verified this
+does NOT happen against the actually-committed code (confirmed by bypassing both the HTTP cache
+and the service worker, and testing on a completely fresh Chrome profile), so it's a real
+regression IN THAT WIP specifically, not in anything currently merged; worth a look before it's
+committed. This session did not fix it — not this session's file, not part of the TTS task.
+Also confirmed harmless: the local HTTP test server on :8765 died at some point mid-session
+(cause unclear, possibly cleaned up by the other agent) and was restarted; several stale/leftover
+Chrome tabs on the long-lived shared CDP port caused a run of misleading
+"Inspected target navigated or closed"/"Access is denied" test failures that had nothing to do
+with the app — resolved by using a separate CDP port with a completely fresh browser profile for
+this session's own verification runs, per `shared-workspace-git-race` in this session's own agent
+memory (not part of this repo).
+
+Unrelated untracked scratch files (this session's `tests/language_tts_browser.py`, and many more
+from the other session — `fix.js`/`fix.py`/`fix_epub.py`/`run_ci.sh`/`run_ci_python.sh`/
+`test*.{js,py,html}`/`viewer.css`/etc.) are untouched.
+
+Still open separately: the reported scanned-PDF text-layer offset/misread word (a DIFFERENT PDF,
+image-based/OCR'd, from Google Drive — not the text-based bilingual-column PDF from the earlier
+entry) needs the actual affected file or a reproducible fixture. Do not claim it is fixed.
+
+Exact next action: wait for the user's real-device confirmation that the TTS echo is actually
+gone now (this sandbox has no real audio/real Android TTS engine to verify against); wait for
+confirmation on the bilingual-column selection fix; provide the scanned-PDF file (or precise
+repro details) for the still-open offset/misread-word issue; and whoever picks up the other
+session's `js/lang-detect.js` WIP should check the `"gare"` regression noted above before
+committing it.
 
 ## Handoff rules
 
