@@ -65,7 +65,7 @@ check('classic execution order and no duplicate scripts', '''(()=>{
  const scripts=[...document.scripts].filter(s=>s.src.includes('/js/'));
  return scripts.every(s=>!s.async&&!s.defer&&s.type!=='module') &&
  new Set(scripts.map(s=>s.src)).size===scripts.length &&
- scripts.map(s=>new URL(s.src).pathname.split('/').pop()).join(',')==='core.js,lang-detect.js,tts.js,selection.js,navigation.js,pdf-zoom-pan.js,ui-tooltip.js,translation.js,grammar-svo.js,ai-client.js,dictation.js,pdf-ink.js,pdf-crop.js,pdf-render.js,formats.js,onboarding.js,main.js,pwa-lifecycle.js';})()''')
+ scripts.map(s=>new URL(s.src).pathname.split('/').pop()).join(',')==='core.js,lang-detect.js,tts.js,selection.js,learning-stats.js,navigation.js,pdf-zoom-pan.js,ui-tooltip.js,translation.js,grammar-svo.js,ai-client.js,dictation.js,pdf-ink.js,pdf-crop.js,pdf-render.js,formats.js,onboarding.js,main.js,pwa-lifecycle.js';})()''')
 check('language and voice helper dependencies', "detectLang('Les oiseaux chantent.').startsWith('fr') && voiceForText('Hello world').voice.voiceURI==='audit-en'")
 check('sanitization unchanged', '''(()=>{const d=document.createElement('div');d.innerHTML=safeHtml('<script>x</script><img src=x onerror=x><a href="javascript:x">x</a><svg onload=x></svg>',true);return !d.querySelector('script,img[src],svg,[onerror],[onload],[href]') && escapeHtml('<>&')==='&lt;&gt;&amp;';})()''')
 check('bodyless HTTP response survives timeout wrapper', """(async()=>{

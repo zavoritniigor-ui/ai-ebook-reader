@@ -121,6 +121,7 @@ function goToPageInChapter(p, animate = true) {
     els.pages.style.transform = `translate3d(${-(p * columnStep())}px, 0, 0)`;
     state.bookTextOffset = bookTextOffsetAtPage();
     updateProgressText();
+    refreshReadingStats();
     saveBookmark();
 }
 function updateProgressText() {

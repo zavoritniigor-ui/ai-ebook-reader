@@ -107,6 +107,46 @@
         .btn-danger:hover { background: rgba(220,53,69,0.18); }
         button.icon-btn { background: transparent; color: var(--text-color); font-weight: 500; }
         button.icon-btn.compact { width: var(--control-h); padding: 0; font-size: 15px; }
+        .reading-stats-control { position: relative; flex: 0 0 auto; }
+        #reading-stats-button {
+            min-width: 74px; padding: 0 10px; gap: 7px; font-variant-numeric: tabular-nums;
+        }
+        #reading-stats-button::before {
+            content: ''; width: 18px; height: 18px; flex: 0 0 18px; border-radius: 50%;
+            background: conic-gradient(var(--accent-color) var(--coverage, 0deg), var(--border-color) 0);
+            -webkit-mask: radial-gradient(circle, transparent 45%, #000 48%);
+            mask: radial-gradient(circle, transparent 45%, #000 48%);
+        }
+        #reading-stats-button:disabled { opacity: .55; cursor: default; }
+        #reading-stats-popover {
+            position: absolute; top: calc(100% + 9px); right: 0; width: min(320px, calc(100vw - 24px));
+            padding: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md);
+            background: var(--panel-bg); color: var(--text-color); box-shadow: 0 14px 38px rgba(var(--shadow-color),.24);
+            z-index: 10200; font-size: 13px;
+        }
+        #reading-stats-popover[hidden] { display: none; }
+        .stats-heading { font-size: 15px; margin: 0 0 13px; }
+        .stats-overview { display: grid; grid-template-columns: 78px 1fr; gap: 15px; align-items: center; }
+        .stats-ring {
+            --coverage: 0deg; width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center;
+            background: conic-gradient(var(--accent-color) var(--coverage), var(--border-color) 0); position: relative;
+        }
+        .stats-ring::before { content: ''; position: absolute; inset: 8px; border-radius: 50%; background: var(--panel-bg); }
+        .stats-ring strong { position: relative; font-size: 17px; font-variant-numeric: tabular-nums; }
+        .stats-summary { display: grid; gap: 6px; }
+        .stats-summary div, .stats-counts div { display: flex; justify-content: space-between; gap: 12px; }
+        .stats-summary span, .stats-counts span { color: var(--text-muted); }
+        .stats-summary b, .stats-counts b { font-variant-numeric: tabular-nums; }
+        .stats-counts { display: grid; gap: 5px; margin: 14px 0; padding-top: 12px; border-top: 1px solid var(--border-color); }
+        .stats-cefr-title { margin-bottom: 7px; font-weight: 600; }
+        .stats-cefr-bar { height: 8px; overflow: hidden; border-radius: 999px; display: flex; background: var(--surface-2); }
+        .cefr-segment { min-width: 2px; }
+        .cefr-a1 { background: #43a047; } .cefr-a2 { background: #7cb342; }
+        .cefr-b1 { background: #f9a825; } .cefr-b2 { background: #fb8c00; }
+        .cefr-c1 { background: #e53935; } .cefr-c2 { background: #8e24aa; }
+        .cefr-unknown { background: #8a8f98; }
+        .stats-cefr-list { display: flex; gap: 5px 11px; flex-wrap: wrap; margin-top: 8px; font-size: 11.5px; }
+        .stats-empty { color: var(--text-muted); }
         button.active-mode {
             background: rgba(16, 163, 127, 0.14) !important; color: #0f9d76 !important;
             border-color: rgba(16, 163, 127, 0.45) !important; font-weight: 600;
@@ -565,6 +605,9 @@
             .toolbar-group > select { flex: 1 1 calc(50% - 4px); }
             /* Іконкові кнопки лишаються квадратними, а не розтягнутими на півширини */
             .toolbar-group > .icon-btn.compact { flex: 0 0 44px; }
+            .toolbar-group > .reading-stats-control { flex: 0 0 auto; }
+            #reading-stats-button { min-height: 44px; }
+            #reading-stats-popover { position: fixed; top: 58px; right: 12px; }
             .header-controls button, .header-controls label.btn, .header-controls select {
                 min-height: 44px; font-size: 14.5px;
             }
@@ -716,7 +759,32 @@
                     <option value="en">🇬🇧 English</option>
                     <option value="fr">🇫🇷 Français</option>
                     <option value="ru">Русский</option>
+                    <option value="zh">中文 / 简体中文</option>
+                    <option value="ko">한국어</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="ga">Gaeilge</option>
                 </select>
+                <div class="reading-stats-control">
+                    <button type="button" class="icon-btn" id="reading-stats-button" aria-expanded="false" aria-controls="reading-stats-popover"><span id="reading-stats-value">0%</span></button>
+                    <section id="reading-stats-popover" role="dialog" aria-labelledby="reading-stats-heading" hidden>
+                        <h3 class="stats-heading" id="reading-stats-heading" data-i18n="statsTitle">Розуміння прочитаного</h3>
+                        <div class="stats-overview">
+                            <div class="stats-ring" id="reading-stats-ring"><strong id="stats-reading-pct">0%</strong></div>
+                            <div class="stats-summary">
+                                <div><span data-i18n="statsReadWithoutHelp">Прочитано без допомоги</span><b id="stats-reading-pct-label"></b></div>
+                                <div><span data-i18n="statsHelpRequested">Запитано допомогу</span><b id="stats-help-pct">0%</b></div>
+                            </div>
+                        </div>
+                        <div class="stats-counts">
+                            <div><span data-i18n="statsPageWords">Слів на сторінці</span><b id="stats-total">0</b></div>
+                            <div><span data-i18n="statsIndependentWords">Без допомоги</span><b id="stats-independent">0</b></div>
+                            <div><span data-i18n="statsUniqueTapped">Унікальних слів із запитом</span><b id="stats-helped">0</b></div>
+                        </div>
+                        <div class="stats-cefr-title" data-i18n="statsTappedVocabulary">Лексика із запитом</div>
+                        <div class="stats-cefr-bar empty" id="reading-stats-cefr-bar"></div>
+                        <div class="stats-cefr-list" id="reading-stats-cefr-list"></div>
+                    </section>
+                </div>
             </div>
             <div class="toolbar-group">
                 <button class="icon-btn compact" id="btn-ink" data-i18n-title="btnInk">✏️</button>
@@ -733,6 +801,10 @@
                     <option value="en">EN</option>
                     <option value="fr">FR</option>
                     <option value="ru">RU</option>
+                    <option value="zh">中文</option>
+                    <option value="ko">한국어</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="ga">Gaeilge</option>
                 </select>
                 <button class="icon-btn compact" onclick="openKeySettings()" data-i18n-title="tAiKey">🔑</button>
                 <!-- Показується лише у встановленому standalone-PWA (вмикається з JS) —
@@ -788,6 +860,7 @@
             <div class="chat-input-area">
                 <select id="mic-lang" style="height:44px; max-width:76px;">
                     <option value="uk-UA">UK</option><option value="en-US">EN</option><option value="fr-FR">FR</option><option value="ru-RU">RU</option>
+                    <option value="zh-CN">中文</option><option value="ko-KR">KO</option><option value="hi-IN">HI</option><option value="ga-IE">GA</option>
                 </select>
                 <button class="mic-btn" id="mic-btn" aria-label="Почати диктовку" aria-pressed="false">🎤</button>
                 <input type="text" id="ask-input" data-i18n-ph="ask">
@@ -883,8 +956,8 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=9c5a32634c1a"></script>
-    <script src="js/lang-detect.js?v=6da5d4bbd5dc"></script>
+    <script src="js/core.js?v=c72532dca49c"></script>
+    <script src="js/lang-detect.js?v=21625d365df7"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
         // core.js: усередині він доходить до pageLang() (js/lang-detect.js), яка на момент
@@ -893,21 +966,22 @@
         // вище вже завантажений і виконаний, тож тут виклик безпечний.
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
-    <script src="js/tts.js?v=1f9cc32ecc47"></script>
-    <script src="js/selection.js?v=649429fd17c4"></script>
-    <script src="js/navigation.js?v=310792008e41"></script>
+    <script src="js/tts.js?v=64539ee7a830"></script>
+    <script src="js/selection.js?v=78c3adebbe98"></script>
+    <script src="js/learning-stats.js?v=4e7f7b42d0bb"></script>
+    <script src="js/navigation.js?v=b8a654563aaa"></script>
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
     <script src="js/ui-tooltip.js?v=74da86198059"></script>
     <script src="js/translation.js?v=59e0973c2adc"></script>
-    <script src="js/grammar-svo.js?v=4961aebc5067"></script>
+    <script src="js/grammar-svo.js?v=30495a642fb3"></script>
     <script src="js/ai-client.js?v=a7a5f853ab94"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=7ab822ef42a8"></script>
     <script src="js/pdf-crop.js?v=93672612bda6"></script>
-    <script src="js/pdf-render.js?v=7d5c650a8f84"></script>
+    <script src="js/pdf-render.js?v=7cd1c82368db"></script>
     <script src="js/formats.js?v=f00593ffcb94"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/main.js?v=bfbc1f4193d2"></script>
+    <script src="js/main.js?v=a6e5adcc808c"></script>
     <script src="js/pwa-lifecycle.js?v=b9824003afbb"></script>
 </body>
 </html>

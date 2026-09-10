@@ -1,4 +1,4 @@
-/* lang-detect.js — евристика визначення мови (EN/FR) для мішаного тексту.
+/* lang-detect.js — евристика визначення мови для тексту читача.
  * Книга може бути двомовною, і навіть ОДНЕ речення може мішати англійську з
  * французькою — тому мова визначається не для сторінки чи речення в цілому,
  * а для кожного "острівця" тексту окремо (детальніше — у коментарі нижче).
@@ -45,6 +45,26 @@ const EN_SHAPE_RE = /(ing$|ed$|ly$|ness$|ship$|ough|augh|^wh|ck|^sh|oo|ee|y$)/i;
 // Поріг "сильного" сигналу: службове слово / елізія / діакритика (4-5 балів) — а не
 // орфографічна здогадка (1 бал). Тільки сильні токени можуть відкрити новий "острівець".
 const STRONG_MIN = 4;
+const GA_STRONG_WORDS = new Set('agus bhfuil raibh bheidh bhí tá seo sin anseo ansin freisin nuair conas dia duit maith liom linn agaibh acu orthu isteach amach anois riamh féidir gaeilge focal leabhar léamh scríobh'.split(' '));
+
+// Han/Hangul/Devanagari are unambiguous at script level. Irish shares Latin
+// script with EN/FR, so it is selected only from strong function/common words
+// (or an Irish-only fada plus a strong word), never from a generic accent guess.
+function specialLanguage(text) {
+    const letters = (text.match(/\p{L}/gu) || []).length;
+    if (!letters) return null;
+    const scripts = [
+        ['zh-CN', (text.match(/\p{Script=Han}/gu) || []).length],
+        ['ko-KR', (text.match(/\p{Script=Hangul}/gu) || []).length],
+        ['hi-IN', (text.match(/\p{Script=Devanagari}/gu) || []).length]
+    ];
+    const dominant = scripts.find(([, count]) => count && count * 2 >= letters);
+    if (dominant) return dominant[0];
+    const words = (text.toLocaleLowerCase().match(/[a-záéíóú]+/gu) || []);
+    const gaHits = words.filter(word => GA_STRONG_WORDS.has(word)).length;
+    if (gaHits >= 2 || (gaHits >= 1 && /[áíóú]/iu.test(text))) return 'ga-IE';
+    return null;
+}
 
 function scoreWord(w) {
     let fr = 0, en = 0;
@@ -251,6 +271,8 @@ function wrapParenSegments(segs, open, close, fallbackLang) {
 // між fr/en) — вважаємо її перекладом сусіда: підказка мови для такого випадку —
 // мова, ПРОТИЛЕЖНА щойно визначеній мові попередньої дільниці, а не мова книги.
 function buildLanguageSegments(text, priorLang2) {
+    const special = specialLanguage(text);
+    if (special) return [{ lang: special.slice(0, 2), text }];
     const parts = splitTopLevelParens(text);
     if (parts.length === 1 && !parts[0].paren) return buildFlatSegments(text, priorLang2);
     const out = [];
@@ -287,6 +309,8 @@ function cyrillicLang(text) {
     return /[іїєґ]/i.test(text) ? 'uk-UA' : 'ru-RU';
 }
 function detectLang(text) {
+    const special = specialLanguage(text);
+    if (special) return special;
     const cyr = cyrillicLang(text);
     if (cyr) return cyr;
     const segs = buildLanguageSegments(text, pageLang().slice(0, 2));
@@ -327,6 +351,8 @@ function pageLang() { return state.sourceLang || 'en-US'; }
 function fragmentLangInContext(fragment, context) {
     const clean = (fragment || '').trim();
     if (!clean || !context || context.length < clean.length) return null;
+    const special = specialLanguage(clean);
+    if (special) return special;
     const idx = context.toLowerCase().indexOf(clean.toLowerCase());
     if (idx === -1) return null;
     const cyr = cyrillicLang(context);
@@ -355,7 +381,7 @@ function langForText(text) {
     return detectLang(clean);
 }
 function voiceForLangCode(lang2) {
-    const fullLang = lang2 === 'fr' ? 'fr-FR' : lang2 === 'uk' ? 'uk-UA' : lang2 === 'ru' ? 'ru-RU' : 'en-US';
+    const fullLang = LANGUAGE_CONFIG[lang2]?.locale || LANGUAGE_CONFIG.en.locale;
     const uri = state.selectedVoiceURIByLang[lang2];
     // Запасний варіант — НАЙКРАЩИЙ голос мови, а не перший-ліпший зі списку:
     // першим у системі часто стоїть старий низькоякісний голос, через що англійська
@@ -364,7 +390,8 @@ function voiceForLangCode(lang2) {
 }
 function voiceForText(text) {
     const lang = langForText(text);
-    const key = lang.startsWith('fr') ? 'fr' : lang.startsWith('uk') ? 'uk' : lang.startsWith('ru') ? 'ru' : 'en';
+    const detected = lang.slice(0, 2).toLowerCase();
+    const key = LANGUAGE_CONFIG[detected] ? detected : 'en';
     return { lang, voice: voiceForLangCode(key).voice };
 }
 

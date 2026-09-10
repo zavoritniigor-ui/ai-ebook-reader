@@ -796,6 +796,9 @@ els.mainArea.addEventListener('click', (e) => {
     if (state.translateMode) {
         let word = selectWordAtPoint(e.clientX, e.clientY);
         if (word) {
+            // Record the exact source occurrence before phrasal-verb expansion changes
+            // the lookup text. The statistics module deduplicates repeat taps locally.
+            trackWordHelp(word, state.lastWordNode);
             // Новий тап скидає підсвітку попереднього фрагмента.
             clearSelectionHighlight();
             state.lastTapPoint = { x: e.clientX, y: e.clientY };
