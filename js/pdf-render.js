@@ -24,7 +24,13 @@ async function initPdf(file, epoch = readerEpoch.book) {
     // використовував eval (PostScriptCompiler для PDF-функцій), сама бібліотека видалила
     // як мертвий — тепер eval у PDF.js не використовується взагалі, і цей прапорець
     // нізвідки не читається (тож заборона eval гарантована безумовно, без опції).
-    const loading = pdfjsLib.getDocument({ data });
+    // PDF.js 6 moved JPEG2000, JBIG2 and CCITT decoding into separate files.
+    // Without this directory the worker resolves failed image resources to null,
+    // so page.render() can succeed with a completely white scanned page.
+    const loading = pdfjsLib.getDocument({
+        data,
+        wasmUrl: new URL('vendor/pdfjs-6.3.289/wasm/', document.baseURI).href
+    });
     pdfTasks.loading = loading;
     let doc;
     try { doc = await loading.promise; }
@@ -87,6 +93,9 @@ async function renderPdfPage(pageNum, options = {}) {
     tl.style.setProperty('--total-scale-factor', vp.scale);
     tl.style.setProperty('--scale-round-x', '1px');
     tl.style.setProperty('--scale-round-y', '1px');
+    // Selectable text is optional: scans have none, and damaged text operators
+    // must not prevent a page's independent graphical operators from rendering.
+    try {
     const textContent = await page.getTextContent();
     if (!current()) return false;
     // pdfjsLib.renderTextLayer (стара функція) видалено з PDF.js ще в 4.x — замість неї
@@ -111,6 +120,11 @@ async function renderPdfPage(pageNum, options = {}) {
     finally { if (pdfTasks.text === textLayer) pdfTasks.text = null; }
     if (!current()) return false;
     w.appendChild(tl);
+    } catch (err) {
+        if (!current()) return false;
+        tl.replaceChildren();
+        console.warn('PDF text layer unavailable; rendering the graphical page.', err);
+    }
 
     // Шар для письма: полотно того самого розміру й щільності поверх сторінки.
     // Додається ОСТАННІМ, тому лежить над текстовим шаром і приймає дотик пера.

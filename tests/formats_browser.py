@@ -49,5 +49,11 @@ check('Markdown vendor ready offline shell', "typeof marked.parse==='function'")
 upload('long.md', '# Long chapter\n\n' + '\n\n'.join(f'Paragraph {i}. ' + 'A readable sentence with words. ' * 12 for i in range(80)))
 check('long book paginates', 'state.totalPagesInChapter>3')
 check('font resize preserves the saved text fragment', "(()=>{goToPageInChapter(2,false);const offset=state.bookTextOffset;state.fontSize+=8;els.pages.style.fontSize=state.fontSize+'px';repaginateBook();return pageForBookTextOffset(offset)===state.pageInChapter && Number.isInteger(loadBookmark().textOffset)})()")
+# state.fontSize is a persistent user preference, not reset by openBookFile()
+# -- unlike this test's format="txt" and other scratch state, a +8px bump
+# left here would silently carry into EVERY *_browser.py suite that runs
+# after this one in the same CI job (they all share one Chrome tab), changing
+# how much content fits per page for any test not expecting it.
+c.js("state.fontSize-=8;els.pages.style.fontSize=state.fontSize+'px'")
 check('resource settle restores character bookmark', "(async()=>{const offset=state.bookTextOffset;await renderDocChapter(0,false,0,offset);return pageForBookTextOffset(offset)===state.pageInChapter})()")
 print('All format checks passed', flush=True)
