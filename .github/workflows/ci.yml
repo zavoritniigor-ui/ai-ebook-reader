@@ -143,6 +143,9 @@ jobs:
 
           python3 -u tests/formats_browser.py
 
+          echo "Running rich_text_formats_browser.py..."
+          python3 -u tests/rich_text_formats_browser.py
+
           echo "Running language_paren_browser.py..."
           python3 -u tests/language_paren_browser.py
 

@@ -42,6 +42,14 @@ render guards, font reflow and character-position restoration. CI runs this suit
 alongside the existing full PDF, learning and cross-cutting offline/security suites.
 Set `READER_TEST_URL` to run the format suite against a deployed app.
 
+`python3 tests/rich_text_formats_browser.py` covers the remaining four formats
+this table lists — DOCX, TXT, HTML/HTM and RTF had no automated coverage before
+it. Found and fixed a real bug: uploading a full saved webpage (the normal shape
+of a real `.html` file, not a bare fragment) leaked its `<title>` text into the
+visible reader content and, because that leaked text sat before the document's
+first real heading, pushed the actual content into a second "chapter" the reader
+never opened on by default. See `ARCHITECTURE.md`'s `formats.js`/`core.js` rows.
+
 The fixtures are regression checks, not a substitute for validation on a licensed
 corpus of complex real books or physical Android/iOS devices.
 

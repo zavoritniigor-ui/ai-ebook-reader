@@ -293,7 +293,16 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
     } else if (ext === 'md' || ext === 'markdown') {
         bodyHtml = marked.parse(await file.text(), { async: false, gfm: true });
     } else if (ext === 'html' || ext === 'htm') {
-        bodyHtml = await file.text();
+        // A real-world .html upload is very often a FULL saved page (<html><head>
+        // <title>...</title>...</head><body>...), not a bare fragment — parsing it
+        // as a document and keeping only <body> mirrors what loadEpubChapter()
+        // already does for spine XHTML, and for the same reason: passing the raw
+        // text straight into safeHtml() left <title> (allowed-nor-dropped, so its
+        // text got silently kept) as the page's FIRST "chapter" ahead of the real
+        // content, since splitIntoChapters() below starts a new chapter at the
+        // next heading — the reader opened on a near-empty page showing only the
+        // leaked title, with the actual content one chapter further in.
+        bodyHtml = new DOMParser().parseFromString(await file.text(), 'text/html').body.innerHTML;
     } else if (ext === 'rtf') {
         bodyHtml = rtfToHtml(await file.text());
     }
@@ -327,7 +336,14 @@ function splitIntoChapters(holder) {
     const flush = () => { if (cur.length) { chapters.push(cur.map(n => n.nodeType === Node.TEXT_NODE ? escapeHtml(n.textContent) : (n.outerHTML || '')).join('')); cur = []; curLen = 0; } };
     for (const n of nodes) {
         const isHeading = n.nodeType === Node.ELEMENT_NODE && /^H[1-3]$/.test(n.tagName);
-        if ((isHeading && cur.length) || curLen > 12000) flush();
+        // A heading only starts a NEW chapter if something more than insignificant
+        // whitespace came before it — otherwise a source file's own indentation
+        // (a lone text node like "\n" between <body> and its first <h1>, common in
+        // hand-formatted HTML/exported documents) produced a spurious near-empty
+        // first "chapter", and the reader opened straight onto it instead of the
+        // real content one chapter further in.
+        const hasContent = cur.some(node => node.nodeType !== Node.TEXT_NODE || node.textContent.trim());
+        if ((isHeading && hasContent) || curLen > 12000) flush();
         cur.push(n);
         curLen += (n.textContent || '').length;
     }
@@ -389,6 +405,10 @@ function rtfToHtml(rtf) {
 async function initTxt(file, epoch = readerEpoch.book) {
     const text = await file.text();
     if (epoch !== readerEpoch.book) return;
+    // Same "no text found" guard initRichDoc already has for the other formats —
+    // an empty .txt used to silently "succeed" into a blank, single-page reader
+    // instead of the clear error every other empty/unusable file gets.
+    if (!text.trim()) throw new Error(t('emptyDoc'));
     state.txtLines = text.split(/\r?\n/); state.totalPages = Math.ceil(state.txtLines.length / 50);
     buildToc(state.totalPages, "Блок", i => { renderTxtPage(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
