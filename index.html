@@ -57,16 +57,42 @@
             display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        /* Прозорий "язичок" загального меню — САМОСТІЙНИЙ фіксований елемент у кутку екрана,
-           єдиний спосіб відкрити/закрити верхнє меню. Лежить вище за все інше, тому тап у цій
-           зоні ніколи не потрапляє на текст і не викликає переклад слова. */
         #menu-handle {
-            position: fixed; top: 0; left: 0;
-            width: 50px; height: 30px; background: rgba(128,128,128,0.12);
-            border-radius: 0 0 22px 0; cursor: pointer; z-index: 10100;
-            transition: background-color 0.2s;
+            position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left));
+            width: 44px; height: 44px; border-radius: 50%; z-index: 10120;
+            color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+            border: 1px solid var(--border-color); backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px rgba(0,0,0,.12); cursor: pointer; touch-action: none;
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
-        #menu-handle:hover { background: rgba(128,128,128,0.22); }
+        #quick-wheel {
+            position: fixed; z-index: 10110; width: 320px; height: 320px; border-radius: 50%;
+            color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+            border: 1px solid var(--border-color); backdrop-filter: blur(10px);
+            box-shadow: 0 12px 36px rgba(0,0,0,.18); touch-action: none; user-select: none;
+            --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom);
+            --safe-left: env(safe-area-inset-left); --safe-right: env(safe-area-inset-right);
+            opacity: 1; transition: opacity .18s, display .18s allow-discrete;
+            animation: wheel-open .18s ease-out;
+        }
+        #quick-wheel[hidden] { display: none; opacity: 0; pointer-events: none; }
+        .wheel-item { position: absolute; left: 50%; top: 50%; width: 88px; min-height: 52px;
+            display: flex; flex-direction: column; gap: 2px; white-space: normal; height: auto;
+            border: 1px solid transparent; border-radius: 16px; background: transparent;
+            color: inherit; padding: 5px; font: inherit; font-size: 12px; line-height: 1.2;
+            transition: transform .2s ease-out, opacity .15s, background .15s; cursor: pointer; }
+        .wheel-item .wheel-icon { display: block; font-size: 20px; }
+        .wheel-item .wheel-label { display: block; width: 100%; overflow-wrap: normal; }
+        .wheel-item.active { background: color-mix(in srgb, var(--text-color) 10%, transparent); border-color: var(--border-color); }
+        .wheel-item:disabled { opacity: .35 !important; cursor: default; }
+        #quick-wheel.dragging .wheel-item { transition: opacity .12s; }
+        #wheel-full { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+            width: 76px; min-height: 48px; height: auto; padding: 6px; white-space: normal; border-radius: 14px; border: 1px solid var(--border-color);
+            background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+        #menu-handle:focus-visible, #quick-wheel button:focus-visible { outline: 3px solid var(--accent-color, #438bca); outline-offset: 3px; }
+        body.quick-wheel-open #app-header { visibility: hidden; }
+        @keyframes wheel-open { from { opacity: 0; scale: .96; } to { opacity: 1; scale: 1; } }
+        @media (prefers-reduced-motion: reduce) { #quick-wheel, #quick-wheel * { animation: none; transition: none; } }
 
         .header-controls { display: flex; width: 100%; align-items: center; gap: 4px; flex-wrap: wrap; }
         .toolbar-group {
@@ -738,7 +764,8 @@
 </head>
 <body data-theme="light" inert>
 
-    <div id="menu-handle" data-i18n-title="tMenu"></div>
+    <button type="button" id="menu-handle" data-i18n-title="wheelHint" aria-haspopup="dialog" aria-controls="quick-wheel" aria-expanded="false">☰</button>
+    <section id="quick-wheel" role="dialog" data-i18n-title="wheelTitle" hidden><button type="button" id="wheel-full" data-i18n="wheelFull"></button></section>
     <header id="app-header">
         <div class="header-controls" id="header-controls">
             <div class="toolbar-group">
@@ -971,7 +998,7 @@
     <script src="js/learning-stats.js?v=67246f255f39"></script>
     <script src="js/navigation.js?v=cd49774de655"></script>
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
-    <script src="js/ui-tooltip.js?v=74da86198059"></script>
+    <script src="js/ui-tooltip.js?v=4e69bd20dff1"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
     <script src="js/grammar-svo.js?v=d6c923f45e21"></script>
     <script src="js/ai-client.js?v=a7a5f853ab94"></script>
@@ -981,7 +1008,8 @@
     <script src="js/pdf-render.js?v=64ef9f00575d"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
+    <script src="js/quick-wheel.js?v=fb03d7d96b8b"></script>
     <script src="js/main.js?v=a6e5adcc808c"></script>
-    <script src="js/pwa-lifecycle.js?v=b9824003afbb"></script>
+    <script src="js/pwa-lifecycle.js?v=481465dc9260"></script>
 </body>
 </html>
