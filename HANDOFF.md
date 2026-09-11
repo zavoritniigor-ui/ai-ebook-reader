@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `dev`. PR #91 merged, production verified.
+Status: **idle**. Branch: `dev`. PR #93 merged, production verified.
 
 Task: User approved the supplied format-expansion plan (`go`); implementing its
 first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
@@ -370,14 +370,88 @@ not verified on a real device — there is no way to install a real WebAPK in th
 `sw.js` self-heal (unaffected by whether the OS-level shortcut's own URL registry updates) is
 what actually matters for BOTH platforms, and that half is directly production-verified above.
 
+**Format compatibility audit (this session)**: user asked for a complete compatibility audit of
+every document/file format the reader claims to support — import, render, navigate, TTS/
+translation/stats correctness, mobile/tablet behavior, reopen, and graceful error handling.
+
+Traced the COMPLETE supported-format list from the actual implementation, not documentation:
+`index.html`'s `<input accept=...>`, `openBookFile()`'s extension router (`js/main.js`), and
+FORMAT_SUPPORT.md all agree on 8 format families / 11 extensions — EPUB, PDF, TXT, DOCX, FB2/
+FB2.ZIP, MD/MARKDOWN, HTML/HTM, RTF. No drag-and-drop handler exists anywhere (file picker only —
+a fact, not a bug). Found one real mismatch: the UI's OWN "welcome" message (all 8 interface
+languages) advertised only "EPUB, PDF or TXT", silently under-advertising the other 5 supported
+families — fixed to list all 8.
+
+Bigger finding: `tests/formats_browser.py` covers FB2/FB2.ZIP/EPUB/Markdown, and the `pdf_*`
+suites cover PDF — but **DOCX, TXT, HTML/HTM and RTF had ZERO automated regression coverage**.
+Writing that coverage (`tests/rich_text_formats_browser.py`, 41 checks — minimal hand-built OOXML
+DOCX fixtures generated in-memory, no `python-docx` available) surfaced two real, confirmed bugs:
+
+1. **HTML/HTM title leak + spurious blank first "chapter"** — the REAL, common case: uploading a
+   full saved webpage (`<html><head><title>...</title>...<body>...`, not a bare fragment, which
+   is the normal shape of an actual `.html` file). `initRichDoc()`'s HTML branch passed the raw
+   file text straight into `safeHtml()`, whose allowlist neither renders nor drops `<title>` — it
+   fell into the "not content, walk its children" branch, so the title's own text silently became
+   visible reader content. Because that leaked text sat before the document's first real heading,
+   `splitIntoChapters()` (starts a new chapter at every heading) turned it into an entire separate
+   first "chapter" — **the reader opened directly on a near-blank page showing only the leaked
+   title**, with the real content one chapter further in. Fixed in two places: `formats.js`'s
+   HTML/HTM branch now parses via `DOMParser` and keeps only `.body.innerHTML` (mirroring how
+   `loadEpubChapter()` already handles real XHTML spine documents, for the identical reason), and
+   `core.js`'s `safeHtml()` now drops `<title>` outright as defense in depth.
+2. `splitIntoChapters()` itself: a heading only starts a new chapter if something more than
+   insignificant whitespace came before it — a lone `"\n"` text node between `<body>` and its
+   first `<h1>` (common in hand-formatted/exported HTML) used to trigger the same spurious blank
+   first chapter independent of bug #1; this is the general-purpose fix underlying it.
+3. `initTxt()` had no empty-file guard unlike every other format — fixed for consistency (was
+   silently "succeeding" into a blank single-page reader instead of the same clear error).
+
+Also confirmed (not bugs): extension routing is case-insensitive and compound-extension-aware
+(`.TXT`, `.Md`, `.FB2.ZIP` all route correctly); filenames with spaces and Ukrainian/Polish
+characters work; RTF's documented "plain text only, no bold/italic/image" limitation
+(FORMAT_SUPPORT.md) holds by design — building the RTF fixture confirmed bold/italic control
+words ARE silently stripped along with the text formatting, as intended; error handling for
+empty/corrupted/extension-mismatched/unsupported files was ALREADY robust across every format
+before this change (clear localized message, state fully resets, `document.body` never left
+inert, no uncaught JS errors) — this audit only added DOCX/TXT/HTML/RTF instances of that same
+matrix. A DOCX-fixture-authoring pitfall worth remembering for next time (not an app bug):
+mammoth.js's image reader needs a `wp:docPr` element as a sibling of `pic:blipFill` inside the
+drawing — omitting it throws `Cannot read properties of undefined (reading 'attributes')`.
+
+Commit `defec96` on dev; merged into main via PR #93 (`07cc990`). Regression tests: import/
+render/content (headings, bold/italic, links, embedded images, Ukrainian/Polish/mixed-language
+text, punctuation/quotes/apostrophes) for all four newly-covered formats; TTS extraction order
+and cleanliness (no HTML/entities leaking); reopen/persistence (DOCX); a representative phone/
+tablet/portrait/landscape/immersive-mode viewport matrix (DOCX — the shared pagination pipeline
+is already viewport-tested via EPUB/FB2/Markdown elsewhere, so this wasn't repeated per format);
+error handling across all four formats. Confirmed the empty-TXT regression test fails without its
+fix (reverted locally, re-ran); the title-leak/chapter-split fixes were confirmed the same way
+during interactive development before being formalized into the test. Full existing suite
+re-run — all pass. CI green (one run hit the known Chrome-CDP-startup flake three times in a row
+before a full — not just failed-job — rerun passed; noted in case this flake's rate has changed).
+Production verified: `formats.js?v=a5f91e0fd24e` matches, and BOTH `tests/rich_text_formats_browser.py`
+and `tests/formats_browser.py` re-run directly against production — all pass.
+
+Remaining risk / not testable here: real physical Android/iOS device behavior for any format
+(only Chrome DevTools viewport/touch emulation was used — explicitly not equivalent to a real
+device); PWA-mode (installed standalone) file import specifically was not separately exercised
+this session (the PWA-shortcut fix above covers navigation/launch, not the file-picker flow
+itself, which should be identical in standalone mode but wasn't empirically re-verified there);
+real Microsoft Word/LibreOffice-authored DOCX/RTF files with actual native numbered lists,
+tracked changes, or complex styles were not tested (the DOCX fixture is minimal, hand-built OOXML
+covering headings/bold/italic/links/images, not full Word-document fidelity — matches
+FORMAT_SUPPORT.md's own stated scope, "not an exact reproduction of Word pages"); large-file
+behavior (multi-MB documents) was exercised only via a large in-memory TXT fixture's pagination,
+not a true multi-megabyte file across every format.
+
 Exact next action: wait for the user's real-device confirmation that the TTS echo, the
-bilingual-column selection fix, the word-hitbox fix, this pagination/resize-sync fix, and this
-PWA-shortcut fix are actually resolved on their tablet/phone (this sandbox has no real audio/
-Android TTS engine, physical touchscreen/orientation events, or real WebAPK install to verify
-against); provide the scanned-PDF file (or precise repro details) for the still-open
-offset/misread-word issue; whoever picks up the other session's `js/lang-detect.js` WIP should
-check the `"gare"` regression noted in a previous entry before committing it (may already be
-resolved — re-check against the current committed state first).
+bilingual-column selection fix, the word-hitbox fix, the pagination/resize-sync fix, the
+PWA-shortcut fix, and this format-audit fix are actually resolved on their tablet/phone (this
+sandbox has no real audio/Android TTS engine, physical touchscreen/orientation events, or real
+WebAPK install to verify against); provide the scanned-PDF file (or precise repro details) for
+the still-open offset/misread-word issue; whoever picks up the other session's `js/lang-detect.js`
+WIP should check the `"gare"` regression noted in a previous entry before committing it (may
+already be resolved — re-check against the current committed state first).
 
 ## Handoff rules
 
