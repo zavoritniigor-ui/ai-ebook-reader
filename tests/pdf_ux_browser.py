@@ -19,11 +19,20 @@ print('loaded PDF:',c.js(f'''(async()=>{{
  localStorage.clear(); state.pdfScale=1; state.pdfFit='width'; state.format='pdf'; state.bookKey='pdf-ux-test';
  document.body.classList.add('pdf-mode','immersive-mode');
  window.__errors=[]; window.addEventListener('error',e=>__errors.push(e.message));
- window.__renders=0; window.__pendingRenders=0; window.__realRender=renderPdfPage;
- renderPdfPage=async(...args)=>{{__renders++;__pendingRenders++;try{{return await __realRender(...args)}}finally{{__pendingRenders--}}}};
+ window.__renders=0; window.__pendingRenders=0; window.__lastRenderAt=performance.now(); window.__realRender=renderPdfPage;
+ renderPdfPage=async(...args)=>{{__renders++;__pendingRenders++;__lastRenderAt=performance.now();try{{return await __realRender(...args)}}finally{{__pendingRenders--;__lastRenderAt=performance.now()}}}};
  const file=new File([Uint8Array.from(atob('{data}'),c=>c.charCodeAt(0))],'fixture.pdf');
  await initPdf(file);return {{pages:state.totalPages,text:els.pages.textContent, canvases:els.pages.querySelectorAll('canvas').length}};
 }})()'''))
+# The 'pdf-mode'/'immersive-mode' classes above resize #reader-container, which
+# navigation.js's ResizeObserver (fixes the HANDOFF.md pagination/resize-sync
+# bug) correctly detects and reacts to with a debounced renderPdfPage() call --
+# just like tests/pdf_sentence_reselect_browser.py already has to account for.
+# Left unhandled, that debounced call can land mid-gesture below and increment
+# __renders (or even cancelPdfInteraction() a live pinch) well after setup,
+# for a reason unrelated to what each check actually exercises. Wait for it to
+# settle before any of the render-counting checks begin.
+c.wait('__pendingRenders===0 && performance.now()-window.__lastRenderAt>400')
 
 def check(name, expression, timeout=0):
     result=c.js(expression)
