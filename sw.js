@@ -73,6 +73,24 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// Chrome MUST NOT be handed a Response whose own `redirected` flag is true
+// for a navigation FetchEvent — it silently fails the ENTIRE navigation with
+// net::ERR_FAILED instead of displaying it (undocumented in MDN, but real and
+// reproducible: this is exactly how the installed PWA shortcut broke —
+// Cloudflare Pages 308-redirects /index.html -> /, so both a live fetch()
+// of that URL and the copy `cache.addAll()` stored for it carry
+// `redirected:true` forever, and every future navigation to that exact URL
+// — including the shortcut's own start_url — hit this wall, online or off).
+// Reconstructing a plain Response with the same body/status/headers has no
+// redirect history and is always safe to hand to respondWith(); this heals
+// it for ANY navigation URL, not just the one that prompted the fix, so an
+// already-installed shortcut still pointed at the old /index.html start_url
+// self-heals the moment this worker updates — no reinstall required.
+async function stripRedirectHistory(res) {
+    if (!res || !res.redirected) return res;
+    return new Response(await res.clone().blob(), { status: res.status, statusText: res.statusText, headers: res.headers });
+}
+
 // Навігація (сам HTML-документ, включно зі стартом standalone-PWA) — мережа-спочатку
 // з коротким таймаутом: онлайн-користувач завжди отримує code з сервера (а не вчорашню
 // версію з кешу), офлайн чи повільна мережа — останню робочу закешовану. Саме тут жив
@@ -91,7 +109,7 @@ async function networkFirstForNavigation(req) {
 
     if (!timedOut) {
         const res = await networkPromise;
-        if (res && res.ok) return res;
+        if (res && res.ok) return stripRedirectHistory(res);
     }
 
     // Мережа не встигла вчасно, впала або відповіла помилкою — власний кеш, а якщо
@@ -100,9 +118,10 @@ async function networkFirstForNavigation(req) {
     // the offline snapshot; online navigation still receives the network response.
     const cache = await caches.open(CACHE_NAME);
     const cached = (await cache.match(req)) || (await cache.match('./index.html')) || (await cache.match('./'));
-    if (cached) return cached;
+    if (cached) return stripRedirectHistory(cached);
     const late = await networkPromise;
-    return late || new Response('Offline', { status: 503, statusText: 'Offline' });
+    if (late && late.ok) return stripRedirectHistory(late);
+    return new Response('Offline', { status: 503, statusText: 'Offline' });
 }
 
 self.addEventListener('fetch', (event) => {

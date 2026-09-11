@@ -18,7 +18,11 @@ still inline in `index.html` rather than in a module, and it has to stay that wa
 vendor files, icons) under a content-derived cache name and serves navigation requests
 network-first with a fallback to cache. `tools/version_app_shell.py` and
 `tests/app_shell_versions.py` keep the two files' version identifiers honest — see
-"Content-hash versioning" below.
+"Content-hash versioning" below. Its `networkFirstForNavigation()` always passes the
+Response it's about to hand to `respondWith()` through `stripRedirectHistory()` first —
+required because Chrome refuses a `redirected:true` Response for a navigation and fails the
+whole navigation with `net::ERR_FAILED` instead of displaying it; see "Known incidents"
+below for why that matters here specifically.
 
 ## Why every module is a classic `<script>`, not an ES module
 
@@ -187,6 +191,31 @@ extraction — both are **settled**, not open questions:
 - **`PDFDocumentProxy.destroy()` removed in PDF.js 6.3.289** (found during the same audit): a
   stale-completion cleanup path called `.destroy()` on a document proxy that no longer has
   that method. Fixed by destroying the owning `PDFDocumentLoadingTask` instead.
+- **Installed PWA shortcut opened a dead address** (user-reported). `manifest.webmanifest`'s
+  `start_url` was `"./index.html"`, resolved against the manifest's own URL to
+  `https://ai-ebook-reader.pages.dev/index.html` — exactly the URL Chrome bakes into the
+  shortcut (`Page.getAppManifest` confirmed this with zero installability errors, so Chrome
+  installs it without complaint). Cloudflare Pages 308-redirects any literal `/index.html`
+  request to `/` (a platform default for files named `index.html`, not something this repo
+  configures — confirmed via `curl -I`, no `_redirects`/`_headers` file exists here). Once the
+  service worker took over navigation (i.e. on every launch after the very first), Chrome
+  refuses to use a Response whose own `.redirected` flag is `true` to satisfy a navigation's
+  `respondWith()` and fails the ENTIRE navigation with `net::ERR_FAILED` / "this page may have
+  moved to a new address" — not a JS exception (`networkFirstForNavigation()` resolved cleanly
+  with a normal 200 Response), a browser-level rule with no console error to point at it.
+  Reproduced deterministically (see `tests/pwa_start_url_browser.py`'s own from-scratch local
+  server, built specifically to mimic Cloudflare's one relevant redirect) both for a live
+  network fetch (`event.request.redirect` is forced to `'manual'` for navigations, so a
+  redirecting target resolves to an `opaqueredirect` Response) and — the actual persistent
+  cause — the CACHED copy of `./index.html`, since `cache.addAll()` followed that same
+  redirect at install time and Cache Storage preserves `redirected:true` on it forever. Fixed
+  in two parts: `manifest.webmanifest`'s `start_url` is now `"./"` (Cloudflare never redirects
+  that, so no future install ever enters this state; `id` stayed `"/"` so Chrome treats this as
+  an update to the same installed app, not a new one), and `sw.js`'s
+  `networkFirstForNavigation()` now reconstructs a plain, history-free Response
+  (`stripRedirectHistory()`) before ever calling `respondWith()`. The second half is what lets
+  an ALREADY-installed shortcut — still permanently pointed at the old `/index.html` — heal
+  itself the moment the updated worker activates, online or offline, with no reinstall.
 
 ## Test coverage map
 
@@ -198,6 +227,7 @@ extraction — both are **settled**, not open questions:
 | `tests/learning_stats_position_independence_browser.py` | `learning-stats.js`'s `tokenIsOnCurrentPage()` fix (user-reported: statistics appeared to "reset" toward 100% independent after tapping words near a page's end and returning to its beginning) — audited and confirmed genuinely position-dependent logic for reflowable formats (PDF already always returned true). Uses a REAL multi-page markdown document with actual CSS-column pagination (`goToPageInChapter`), unlike the sibling suite's PDF-shaped stub. The definitive, isolated check freezes the actual rendered layout (`els.pages` keeps its real measured height) and shrinks only `els.container`'s reported rect — proving the total is unaffected when nothing about the real layout changed, and confirming (by temporarily reinstalling the old viewport-based implementation) that this specific manipulation is what the old code got wrong. Also covers the user's exact required reproduction (bottom/middle/top taps, scroll-to-bottom/top, navigate away and back, random vs. sequential tap order, 10 random-position taps with repeated scrolling, word taps combined with a paragraph translation, and out-of-order paragraph selection) — all against one persistent occurrence set. A SEPARATE, deeper, pre-existing issue was found during this audit and deliberately left untouched at the time (outside "page statistics logic"): `#reader-pages { height: 100% }` means the browser's own CSS column layout silently re-flows across columns whenever the container resizes (e.g. an immersive-mode toggle), independent of `state.pageInChapter`/`totalPagesInChapter` — a pagination/resize-sync issue, not a stats-computation one. Fixed separately — see `tests/reader_resize_sync_browser.py` and the `navigation.js` row above. |
 | `tests/reader_resize_sync_browser.py` | The pagination/resize-sync bug flagged (and deliberately left unfixed) by the suite above: `navigation.js`'s `ResizeObserver`-based resize handler (`containerResizeObserver`), replacing the old `window` `'resize'`-only trigger. First proves the bug is real by disconnecting the observer (`containerResizeObserver.unobserve`) and showing an immersive-mode-toggle container resize goes completely undetected — zero `repaginateBook()` calls despite a real, measured height change — then reconnects it and shows the identical resize is correctly detected and resynced. Covers the full required matrix on a real multi-page markdown document with mixed paragraph lengths: viewport resize wider→narrower and narrower→wider, immersive-mode toggle on the first/middle/last page, repeated rapid toggling (debounce collapses the burst to one resync, not zero and not one-per-frame), an active word highlight (the `.word-visited` span and its text survive), previously-recorded help/translation occurrences (the specific occurrence records survive with their `normalized` word intact — the page-level `total`/`helped` AGGREGATE is explicitly allowed to change, since reflow can genuinely move words to a different page), and TTS staying active with a valid queue through a mid-read resize. Every scenario also asserts `state.pageInChapter` stays in-range and that `state.bookTextOffset` still resolves (via `pageForBookTextOffset`) back to the page actually shown, i.e. no silent drift between the logical reading position and what's on screen. |
 | `tests/migration_audit_browser.py` | Cross-cutting correctness that the other two suites don't reach: classic script execution order, cold/hard reload behavior, sanitization, async task cancellation/epoch handling, AI provider fallback, real PDF cold-start rendering and multi-column sentence extraction, offline shell completeness, and genuine service-worker/offline behavior (the only suite that does **not** bypass the service worker). |
+| `tests/pwa_start_url_browser.py` | The "installed PWA shortcut opens a dead address" bug (see "Known incidents"). Runs its OWN tiny local server (not the shared one on 8765, which doesn't redirect anything) that serves this repo's real files plus the one Cloudflare Pages behavior the bug depends on (a 308 for literal `/index.html` requests to `/`), so it exercises the actual shipped `manifest.webmanifest` and `sw.js`, not a stand-in. Traces the full chain via `Page.getAppManifest` (manifest → resolved `start_url`/`scope`/`id` → Chrome's own computed installable manifest, zero installability errors) and asserts the URL Chrome would bake into a NEW shortcut resolves with zero redirects. Separately proves an ALREADY-installed shortcut — still pointed at the old `/index.html` — self-heals under the fixed worker with no reinstall, online and offline, while the new `/` start_url keeps working too (no regression). Confirmed (by reverting `sw.js`/`manifest.webmanifest` locally and re-running) that the manifest check fails first without the fix. |
 | `tests/app_shell_versions.py` | Fails CI if `index.html`'s script query-string versions and `sw.js`'s `APP_SHELL` entries have drifted apart — see "Content-hash versioning" below. |
 | `tests/language_paren_browser.py` | `lang-detect.js`'s parenthetical-translation-pair detection (`bonjour (hello)`, `hello (bonjour)`, nested parens) plus flat (non-parenthetical) mixed-language regression cases, so the paren-aware split can't silently break the plain sentence path. |
 | `tests/language_context_browser.py` | `lang-detect.js`'s context-aware clustering for local EN/FR phrases with **no** parentheses (`The French word maison means house.`, `Il est très important to pronounce it correctly.`), the test-only `debugLanguageSegments` inspection (token scores/tiers, segment boundaries, chosen TTS locale), a mixed EN/FR TTS voice-selection smoke test, and a guard that parenthesis segmentation stays unaffected. |
