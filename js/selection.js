@@ -116,6 +116,24 @@ function paragraphRangeAt(clientX, clientY) {
     if (!caret) return null;
     const block = blockAncestorOf(caret.startContainer);
     if (!block) return null;
+    // TXT keeps a whole import block in one div to preserve source whitespace
+    // and bookmark offsets. Select the source paragraph around the caret, not
+    // the entire block (which commonly exceeds the paragraph safety limit).
+    if (block.classList?.contains('txt-block')) {
+        const text = block.textContent || '';
+        const prefix = document.createRange();
+        prefix.selectNodeContents(block);
+        prefix.setEnd(caret.startContainer, caret.startOffset);
+        const offset = prefix.toString().length;
+        const breaks = /\r?\n[ \t]*\r?\n/.test(text) ? /\r?\n[ \t]*\r?\n/g : /\r?\n/g;
+        let start = 0, end = text.length, match;
+        while ((match = breaks.exec(text))) {
+            if (match.index >= offset) { end = match.index; break; }
+            start = match.index + match[0].length;
+        }
+        if (end - start > PARAGRAPH_MAX_CHARS || !text.slice(start, end).trim()) return null;
+        return rangeAtTextOffsets(block, start, end);
+    }
     // Запобіжник: якщо "абзац" завеликий — це контейнер розділу, а не абзац.
     if ((block.textContent || '').length > PARAGRAPH_MAX_CHARS) return null;
     const r = document.createRange();

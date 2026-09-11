@@ -54,6 +54,7 @@ the one Cloudflare-specific redirect this bug depends on, so the reproduction
 and the fix are both exercised against the actual shipped manifest.webmanifest
 and sw.js -- not a stand-in.
 """
+import atexit
 import http.server
 import json
 import os
@@ -122,12 +123,41 @@ httpd = socketserver.ThreadingTCPServer(('127.0.0.1', PORT), CloudflareLikeHandl
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
 
 
+CDP_PORT = os.environ.get("READER_CDP_PORT", "9222")
+_opened_tabs = []
+
+
 def new_tab(url):
     req = urllib.request.Request(
-        f'http://127.0.0.1:{os.environ.get("READER_CDP_PORT", "9222")}/json/new?{urllib.parse.quote(url)}',
+        f'http://127.0.0.1:{CDP_PORT}/json/new?{urllib.parse.quote(url)}',
         method='PUT')
     data = json.load(urllib.request.urlopen(req, timeout=10))
+    # CI runs every *_browser.py suite against the SAME Chrome instance in one
+    # session (see .github/workflows/ci.yml) -- an extra tab left open here
+    # keeps running the real app indefinitely, including its own
+    # pwa-lifecycle.js background-persistence writes to the SHARED origin
+    # localStorage, silently overwriting whatever a LATER suite just cleared
+    # (confirmed directly: reader_font_size kept reappearing after
+    # localStorage.clear() + reload in another suite, traced back to exactly
+    # this). Track every tab this file opens so it can close them all again.
+    _opened_tabs.append(data['id'])
     return data['webSocketDebuggerUrl']
+
+
+def close_opened_tabs():
+    for target_id in _opened_tabs:
+        try:
+            urllib.request.urlopen(f'http://127.0.0.1:{CDP_PORT}/json/close/{target_id}', timeout=5)
+        except Exception:
+            pass
+    _opened_tabs.clear()
+
+
+# Registered via atexit (not just a final call before ALL PWA START_URL CHECKS
+# PASSED) specifically so a FAILING check still closes every tab this file
+# opened -- an assertion failure must not leave the exact same pollution
+# behind that this cleanup exists to prevent.
+atexit.register(close_opened_tabs)
 
 
 def connect(ws_url):

@@ -32,6 +32,7 @@ jobs:
           for js_file in js/*.js; do node --check "$js_file"; done
           python3 tests/app_shell_versions.py
           python3 tests/browser_cdp_transport.py
+          python3 tests/ci_suite_coverage.py
           node --check sw.js
           node --check archive-guard.worker.js
           
@@ -145,6 +146,11 @@ jobs:
 
           echo "Running rich_text_formats_browser.py..."
           python3 -u tests/rich_text_formats_browser.py
+
+          python3 -u tests/pdf_rendering_audit_browser.py
+          python3 -u tests/archive_formats_audit_browser.py
+          python3 -u tests/text_formats_audit_browser.py
+          python3 -u tests/format_reader_audit_browser.py
 
           echo "Running language_paren_browser.py..."
           python3 -u tests/language_paren_browser.py

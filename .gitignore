@@ -63,3 +63,12 @@ Thumbs.db
 *.docx
 *.fb2
 *.rtf
+# ...except this repo's own deterministic, redistributable test fixtures --
+# real files the format-audit browser suites read from disk (no external
+# server, no private content, no OCR): tests/pdf_audit_fixtures.py and
+# tests/pdf_rendering_audit_browser.py for the PDF ones,
+# tests/generate_text_audit_fixtures.py / tests/text_formats_audit_browser.py
+# for the DOCX ones. These are the ONLY exceptions to the blanket book-format
+# rule above -- still no `!*.pdf` anywhere, so nothing else slips through.
+!/tests/fixtures/pdf/*.pdf
+!/tests/fixtures/text-audit/*.docx

@@ -84,7 +84,11 @@ function safeHtml(value, ai = false) {
         for (const prop of Array.from(node.style)) {
             const v = node.style.getPropertyValue(prop);
             // No URLs, escapes, functions, positioning or application CSS variables.
-            if (styles.has(prop) && /^[#%.,\s\w-]+$/.test(v)) el.style.setProperty(prop, v);
+            // CSSOM normalizes ordinary hex colors to rgb(...). Preserve those
+            // numeric colors without admitting URLs, variables or other functions.
+            const numericColor = /^(?:color|background-color|border-color)$/.test(prop)
+                && /^(?:rgba?|hsla?)\([\d\s.,%+\/-]+\)$/i.test(v);
+            if (styles.has(prop) && (/^[#%.,\s\w-]+$/.test(v) || numericColor)) el.style.setProperty(prop, v);
         }
         Array.from(node.childNodes).forEach(child => copy(child, el));
         parent.appendChild(el);
@@ -481,6 +485,7 @@ const I18N = {
                       fr: 'Fichier trop volumineux (300 Mo maximum). Essayez un autre fichier.',
                       ru: 'Файл слишком большой (максимум 300 МБ). Попробуйте другой файл.' },
     emptyDoc:       { uk: 'У файлі не знайдено тексту.', en: 'No text found in the file.', fr: 'Aucun texte trouvé dans le fichier.', ru: 'В файле не найден текст.' },
+    imageUnavailable: { uk: 'Зображення в документі не вдалося завантажити, а іншого тексту в ньому немає.', en: 'The image in this document could not be loaded, and it has no other text.', fr: 'L’image de ce document n’a pas pu être chargée, et il ne contient pas d’autre texte.', ru: 'Не удалось загрузить изображение в документе, а другого текста в нём нет.' },
     pickVerb:       { uk: 'Спершу оберіть дієслово у розборі.', en: 'First pick a verb in the analysis.', fr: 'Choisissez d’abord un verbe dans l’analyse.', ru: 'Сначала выберите глагол в разборе.' },
     btnInk:         { uk: '✏️ Писати',   en: '✏️ Write',       fr: '✏️ Écrire',     ru: '✏️ Писать' },
     done:           { uk: 'Готово',       en: 'Done',           fr: 'Terminé',        ru: 'Готово' },

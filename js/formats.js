@@ -80,7 +80,8 @@ async function settleBookLayout(current, target, textOffset = null) {
         paginateContainer();
         goToPageInChapter(page === -1 ? state.totalPagesInChapter - 1 : (pageForBookTextOffset(offset) ?? page), false);
     };
-    const pending = Array.from(els.pages.querySelectorAll('img')).map(img => {
+    const images = Array.from(els.pages.querySelectorAll('img'));
+    const pending = images.map(img => {
         img.loading = 'eager';
         img.addEventListener('load', () => { if (ready) reflow(); }, { once: true });
         return img.decode().catch(() => {});
@@ -89,6 +90,12 @@ async function settleBookLayout(current, target, textOffset = null) {
     let timer;
     await Promise.race([Promise.all(pending), new Promise(resolve => { timer = setTimeout(resolve, 3000); })]);
     clearTimeout(timer);
+    if (!current()) return;
+    // A missing/corrupt illustration must not masquerade as an empty page.
+    // Keep valid image-only chapters: their pixels are independent of prose.
+    if (images.length && !els.pages.textContent.trim() && images.every(img => img.complete && !img.naturalWidth)) {
+        throw new Error(t('imageUnavailable'));
+    }
     await new Promise(requestAnimationFrame);
     reflow(); ready = true;
 }
@@ -104,7 +111,11 @@ function parseFb2(text) {
             images.set(binary.id || binary.getAttribute('id'), `data:${mime};base64,${data}`);
         }
     }
-    return Array.from(xml.getElementsByTagNameNS('*', 'body')).map(body => fb2ToHtml(body, images)).join('');
+    // FictionBook stores the cover in description/title-info, outside every
+    // body. Reading bodies alone silently discarded a legitimate embedded cover.
+    const cover = xml.getElementsByTagNameNS('*', 'coverpage')[0];
+    return (cover ? fb2ToHtml(cover, images) : '') +
+        Array.from(xml.getElementsByTagNameNS('*', 'body')).map(body => fb2ToHtml(body, images)).join('');
 }
 
 async function readBookXml(file) {
@@ -177,7 +188,9 @@ async function initEpub(file, epoch = readerEpoch.book) {
     const xml = await container.async("text");
     if (epoch !== readerEpoch.book) return; 
     const parser = new DOMParser(); const docXml = parser.parseFromString(xml, "text/xml");
-    const rootfile = docXml.getElementsByTagName('rootfile')[0];
+    // XML prefixes are arbitrary: ocf:rootfile and opf:item are as valid as
+    // unprefixed elements in the default EPUB namespaces.
+    const rootfile = docXml.getElementsByTagNameNS('*', 'rootfile')[0];
     if (!rootfile || docXml.querySelector('parsererror')) throw new Error('Некоректний опис EPUB.');
     const opfPath = rootfile.getAttribute('full-path');
     if (!opfPath || !zip.file(opfPath)) throw new Error('Не знайдено опис книги EPUB.');
@@ -186,10 +199,10 @@ async function initEpub(file, epoch = readerEpoch.book) {
     if (epoch !== readerEpoch.book) return;
     if (doc.querySelector('parsererror')) throw new Error('Некоректний опис книги EPUB.');
     state.epubZip = zip; 
-    const man = Object.create(null); const items = doc.getElementsByTagName("item");
+    const man = Object.create(null); const items = doc.getElementsByTagNameNS('*', 'item');
     for(let i=0; i<items.length; i++) man[items[i].getAttribute("id")] = items[i].getAttribute("href");
     
-    state.spine = []; const refs = doc.getElementsByTagName("itemref");
+    state.spine = []; const refs = doc.getElementsByTagNameNS('*', 'itemref');
     for(let i=0; i<refs.length; i++) { 
         const id = refs[i].getAttribute("idref"); 
         if(man[id]) {
@@ -252,6 +265,7 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null, textOffset 
             if (!current()) return;
             
             els.pages.innerHTML = safeHtml(data);
+            if (!bookContentPresent(els.pages)) throw new Error(t('emptyDoc'));
         }
         state.extractedTextForTTS = els.pages.innerText;
         updateSourceLang();   // мова книги — перевизначається на кожному розділі
@@ -304,7 +318,10 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
         // leaked title, with the actual content one chapter further in.
         bodyHtml = new DOMParser().parseFromString(await file.text(), 'text/html').body.innerHTML;
     } else if (ext === 'rtf') {
-        bodyHtml = rtfToHtml(await file.text());
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const header = new TextDecoder().decode(bytes.subarray(0, 1024));
+        const codepage = header.match(/\\ansicpg(\d+)\b/)?.[1] || '1252';
+        bodyHtml = rtfToHtml(new TextDecoder(codepage === '65001' ? 'utf-8' : 'windows-' + codepage).decode(bytes));
     }
 
     if (epoch !== readerEpoch.book) return;
@@ -313,6 +330,7 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
     // Розбиваємо на розділи по заголовках — щоб працював зміст і навігація.
     const holder = document.createElement('div');
     holder.innerHTML = safeHtml(bodyHtml);
+    if (!bookContentPresent(holder)) throw new Error(t('emptyDoc'));
     state.docChapters = splitIntoChapters(holder);
     state.totalPages = state.docChapters.length;
 
@@ -329,6 +347,11 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
 
 // Ділимо документ на розділи по заголовках; якщо їх немає — по обсягу тексту,
 // щоб дуже довгий файл не розкладався в одну гігантську колонку.
+function bookContentPresent(node) {
+    return !!node.textContent.trim() || (node.nodeType === Node.ELEMENT_NODE &&
+        (node.matches('img[src],hr') || !!node.querySelector('img[src],hr')));
+}
+
 function splitIntoChapters(holder) {
     const nodes = Array.from(holder.childNodes);
     const chapters = [];
@@ -342,7 +365,7 @@ function splitIntoChapters(holder) {
         // hand-formatted HTML/exported documents) produced a spurious near-empty
         // first "chapter", and the reader opened straight onto it instead of the
         // real content one chapter further in.
-        const hasContent = cur.some(node => node.nodeType !== Node.TEXT_NODE || node.textContent.trim());
+        const hasContent = cur.some(bookContentPresent);
         if ((isHeading && hasContent) || curLen > 12000) flush();
         cur.push(n);
         curLen += (n.textContent || '').length;
@@ -389,16 +412,63 @@ function fb2ToHtml(node, images = new Map()) {
 // RTF: витягуємо чистий текст — розмітку RTF повністю відтворити тут неможливо,
 // але для читання й перекладу потрібен саме текст.
 function rtfToHtml(rtf) {
-    let s = rtf
-        .replace(/\\'([0-9a-f]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16)))
-        .replace(/\\u(-?\d+)\s?\??/g, (m, n) => String.fromCharCode(parseInt(n, 10) & 0xFFFF))
-        // Службові групи заголовка RTF (таблиця шрифтів, кольорів, стилі, метадані) —
-        // інакше в текст просочується сміття на кшталт "Times;".
-        .replace(/\{\\(?:fonttbl|colortbl|stylesheet|info|generator|\*)[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '')
-        .replace(/\\par[d]?\b/g, '\n')
-        .replace(/\\[a-z]+-?\d*\s?/gi, '')
-        .replace(/[{}]/g, '');
-    return s.split(/\n{1,}/).map(p => p.trim()).filter(Boolean)
+    if (!/^\s*\{\\rtf1\b/.test(rtf)) throw new Error('Некоректний RTF.');
+    // RTF is grouped, not a sequence of independent regex replacements. Group
+    // scope controls Unicode fallbacks/code pages and suppresses picture bytes,
+    // font tables and ignorable destinations. Formatting remains plain text.
+    const ignored = new Set('fonttbl colortbl stylesheet info generator pict object objdata shppict nonshppict listtable listoverridetable listtext pntext datastore themedata colorschememapping xmlnstbl fldinst'.split(' '));
+    const symbols = { '~': '\u00a0', '_': '\u2011', '-': '' };
+    const words = { par: '\n', line: '\n', tab: '\t', emdash: '—', endash: '–', bullet: '•', lquote: '‘', rquote: '’', ldblquote: '“', rdblquote: '”' };
+    let context = { skip: false, uc: 1, codepage: 'windows-1252' };
+    const stack = [], output = [];
+    let fallback = 0;
+    const literal = value => {
+        if (fallback) { fallback--; return; }
+        if (!context.skip) output.push(value);
+    };
+    for (let i = 0; i < rtf.length;) {
+        const ch = rtf[i++];
+        if (ch === '{') { stack.push(context); context = { ...context }; continue; }
+        if (ch === '}') { context = stack.pop() || context; fallback = 0; continue; }
+        if (ch === '\r' || ch === '\n') continue;
+        if (ch !== '\\') { literal(ch); continue; }
+        const next = rtf[i++];
+        if (next === '\\' || next === '{' || next === '}') { literal(next); continue; }
+        if (next === '*') { context.skip = true; continue; }
+        if (next in symbols) { literal(symbols[next]); continue; }
+        if (next === "'") {
+            const bytes = [];
+            do {
+                const hex = rtf.slice(i, i + 2);
+                if (!/^[a-f\d]{2}$/i.test(hex)) throw new Error('Некоректний RTF.');
+                bytes.push(parseInt(hex, 16)); i += 2;
+                if (rtf.slice(i, i + 2) !== "\\'") break;
+                i += 2;
+            } while (i < rtf.length);
+            const skip = Math.min(fallback, bytes.length); fallback -= skip;
+            if (!context.skip && skip < bytes.length) output.push(new TextDecoder(context.codepage).decode(new Uint8Array(bytes.slice(skip))));
+            continue;
+        }
+        if (!/[a-z]/i.test(next || '')) continue;
+        let word = next;
+        while (/[a-z]/i.test(rtf[i] || '')) word += rtf[i++];
+        let digits = '';
+        if (rtf[i] === '-') digits += rtf[i++];
+        while (/\d/.test(rtf[i] || '')) digits += rtf[i++];
+        const number = Number(digits);
+        if (rtf[i] === ' ') i++;
+        if (word === 'bin') { i += Math.max(0, number); continue; }
+        if (ignored.has(word)) { context.skip = true; continue; }
+        if (word === 'ansicpg') { context.codepage = number === 65001 ? 'utf-8' : 'windows-' + number; continue; }
+        if (word === 'uc') { context.uc = Math.max(0, number); continue; }
+        if (word === 'u') {
+            if (!context.skip) output.push(String.fromCharCode(number & 0xffff));
+            fallback = context.uc; continue;
+        }
+        if (word in words) literal(words[word]);
+    }
+    if (stack.length) throw new Error('Некоректний RTF.');
+    return output.join('').split(/\n{1,}/).map(p => p.trim()).filter(Boolean)
             .map(p => `<p>${escapeHtml(p)}</p>`).join('');
 }
 
