@@ -156,6 +156,7 @@ if (document.getElementById('btn-exit-app')) {
 // PWA — саме та "неправильна" поведінка, яку тут і виправляємо. Черга пріоритету —
 // від найвищого шару (модалка) до найглибшого (бічна панель зі змістом книги).
 const OVERLAY_LAYERS = [
+    { name: 'wheel', test: () => !document.getElementById('quick-wheel').hidden },
     { name: 'crop', test: () => cropDialog.open },
     { name: 'modal', test: () => document.getElementById('settings-modal').style.display === 'flex' },
     { name: 'region', test: () => document.body.classList.contains('region-mode') },
@@ -169,6 +170,7 @@ function topOpenOverlay() { for (const l of OVERLAY_LAYERS) if (l.test()) return
 function countOpenOverlays() { return OVERLAY_LAYERS.reduce((n, l) => n + (l.test() ? 1 : 0), 0); }
 function closeTopOverlay(name) {
     switch (name) {
+        case 'wheel': quickWheel.close(); break;
         case 'crop': closeCropPreview(); break;
         case 'modal': closeKeySettings(); break;
         case 'region': exitRegionMode(); break;
@@ -195,8 +197,8 @@ window.addEventListener('popstate', () => {
 });
 try {
     const overlayObserver = new MutationObserver(syncOverlayHistory);
-    [cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, els.sidebar, document.getElementById('settings-modal')]
-        .forEach((el) => el && overlayObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'open'] }));
+    [document.getElementById('quick-wheel'), cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, els.sidebar, document.getElementById('settings-modal')]
+        .forEach((el) => el && overlayObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] }));
 } catch (e) {}
 
 // Ненав'язлива persistent-смуга "доступна нова версія". На відміну від toast сама

@@ -219,7 +219,18 @@ const state = {
     voiceChosenByUser: (() => {
         try { const value = JSON.parse(readStored('reader_voices_manual') || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch (e) { return {}; }
     })(),
-    apiKey: readStored('reader_gemini_key') || '', groqKey: readStored('reader_groq_key') || '', translationCache: {}, lastAskContext: "",
+    apiKey: readStored('reader_gemini_key') || '', groqKey: readStored('reader_groq_key') || '',
+    openaiKey: readStored('reader_openai_key') || '',
+    activeAiProvider: (() => {
+        const saved = readStored('reader_active_ai_provider');
+        if (['openai', 'groq', 'gemini'].includes(saved)) return saved;
+        // One-time migration preserves the old text-provider preference. Never
+        // reselect based on keys once an explicit provider has been stored.
+        const provider = readStored('reader_groq_key') ? 'groq' : 'gemini';
+        writeStored('reader_active_ai_provider', provider);
+        return provider;
+    })(),
+    translationCache: {}, lastAskContext: "",
     pageInChapter: 0, totalPagesInChapter: 1, bookKey: null, suppressNextClick: false,
     ttsQueue: [], ttsIndex: 0, ttsPaused: false, ttsGen: 0, pdfZoom: 1, lastTapPoint: null, expandLevel: 0, lastWordNode: null,
     targetLang: storedLanguage('reader_target_lang', 'uk'),
@@ -587,6 +598,131 @@ for (const [locale, values] of Object.entries(I18N_EXTRA)) {
 for (const entry of Object.values(I18N)) {
     for (const locale of SUPPORTED_LANGUAGE_CODES) if (!entry[locale]) entry[locale] = entry.en || entry.uk;
 }
+
+// BYOK settings and safe provider errors, in every supported UI language.
+Object.assign(I18N, {
+    "openaiKeyTitle": {
+        "en": "🔑 OpenAI API",
+        "uk": "🔑 OpenAI API",
+        "fr": "🔑 API OpenAI",
+        "ru": "🔑 OpenAI API",
+        "zh": "🔑 OpenAI API",
+        "ko": "🔑 OpenAI API",
+        "hi": "🔑 OpenAI API",
+        "ga": "🔑 API OpenAI"
+    },
+    "groqKeyTitle": {
+        "en": "⚡ Groq API key",
+        "uk": "⚡ Ключ Groq",
+        "fr": "⚡ Clé API Groq",
+        "ru": "⚡ Ключ Groq",
+        "zh": "⚡ Groq API 密钥",
+        "ko": "⚡ Groq API 키",
+        "hi": "⚡ Groq API कुंजी",
+        "ga": "⚡ Eochair API Groq"
+    },
+    "aiProviderLabel": {
+        "en": "AI provider",
+        "uk": "Активний AI",
+        "fr": "Fournisseur IA actif",
+        "ru": "Активный AI",
+        "zh": "当前 AI 提供商",
+        "ko": "활성 AI 제공업체",
+        "hi": "सक्रिय AI प्रदाता",
+        "ga": "Soláthraí AI gníomhach"
+    },
+    "aiAddKey": {
+        "en": "Add a {provider} API key first.",
+        "uk": "Спочатку додайте API-ключ {provider}.",
+        "fr": "Ajoutez d’abord une clé API {provider}.",
+        "ru": "Сначала добавьте API-ключ {provider}.",
+        "zh": "请先添加 {provider} API 密钥。",
+        "ko": "먼저 {provider} API 키를 추가하세요.",
+        "hi": "पहले {provider} API कुंजी जोड़ें।",
+        "ga": "Cuir eochair API {provider} leis ar dtús."
+    },
+    "aiAuthError": {
+        "en": "{provider}: the API key is invalid or access is denied.",
+        "uk": "{provider}: API-ключ недійсний або доступ заборонено.",
+        "fr": "{provider} : clé API invalide ou accès refusé.",
+        "ru": "{provider}: API-ключ недействителен или доступ запрещён.",
+        "zh": "{provider}：API 密钥无效或访问被拒绝。",
+        "ko": "{provider}: API 키가 유효하지 않거나 접근이 거부되었습니다.",
+        "hi": "{provider}: API कुंजी अमान्य है या पहुँच अस्वीकृत है।",
+        "ga": "{provider}: tá an eochair API neamhbhailí nó diúltaíodh rochtain."
+    },
+    "aiRateError": {
+        "en": "{provider}: rate or usage limit reached. Check your quota or try again later.",
+        "uk": "{provider}: досягнуто ліміту запитів або використання. Перевірте квоту або спробуйте пізніше.",
+        "fr": "{provider} : limite de requêtes ou quota atteint. Vérifiez votre quota ou réessayez plus tard.",
+        "ru": "{provider}: достигнут лимит запросов или использования. Проверьте квоту или попробуйте позже.",
+        "zh": "{provider}：已达到请求或使用限额。请检查配额或稍后重试。",
+        "ko": "{provider}: 요청 또는 사용 한도에 도달했습니다. 할당량을 확인하거나 나중에 다시 시도하세요.",
+        "hi": "{provider}: अनुरोध या उपयोग सीमा पूरी हो गई। कोटा जाँचें या बाद में प्रयास करें।",
+        "ga": "{provider}: baineadh teorainn iarratas nó úsáide amach. Seiceáil do chuóta nó bain triail eile as níos déanaí."
+    },
+    "aiRequestError": {
+        "en": "{provider}: the request failed. Please try again.",
+        "uk": "{provider}: запит не виконано. Спробуйте ще раз.",
+        "fr": "{provider} : la requête a échoué. Réessayez.",
+        "ru": "{provider}: запрос не выполнен. Попробуйте ещё раз.",
+        "zh": "{provider}：请求失败，请重试。",
+        "ko": "{provider}: 요청에 실패했습니다. 다시 시도하세요.",
+        "hi": "{provider}: अनुरोध विफल हुआ। फिर प्रयास करें।",
+        "ga": "{provider}: theip ar an iarratas. Bain triail eile as."
+    },
+    "aiNetworkError": {
+        "en": "Could not reach the AI provider. Check your connection and try again.",
+        "uk": "Не вдалося зв’язатися з AI-провайдером. Перевірте з’єднання та спробуйте ще раз.",
+        "fr": "Impossible de joindre le fournisseur IA. Vérifiez la connexion et réessayez.",
+        "ru": "Не удалось связаться с AI-провайдером. Проверьте соединение и попробуйте снова.",
+        "zh": "无法连接 AI 提供商。请检查网络后重试。",
+        "ko": "AI 제공업체에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+        "hi": "AI प्रदाता से संपर्क नहीं हो सका। कनेक्शन जाँचें और फिर प्रयास करें।",
+        "ga": "Níorbh fhéidir an soláthraí AI a bhaint amach. Seiceáil an nasc agus bain triail eile as."
+    },
+    "aiInvalidResponse": {
+        "en": "The AI response was invalid or incomplete. Please try again.",
+        "uk": "Відповідь AI некоректна або неповна. Спробуйте ще раз.",
+        "fr": "La réponse IA est invalide ou incomplète. Réessayez.",
+        "ru": "Ответ AI некорректен или неполон. Попробуйте ещё раз.",
+        "zh": "AI 回复无效或不完整，请重试。",
+        "ko": "AI 응답이 유효하지 않거나 불완전합니다. 다시 시도하세요.",
+        "hi": "AI उत्तर अमान्य या अधूरा था। फिर प्रयास करें।",
+        "ga": "Bhí an freagra AI neamhbhailí nó neamhiomlán. Bain triail eile as."
+    },
+    "aiEmptyResponse": {
+        "en": "The AI returned no text. Please try again.",
+        "uk": "AI не повернув тексту. Спробуйте ще раз.",
+        "fr": "L’IA n’a renvoyé aucun texte. Réessayez.",
+        "ru": "AI не вернул текст. Попробуйте ещё раз.",
+        "zh": "AI 未返回文本，请重试。",
+        "ko": "AI가 텍스트를 반환하지 않았습니다. 다시 시도하세요.",
+        "hi": "AI ने कोई पाठ नहीं लौटाया। फिर प्रयास करें।",
+        "ga": "Níor sheol an AI aon téacs ar ais. Bain triail eile as."
+    },
+    "keyNote": {
+        "en": "Save your keys and choose the provider for all AI requests. Providers never switch automatically.",
+        "uk": "Збережіть ключі та виберіть провайдера для всіх запитів AI. Автоматичного перемикання немає.",
+        "fr": "Enregistrez vos clés et choisissez le fournisseur pour toutes les requêtes IA. Aucun changement automatique.",
+        "ru": "Сохраните ключи и выберите провайдера для всех запросов AI. Автоматического переключения нет.",
+        "zh": "保存密钥并为所有 AI 请求选择提供商。系统不会自动切换。",
+        "ko": "키를 저장하고 모든 AI 요청에 사용할 제공업체를 선택하세요. 자동 전환되지 않습니다.",
+        "hi": "कुंजियाँ सहेजें और सभी AI अनुरोधों के लिए प्रदाता चुनें। प्रदाता अपने आप नहीं बदलता।",
+        "ga": "Sábháil do chuid eochracha agus roghnaigh soláthraí do gach iarratas AI. Ní athraítear soláthraí go huathoibríoch."
+    },
+    "tAiKey": {
+        "en": "AI API keys (OpenAI / Groq / Gemini)",
+        "uk": "API-ключі AI (OpenAI / Groq / Gemini)",
+        "fr": "Clés API IA (OpenAI / Groq / Gemini)",
+        "ru": "API-ключи AI (OpenAI / Groq / Gemini)",
+        "zh": "AI API 密钥（OpenAI / Groq / Gemini）",
+        "ko": "AI API 키 (OpenAI / Groq / Gemini)",
+        "hi": "AI API कुंजियाँ (OpenAI / Groq / Gemini)",
+        "ga": "Eochracha API AI (OpenAI / Groq / Gemini)"
+    }
+});
+
 function t(key) {
     const e = I18N[key];
     return e ? (e[state.uiLang] || e.en || e.uk) : key;

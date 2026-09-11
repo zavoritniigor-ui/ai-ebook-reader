@@ -140,6 +140,10 @@ jobs:
           echo "Running pwa_start_url_browser.py..."
           python3 -u tests/pwa_start_url_browser.py
 
+          python3 -u tests/ai_providers_browser.py
+
+          python3 -u tests/quick_wheel_browser.py
+
           python3 -u tests/migration_audit_browser.py
 
           python3 -u tests/formats_browser.py

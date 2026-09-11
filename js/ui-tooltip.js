@@ -60,6 +60,7 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 document.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('#menu-handle, #quick-wheel')) return;
     let closedPopup = false;
     if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
         if (els.tooltip.style.display !== 'none') closedPopup = true;
@@ -84,15 +85,6 @@ document.addEventListener('pointerdown', (e) => {
 function enterMobileFullScreenIfNeeded() {
     if (window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
 }
-if (els.menuHandle) {
-    // Єдиний перемикач верхнього меню. Клік по ручці ніколи не доходить до тексту,
-    // тому працює однаково і в режимі "Вивчення".
-    els.menuHandle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.body.classList.toggle('immersive-mode');
-    });
-}
-
 // Підказка зникає сама приблизно за 1,8 с — щоб можна було читати далі, не тапаючи
 // спеціально в інше місце. Таймер зупиняється, поки палець/курсор на самій підказці,
 // інакше кнопки "Запитай AI" та "Граматика" встигали б зникнути з-під пальця.
@@ -144,19 +136,52 @@ function repositionTooltip() {
 window.visualViewport?.addEventListener('resize', repositionTooltip);
 window.visualViewport?.addEventListener('scroll', repositionTooltip);
 
+let keySettingsProvider;
+function updateProviderRadios() {
+    document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {
+        radio.checked = radio.value === keySettingsProvider;
+    });
+}
+function providerSettingsError(provider) {
+    const error = document.getElementById('ai-provider-error');
+    error.textContent = missingAiKey(provider); error.hidden = false;
+}
 function openKeySettings() {
-    // Показуємо вже збережені ключі, щоб їх було видно й можна було замінити.
-    document.getElementById('api-key-input').value = state.apiKey || '';
-    document.getElementById('groq-key-input').value = state.groqKey || '';
+    Object.entries(AI_PROVIDERS).forEach(([provider, config]) => {
+        document.getElementById(config.input).value = aiProviderKey(provider) || '';
+    });
+    keySettingsProvider = state.activeAiProvider;
+    updateProviderRadios();
+    document.getElementById('ai-provider-error').hidden = true;
     document.getElementById('settings-modal').style.display = 'flex';
 }
 function closeKeySettings() {
     document.getElementById('settings-modal').style.display = 'none';
+    // Preserve password masking while editing; remove key values from closed UI.
+    Object.values(AI_PROVIDERS).forEach(config => { document.getElementById(config.input).value = ''; });
 }
+document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        if (!document.getElementById(AI_PROVIDERS[radio.value].input).value.trim()) {
+            providerSettingsError(radio.value); updateProviderRadios(); return;
+        }
+        keySettingsProvider = radio.value;
+        document.getElementById('ai-provider-error').hidden = true;
+    });
+});
 function saveApiKey() {
-    state.apiKey = document.getElementById('api-key-input').value.trim();
-    state.groqKey = document.getElementById('groq-key-input').value.trim();
-    writeStored('reader_gemini_key', state.apiKey);
-    writeStored('reader_groq_key', state.groqKey);
-    document.getElementById('settings-modal').style.display = 'none';
+    const provider = keySettingsProvider || state.activeAiProvider;
+    const key = document.getElementById(AI_PROVIDERS[provider].input).value.trim();
+    // A new choice is committed only together with its nonempty saved key.
+    // Clearing the currently selected key is allowed; it disables AI, not a fallback.
+    if (provider !== state.activeAiProvider && !key) { providerSettingsError(provider); return; }
+    const changed = provider !== state.activeAiProvider || key !== aiProviderKey();
+    if (changed) cancelAIRequests();
+    Object.values(AI_PROVIDERS).forEach(config => {
+        state[config.key] = document.getElementById(config.input).value.trim();
+        writeStored(config.storage, state[config.key]);
+    });
+    state.activeAiProvider = provider;
+    writeStored('reader_active_ai_provider', provider);
+    closeKeySettings();
 }

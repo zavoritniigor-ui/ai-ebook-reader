@@ -9,12 +9,12 @@ full history and reasoning behind every decision mentioned here; this file state
 ## The shape of the app
 
 `index.html` is a thin shell: markup, `<style>`, the vendor `<script>` tags (JSZip, Mammoth,
-PDF.js), and nineteen ordered `<script src="js/...">` tags — one per module, in a fixed load
+PDF.js), and twenty ordered `<script src="js/...">` tags — one per module, in a fixed load
 order that matters (see "Load order" below). Exactly one fragment of application code is
 still inline in `index.html` rather than in a module, and it has to stay that way — see
 "The one inline exception" below.
 
-`sw.js` is a minimal service worker: it precaches the app shell (index.html, the 18 modules,
+`sw.js` is a minimal service worker: it precaches the app shell (index.html, the application modules,
 vendor files, icons) under a content-derived cache name and serves navigation requests
 network-first with a fallback to cache. `tools/version_app_shell.py` and
 `tests/app_shell_versions.py` keep the two files' version identifiers honest — see
@@ -64,7 +64,7 @@ it during the migration would have been an unplanned behavior change.
 ```
 core.js → lang-detect.js → tts.js → selection.js → learning-stats.js → navigation.js → pdf-zoom-pan.js →
 ui-tooltip.js → translation.js → grammar-svo.js → ai-client.js → dictation.js →
-pdf-ink.js → pdf-crop.js → pdf-render.js → formats.js → onboarding.js → main.js →
+pdf-ink.js → pdf-crop.js → pdf-render.js → formats.js → onboarding.js → quick-wheel.js → main.js →
 pwa-lifecycle.js
 ```
 
@@ -284,3 +284,11 @@ Marked rendering, inert SVG rasterization and resource-aware reflow.
 mobile viewport setup. The navigation resize debounce can otherwise invalidate
 the test selection after `initPdf` resolves; this was reproduced during format
 release CI, then isolated to test setup rather than sentence expansion.
+
+## Floating quick actions
+
+`js/quick-wheel.js` owns the floating launcher, tap/hold recognition, six-position
+wheel, keyboard/pointer interactions and UI cleanup. It loads before `main.js`
+so its translated labels exist before `applyI18n()`, and before the PWA overlay
+stack. Existing controls own every action. See `QUICK_WHEEL.md` for the complete
+menu action map, interaction details and regression coverage.

@@ -47,6 +47,7 @@ def touch(kind, points):
     c.call('Input.dispatchTouchEvent',type=kind,touchPoints=[dict(x=x,y=y,id=i,radiusX=5,radiusY=5,force=1) for i,x,y in points])
 
 def settle(): pause(.5)
+check('wheel preserves PDF state before gesture regressions', "(()=>{const before=JSON.stringify([state.currentIndex,state.pdfScale,state.pdfZoom,els.container.scrollTop,els.container.scrollLeft]);quickWheel.open();quickWheel.close();return before===JSON.stringify([state.currentIndex,state.pdfScale,state.pdfZoom,els.container.scrollTop,els.container.scrollLeft]);})()")
 check('plain text and single text layer',"els.pages.textContent.includes('Hello world') && document.querySelectorAll('.pdf-text-layer').length===1", timeout=10)
 check('illustration page',"(async()=>await renderPdfPage(2) && els.pages.textContent.includes('Illustration caption'))()")
 c.js("Promise.all(document.getAnimations().filter(a=>a.effect.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))")
