@@ -3,7 +3,7 @@
   "short_name": "AI Reader",
   "description": "Читання книг (EPUB, PDF, TXT, DOCX, FB2, RTF, HTML) з перекладом слів і речень, граматичним розбором та озвученням тексту.",
   "id": "/",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

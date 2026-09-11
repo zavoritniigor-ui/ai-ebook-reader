@@ -133,6 +133,12 @@ jobs:
           echo "Running learning_stats_position_independence_browser.py..."
           python3 -u tests/learning_stats_position_independence_browser.py
 
+          echo "Running reader_resize_sync_browser.py..."
+          python3 -u tests/reader_resize_sync_browser.py
+
+          echo "Running pwa_start_url_browser.py..."
+          python3 -u tests/pwa_start_url_browser.py
+
           python3 -u tests/migration_audit_browser.py
 
           python3 -u tests/formats_browser.py
