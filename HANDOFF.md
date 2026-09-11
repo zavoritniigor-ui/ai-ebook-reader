@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `dev`. PR #89 merged, production verified.
+Status: **idle**. Branch: `dev`. PR #91 merged, production verified.
 
 Task: User approved the supplied format-expansion plan (`go`); implementing its
 first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
@@ -315,13 +315,69 @@ real dynamic mobile-browser-chrome show/hide on an actual device. Only their CSS
 *effect* is simulated via CDP viewport/class changes, which is the actual mechanism this fix
 targets, so the fix should generalize, but real-device confirmation is still open.
 
+**PWA installed-shortcut dead-address fix (this session)**: user-reported — installing the PWA
+from Chrome and later opening the resulting shortcut opened a dead address.
+
+Traced the full chain: `manifest.webmanifest`'s `start_url` was `"./index.html"`, resolved
+against the manifest's own URL (not the document's) to `https://ai-ebook-reader.pages.dev/index.html`
+— confirmed via `Page.getAppManifest` that this is EXACTLY what Chrome bakes into the shortcut,
+with zero installability errors (Chrome installs it without complaint). Cloudflare Pages
+308-redirects any literal `/index.html` request to `/` — a platform default for files named
+`index.html`, not something this repo configures (confirmed via `curl -I`; no `_redirects`/
+`_headers` file exists here). Once the service worker takes over navigation (every launch after
+the very first), Chrome refuses to use a Response whose own `.redirected` flag is `true` to
+satisfy a navigation's `respondWith()`, and fails the ENTIRE navigation with `net::ERR_FAILED` /
+"this page may have moved to a new address" — not a JS exception (`networkFirstForNavigation()`
+resolved cleanly with a normal 200 Response), a silent browser-level rule with nothing in the
+console to point at it. Deterministic: every single launch, online or offline, not intermittent.
+
+Reproduced from scratch (a local server built to mimic ONLY Cloudflare's one relevant redirect,
+serving this repo's real files) and confirmed both contributing paths: a live `fetch()` of that
+URL (`event.request.redirect` is forced to `'manual'` for navigations, so a redirecting target
+resolves to an `opaqueredirect` Response) and — the actual persistent cause — the CACHED copy of
+`./index.html`, since `cache.addAll()` followed that same redirect at install time and Cache
+Storage preserves `redirected:true` on it forever.
+
+Fix: `manifest.webmanifest`'s `start_url` is now `"./"` (Cloudflare never redirects that, so no
+future install ever enters this state; `id` stayed `"/"` so Chrome treats this as an update to
+the same installed app, not a new one), and `sw.js`'s `networkFirstForNavigation()` now passes
+every candidate Response through the new `stripRedirectHistory()`, which reconstructs a plain,
+history-free Response whenever `.redirected` is true. The second half is what lets an
+ALREADY-installed shortcut — still permanently pointed at the old `/index.html` — self-heal the
+moment the updated worker activates, online or offline, with **no reinstall required**: this was
+verified directly against production with a fresh Chrome profile (new-install path: navigating
+straight to the resolved start_url `/` loads the real app) AND by registering the worker then
+navigating straight to the OLD stale `/index.html` URL, which now also loads the real app instead
+of `chrome-error://chromewebdata/`.
+
+Also fixed in the same PR: `tests/reader_resize_sync_browser.py` (added by the previous fix) was
+never actually wired into `.github/workflows/ci.yml` despite being recorded as such — a real gap,
+caught while adding this fix's own CI entry.
+
+Commit `bed04b7` on dev; merged into main via PR #91 (`508f776`). New
+`tests/pwa_start_url_browser.py` (15 checks) runs its own tiny local server (the shared CI one on
+8765 doesn't redirect anything) mimicking the one Cloudflare behavior this bug depends on;
+confirmed by reverting `sw.js`/`manifest.webmanifest` locally and re-running that the manifest
+check fails first without the fix. Full existing suite re-run — all pass. CI green (one run hit
+the known Chrome-CDP-startup flake, rerun passed). Production verified as described above; also
+confirmed live: `manifest.webmanifest`'s `start_url` is `"./"` and `sw.js` contains
+`stripRedirectHistory`.
+
+Remaining risk: real Android WebAPK install/update behavior (whether Chrome's periodic
+background manifest-refresh actually re-bakes `start_url` for an Android home-screen shortcut,
+vs. desktop where the fix above makes reinstall unnecessary regardless) was reasoned about but
+not verified on a real device — there is no way to install a real WebAPK in this sandbox. The
+`sw.js` self-heal (unaffected by whether the OS-level shortcut's own URL registry updates) is
+what actually matters for BOTH platforms, and that half is directly production-verified above.
+
 Exact next action: wait for the user's real-device confirmation that the TTS echo, the
-bilingual-column selection fix, the word-hitbox fix, and this pagination/resize-sync fix are
-actually resolved on their tablet (this sandbox has no real audio/Android TTS engine or physical
-touchscreen/orientation events to verify against); provide the scanned-PDF file (or precise repro
-details) for the still-open offset/misread-word issue; whoever picks up the other session's
-`js/lang-detect.js` WIP should check the `"gare"` regression noted in a previous entry before
-committing it (may already be resolved — re-check against the current committed state first).
+bilingual-column selection fix, the word-hitbox fix, this pagination/resize-sync fix, and this
+PWA-shortcut fix are actually resolved on their tablet/phone (this sandbox has no real audio/
+Android TTS engine, physical touchscreen/orientation events, or real WebAPK install to verify
+against); provide the scanned-PDF file (or precise repro details) for the still-open
+offset/misread-word issue; whoever picks up the other session's `js/lang-detect.js` WIP should
+check the `"gare"` regression noted in a previous entry before committing it (may already be
+resolved — re-check against the current committed state first).
 
 ## Handoff rules
 
