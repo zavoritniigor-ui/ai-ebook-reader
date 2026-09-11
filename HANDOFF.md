@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `dev`. PR #87 merged, production verified.
+Status: **idle**. Branch: `dev`. PR #89 merged, production verified.
 
 Task: User approved the supplied format-expansion plan (`go`); implementing its
 first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
@@ -253,14 +253,75 @@ Production verified: `learning-stats.js?v=67246f255f39` matches, and
 `tests/learning_stats_position_independence_browser.py` re-run directly against production — all
 18 pass.
 
+**Reader pagination/resize-sync fix (this session)**: the user explicitly asked to fix the
+CSS-column-reflow-on-resize issue flagged (and deliberately left unfixed) by the entry above.
+
+Root cause, confirmed by tracing the full pagination lifecycle: `#reader-pages { height: 100% }`
+means the browser's own CSS column layout silently re-flows content whenever
+`#reader-container`'s rendered box changes size — but the only trigger for re-syncing
+`state.pageInChapter`/`totalPagesInChapter`/`columnStep()` with that layout was the window's
+`'resize'` event. Immersive-mode toggling changes `.workspace`'s CSS (`margin-top`/`height`),
+which cascades down to `#reader-container`'s actual rendered size — but that whole chain is
+CSS-class-driven and **never fires a `window` `'resize'` event**, so the app's pagination state
+silently went stale relative to what the browser had already re-flowed to. (Any other
+CSS-only container-size change — a collapsing sidebar, a mobile browser's dynamic address bar —
+has the identical blind spot; immersive-mode was simply the concretely reported/reproduced case.)
+
+Previous behavior: only `window.addEventListener('resize', ...)` triggered `repaginateBook()`
+(reflowable formats) / the preserve-render path (PDF). Any container resize that didn't also
+resize the window went undetected — pagination state and the actually-rendered columns could
+diverge indefinitely until an unrelated real window resize happened to occur.
+
+Fix: replaced that listener with a `ResizeObserver` on `els.container` itself (`js/navigation.js`,
+`containerResizeObserver`) — the one true signal for "this container's rendered box actually
+changed", regardless of cause. It is a strict superset of the old trigger for this layout: a
+window resize that changes the container still fires it; one that doesn't (width growth past
+`#reader-container`'s 900px `max-width`) correctly triggers nothing. The existing
+offset-preserving `repaginateBook()` logic (capture `state.bookTextOffset`, re-measure via
+`paginateContainer()`, re-resolve that same offset to a page via `pageForBookTextOffset()`) was
+already correct — only the trigger was unreliable, so it was left untouched. A sub-pixel
+`lastContainerResizeSize` guard avoids re-triggering on rounding noise across the many
+intermediate box-size notifications a single CSS transition (`.workspace`'s 0.3s
+`margin-top`/`height` transition) fires; the pre-existing 250ms `resizeTimer` debounce is kept
+(same variable name — `tests/migration_audit_browser.py` references it directly).
+
+Tests: new `tests/reader_resize_sync_browser.py`, wired into CI. First proves the bug is real by
+disconnecting the observer (`containerResizeObserver.unobserve`) and showing an immersive-mode
+toggle's container resize goes completely undetected (zero `repaginateBook()` calls despite a
+real, measured height change: 842→900 in one run), then reconnects it and shows the identical
+resize is correctly detected and resynced. Covers the full required matrix on a real multi-page
+markdown document with mixed paragraph lengths: viewport resize wider→narrower and
+narrower→wider; immersive-mode toggle on the first/middle/last page; repeated rapid toggling
+(debounce collapses a 6-toggle burst to one resync); an active word highlight (the
+`.word-visited` span and its text survive); previously-recorded help/translation occurrences (the
+specific occurrence records survive with their `normalized` word intact — the page-scoped
+`total`/`helped` AGGREGATE is explicitly allowed to change, since reflow can genuinely move words
+to a different page, and stats are keyed by an absolute chapter-text occurrence id, not by page);
+and TTS staying active with a valid queue through a mid-read resize. Every scenario also asserts
+`state.pageInChapter` stays in-range and that `state.bookTextOffset` still resolves back to the
+page actually shown. `tests/pdf_ux_browser.py`'s pinch-test setup toggles `immersive-mode`
+directly and now correctly triggers this same resize response, which could otherwise land
+mid-gesture; added a settle-wait before its render-counting checks begin, mirroring the existing
+pattern in `tests/pdf_sentence_reselect_browser.py`. Ran the pagination-adjacent targeted tests
+first (`tests/formats_browser.py`, `tests/migration_audit_browser.py`), then the full existing
+regression suite — all pass. `node --check` isn't available in this sandbox; CI runs it, and the
+extensive live-browser test execution already proves the file parses/runs correctly in a real JS
+engine. Commit `593003f`, reconnect-merge `a0cd18b`, merged into main via PR #89 (`c6e12d8`).
+Production verified: `navigation.js?v=cd49774de655` matches, and
+`tests/reader_resize_sync_browser.py` re-run directly against production — all pass.
+
+Remaining risk: untested here (no way to in this sandbox) — a real orientation-change event and
+real dynamic mobile-browser-chrome show/hide on an actual device. Only their CSS-container-resize
+*effect* is simulated via CDP viewport/class changes, which is the actual mechanism this fix
+targets, so the fix should generalize, but real-device confirmation is still open.
+
 Exact next action: wait for the user's real-device confirmation that the TTS echo, the
-bilingual-column selection fix, and the word-hitbox fix are actually resolved on their tablet
-(this sandbox has no real audio/Android TTS engine or physical touchscreen to verify against);
-provide the scanned-PDF file (or precise repro details) for the still-open offset/misread-word
-issue; whoever picks up the other session's `js/lang-detect.js` WIP should check the `"gare"`
-regression noted in the previous entry before committing it (may already be resolved — re-check
-against the current committed state first); and the CSS-column-reflow-on-resize issue noted above
-is a real, separate, still-open bug worth its own task.
+bilingual-column selection fix, the word-hitbox fix, and this pagination/resize-sync fix are
+actually resolved on their tablet (this sandbox has no real audio/Android TTS engine or physical
+touchscreen/orientation events to verify against); provide the scanned-PDF file (or precise repro
+details) for the still-open offset/misread-word issue; whoever picks up the other session's
+`js/lang-detect.js` WIP should check the `"gare"` regression noted in a previous entry before
+committing it (may already be resolved — re-check against the current committed state first).
 
 ## Handoff rules
 
