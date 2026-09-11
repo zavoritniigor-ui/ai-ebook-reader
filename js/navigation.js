@@ -234,10 +234,37 @@ els.mainArea.addEventListener('wheel', (e) => {
     e.deltaY > 0 ? goNext() : goPrev();
 }, { passive: true });
 
-// Переналаштування пагінації при зміні розміру екрана (поворот планшета/телефона)
+// Переналаштування пагінації при зміні розміру КОНТЕЙНЕРА читалки (не лише вікна).
+// window 'resize' саме по собі НЕ покриває всі способи, якими #reader-container
+// може змінити розмір: перемикання immersive-mode (ховає/показує шапку й футер),
+// згортання бічної панелі, показ/приховання адресного рядка мобільного браузера —
+// усе це міняє розмір #reader-container через самі лише CSS-класи, без жодної
+// події window 'resize'. А браузерна CSS-розкладка колонок (#reader-pages має
+// height:100%) все одно тихо перерозподіляє текст під НОВИЙ розмір контейнера,
+// незалежно від того, чи дізналась про це JS-логіка — саме тому state.pageInChapter/
+// totalPagesInChapter розходились із реально показаною колонкою після перемикання
+// immersive-mode (задокументований дефект, HANDOFF.md). ResizeObserver на самому
+// #reader-container — правильний, повний тригер: він спрацьовує на БУДЬ-ЯКУ зміну
+// РЕАЛЬНОГО розміру цього елемента, хай би що її викликало (сам window 'resize' теж,
+// оскільки в цій розкладці він завжди або міняє розмір контейнера — тоді
+// ResizeObserver і так спрацює, — або не міняє його зовсім, у якому разі
+// репагінація й не була б потрібна). Тому цей ResizeObserver ПОВНІСТЮ замінює
+// колишній window.addEventListener('resize', ...), а не доповнює його.
 let resizeTimer;
-window.addEventListener('resize', () => {
+let lastContainerResizeSize = null;
+const containerResizeObserver = new ResizeObserver((entries) => {
     if (document.body.inert) return;
+    const entry = entries[0];
+    if (!entry) return;
+    const box = entry.contentBoxSize?.[0];
+    const w = box ? box.inlineSize : entry.contentRect.width;
+    const h = box ? box.blockSize : entry.contentRect.height;
+    // Ігноруємо субпіксельні коливання округлення — щоб не ганяти репагінацію
+    // (а з нею — TTS-переривання, скидання highlight-підсвітки тощо) на кожен
+    // кадр CSS-переходу .workspace (margin-top/height, 0.3s), де розмір насправді
+    // ще не змінився відносно попереднього виміру.
+    if (lastContainerResizeSize && Math.abs(lastContainerResizeSize.w - w) < 1 && Math.abs(lastContainerResizeSize.h - h) < 1) return;
+    lastContainerResizeSize = { w, h };
     const focus = pdfViewFocus;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
@@ -245,6 +272,7 @@ window.addEventListener('resize', () => {
         else if (state.format) repaginateBook();
     }, 250);
 });
+containerResizeObserver.observe(els.container);
 
 // Будує список змісту (розділ/сторінка/блок) для бічної панелі — спільний хелпер
 // для всіх трьох завантажувачів форматів (js/formats.js), не специфічний для
