@@ -1,76 +1,129 @@
-/* ai-client.js — низькорівневий клієнт AI-провайдерів (Groq і Gemini): текстові
- * запити (callAI) і запити із зображенням (callAIVision/visionViaGemini/
- * visionViaGroq, для кропу/вправ). Groq має пріоритет (швидший і безкоштовний
- * ліміт великий), Gemini — резерв, коли немає ключа/ліміту Groq чи немає
- * мультимодальної відповіді.
- *
- * Класичний <script src>, НЕ ES-модуль — див. js/core.js. Залежить від core.js
- * (fetchWithTimeout/readResponseJson/aiText/state) і нічого не знає про
- * конкретні промпти чи UI-панелі, які його викликають (ті лишаються в
- * grammar-svo.js/translation.js/pdf-crop.js).
+/* Shared AI client: one explicitly selected BYOK provider for text and images.
+ * Existing features keep callAI/callAIVision and their task/epoch protections.
+ * No retries through another provider. No credentials or raw errors are logged.
  */
-
-// ========== ВИКЛИК AI ІЗ ЗОБРАЖЕННЯМ ==========
-// Не всі моделі бачать зображення. Gemini приймає їх напряму; у Groq для цього
-// потрібна окрема мультимодальна модель, а основна текстова її не підтримує.
+const OPENAI_MODEL = 'gpt-5.6-luna';
+// Centralized default: "low" or "medium" for ordinary reader workloads (translation,
+// grammar, short Ask AI answers). Never high/xhigh/max by default — see callOpenAI.
+const OPENAI_REASONING_EFFORT = 'low';
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
-
-// Тип зображення беремо з самого data-URL: тепер це JPEG, а не PNG.
+const AI_PROVIDERS = {
+    openai: { name: 'OpenAI', key: 'openaiKey', storage: 'reader_openai_key', input: 'openai-key-input' },
+    groq: { name: 'Groq', key: 'groqKey', storage: 'reader_groq_key', input: 'groq-key-input' },
+    gemini: { name: 'Gemini', key: 'apiKey', storage: 'reader_gemini_key', input: 'api-key-input' }
+};
+const aiRequests = new Set();
+function aiProviderKey(provider = state.activeAiProvider) {
+    return Object.hasOwn(AI_PROVIDERS, provider) ? state[AI_PROVIDERS[provider].key] : '';
+}
+function aiAvailable() { return !!aiProviderKey(); }
+function missingAiKey(provider = state.activeAiProvider) {
+    return t('aiAddKey').replace('{provider}', AI_PROVIDERS[provider]?.name || 'AI');
+}
+function cancelAIRequests() {
+    for (const controller of aiRequests) controller.abort();
+    cancelAsyncTasks();
+    state.lookupToken++;
+    state.translationCache = {};
+}
+function aiHttpError(provider, status) {
+    const key = status === 401 || status === 403 ? 'aiAuthError' : status === 429 ? 'aiRateError' : 'aiRequestError';
+    return new Error(t(key).replace('{provider}', AI_PROVIDERS[provider].name));
+}
+async function aiJsonRequest(provider, key, url, body, signal) {
+    const headers = { 'Content-Type': 'application/json' };
+    headers[provider === 'gemini' ? 'x-goog-api-key' : 'Authorization'] = provider === 'gemini' ? key : `Bearer ${key}`;
+    let res;
+    try { res = await fetchWithTimeout(url, { method: 'POST', headers, body: JSON.stringify(body), signal }); }
+    catch (err) {
+        if (signal.aborted || err.name === 'AbortError') throw new DOMException('Cancelled', 'AbortError');
+        // Never relay error.message: a provider/browser may echo credentials.
+        throw new Error(t('aiNetworkError'));
+    }
+    if (!res.ok) throw aiHttpError(provider, res.status);
+    try {
+        const data = await res.json();
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error();
+        return data;
+    }
+    catch (_) { throw new Error(t('aiInvalidResponse')); }
+}
+async function callOpenAI(prompt, dataUrl, key, signal) {
+    const input = dataUrl ? [{ role: 'user', content: [
+        { type: 'input_text', text: prompt },
+        { type: 'input_image', image_url: dataUrl }
+    ] }] : prompt;
+    const data = await aiJsonRequest('openai', key, 'https://api.openai.com/v1/responses', {
+        model: OPENAI_MODEL, input, store: false, max_output_tokens: 4096,
+        // Ordinary reader workloads (translation, grammar, short Ask AI answers) never
+        // need high/xhigh/max reasoning; keep the default centralized here, not per-call.
+        reasoning: { effort: OPENAI_REASONING_EFFORT }
+    }, signal);
+    if (data.error || (data.status && data.status !== 'completed')) throw new Error(t('aiInvalidResponse'));
+    // REST output may contain reasoning/tool items before assistant messages.
+    // output_text is an SDK convenience, not the REST response contract.
+    return (Array.isArray(data.output) ? data.output : [])
+        .filter(item => item?.type === 'message' && item.role === 'assistant')
+        .flatMap(item => Array.isArray(item.content) ? item.content : [])
+        .filter(part => part?.type === 'output_text' && typeof part.text === 'string')
+        .map(part => part.text).join('\n');
+}
 function dataUrlMime(u) { const m = /^data:([^;]+);/.exec(u); return m ? m[1] : 'image/jpeg'; }
-
-async function visionViaGemini(prompt, dataUrl, signal) {
-    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${state.apiKey}`, {
-        signal, method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [
-            { text: prompt },
-            { inline_data: { mime_type: dataUrlMime(dataUrl), data: dataUrl.split(',')[1] } }
-        ] }] })
-    });
-    if (!res.ok) {
-        const b = await res.text().catch(() => '');
-        throw new Error(`Gemini ${res.status}${b ? ' — ' + b.slice(0, 120) : ''}`);
-    }
-    const data = await readResponseJson(res);
-    return aiText(data.candidates?.[0]?.content?.parts?.[0]?.text);
+async function callGemini(prompt, dataUrl, key, signal) {
+    const parts = [{ text: prompt }];
+    if (dataUrl) parts.push({ inline_data: { mime_type: dataUrlMime(dataUrl), data: dataUrl.split(',')[1] } });
+    const data = await aiJsonRequest('gemini', key,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+        { contents: [{ parts }] }, signal);
+    const result = data.candidates?.[0]?.content?.parts;
+    return Array.isArray(result) ? result.filter(part => typeof part?.text === 'string').map(part => part.text).join('\n') : '';
 }
-
-async function visionViaGroq(prompt, dataUrl, signal) {
-    const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-        signal, method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.groqKey}` },
-        body: JSON.stringify({
-            model: GROQ_VISION_MODEL,
-            reasoning_format: 'hidden',      // qwen приховує міркування саме так
-            max_completion_tokens: 700,     // обмежуємо відповідь, щоб не впертись у ліміт
-            messages: [{ role: 'user', content: [
-                { type: 'text', text: prompt },
-                { type: 'image_url', image_url: { url: dataUrl } }
-            ] }]
-        })
-    });
-    if (!res.ok) {
-        const b = await res.text().catch(() => '');
-        if (res.status === 429) throw new Error(t('errTooLarge'));
-        throw new Error(`Groq ${res.status}${b ? ' — ' + b.slice(0, 120) : ''}`);
-    }
-    const data = await readResponseJson(res);
-    return aiText(data.choices?.[0]?.message?.content);
+async function callGroq(prompt, dataUrl, key, signal) {
+    const body = dataUrl ? {
+        model: GROQ_VISION_MODEL, reasoning_format: 'hidden', max_completion_tokens: 700,
+        messages: [{ role: 'user', content: [
+            { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: dataUrl } }
+        ] }]
+    } : {
+        model: GROQ_MODEL, include_reasoning: false, reasoning_effort: 'low',
+        messages: [{ role: 'user', content: prompt }]
+    };
+    const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal);
+    return data.choices?.[0]?.message?.content;
 }
-
-// Пробуємо основний провайдер, а якщо він відмовив (ліміт, завеликий запит) —
-// другий, коли для нього є ключ. Так одна невдача не зриває перевірку.
-async function callAIVision(prompt, dataUrl, signal) {
-    const order = state.apiKey ? ['gemini', 'groq'] : ['groq', 'gemini'];
-    let lastErr = null;
-    for (const p of order) {
-        if (p === 'gemini' && !state.apiKey) continue;
-        if (p === 'groq' && !state.groqKey) continue;
-        try {
-            return p === 'gemini' ? await visionViaGemini(prompt, dataUrl, signal)
-                                  : await visionViaGroq(prompt, dataUrl, signal);
-        } catch (e) { if (signal?.aborted || e.name === 'AbortError') throw e; lastErr = e; }
+function callAI(prompt, signal) { return requestAI(prompt, null, signal); }
+function callAIVision(prompt, dataUrl, signal) { return requestAI(prompt, dataUrl, signal); }
+async function requestAI(prompt, dataUrl, signal) {
+    if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
+    const provider = state.activeAiProvider, key = aiProviderKey(provider);
+    if (!key) throw new Error(missingAiKey(provider));
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, { once: true });
+    aiRequests.add(controller);
+    const position = () => JSON.stringify([readerEpoch.book, state.currentIndex, state.pageInChapter]);
+    const startedAt = position();
+    const current = () => !controller.signal.aborted && provider === state.activeAiProvider && key === aiProviderKey(provider) && startedAt === position();
+    try {
+        let out;
+        switch (provider) {
+            case 'openai': out = await callOpenAI(prompt, dataUrl, key, controller.signal); break;
+            case 'groq': out = await callGroq(prompt, dataUrl, key, controller.signal); break;
+            case 'gemini': out = await callGemini(prompt, dataUrl, key, controller.signal); break;
+        }
+        if (!current()) throw new DOMException('Cancelled', 'AbortError');
+        if (out != null && typeof out !== 'string') throw new Error(t('aiInvalidResponse'));
+        const text = sanitizeAI(out);
+        if (!text) throw new Error(t('aiEmptyResponse'));
+        return text;
+    } catch (err) {
+        if (!current()) throw new DOMException('Cancelled', 'AbortError');
+        throw err;
+    } finally {
+        signal?.removeEventListener('abort', abort);
+        aiRequests.delete(controller);
     }
-    throw lastErr || new Error(t('needKey'));
 }
 
 // ========== ДВА ШЛЯХИ ПЕРЕКЛАДУ ==========
@@ -104,7 +157,7 @@ async function machineTranslate(text, srcCode, isMultiWord, signal, targetLang =
     return { html: html + extras, plain: translation, extras };
 }
 
-// Переклад через AI (Groq — швидко; інакше Gemini). Повертає лише сам переклад.
+// Переклад через вибраний AI-провайдер. Повертає лише сам переклад.
 async function aiTranslateText(text, srcCode, signal, targetLang = state.targetLang, contextSentence = state.ctxSentence, withAlignment = false) {
     if (!aiAvailable() || !navigator.onLine) return null;
     const langName = LANG_NAMES[targetLang] || 'українською';
@@ -137,13 +190,6 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
     } catch (e) { return null; }
 }
 
-// ========== ЄДИНА ТОЧКА ВИКЛИКУ AI ==========
-// Якщо вказано ключ Groq — використовуємо його: інференс там помітно швидший, а це
-// головна претензія до AI-перекладу. Інакше працює Gemini. Обидва провайдери
-// приймають простий текстовий запит, тому решта коду про різницю не знає.
-// Прибирає робочі нотатки моделі, якщо вони все ж просочились у відповідь.
-// Моделі з міркуванням позначають свої "чернетки" по-різному, тому чистимо
-// всі відомі формати, а не покладаємось лише на параметр запиту.
 function sanitizeAI(text) {
     if (!text) return '';
     let s = String(text);
@@ -162,51 +208,4 @@ function sanitizeAI(text) {
     // Розділ "analysis ... final" без тегів
     s = s.replace(/^\s*analysis[\s\S]*?(?=final\b)/i, '').replace(/^\s*final\b[:.]?\s*/i, '');
     return s.replace(/```html|```/g, '').trim();
-}
-
-const GROQ_MODEL = 'openai/gpt-oss-120b';   // моделі Llama на Groq зняті з підтримки
-function aiAvailable() { return !!(state.groqKey || state.apiKey); }
-
-async function callAI(prompt, signal) {
-    if (state.groqKey) {
-        try {
-        const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-            signal, method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.groqKey}` },
-            body: JSON.stringify({
-                model: GROQ_MODEL,
-                messages: [{ role: 'user', content: prompt }],
-                // gpt-oss НЕ підтримує reasoning_format — у нього інший вимикач.
-                // Без цього робочі нотатки моделі потрапляли просто у відповідь.
-                include_reasoning: false,
-                reasoning_effort: 'low'
-            })
-        });
-        if (!res.ok) {
-            const body = await res.text().catch(() => '');
-            throw new Error(`Groq ${res.status}${body ? ' — ' + body.slice(0, 150) : ''}`);
-        }
-        const data = await readResponseJson(res);
-        return aiText(data.choices?.[0]?.message?.content);
-        } catch (err) {
-            if (signal?.aborted || err.name === 'AbortError' || !state.apiKey) throw err;
-            // Preserve Groq priority, using the configured backup only on failure.
-        }
-    }
-
-    if (!state.apiKey) throw new Error(t('needKey'));
-    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${state.apiKey}`,
-        { signal, method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-    if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        let msg = `${t('error')} ${res.status}`;
-        if (res.status === 400) msg += ': ' + t('errKey400');
-        else if (res.status === 403) msg += ': ' + t('errKey403');
-        else if (res.status === 404) msg += ': ' + t('errKey404');
-        else if (res.status === 429) msg += ': ' + t('errKey429');
-        throw new Error(msg + (body ? ` — ${body.slice(0, 150)}` : ''));
-    }
-    const data = await readResponseJson(res);
-    return aiText(data.candidates?.[0]?.content?.parts?.[0]?.text);
 }
