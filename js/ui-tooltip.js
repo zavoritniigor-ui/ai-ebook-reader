@@ -60,6 +60,7 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 document.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('#menu-handle, #quick-wheel')) return;
     let closedPopup = false;
     if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
         if (els.tooltip.style.display !== 'none') closedPopup = true;
@@ -84,15 +85,6 @@ document.addEventListener('pointerdown', (e) => {
 function enterMobileFullScreenIfNeeded() {
     if (window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
 }
-if (els.menuHandle) {
-    // Єдиний перемикач верхнього меню. Клік по ручці ніколи не доходить до тексту,
-    // тому працює однаково і в режимі "Вивчення".
-    els.menuHandle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.body.classList.toggle('immersive-mode');
-    });
-}
-
 // Підказка зникає сама приблизно за 1,8 с — щоб можна було читати далі, не тапаючи
 // спеціально в інше місце. Таймер зупиняється, поки палець/курсор на самій підказці,
 // інакше кнопки "Запитай AI" та "Граматика" встигали б зникнути з-під пальця.
