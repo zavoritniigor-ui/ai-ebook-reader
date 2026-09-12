@@ -48,7 +48,7 @@ def opened():
     c.wait("!document.getElementById('quick-menu').hidden")
     # The .qm-open class is added a frame later, then opacity/transform transitions
     # settle over .16s/.22s respectively. Real user taps land after animations complete.
-    time.sleep(.28)  # Slightly more than the longest transition (.22s transform)
+    c.wait("Number(getComputedStyle(document.getElementById('qm-full')).opacity) >= .999")
 
 
 def closed(timeout=20):
@@ -58,8 +58,8 @@ def closed(timeout=20):
     # (navigation, modal, etc.) that might happen while we're waiting.
     try:
         c.wait("document.getElementById('quick-menu').hidden", timeout=timeout)
-    except:
-        pass  # Already closed or was never open
+    except TimeoutError:
+        raise
     time.sleep(.05)
 
 
@@ -71,275 +71,146 @@ def rects_overlap(a, b):
     return not (a['right'] <= b['left'] or a['left'] >= b['right'] or a['bottom'] <= b['top'] or a['top'] >= b['bottom'])
 
 
-# ============================================================
-# 1-4: lower-right position, safe-area, viewport bounds, leftward expansion
-# ============================================================
-launcher = rect('#qm-launcher')
-vw = c.js('innerWidth')
-vh = c.js('innerHeight')
-check('1: launcher is at bottom-right corner', f"{launcher['right']} >= {vw - 100} && {launcher['bottom']} >= {vh - 100}")
-check('2: launcher respects safe-area', "getComputedStyle(document.getElementById('quick-menu-dock')).right.includes('16px') || getComputedStyle(document.getElementById('quick-menu-dock')).right !== '0px'")
-check('3: launcher stays inside viewport', f"{launcher['left']}>=0 && {launcher['top']}>=0 && {launcher['right']}<=innerWidth && {launcher['bottom']}<=innerHeight")
+# Geometry is measured from rendered, visible DOM; no assertions about internal offsets.
+VISIBLE = "[...document.querySelectorAll('.qm-item:not([hidden])')]"
+def boxes():
+    return c.js(f"Object.fromEntries({VISIBLE}.map(b=>[b.dataset.action,{{...b.getBoundingClientRect().toJSON(),label:b.innerText}}]))")
+def moved(a, b):
+    return sum(abs(a[k]['x']-b[k]['x']) + abs(a[k]['y']-b[k]['y']) > 1 for k in a.keys() & b.keys())
+def open_wheel():
+    tap('#qm-launcher'); opened()
+def close_wheel():
+    tap('#qm-launcher'); closed()
+def detent():
+    xy = point('.qm-item.qm-active')
+    c.call('Input.dispatchMouseEvent', type='mouseWheel', x=xy[0], y=xy[1], deltaX=0, deltaY=66)
+    c.js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
+def seek(action):
+    for _ in range(12):
+        if c.js(f"!!document.querySelector('.qm-item[data-action=\"{action}\"]:not([hidden])')"):
+            return
+        detent()
+    raise AssertionError('Action never visible: '+action)
 
-tap('#qm-launcher')
-opened()
-launcher_after = rect('#qm-launcher')
-item_rects = json.loads(c.js("JSON.stringify([...document.querySelectorAll('.qm-item')].map(b=>b.getBoundingClientRect()))"))
-check('4: Quick Menu expands leftward from launcher', "[...document.querySelectorAll('.qm-item'),document.getElementById('qm-full')].every(b=>{const r=b.getBoundingClientRect();return r.right<=" + str(launcher_after['left']) + "+1})")
-check('4b: all items stay within the viewport', "[...document.querySelectorAll('.qm-item'),document.getElementById('qm-full')].every(b=>{const r=b.getBoundingClientRect();return r.left>=0 && r.top>=0 && r.right<=innerWidth && r.bottom<=innerHeight})")
+open_wheel()
+initial = boxes()
+detent()
+assert set(initial) != set(boxes()), 'One detent must change visible action labels'
+print('PASS one detent changes visible labels', flush=True)
+detent()
+assert 'btn-print' in boxes(), boxes()
+print('PASS Print appears after two detents from initial opening',flush=True)
+seen = set(boxes())
+for _ in range(11):
+    detent(); seen.update(boxes())
+assert len(seen) == 11, seen
+print('PASS all 11 actions visibly reachable:', sorted(seen), flush=True)
 
-# ============================================================
-# 5-8: open/close/actions
-# ============================================================
-check('5: tap launcher opens Quick Menu', "!document.getElementById('quick-menu').hidden")
-tap('#qm-launcher')
-closed()
-check('6: second tap closes it', "document.getElementById('quick-menu').hidden")
-tap('#qm-launcher')
-opened()
-check('7: six visible actions appear (from 11 total)', "document.querySelectorAll('.qm-item').length===6")
-tap('#qm-launcher')
-closed()
-
-c.js("window.__hits={};[...document.querySelectorAll('.qm-item')].forEach(b=>{const id=b.dataset.action;const target=document.getElementById(id);if(target)target.addEventListener('click',e=>{__hits[id]=(__hits[id]||0)+1},true)})")
-for target in ['file-upload', 'btn-tts', 'btn-translate-mode', 'toggle-toc-desktop']:
-    c.js(f"document.getElementById('{target}').disabled=false")
-    tap('#qm-launcher')
-    opened()
-    tap(f'[data-action="{target}"]')
-    closed()
-    check('8: action invokes correct existing handler (' + target + ')', f"(__hits['{target}']||0) >= 1")
-# Theme action handled separately; verify it exists and responds
-tap('#qm-launcher')
-opened()
-check('8: theme action button exists in menu', "!!document.querySelector('[data-action=\"theme-select\"]')")
-tap('[data-action="theme-select"]')
-closed()
-check('8: theme action closes menu', "document.getElementById('quick-menu').hidden")
-
-# ============================================================
-# 9-10: old top quick-wheel launcher gone; original full-menu control intact
-# ============================================================
-check('9: old TOP Quick-Wheel launcher no longer exists', "!document.getElementById('menu-handle').hasAttribute('aria-controls') && !document.getElementById('menu-handle').hasAttribute('aria-haspopup') && !document.getElementById('quick-wheel')")
-tap('#menu-handle')
-time.sleep(.1)
-check("9b: top control click never opens the Quick Menu", "document.getElementById('quick-menu').hidden")
-c.js("document.body.classList.remove('immersive-mode')")
-check('10: original TOP Full Menu control still exists', "!!document.getElementById('menu-handle')")
-
-# ============================================================
-# 11-15: top/bottom full-menu independence and synchronization
-# ============================================================
-c.js("document.body.classList.add('immersive-mode')")  # start from a known CLOSED state
-tap('#menu-handle')
-check('11: top control opens Full Menu', "!document.body.classList.contains('immersive-mode')")
-tap('#menu-handle')
-check('12: top control closes Full Menu', "document.body.classList.contains('immersive-mode')")
-c.js("document.body.classList.remove('immersive-mode')")  # back to OPEN for the next block
-
-tap('#qm-launcher')
-opened()
-tap('#qm-full')
-c.wait("document.body.classList.contains('immersive-mode')")
-check('13: bottom Full Menu control closes the SAME open Full Menu', "document.body.classList.contains('immersive-mode')")
-closed()
-tap('#qm-launcher')
-opened()
-tap('#qm-full')
-c.wait("!document.body.classList.contains('immersive-mode')")
-check('14: bottom Full Menu control opens the SAME Full Menu', "!document.body.classList.contains('immersive-mode')")
-check('15a: top control aria-expanded reflects state opened from the bottom', "document.getElementById('menu-handle').getAttribute('aria-expanded')==='true'")
-tap('#menu-handle')
-check('15b: closing via top control is reflected immediately (single source of truth)', "document.body.classList.contains('immersive-mode') && document.getElementById('menu-handle').getAttribute('aria-expanded')==='false'")
-c.js("document.body.classList.remove('immersive-mode')")
-
-# ============================================================
-# 16: no long-press dependency
-# ============================================================
-c.js("document.body.classList.remove('immersive-mode')")  # known OPEN state
-xy = point('#menu-handle')
+# A drag starts ON an action, moves multiple boxes, and continues after release.
+xy = point('.qm-item.qm-active'); before = boxes()
 mouse('mousePressed', xy, button='left', clickCount=1)
-time.sleep(.7)
-check('16a: holding the top control does not open a hidden menu', "document.getElementById('quick-menu').hidden")
-mouse('mouseReleased', xy, button='left', clickCount=1)
-check('16b: a held-then-released press is exactly one toggle, not a long-press gesture', "document.body.classList.contains('immersive-mode')")
-c.js("document.body.classList.remove('immersive-mode')")
-xy = point('#qm-launcher')
-mouse('mousePressed', xy, button='left', clickCount=1)
-time.sleep(.7)
-mouse('mouseReleased', xy, button='left', clickCount=1)
-opened()
-check('16c: a plain press-and-release on the bottom launcher just opens (no long-press gate)', "!document.getElementById('quick-menu').hidden")
-tap('#qm-launcher')
-closed()
+for offset in [10, 22, 34]:
+    mouse('mouseMoved', [xy[0], xy[1]-offset], button='left', buttons=1); time.sleep(.025)
+during = boxes()
+assert moved(before, during) >= 3, (before, during)
+mouse('mouseReleased', [xy[0], xy[1]-34], button='left', clickCount=1)
+after_up = boxes(); time.sleep(.085); inertia = boxes()
+assert moved(after_up, inertia) >= 2, (after_up, inertia)
+time.sleep(2)
+stopped = boxes(); time.sleep(.25)
+assert moved(stopped, boxes()) == 0
+check('wheel snaps to a centered active item', "(()=>{const b=document.querySelector('.qm-active'); return !!b && Math.abs(new DOMMatrix(getComputedStyle(b).transform).a-1)<.001})()")
+print('PASS drag moves >=3 boxes, inertia moves after release, then stops', flush=True)
+print('DRAG displacement px:',{k:[round(during[k]['x']-before[k]['x'],2),round(during[k]['y']-before[k]['y'],2)] for k in before.keys() & during.keys()},flush=True)
+close_wheel()
 
-# ============================================================
-# 17-19: collision measurements against real control geometry
-# ============================================================
-tap('#qm-launcher')
-opened()
-ask_tab = rect('#ask-tab')
-grammar_tab = rect('#grammar-tab')
-item_rects = json.loads(c.js("JSON.stringify([...document.querySelectorAll('.qm-item'),document.getElementById('qm-full')].map(b=>b.getBoundingClientRect()))"))
-no_ask_overlap = all(not rects_overlap(r, ask_tab) for r in item_rects)
-no_grammar_overlap = all(not rects_overlap(r, grammar_tab) for r in item_rects)
-assert no_ask_overlap, ('17: overlap with Ask AI control', item_rects, ask_tab)
-print('PASS 17: no overlap with Ask AI control', flush=True)
-assert no_grammar_overlap, ('18: overlap with Grammar control', item_rects, grammar_tab)
-print('PASS 18: no overlap with Grammar control', flush=True)
-closed()
+# Observe calls at the existing controls while using physical taps on visible actions.
+# Prevent downstream dialogs here; print has a separate real-function test below.
+c.js("window.__hits={}; document.addEventListener('click',e=>{if(e.target.id && ['file-upload','btn-tts','btn-translate-mode','reading-stats-button','toggle-toc-desktop','btn-ink','btn-region','btn-alt-voices','btn-lang-level'].includes(e.target.id)){__hits[e.target.id]=(__hits[e.target.id]||0)+1;e.stopImmediatePropagation();e.preventDefault()}},true); window.__realPrint=printCurrentReaderPage; printCurrentReaderPage=()=>{__hits['btn-print']=(__hits['btn-print']||0)+1}; state.format='txt';")
+for action in ['file-upload','btn-tts','btn-translate-mode','reading-stats-button','toggle-toc-desktop','btn-print','btn-ink','btn-region','btn-alt-voices','btn-lang-level']:
+    c.js(f"document.getElementById('{action}')?.removeAttribute('disabled')")
+    open_wheel(); seek(action)
+    assert action in boxes()
+    tap(f'.qm-item[data-action="{action}"]'); closed()
+    check('visible tap invokes '+action, f"__hits['{action}']===1")
+# Theme focuses the actual selector.
+open_wheel(); seek('theme-select'); tap('.qm-item[data-action="theme-select"]'); closed()
+check('Theme focuses existing selector', "document.activeElement.id==='theme-select'")
 
-# PDF scrubber/navigation collision: load a real PDF and re-check.
-data = base64.b64encode(pdf_bytes(two_columns=True)).decode()
-c.js(f"""(async()=>{{
- state.pdfScale=1; state.pdfFit='width'; state.format='pdf'; state.bookKey='qm-audit-pdf';
- document.body.classList.add('pdf-mode'); document.body.classList.remove('immersive-mode');
- const file=new File([Uint8Array.from(atob('{data}'),c=>c.charCodeAt(0))],'fixture.pdf');
- await initPdf(file);
-}})()""")
-c.wait("!!state.totalPages && state.totalPages>0")
-time.sleep(.3)
-c.js("document.getElementById('pdf-scrubber').classList.add('available')")
-tap('#qm-launcher')
-opened()
-scrubber = rect('#pdf-scrubber')
-item_rects = json.loads(c.js("JSON.stringify([...document.querySelectorAll('.qm-item'),document.getElementById('qm-full')].map(b=>b.getBoundingClientRect()))"))
-assert all(not rects_overlap(r, scrubber) for r in item_rects), ('19: overlap with PDF scrubber', item_rects, scrubber)
-print('PASS 19: no overlap with PDF page scrubber/navigation', flush=True)
-closed()
+# Print remains a real system-print call (intercept the browser API, not the handler).
+c.js("printCurrentReaderPage=__realPrint; window.__systemPrint=0; window.__append=document.body.append; document.body.append=function(...nodes){__append.apply(this,nodes);for(const n of nodes)if(n.tagName==='IFRAME')n.contentWindow.print=()=>__systemPrint++}; els.pages.textContent='Printable reader page';")
+open_wheel(); seek('btn-print'); tap('.qm-item[data-action="btn-print"]'); closed()
+check('visible Print reaches browser print API', '__systemPrint===1')
+# Exercise the PDF branch too, with a real PDF.js page and real print rendering.
+data = base64.b64encode(pdf_bytes()).decode()
+c.js(f"""(async()=>{{state.pdfScale=1;state.pdfFit='width';state.format='pdf';state.bookKey='wheel-print-pdf';document.body.classList.add('pdf-mode');await initPdf(new File([Uint8Array.from(atob('{data}'),c=>c.charCodeAt(0))],'wheel.pdf'));}})()""")
+c.wait('!!state.pdfDoc && state.totalPages>0')
+time.sleep(.5)
+open_wheel();seek('btn-print');tap('.qm-item[data-action="btn-print"]');closed()
+c.wait('__systemPrint===2')
+print('PASS visible Print renders PDF then reaches browser print API',flush=True)
+c.js('document.body.append=__append')
 
-# ============================================================
-# 20: page turning still works with the launcher in the corner
-# ============================================================
-launcher_rect = rect('#qm-launcher')
-# The launcher is bottom-right corner and ~48px; it should be clearly on the right side
-w = c.js('innerWidth')
-check('20: collapsed launcher is positioned on the right side', f"{launcher_rect['left']} >= {w * 0.8}")
-
-# ============================================================
-# 21: Verify launcher doesn't block bottom interactions (skip in CI due to DOM state)
-# NOTE: Flaky in CI after PDF load; verified locally. Bottom position confirmed
-# in tests 1-3 and collision tests above. Tablet testing will verify this directly.
-# ============================================================
-print('SKIP 21: text selection (DOM state flaky in CI after PDF; verified locally)', flush=True)
-
-# ============================================================
-# 22: PDF pan/zoom still works with the dock present
-# ============================================================
-c.js("document.body.classList.add('pdf-mode'); state.format='pdf';")
-c.wait("!!state.totalPages && state.totalPages>0")
-before_zoom = c.js('state.pdfZoom')
-c.js("if (typeof zoomIn==='function') zoomIn(); else document.getElementById('zoom-in')?.click();")
-time.sleep(.2)
-after_zoom = c.js('state.pdfZoom')
-check('22: PDF zoom still responds with the Quick Menu dock present', f"{after_zoom}!=={before_zoom} || true")
-c.js("document.body.classList.remove('pdf-mode')")
-
-# ============================================================
-# 23-26: device matrix (phone/tablet portrait/landscape) — geometry + collisions
-# ============================================================
-for width, height, label in [(390, 844, 'phone portrait'), (844, 390, 'phone landscape'), (768, 1024, 'tablet portrait'), (1024, 768, 'tablet landscape')]:
-    c.call('Emulation.setDeviceMetricsOverride', width=width, height=height, deviceScaleFactor=1, mobile=True)
-    time.sleep(.3)
-    for theme in ['light', 'dark']:
+# Sample real animation frames, including fractional positions, for overlaps.
+c.js("window.__geometry=()=>{const items=[...document.querySelectorAll('.qm-item:not([hidden])')];const rects=items.map(b=>b.getBoundingClientRect());const labels=items.map(b=>b.querySelector('.qm-label').getBoundingClientRect());const overlap=(a,b)=>a.width&&b.width&&a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;const pair=rs=>rs.some((a,i)=>rs.slice(i+1).some(b=>overlap(a,b)));const controls=['#qm-full','#qm-launcher','#ask-tab','#grammar-tab','#pdf-scrubber','#footer-handle'].map(s=>document.querySelector(s)).filter(b=>b&&getComputedStyle(b).display!=='none').map(b=>b.getBoundingClientRect());return {pair:pair(rects),labels:pair(labels),controls:rects.some(a=>controls.some(b=>overlap(a,b))),bounds:rects.every(r=>r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight),launcher:!controls.slice(2).some(b=>overlap(controls[1],b)),full:!controls.slice(1).some(b=>overlap(controls[0],b))}}")
+measurements=[]
+for width,height in [(320,568),(390,844),(844,390),(768,1024),(1024,768),(1280,800)]:
+    c.call('Emulation.setDeviceMetricsOverride',width=width,height=height,deviceScaleFactor=1,mobile=True)
+    c.js('new Promise(resolve=>setTimeout(()=>requestAnimationFrame(()=>requestAnimationFrame(resolve)),700))')
+    for theme in ['light','dark']:
         c.js(f"document.body.dataset.theme='{theme}'")
-        tap('#qm-launcher')
-        opened()
-        all_rects = json.loads(c.js("JSON.stringify([document.getElementById('qm-launcher'),...document.querySelectorAll('.qm-item'),document.getElementById('qm-full')].map(b=>b.getBoundingClientRect()))"))
-        in_viewport = all(r['left'] >= 0 and r['top'] >= 0 and r['right'] <= width and r['bottom'] <= height for r in all_rects)
-        ask_tab = rect('#ask-tab'); grammar_tab = rect('#grammar-tab'); footer_handle = rect('#footer-handle')
-        launcher_r = rect('#qm-launcher')
-        no_collision = (all(not rects_overlap(r, ask_tab) for r in all_rects)
-                         and all(not rects_overlap(r, grammar_tab) for r in all_rects)
-                         and not rects_overlap(launcher_r, footer_handle))
-        assert in_viewport and no_collision, (width, height, theme, in_viewport, no_collision)
-        print(f'PASS {label} {width}x{height} {theme}: in-viewport and collision-free', flush=True)
-        tap('#qm-launcher')
-        closed()
+        open_wheel()
+        result=c.js('__geometry()')
+        assert result == dict(pair=False,labels=False,controls=False,bounds=True,launcher=True,full=True), (width,height,result,boxes())
+        check('reader side tabs blocked by modal backdrop', "['ask-tab','grammar-tab'].every(id=>{const r=document.getElementById(id).getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.id==='qm-backdrop'})")
+        r=rect('#qm-launcher'); pct=(r['y']+r['height']/2)/height*100
+        assert 70 <= pct <= 82, pct
+        check('active scale larger than neighbor', f"(()=>{{const a=document.querySelector('.qm-active');return {VISIBLE}.some(b=>new DOMMatrix(getComputedStyle(b).transform).a<new DOMMatrix(getComputedStyle(a).transform).a-.05)}})()")
+        xy=point('.qm-active'); mouse('mousePressed',xy,button='left',clickCount=1)
+        for dy in range(8,67,8):
+            mouse('mouseMoved',[xy[0],xy[1]-dy],button='left',buttons=1);time.sleep(.02)
+            result=c.js('__geometry()'); assert not result['pair'] and not result['labels'] and not result['controls'],(width,height,dy,result)
+        time.sleep(.12);mouse('mouseReleased',[xy[0],xy[1]-64],button='left',clickCount=1);time.sleep(.6)
+        measurements.append(dict(viewport=[width,height],theme=theme,launcherPercent=round(pct,2),visible=len(boxes()),radius=c.js('document.getElementById("quick-menu").dataset.radius'),arc=c.js('document.getElementById("quick-menu").dataset.arcRange')))
+        if width==390:
+            from pathlib import Path
+            Path('/tmp/quick-wheel-'+theme+'.png').write_bytes(base64.b64decode(c.call('Page.captureScreenshot',format='png')['data']))
+        close_wheel()
+print('PASS geometry matrix:',json.dumps(measurements),flush=True)
 
-# ============================================================
-# 27-28: light/dark theme (explicit, already exercised above per device; confirm styling)
-# ============================================================
-c.call('Emulation.setDeviceMetricsOverride', width=1280, height=800, deviceScaleFactor=1, mobile=False)
-for theme in ['light', 'dark']:
-    c.js(f"document.body.dataset.theme='{theme}'")
-    tap('#qm-launcher')
-    opened()
-    check(f'27/28: {theme} theme renders translucent glass launcher', "getComputedStyle(document.getElementById('qm-launcher')).backdropFilter.includes('blur') || getComputedStyle(document.getElementById('qm-launcher')).webkitBackdropFilter.includes('blur')")
-    tap('#qm-launcher')
-    closed()
-c.js("document.body.dataset.theme='light'")
+# Real touch input (not synthetic DOM events) follows the same curved motion.
+open_wheel()
+c.call('Emulation.setTouchEmulationEnabled',enabled=True,maxTouchPoints=1)
+xy=point('.qm-active');before=boxes()
+c.call('Input.dispatchTouchEvent',type='touchStart',touchPoints=[dict(x=xy[0],y=xy[1],id=1)])
+for dy in [12,24,36]:
+    c.call('Input.dispatchTouchEvent',type='touchMove',touchPoints=[dict(x=xy[0],y=xy[1]-dy,id=1)])
+    c.js('new Promise(resolve=>requestAnimationFrame(resolve))')
+assert moved(before,boxes())>=3
+c.call('Input.dispatchTouchEvent',type='touchEnd',touchPoints=[])
+time.sleep(2)
+close_wheel()
+c.call('Emulation.setTouchEmulationEnabled',enabled=False)
+print('PASS touch drag moves at least three action rectangles',flush=True)
 
-# ============================================================
-# 29: immersive mode (header/footer hidden) — launcher still reachable
-# ============================================================
-c.js("document.body.classList.add('immersive-mode')")
-tap('#qm-launcher')
-opened()
-check('29: Quick Menu still opens in immersive mode', "!document.getElementById('quick-menu').hidden")
-tap('#qm-launcher')
-closed()
-c.js("document.body.classList.remove('immersive-mode')")
-
-# ============================================================
-# 30: reduced motion
-# ============================================================
-c.call('Emulation.setEmulatedMedia', features=[{'name': 'prefers-reduced-motion', 'value': 'reduce'}])
-tap('#qm-launcher')
-opened()
-check('30: reduced motion disables the item transition', "getComputedStyle(document.querySelector('.qm-item')).transitionDuration==='0s'")
-tap('#qm-launcher')
-check('30b: closing under reduced motion hides immediately (no animation delay)', "document.getElementById('quick-menu').hidden")
-c.call('Emulation.setEmulatedMedia', features=[])
-
-# ============================================================
-# 31: Android Back
-# ============================================================
-tap('#qm-launcher')
-opened()
-c.js('history.back()')
-closed()
-check('31: Android Back closes the Quick Menu through the existing overlay stack', "document.getElementById('quick-menu').hidden")
-
-# ============================================================
-# 32: repeated open/close — stable DOM/listener counts
-# ============================================================
-# NOTE: Before this point we've loaded and unloaded a PDF, so DOM baseline is not
-# the app-start state. We're checking that REPEATED Quick Menu opens don't leak
-# listeners or DOM nodes *relative* to the post-PDF state.
-before = c.call('Memory.getDOMCounters')
-for _ in range(30):
-    c.js('quickMenu.open();quickMenu.close()')
-time.sleep(.4)
-after = c.call('Memory.getDOMCounters')
-# Allow small variation (garbage collection timing, DOM mutation observer quirks)
-# but assert no major leak (each open/close shouldn't add 3+ listeners over 30 cycles)
-delta = after['jsEventListeners'] - before['jsEventListeners']
-assert delta <= 2, (before, after, delta)
-check('32: stable DOM after repeated opening', "document.querySelectorAll('#quick-menu').length===1 && document.querySelectorAll('.qm-item').length===6")
-print('PASS 32: stable listener count', flush=True)
-
-# ============================================================
-# Extra: keyboard navigation, disabled sync, Escape focus restore, escape does
-# not leave two menus open, navigation/key-replacement auto-close.
-# ============================================================
-c.call('Emulation.setEmulatedMedia', features=[])
-tap('#qm-launcher')
-opened()
-check('keyboard selects the next Quick Menu item', "(()=>{document.querySelectorAll('.qm-item:not(:disabled)')[0].focus();return true;})()")
-c.call('Input.dispatchKeyEvent', type='keyDown', key='ArrowRight', code='ArrowRight')
-check('keyboard moves focus within the fan', "document.activeElement.classList.contains('qm-item')")
-c.call('Input.dispatchKeyEvent', type='keyDown', key='Escape', code='Escape')
-closed()
-check('Escape closes and restores focus to the launcher', "document.activeElement.id==='qm-launcher'")
-
-c.js("document.body.classList.add('immersive-mode')")
-tap('#qm-launcher')
-opened()
-c.js("state.pageInChapter++;els.progress.textContent='page changed'")
-closed()
-check('navigation closes stale Quick Menu', "document.getElementById('quick-menu').hidden")
-c.js("document.body.classList.remove('immersive-mode')")
-
-check('no runtime errors', '__wheelErrors.length===0')
-print('PASS quick menu suite', flush=True)
+# Sample in the browser's animation clock; host sleeps can miss a whole animation.
+def record_motion():
+    c.js("window.__motion=[];window.__recordMotion=true;requestAnimationFrame(function sample(){if(!__recordMotion)return;__motion.push([...document.querySelectorAll('.qm-item')].map(b=>b.style.transform).join('|'));requestAnimationFrame(sample)})")
+def assert_motion(name):
+    frames=c.js('(__recordMotion=false,[...new Set(__motion)])')
+    assert len(frames)>=3,(name,len(frames))
+    print('PASS',name,'distinct frame geometries:',len(frames),flush=True)
+record_motion();open_wheel();assert_motion('opening animation')
+record_motion();close_wheel();assert_motion('closing animation')
+open_wheel();tap('#qm-backdrop')
+check('backdrop tap stays modal', "!document.getElementById('quick-menu').hidden")
+c.call('Input.dispatchKeyEvent',type='keyDown',key='Escape',code='Escape');closed()
+open_wheel();c.js('history.back()');closed()
+open_wheel();tap('#qm-full');closed()
+check('Full Menu controls share state', "document.getElementById('menu-handle').getAttribute('aria-expanded')===String(isFullMenuOpen())")
+c.call('Emulation.setEmulatedMedia',features=[{'name':'prefers-reduced-motion','value':'reduce'}])
+open_wheel();close_wheel()
+c.call('Emulation.setEmulatedMedia',features=[])
+check('11 stable DOM actions', "document.querySelectorAll('.qm-item').length===11")
+check('no runtime errors','__wheelErrors.length===0')
+print('PASS Quick Wheel behavioral suite',flush=True)

@@ -12,8 +12,8 @@ I18N.printPage = {en:'Print',uk:'Друк',fr:'Imprimer',ru:'Печать',zh:'�
 I18N.printError = {en:'Could not print. Try again.',uk:'Не вдалось надрукувати. Спробуйте ще.',fr:'Impression échouée. Réessayez.',ru:'Не удалось печать. Повторите.',zh:'无法打印。请重试。',ko:'인쇄 실패. 다시 시도하세요.',hi:'प्रिंट विफल। पुनः प्रयास करें।',ga:'Theip ar phriontáil. Bain triail eile as.'};
 I18N.wheelInk = {en:'Draw',uk:'Малювання',fr:'Dessiner',ru:'Рисовать',zh:'绘制',ko:'그리기',hi:'ड्रा करें',ga:'Tarraing'};
 I18N.wheelRegion = {en:'Region',uk:'Область',fr:'Région',ru:'Область',zh:'区域',ko:'영역',hi:'क्षेत्र',ga:'Réigiún'};
-I18N.wheelVoices = {en:'Voices',uk:'Голоси',fr:'Voix',ru:'Голоса',zh:'声音',ko:'목소리',hi:'आवाजें',ga:'Guthanna'};
-I18N.wheelLevel = {en:'Level',uk:'Рівень',fr:'Niveau',ru:'Уровень',zh:'等级',ko:'레벨',hi:'स्तर',ga:'Leibhéal'};
+I18N.wheelVoices = {en:'Alt Voices',uk:'Голоси',fr:'Voix',ru:'Голоса',zh:'声音',ko:'목소리',hi:'आवाजें',ga:'Guthanna'};
+I18N.wheelLevel = {en:'Language Level',uk:'Рівень',fr:'Niveau',ru:'Уровень',zh:'等级',ko:'레벨',hi:'स्तर',ga:'Leibhéal'};
 
 // ========== ЄДИНЕ ДЖЕРЕЛО ІСТИНИ ДЛЯ ПОВНОГО МЕНЮ ==========
 function isFullMenuOpen() { return !document.body.classList.contains('immersive-mode'); }
@@ -54,16 +54,13 @@ const quickMenu = (() => {
         ['wheelLevel', 'btn-lang-level', '📊']
     ];
 
-    // Start with 6 primary actions, allow scrolling to see all 11
-    const visibleCount = 6;
-    let scrollOffset = 0; // in action units (0–5 for cycling through the 11 actions)
-    let velocity = 0;
-    let lastAngle = 0;
-    let isDragging = false;
-    let dragStartAngle = 0;
-    let dragStartTime = 0;
-
-    let previousFocus = null, navigationState = '', closeTimer = 0;
+    let wheelPosition = 2, velocity = 0, isDragging = false;
+    let frame = 0, frameTime = 0, reveal = 0, revealTarget = 0;
+    let pointer = null, lastY = 0, lastMove = 0, startY = 0, dragged = false;
+    let suppressClickUntil = 0, radius = 220, arcOffset = -100, slots = 5;
+    const step = .30, pixelsPerAction = 66;
+    const dock = document.getElementById('quick-menu-dock');
+    let previousFocus = null, navigationState = '';
     const navigationKey = () => JSON.stringify([state.bookKey, readerEpoch.book, state.currentIndex, state.pageInChapter]);
     const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -87,97 +84,104 @@ const quickMenu = (() => {
         } catch (err) { /* audio not supported */ }
     }
 
-    // Get currently visible 6 actions (scrollable subset)
-    function getVisibleActions() {
-        const indices = [];
-        for (let i = 0; i < visibleCount; i++) {
-            indices.push((scrollOffset + i) % allActions.length);
-        }
-        return indices.map(i => allActions[i]);
-    }
-
-    // Create button elements for currently visible actions
-    const buttons = getVisibleActions().map(([key, id, icon], i) => {
+    // One stable element and closure per real action. Nothing is recycled on rotation.
+    const buttons = allActions.map(([key, id, icon]) => {
         const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'qm-item';
-        b.dataset.action = id;
-        b.dataset.index = i;
+        b.type = 'button'; b.className = 'qm-item'; b.dataset.action = id;
         const symbol = document.createElement('span');
-        symbol.className = 'qm-icon';
-        symbol.textContent = icon;
+        symbol.className = 'qm-icon'; symbol.textContent = icon;
         symbol.setAttribute('aria-hidden', 'true');
-        if (i === 0 && id === 'file-upload') {
-            symbol.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 7V4h6l3 3h9v13H3V7Z"/><path d="M3 9h18"/></svg>';
-        }
         const label = document.createElement('span');
-        label.className = 'qm-label';
-        label.dataset.i18n = key;
-        b.append(symbol, label);
-        panel.append(b);
-        b.addEventListener('click', () => {
+        label.className = 'qm-label'; label.dataset.i18n = key;
+        b.append(symbol, label); panel.append(b);
+        b.addEventListener('click', e => {
+            if (performance.now() < suppressClickUntil || !revealTarget) { e.preventDefault(); return; }
             close();
-            // Handle virtual Print action
-            if (id === 'btn-print') {
-                printCurrentReaderPage();
-                return;
-            }
+            if (id === 'btn-print') { printCurrentReaderPage(); return; }
             const target = document.getElementById(id);
-            // Theme and stats live in header; open full menu first
-            if (id === 'theme-select' || id === 'reading-stats-button') openFullMenu();
-            if (id === 'theme-select' || id === 'reading-stats-button') target.focus();
+            if (id === 'theme-select' || id === 'reading-stats-button') { openFullMenu(); target.focus(); }
             if (id !== 'theme-select') target.click();
         });
         return b;
     });
 
-    // Right-side semicircular arc geometry: radius responsive, items expand inward/leftward
-    // Arc spans from bottom-left, up around to top-left
     function place() {
-        const vmin = Math.min(innerWidth, innerHeight);
-        let radius = Math.max(76, Math.min(148, vmin * 0.20));
-        // Cap by right-side space to avoid Ask AI / Grammar controls
-        const maxByWidth = innerWidth - 100 - 40 - 56; // launcher width, item width, safety gap
-        radius = Math.max(56, Math.min(radius, maxByWidth));
-        const fullRadius = radius * 0.72;
-
-        // Arrange 6 visible items in a semicircular arc expanding leftward/upward from launcher
-        // Using standard math angles: 0° = right, 90° = down, 180° = left, 270° = up
-        // For right-side menu: use 180-250° arc (left and up-left, avoiding direct vertical)
-        buttons.forEach((b, i) => {
-            // Spread 6 items across 70° from 180° (left) to 250° (up-left)
-            const angle = 180 + (i / (buttons.length - 1)) * 70;
-            const rad = angle * Math.PI / 180;
-            // cos(180-250°) is negative, sin(180-250°) is negative, giving left and up movement
-            b.style.setProperty('--dx', (radius * Math.cos(rad)).toFixed(1) + 'px');
-            b.style.setProperty('--dy', (radius * Math.sin(rad)).toFixed(1) + 'px');
-        });
-        // Full menu button goes directly left
-        full.style.setProperty('--dx', (-fullRadius).toFixed(1) + 'px');
-        full.style.setProperty('--dy', '0px');
+        const v = window.visualViewport;
+        const height = v?.height || innerHeight;
+        dock.style.top = ((v?.offsetTop || 0) + Math.max(100, Math.min(height * .76, height - 100))) + 'px';
+        slots = height < 540 ? 3 : 5;
+        radius = 220;
+        arcOffset = slots === 3 ? -Math.min(100, height * .22) : -100;
+        panel.dataset.radius = radius;
+        panel.dataset.arcRange = (slots * step * 180 / Math.PI).toFixed(1);
+        render();
     }
+    function setPosition(value) {
+        const oldDetent = Math.round(wheelPosition), nextDetent = Math.round(value);
+        for (let i = 0; i < Math.abs(nextDetent - oldDetent); i++) playTick(720, 18);
+        wheelPosition = value;
+    }
+    function render() {
+        const ease = 1 - Math.pow(1 - reveal, 3);
+        buttons.forEach((b, i) => {
+            const d = (((i - wheelPosition) % 11 + 16.5) % 11) - 5.5;
+            const distance = Math.abs(d), visible = distance < slots / 2;
+            const delay = Math.min(distance, 2) * .04;
+            const progress = Math.max(0, (reveal - delay) / (1 - delay));
+            const itemEase = 1 - Math.pow(1 - progress, 3);
+            const angle = d * step;
+            const scale = 1 - .10 * Math.min(distance, 2.5);
+            const opacity = Math.min(1, (slots / 2 - distance) * 3) * (1 - distance * .16);
+            b.hidden = !visible;
+            b.tabIndex = visible && revealTarget ? 0 : -1;
+            b.style.transform = `translate(${(65 - radius * Math.cos(angle)) * itemEase}px, ${(arcOffset + radius * Math.sin(angle)) * itemEase}px) translate(-50%, -50%) scale(${scale * (.5 + .5 * itemEase)})`;
+            b.style.opacity = Math.max(0, opacity * itemEase);
+            b.style.zIndex = Math.round(20 - distance * 4);
+            b.classList.toggle('qm-active', distance < .5);
+        });
+        full.style.transform = `translate(0px, ${-68 * ease}px) translate(-50%, -50%) scale(${.5 + .5 * ease})`;
+        full.style.opacity = ease;
+        panel.dataset.position = wheelPosition.toFixed(4);
+    }
+    function animate(now) {
+        frame = 0;
+        const elapsed = now - (frameTime || now), dt = Math.min(32, elapsed); frameTime = now;
+        reveal = reducedMotion() ? revealTarget : Math.max(0, Math.min(1, reveal + (revealTarget ? 1 : -1) * elapsed / 220));
+        if (!isDragging && revealTarget) {
+            if (Math.abs(velocity) > .00015 && !reducedMotion()) {
+                setPosition(wheelPosition + velocity * dt);
+                velocity *= Math.exp(-dt / 190);
+            } else {
+                velocity = 0;
+                const target = Math.round(wheelPosition);
+                setPosition(Math.abs(target - wheelPosition) < .001 ? target : wheelPosition + (target - wheelPosition) * (1 - Math.exp(-dt / 65)));
+            }
+        }
+        render();
+        if (!reveal && !revealTarget) { panel.hidden = true; backdrop.hidden = true; return; }
+        if (isDragging || reveal !== revealTarget || velocity || wheelPosition !== Math.round(wheelPosition)) schedule();
+    }
+    function schedule() { if (!frame) frame = requestAnimationFrame(animate); }
 
-    function clearCloseTimer() { clearTimeout(closeTimer); closeTimer = 0; }
 
     function close(restore = true) {
-        clearCloseTimer();
         if (panel.hidden) return;
-        panel.classList.remove('qm-open');
+        if (!revealTarget) return;
+        revealTarget = 0;
+        panel.classList.remove('qm-open'); panel.inert = true;
         launcher.setAttribute('aria-expanded', 'false');
-        backdrop.hidden = true;
-        isDragging = false;
-        velocity = 0;
-        const finish = () => { panel.hidden = true; };
-        if (reducedMotion()) finish(); else closeTimer = setTimeout(finish, 240);
+        isDragging = false; pointer = null; velocity = 0;
+        frameTime = performance.now();
+        if (reducedMotion()) { reveal = 0; render(); panel.hidden = true; backdrop.hidden = true; }
+        else schedule();
         if (restore && panel.contains(document.activeElement)) {
             (previousFocus?.isConnected && previousFocus !== document.body ? previousFocus : launcher).focus({ preventScroll: true });
         }
     }
 
     function open() {
-        if (!panel.hidden) { close(); return; }
+        if (revealTarget) { close(); return; }
         if (cropDialog.open || document.body.matches('.ink-mode, .region-mode') || document.getElementById('settings-modal').style.display === 'flex') return;
-        clearCloseTimer();
         previousFocus = document.activeElement;
         navigationState = navigationKey();
         els.askPanel.classList.remove('expanded');
@@ -190,10 +194,10 @@ const quickMenu = (() => {
 
         // Update button states
         buttons.forEach((b, i) => {
-            const actionId = getVisibleActions()[i][1];
-            // Virtual Print action is always enabled (no source element)
+            const actionId = allActions[i][1];
+            // Print is available once a reader document is loaded.
             if (actionId === 'btn-print') {
-                b.disabled = false;
+                b.disabled = !state.format;
                 return;
             }
             const source = document.getElementById(actionId);
@@ -209,9 +213,10 @@ const quickMenu = (() => {
         panel.setAttribute('aria-label', t('wheelTitle'));
         place();
         panel.hidden = false;
-        requestAnimationFrame(() => panel.classList.add('qm-open'));
+        panel.inert = false; revealTarget = 1;
+        panel.classList.add('qm-open'); frameTime = performance.now(); schedule();
         launcher.setAttribute('aria-expanded', 'true');
-        (buttons.find(b => !b.disabled) || full).focus({ preventScroll: true });
+        (buttons.find(b => !b.disabled && !b.hidden) || full).focus({ preventScroll: true });
     }
 
     launcher.addEventListener('click', open);
@@ -223,78 +228,51 @@ const quickMenu = (() => {
         }, true);
     });
 
-    // Drag to scroll through actions
-    let dragStartY = 0;
+    // Capture only once a drag is recognized, preserving ordinary button taps.
     panel.addEventListener('pointerdown', e => {
-        if (panel.hidden || e.target.closest('button')) return; // Don't interfere with button clicks
-        isDragging = true;
-        dragStartY = e.clientY;
-        dragStartTime = Date.now();
-        dragStartAngle = lastAngle;
-        velocity = 0;
-    }, true);
-
-    document.addEventListener('pointermove', e => {
-        if (!isDragging || panel.hidden) return;
-        const deltaY = e.clientY - dragStartY;
-        const dragAngle = -deltaY / 3; // Convert pixels to angle
-        lastAngle = dragStartAngle + dragAngle;
-        updateWheelPosition();
-    }, true);
-
-    function updateWheelPosition() {
-        // Convert angle to action offset (each action ≈ 30° for 11 actions)
-        const anglePerAction = 360 / allActions.length;
-        const newOffset = Math.round(lastAngle / anglePerAction);
-        if (newOffset !== scrollOffset) {
-            scrollOffset = ((newOffset % allActions.length) + allActions.length) % allActions.length;
-            playTick(600 + Math.abs(velocity) * 2, Math.max(30, 100 - Math.abs(velocity) * 2));
+        if (pointer !== null || !revealTarget || e.target.closest('#qm-full') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        pointer = e.pointerId; isDragging = true; dragged = false;
+        startY = lastY = e.clientY; lastMove = performance.now(); velocity = 0;
+        frameTime = lastMove; schedule();
+    });
+    window.addEventListener('pointermove', e => {
+        if (e.pointerId !== pointer || !isDragging) return;
+        const now = performance.now(), dt = Math.max(8, now - lastMove);
+        if (Math.abs(e.clientY - startY) > 6) dragged = true;
+        if (dragged) {
+            panel.setPointerCapture(pointer); e.preventDefault();
+            const delta = -(e.clientY - lastY) / pixelsPerAction;
+            velocity = Math.max(-.025, Math.min(.025, delta / dt));
+            setPosition(wheelPosition + delta); schedule();
         }
-    }
-
-    document.addEventListener('pointerup', e => {
-        if (!isDragging) return;
-        isDragging = false;
-        const timeDelta = Date.now() - dragStartTime;
-        const angleDelta = lastAngle - dragStartAngle;
-        velocity = (timeDelta > 0) ? angleDelta / timeDelta * 10 : 0;
-
-        // Inertia: gradually slow down
-        const decayInterval = setInterval(() => {
-            if (Math.abs(velocity) < 0.1) {
-                clearInterval(decayInterval);
-                velocity = 0;
-                snapToNearestAction();
-                return;
-            }
-            velocity *= 0.92;
-            lastAngle += velocity;
-            updateWheelPosition();
-        }, 16);
+        lastY = e.clientY; lastMove = now;
     }, true);
-
-    function snapToNearestAction() {
-        const anglePerAction = 360 / allActions.length;
-        const rounded = Math.round(lastAngle / anglePerAction) * anglePerAction;
-        lastAngle = rounded;
-        scrollOffset = ((Math.round(lastAngle / anglePerAction) % allActions.length) + allActions.length) % allActions.length;
-        playTick(900, 80); // Final snap click
+    function release(e) {
+        if (e.pointerId !== pointer) return;
+        if (dragged) suppressClickUntil = performance.now() + 350;
+        if (e.type === 'pointercancel' || performance.now() - lastMove > 100) velocity = 0;
+        if (panel.hasPointerCapture(pointer)) panel.releasePointerCapture(pointer);
+        pointer = null; isDragging = false; schedule();
     }
+    window.addEventListener('pointerup', release, true);
+    window.addEventListener('pointercancel', release, true);
+    panel.addEventListener('lostpointercapture', e => { if (isDragging) release(e); });
+    panel.addEventListener('wheel', e => {
+        if (!revealTarget) return;
+        e.preventDefault(); velocity = 0;
+        setPosition(wheelPosition + Math.sign(e.deltaY)); frameTime = performance.now(); schedule();
+    }, {passive:false});
 
     full.addEventListener('click', () => { close(false); toggleFullMenu(); });
 
     panel.addEventListener('keydown', e => {
-        const enabled = buttons.filter(b => !b.disabled);
+        const enabled = buttons.filter(b => !b.disabled && !b.hidden);
         if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
             e.preventDefault();
-            const order = [...enabled, full];
-            const i = order.indexOf(document.activeElement);
-            let next;
-            if (e.key === 'Home') next = 0;
-            else if (e.key === 'End') next = order.length - 1;
-            else if (['ArrowRight', 'ArrowDown'].includes(e.key)) next = (i + 1 + order.length) % order.length;
-            else next = (i - 1 + order.length) % order.length;
-            order[next].focus();
+            velocity = 0;
+            setPosition(e.key === 'Home' ? 0 : e.key === 'End' ? 10 : Math.round(wheelPosition) + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : -1));
+            render(); schedule();
+            buttons[((Math.round(wheelPosition) % 11) + 11) % 11].focus({preventScroll:true});
         }
         if (e.key === 'Tab') {
             const targets = [...enabled, full, launcher];
@@ -305,14 +283,20 @@ const quickMenu = (() => {
     });
 
     document.addEventListener('pointerdown', e => {
-        if (!panel.hidden && !panel.contains(e.target) && !launcher.contains(e.target)) close(false);
+        if (!panel.hidden && !panel.contains(e.target) && !launcher.contains(e.target) && e.target !== backdrop) close(false);
     }, true);
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && !panel.hidden) close();
+        if (e.key === 'Tab' && revealTarget && !panel.contains(e.target)) {
+            e.preventDefault();
+            (e.shiftKey ? full : buttons.find(b => !b.hidden && !b.disabled) || full).focus();
+        }
     });
 
     window.addEventListener('resize', place);
+    window.visualViewport?.addEventListener('resize', place);
+    window.visualViewport?.addEventListener('scroll', place);
     window.addEventListener('pagehide', () => close(false));
     document.addEventListener('visibilitychange', () => { if (document.hidden) close(false); });
 
@@ -360,7 +344,8 @@ function printCurrentReaderPage() {
             // PDF: render only current page
             const pageNum = state.currentIndex;
             state.pdfDoc.getPage(pageNum).then(page => {
-                const scale = Math.min(8, Math.sqrt(8000000 / (page.width * page.height)));
+                const natural = page.getViewport({ scale: 1 });
+                const scale = Math.min(3, Math.sqrt(8000000 / (natural.width * natural.height)));
                 const viewport = page.getViewport({ scale });
                 const canvas = doc.createElement('canvas');
                 canvas.width = viewport.width;

@@ -71,91 +71,35 @@
            items, central Full-menu button) is absolutely positioned FROM that
            single point, so the collapsed state has no invisible hit-testing area
            beyond the launcher circle itself: nothing here can block page turns. */
-        #quick-menu-dock {
-            position: fixed; right: calc(env(safe-area-inset-right) + 16px); bottom: calc(env(safe-area-inset-bottom) + 16px);
-            z-index: 10120; width: 0; height: 0;
-            --qm-radius: clamp(92px, 20vmin, 148px);
-            --qm-full-radius: calc(var(--qm-radius) * .72);
-        }
-        /* Narrow phone portrait (390px): bottom control tabs (Ask AI, Grammar) sit at bottom.
-           Raise launcher above them to avoid collision. */
-        @media (max-width: 500px) {
-            #quick-menu-dock { bottom: calc(env(safe-area-inset-bottom) + 140px); }
-        }
-        /* Landscape phone: Ask AI/Grammar tabs are vertical on sides; launcher needs more left margin.
-           Reduce radius and move launcher left to avoid right-side Grammar tab. */
-        @media (max-height: 500px) {
-            #quick-menu-dock {
-                right: calc(env(safe-area-inset-right) + 70px);
-                --qm-radius: clamp(60px, 15vmin, 100px);
-            }
-        }
-        /* Wider portrait phone: TTS buttons sit at bottom (26–92px from edge) during reading aloud. */
-        @media (min-width: 501px) and (max-width: 640px) and (min-height: 500px) {
-            #quick-menu-dock { bottom: calc(env(safe-area-inset-bottom) + 90px); }
-        }
-        /* Floating TTS buttons are 26–92px from edge during reading — raise the launcher above them. */
-        body.tts-active-ui #quick-menu-dock { bottom: calc(env(safe-area-inset-bottom) + 104px); }
-        /* Ink/region modes have their own bottom-centered tools; Quick Menu not needed here. */
+        #quick-menu-dock { position: fixed; right: calc(env(safe-area-inset-right) + 80px); top: 76vh;
+            z-index: 25001; width: 0; height: 0; }
         body.ink-mode #quick-menu-dock, body.region-mode #quick-menu-dock { display: none; }
-        #qm-launcher {
-            position: absolute; right: 0; bottom: 0;
-            width: 48px; height: 48px; border-radius: 50%; pointer-events: auto;
-            color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 72%, transparent);
-            border: 1px solid color-mix(in srgb, var(--text-color) 14%, transparent);
+        #qm-launcher, .qm-item, #qm-full {
+            position: absolute; left: 0; top: 0; box-sizing: border-box;
+            color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 86%, transparent);
+            border: 1px solid color-mix(in srgb, var(--text-color) 18%, transparent);
             backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 8px 24px -6px rgba(var(--shadow-color),.32);
-            cursor: pointer; font-size: 19px; touch-action: manipulation;
-            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-            transition: transform .15s ease, box-shadow .15s ease;
+            box-shadow: 0 6px 20px -7px rgba(var(--shadow-color),.35);
+            cursor: pointer; user-select: none; -webkit-user-select: none;
         }
-        #qm-launcher:active { transform: scale(.94); }
-        #qm-launcher[aria-expanded="true"] {
-            box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 30%, transparent), 0 8px 24px -6px rgba(var(--shadow-color),.32);
-        }
-        /* Modal backdrop: blocks all background interaction while Quick Menu is open.
-           Only visible when menu is open (not [hidden]), covers full viewport. */
-        #qm-backdrop {
-            position: fixed; inset: 0; z-index: 10119; background: rgba(0,0,0,.04);
-            touch-action: none; pointer-events: auto; display: none;
-        }
-        #qm-backdrop:not([hidden]) { display: block; }
-        #quick-menu {
-            position: absolute; right: 0; bottom: 0; width: 0; height: 0; pointer-events: none;
-        }
-        .qm-item, #qm-full {
-            position: absolute; right: 0; bottom: 0; pointer-events: none;
-            width: clamp(60px, 15vmin, 80px); min-height: 48px; height: auto;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-            padding: 5px; white-space: normal; font: inherit; font-size: 11.5px; line-height: 1.2;
-            color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 66%, transparent);
-            border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
-            border-radius: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 6px 18px -8px rgba(var(--shadow-color),.28);
-            cursor: pointer; opacity: 0; transform: scale(.5);
-            transition: transform .22s cubic-bezier(.2,.8,.2,1), opacity .16s ease;
-        }
-        #qm-full { width: clamp(52px, 12vmin, 66px); font-size: 11px; }
-        .qm-item .qm-icon, #qm-full .qm-icon { display: block; font-size: 19px; }
-        .qm-item .qm-label, #qm-full .qm-label { display: block; width: 100%; overflow-wrap: normal; }
-        .qm-item.qm-active { border-color: color-mix(in srgb, var(--accent-color) 55%, transparent);
-            box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 22%, transparent), 0 6px 18px -8px rgba(var(--shadow-color),.28); }
-        .qm-item:disabled { opacity: .32 !important; cursor: default; }
-        .qm-item:active, #qm-full:active { transform: translate(var(--dx,0px), var(--dy,0px)) scale(.94); }
-        #quick-menu.qm-open .qm-item, #quick-menu.qm-open #qm-full {
-            opacity: 1;
-            transform: translate(var(--dx,0px), var(--dy,0px));
-        }
-        /* Interactivity gates off [hidden] alone (synchronous), never the .qm-open
-           class (added a frame later, purely to trigger the unfold transition) — a
-           tap landing in that one-frame gap must still hit a real, clickable item. */
-        #quick-menu:not([hidden]) .qm-item, #quick-menu:not([hidden]) #qm-full { pointer-events: auto; }
-        #qm-launcher:focus-visible, .qm-item:focus-visible, #qm-full:focus-visible {
-            outline: 3px solid var(--accent-color, #438bca); outline-offset: 3px;
-        }
-        @media (prefers-reduced-motion: reduce) {
-            #qm-launcher, .qm-item, #qm-full { transition: none; }
-        }
+        #qm-launcher { z-index: 40; width: 48px; height: 48px; border-radius: 50%; transform: translate(-50%, -50%);
+            font-size: 22px; touch-action: manipulation; }
+        #qm-launcher[aria-expanded="true"] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 30%, transparent); }
+        #qm-backdrop { position: fixed; inset: 0; z-index: 25000; background: rgba(0,0,0,.10); touch-action: none; }
+        #quick-menu { position: absolute; left: -230px; top: -270px; width: 260px; height: 340px;
+            touch-action: none; }
+        .qm-item, #qm-full { left: 230px; top: 270px; width: 132px; height: 56px; padding: 6px 10px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            font: inherit; font-size: 12px; line-height: 1.15; border-radius: 28px;
+            transition: none; transform-origin: center; will-change: transform, opacity; touch-action: none; }
+        .qm-item[hidden], #quick-menu[hidden], #qm-backdrop[hidden] { display: none; }
+        .qm-icon { flex-shrink: 0; font-size: 22px; }
+        .qm-label { white-space: normal; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+        #qm-full { width: 56px; height: 52px; padding: 4px; flex-direction: column; gap: 0; font-size: 10px; border-radius: 18px; }
+        #qm-full .qm-icon { font-size: 18px; }
+        .qm-item.qm-active { border-color: var(--accent-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 25%, transparent); }
+        .qm-item:disabled { color: var(--text-muted); cursor: default; }
+        #qm-launcher:focus-visible, .qm-item:focus-visible, #qm-full:focus-visible { outline: 3px solid var(--accent-color); outline-offset: 3px; }
 
         .header-controls { display: flex; width: 100%; align-items: center; gap: 4px; flex-wrap: wrap; }
         .toolbar-group {
@@ -1084,7 +1028,7 @@
     <script src="js/pdf-render.js?v=64ef9f00575d"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=40d95b47f84b"></script>
+    <script src="js/quick-wheel.js?v=cc09cd58c580"></script>
     <script src="js/main.js?v=a6e5adcc808c"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
