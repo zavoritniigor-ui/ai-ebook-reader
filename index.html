@@ -59,37 +59,47 @@
         }
         #menu-handle {
             position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left));
-            width: 44px; height: 44px; border-radius: 50%; z-index: 10120;
+            width: 44px; height: 44px; border-radius: 50%; z-index: 10050;
             color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
             border: 1px solid var(--border-color); backdrop-filter: blur(8px);
             box-shadow: 0 4px 16px rgba(0,0,0,.12); cursor: pointer; touch-action: none;
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
-        /* Bottom-center Quick Menu: a separate, thumb-reach convenience control,
+        /* Lower-right Quick Menu: a separate, thumb-reach convenience control,
            independent of the top/full menu. The dock itself is a zero-size fixed
-           anchor point (bottom-center, safe-area aware) — every child (launcher,
-           fan items, central Full-menu button) is absolutely positioned FROM that
+           anchor point (lower-right, safe-area aware) — every child (launcher,
+           items, central Full-menu button) is absolutely positioned FROM that
            single point, so the collapsed state has no invisible hit-testing area
            beyond the launcher circle itself: nothing here can block page turns. */
         #quick-menu-dock {
-            position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 16px);
-            transform: translateX(-50%); z-index: 10120; width: 0; height: 0;
+            position: fixed; right: calc(env(safe-area-inset-right) + 16px); bottom: calc(env(safe-area-inset-bottom) + 16px);
+            z-index: 10120; width: 0; height: 0;
             --qm-radius: clamp(92px, 20vmin, 148px);
             --qm-full-radius: calc(var(--qm-radius) * .72);
         }
-        /* Телефон: прозора ручка футера (#footer-handle) теж сидить внизу по центру
-           (0–22px від краю) — піднімаємо запускач вище, щоб не ділити з нею дотик. */
-        @media (max-width: 640px) {
-            #quick-menu-dock { bottom: calc(env(safe-area-inset-bottom) + 30px); }
+        /* Narrow phone portrait (390px): bottom control tabs (Ask AI, Grammar) sit at bottom.
+           Raise launcher above them to avoid collision. */
+        @media (max-width: 500px) {
+            #quick-menu-dock { bottom: calc(env(safe-area-inset-bottom) + 140px); }
         }
-        /* Плаваючі TTS-кнопки теж центровані знизу (26–92px від краю) під час читання
-           вголос — тимчасово підіймаємо запускач над ними, а не ховаємо його. */
+        /* Landscape phone: Ask AI/Grammar tabs are vertical on sides; launcher needs more left margin.
+           Reduce radius and move launcher left to avoid right-side Grammar tab. */
+        @media (max-height: 500px) {
+            #quick-menu-dock {
+                right: calc(env(safe-area-inset-right) + 70px);
+                --qm-radius: clamp(60px, 15vmin, 100px);
+            }
+        }
+        /* Wider portrait phone: TTS buttons sit at bottom (26–92px from edge) during reading aloud. */
+        @media (min-width: 501px) and (max-width: 640px) and (min-height: 500px) {
+            #quick-menu-dock { bottom: calc(env(safe-area-inset-bottom) + 90px); }
+        }
+        /* Floating TTS buttons are 26–92px from edge during reading — raise the launcher above them. */
         body.tts-active-ui #quick-menu-dock { bottom: calc(env(safe-area-inset-bottom) + 104px); }
-        /* Перо/область — власні нижні-центровані інструменти; квік-меню тут зайве
-           (той самий принцип, що вже ховає #pdf-scrubber в цих режимах). */
+        /* Ink/region modes have their own bottom-centered tools; Quick Menu not needed here. */
         body.ink-mode #quick-menu-dock, body.region-mode #quick-menu-dock { display: none; }
         #qm-launcher {
-            position: absolute; left: 0; bottom: 0; transform: translateX(-50%);
+            position: absolute; right: 0; bottom: 0;
             width: 48px; height: 48px; border-radius: 50%; pointer-events: auto;
             color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 72%, transparent);
             border: 1px solid color-mix(in srgb, var(--text-color) 14%, transparent);
@@ -99,15 +109,22 @@
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
             transition: transform .15s ease, box-shadow .15s ease;
         }
-        #qm-launcher:active { transform: translateX(-50%) scale(.94); }
+        #qm-launcher:active { transform: scale(.94); }
         #qm-launcher[aria-expanded="true"] {
             box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 30%, transparent), 0 8px 24px -6px rgba(var(--shadow-color),.32);
         }
+        /* Modal backdrop: blocks all background interaction while Quick Menu is open.
+           Only visible when menu is open (not [hidden]), covers full viewport. */
+        #qm-backdrop {
+            position: fixed; inset: 0; z-index: 10119; background: rgba(0,0,0,.04);
+            touch-action: none; pointer-events: auto; display: none;
+        }
+        #qm-backdrop:not([hidden]) { display: block; }
         #quick-menu {
-            position: absolute; left: 0; bottom: 0; width: 0; height: 0; pointer-events: none;
+            position: absolute; right: 0; bottom: 0; width: 0; height: 0; pointer-events: none;
         }
         .qm-item, #qm-full {
-            position: absolute; left: 0; bottom: 0; pointer-events: none;
+            position: absolute; right: 0; bottom: 0; pointer-events: none;
             width: clamp(60px, 15vmin, 80px); min-height: 48px; height: auto;
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
             padding: 5px; white-space: normal; font: inherit; font-size: 11.5px; line-height: 1.2;
@@ -115,7 +132,7 @@
             border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
             border-radius: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
             box-shadow: 0 6px 18px -8px rgba(var(--shadow-color),.28);
-            cursor: pointer; opacity: 0; transform: translateX(-50%) scale(.5);
+            cursor: pointer; opacity: 0; transform: scale(.5);
             transition: transform .22s cubic-bezier(.2,.8,.2,1), opacity .16s ease;
         }
         #qm-full { width: clamp(52px, 12vmin, 66px); font-size: 11px; }
@@ -124,10 +141,10 @@
         .qm-item.qm-active { border-color: color-mix(in srgb, var(--accent-color) 55%, transparent);
             box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 22%, transparent), 0 6px 18px -8px rgba(var(--shadow-color),.28); }
         .qm-item:disabled { opacity: .32 !important; cursor: default; }
-        .qm-item:active, #qm-full:active { transform: translateX(-50%) translate(var(--dx,0px), var(--dy,0px)) scale(.94); }
+        .qm-item:active, #qm-full:active { transform: translate(var(--dx,0px), var(--dy,0px)) scale(.94); }
         #quick-menu.qm-open .qm-item, #quick-menu.qm-open #qm-full {
             opacity: 1;
-            transform: translateX(-50%) translate(var(--dx,0px), var(--dy,0px));
+            transform: translate(var(--dx,0px), var(--dy,0px));
         }
         /* Interactivity gates off [hidden] alone (synchronous), never the .qm-open
            class (added a frame later, purely to trigger the unfold transition) — a
@@ -814,6 +831,8 @@
          its own state (body.immersive-mode), unchanged since before the Quick Menu
          existed: tap opens/closes the header+footer toolbar. -->
     <button type="button" id="menu-handle" data-i18n-title="wheelFull" aria-expanded="false">☰</button>
+    <!-- Modal backdrop: blocks all background interaction while Quick Menu is open. -->
+    <div id="qm-backdrop" hidden></div>
     <!-- Bottom-center Quick Menu — a separate convenience control for thumb reach.
          #quick-menu-dock is a zero-size fixed anchor; every child is absolutely
          positioned from it, so nothing invisible ever blocks page turns. -->
@@ -1065,7 +1084,7 @@
     <script src="js/pdf-render.js?v=64ef9f00575d"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=14ccf35bad16"></script>
+    <script src="js/quick-wheel.js?v=0c51e65d9170"></script>
     <script src="js/main.js?v=a6e5adcc808c"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
