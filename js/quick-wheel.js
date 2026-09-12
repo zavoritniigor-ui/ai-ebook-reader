@@ -35,11 +35,10 @@ syncFullMenuControls();
 const quickMenu = (() => {
     const launcher = document.getElementById('qm-launcher');
     const panel = document.getElementById('quick-menu');
-    const full = document.getElementById('qm-full');
     const backdrop = document.getElementById('qm-backdrop');
 
-    // 11 real actions, no empty slots
-    // 'btn-print' is a virtual action (no actual button element, handled specially in click handler)
+    // 12 real actions, no empty slots
+    // 'btn-print' and 'wheelFull' are virtual actions (no source element, handled specially in click handler)
     const allActions = [
         ['wheelOpen', 'file-upload', '⌑'],
         ['read', 'btn-tts', '▷'],
@@ -51,7 +50,8 @@ const quickMenu = (() => {
         ['wheelInk', 'btn-ink', '✏'],
         ['wheelRegion', 'btn-region', '◻'],
         ['wheelVoices', 'btn-alt-voices', '♪'],
-        ['wheelLevel', 'btn-lang-level', '📊']
+        ['wheelLevel', 'btn-lang-level', '📊'],
+        ['wheelFull', 'wheelFull', '☰']
     ];
 
     let wheelPosition = 2, velocity = 0, isDragging = false;
@@ -98,6 +98,7 @@ const quickMenu = (() => {
             if (performance.now() < suppressClickUntil || !revealTarget) { e.preventDefault(); return; }
             close();
             if (id === 'btn-print') { printCurrentReaderPage(); return; }
+            if (id === 'wheelFull') { toggleFullMenu(); return; }
             const target = document.getElementById(id);
             if (id === 'theme-select' || id === 'reading-stats-button') { openFullMenu(); target.focus(); }
             if (id !== 'theme-select') target.click();
@@ -122,9 +123,8 @@ const quickMenu = (() => {
         wheelPosition = value;
     }
     function render() {
-        const ease = 1 - Math.pow(1 - reveal, 3);
         buttons.forEach((b, i) => {
-            const d = (((i - wheelPosition) % 11 + 16.5) % 11) - 5.5;
+            const d = (((i - wheelPosition) % 12 + 18) % 12) - 6;
             const distance = Math.abs(d), visible = distance < slots / 2;
             const delay = Math.min(distance, 2) * .04;
             const progress = Math.max(0, (reveal - delay) / (1 - delay));
@@ -139,8 +139,6 @@ const quickMenu = (() => {
             b.style.zIndex = Math.round(20 - distance * 4);
             b.classList.toggle('qm-active', distance < .5);
         });
-        full.style.transform = `translate(0px, ${-68 * ease}px) translate(-50%, -50%) scale(${.5 + .5 * ease})`;
-        full.style.opacity = ease;
         panel.dataset.position = wheelPosition.toFixed(4);
     }
     function animate(now) {
@@ -195,9 +193,9 @@ const quickMenu = (() => {
         // Update button states
         buttons.forEach((b, i) => {
             const actionId = allActions[i][1];
-            // Print is available once a reader document is loaded.
-            if (actionId === 'btn-print') {
-                b.disabled = !state.format;
+            // Print and Full Menu are virtual actions (always enabled)
+            if (actionId === 'btn-print' || actionId === 'wheelFull') {
+                b.disabled = actionId === 'btn-print' ? !state.format : false;
                 return;
             }
             const source = document.getElementById(actionId);
@@ -216,7 +214,7 @@ const quickMenu = (() => {
         panel.inert = false; revealTarget = 1;
         panel.classList.add('qm-open'); frameTime = performance.now(); schedule();
         launcher.setAttribute('aria-expanded', 'true');
-        (buttons.find(b => !b.disabled && !b.hidden) || full).focus({ preventScroll: true });
+        (buttons.find(b => !b.disabled && !b.hidden)).focus({ preventScroll: true });
     }
 
     launcher.addEventListener('click', open);
@@ -230,7 +228,7 @@ const quickMenu = (() => {
 
     // Capture only once a drag is recognized, preserving ordinary button taps.
     panel.addEventListener('pointerdown', e => {
-        if (pointer !== null || !revealTarget || e.target.closest('#qm-full') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        if (pointer !== null || !revealTarget || (e.pointerType === 'mouse' && e.button !== 0)) return;
         pointer = e.pointerId; isDragging = true; dragged = false;
         startY = lastY = e.clientY; lastMove = performance.now(); velocity = 0;
         frameTime = lastMove; schedule();
@@ -263,19 +261,17 @@ const quickMenu = (() => {
         setPosition(wheelPosition + Math.sign(e.deltaY)); frameTime = performance.now(); schedule();
     }, {passive:false});
 
-    full.addEventListener('click', () => { close(false); toggleFullMenu(); });
-
     panel.addEventListener('keydown', e => {
         const enabled = buttons.filter(b => !b.disabled && !b.hidden);
         if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
             e.preventDefault();
             velocity = 0;
-            setPosition(e.key === 'Home' ? 0 : e.key === 'End' ? 10 : Math.round(wheelPosition) + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : -1));
+            setPosition(e.key === 'Home' ? 0 : e.key === 'End' ? 11 : Math.round(wheelPosition) + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : -1));
             render(); schedule();
-            buttons[((Math.round(wheelPosition) % 11) + 11) % 11].focus({preventScroll:true});
+            buttons[((Math.round(wheelPosition) % 12) + 12) % 12].focus({preventScroll:true});
         }
         if (e.key === 'Tab') {
-            const targets = [...enabled, full, launcher];
+            const targets = [...enabled, launcher];
             const i = targets.indexOf(document.activeElement);
             e.preventDefault();
             targets[(i + (e.shiftKey ? targets.length - 1 : 1)) % targets.length].focus();
@@ -290,7 +286,8 @@ const quickMenu = (() => {
         if (e.key === 'Escape' && !panel.hidden) close();
         if (e.key === 'Tab' && revealTarget && !panel.contains(e.target)) {
             e.preventDefault();
-            (e.shiftKey ? full : buttons.find(b => !b.hidden && !b.disabled) || full).focus();
+            const visible = buttons.find(b => !b.hidden && !b.disabled);
+            (e.shiftKey ? [...buttons].reverse().find(b => !b.hidden && !b.disabled) : visible)?.focus();
         }
     });
 
