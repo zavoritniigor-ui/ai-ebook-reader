@@ -1,92 +1,79 @@
-# Quick wheel implementation and review
+# Quick Wheel redesign — awaiting physical acceptance
 
-The existing full menu is `#app-header` / `#header-controls`. Its old
-`#menu-handle` listener in `ui-tooltip.js` toggled `immersive-mode`. The new
-native button opens the wheel on tap and calls `openFullMenu()` after a 520 ms
-hold. Full menu markup and action handlers are preserved. Shift+Enter or the
-wheel's central Full menu button provides a discoverable non-hold alternative.
+PR #98 stays Draft on `feature/bottom-quick-menu`. The previous physical
+acceptance failed. This redesign is not approved for merge or production.
 
-## Existing action map
+## Render and interaction model
 
-| Header control | Existing handler / owner |
+Eleven persistent buttons each retain their own real action and handler. A floating
+`wheelPosition` determines wrapped index distance, angle, transform, scale, opacity,
+visibility and stacking on every animation frame. No recycled closures, empty slots,
+or fixed six-button viewport remain. Generic button transform transitions are
+explicitly disabled so CSS cannot lag behind the frame renderer.
+
+Vertical pointer movement works from a button or the space around the arc. After a
+6px threshold, pointer capture preserves the drag outside the panel. One action is
+66px of vertical input. Release retains recent velocity, capped at 0.025 actions/ms;
+requestAnimationFrame integrates motion with exponential decay (190ms time constant),
+then eases to the nearest detent (65ms time constant, 0.001-action rest tolerance).
+Each crossed detent emits one 18ms Web Audio tick. No interval drives animation.
+
+Open/close use a 220ms cubic ease-out fan/collapse, with up to 18ms of item staggering.
+The launcher remains fixed. Reduced motion removes entrance/exit motion and inertia.
+A backdrop blocks reader interaction and ignores backdrop taps. Launcher, actions,
+Escape and the existing Android Back overlay stack close the wheel. Full Menu has
+its own position. Arrow keys rotate; Tab cycles visible enabled actions and controls.
+
+## Actions
+
+| Label | Existing destination |
 | --- | --- |
-| Contents (`toggle-toc-desktop`) | `openToc`, core.js |
-| Open (`file-upload` label/input) | input change → `handleFile`, main.js / formats.js |
-| Read / pause / resume (`btn-tts`) | `ttsBtn.onclick`, tts.js |
-| Stop (`btn-tts-stop`) | TTS stop binding, tts.js |
-| Two voices (`btn-alt-voices`) | alternate-voice binding, tts.js |
-| Voice (`voice-select`) | `voiceSelect.onchange`, main.js / core.js voice helpers |
-| Study (`btn-translate-mode`) | `translateBtn.onclick`, main.js |
-| Translation language (`target-lang`) | `targetLang.onchange`, main.js |
-| Statistics (`reading-stats-button`) | click listener / `updateReadingStatsNow`, learning-stats.js |
-| Ink (`btn-ink`) | click handler, pdf-ink.js |
-| Region (`btn-region`) | click handler, pdf-crop.js |
-| Zoom out / in | click handlers, main.js → PDF zoom or text repagination |
-| PDF fit (`pdf-fit`) | change handler, pdf-zoom-pan.js |
-| Theme (`theme-select`) | change handler, main.js |
-| Interface language (`ui-lang`) | change handler / `applyI18n`, main.js / core.js |
-| AI keys | inline `openKeySettings()`, ui-tooltip.js |
-| Installed-app exit (`btn-exit-app`) | inline `exitApp()`, pwa-lifecycle.js |
+| Open | `file-upload` |
+| Read | `btn-tts` |
+| Study | `btn-translate-mode` |
+| Statistics | `reading-stats-button` |
+| Theme | opens Full Menu and focuses `theme-select` |
+| Contents | `toggle-toc-desktop` |
+| Print | `printCurrentReaderPage()` → browser print API |
+| Draw | `btn-ink` |
+| Region | `btn-region` |
+| Alt Voices | `btn-alt-voices` |
+| Language Level | `btn-lang-level` |
 
-Footer chapter/page navigation, TTS transport, contextual translation/AI panels,
-PDF tools, and key/voice settings remain accessible through their existing UI.
-The wheel selects Open, Read, Study, Statistics, Theme, and Contents: direct
-reading/navigation tasks that already have standalone controls. Contextual AI
-requires a selected word, so it remains in the existing selection popup. Theme
-reveals and focuses the existing chooser, preserving its options and settings
-handler. Statistics reveals the header before opening its anchored popover.
-Disabled original controls also disable their wheel proxies.
+Source disabled states are respected. Print requires a loaded book. PDF printing uses
+`getViewport({scale:1})` to calculate valid, bounded print canvas dimensions.
 
-## Layout and interaction
+## Geometry
 
-The existing responsive breakpoints are 640px (phone), 641–1180px (tablet), and
-above 1180px (desktop). The wheel instead sizes to the visual viewport, capped
-at 320px, with margins and a safe-area-aware fixed launcher. It remains a body
-sibling of the reader so pointer capture/touch-action never changes PDF or text
-gesture handlers. Existing layers: sidebar 9999, header/footer 10000, launcher
-10120, wheel 10110, stats 10200, TTS 10600, mobile panels 20000, PDF/settings
-30000+, update notification 50000.
+The dock uses visualViewport height/offset, targeting 76% with a 100px bottom guard.
+The launcher center is 80px plus safe-area inset from the right edge, leaving room
+for the PDF scrubber. Full Menu is 68px above it. The action arc has radius 220px
+and 0.30 radians (17.19°) per detent. Five actions are visible normally; three on
+viewports below 540px high. The visible arc window spans 85.94° or 51.57° respectively;
+settled first-to-last item centers span 68.75° or 34.38°. Center scale is 1.0,
+adjacent scale 0.9, outer scale 0.8 (five-item mode).
 
-Opening the wheel hides the header without changing its layout or immersive
-state. Only UI surfaces are dismissed; selection, translation state, speech,
-book data and PDF state are not reset. Navigation signals and lifecycle events
-close stale wheel UI. The existing overlay-history mechanism includes the wheel
-for Android Back, with no separate history stack.
+Measured launcher centers: 76.00% on 320×568, 390×844, 768×1024, 1024×768 and
+1280×800; 74.36% on 844×390 because of the bottom guard. Each viewport is checked in
+light and dark themes against actual PDF, Ask AI, Grammar and footer geometry.
 
-Six positions are spaced by π/3. Dragging integrates wrapped atan2 deltas;
-release projects recent angular velocity by 70ms, caps momentum below half a
-position, and rounds to a discrete step. CSS transitions settle the positions;
-there is no animation-frame loop. A seven-pixel movement threshold separates
-item taps from drags. Optional 6ms vibration marks position crossings. Reduced
-motion disables inertia, transitions and entrance animation.
+## Behavioral evidence
 
-Native buttons provide Enter/Space activation, labels and focus rings. Arrow
-keys, Home and End focus/rotate items; Tab cycles actions, Full menu and launcher.
-Escape closes and restores focus. Labels use the application's eight languages.
+`tests/quick_wheel_browser.py` replaces internal-offset/source-existence assertions
+with rendered geometry and real CDP mouse/touch/keyboard input:
 
-## Validation
+- A detent changes visible labels; Print appears after two detents from initial open.
+- All eleven distinct actions become visible over a full revolution.
+- Visible taps route to all existing controls; real text and PDF print functions reach
+  the browser print API (intercepted so automated tests do not open OS dialogs).
+- Drag moves at least three action rectangles; an observed four-item sample moved
+  vertically by −30.14, −30.87, −32.42 and −34.57px and horizontally along the arc.
+- Rectangles continue moving after pointerup, eventually stop and snap to active scale 1.
+- Pairwise action, label, Full Menu, launcher and reader-control collision checks run
+  at rest and during fractional drag positions across the viewport matrix.
+- Open/close transforms are sampled on the browser animation clock.
+- Modal backdrop, Escape, Android Back, Full Menu sync and reduced motion are checked.
 
-`tests/quick_wheel_browser.py` is explicitly wired into CI, alongside the existing
-browser suites. It uses real CDP pointer/key input, intercepts original controls
-to verify proxy routing, checks selection/UI state, viewport bounds and stable
-listener/DOM counts. `tests/migration_audit_browser.py` recognizes the additional
-classic module. Offline app-shell entries and content hashes include the module.
-
-Physical-device checks still needed: iOS/Android long-press feel, stylus input,
-vibration strength/support, notched safe areas and installed-PWA browser bars.
-
-## Review results
-
-All 23 browser suites passed (22 existing suites plus the wheel suite), including
-PDF rendering/selection/pan/zoom, learning/TTS, resize/immersive, formats and PWA.
-The complete Python CI checks, Node 20 syntax checks and `git diff --check` passed.
-The PDF suite now explicitly opens/closes the wheel and verifies PDF state before
-its existing gesture tests. Final wheel tests also cover real touch rotation,
-press movement/cancellation, keyboard activation after dragging, Android Back,
-and the full-menu keyboard shortcut. Phone dark and compact-landscape light
-screenshots were visually reviewed. No commit, push, PR or deployment was made.
-
-Changed files: `index.html`, `js/quick-wheel.js`, `js/ui-tooltip.js`,
-`js/pwa-lifecycle.js`, `sw.js`, `tests/quick_wheel_browser.py`,
-`tests/pdf_ux_browser.py`, `tests/migration_audit_browser.py`,
-`.github/workflows/ci.yml`, `ARCHITECTURE.md`, and this document.
+Validation is still running. Final automated results and preview details will be
+recorded here after the checks finish. Real Android print UI, thumb comfort, ticking,
+and animation feel require the user's physical preview review.

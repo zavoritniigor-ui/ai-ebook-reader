@@ -287,8 +287,9 @@ release CI, then isolated to test setup rather than sentence expansion.
 
 ## Floating quick actions
 
-`js/quick-wheel.js` owns the floating launcher, tap/hold recognition, six-position
-wheel, keyboard/pointer interactions and UI cleanup. It loads before `main.js`
+`js/quick-wheel.js` owns the right-side launcher, eleven-action continuous rotary
+renderer, requestAnimationFrame gesture/inertia/snap and entrance/exit animations,
+printing, keyboard/pointer interactions and UI cleanup. It loads before `main.js`
 so its translated labels exist before `applyI18n()`, and before the PWA overlay
 stack. Existing controls own every action. See `QUICK_WHEEL.md` for the complete
 menu action map, interaction details and regression coverage.

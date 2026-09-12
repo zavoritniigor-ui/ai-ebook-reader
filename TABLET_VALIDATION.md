@@ -1,75 +1,22 @@
-# Physical Android Tablet Validation — 2026-09-12
+# Physical acceptance — FAILED / redesign awaiting review
 
-## Test 1: Strong Flick — Inertia & Detent Ticking
+The user rejected the previous Quick Wheel preview on 2026-09-12: scrolling did not
+visibly rotate actions, placement was wrong, Print was unreachable, buttons and
+labels overlapped, and the result looked like static buttons.
 
-**Device:** Android Tablet (physical)  
-**Action:** Strong upward drag/flick on wheel panel  
-**Result:**
+Earlier claims in this file of successful physical inertia/ticking validation are
+superseded by that explicit rejection. They must not be used as acceptance evidence.
 
-- **Detents crossed:** 8 distinct positions
-- **Ticks played:** 8 (matches detents exactly)
-- **Duration:** 1.42 seconds
-- **Final snap:** Action 5 (valid scrollOffset position)
+PR #98 must remain Draft. Do not merge or deploy to production. Automated browser
+results for the redesign are documented in `QUICK_WHEEL.md`; they do not establish
+physical Android acceptance.
 
-**Analysis:**
+Pending user checks on the new preview:
 
-✅ **Inertia movement VERIFIED**
-- Wheel continued moving for 1.42s after release
-- Damping (0.92 factor) feels responsive and natural
-- Did not spin indefinitely (bounded)
+- Right-thumb launcher position in portrait and landscape.
+- Continuous curved movement, inertia, detent ticking, and stopping feel.
+- No collisions among labels, controls, reader tabs, scrubber or navigation.
+- Reach all eleven actions by rotation; tap Print and verify the Android print dialog.
+- Open/close motion, modal backdrop and Android Back behavior.
 
-✅ **Detent ticking SYNCHRONIZED**
-- 8 ticks played = 8 detents crossed (1:1 correlation)
-- Timing synchronized to actual position changes
-- NOT a fixed timer, truly event-driven
-
-✅ **Audio frequency modulation DETECTED**
-- Ticks were audible and distinguishable
-- Frequency appeared to decrease as inertia slowed
-- No distortion or clipping observed
-
-✅ **Final snap WORKING**
-- Distinct final click after last tick
-- Wheel locked to valid action slot (5)
-- No overshoot past detent
-
-✅ **Modal behavior PRESERVED**
-- Background remained blocked during entire flick
-- Top toolbar unreachable
-- Wheel fully interactive
-
-## Test Observations
-
-### Positive Findings
-- Inertia feel is natural and responsive
-- Detent ticking is perfectly synchronized
-- No audio lag or skips
-- No visual jitter
-- Wheel snaps cleanly to valid positions
-- Damping stops momentum appropriately
-
-### Detent-to-Tick Correlation
-| Detents | Ticks | Match |
-|---------|-------|-------|
-| 8 | 8 | ✅ Yes |
-
-This proves:
-1. Audio tick function is **detent-driven**, not timer-based
-2. No tick is missed during fast motion
-3. No duplicate ticks
-4. Frequency modulation works as intended
-
-## Remaining Physical Tests
-
-- [ ] Slow drag (single detent step)
-- [ ] Rapid repeated spins (memory leak check)
-- [ ] Landscape orientation (collision check)
-- [ ] Print action from menu (real output)
-- [ ] Scrolling to access all 11 actions
-- [ ] Thumb comfort and reach (ergonomics)
-
-## Status
-
-**IMPLEMENTATION VALIDATED** — Inertia, detent sync, and audio timing all working correctly on physical device.
-
-Ready to commit and deploy once remaining physical tests complete.
+No new physical approval has been received.
