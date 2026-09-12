@@ -60,7 +60,7 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 document.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('#menu-handle, #quick-wheel')) return;
+    if (e.target.closest('#menu-handle, #quick-menu-dock')) return;
     let closedPopup = false;
     if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
         if (els.tooltip.style.display !== 'none') closedPopup = true;
