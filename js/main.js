@@ -105,7 +105,7 @@ els.translateBtn.onclick = () => {
 // завжди звіряється з реально відмальованою геометрією, а не з "плоскою" розкладкою.
 
 els.micBtn.onclick = toggleDictation;
-els.askSendBtn.onclick = () => { const q = els.askInput.value.trim(); if(q) { stopDictation(); els.askInput.value = ""; startAiTask(state.lastAskContext || q, 'ask', q); } };
+els.askSendBtn.onclick = () => { const q = els.askInput.value.trim(); if(q) { if(!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; } stopDictation(); els.askInput.value = ""; startAiTask(state.lastAskContext || q, 'ask', q); } };
 els.askInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') els.askSendBtn.click(); });
 
 // ПАРСЕРИ ФОРМАТІВ

@@ -241,7 +241,9 @@ const quickMenu = (() => {
         panel.inert = false; revealTarget = 1;
         panel.classList.add('qm-open'); frameTime = performance.now(); schedule();
         launcher.setAttribute('aria-expanded', 'true');
-        (buttons.find(b => !b.disabled && !b.hidden)).focus({ preventScroll: true });
+        // Focus the visually active (centered) action, not the first button
+        const activeIndex = ((Math.round(wheelPosition) % allActions.length) + allActions.length) % allActions.length;
+        buttons[activeIndex].focus({ preventScroll: true });
     }
 
     launcher.addEventListener('click', open);
@@ -288,20 +290,50 @@ const quickMenu = (() => {
         setPosition(wheelPosition + Math.sign(e.deltaY)); frameTime = performance.now(); schedule();
     }, {passive:false});
 
+    // Helper: find next available (non-disabled, non-hidden) action from a starting index, in a direction
+    function findNextAvailableIndex(startIndex, direction) {
+        let idx = startIndex;
+        let checked = 0;
+        while (checked < allActions.length) {
+            if (!buttons[idx].disabled && !buttons[idx].hidden) return idx;
+            idx = (idx + direction + allActions.length) % allActions.length;
+            checked++;
+        }
+        return startIndex; // Fallback if all are disabled/hidden
+    }
+
     panel.addEventListener('keydown', e => {
         const enabled = buttons.filter(b => !b.disabled && !b.hidden);
         if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
             e.preventDefault();
             velocity = 0;
-            setPosition(e.key === 'Home' ? 0 : e.key === 'End' ? 11 : Math.round(wheelPosition) + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : -1));
+            let newPos;
+            if (e.key === 'Home') {
+                newPos = findNextAvailableIndex(0, 1);
+            } else if (e.key === 'End') {
+                newPos = findNextAvailableIndex(allActions.length - 1, -1);
+            } else {
+                const direction = ['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : -1;
+                const currentPos = ((Math.round(wheelPosition) % allActions.length) + allActions.length) % allActions.length;
+                newPos = findNextAvailableIndex((currentPos + direction + allActions.length) % allActions.length, direction);
+            }
+            setPosition(newPos);
             render(); schedule();
-            buttons[((Math.round(wheelPosition) % 12) + 12) % 12].focus({preventScroll:true});
+            buttons[newPos].focus({preventScroll:true});
         }
         if (e.key === 'Tab') {
             const targets = [...enabled, launcher];
             const i = targets.indexOf(document.activeElement);
             e.preventDefault();
             targets[(i + (e.shiftKey ? targets.length - 1 : 1)) % targets.length].focus();
+        }
+        if ((e.key === 'Enter' || e.key === ' ') && revealTarget) {
+            e.preventDefault();
+            // Trigger the visually active (centered) action
+            const activeIndex = ((Math.round(wheelPosition) % allActions.length) + allActions.length) % allActions.length;
+            if (!buttons[activeIndex].disabled && !buttons[activeIndex].hidden) {
+                buttons[activeIndex].click();
+            }
         }
     });
 
@@ -391,14 +423,17 @@ function printCurrentReaderPage() {
             const columnStart = state.pageInChapter * columnStep?.() ?? state.pageInChapter * 400;
             const columnWidth = els.pages.clientWidth || 400;
             let content = '';
-            for (const node of els.pages.querySelectorAll('*')) {
-                const rect = node.getBoundingClientRect();
+            const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT, null, false);
+            let textNode;
+            while ((textNode = walker.nextNode())) {
+                if (!textNode.data.trim().length) continue;
+                const rect = textNode.parentElement.getBoundingClientRect();
                 const relLeft = rect.left + window.scrollX - els.pages.getBoundingClientRect().left;
                 if (relLeft >= columnStart && relLeft < columnStart + columnWidth) {
-                    if (node.textContent) content += node.textContent + '\n';
+                    content += textNode.data;
                 }
             }
-            container.textContent = content || els.pages.textContent;
+            container.textContent = content.trim() || els.pages.textContent;
             doc.body.append(container);
             frame.contentWindow.print();
             setTimeout(() => frame.remove(), 1000);

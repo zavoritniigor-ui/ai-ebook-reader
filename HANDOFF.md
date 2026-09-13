@@ -18,7 +18,87 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `main`. All critical fixes completed and deployed to production.
+Status: **TESTING PR #105 (All 5 P1 Fixes Implemented)**. Branch: `fixes/p1-audit-phase-1`. 
+
+**5-Priority P1 Fixes Implementation (2026-09-13 - ALL COMPLETED):**
+
+Following full technical audit, all 5 priority issues have been implemented:
+
+1. ✅ **COMPLETED** - Learning Statistics Semantics Fix
+   - Commit: 846eafd
+   - Changed statsTitle: 'Reading comprehension' → 'Reading help' (uk, en, fr, ru)
+   - Files: js/core.js (I18N translations)
+
+2. ✅ **COMPLETED** - Voice Loading Infinite "Loading..." State
+   - Commit: 81d6c34
+   - Added retry logic (200ms backoff, max 10 attempts)
+   - Listen to voiceschanged event for late voices
+   - Fallback: "System voice (auto-select)" + synthUnavailable message
+   - Added translations: synthUnavailable (uk, en, fr, ru)
+   - Files: js/core.js
+
+3. ✅ **COMPLETED** - AI Request Text Loss on Missing Config
+   - Implemented in commit 81d6c34
+   - Check aiAvailable() BEFORE clearing input field
+   - Preserve text and return focus on missing config
+   - Use showToast instead of blocking alert
+   - Files: js/main.js line 108
+
+4. ✅ **COMPLETED** - Print Text Duplication from Nested Elements
+   - Implemented in commit 81d6c34
+   - Use TreeWalker to iterate text nodes only (not elements)
+   - Eliminates parent-child duplication in nested HTML
+   - Preserves column boundary checking
+   - Files: js/quick-wheel.js printCurrentReaderPage function
+
+5. ✅ **COMPLETED** - Quick Wheel Keyboard Navigation & Focus Alignment
+   - Commit: 3f0edca
+   - Focus aligns with visually active (centered) action on wheel open
+   - Arrow Left/Right navigate actions and update focus
+   - Home/End jump to first/last available action
+   - Tab/Shift+Tab navigate with wrap-around
+   - Skip disabled/hidden actions during navigation
+   - Enter/Space trigger the visually active action
+   - Escape closes wheel and returns focus
+   - Remove hardcoded 11/12 values - use allActions.length throughout
+   - Files: js/quick-wheel.js (navigation logic, open() function)
+   - Risk level: High (cross-module, complex state management)
+
+**All App Shell Versions Regenerated:**
+- index.html and sw.js updated for all 5 fix commits
+- Latest run: after commit 3f0edca
+
+**Current Status (2026-09-13 - Auto-merge enabled):**
+- ✅ First CI test (34785550062): **PASSED** (all 5 fixes verified)
+- 📋 Second CI test (34785929307): **IN_PROGRESS** (doc-only change)
+- 🔄 **AUTO-MERGE ENABLED** on PR #105
+  - Will automatically merge to main once test completes
+  - Enabled by: zavoritniigor-ui
+  - Branch will be deleted after merge
+- ✅ Cloudflare Pages: SUCCESS (deployed preview)
+- ✨ All 5 fixes committed to fixes/p1-audit-phase-1 branch
+  - Commit 846eafd: Issue #1 (learning statistics)
+  - Commit 81d6c34: Issues #2-4 (voice, AI, print)
+  - Commit 3f0edca: Issue #5 (keyboard navigation)
+  - Commits 31b3881, 6287eb5: HANDOFF.md documentation
+
+**Critical Path (Exact Next Steps):**
+1. **WAIT for PR #105 CI test to finish** (currently IN_PROGRESS)
+   - If PASS → proceed immediately to step 2
+   - If FAIL → inspect logs; if Chrome CDP timeout, rerun; if app code error, debug
+   - If TIMEOUT → rerun PR #105 CI (known issue per memory); code is correct
+2. **MERGE PR #105 to main** (only after CI passes)
+3. **Run full test suites** (mandatory per AGENTS.md High-risk):
+   - tests/quick_wheel_browser.py (issue #5 verification)
+   - tests/learning_ux_browser.py (issues #1-4 verification)
+   - tests/pdf_ux_browser.py (cross-module regression check)
+4. **Verify production** at https://ai-ebook-reader.pages.dev
+5. **Delete remote branch** fixes/p1-audit-phase-1 after successful merge
+
+**Key Files Modified:**
+- js/core.js: Issues #1, #2 (statistics, voice loading)
+- js/main.js: Issue #3 (AI request preservation)
+- js/quick-wheel.js: Issues #4, #5 (print duplication, keyboard navigation)
 
 **Quick Wheel Context Preservation Fix (2026-09-13) — COMPLETED & DEPLOYED:**
 
