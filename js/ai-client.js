@@ -2,6 +2,7 @@
  * Existing features keep callAI/callAIVision and their task/epoch protections.
  * No retries through another provider. No credentials or raw errors are logged.
  * Task-specific OpenAI profiles optimize latency per workload.
+ * Real streaming for Ask AI and Language Level via Server-Sent Events with incremental rendering.
  */
 const OPENAI_MODEL = 'gpt-5.6-luna';
 // Centralized default: "low" for ordinary reader workloads.
@@ -83,7 +84,96 @@ async function aiJsonRequest(provider, key, url, body, signal) {
     }
     catch (_) { throw new Error(t('aiInvalidResponse')); }
 }
-async function callOpenAI(prompt, dataUrl, key, signal, task = 'default') {
+
+// Streaming fetch with proper timeout and signal handling (for SSE responses).
+// Does NOT buffer the body; returns raw Response for stream reading.
+async function fetchStreamingWithTimeout(url, options = {}, timeoutMs = 30000) {
+    const { method = 'POST', headers = {}, body, signal } = options;
+    const controller = new AbortController();
+    let timeoutId = null;
+
+    if (signal) {
+        signal.addEventListener('abort', () => {
+            controller.abort();
+            if (timeoutId) clearTimeout(timeoutId);
+        });
+    }
+
+    timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const res = await fetch(url, { method, headers, body, signal: controller.signal });
+        clearTimeout(timeoutId);
+        return res;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+    }
+}
+
+// Parse OpenAI Responses API SSE stream. Returns accumulated text and first-token time.
+// Handles chunk boundaries correctly: keeps incomplete lines in buffer.
+// Calls onDelta(delta, accumulated) for each text delta, allowing incremental UI updates.
+async function parseOpenAIStream(reader, signal, onDelta) {
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let firstTokenTime = null;
+    let result = '';
+    const startTime = performance.now();
+
+    while (true) {
+        if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
+
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // keep incomplete line for next iteration
+
+        for (const line of lines) {
+            if (!line.trim()) continue;
+            if (!line.startsWith('data: ')) continue;
+
+            try {
+                const data = JSON.parse(line.slice(6));
+
+                // Handle text deltas (OpenAI Responses API format)
+                if (data.type === 'response.output_text.delta') {
+                    if (!firstTokenTime) firstTokenTime = performance.now() - startTime;
+                    const text = data.delta;
+                    if (typeof text === 'string') {
+                        result += text;
+                        if (onDelta) onDelta(text, result);
+                    }
+                }
+
+                // Handle completion event
+                if (data.type === 'response.output_text.done') {
+                    break;
+                }
+            } catch (_) {
+                // Skip malformed JSON lines
+            }
+        }
+    }
+
+    // Process any remaining buffer
+    if (buffer.trim() && buffer.trim().startsWith('data: ')) {
+        try {
+            const data = JSON.parse(buffer.slice(6));
+            if (data.type === 'response.output_text.delta' && typeof data.delta === 'string') {
+                if (!firstTokenTime) firstTokenTime = performance.now() - startTime;
+                result += data.delta;
+                if (onDelta) onDelta(data.delta, result);
+            }
+        } catch (_) {}
+    }
+
+    return { result, firstTokenTime };
+}
+
+async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelta) {
     const profile = OPENAI_TASK_PROFILES[task] || OPENAI_TASK_PROFILES.default;
     const input = dataUrl ? [{ role: 'user', content: [
         { type: 'input_text', text: prompt },
@@ -95,42 +185,27 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default') {
     let result = '';
 
     if (profile.stream) {
-        // Streaming response for longer-form outputs (Ask AI, Language Level)
+        // Real streaming for Ask AI and Language Level
         const body = {
             model: OPENAI_MODEL, input, store: false, max_output_tokens: profile.max_output_tokens,
             reasoning: { effort: profile.reasoning }, stream: true
         };
         const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` };
         try {
-            const res = await fetchWithTimeout('https://api.openai.com/v1/responses',
-                { method: 'POST', headers, body: JSON.stringify(body), signal }, 20000);
+            const res = await fetchStreamingWithTimeout('https://api.openai.com/v1/responses',
+                { method: 'POST', headers, body: JSON.stringify(body), signal }, 30000);
             if (!res.ok) throw aiHttpError('openai', res.status);
 
             const reader = res.body?.getReader();
             if (!reader) throw new Error(t('aiInvalidResponse'));
 
-            const decoder = new TextDecoder();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
-                if (done) break;
-
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-                    try {
-                        const data = JSON.parse(line.slice(6));
-                        if (data.type === 'content.block.delta' && data.delta?.type === 'text_delta_event') {
-                            if (!firstTokenTime) firstTokenTime = performance.now() - startTime;
-                            const text = data.delta.text;
-                            result += text;
-                        }
-                    } catch (_) { }
-                }
-            }
+            const { result: parsed, firstTokenTime: ftt } = await parseOpenAIStream(reader, signal, onDelta);
+            result = parsed;
+            firstTokenTime = ftt;
         } catch (err) {
             if (signal?.aborted || err.name === 'AbortError') throw new DOMException('Cancelled', 'AbortError');
+            if (err.message?.includes('auth') || err.message?.includes('401')) throw err;
+            if (err.message?.includes('rate') || err.message?.includes('429')) throw err;
             throw new Error(t('aiNetworkError'));
         }
     } else {
@@ -176,9 +251,9 @@ async function callGroq(prompt, dataUrl, key, signal) {
     const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal);
     return data.choices?.[0]?.message?.content;
 }
-function callAI(prompt, signal, task = 'default') { return requestAI(prompt, null, signal, task); }
+function callAI(prompt, signal, task = 'default', onDelta) { return requestAI(prompt, null, signal, task, onDelta); }
 function callAIVision(prompt, dataUrl, signal) { return requestAI(prompt, dataUrl, signal, 'vision'); }
-async function requestAI(prompt, dataUrl, signal, task = 'default') {
+async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta) {
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
     const provider = state.activeAiProvider, key = aiProviderKey(provider);
     if (!key) throw new Error(missingAiKey(provider));
@@ -192,7 +267,7 @@ async function requestAI(prompt, dataUrl, signal, task = 'default') {
     try {
         let out;
         switch (provider) {
-            case 'openai': out = await callOpenAI(prompt, dataUrl, key, controller.signal, task); break;
+            case 'openai': out = await callOpenAI(prompt, dataUrl, key, controller.signal, task, onDelta); break;
             case 'groq': out = await callGroq(prompt, dataUrl, key, controller.signal); break;
             case 'gemini': out = await callGemini(prompt, dataUrl, key, controller.signal); break;
         }

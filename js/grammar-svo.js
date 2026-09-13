@@ -19,6 +19,58 @@
 els.grammarTab.onclick = () => { els.grammarPanel.classList.toggle('expanded'); els.askPanel.classList.remove('expanded'); els.grammarPanel.classList.remove('loading', 'ready'); };
 els.askTab.onclick = () => { els.askPanel.classList.toggle('expanded'); els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.remove('loading', 'ready'); };
 
+// INCREMENTAL STREAMING CALLBACK FOR ASK AI AND LANGUAGE LEVEL
+// Accumulates streamed deltas and safely updates DOM incrementally
+function createStreamingUpdater(content, task, panel, mode) {
+    let lastRenderTime = 0;
+    const RENDER_THROTTLE_MS = 100; // Update UI max every 100ms to avoid jank
+
+    return function onDelta(delta, accumulated) {
+        // Guard: verify task is still current (not stale, not aborted)
+        if (!task.current()) return;
+
+        const now = performance.now();
+
+        // Throttle rendering for performance: only update DOM every 100ms
+        if (now - lastRenderTime < RENDER_THROTTLE_MS) return;
+        lastRenderTime = now;
+
+        try {
+            // Incrementally render accumulated text with safeHtml
+            // This is safe: each update passes through the allowlist sanitizer
+            content.innerHTML = safeHtml(accumulated, true);
+        } catch (_) {
+            // Malformed intermediate HTML: skip this render, next delta will retry
+        }
+    };
+}
+
+// INCREMENTAL STREAMING CALLBACK FOR ASK AI AND LANGUAGE LEVEL
+// Accumulates streamed deltas and safely updates DOM incrementally
+function createStreamingUpdater(content, task, panel, mode) {
+    let lastRenderTime = 0;
+    const RENDER_THROTTLE_MS = 100; // Update UI max every 100ms to avoid jank
+
+    return function onDelta(delta, accumulated) {
+        // Guard: verify task is still current (not stale, not aborted)
+        if (!task.current()) return;
+
+        const now = performance.now();
+
+        // Throttle rendering for performance: only update DOM every 100ms
+        if (now - lastRenderTime < RENDER_THROTTLE_MS) return;
+        lastRenderTime = now;
+
+        try {
+            // Incrementally render accumulated text with safeHtml
+            // This is safe: each update passes through the allowlist sanitizer
+            content.innerHTML = safeHtml(accumulated, true);
+        } catch (_) {
+            // Malformed intermediate HTML: skip this render, next delta will retry
+        }
+    };
+}
+
 async function startAiTask(contextText, mode, userPrompt = "") {
     if (!aiAvailable()) return alert(t('needKey'));
     // Ручне виділення (на відміну від тапу по слову чи кнопки "розгорнути до
@@ -46,10 +98,16 @@ async function startAiTask(contextText, mode, userPrompt = "") {
             : buildAskPrompt(contextText, state.lastGrammarSentence, userPrompt, langName);
     const taskType = mode === 'grammar' ? 'grammar' : mode === 'level' ? 'language_level' : 'ask';
 
+    // For streaming tasks (ask, language_level on OpenAI), provide incremental callback
+    const isStreaming = (state.activeAiProvider === 'openai') && (mode === 'ask' || mode === 'level');
+    const onDelta = isStreaming ? createStreamingUpdater(content, task, panel, mode) : undefined;
+
     try {
-        const text = await callAI(prompt, task.signal, taskType);
+        const text = await callAI(prompt, task.signal, taskType, onDelta);
         if (!task.current()) return;
         panel.classList.remove('loading'); panel.classList.add('ready'); // Вмикаємо зелений неон!
+        // Final render with safeHtml (even if streaming already updated incrementally,
+        // this ensures the final state is properly sanitized)
         // Без обгортки <p>: відповідь тепер містить таблицю відмінювання й списки,
         // а таблиця всередині <p> — невалідний HTML, браузер розриває розмітку.
         content.innerHTML = safeHtml(text, true);
