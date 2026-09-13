@@ -21,7 +21,7 @@ let regionStart = null;
 document.getElementById('region-cancel').onclick = exitRegionMode;
 
 document.getElementById('btn-region').onclick = () => {
-    if (state.format !== 'pdf') { alert(t('regionPdfOnly')); return; }
+    if (state.format !== 'pdf') { showToast(t('regionPdfOnly')); return; }
     state.inkMode = false; document.body.classList.remove('ink-mode');
     document.body.classList.add('region-mode');
     document.body.classList.add('immersive-mode');   // прибираємо меню з дороги
@@ -60,7 +60,7 @@ regionOverlay.addEventListener('pointerup', async (e) => {
     exitRegionMode();
     if (rect.width < 20 || rect.height < 20) return;   // випадковий тап
     const dataUrl = cropPdfRegion(rect);
-    if (!dataUrl) { alert(t('regionFail')); return; }
+    if (!dataUrl) { showToast(t('regionFail')); return; }
     openCropPreview(dataUrl);
 });
 

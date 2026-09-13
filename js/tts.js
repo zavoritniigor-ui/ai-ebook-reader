@@ -346,7 +346,7 @@ els.altVoicesBtn.onclick = () => {
         // Попереджаємо одразу, якщо чергувати нема чим — інакше різниці не було б чути.
         const pair = pickVoicePair('fr');
         if (!pair || pair[0].name === pair[1].name) {
-            alert(t('oneVoice'));
+            showToast(t('oneVoice'));
         }
     }
 };

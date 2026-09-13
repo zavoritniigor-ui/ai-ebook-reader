@@ -3,6 +3,15 @@
  * Thumb-reachable on tablets, expands inward/leftward from launcher.
  *
  * Loaded before main.js (i18n bootstrap) and pwa-lifecycle.js (overlay history). */
+
+// Global context snapshot for Quick Wheel actions - accessible to button handlers
+let quickWheelContext = null;
+function getQuickWheelLearningContext() {
+    const ctx = quickWheelContext;
+    quickWheelContext = null;  // Consume once
+    return ctx;
+}
+
 I18N.wheelOpen = Object.fromEntries(Object.entries(I18N.open).map(([lang, label]) => [lang, label.replace(/^[^\p{L}]+/u, '')]));
 I18N.wheelTitle = { en:'Quick wheel', uk:'Швидке колесо', fr:'Roue rapide', ru:'Быстрое колесо', zh:'快速轮盘', ko:'빠른 휠', hi:'त्वरित पहिया', ga:'Rothar tapa' };
 I18N.wheelStats = {en:'Statistics',uk:'Статистика',fr:'Statistiques',ru:'Статистика',zh:'统计',ko:'통계',hi:'आँकड़े',ga:'Staitisticí'};
@@ -84,6 +93,19 @@ const quickMenu = (() => {
         } catch (err) { /* audio not supported */ }
     }
 
+    // Capture learning context before action dispatch (uses global getQuickWheelLearningContext)
+    function captureLearningContext() {
+        return {
+            lastGrammarSentence: state.lastGrammarSentence,
+            lastAskContext: state.lastAskContext,
+            lastReaderHelpContext: typeof lastReaderHelpContext !== 'undefined' ? lastReaderHelpContext : null,
+            targetLang: state.targetLang,
+            pageInChapter: state.pageInChapter,
+            bookKey: state.bookKey,
+            epoch: readerEpoch.book
+        };
+    }
+
     // One stable element and closure per real action. Nothing is recycled on rotation.
     const buttons = allActions.map(([key, id, icon]) => {
         const b = document.createElement('button');
@@ -96,12 +118,17 @@ const quickMenu = (() => {
         b.append(symbol, label); panel.append(b);
         b.addEventListener('click', e => {
             if (performance.now() < suppressClickUntil || !revealTarget) { e.preventDefault(); return; }
+
+            // Capture context BEFORE closing wheel or changing any state
+            quickWheelContext = captureLearningContext();
+
             close();
-            if (id === 'btn-print') { printCurrentReaderPage(); return; }
-            if (id === 'wheelFull') { toggleFullMenu(); return; }
+            if (id === 'btn-print') { printCurrentReaderPage(); quickWheelContext = null; return; }
+            if (id === 'wheelFull') { toggleFullMenu(); quickWheelContext = null; return; }
             const target = document.getElementById(id);
             if (id === 'theme-select' || id === 'reading-stats-button') { openFullMenu(); target.focus(); }
-            if (id !== 'theme-select') target.click();
+            if (id !== 'theme-select' && target) target.click();
+            quickWheelContext = null;
         });
         return b;
     });

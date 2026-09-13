@@ -46,7 +46,7 @@ function createStreamingUpdater(content, task, panel, mode) {
 }
 
 async function startAiTask(contextText, mode, userPrompt = "") {
-    if (!aiAvailable()) return alert(t('needKey'));
+    if (!aiAvailable()) return showToast(t('needKey'));
     // Ручне виділення (на відміну від тапу по слову чи кнопки "розгорнути до
     // абзацу") нічим не обмежене на вході — без цього протягнутих кілька сторінок
     // пішло б у промпт цілком.
@@ -497,9 +497,16 @@ function buildLanguageLevelPrompt(fragment, sentence, langName) {
 
 // Мовний розбір: рівень CEFR і спрощення до A2/B1 для останнього виділеного фрагмента.
 document.getElementById('btn-lang-level').onclick = () => {
-    const frag = state.lastAskContext || state.lastGrammarSentence;
-    if (!frag) { alert(t('selectFirst')); return; }
-    if (lastReaderHelpContext) recordHelpForSpan(lastReaderHelpContext, 'ask_ai');
+    // Get context from Quick Wheel if action was triggered through it, otherwise use current state
+    const wheelContext = typeof getQuickWheelLearningContext === 'function' ? getQuickWheelLearningContext() : null;
+    const context = wheelContext || {
+        lastAskContext: state.lastAskContext,
+        lastGrammarSentence: state.lastGrammarSentence,
+        lastReaderHelpContext
+    };
+    const frag = context.lastAskContext || context.lastGrammarSentence;
+    if (!frag) { showToast(t('selectFirst')); return; }
+    if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
     startAiTask(frag, 'level');
     els.askPanel.classList.add('expanded');
 };
@@ -507,9 +514,16 @@ document.getElementById('btn-lang-level').onclick = () => {
 
 
 document.getElementById('btn-explain').onclick = () => {
-    const frag = state.lastAskContext || state.lastGrammarSentence;
-    if (!frag) { alert(t('selectFirst')); return; }
-    if (lastReaderHelpContext) recordHelpForSpan(lastReaderHelpContext, 'ask_ai');
+    // Get context from Quick Wheel if action was triggered through it, otherwise use current state
+    const wheelContext = typeof getQuickWheelLearningContext === 'function' ? getQuickWheelLearningContext() : null;
+    const context = wheelContext || {
+        lastAskContext: state.lastAskContext,
+        lastGrammarSentence: state.lastGrammarSentence,
+        lastReaderHelpContext
+    };
+    const frag = context.lastAskContext || context.lastGrammarSentence;
+    if (!frag) { showToast(t('selectFirst')); return; }
+    if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
     startAiTask(frag, 'ask');
     els.askPanel.classList.add('expanded');
 };
