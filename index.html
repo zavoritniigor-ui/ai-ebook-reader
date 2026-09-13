@@ -57,16 +57,56 @@
             display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        /* Прозорий "язичок" загального меню — САМОСТІЙНИЙ фіксований елемент у кутку екрана,
-           єдиний спосіб відкрити/закрити верхнє меню. Лежить вище за все інше, тому тап у цій
-           зоні ніколи не потрапляє на текст і не викликає переклад слова. */
         #menu-handle {
-            position: fixed; top: 0; left: 0;
-            width: 50px; height: 30px; background: rgba(128,128,128,0.12);
-            border-radius: 0 0 22px 0; cursor: pointer; z-index: 10100;
-            transition: background-color 0.2s;
+            position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left));
+            width: 44px; height: 44px; border-radius: 50%; z-index: 10050;
+            color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+            border: 1px solid var(--border-color); backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px rgba(0,0,0,.12); cursor: pointer; touch-action: none;
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
-        #menu-handle:hover { background: rgba(128,128,128,0.22); }
+        /* Lower-right Quick Menu: a separate, thumb-reach convenience control,
+           independent of the top/full menu. The dock itself is a zero-size fixed
+           anchor point (lower-right, safe-area aware) — every child (launcher,
+           items, central Full-menu button) is absolutely positioned FROM that
+           single point, so the collapsed state has no invisible hit-testing area
+           beyond the launcher circle itself: nothing here can block page turns. */
+        /* Right-side launcher positioned near edge but with safe inset for side controls.
+           Default 16px works for tablets/desktop. Phones need more space for Ask AI/Grammar tabs. */
+        #quick-menu-dock { position: fixed; right: calc(env(safe-area-inset-right) + 16px); top: 76vh;
+            z-index: 25001; width: 0; height: 0; }
+        @media (max-width: 640px) {
+            #quick-menu-dock { right: calc(env(safe-area-inset-right) + 60px); }
+        }
+        body.ink-mode #quick-menu-dock, body.region-mode #quick-menu-dock { display: none; }
+        #qm-launcher, .qm-item {
+            position: absolute; left: 0; top: 0; box-sizing: border-box;
+            color: var(--text-color); background: color-mix(in srgb, var(--panel-bg) 86%, transparent);
+            border: 1px solid color-mix(in srgb, var(--text-color) 18%, transparent);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 6px 20px -7px rgba(var(--shadow-color),.35);
+            cursor: pointer; user-select: none; -webkit-user-select: none;
+        }
+        #qm-launcher { z-index: 40; width: 48px; height: 48px; border-radius: 50%; transform: translate(-50%, -50%);
+            font-size: 22px; touch-action: manipulation; }
+        #qm-launcher[aria-expanded="true"] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 30%, transparent); }
+        #qm-backdrop { position: fixed; inset: 0; z-index: 25000;
+            background: radial-gradient(circle at bottom right, rgba(0,0,0,.18), rgba(0,0,0,.08));
+            touch-action: none; transition: opacity 0.22s cubic-bezier(0.2,0.8,0.2,1),
+            background 0.22s cubic-bezier(0.2,0.8,0.2,1); opacity: 1; pointer-events: auto; }
+        #qm-backdrop[hidden] { opacity: 0; pointer-events: none; }
+        #quick-menu { position: absolute; left: -230px; top: -270px; width: 260px; height: 340px;
+            touch-action: none; }
+        .qm-item { left: 230px; top: 270px; width: 132px; height: 56px; padding: 6px 10px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            font: inherit; font-size: 12px; line-height: 1.15; border-radius: 28px;
+            transition: none; transform-origin: center; will-change: transform, opacity; touch-action: none; }
+        .qm-item[hidden], #quick-menu[hidden], #qm-backdrop[hidden] { display: none; }
+        .qm-icon { flex-shrink: 0; font-size: 22px; }
+        .qm-label { white-space: normal; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+        .qm-item.qm-active { border-color: var(--accent-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 25%, transparent); }
+        .qm-item:disabled { color: var(--text-muted); cursor: default; }
+        #qm-launcher:focus-visible, .qm-item:focus-visible { outline: 3px solid var(--accent-color); outline-offset: 3px; }
 
         .header-controls { display: flex; width: 100%; align-items: center; gap: 4px; flex-wrap: wrap; }
         .toolbar-group {
@@ -652,6 +692,16 @@
             width: 100%; height: 44px; padding: 0 12px; margin: 12px 0 6px; border: 1px solid var(--border-color);
             border-radius: var(--radius-sm); background: var(--bg-color); color: var(--text-color); font-size: 15px;
         }
+        .ai-provider-selector { margin: 18px 0 0; padding: 0; border: 0; min-width: 0; }
+        .ai-provider-selector legend { margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+        .ai-provider-options { display: flex; gap: 6px; }
+        .ai-provider-options label { flex: 1; position: relative; cursor: pointer; min-width: 0; }
+        .ai-provider-options input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; padding: 0; }
+        .ai-provider-options span { display: flex; align-items: center; justify-content: center; min-height: 44px;
+            border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 13px; }
+        .ai-provider-options input:checked + span { background: var(--accent-color); color: var(--accent-contrast); border-color: var(--accent-color); }
+        .ai-provider-options input:focus-visible + span { outline: 3px solid var(--accent-color); outline-offset: 3px; }
+        #ai-provider-error { font-size: 13px; color: var(--text-color); border-left: 3px solid var(--accent-color); padding-left: 8px; }
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
         .key-link { display: inline-block; font-size: 13px; color: var(--accent-color); text-decoration: none; }
         .key-link:hover { text-decoration: underline; }
@@ -738,20 +788,35 @@
 </head>
 <body data-theme="light" inert>
 
-    <div id="menu-handle" data-i18n-title="tMenu"></div>
+    <!-- Top/full menu toggle — independent of the bottom Quick Menu. Its own control,
+         its own state (body.immersive-mode), unchanged since before the Quick Menu
+         existed: tap opens/closes the header+footer toolbar. -->
+    <button type="button" id="menu-handle" data-i18n-title="wheelFull" aria-expanded="false">☰</button>
+    <!-- Bottom-center Quick Menu — a separate convenience control for thumb reach.
+         #quick-menu-dock is a zero-size fixed anchor; every child is absolutely
+         positioned from it, so nothing invisible ever blocks page turns. -->
+    <div id="quick-menu-dock">
+        <button type="button" id="qm-launcher" aria-haspopup="dialog" aria-controls="quick-menu" aria-expanded="false">✦</button>
+        <section id="quick-menu" role="dialog" data-i18n-title="wheelTitle" hidden></section>
+    </div>
+    <!-- Modal backdrop: blocks all background interaction while Quick Menu is open. -->
+    <div id="qm-backdrop" hidden></div>
     <header id="app-header">
         <div class="header-controls" id="header-controls">
+            <!-- FILE / BOOK -->
             <div class="toolbar-group">
                 <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tToc" data-i18n="tocIcon">☰</button>
                 <label class="btn" for="file-upload" data-i18n="open">📂 Відкрити</label>
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown">
             </div>
+            <!-- READING / TTS -->
             <div class="toolbar-group">
                 <button class="icon-btn" id="btn-tts" data-i18n="read">🔊 Читати</button>
                 <button class="icon-btn compact" id="btn-tts-stop" style="display:none;" data-i18n-title="tStop">⏹</button>
                 <button class="icon-btn" id="btn-alt-voices" data-i18n-title="tAltVoices">👥 Два голоси: ВИМК</button>
                 <select id="voice-select" data-i18n-title="tVoice"><option value="" data-i18n="loading">Завантаження...</option></select>
             </div>
+            <!-- STUDY / TRANSLATION / STATISTICS -->
             <div class="toolbar-group">
                 <button class="icon-btn" id="btn-translate-mode" data-i18n-title="tStudyMode">🔮 Вивчення: ВИМК</button>
                 <select id="target-lang" data-i18n-title="tTargetLang">
@@ -786,11 +851,13 @@
                     </section>
                 </div>
             </div>
+            <!-- ANNOTATION / DISPLAY / SETTINGS -->
             <div class="toolbar-group">
                 <button class="icon-btn compact" id="btn-ink" data-i18n-title="btnInk">✏️</button>
                 <button class="icon-btn compact" id="btn-region" data-i18n-title="btnRegion">✂️</button>
                 <button class="icon-btn compact" id="zoom-out" data-i18n-title="tZoomOut">A-</button>
-                <button class="icon-btn compact" id="zoom-in" data-i18n-title="tZoomIn">A+</button><select id="pdf-fit" aria-label="Масштаб PDF"><option value="width">Fit width</option><option value="page">Fit page</option><option value="free">Free zoom</option></select>
+                <button class="icon-btn compact" id="zoom-in" data-i18n-title="tZoomIn">A+</button>
+                <select id="pdf-fit" aria-label="Масштаб PDF"><option value="width">Fit width</option><option value="page">Fit page</option><option value="free">Free zoom</option></select>
                 <select id="theme-select" data-i18n-title="tTheme">
                     <option value="light" data-i18n="themeLight">Світла</option>
                     <option value="sepia" data-i18n="themeSepia">Сепія</option>
@@ -940,14 +1007,26 @@
     <div id="settings-modal" onclick="if (event.target === this) closeKeySettings()">
         <div class="modal-content">
             <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" onclick="closeKeySettings()" data-i18n="close" data-i18n-title="tClose">✕</button>
-            <h3 data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
-            <input type="password" id="api-key-input" placeholder="AIza...">
+            <h3 id="gemini-key-label" data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
+            <input type="password" id="api-key-input" placeholder="AIza..." aria-labelledby="gemini-key-label" autocomplete="off" spellcheck="false">
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="key-link">aistudio.google.com/apikey</a>
 
-            <h3 style="margin-top:18px;">⚡ Ключ Groq <span class="key-hint" data-i18n="keyFaster">(швидший)</span></h3>
-            <input type="password" id="groq-key-input" placeholder="gsk_...">
+            <h3 id="groq-key-label" style="margin-top:18px;" data-i18n="groqKeyTitle">⚡ Ключ Groq</h3>
+            <input type="password" id="groq-key-input" placeholder="gsk_..." aria-labelledby="groq-key-label" autocomplete="off" spellcheck="false">
             <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="key-link">console.groq.com/keys</a>
-            <div class="key-hint" data-i18n="keyNote">Якщо вказано ключ Groq, він використовується для всіх запитів AI — відповідь приходить помітно швидше. Інакше працює Gemini.</div>
+            <h3 id="openai-key-label" style="margin-top:18px;" data-i18n="openaiKeyTitle">🔑 OpenAI API</h3>
+            <input type="password" id="openai-key-input" placeholder="sk-..." aria-labelledby="openai-key-label" autocomplete="off" spellcheck="false">
+            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="key-link">platform.openai.com/api-keys</a>
+            <fieldset class="ai-provider-selector">
+                <legend data-i18n="aiProviderLabel">Активний AI</legend>
+                <div class="ai-provider-options">
+                    <label><input type="radio" name="ai-provider" value="openai"><span>OpenAI</span></label>
+                    <label><input type="radio" name="ai-provider" value="groq"><span>Groq</span></label>
+                    <label><input type="radio" name="ai-provider" value="gemini"><span>Gemini</span></label>
+                </div>
+            </fieldset>
+            <p id="ai-provider-error" role="alert" hidden></p>
+            <div class="key-hint" data-i18n="keyNote"></div>
 
             <div class="modal-footer">
                 <button class="btn-ghost" onclick="closeKeySettings()" data-i18n="cancel">Скасувати</button>
@@ -956,7 +1035,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=2e0a662a3510"></script>
+    <script src="js/core.js?v=02b138b56fe0"></script>
     <script src="js/lang-detect.js?v=21625d365df7"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -971,17 +1050,18 @@
     <script src="js/learning-stats.js?v=67246f255f39"></script>
     <script src="js/navigation.js?v=cd49774de655"></script>
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
-    <script src="js/ui-tooltip.js?v=74da86198059"></script>
+    <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
-    <script src="js/grammar-svo.js?v=d6c923f45e21"></script>
-    <script src="js/ai-client.js?v=a7a5f853ab94"></script>
+    <script src="js/grammar-svo.js?v=ccb7369d04b5"></script>
+    <script src="js/ai-client.js?v=729d32ecdd5f"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=7ab822ef42a8"></script>
     <script src="js/pdf-crop.js?v=93672612bda6"></script>
     <script src="js/pdf-render.js?v=64ef9f00575d"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
+    <script src="js/quick-wheel.js?v=3ccf1bbd4ddc"></script>
     <script src="js/main.js?v=a6e5adcc808c"></script>
-    <script src="js/pwa-lifecycle.js?v=b9824003afbb"></script>
+    <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
 </html>

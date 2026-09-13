@@ -479,3 +479,68 @@ The next agent must continue from this recorded state and must not repeat comple
 Never rely only on conversation memory.
 Use Git, ARCHITECTURE.md, and HANDOFF.md as the source of truth for ongoing work;
 MIGRATION_STATUS.md only for the historical record of the completed migration.
+
+## Quick Wheel redesign — physical acceptance FAILED (2026-09-12)
+
+The prior completion and physical-validation claims are superseded by the user's
+explicit failed physical acceptance. Do not rely on them. PR #98 must remain Draft;
+no merge, auto-merge, or production deployment is authorized.
+
+Branch: `feature/bottom-quick-menu` (explicit user exception to the usual dev workflow).
+Current work is uncommitted: `js/quick-wheel.js`, `index.html`, and
+`tests/quick_wheel_browser.py`. Eleven persistent actions now render along a continuous
+arc through requestAnimationFrame; gesture capture, velocity decay, smooth detent snap,
+and animated open/close replace the static six-button model. Browser tests now check
+visible movement, real action routing, print API invocation, and pairwise geometry.
+Local behavioral tests and the full CI regression list are running. Latest logs:
+`/tmp/wheel-tests.log`, `/tmp/wheel-regression.log`. A temporary Node runtime is in
+`/tmp/node-v22.14.0-linux-x64/bin/node`. Local HTTP server: 8765; wheel CDP: 9222;
+regression CDP: 9223. No changes pushed and no preview updated yet.
+
+PR #98 verified Draft with auto-merge null. Production has not been changed.
+Next: resolve remaining geometry/test failures, finish all regression checks, run
+`tools/version_app_shell.py` then `tests/app_shell_versions.py`, commit relevant files,
+push this feature branch only, verify draft PR CI and Cloudflare preview, and provide
+measurements/screenshots for physical user review. Feature is NOT accepted or complete.
+Preserve unrelated untracked files, including `tests/quick_wheel_drag_browser.py`;
+it predates this task and is not part of this redesign's test suite.
+
+## OpenAI restoration on Quick Wheel — 2026-09-12
+
+User explicitly requires `feature/bottom-quick-menu`, PR #98 Draft, no merge.
+Restored provider changes selectively from `feature/openai-provider` (`d35f3df`):
+`index.html`, `js/core.js`, `js/ai-client.js`, `js/ui-tooltip.js`, provider browser
+tests and explicit-selection migration tests. Preserved the newer tooltip dock
+handler and all wheel/menu/print/UI implementation. No provider fallback.
+Updated CI coverage for the existing stale drag suite and replaced its obsolete
+six-item assumptions with real drag/settings integration assertions. Wheel and
+PDF test setup now waits for rendered entrance/resize completion. Updated the
+architecture provider description and regenerated shell versions.
+
+Local validation complete: all 25 browser suites in the CI list passed, including
+full PDF/learning, provider, both wheel suites, migration, format/rendering,
+language/TTS and PDF selection suites. Also passed shell versions, CI suite
+coverage and CDP transport checks. Initial full-run failures were resolved by
+waiting for rendered entrance/PDF resize completion, resetting drag emulation,
+and retaining the existing 10px PDF touch tolerance in its stale test assertions.
+Rich-text passed on rerun after a page-startup timeout. Selection and wheel
+application code remain unchanged. Logs: `/tmp/openai-full-suite.log`,
+`/tmp/restore-*.log`, `/tmp/openai-*-retest.log`.
+
+This entry accompanies the restoration commit on `feature/bottom-quick-menu`.
+Release target: update the existing Draft PR #98 and Cloudflare branch preview
+only. At commit time remote CI/deployment verification is pending; inspect PR
+checks for the exact commit and immutable preview URL. No merge or production
+deployment authorized. Physical wheel acceptance remains pending.
+
+CI follow-up: first job attempt hit an intermittent FB2.ZIP fixture selection
+failure; the rerun passed it and every suite through bilingual PDF, then exposed
+a platform-dependent hitbox test assertion. Follow-up measures actual Range glyph
+bounds and asserts rejection beyond the existing 10px tolerance; it no longer
+assumes a browser must resolve a caret inside that optional tolerance. No app
+code changed. New commit/preview CI must be verified after this follow-up.
+
+Second CI follow-up: FB2.ZIP coordinate selection race recurred on the next
+commit. `tests/formats_browser.py` now waits for layout and finite animations
+after book replacement before hit-testing; selection assertions and application
+code are unchanged. Run this targeted suite, then push and verify new CI/preview.

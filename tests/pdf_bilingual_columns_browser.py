@@ -55,10 +55,20 @@ loaded = c.js(f'''(async()=>{{
     localStorage.clear(); state.pdfScale=1; state.pdfFit='width'; state.format='pdf'; state.bookKey='bilingual-columns-test';
     document.body.classList.add('pdf-mode','immersive-mode');
     window.__errors=[]; window.addEventListener('error',e=>__errors.push(e.message));
+    window.__pendingPdfRenders=0; window.__lastPdfRender=performance.now();
+    const originalRender=renderPdfPage;
+    renderPdfPage=async(...args)=>{{
+        __pendingPdfRenders++; __lastPdfRender=performance.now();
+        try {{ return await originalRender(...args); }}
+        finally {{ __pendingPdfRenders--; __lastPdfRender=performance.now(); }}
+    }};
     const file=new File([Uint8Array.from(atob('{data}'),c=>c.charCodeAt(0))],'fixture.pdf');
     await initPdf(file); return {{text: els.pages.textContent}};
 }})()''')
 assert 'Je n' in loaded['text'] and 'I was not' in loaded['text'], loaded
+
+# Match the reselect suite: viewport setup may queue a delayed resize render.
+c.wait('__pendingPdfRenders===0 && performance.now()-__lastPdfRender>400')
 
 
 def sentence_for(needle):

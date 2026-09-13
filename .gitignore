@@ -72,3 +72,7 @@ Thumbs.db
 # rule above -- still no `!*.pdf` anywhere, so nothing else slips through.
 !/tests/fixtures/pdf/*.pdf
 !/tests/fixtures/text-audit/*.docx
+
+# Claude Code local settings and backups (IDE state, not part of project)
+.claude/settings.*.json*
+.claude/*.backup*
