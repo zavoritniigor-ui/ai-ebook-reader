@@ -18,20 +18,23 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **IN PROGRESS**. Branch: `main`. Implementing first phase of 5 priority P1 fixes after full audit.
+Status: **TESTING PR #105**. Branch: `fixes/p1-audit-phase-1`. 4 of 5 P1 fixes implemented + 1 TODO.
 
-**5-Priority P1 Fixes Implementation (2026-09-13 in progress):**
+**5-Priority P1 Fixes Implementation (2026-09-13 - final push):**
 
 Following full technical audit, implementing 5 priority issues:
 
-1. ✅ **COMPLETED** - Learning Statistics Semantics Fix (commit 83de130)
-   - Root cause: `statsTitle` labeled as "Reading comprehension" but metric only measures
-     count of words without requested help (`independent = total - helped`)
-   - Fix: Renamed title to "Reading help" across all locales (uk, en, fr, ru)
-   - Impact: Small, backward compatible - data unchanged, only labels updated
-   - Files: js/core.js (I18N translations only)
+1. ✅ **COMPLETED** - Learning Statistics Semantics Fix
+   - Commit: 846eafd (in PR #105)
+   - Changed statsTitle: 'Reading comprehension' → 'Reading help' (uk, en, fr, ru)
+   - App shell versioned (index.html, sw.js updated)
 
-2. **TODO** - Voice Loading Infinite "Loading..." State (High complexity)
+2. ✅ **COMPLETED** - Voice Loading Infinite "Loading..." State
+   - Commit: 81d6c34 (in PR #105)
+   - Added retry logic (200ms backoff, max 10 attempts)
+   - Listen to voiceschanged event for late voices
+   - Fallback: "System voice (auto-select)" + synthUnavailable message
+   - Added translation: synthUnavailable (uk, en, fr, ru)
    - Root cause: `loadVoices()` in js/core.js returns early if `getVoices()` returns empty,
      leaving selector in "Loading..." state with no fallback UI or retry logic
    - Required fix:
