@@ -64,7 +64,7 @@ window.fetch=async(url,options={})=>{
  if(__mode==='defer'||__mode==='abortable'){
   const abortable=__mode==='abortable';
   return new Promise((resolve,reject)=>{
-   __pending.push({resolve:text=>resolve(response(text)),signal:options.signal});
+   __pending.push({resolve:text=>{const r=provider==='openai'&&body.stream?sseResponse(text):response(text);resolve(r);},signal:options.signal});
    options.signal.addEventListener('abort',()=>{__aborts++;if(abortable)reject(new DOMException('Cancelled','AbortError'))},{once:true});
   });
  }
