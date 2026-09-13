@@ -18,7 +18,77 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `main`. All critical fixes completed and deployed to production.
+Status: **IN PROGRESS**. Branch: `main`. Implementing first phase of 5 priority P1 fixes after full audit.
+
+**5-Priority P1 Fixes Implementation (2026-09-13 in progress):**
+
+Following full technical audit, implementing 5 priority issues:
+
+1. ✅ **COMPLETED** - Learning Statistics Semantics Fix (commit 83de130)
+   - Root cause: `statsTitle` labeled as "Reading comprehension" but metric only measures
+     count of words without requested help (`independent = total - helped`)
+   - Fix: Renamed title to "Reading help" across all locales (uk, en, fr, ru)
+   - Impact: Small, backward compatible - data unchanged, only labels updated
+   - Files: js/core.js (I18N translations only)
+
+2. **TODO** - Voice Loading Infinite "Loading..." State (High complexity)
+   - Root cause: `loadVoices()` in js/core.js returns early if `getVoices()` returns empty,
+     leaving selector in "Loading..." state with no fallback UI or retry logic
+   - Required fix:
+     * Implement proper loading completion state
+     * Retry voice fetch through controlled intervals
+     * Listen for `voiceschanged` event for late-arriving voices
+     * Show "System voice (auto-select)" fallback if API available but no list
+     * Handle Speech Synthesis API unavailable: show clear message, disable related actions
+     * Test both main voice and dual-voice modes
+   - Affected files: js/core.js (loadVoices, restoreVoiceSelectValue functions)
+   - Risk level: Normal (isolated to voice module)
+
+3. **TODO** - AI Request Text Loss on Missing Config (Medium complexity)
+   - Root cause: `askSendBtn` onclick handler (js/main.js line 108) clears input BEFORE
+     checking AI availability - if validation fails, user loses typed text
+   - Fix: Check AI config (provider, key) BEFORE clearing input. Only clear after request
+     accepted. Return focus to input and show clear message if config missing.
+   - Files: js/main.js, js/grammar-svo.js (ensure consistent AI availability check across all entry points)
+   - Risk level: Normal (isolated to AI feature, one-line UI fix)
+
+4. **TODO** - Print Text Duplication from Nested Elements (Low complexity)
+   - Root cause: `printCurrentReaderPage()` in js/quick-wheel.js line 394-399 iterates
+     `querySelectorAll('*')` and adds `textContent` of EVERY element, including parents
+     and children, causing nested HTML to repeat text N times
+   - Fix: Reconstruct printed page using only leaf nodes (no parent-child duplication)
+   - Test with: `<div><p><span>Text</span></p></div>` - "Text" must appear exactly once
+   - Files: js/quick-wheel.js (printCurrentReaderPage function)
+   - Risk level: Small (isolated to print feature)
+
+5. **TODO** - Quick Wheel Keyboard Navigation & Focus Alignment (High complexity)
+   - Root cause: Visual active action (center button) may not match keyboard focus.
+     When wheel opens, focus goes to first available button, not the visually active action.
+     Arrow keys, Home, End, Tab - focus may not track with visual active action.
+   - Required fix:
+     * Focus = visual active action on wheel open
+     * Arrow Left/Right navigate actions, updating focus
+     * Home/End jump to first/last action
+     * Tab/Shift+Tab navigate, wrapping around
+     * Skip disabled/hidden actions
+     * Don't center on disabled actions
+     * Enter/Space trigger visual active action
+     * Escape close wheel, return focus to opener button
+     * Remove hardcoded 11/12 values - use allActions.length
+     * Test all navigation combos, including with disabled actions
+   - Affects: js/quick-wheel.js (navigation logic)
+   - Risk level: High (cross-module, complex state management)
+   - Related: tests/quick_wheel_browser.py, tests/learning_ux_browser.py
+
+**Testing Required (before commit):**
+- Syntax check: all modified .js files
+- Targeted tests for each fix
+- Full test suites if high-risk: pdf_ux_browser.py + learning_ux_browser.py
+- Production smoke test after deployment
+
+**Commit Status:**
+- 1 of 5 fixes implemented
+- Next: Implement fixes 2-5, add regression tests, run full CI, verify production
 
 **Quick Wheel Context Preservation Fix (2026-09-13) — COMPLETED & DEPLOYED:**
 
