@@ -172,10 +172,7 @@ async function parseOpenAIStream(reader, signal, onDelta) {
         } catch (_) {}
     }
 
-    // Validate that we received at least one valid SSE event
-    // Malformed stream with no valid events should error as aiInvalidResponse
-    if (!sawValidEvent && !result) throw new Error('No valid SSE events in response');
-    // Return accumulated result (may be empty, which triggers aiEmptyResponse later)
+    // Return accumulated result (may be empty, which triggers aiEmptyResponse in requestAI)
     return { result, firstTokenTime };
 }
 
