@@ -28,11 +28,12 @@ window.fetch=async(url,options={})=>{
   {type:'message',role:'assistant',content:[{type:'output_text',text}]}
  ]}:provider==='groq'?{choices:[{message:{content:text}}]}:{candidates:[{content:{parts:[{text}]}}]}));
  const sseResponse=text=>{
-  const events=[
-   {type:'response.output_text.delta',delta:text.substring(0,Math.floor(text.length/2))},
-   {type:'response.output_text.delta',delta:text.substring(Math.floor(text.length/2))},
-   {type:'response.output_text.done'}
-  ];
+  const events=[];
+  if(text.length>0){
+   events.push({type:'response.output_text.delta',delta:text.substring(0,Math.floor(text.length/2))});
+   events.push({type:'response.output_text.delta',delta:text.substring(Math.floor(text.length/2))});
+  }
+  events.push({type:'response.output_text.done'});
   const encoder=new TextEncoder();
   let eventIndex=0;
   const stream=new ReadableStream({
