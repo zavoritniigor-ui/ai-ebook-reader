@@ -39,14 +39,15 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     content.innerHTML = `<div style="text-align:center;margin-top:50px;"><div class="spinner-large"></div><p style="margin-top:20px;color:gray;">${t('generating')}<br><b style="color:var(--text-color);">${escapeHtml(contextText.length>40?contextText.substring(0,40)+'...':contextText)}</b></p></div>`;
 
     const langName = LANG_NAMES[state.targetLang] || 'українською';
-    const prompt = mode === 'grammar' 
+    const prompt = mode === 'grammar'
         ? buildGrammarPrompt(contextText, state.lastGrammarSentence, state.targetLang)
         : mode === 'level'
             ? buildLanguageLevelPrompt(contextText, state.lastGrammarSentence, langName)
             : buildAskPrompt(contextText, state.lastGrammarSentence, userPrompt, langName);
+    const taskType = mode === 'grammar' ? 'grammar' : mode === 'level' ? 'language_level' : 'ask';
 
     try {
-        const text = await callAI(prompt, task.signal);
+        const text = await callAI(prompt, task.signal, taskType);
         if (!task.current()) return;
         panel.classList.remove('loading'); panel.classList.add('ready'); // Вмикаємо зелений неон!
         // Без обгортки <p>: відповідь тепер містить таблицю відмінювання й списки,
@@ -254,7 +255,7 @@ async function analyzeSVO(sentence) {
     const prompt = buildSvoPrompt(sentence, isFr);
 
     try {
-        const answer = await callAI(prompt, task.signal);
+        const answer = await callAI(prompt, task.signal, 'grammar');
         if (myToken !== svoToken || !task.current()) return;
         const raw = answer.replace(/```json|```/g, '').trim();
         let parts = null;
@@ -549,7 +550,7 @@ async function showVerb(verb, tense) {
     els.grammarContent.scrollTop = 0;
 
     try {
-        const out = await callAI(buildConjugationPrompt(verb, tense), task.signal);
+        const out = await callAI(buildConjugationPrompt(verb, tense), task.signal, 'conjugation');
         if (!task.current() || !box.isConnected) return;
         box.innerHTML = `<div class="verb-head"><b>${escapeHtml(verb)}</b>` +
             (info && info.forme ? ` <span class="verb-forme">${escapeHtml(info.forme)}</span>` : '') +
