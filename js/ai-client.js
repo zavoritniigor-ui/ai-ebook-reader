@@ -170,11 +170,8 @@ async function parseOpenAIStream(reader, signal, onDelta) {
         } catch (_) {}
     }
 
-    // If no valid SSE events were seen, this is a malformed response
-    if (buffer.trim() && !buffer.trim().startsWith('data: ')) {
-        // We never got a valid SSE event, response is malformed
-        if (!result) throw new Error('No valid SSE events in response');
-    }
+    // Valid response - had at least one valid event (including done)
+    // Return accumulated result (may be empty, which triggers aiEmptyResponse later)
     return { result, firstTokenTime };
 }
 
