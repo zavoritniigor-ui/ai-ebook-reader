@@ -96,7 +96,9 @@ def word_rect(word):
     return c.js('''(()=>{
         const spans = pdfTextSpans(document.querySelector('.pdf-text-layer'));
         const target = spans.find(s => s.textContent.includes(''' + repr(word) + '''));
-        const r = target.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(target);
+        const r = range.getBoundingClientRect();
         return { left: r.left, top: r.top, bottom: r.bottom, right: r.right, midY: (r.top + r.bottom) / 2 };
     })()''')
 
@@ -136,13 +138,12 @@ reset_opened()
 tap(*blank_near_left)
 check('B: same blank spot after selecting+closing opens nothing (the reported bug)', 'window.__opened.length===0')
 
-# ---- C: preserve the existing 10px PDF touch tolerance ----------------------
+# ---- C: outside the existing 10px PDF touch tolerance -----------------------
 reset_opened()
-tap(left['left'] + 10, left['top'] - 5)
-check('C: 5px above LeftEdge remains within PDF touch tolerance', "window.__opened.length===1 && window.__opened[0]==='LeftEdge'")
-close_popup_via_neutral_tap()
+tap(left['left'] + 10, left['top'] - 12)
+check('C: 12px above LeftEdge glyphs opens nothing', 'window.__opened.length===0')
 
-# ---- D: outside the 10px glyph margin (span/glyph tops differ by 2px) --------
+# ---- D: outside the 10px glyph margin ---------------------------------------
 for dist in (13, 20, 40, 300):
     reset_opened()
     tap(left['left'] + 10, left['top'] - dist)

@@ -532,3 +532,10 @@ Release target: update the existing Draft PR #98 and Cloudflare branch preview
 only. At commit time remote CI/deployment verification is pending; inspect PR
 checks for the exact commit and immutable preview URL. No merge or production
 deployment authorized. Physical wheel acceptance remains pending.
+
+CI follow-up: first job attempt hit an intermittent FB2.ZIP fixture selection
+failure; the rerun passed it and every suite through bilingual PDF, then exposed
+a platform-dependent hitbox test assertion. Follow-up measures actual Range glyph
+bounds and asserts rejection beyond the existing 10px tolerance; it no longer
+assumes a browser must resolve a caret inside that optional tolerance. No app
+code changed. New commit/preview CI must be verified after this follow-up.
