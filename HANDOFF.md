@@ -539,3 +539,8 @@ a platform-dependent hitbox test assertion. Follow-up measures actual Range glyp
 bounds and asserts rejection beyond the existing 10px tolerance; it no longer
 assumes a browser must resolve a caret inside that optional tolerance. No app
 code changed. New commit/preview CI must be verified after this follow-up.
+
+Second CI follow-up: FB2.ZIP coordinate selection race recurred on the next
+commit. `tests/formats_browser.py` now waits for layout and finite animations
+after book replacement before hit-testing; selection assertions and application
+code are unchanged. Run this targeted suite, then push and verify new CI/preview.
