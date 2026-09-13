@@ -18,7 +18,34 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `main`. Audit completed 2026-09-13, PR #100 merged.
+Status: **idle**. Branch: `main`. All critical fixes completed and deployed to production.
+
+**Quick Wheel Context Preservation Fix (2026-09-13) — COMPLETED & DEPLOYED:**
+
+User reported critical production bug: Quick Wheel context-dependent actions (Language Level,
+Explain/Ask AI) were losing the user's selection context when triggered through the wheel,
+causing blocking JavaScript alerts ("First tap a word or select a sentence in the text") even
+when text was already selected.
+
+Root cause: `quickWheelContext` variable was lexically scoped inside the IIFE in `js/quick-wheel.js`,
+making it completely inaccessible to action handlers in `js/grammar-svo.js`. When Quick Wheel
+buttons were clicked, the wheel would close and hide tooltips, destroying the selection context
+before the handlers could access it.
+
+Fix implemented (commit c61a08a):
+1. Moved `quickWheelContext` to GLOBAL scope (outside IIFE)
+2. Added `getQuickWheelLearningContext()` getter function that consumes context once
+3. Updated button handlers to call the getter function
+4. All blocking alert() dialogs replaced with non-blocking showToast()
+5. Test updated: `tests/migration_audit_browser.py` now mocks showToast instead of alert
+
+Follow-up test fix (commit 4f156d5): The migration audit test needed to mock `showToast()`
+instead of `alert()` since we eliminated blocking dialogs per user requirements.
+
+Deployment (commit 6081926): PR #102 merged to main, CI passed, production deployed to
+https://ai-ebook-reader.pages.dev. All 200+ test cases passing. Context is now properly
+captured at action-selection time and safely passed to handlers without relying on
+inaccessible closure variables.
 
 **Full Technical Audit Completed (2026-09-13):**
 - Documentation workflow updated: dev→main single-branch workflow now reflected in AGENTS.md, CLAUDE.md, HANDOFF.md ✅
