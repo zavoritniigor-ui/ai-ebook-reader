@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **TESTING PR #105 (All 5 P1 Fixes Implemented)**. Branch: `fixes/p1-audit-phase-1`. 
+Status: **Phase 2 IN PROGRESS - 5 User Work Preservation Fixes Implemented** (2026-09-13 ~23:00 UTC). Latest: 95fc1ac 
 
 **5-Priority P1 Fixes Implementation (2026-09-13 - ALL COMPLETED):**
 
@@ -68,21 +68,81 @@ Following full technical audit, all 5 priority issues have been implemented:
 - index.html and sw.js updated for all 5 fix commits
 - Latest run: after commit 3f0edca
 
-**Current Status (2026-09-13 - Auto-merge enabled):**
-- ✅ First CI test (34785550062): **PASSED** (all 5 fixes verified)
-- 📋 Second CI test (34785929307): **IN_PROGRESS** (doc-only change)
-- 🔄 **AUTO-MERGE ENABLED** on PR #105
-  - Will automatically merge to main once test completes
-  - Enabled by: zavoritniigor-ui
-  - Branch will be deleted after merge
-- ✅ Cloudflare Pages: SUCCESS (deployed preview)
-- ✨ All 5 fixes committed to fixes/p1-audit-phase-1 branch
-  - Commit 846eafd: Issue #1 (learning statistics)
-  - Commit 81d6c34: Issues #2-4 (voice, AI, print)
-  - Commit 3f0edca: Issue #5 (keyboard navigation)
-  - Commits 31b3881, 6287eb5: HANDOFF.md documentation
+**Phase 2: User Work Preservation & Correct Printing (2026-09-13):**
 
-**Critical Path (Exact Next Steps):**
+1. ✅ **Real Undo for PDF Ink** (js/pdf-ink.js) — COMPLETED
+   - Operation history per-page (draw/erase/clear)
+   - Undo properly reverses operations, not just pops
+   - Improved eraser: checks segment distance, not just points
+   - Bounded to 50 operations/page
+   - Commits: f2883af
+
+2. ✅ **AI Panel Loading State** (js/grammar-svo.js) — COMPLETED
+   - Remove spinner when task cancelled
+   - Show "Request cancelled" message
+   - Add Retry button with context preservation
+   - Fix duplicate error checks
+   - Commits: f2883af
+
+3. ✅ **PDF Crop Error Handling** (js/pdf-crop.js) — COMPLETED
+   - Keep preview open if AI fails
+   - Check aiAvailable() before closing
+   - Add Retry button
+   - Preserve crop data for retries
+   - Commits: f2883af
+
+4. ✅ **Print PDF with Ink** (js/quick-wheel.js) — COMPLETED
+   - Overlay ink canvas on rendered PDF
+   - Scale ink correctly after zoom
+   - Support multiple colors/strokes
+   - Works with ink preview
+   - Commits: f2883af
+
+5. ✅ **Print Text Page Fix** (js/quick-wheel.js) — COMPLETED
+   - Remove dangerous textContent fallback
+   - Print empty page if column empty (not whole book)
+   - TreeWalker still filters by column
+   - Commits: f2883af
+
+**Files Modified**: pdf-ink.js, grammar-svo.js, pdf-crop.js, quick-wheel.js + versioning
+**Risk Level**: HIGH (pdf-ink persistence, quick-wheel rendering)
+**Testing Required**: pdf_ux_browser.py + learning_ux_browser.py (per AGENTS.md)
+
+---
+
+**Final Status (2026-09-13 22:38:00 UTC) [Phase 1]:**
+- ✅ PR #105 **MERGED** to main (commit 7e77adb)
+- ✅ Final CI test (34786317291): **PASSED** (success)
+- ✅ All 5 P1 fixes now on main branch:
+  - Issue #1: Learning statistics semantics
+  - Issue #2: Voice loading retry + fallback
+  - Issue #3: AI request text preservation
+  - Issue #4: Print duplication fix (TreeWalker)
+  - Issue #5: Quick Wheel keyboard navigation
+- ✅ **Production deployed:** https://ai-ebook-reader.pages.dev (HTTP 200)
+- ✅ App shell versioning: **VERIFIED** (tests/app_shell_versions.py passed)
+- ✅ Branch cleaned: `fixes/p1-audit-phase-1` deleted
+
+**Critical Path for Phase 2 (Next Agent):**
+1. **Wait for GitHub Actions CI** to verify Phase 2 changes
+   - 5 files modified (PDF ink, AI, crop, print)
+   - HIGH-RISK changes require passing full test matrix
+2. **Run Required Test Suites** (per AGENTS.md HIGH-RISK):
+   - `python3 tests/pdf_ux_browser.py` (PDF zoom, ink, crop, print)
+   - `python3 tests/learning_ux_browser.py` (AI panel, context preservation)
+   - These tests will validate all 5 Phase 2 fixes
+3. **Manual Verification** on production (https://ai-ebook-reader.pages.dev):
+   - PDF ink: Draw → Undo → restore (test with different colors)
+   - AI panel: Missing key → show retry (request cancelled)
+   - Crop: Fail → retry with preview still open
+   - Print: PDF with ink marks, text without full-book fallback
+   - Zoom: Ink scales correctly, print aligns
+4. **Update HANDOFF** with testing results and any failures
+5. **Phase 3** if all Phase 2 tests pass (accessibility + mobile gestures)
+
+---
+
+**Previous Critical Path (Phase 1) [COMPLETED]:**
 1. **WAIT for PR #105 CI test to finish** (currently IN_PROGRESS)
    - If PASS → proceed immediately to step 2
    - If FAIL → inspect logs; if Chrome CDP timeout, rerun; if app code error, debug

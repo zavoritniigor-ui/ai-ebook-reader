@@ -89,3 +89,4 @@ viewer.css
 run_ci*.sh
 http_server.log
 chrome.log
+.continue/

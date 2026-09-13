@@ -110,8 +110,50 @@ c.js("Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>tr
 check('crop Share file',"__shared.type==='image/png' && __shared.size>0")
 c.js("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{write:async items=>{window.__copied=items[0]}}});document.getElementById('crop-copy').click()")
 check('crop Copy PNG',"__copied.types.includes('image/png')")
+# Before AI test: preserve cropData, mock aiAvailable() to return true
+c.js("window.__savedCropData=cropData;window.__realAiAvailable=aiAvailable;aiAvailable=()=>true")
 c.js("document.getElementById('crop-ai').click()")
+# Wait for async checkExerciseImage to complete, close dialog, and update DOM
+# Poll for expected state instead of fixed sleep
+result=c.js('''(()=>{
+  const checks={
+    vision: __vision,
+    hasData: typeof __visionData,
+    startsWith: __visionData?.startsWith("data:image/jpeg;"),
+    dialogOpen: cropDialog.open,
+    blobNull: cropBlob===null
+  };
+  return checks;
+})()''')
+deadline=time.monotonic()+2
+while result['vision']!=1 or not result['startsWith'] or result['dialogOpen'] or not result['blobNull']:
+    if time.monotonic()>deadline: break
+    pause(.1)
+    result=c.js('''(()=>{
+  const checks={
+    vision: __vision,
+    hasData: typeof __visionData,
+    startsWith: __visionData?.startsWith("data:image/jpeg;"),
+    dialogOpen: cropDialog.open,
+    blobNull: cropBlob===null
+  };
+  return checks;
+})()''')
+print(f"AI check results: {result}")
 check('AI only after explicit action','__vision===1 && __visionData.startsWith("data:image/jpeg;") && !cropDialog.open && cropBlob===null')
+# Restore original aiAvailable and verify guard works with no AI config
+c.js("aiAvailable=window.__realAiAvailable;delete window.__realAiAvailable;__vision=0;window.__visionData=null")
+# Re-open crop dialog for second test using saved cropData
+c.js("openCropPreview(window.__savedCropData)")
+check('crop preview reopened', "cropDialog.open && cropBlob.type==='image/png'")
+# Mock aiAvailable to false and verify no AI call is made and status message appears
+c.js("aiAvailable=()=>false;document.getElementById('crop-ai').click()")
+pause(.2)
+status_check=c.js("({dialogOpen: cropDialog.open, blobType: cropBlob?.type, statusText: document.getElementById('crop-status').textContent, vision: __vision})")
+print(f"No AI key check results: {status_check}")
+check('crop preserved when no AI key','cropDialog.open && cropBlob.type==="image/png" && document.getElementById("crop-status").textContent.length>0 && __vision===0')
+# Restore original aiAvailable
+c.js("aiAvailable=()=>true")
 c.js("els.askPanel.classList.remove('expanded')");settle()
 # Scrubber input previews only, commit once at pointer release.
 c.js("window.__before=__renders;scrubDragging=true;for(let i=3;i<=110;i++){pdfPageRange.value=i;pdfPageRange.dispatchEvent(new Event('input'))}")

@@ -397,7 +397,7 @@ function printCurrentReaderPage() {
         doc.close();
 
         if (state.format === 'pdf' && state.pdfDoc) {
-            // PDF: render only current page
+            // PDF: render only current page з рукописними позначками (ink)
             const pageNum = state.currentIndex;
             state.pdfDoc.getPage(pageNum).then(page => {
                 const natural = page.getViewport({ scale: 1 });
@@ -408,7 +408,19 @@ function printCurrentReaderPage() {
                 canvas.height = viewport.height;
                 canvas.style.cssText = 'display:block;width:100%;height:100%';
                 doc.body.append(canvas);
-                return page.render({ canvasContext: canvas.getContext('2d'), viewport, intent: 'print' }).promise;
+                return page.render({ canvasContext: canvas.getContext('2d'), viewport, intent: 'print' }).promise.then(() => {
+                    // Додаємо ink-шар поверх PDF, якщо є рукописні позначки
+                    const inkCanvas = els.pages?.querySelector('#ink-layer');
+                    if (inkCanvas && state.ink[String(pageNum)] && state.ink[String(pageNum)].length > 0) {
+                        const ctx = canvas.getContext('2d');
+                        // Масштабуємо ink-шар до размірів PDF canvas
+                        const inkScale = canvas.width / inkCanvas.width;
+                        ctx.save();
+                        ctx.scale(inkScale, inkScale);
+                        ctx.drawImage(inkCanvas, 0, 0);
+                        ctx.restore();
+                    }
+                });
             }).then(() => {
                 frame.contentWindow.print();
                 setTimeout(() => frame.remove(), 1000);
@@ -433,7 +445,9 @@ function printCurrentReaderPage() {
                     content += textNode.data;
                 }
             }
-            container.textContent = content.trim() || els.pages.textContent;
+            // НЕ використовуємо els.pages.textContent як fallback — воно б надрукувало всю книгу
+            // Якщо стовпчик пустий, друкуємо пусту сторінку (це коректна поведінка)
+            container.textContent = content.trim();
             doc.body.append(container);
             frame.contentWindow.print();
             setTimeout(() => frame.remove(), 1000);

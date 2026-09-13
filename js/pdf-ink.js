@@ -25,6 +25,19 @@ function inkStrokes() {
     if (!state.ink[inkPageKey()]) state.ink[inkPageKey()] = [];
     return state.ink[inkPageKey()];
 }
+// Історія операцій для Undo/Redo: кожна операція — draw, erase або clear
+let inkHistory = {}, inkRedoStack = {};
+function inkHistoryKey() { return 'history_' + inkPageKey(); }
+function getInkHistory() {
+    const key = inkHistoryKey();
+    if (!inkHistory[key]) inkHistory[key] = [];
+    return inkHistory[key];
+}
+function getInkRedoStack() {
+    const key = inkHistoryKey();
+    if (!inkRedoStack[key]) inkRedoStack[key] = [];
+    return inkRedoStack[key];
+}
 function saveInk() {
     if (!state.bookKey) return;
     try { writeStored('ink_' + state.bookKey, JSON.stringify(state.ink)); } catch (e) {}
@@ -76,6 +89,16 @@ function updateInkWidth() {
 }
 inkWidth.oninput = updateInkWidth; updateInkWidth();
 let inkPointerId = null;
+// Helper: точка до лінійного відрізка (не просто до точок)
+function distanceToSegment(pt, p1, p2) {
+    const x = pt[0], y = pt[1];
+    const x1 = p1[0], y1 = p1[1], x2 = p2[0], y2 = p2[1];
+    const dx = x2 - x1, dy = y2 - y1;
+    let t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
+    t = Math.max(0, Math.min(1, t));
+    const closestX = x1 + t * dx, closestY = y1 + t * dy;
+    return Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
+}
 function bindInkCanvas() {
     const cv = inkCanvas();
     if (!cv || cv.dataset.bound) return;
@@ -89,6 +112,8 @@ function bindInkCanvas() {
         if (state.inkErase) { inkEraseAt(inkPoint(e, cv)); return; }
         inkCurrent = { c: state.inkColor, w: Number(inkWidth.value) / cv.getBoundingClientRect().width, p: [inkPoint(e, cv)] };
         inkStrokes().push(inkCurrent); redrawInk();
+        // Чистимо Redo-стек при новій операції
+        getInkRedoStack().length = 0;
     });
     cv.addEventListener('pointermove', (e) => {
         if (!state.inkMode || !inkDrawing || inkPointerId !== e.pointerId || pdfPointers.size > 1) return;
@@ -100,6 +125,12 @@ function bindInkCanvas() {
     const finishStroke = (e) => {
         if (e.pointerId !== inkPointerId) return;
         if (!inkDrawing) return;
+        // Записуємо до історії ДО очищення inkCurrent
+        if (inkCurrent && inkCurrent.p.length > 0) {
+            getInkHistory().push({ type: 'draw', stroke: { ...inkCurrent } });
+            const hist = getInkHistory();
+            if (hist.length > 50) hist.shift();
+        }
         inkDrawing = false; inkCurrent = null;
         redrawInk(); saveInk();
     };
@@ -107,13 +138,35 @@ function bindInkCanvas() {
     cv.addEventListener('pointercancel', finishStroke);
     cv.addEventListener('lostpointercapture', finishStroke);
 }
-// Гумка стирає штрих цілком — так простіше й передбачуваніше, ніж стирати частинами.
+// Гумка стирає штрих цілком — перевіряє відстань як до точок, так і до сегментів лінії
 function inkEraseAt(pt) {
     const list = inkStrokes();
-    const R = 0.02;
+    const R = 0.02;  // Допуск для чутливості гумки (передбачуваний при різному масштабі)
     for (let i = list.length - 1; i >= 0; i--) {
-        if (list[i].p.some(p => Math.abs(p[0] - pt[0]) < R && Math.abs(p[1] - pt[1]) < R)) {
-            list.splice(i, 1); redrawInk(); saveInk(); return;
+        const stroke = list[i];
+        let erased = false;
+        // Перевіряємо точки
+        if (stroke.p.some(p => Math.abs(p[0] - pt[0]) < R && Math.abs(p[1] - pt[1]) < R)) {
+            erased = true;
+        }
+        // Перевіряємо сегменти між точками
+        if (!erased && stroke.p.length > 1) {
+            for (let j = 0; j < stroke.p.length - 1; j++) {
+                if (distanceToSegment(pt, stroke.p[j], stroke.p[j + 1]) < R) {
+                    erased = true;
+                    break;
+                }
+            }
+        }
+        if (erased) {
+            const erasedStroke = list.splice(i, 1)[0];
+            redrawInk(); saveInk();
+            // Додаємо операцію erase до історії
+            getInkHistory().push({ type: 'erase', stroke: erasedStroke, index: i });
+            const hist = getInkHistory();
+            if (hist.length > 50) hist.shift();
+            getInkRedoStack().length = 0;  // Чистимо Redo
+            return;
         }
     }
 }
@@ -136,10 +189,42 @@ document.getElementById('ink-erase').onclick = () => { state.inkErase = true; up
 document.querySelectorAll('.ink-color').forEach(b => {
     b.onclick = () => { state.inkColor = b.dataset.c; state.inkErase = false; updateInkTools(); };
 });
-document.getElementById('ink-undo').onclick = () => { inkStrokes().pop(); redrawInk(); saveInk(); };
+document.getElementById('ink-undo').onclick = () => {
+    const hist = getInkHistory();
+    if (hist.length === 0) return;
+    const op = hist.pop();
+    const list = inkStrokes();
+
+    if (op.type === 'draw') {
+        // Скасовуємо малювання — видаляємо доданий штрих
+        list.splice(list.indexOf(op.stroke), 1);
+        getInkRedoStack().push({ type: 'draw', stroke: op.stroke });
+    } else if (op.type === 'erase') {
+        // Скасовуємо стирання — повертаємо стертий штрих на його місце
+        list.splice(op.index, 0, op.stroke);
+        getInkRedoStack().push({ type: 'erase', stroke: op.stroke, index: op.index });
+    } else if (op.type === 'clear') {
+        // Скасовуємо очищення — повертаємо всі штрихи
+        state.ink[inkPageKey()] = op.strokes || [];
+        getInkRedoStack().push({ type: 'clear', strokes: op.strokes });
+    }
+
+    // Обмежуємо Redo до 50 операцій
+    const redo = getInkRedoStack();
+    if (redo.length > 50) redo.shift();
+
+    redrawInk(); saveInk();
+};
 document.getElementById('ink-clear').onclick = () => {
     if (!confirm(t('clearPageAsk'))) return;
-    state.ink[inkPageKey()] = []; redrawInk(); saveInk();
+    const clearedStrokes = inkStrokes();
+    // Додаємо операцію clear до історії з копією розміру strokes
+    getInkHistory().push({ type: 'clear', strokes: clearedStrokes.slice() });
+    const hist = getInkHistory();
+    if (hist.length > 50) hist.shift();
+    state.ink[inkPageKey()] = [];
+    getInkRedoStack().length = 0;  // Чистимо Redo
+    redrawInk(); saveInk();
 };
 document.getElementById('ink-done').onclick = () => {
     state.inkMode = false;

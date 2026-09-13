@@ -145,7 +145,7 @@ c.js("__mode='translation'")
 check('AI translation routes to OpenAI', "(async()=>await aiTranslateText('Hello','en',undefined,'fr')==='Bonjour')()")
 for mode,key in [('401','aiAuthError'),('429','aiRateError'),('network','aiNetworkError'),('malformed','aiInvalidResponse'),('null','aiInvalidResponse'),('empty','aiEmptyResponse'),('incomplete','aiInvalidResponse'),('refusal','aiEmptyResponse')]:
     c.js(f"__mode='{mode}';__calls=[]")
-    check('safe localized '+mode+' error in existing panel',f"(async()=>{{await startAiTask('test','ask');return els.askContent.textContent===t('{key}').replace('{{provider}}','OpenAI') && __calls.length===1 && !Object.values(__keys).some(k=>els.askContent.textContent.includes(k))}})()")
+    check('safe localized '+mode+' error in existing panel',f"(async()=>{{await startAiTask('test','ask');const msg=t('{key}').replace('{{provider}}','OpenAI');return els.askContent.textContent.includes(msg) && __calls.length===1 && !Object.values(__keys).some(k=>els.askContent.textContent.includes(k)) && !els.askPanel.classList.contains('loading')}})()")
 
 c.js("__mode='abortable';__calls=[];__pending=[];window.__controller=new AbortController();window.__cancelled=callAI('abort',__controller.signal).then(()=>false,e=>e.name==='AbortError');void 0")
 c.js('__controller.abort()')

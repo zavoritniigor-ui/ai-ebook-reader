@@ -109,6 +109,10 @@ document.getElementById('crop-copy').onclick = async () => {
 };
 document.getElementById('crop-ai').onclick = () => {
     if (!cropData || document.hidden) return;
+    if (!aiAvailable()) {
+        document.getElementById('crop-status').textContent = t('needKey');
+        return;
+    }
     const preview = document.getElementById('crop-preview');
     if (!preview.complete || !preview.naturalWidth) return;
     const canvas = document.createElement('canvas');
@@ -116,7 +120,9 @@ document.getElementById('crop-ai').onclick = () => {
     canvas.width = Math.round(preview.naturalWidth*k); canvas.height = Math.round(preview.naturalHeight*k);
     canvas.getContext('2d').drawImage(preview, 0, 0, canvas.width, canvas.height);
     const data = canvas.toDataURL('image/jpeg', .85);
-    closeCropPreview(); checkExerciseImage(data);
+    // Передаємо true щоб закрити preview при УСПІХУ, але logic всередині checkExerciseImage
+    // зберігатиме preview ВІДКРИТИМ при помилці для повтору
+    checkExerciseImage(data);
 };
 
 // Вирізає ділянку з полотна сторінки PDF у власній роздільності полотна,
@@ -164,14 +170,25 @@ async function checkExerciseImage(dataUrl) {
 Наприкінці: <b>підсумок</b> N/M. Нерозбірливе познач як «?». Без вступу й без повторення завдання.`;
     try {
         const out = await callAIVision(prompt, dataUrl, task.signal);
-        if (!task.current()) return;
-        els.askContent.innerHTML = safeHtml(out, true);
-    } catch (err) {
-        if (!task.current()) return;
         if (!task.current()) {
-            if (!asyncTasks.has('ask')) els.askContent.innerHTML = `<span class="tt-note">Запит скасовано</span>`;
+            els.askPanel.classList.remove('loading');
+            els.askContent.innerHTML = `<span class="tt-note">Запит скасовано</span>`;
             return;
         }
-        els.askContent.innerHTML = `<span style="color:red">${escapeHtml(err.message || t('error'))}</span>`;
+        els.askPanel.classList.remove('loading'); els.askPanel.classList.add('ready');
+        els.askContent.innerHTML = safeHtml(out, true);
+        // Закриваємо crop preview ЛИШЕ після успішного запиту
+        closeCropPreview();
+    } catch (err) {
+        if (!task.current()) {
+            els.askPanel.classList.remove('loading');
+            els.askContent.innerHTML = `<span class="tt-note">Запит скасовано</span>`;
+            return;
+        }
+        els.askPanel.classList.remove('loading');
+        // На помилці: зберігаємо crop preview ВІДКРИТИМ для повтору
+        window.lastCropRetryData = dataUrl;
+        const retryBtn = `<button style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;" onclick="checkExerciseImage(window.lastCropRetryData)">${t('retry')}</button>`;
+        els.askContent.innerHTML = `<div><span style="color:red">${escapeHtml(err.message || t('error'))}</span><br/>${retryBtn}</div>`;
     }
 }

@@ -78,7 +78,12 @@ async function startAiTask(contextText, mode, userPrompt = "") {
 
     try {
         const text = await callAI(prompt, task.signal, taskType, onDelta);
-        if (!task.current()) return;
+        if (!task.current()) {
+            // Запит був скасований — не показуємо його, просто мовчки виходимо
+            // щоб не перезаписати новіший запит, який вже своєю відповіддю оновив панель
+            panel.classList.remove('loading');
+            return;
+        }
         panel.classList.remove('loading'); panel.classList.add('ready'); // Вмикаємо зелений неон!
         // Final render with safeHtml (even if streaming already updated incrementally,
         // this ensures the final state is properly sanitized)
@@ -89,17 +94,20 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         if (mode === 'grammar') renderVerbBar();
     } catch (err) {
         if (!task.current()) {
-            if (!asyncTasks.has(mode === 'grammar' ? 'grammar' : 'ask')) {
-                panel.classList.remove('loading');
-                content.innerHTML = `<span class="tt-note">Запит скасовано</span>`;
-            }
+            // Помилка на скасованому запиті — не показуємо її, просто мовчки виходимо
+            // щоб не перезаписати новіший запит, який вже своєю відповіддю оновив панель
+            panel.classList.remove('loading');
             return;
         }
+        // Реальна помилка на активному запиті
         panel.classList.remove('loading');
         let msg = err.message;
         // "Failed to fetch" — збій на рівні браузера: запит навіть не пішов до сервера.
         if (err instanceof TypeError && /fetch/i.test(err.message)) msg = t('errNoConnection');
-        content.innerHTML = `<span style="color:red">${escapeHtml(msg)}</span>`;
+        // Зберігаємо контекст для повтору у глобальній змінній
+        window.lastAiRetryContext = { contextText, mode, userPrompt };
+        const retryBtn = `<button style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;" onclick="(ctx => startAiTask(ctx.contextText, ctx.mode, ctx.userPrompt))(window.lastAiRetryContext)">${t('retry')}</button>`;
+        content.innerHTML = `<div><span style="color:red">${escapeHtml(msg)}</span><br/>${retryBtn}</div>`;
     }
 }
 
