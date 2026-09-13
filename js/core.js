@@ -343,8 +343,24 @@ function pickBestVoice(langPrefix, pool) {
     return candidates[0];
 }
 function loadVoices() {
-    if (!ttsSynth) return;
-    voices = ttsSynth.getVoices(); if (voices.length === 0) return;
+    if (!ttsSynth) { els.voiceSelect.innerHTML = '<option data-i18n="synthUnavailable">Speech Synthesis unavailable</option>'; return; }
+    voices = ttsSynth.getVoices();
+    if (voices.length === 0) {
+        if (!window.voicesRetryCount) window.voicesRetryCount = 0;
+        if (window.voicesRetryCount < 10) {
+            window.voicesRetryCount++;
+            setTimeout(loadVoices, 200 * window.voicesRetryCount);
+            return;
+        }
+        // Fallback: system voice auto-select
+        els.voiceSelect.innerHTML = '<option value="">System voice (auto-select)</option>';
+        if (!window.voicesChangedListenerAdded) {
+            window.voicesChangedListenerAdded = true;
+            ttsSynth.addEventListener('voiceschanged', () => { window.voicesRetryCount = 0; loadVoices(); });
+        }
+        return;
+    }
+    window.voicesRetryCount = 0;
     els.voiceSelect.innerHTML = '';
     // Показуємо мови книги (англійська/французька) + українську для озвучення перекладу.
     const groups = Object.fromEntries(SUPPORTED_LANGUAGE_CODES.map(code => [code, t('voices' + code[0].toUpperCase() + code.slice(1))]));
@@ -540,6 +556,7 @@ const I18N = {
     svoCoi:         { uk: 'непрямий додаток (COI)', en: 'indirect object', fr: 'COI',    ru: 'косвенное дополнение (COI)' },
     more:           { uk: 'ще',             en: 'more',           fr: 'aussi',          ru: 'ещё' },
     alreadyIn:      { uk: 'текст уже',      en: 'text is already in', fr: 'texte déjà en', ru: 'текст уже' },
+    synthUnavailable: { uk: 'Озвучення недоступне', en: 'Speech Synthesis unavailable', fr: 'Synthèse vocale indisponible', ru: 'Синтез речи недоступен' },
     oneVoice:       { uk: 'На цьому пристрої лише один французький голос — чергування буде непомітним.',
                       en: 'This device has only one French voice — alternating will not be noticeable.',
                       fr: 'Cet appareil n’a qu’une seule voix française — l’alternance sera imperceptible.',

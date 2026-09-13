@@ -391,14 +391,17 @@ function printCurrentReaderPage() {
             const columnStart = state.pageInChapter * columnStep?.() ?? state.pageInChapter * 400;
             const columnWidth = els.pages.clientWidth || 400;
             let content = '';
-            for (const node of els.pages.querySelectorAll('*')) {
-                const rect = node.getBoundingClientRect();
+            const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT, null, false);
+            let textNode;
+            while ((textNode = walker.nextNode())) {
+                if (!textNode.data.trim().length) continue;
+                const rect = textNode.parentElement.getBoundingClientRect();
                 const relLeft = rect.left + window.scrollX - els.pages.getBoundingClientRect().left;
                 if (relLeft >= columnStart && relLeft < columnStart + columnWidth) {
-                    if (node.textContent) content += node.textContent + '\n';
+                    content += textNode.data;
                 }
             }
-            container.textContent = content || els.pages.textContent;
+            container.textContent = content.trim() || els.pages.textContent;
             doc.body.append(container);
             frame.contentWindow.print();
             setTimeout(() => frame.remove(), 1000);
