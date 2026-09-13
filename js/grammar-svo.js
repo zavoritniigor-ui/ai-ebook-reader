@@ -79,9 +79,9 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     try {
         const text = await callAI(prompt, task.signal, taskType, onDelta);
         if (!task.current()) {
-            // Запит був скасований — приберемо spinner
+            // Запит був скасований — не показуємо його, просто мовчки виходимо
+            // щоб не перезаписати новіший запит, який вже своєю відповіддю оновив панель
             panel.classList.remove('loading');
-            content.innerHTML = `<span class="tt-note">Запит скасовано</span>`;
             return;
         }
         panel.classList.remove('loading'); panel.classList.add('ready'); // Вмикаємо зелений неон!
@@ -94,9 +94,9 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         if (mode === 'grammar') renderVerbBar();
     } catch (err) {
         if (!task.current()) {
-            // Помилка на скасованому запиті — не показуємо її як серверну помилку
+            // Помилка на скасованому запиті — не показуємо її, просто мовчки виходимо
+            // щоб не перезаписати новіший запит, який вже своєю відповіддю оновив панель
             panel.classList.remove('loading');
-            content.innerHTML = `<span class="tt-note">Запит скасовано</span>`;
             return;
         }
         // Реальна помилка на активному запиті
