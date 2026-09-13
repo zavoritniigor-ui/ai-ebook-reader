@@ -562,7 +562,7 @@ const I18N = {
     voicesKo:       { uk: 'Корейська',       en: 'Korean',         fr: 'Coréen',          ru: 'Корейский' },
     voicesHi:       { uk: 'Гінді',           en: 'Hindi',          fr: 'Hindi',           ru: 'Хинди' },
     voicesGa:       { uk: 'Ірландська',      en: 'Irish',          fr: 'Irlandais',       ru: 'Ирландский' },
-    statsTitle:     { uk: 'Розуміння прочитаного', en: 'Reading comprehension', fr: 'Compréhension écrite', ru: 'Понимание прочитанного' },
+    statsTitle:     { uk: 'Допомога під час читання', en: 'Reading help', fr: 'Aide à la lecture', ru: 'Помощь при чтении' },
     statsReading:   { uk: 'Прочитано без допомоги', en: 'Read without help', fr: 'Lu sans aide', ru: 'Прочитано без помощи' },
     statsReadWithoutHelp: { uk: 'Прочитано без допомоги', en: 'Read without help', fr: 'Lu sans aide', ru: 'Прочитано без помощи' },
     statsHelpRequested: { uk: 'Запитано допомогу', en: 'Help requested', fr: 'Aide demandée', ru: 'Запрошена помощь' },
