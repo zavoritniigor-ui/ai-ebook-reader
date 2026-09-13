@@ -18,7 +18,7 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **idle**. Branch: `dev`. PR #93 merged, production verified.
+Status: **Audit and stabilization in progress**. Branch: `main`. Production: Verified at https://ai-ebook-reader.pages.dev.
 
 Task: User approved the supplied format-expansion plan (`go`); implementing its
 first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,

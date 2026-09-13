@@ -76,3 +76,16 @@ Thumbs.db
 # Claude Code local settings and backups (IDE state, not part of project)
 .claude/settings.*.json*
 .claude/*.backup*
+
+# Developer scratch files (testing, debugging, temporary fixes)
+debug_*.mjs
+dups.txt
+fix*.js
+fix*.py
+test_*.py
+test*.html
+test*.js
+viewer.css
+run_ci*.sh
+http_server.log
+chrome.log
