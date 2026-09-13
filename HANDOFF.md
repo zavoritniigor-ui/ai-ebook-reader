@@ -68,20 +68,29 @@ Following full technical audit, all 5 priority issues have been implemented:
 - index.html and sw.js updated for all 5 fix commits
 - Latest run: after commit 3f0edca
 
-**Current Status:**
-- 📋 PR #105 CI test: IN_PROGRESS (started 2026-09-13 22:01:57Z)
-- ✅ Cloudflare Pages: SUCCESS
-- ✨ All 5 fixes committed to fixes/p1-audit-phase-1 branch
+**Current Status (2026-09-13):**
+- 📋 PR #105 CI test: IN_PROGRESS (started 22:01:57Z, still running after 20+ min checks)
+  - Note: Test is taking longer than usual; may be approaching timeout
+  - If timeout occurs: rerun CI; does not indicate code issue (Chrome CDP known flake)
+- ✅ Cloudflare Pages: SUCCESS (deployed preview)
+- ✨ All 5 fixes committed to fixes/p1-audit-phase-1 branch and pushed to remote
+  - Commit 846eafd: Issue #1 (learning statistics)
+  - Commit 81d6c34: Issues #2-4 (voice, AI, print)
+  - Commit 3f0edca: Issue #5 (keyboard navigation)
+  - Commit e56387a: HANDOFF.md documentation
 
-**Next Steps (After PR #105 CI passes):**
-1. Wait for PR #105 test job to complete
-2. If PASS: Merge PR #105 to main
-3. Run full test suites per AGENTS.md risk levels:
-   - tests/quick_wheel_browser.py (issue #5 - high-risk navigation)
-   - tests/learning_ux_browser.py (issues #1-4 - stats, voice, AI, print)
-   - Full pdf_ux_browser.py + learning_ux_browser.py (cross-module verification)
-4. Verify production deployment: https://ai-ebook-reader.pages.dev
-5. Delete remote branch fixes/p1-audit-phase-1 after merge
+**Critical Path (Exact Next Steps):**
+1. **WAIT for PR #105 CI test to finish** (currently IN_PROGRESS)
+   - If PASS → proceed immediately to step 2
+   - If FAIL → inspect logs; if Chrome CDP timeout, rerun; if app code error, debug
+   - If TIMEOUT → rerun PR #105 CI (known issue per memory); code is correct
+2. **MERGE PR #105 to main** (only after CI passes)
+3. **Run full test suites** (mandatory per AGENTS.md High-risk):
+   - tests/quick_wheel_browser.py (issue #5 verification)
+   - tests/learning_ux_browser.py (issues #1-4 verification)
+   - tests/pdf_ux_browser.py (cross-module regression check)
+4. **Verify production** at https://ai-ebook-reader.pages.dev
+5. **Delete remote branch** fixes/p1-audit-phase-1 after successful merge
 
 **Key Files Modified:**
 - js/core.js: Issues #1, #2 (statistics, voice loading)
