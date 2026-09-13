@@ -119,6 +119,7 @@ async function parseOpenAIStream(reader, signal, onDelta) {
     let buffer = '';
     let firstTokenTime = null;
     let result = '';
+    let sawValidEvent = false;
     const startTime = performance.now();
 
     while (true) {
@@ -137,6 +138,7 @@ async function parseOpenAIStream(reader, signal, onDelta) {
 
             try {
                 const data = JSON.parse(line.slice(6));
+                sawValidEvent = true;  // Successfully parsed a valid SSE event
 
                 // Handle text deltas (OpenAI Responses API format)
                 if (data.type === 'response.output_text.delta') {
