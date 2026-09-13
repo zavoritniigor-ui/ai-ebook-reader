@@ -164,6 +164,7 @@ async function parseOpenAIStream(reader, signal, onDelta) {
     if (buffer.trim() && buffer.trim().startsWith('data: ')) {
         try {
             const data = JSON.parse(buffer.slice(6));
+            sawValidEvent = true;
             if (data.type === 'response.output_text.delta' && typeof data.delta === 'string') {
                 if (!firstTokenTime) firstTokenTime = performance.now() - startTime;
                 result += data.delta;
@@ -171,6 +172,9 @@ async function parseOpenAIStream(reader, signal, onDelta) {
             }
         } catch (_) {}
     }
+
+    // Validate that we received at least one valid SSE event
+    if (!sawValidEvent) throw new Error('No valid SSE events received');
 
     // Return accumulated result (may be empty, which triggers aiEmptyResponse in requestAI)
     return { result, firstTokenTime };
@@ -207,11 +211,11 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
             firstTokenTime = ftt;
         } catch (err) {
             if (signal?.aborted || err.name === 'AbortError') throw new DOMException('Cancelled', 'AbortError');
-            // Malformed SSE response (no valid events)
+            // Malformed SSE response (no valid events) or other parsing errors
             if (err.message && err.message.includes('No valid SSE')) throw new Error(t('aiInvalidResponse'));
             // Re-throw HTTP errors (401/429/etc) from aiHttpError. Convert network errors (TypeError) to generic message.
-            if (!(err instanceof TypeError)) throw err;
-            throw new Error(t('aiNetworkError'));
+            if (err instanceof TypeError) throw new Error(t('aiNetworkError'));
+            throw err; // Re-throw other errors as-is
         }
     } else {
         // Non-streaming response (translations, grammar, conjugation)
