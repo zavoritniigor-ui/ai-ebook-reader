@@ -111,7 +111,8 @@ check('crop Share file',"__shared.type==='image/png' && __shared.size>0")
 c.js("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{write:async items=>{window.__copied=items[0]}}});document.getElementById('crop-copy').click()")
 check('crop Copy PNG',"__copied.types.includes('image/png')")
 c.js("document.getElementById('crop-ai').click()")
-settle()  # Allow async checkExerciseImage to complete and close dialog
+# Allow async checkExerciseImage to complete, close dialog, and update DOM
+pause(1)  # 1 second for async operations to finish
 check('AI only after explicit action','__vision===1 && __visionData.startsWith("data:image/jpeg;") && !cropDialog.open && cropBlob===null')
 c.js("els.askPanel.classList.remove('expanded')");settle()
 # Scrubber input previews only, commit once at pointer release.
