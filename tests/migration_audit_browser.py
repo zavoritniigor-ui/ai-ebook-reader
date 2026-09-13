@@ -98,8 +98,8 @@ check('in-flight text and vision abort never call fallback', """(async()=>{
  controller.abort();try{await pending;return false;}catch(e){if(e.name!=='AbortError'||calls!==1)return false;}
  }return true;}finally{window.fetch=oldFetch;state.groqKey=oldGroq;state.apiKey=oldGemini;state.activeAiProvider=oldProvider;}})()""")
 check('AI panel no-key, replacement and background abort lifecycle', """(async()=>{
- const oldCall=callAI,oldAlert=alert,oldKey=state.groqKey,oldGemini=state.apiKey,oldProvider=state.activeAiProvider;let notice='',resolvers=[];
- try{state.activeAiProvider='groq';state.groqKey='';state.apiKey='';window.alert=message=>notice=message;
+ const oldCall=callAI,oldShowToast=showToast,oldKey=state.groqKey,oldGemini=state.apiKey,oldProvider=state.activeAiProvider;let notice='',resolvers=[];
+ try{state.activeAiProvider='groq';state.groqKey='';state.apiKey='';window.showToast=message=>notice=message;
  await startAiTask('Hello','ask');if(notice!==t('needKey'))return false;
  state.groqKey='audit';callAI=(prompt,signal)=>new Promise((resolve,reject)=>{
  resolvers.push(resolve);signal.addEventListener('abort',()=>reject(new DOMException('Cancelled','AbortError')),{once:true});});
@@ -107,7 +107,7 @@ check('AI panel no-key, replacement and background abort lifecycle', """(async()
  await Promise.all([first,second]);if(!els.askPanel.classList.contains('ready')||els.askContent.textContent!=='Second reply')return false;
  const third=startAiTask('Third','ask');cancelAsyncTasks(['ask']);await third;
  return !els.askPanel.classList.contains('loading');
- }finally{callAI=oldCall;window.alert=oldAlert;state.groqKey=oldKey;state.apiKey=oldGemini;state.activeAiProvider=oldProvider;els.askPanel.classList.remove('loading','ready','expanded');}})()""")
+ }finally{callAI=oldCall;window.showToast=oldShowToast;state.groqKey=oldKey;state.apiKey=oldGemini;state.activeAiProvider=oldProvider;els.askPanel.classList.remove('loading','ready','expanded');}})()""")
 data = base64.b64encode(pdf_bytes(two_columns=True)).decode()
 check('real PDF cold-start rendering and text layer', f"""(async()=>{{
  state.format='pdf';state.bookKey='audit-pdf';state.pdfFit='page';state.pdfScale=1;
