@@ -48,6 +48,9 @@ def touch(kind, points):
 
 def settle(): pause(.5)
 check('quick menu preserves PDF state before gesture regressions', "(()=>{const before=JSON.stringify([state.currentIndex,state.pdfScale,state.pdfZoom,els.container.scrollTop,els.container.scrollLeft]);quickMenu.open();quickMenu.close();return before===JSON.stringify([state.currentIndex,state.pdfScale,state.pdfZoom,els.container.scrollTop,els.container.scrollLeft]);})()")
+# Opening the wheel collapses the sidebar; wait for its resize-triggered PDF
+# render before starting an explicit render that it could otherwise cancel.
+c.wait("document.getElementById('quick-menu').hidden && __pendingRenders===0 && performance.now()-window.__lastRenderAt>400")
 check('plain text and single text layer',"els.pages.textContent.includes('Hello world') && document.querySelectorAll('.pdf-text-layer').length===1", timeout=10)
 check('illustration page',"(async()=>await renderPdfPage(2) && els.pages.textContent.includes('Illustration caption'))()")
 c.js("Promise.all(document.getAnimations().filter(a=>a.effect.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))")

@@ -77,26 +77,29 @@ check('async replacement/epoch/target cancellation', '''(()=>{
  readerEpoch.book++;if(b.current())return false;const d=beginAsyncTask('audit');
  const old=state.targetLang;state.targetLang='fr';const stale=!d.current();state.targetLang=old;
  cancelAsyncTasks();return stale&&d.signal.aborted&&!asyncTasks.size;})()''')
-check('provider priority, fallback, no-key and abort', '''(async()=>{
- const oldFetch=fetch, oldGroq=state.groqKey, oldKey=state.apiKey;let calls=[];
- try{state.groqKey='audit-fake';state.apiKey='audit-fake';
- window.fetch=async(url,opts)=>{calls.push(String(url));return calls.length===1?new Response('{}',{status:503}):new Response(JSON.stringify({candidates:[{content:{parts:[{text:'ok'}]}}]}));};
- if(await callAI('test')!=='ok'||calls.length!==2||!calls[0].includes('groq'))return false;
+check('explicit provider, no fallback, no-key and abort', '''(async()=>{
+ const oldFetch=fetch, oldGroq=state.groqKey, oldKey=state.apiKey, oldProvider=state.activeAiProvider;let calls=[];
+ try{state.groqKey='audit-fake';state.apiKey='audit-fake';state.activeAiProvider='groq';
+ window.fetch=async(url,opts)=>{calls.push(String(url));return new Response('{}',{status:503});};
+ try{await callAI('test');return false;}catch(e){if(calls.length!==1||!calls[0].includes('groq'))return false;}
+ state.activeAiProvider='gemini';calls=[];
+ window.fetch=async(url,opts)=>{calls.push(String(url));return new Response(JSON.stringify({candidates:[{content:{parts:[{text:'ok'}]}}]}));};
+ if(await callAI('test')!=='ok'||calls.length!==1||!calls[0].includes('googleapis')||calls[0].includes('key='))return false;
  const controller=new AbortController();controller.abort();calls=[];
  try{await callAIVision('test','data:image/jpeg;base64,AA==',controller.signal);return false;}catch(e){if(e.name!=='AbortError'||calls.length)return false;}
- state.groqKey='';state.apiKey='';try{await callAI('test');return false;}catch(e){return e.message===t('needKey')&&calls.length===0;}
- }finally{window.fetch=oldFetch;state.groqKey=oldGroq;state.apiKey=oldKey;}})()''')
+ state.groqKey='';state.apiKey='';try{await callAI('test');return false;}catch(e){return e.message===missingAiKey()&&calls.length===0;}
+ }finally{window.fetch=oldFetch;state.groqKey=oldGroq;state.apiKey=oldKey;state.activeAiProvider=oldProvider;}})()''')
 check('in-flight text and vision abort never call fallback', """(async()=>{
- const oldFetch=fetch,oldGroq=state.groqKey,oldGemini=state.apiKey;
- try{state.groqKey=state.apiKey='audit-fake';
+ const oldFetch=fetch,oldGroq=state.groqKey,oldGemini=state.apiKey,oldProvider=state.activeAiProvider;
+ try{state.groqKey=state.apiKey='audit-fake';state.activeAiProvider='groq';
  for(const vision of [false,true]){
  let calls=0;window.fetch=(url,options)=>{calls++;return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new DOMException('Cancelled','AbortError')),{once:true}));};
  const controller=new AbortController();const pending=vision?callAIVision('test','data:image/jpeg;base64,AA==',controller.signal):callAI('test',controller.signal);
  controller.abort();try{await pending;return false;}catch(e){if(e.name!=='AbortError'||calls!==1)return false;}
- }return true;}finally{window.fetch=oldFetch;state.groqKey=oldGroq;state.apiKey=oldGemini;}})()""")
+ }return true;}finally{window.fetch=oldFetch;state.groqKey=oldGroq;state.apiKey=oldGemini;state.activeAiProvider=oldProvider;}})()""")
 check('AI panel no-key, replacement and background abort lifecycle', """(async()=>{
- const oldCall=callAI,oldAlert=alert,oldKey=state.groqKey,oldGemini=state.apiKey;let notice='',resolvers=[];
- try{state.groqKey='';state.apiKey='';window.alert=message=>notice=message;
+ const oldCall=callAI,oldAlert=alert,oldKey=state.groqKey,oldGemini=state.apiKey,oldProvider=state.activeAiProvider;let notice='',resolvers=[];
+ try{state.activeAiProvider='groq';state.groqKey='';state.apiKey='';window.alert=message=>notice=message;
  await startAiTask('Hello','ask');if(notice!==t('needKey'))return false;
  state.groqKey='audit';callAI=(prompt,signal)=>new Promise((resolve,reject)=>{
  resolvers.push(resolve);signal.addEventListener('abort',()=>reject(new DOMException('Cancelled','AbortError')),{once:true});});
@@ -104,7 +107,7 @@ check('AI panel no-key, replacement and background abort lifecycle', """(async()
  await Promise.all([first,second]);if(!els.askPanel.classList.contains('ready')||els.askContent.textContent!=='Second reply')return false;
  const third=startAiTask('Third','ask');cancelAsyncTasks(['ask']);await third;
  return !els.askPanel.classList.contains('loading');
- }finally{callAI=oldCall;window.alert=oldAlert;state.groqKey=oldKey;state.apiKey=oldGemini;els.askPanel.classList.remove('loading','ready','expanded');}})()""")
+ }finally{callAI=oldCall;window.alert=oldAlert;state.groqKey=oldKey;state.apiKey=oldGemini;state.activeAiProvider=oldProvider;els.askPanel.classList.remove('loading','ready','expanded');}})()""")
 data = base64.b64encode(pdf_bytes(two_columns=True)).decode()
 check('real PDF cold-start rendering and text layer', f"""(async()=>{{
  state.format='pdf';state.bookKey='audit-pdf';state.pdfFit='page';state.pdfScale=1;

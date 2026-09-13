@@ -46,9 +46,8 @@ def tap(selector):
 
 def opened():
     c.wait("!document.getElementById('quick-menu').hidden")
-    # The .qm-open class is added a frame later, then opacity/transform transitions
-    # settle over .22s respectively. Real user taps land after animations complete.
-    time.sleep(.25)
+    # Wait for the rendered entrance and detent to finish, including throttled frames.
+    c.wait("(()=>{const b=document.querySelector('.qm-active');return !!b && Math.abs(new DOMMatrix(getComputedStyle(b).transform).a-1)<.00001})()")
 
 
 def closed(timeout=20):

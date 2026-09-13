@@ -692,6 +692,16 @@
             width: 100%; height: 44px; padding: 0 12px; margin: 12px 0 6px; border: 1px solid var(--border-color);
             border-radius: var(--radius-sm); background: var(--bg-color); color: var(--text-color); font-size: 15px;
         }
+        .ai-provider-selector { margin: 18px 0 0; padding: 0; border: 0; min-width: 0; }
+        .ai-provider-selector legend { margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+        .ai-provider-options { display: flex; gap: 6px; }
+        .ai-provider-options label { flex: 1; position: relative; cursor: pointer; min-width: 0; }
+        .ai-provider-options input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; padding: 0; }
+        .ai-provider-options span { display: flex; align-items: center; justify-content: center; min-height: 44px;
+            border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 13px; }
+        .ai-provider-options input:checked + span { background: var(--accent-color); color: var(--accent-contrast); border-color: var(--accent-color); }
+        .ai-provider-options input:focus-visible + span { outline: 3px solid var(--accent-color); outline-offset: 3px; }
+        #ai-provider-error { font-size: 13px; color: var(--text-color); border-left: 3px solid var(--accent-color); padding-left: 8px; }
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
         .key-link { display: inline-block; font-size: 13px; color: var(--accent-color); text-decoration: none; }
         .key-link:hover { text-decoration: underline; }
@@ -997,14 +1007,26 @@
     <div id="settings-modal" onclick="if (event.target === this) closeKeySettings()">
         <div class="modal-content">
             <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" onclick="closeKeySettings()" data-i18n="close" data-i18n-title="tClose">✕</button>
-            <h3 data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
-            <input type="password" id="api-key-input" placeholder="AIza...">
+            <h3 id="gemini-key-label" data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
+            <input type="password" id="api-key-input" placeholder="AIza..." aria-labelledby="gemini-key-label" autocomplete="off" spellcheck="false">
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="key-link">aistudio.google.com/apikey</a>
 
-            <h3 style="margin-top:18px;">⚡ Ключ Groq <span class="key-hint" data-i18n="keyFaster">(швидший)</span></h3>
-            <input type="password" id="groq-key-input" placeholder="gsk_...">
+            <h3 id="groq-key-label" style="margin-top:18px;" data-i18n="groqKeyTitle">⚡ Ключ Groq</h3>
+            <input type="password" id="groq-key-input" placeholder="gsk_..." aria-labelledby="groq-key-label" autocomplete="off" spellcheck="false">
             <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="key-link">console.groq.com/keys</a>
-            <div class="key-hint" data-i18n="keyNote">Якщо вказано ключ Groq, він використовується для всіх запитів AI — відповідь приходить помітно швидше. Інакше працює Gemini.</div>
+            <h3 id="openai-key-label" style="margin-top:18px;" data-i18n="openaiKeyTitle">🔑 OpenAI API</h3>
+            <input type="password" id="openai-key-input" placeholder="sk-..." aria-labelledby="openai-key-label" autocomplete="off" spellcheck="false">
+            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="key-link">platform.openai.com/api-keys</a>
+            <fieldset class="ai-provider-selector">
+                <legend data-i18n="aiProviderLabel">Активний AI</legend>
+                <div class="ai-provider-options">
+                    <label><input type="radio" name="ai-provider" value="openai"><span>OpenAI</span></label>
+                    <label><input type="radio" name="ai-provider" value="groq"><span>Groq</span></label>
+                    <label><input type="radio" name="ai-provider" value="gemini"><span>Gemini</span></label>
+                </div>
+            </fieldset>
+            <p id="ai-provider-error" role="alert" hidden></p>
+            <div class="key-hint" data-i18n="keyNote"></div>
 
             <div class="modal-footer">
                 <button class="btn-ghost" onclick="closeKeySettings()" data-i18n="cancel">Скасувати</button>
@@ -1013,7 +1035,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=2e0a662a3510"></script>
+    <script src="js/core.js?v=02b138b56fe0"></script>
     <script src="js/lang-detect.js?v=21625d365df7"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1028,10 +1050,10 @@
     <script src="js/learning-stats.js?v=67246f255f39"></script>
     <script src="js/navigation.js?v=cd49774de655"></script>
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
-    <script src="js/ui-tooltip.js?v=faf821c395f1"></script>
+    <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
     <script src="js/grammar-svo.js?v=d6c923f45e21"></script>
-    <script src="js/ai-client.js?v=a7a5f853ab94"></script>
+    <script src="js/ai-client.js?v=0fc54c25e41f"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=7ab822ef42a8"></script>
     <script src="js/pdf-crop.js?v=93672612bda6"></script>

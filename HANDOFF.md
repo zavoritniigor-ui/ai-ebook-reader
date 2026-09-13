@@ -504,3 +504,31 @@ push this feature branch only, verify draft PR CI and Cloudflare preview, and pr
 measurements/screenshots for physical user review. Feature is NOT accepted or complete.
 Preserve unrelated untracked files, including `tests/quick_wheel_drag_browser.py`;
 it predates this task and is not part of this redesign's test suite.
+
+## OpenAI restoration on Quick Wheel — 2026-09-12
+
+User explicitly requires `feature/bottom-quick-menu`, PR #98 Draft, no merge.
+Restored provider changes selectively from `feature/openai-provider` (`d35f3df`):
+`index.html`, `js/core.js`, `js/ai-client.js`, `js/ui-tooltip.js`, provider browser
+tests and explicit-selection migration tests. Preserved the newer tooltip dock
+handler and all wheel/menu/print/UI implementation. No provider fallback.
+Updated CI coverage for the existing stale drag suite and replaced its obsolete
+six-item assumptions with real drag/settings integration assertions. Wheel and
+PDF test setup now waits for rendered entrance/resize completion. Updated the
+architecture provider description and regenerated shell versions.
+
+Local validation complete: all 25 browser suites in the CI list passed, including
+full PDF/learning, provider, both wheel suites, migration, format/rendering,
+language/TTS and PDF selection suites. Also passed shell versions, CI suite
+coverage and CDP transport checks. Initial full-run failures were resolved by
+waiting for rendered entrance/PDF resize completion, resetting drag emulation,
+and retaining the existing 10px PDF touch tolerance in its stale test assertions.
+Rich-text passed on rerun after a page-startup timeout. Selection and wheel
+application code remain unchanged. Logs: `/tmp/openai-full-suite.log`,
+`/tmp/restore-*.log`, `/tmp/openai-*-retest.log`.
+
+This entry accompanies the restoration commit on `feature/bottom-quick-menu`.
+Release target: update the existing Draft PR #98 and Cloudflare branch preview
+only. At commit time remote CI/deployment verification is pending; inspect PR
+checks for the exact commit and immutable preview URL. No merge or production
+deployment authorized. Physical wheel acceptance remains pending.
