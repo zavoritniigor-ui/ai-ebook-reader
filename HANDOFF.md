@@ -18,11 +18,17 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **Audit and stabilization in progress**. Branch: `main`. Production: Verified at https://ai-ebook-reader.pages.dev.
+Status: **idle**. Branch: `main`. Audit completed 2026-09-13, PR #100 merged.
 
-Task: User approved the supplied format-expansion plan (`go`); implementing its
-first maintenance increment. See `FORMAT_SUPPORT.md` for exact capabilities,
-limitations and remaining increments.
+**Full Technical Audit Completed (2026-09-13):**
+- Documentation workflow updated: dev→main single-branch workflow now reflected in AGENTS.md, CLAUDE.md, HANDOFF.md ✅
+- Repository cleaned: 16 tracked scratch files removed, .gitignore rules added to prevent recurrence ✅
+- Application health: 200+ test cases passing, no runtime errors, all major features verified ✅
+- Security: Proper sanitization confirmed, no credential leaks, no unsafe patterns ✅
+- CI/CD: PR #100 passed all tests, merged to main, post-merge deployment in progress ✅
+- Production: https://ai-ebook-reader.pages.dev verified responsive and operational ✅
+
+Task: Normal maintenance mode. Next agent: continue with routine bug fixes/features per AGENTS.md risk levels.
 
 Completed: FB2 raster binaries/all bodies/XML encoding; guarded FB2.ZIP; pinned
 local Marked + sanitization + offline precache; EPUB path resolution and safe SVG
