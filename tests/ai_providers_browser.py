@@ -56,7 +56,7 @@ window.fetch=async(url,options={})=>{
  if(__mode==='401'||__mode==='429'||__mode==='503')return new Response(JSON.stringify({error:{message:__keys.openai+' Authorization: '+__keys.groq}}),{status:Number(__mode)});
  if(__mode==='malformed')return new Response('{broken');
  if(__mode==='null')return new Response('null');
- if(__mode==='empty')return response('');
+ if(__mode==='empty')return provider==='openai'&&body.stream?sseResponse(''):response('');
  if(__mode==='incomplete')return new Response(JSON.stringify({status:'incomplete',output:[]}));
  if(__mode==='refusal')return new Response(JSON.stringify({status:'completed',output:[{type:'message',role:'assistant',content:[{type:'refusal',refusal:'No'}]}]}));
  if(__mode==='multi')return new Response(JSON.stringify({status:'completed',output:[{type:'reasoning'},{type:'message',role:'assistant',content:[{type:'output_text',text:'One'},{type:'output_text',text:'Two'}]}]}));
