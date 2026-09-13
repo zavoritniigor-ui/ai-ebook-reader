@@ -14,9 +14,9 @@ const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 const OPENAI_TASK_PROFILES = {
     translation: { reasoning: 'none', max_output_tokens: 128, stream: false },
     grammar: { reasoning: 'none', max_output_tokens: 700, stream: false },
-    ask: { reasoning: 'low', max_output_tokens: 1200, stream: true },
+    ask: { reasoning: 'low', max_output_tokens: 1200, stream: false },
     conjugation: { reasoning: 'none', max_output_tokens: 200, stream: false },
-    language_level: { reasoning: 'low', max_output_tokens: 800, stream: true },
+    language_level: { reasoning: 'low', max_output_tokens: 800, stream: false },
     vision: { reasoning: 'low', max_output_tokens: 1200, stream: false },
     default: { reasoning: 'low', max_output_tokens: 4096, stream: false }
 };
