@@ -9,12 +9,12 @@ full history and reasoning behind every decision mentioned here; this file state
 ## The shape of the app
 
 `index.html` is a thin shell: markup, `<style>`, the vendor `<script>` tags (JSZip, Mammoth,
-PDF.js), and nineteen ordered `<script src="js/...">` tags — one per module, in a fixed load
+PDF.js), and twenty ordered `<script src="js/...">` tags — one per module, in a fixed load
 order that matters (see "Load order" below). Exactly one fragment of application code is
 still inline in `index.html` rather than in a module, and it has to stay that way — see
 "The one inline exception" below.
 
-`sw.js` is a minimal service worker: it precaches the app shell (index.html, the 18 modules,
+`sw.js` is a minimal service worker: it precaches the app shell (index.html, the application modules,
 vendor files, icons) under a content-derived cache name and serves navigation requests
 network-first with a fallback to cache. `tools/version_app_shell.py` and
 `tests/app_shell_versions.py` keep the two files' version identifiers honest — see
@@ -64,7 +64,7 @@ it during the migration would have been an unplanned behavior change.
 ```
 core.js → lang-detect.js → tts.js → selection.js → learning-stats.js → navigation.js → pdf-zoom-pan.js →
 ui-tooltip.js → translation.js → grammar-svo.js → ai-client.js → dictation.js →
-pdf-ink.js → pdf-crop.js → pdf-render.js → formats.js → onboarding.js → main.js →
+pdf-ink.js → pdf-crop.js → pdf-render.js → formats.js → onboarding.js → quick-wheel.js → main.js →
 pwa-lifecycle.js
 ```
 
@@ -142,7 +142,7 @@ actually read).
 | `ui-tooltip.js` | The translation tooltip's position/lifecycle (`positionTooltip`/`repositionTooltip`/`scheduleTooltipHide`), the footer submenu (`openFooterMenu`/`closeFooterMenu`) kept *with* the tooltip rather than in `navigation.js` (see "Resolved plan deviations"), and the key-settings modal (`openKeySettings`/`closeKeySettings`/`saveApiKey`). |
 | `translation.js` | Word/selection → translation: alignment highlighting (`validateAlignment`/`installAlignment`/`flashAlignment`), the core `handleWordOrSelection` tap handler, on-device translation via Chrome's Translator API (`translateLocally`, and `warmLocalTranslator` — proactively starts the language-pack download while online, from `lang-detect.js`'s `updateSourceLang()` and the target-language `<select>`'s change handler in `main.js`, so the pack is actually ready by the time the device goes offline; silent, unlike `translateLocally`'s own download which updates `els.progress` — see the file's own comment on `getLocalTranslator`'s `showProgress` parameter), English phrasal-verb detection (`detectPhrasalVerb`), and translating inside the AI panels (`translatePanelPoint`). |
 | `grammar-svo.js` | The Grammar/Ask AI panels: `startAiTask` (the actual AI request/response flow — deferred here from Step 3), the AI prompt builders, verb conjugation UI, and SVO sentence-part analysis (`analyzeSVO`/`applySVOParts`). |
-| `ai-client.js` | `callAI`/`callAIVision`, the Gemini/Groq provider selection and vision fallback, `aiAvailable`, `sanitizeAI`. Does **not** contain `startAiTask` (see `grammar-svo.js`) or `machineTranslate`/`aiTranslateText` (see `translation.js`). |
+| `ai-client.js` | `callAI`/`callAIVision`, explicit OpenAI/Groq/Gemini selection for text and vision (no provider fallback), independent BYOK credentials, request cancellation, safe localized errors, `aiAvailable`, `sanitizeAI`, and `machineTranslate`/`aiTranslateText`. OpenAI uses the Responses endpoint. Does **not** contain `startAiTask` (see `grammar-svo.js`). |
 | `dictation.js` | Speech-to-text for the Ask panel: `updateDictationUI`, `stopDictation` (finalizes interim text exactly once), `startDictationSession` (bounded auto-restart), `toggleDictation`. |
 | `pdf-ink.js` | Writing over the PDF page: the canvas layer and per-page relative-coordinate stroke storage (`inkStrokes`/`saveInk`/`loadInk`/`redrawInk`), drawing/erasing input, pen tool controls. |
 | `pdf-crop.js` | Page-region selection and crop: `exitRegionMode`/`cropPdfRegion`, the crop preview dialog (Save PNG/Share/Copy PNG), and `checkExerciseImage` (calls `ai-client.js`'s vision API, kept here since it's only ever invoked from the crop flow). |
@@ -284,3 +284,12 @@ Marked rendering, inert SVG rasterization and resource-aware reflow.
 mobile viewport setup. The navigation resize debounce can otherwise invalidate
 the test selection after `initPdf` resolves; this was reproduced during format
 release CI, then isolated to test setup rather than sentence expansion.
+
+## Floating quick actions
+
+`js/quick-wheel.js` owns the right-side launcher, eleven-action continuous rotary
+renderer, requestAnimationFrame gesture/inertia/snap and entrance/exit animations,
+printing, keyboard/pointer interactions and UI cleanup. It loads before `main.js`
+so its translated labels exist before `applyI18n()`, and before the PWA overlay
+stack. Existing controls own every action. See `QUICK_WHEEL.md` for the complete
+menu action map, interaction details and regression coverage.

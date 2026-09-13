@@ -19,6 +19,32 @@
 els.grammarTab.onclick = () => { els.grammarPanel.classList.toggle('expanded'); els.askPanel.classList.remove('expanded'); els.grammarPanel.classList.remove('loading', 'ready'); };
 els.askTab.onclick = () => { els.askPanel.classList.toggle('expanded'); els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.remove('loading', 'ready'); };
 
+// INCREMENTAL STREAMING CALLBACK FOR ASK AI AND LANGUAGE LEVEL
+// Accumulates streamed deltas and safely updates DOM incrementally
+function createStreamingUpdater(content, task, panel, mode) {
+    let lastRenderTime = 0;
+    const RENDER_THROTTLE_MS = 100; // Update UI max every 100ms to avoid jank
+
+    return function onDelta(delta, accumulated) {
+        // Guard: verify task is still current (not stale, not aborted)
+        if (!task.current()) return;
+
+        const now = performance.now();
+
+        // Throttle rendering for performance: only update DOM every 100ms
+        if (now - lastRenderTime < RENDER_THROTTLE_MS) return;
+        lastRenderTime = now;
+
+        try {
+            // Incrementally render accumulated text with safeHtml
+            // This is safe: each update passes through the allowlist sanitizer
+            content.innerHTML = safeHtml(accumulated, true);
+        } catch (_) {
+            // Malformed intermediate HTML: skip this render, next delta will retry
+        }
+    };
+}
+
 async function startAiTask(contextText, mode, userPrompt = "") {
     if (!aiAvailable()) return alert(t('needKey'));
     // Ручне виділення (на відміну від тапу по слову чи кнопки "розгорнути до
@@ -39,16 +65,23 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     content.innerHTML = `<div style="text-align:center;margin-top:50px;"><div class="spinner-large"></div><p style="margin-top:20px;color:gray;">${t('generating')}<br><b style="color:var(--text-color);">${escapeHtml(contextText.length>40?contextText.substring(0,40)+'...':contextText)}</b></p></div>`;
 
     const langName = LANG_NAMES[state.targetLang] || 'українською';
-    const prompt = mode === 'grammar' 
+    const prompt = mode === 'grammar'
         ? buildGrammarPrompt(contextText, state.lastGrammarSentence, state.targetLang)
         : mode === 'level'
             ? buildLanguageLevelPrompt(contextText, state.lastGrammarSentence, langName)
             : buildAskPrompt(contextText, state.lastGrammarSentence, userPrompt, langName);
+    const taskType = mode === 'grammar' ? 'grammar' : mode === 'level' ? 'language_level' : 'ask';
+
+    // For streaming tasks (ask, language_level on OpenAI), provide incremental callback
+    const isStreaming = (state.activeAiProvider === 'openai') && (mode === 'ask' || mode === 'level');
+    const onDelta = isStreaming ? createStreamingUpdater(content, task, panel, mode) : undefined;
 
     try {
-        const text = await callAI(prompt, task.signal);
+        const text = await callAI(prompt, task.signal, taskType, onDelta);
         if (!task.current()) return;
         panel.classList.remove('loading'); panel.classList.add('ready'); // Вмикаємо зелений неон!
+        // Final render with safeHtml (even if streaming already updated incrementally,
+        // this ensures the final state is properly sanitized)
         // Без обгортки <p>: відповідь тепер містить таблицю відмінювання й списки,
         // а таблиця всередині <p> — невалідний HTML, браузер розриває розмітку.
         content.innerHTML = safeHtml(text, true);
@@ -254,7 +287,7 @@ async function analyzeSVO(sentence) {
     const prompt = buildSvoPrompt(sentence, isFr);
 
     try {
-        const answer = await callAI(prompt, task.signal);
+        const answer = await callAI(prompt, task.signal, 'grammar');
         if (myToken !== svoToken || !task.current()) return;
         const raw = answer.replace(/```json|```/g, '').trim();
         let parts = null;
@@ -549,7 +582,7 @@ async function showVerb(verb, tense) {
     els.grammarContent.scrollTop = 0;
 
     try {
-        const out = await callAI(buildConjugationPrompt(verb, tense), task.signal);
+        const out = await callAI(buildConjugationPrompt(verb, tense), task.signal, 'conjugation');
         if (!task.current() || !box.isConnected) return;
         box.innerHTML = `<div class="verb-head"><b>${escapeHtml(verb)}</b>` +
             (info && info.forme ? ` <span class="verb-forme">${escapeHtml(info.forme)}</span>` : '') +

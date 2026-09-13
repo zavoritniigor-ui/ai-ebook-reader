@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { margin: 0; padding: 50px; font-size: 24px; }
+  p { text-indent: 50px; }
+</style>
+</head>
+<body>
+  <p id="target">Charles vint l'embrasser sur l'epaule.</p>
+  <div id="out"></div>
+  <script>
+    document.addEventListener('click', (e) => {
+      let range = document.caretRangeFromPoint(e.clientX, e.clientY);
+      let r = document.createRange();
+      r.setStart(range.startContainer, 0);
+      r.setEnd(range.startContainer, 7);
+      let rect = r.getClientRects()[0];
+      
+      document.getElementById('out').innerText = JSON.stringify({
+        clickX: e.clientX,
+        rectLeft: rect.left,
+        rectWidth: rect.width,
+        marginCheck: (e.clientX >= rect.left - 1)
+      });
+    });
+    
+    // Simulate a click right away
+    setTimeout(() => {
+      let evt = new MouseEvent('click', { clientX: 20, clientY: 60, bubbles: true });
+      document.dispatchEvent(evt);
+    }, 500);
+  </script>
+</body>
+</html>

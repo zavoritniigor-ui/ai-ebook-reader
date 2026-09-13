@@ -1,0 +1,101 @@
+{
+  "viewport": [
+    390,
+    844
+  ],
+  "launcher": {
+    "x": 286,
+    "y": 617.4375,
+    "width": 48,
+    "height": 48,
+    "top": 617.4375,
+    "right": 334,
+    "bottom": 665.4375,
+    "left": 286
+  },
+  "items": [
+    {
+      "action": "theme-select",
+      "label": "\u25d0\nTheme",
+      "rect": {
+        "x": 140.62615966796875,
+        "y": 394.816162109375,
+        "width": 105.60000610351562,
+        "height": 44.79998779296875,
+        "top": 394.816162109375,
+        "right": 246.22616577148438,
+        "bottom": 439.61614990234375,
+        "left": 140.62615966796875
+      },
+      "transform": "translate(-116.574px, -224.221px) translate(-50%, -50%) scale(0.8)"
+    },
+    {
+      "action": "toggle-toc-desktop",
+      "label": "\u2637\nContents",
+      "rect": {
+        "x": 105.42597961425781,
+        "y": 451.2230529785156,
+        "width": 118.80000305175781,
+        "height": 50.399993896484375,
+        "top": 451.2230529785156,
+        "right": 224.22598266601562,
+        "bottom": 501.623046875,
+        "left": 105.42597961425781
+      },
+      "transform": "translate(-145.174px, -165.014px) translate(-50%, -50%) scale(0.9)"
+    },
+    {
+      "action": "btn-print",
+      "label": "\ud83d\udda8\nPrint",
+      "rect": {
+        "x": 89,
+        "y": 513.4375,
+        "width": 132,
+        "height": 56,
+        "top": 513.4375,
+        "right": 221,
+        "bottom": 569.4375,
+        "left": 89
+      },
+      "transform": "translate(-155px, -100px) translate(-50%, -50%) scale(1)"
+    },
+    {
+      "action": "btn-ink",
+      "label": "\u270f\nDraw",
+      "rect": {
+        "x": 105.42597961425781,
+        "y": 581.251953125,
+        "width": 118.80000305175781,
+        "height": 50.4000244140625,
+        "top": 581.251953125,
+        "right": 224.22598266601562,
+        "bottom": 631.6519775390625,
+        "left": 105.42597961425781
+      },
+      "transform": "translate(-145.174px, -34.9856px) translate(-50%, -50%) scale(0.9)"
+    },
+    {
+      "action": "btn-region",
+      "label": "\u25fb\nRegion",
+      "rect": {
+        "x": 140.62615966796875,
+        "y": 643.2588500976562,
+        "width": 105.60000610351562,
+        "height": 44.79998779296875,
+        "top": 643.2588500976562,
+        "right": 246.22616577148438,
+        "bottom": 688.058837890625,
+        "left": 140.62615966796875
+      },
+      "transform": "translate(-116.574px, 24.2213px) translate(-50%, -50%) scale(0.8)"
+    }
+  ],
+  "collisions": {
+    "pair": false,
+    "labels": false,
+    "controls": false,
+    "bounds": true,
+    "launcher": true,
+    "full": true
+  }
+}

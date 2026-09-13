@@ -9,6 +9,9 @@ def check(name, expression):
 def upload(name, data):
     if isinstance(data, str): data = data.encode()
     c.js(f"openBookFile(new File([Uint8Array.from(atob({json.dumps(base64.b64encode(data).decode())}),c=>c.charCodeAt(0))],{json.dumps(name)},{{lastModified:123}}))")
+    # File replacement may resolve before Chrome updates composited hit testing.
+    # Wait for layout/finite transitions before coordinate-based word assertions.
+    c.js("(async()=>{await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));await Promise.all(document.getAnimations().filter(a=>a.effect.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))})()")
 def archive(files):
     out = io.BytesIO()
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:

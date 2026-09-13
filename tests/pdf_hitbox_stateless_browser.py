@@ -75,18 +75,30 @@ loaded = c.js(f'''(async()=>{{
     window.__errors=[]; window.addEventListener('error',e=>__errors.push(e.message));
     window.__opened=[]; window.__realHandle=handleWordOrSelection;
     handleWordOrSelection=(word,x,y)=>{{__opened.push(word); els.tooltip.style.display='flex';}};
+    window.__pendingPdfRenders=0; window.__lastPdfRender=performance.now();
+    const originalRender=renderPdfPage;
+    renderPdfPage=async(...args)=>{{
+        __pendingPdfRenders++; __lastPdfRender=performance.now();
+        try {{ return await originalRender(...args); }}
+        finally {{ __pendingPdfRenders--; __lastPdfRender=performance.now(); }}
+    }};
     const file=new File([Uint8Array.from(atob('{data}'),c=>c.charCodeAt(0))],'fixture.pdf');
     await initPdf(file); return {{text: els.pages.textContent}};
 }})()''')
 assert 'LeftEdge' in loaded['text'] and 'RightEdge' in loaded['text'] and 'MiddleWord' in loaded['text'], loaded
 pause(0.5)
 
+# Match the reselect suite: viewport setup may queue a delayed resize render.
+c.wait('__pendingPdfRenders===0 && performance.now()-__lastPdfRender>400')
+
 
 def word_rect(word):
     return c.js('''(()=>{
         const spans = pdfTextSpans(document.querySelector('.pdf-text-layer'));
         const target = spans.find(s => s.textContent.includes(''' + repr(word) + '''));
-        const r = target.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(target);
+        const r = range.getBoundingClientRect();
         return { left: r.left, top: r.top, bottom: r.bottom, right: r.right, midY: (r.top + r.bottom) / 2 };
     })()''')
 
@@ -126,13 +138,13 @@ reset_opened()
 tap(*blank_near_left)
 check('B: same blank spot after selecting+closing opens nothing (the reported bug)', 'window.__opened.length===0')
 
-# ---- C: 5px away from the word ----------------------------------------------
+# ---- C: outside the existing 10px PDF touch tolerance -----------------------
 reset_opened()
-tap(left['left'] + 10, left['top'] - 5)
-check('C: 5px above LeftEdge opens nothing', 'window.__opened.length===0')
+tap(left['left'] + 10, left['top'] - 12)
+check('C: 12px above LeftEdge glyphs opens nothing', 'window.__opened.length===0')
 
-# ---- D: 10px, 20px, 40px, and a large margin --------------------------------
-for dist in (10, 20, 40, 300):
+# ---- D: outside the 10px glyph margin ---------------------------------------
+for dist in (13, 20, 40, 300):
     reset_opened()
     tap(left['left'] + 10, left['top'] - dist)
     check(f'D: {dist}px above LeftEdge opens nothing', 'window.__opened.length===0')
