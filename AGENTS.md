@@ -14,7 +14,7 @@ Before executing any task, evaluate its risk level to determine the necessary wo
 **Workflow**: 
 - Minimal targeted fix.
 - Run a targeted test (or perform a specific manual check) for that isolated change.
-- Commit → Push to `dev` → PR → CI → Auto-merge.
+- Commit → Push to `main` → CI → Verify production.
 
 ### 2. Normal (Standard Maintenance)
 **Criteria**: Routine bug fixes, isolated feature additions, logic tweaks confined to one module.
@@ -22,22 +22,22 @@ Before executing any task, evaluate its risk level to determine the necessary wo
 - Read `ARCHITECTURE.md` to locate the module.
 - Make the minimal correct change.
 - Run targeted test(s) + relevant local regression tests only.
-- Commit → Push to `dev` → PR → CI → Auto-merge.
+- Commit → Push to `main` → CI → Verify production.
 
 ### 3. High-risk (Core / Cross-module / Architecture)
 **Criteria**: Changes to PDF.js, Service Worker (`sw.js`), persistence, PWA lifecycle, AI security, file parsing, or multi-module refactoring.
 **Workflow**:
 - Full root-cause analysis and audit.
 - Run full project test suites (`python3 tests/pdf_ux_browser.py` AND `python3 tests/learning_ux_browser.py`).
-- Commit → Push to `dev` → PR → CI → Auto-merge.
+- Commit → Push to `main` → CI → Verify production.
 - Perform a thorough production verification / smoke test at `https://ai-ebook-reader.pages.dev` post-deployment.
 
 ## Project Workflow & Git Safety
-- **Branch**: Work only in `dev`. Never edit or push directly to `main`. Never force-push.
+- **Branch**: Work on `main`. Push directly to `origin/main`. Never force-push.
 - **Git Hygiene**: Add only relevant files. Do not commit secrets, API keys, browser profiles, scratch files, `dups.txt`, or local logs.
 - **Automated Release Flow**: 
-  - Push to `origin/dev` → Create/Update PR to `main` → Wait for GitHub Actions (CI must pass) → Enable/Use Auto-merge.
-  - After merge, Cloudflare Pages will automatically deploy production.
+  - Commit to `main` → Push to `origin/main` → GitHub Actions CI runs → Cloudflare Pages auto-deploys on success.
+  - Verify deployment at https://ai-ebook-reader.pages.dev.
 
 ## Security Rules
 - Never hardcode API keys, commit secrets, or expose credentials.
