@@ -27,6 +27,31 @@ window.fetch=async(url,options={})=>{
   {type:'reasoning',summary:[{text:'never show reasoning'}]},
   {type:'message',role:'assistant',content:[{type:'output_text',text}]}
  ]}:provider==='groq'?{choices:[{message:{content:text}}]}:{candidates:[{content:{parts:[{text}]}}]}));
+ const sseResponse=text=>{
+  const events=[
+   {type:'response.output_text.delta',delta:text.substring(0,Math.floor(text.length/2))},
+   {type:'response.output_text.delta',delta:text.substring(Math.floor(text.length/2))},
+   {type:'response.output_text.done'}
+  ];
+  const encoder=new TextEncoder();
+  let eventIndex=0;
+  const stream=new ReadableStream({
+   pull(controller){
+    if(eventIndex>=events.length){controller.close();return;}
+    const event=events[eventIndex++];
+    const line='data: '+JSON.stringify(event)+'\n\n';
+    const chunk=encoder.encode(line);
+    if(eventIndex===2){
+     const split=Math.floor(chunk.length/2);
+     controller.enqueue(chunk.slice(0,split));
+     controller.enqueue(chunk.slice(split));
+    }else{
+     controller.enqueue(chunk);
+    }
+   }
+  });
+  return new Response(stream,{headers:{'content-type':'text/event-stream'}});
+ };
  if(__mode==='network')throw new TypeError('network '+__keys.openai);
  if(__mode==='401'||__mode==='429'||__mode==='503')return new Response(JSON.stringify({error:{message:__keys.openai+' Authorization: '+__keys.groq}}),{status:Number(__mode)});
  if(__mode==='malformed')return new Response('{broken');
@@ -43,6 +68,7 @@ window.fetch=async(url,options={})=>{
   });
  }
  if(__mode==='translation')return response('Bonjour');
+ if(provider==='openai'&&body.stream)return sseResponse('<p>Provider answer</p><img src="x" onerror="window.__unsafe=1"><script>window.__unsafe=1</script>');
  return response('<p>Provider answer</p><img src="x" onerror="window.__unsafe=1"><script>window.__unsafe=1</script>');
 };
 ''')['identifier']
