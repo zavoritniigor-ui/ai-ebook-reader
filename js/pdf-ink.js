@@ -119,7 +119,7 @@ function inkEraseAt(pt) {
 }
 
 document.getElementById('btn-ink').onclick = () => {
-    if (state.format !== 'pdf') { alert(t('regionPdfOnly')); return; }
+    if (state.format !== 'pdf') { showToast(t('regionPdfOnly')); return; }
     exitRegionMode();
     state.inkMode = true;
     document.body.classList.add('ink-mode', 'immersive-mode');
