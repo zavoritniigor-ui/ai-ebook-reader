@@ -252,11 +252,18 @@ async function generatePracticeWorksheet(context) {
 
 // Build practice generation prompt
 function buildPracticePrompt(session, langName) {
+    // Handle null/undefined values safely
+    const safeSourceText = session.sourceText || '[no context provided]';
+    const safeLangName = langName || '[unknown language]';
+    const safeLevel = session.level || '[unknown level]';
+    const safeSourceLang = session.sourceLanguage || 'unknown';
+    const safeTargetLang = session.targetLanguage || 'unknown';
+
     const basePrompt = `You are a language learning expert creating a structured practice worksheet.
 
-Target language: ${langName}
-Level: ${session.level}
-Context: "${session.sourceText}"
+Target language: ${safeLangName}
+Level: ${safeLevel}
+Context: "${safeSourceText}"
 
 Generate 15 practice exercises for teaching the key concepts from the context above.
 Exercises should progress from recognition (easier) to production (harder).
@@ -268,13 +275,13 @@ Worksheet schema:
   "metadata": {
     "title": "Worksheet title based on topic",
     "topic": "The specific learning goal",
-    "sourceLanguage": "${session.sourceLanguage}",
-    "targetLanguage": "${session.targetLanguage}",
-    "level": "${session.level}",
+    "sourceLanguage": "${safeSourceLang}",
+    "targetLanguage": "${safeTargetLang}",
+    "level": "${safeLevel}",
     "generatedAt": ${Date.now()}
   },
   "context": {
-    "sourceText": "${session.sourceText.substring(0, 100)}"
+    "sourceText": "${safeSourceText.substring(0, 100)}"
   },
   "exercises": [
     {
@@ -351,12 +358,13 @@ async function regeneratePracticeWorksheet(context) {
     }
 }
 
-// Close practice session
+// Close practice session UI (without destroying ready sessions)
+// Ready sessions persist in localStorage and can be restored on reload
+// Only clears the in-memory reference; does not delete from storage
 function closePracticeSession() {
-    if (currentPracticeSession) {
-        deletePracticeSession(currentPracticeSession.id);
-        currentPracticeSession = null;
-    }
+    // Clear in-memory reference to close UI
+    currentPracticeSession = null;
+    // Do NOT delete from localStorage - ready sessions should persist for reload restoration
 }
 
 // Get current practice session
