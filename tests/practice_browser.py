@@ -681,6 +681,12 @@ check("T17: Practice panel not off-screen (transform not translateX(100%))",
 print("\n=== TEST 18: Grammar/Ask Panel Isolation ===")
 
 c.js(r"""
+// Close any open panels first (from previous tests)
+const grammaPanelSetup = document.getElementById('grammar-panel');
+const askPanelSetup = document.getElementById('ask-panel');
+if (grammaPanelSetup) grammaPanelSetup.hidden = true;
+if (askPanelSetup) askPanelSetup.hidden = true;
+
 window.__isolationTest = {
     grammarHidden: true,
     askHidden: true,
