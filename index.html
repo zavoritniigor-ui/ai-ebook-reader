@@ -484,6 +484,9 @@
         
         #ask-panel { left: 0; transform: translateX(-100%); box-shadow: 5px 0 25px rgba(0,0,0,0.2); border-radius: 0 16px 16px 0; }
         #ask-panel.expanded { transform: none; visibility: visible; }
+
+        #practice-panel { right: 0; transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.2); border-radius: 16px 0 0 16px; }
+        #practice-panel:not([hidden]) { transform: none; visibility: visible; }
         
         /* Прозорі напівкруглі "ручки" панелей — жодного малюнка, у спокої повністю прозорі.
            Права ручка = граматика, ліва = запит до AI (як просив користувач).

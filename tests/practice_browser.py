@@ -636,4 +636,83 @@ window.__hintsTest.noHintsTest.rendersCorrectly = window.__hintsTest.noHintsTest
 check("T16: Optional hints work correctly",
       "window.__hintsTest.noHintsTest.validationPassed && window.__hintsTest.noHintsTest.rendersCorrectly && window.__hintsTest.noHintsTest.ex1HasHints && window.__hintsTest.noHintsTest.ex2NoHints")
 
+# TEST 17: Practice Panel Visibility Regression (Production fix)
+print("\n=== TEST 17: Practice Panel Visibility (Regression) ===")
+
+c.js(r"""
+window.__visibilityTest = {
+    panelVisible: false,
+    computedDisplay: null,
+    computedVisibility: null,
+    actuallyRendered: false
+};
+
+// Get the practice panel (created by previous tests)
+const practicePanel = document.getElementById('practice-panel');
+if (practicePanel) {
+    // Check computed styles
+    const computed = window.getComputedStyle(practicePanel);
+    window.__visibilityTest.computedDisplay = computed.display;
+    window.__visibilityTest.computedVisibility = computed.visibility;
+
+    // Check actual rendering (offsetParent !== null means visible in layout)
+    window.__visibilityTest.actuallyRendered = practicePanel.offsetParent !== null;
+    window.__visibilityTest.hidden = practicePanel.hidden;
+}
+
+true;
+""")
+
+check("T17: Practice panel not hidden",
+      "!window.__visibilityTest.hidden")
+
+check("T17: Practice panel has display:flex (not none)",
+      "window.__visibilityTest.computedDisplay === 'flex'")
+
+check("T17: Practice panel has visibility:visible (not hidden)",
+      "window.__visibilityTest.computedVisibility === 'visible'")
+
+check("T17: Practice panel is actually rendered (offsetParent !== null)",
+      "window.__visibilityTest.actuallyRendered")
+
+# TEST 18: Grammar/Ask Panels Still Work
+print("\n=== TEST 18: Grammar/Ask Panel Isolation ===")
+
+c.js(r"""
+window.__isolationTest = {
+    grammarHidden: true,
+    askHidden: true,
+    practiceHidden: false,
+    noConflict: true
+};
+
+const grammarPanel = document.getElementById('grammar-panel');
+const askPanel = document.getElementById('ask-panel');
+const practicePanel = document.getElementById('practice-panel');
+
+if (grammarPanel) window.__isolationTest.grammarHidden = grammarPanel.hidden;
+if (askPanel) window.__isolationTest.askHidden = askPanel.hidden;
+if (practicePanel) window.__isolationTest.practiceHidden = practicePanel.hidden;
+
+// All should be independent
+window.__isolationTest.noConflict =
+    window.__isolationTest.grammarHidden &&
+    window.__isolationTest.askHidden &&
+    !window.__isolationTest.practiceHidden;
+
+true;
+""")
+
+check("T18: Grammar panel still independent",
+      "window.__isolationTest.grammarHidden")
+
+check("T18: Ask panel still independent",
+      "window.__isolationTest.askHidden")
+
+check("T18: Practice panel visible (not hidden)",
+      "!window.__isolationTest.practiceHidden")
+
+check("T18: No panel conflicts",
+      "window.__isolationTest.noConflict")
+
 print("\n=== ALL PRACTICE STUDIO TESTS PASSED ===")
