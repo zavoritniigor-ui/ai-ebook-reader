@@ -363,4 +363,277 @@ check("T15: No API keys in session",
 check("T15: No credentials in storage",
       r"!window.__secTest.storageKeys.some(k => localStorage[k]?.includes('sk-') || localStorage[k]?.includes('gsk_'))")
 
+# Phase 3B: Hints tests
+print("\n=== TEST 16: Phase 3B - Hints Support ===")
+
+c.js(r"""
+window.__hintsTest = {
+    mockWorksheet: null,
+    hintValidationPassed: false,
+    hintsRendered: false,
+    hintRevealWorks: false
+};
+
+// Create worksheet with hints for testing
+window.__hintsTest.mockWorksheet = {
+    metadata: {
+        id: 'ws1',
+        title: 'Hints Practice',
+        topic: 'Verb conjugation',
+        sourceLanguage: 'en',
+        targetLanguage: 'uk',
+        level: 'A1',
+        generatedAt: Date.now()
+    },
+    context: { sourceText: 'I know the answer' },
+    exercises: [
+        {
+            id: 'ex1',
+            type: 'fill_form',
+            instruction: 'Fill the blank',
+            prompt: 'I ___ (know) the answer',
+            expectedConcept: 'verb knowledge',
+            difficulty: 1,
+            hints: [
+                'Think about the present tense of know',
+                'It is a simple form',
+                'The answer is "know"'
+            ]
+        },
+        {
+            id: 'ex2',
+            type: 'conjugation',
+            instruction: 'Conjugate',
+            prompt: 'know',
+            expectedConcept: 'conjugation',
+            difficulty: 2
+            // No hints on this exercise - optional
+        }
+    ]
+};
+
+// Test hints validation
+try {
+    validateWorksheet(window.__hintsTest.mockWorksheet);
+    window.__hintsTest.hintValidationPassed = true;
+} catch (e) {
+    window.__hintsTest.hintValidationError = e.message;
+}
+
+true;
+""")
+
+check("T16: Hints validation accepts valid hints",
+      "window.__hintsTest.hintValidationPassed")
+
+c.js(r"""
+// Test hint rendering
+displayPracticeSession({status: 'ready', worksheet: window.__hintsTest.mockWorksheet, currentPage: 0});
+window.__hintsTest.hintsRendered = document.querySelectorAll('.hint-reveal-btn').length === 1;
+window.__hintsTest.hintCount = document.querySelectorAll('.hint').length;
+""")
+
+check("T16: Hints render with buttons",
+      "window.__hintsTest.hintsRendered && window.__hintsTest.hintCount === 3")
+
+c.js(r"""
+// Test progressive hint reveal with actual visibility checks
+const hintBtn = document.querySelector('.hint-reveal-btn');
+const hintsContainer = hintBtn.parentElement.querySelector('.hints-container');
+const hints = Array.from(hintsContainer.querySelectorAll('.hint'));
+
+// Helper to check actual visibility (parent and self)
+function isActuallyVisible(el) {
+    return el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
+}
+
+window.__hintsTest.beforeClick = {
+    containerVisible: isActuallyVisible(hintsContainer),
+    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
+    buttonDisabled: hintBtn.disabled
+};
+
+// Click to reveal first hint
+hintBtn.click();
+
+window.__hintsTest.afterClick1 = {
+    containerVisible: isActuallyVisible(hintsContainer),
+    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
+    buttonDisabled: hintBtn.disabled
+};
+
+// Click again to reveal second hint
+hintBtn.click();
+
+window.__hintsTest.afterClick2 = {
+    containerVisible: isActuallyVisible(hintsContainer),
+    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
+    buttonDisabled: hintBtn.disabled
+};
+
+// Click to reveal third (final) hint
+hintBtn.click();
+
+window.__hintsTest.afterClick3 = {
+    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
+    buttonDisabled: hintBtn.disabled,
+    buttonText: hintBtn.textContent.trim()
+};
+""")
+
+check("T16: Container hidden before reveal",
+      "!window.__hintsTest.beforeClick.containerVisible && window.__hintsTest.beforeClick.visibleCount === 0")
+
+check("T16: First hint reveals and container becomes visible",
+      "window.__hintsTest.afterClick1.containerVisible && window.__hintsTest.afterClick1.visibleCount === 1 && !window.__hintsTest.afterClick1.buttonDisabled")
+
+check("T16: Second hint reveals progressively",
+      "window.__hintsTest.afterClick2.containerVisible && window.__hintsTest.afterClick2.visibleCount === 2 && !window.__hintsTest.afterClick2.buttonDisabled")
+
+check("T16: All hints revealed and button disables on final hint",
+      "window.__hintsTest.afterClick3.visibleCount === 3 && window.__hintsTest.afterClick3.buttonDisabled && window.__hintsTest.afterClick3.buttonText.includes('✓')")
+
+c.js(r"""
+// Test hint persistence across navigation
+// Reset worksheet to clean state (previous mutations from injection test)
+window.__hintsTest.mockWorksheet.exercises[0].hints = [
+    'Think about the present tense of know',
+    'It is a simple form',
+    'The answer is "know"'
+];
+
+window.__persistenceTest = {
+    hints2VisibleBefore: false,
+    hints2VisibleAfter: false,
+    revealCount: 0
+};
+
+// Display fresh session
+const persistSession = {
+    id: 'persist_hints_test',
+    status: 'ready',
+    worksheet: window.__hintsTest.mockWorksheet,
+    currentPage: 0,
+    revealedHints: {}
+};
+currentPracticeSession = persistSession;
+
+displayPracticeSession(persistSession);
+
+// Get fresh reference to button and hints
+const persistBtn = document.querySelector('.hint-reveal-btn');
+const persistContainer = persistBtn.parentElement.querySelector('.hints-container');
+const persistHints = Array.from(persistContainer.querySelectorAll('.hint'));
+
+function isActuallyVisible(el) {
+    return el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
+}
+
+// Reveal first hint
+persistBtn.click();
+// Reveal second hint
+persistBtn.click();
+
+window.__persistenceTest.hints2VisibleBefore = persistHints.slice(0, 2).every(h => isActuallyVisible(h));
+window.__persistenceTest.revealCount = persistSession.revealedHints.ex1;
+
+// Simulate page navigation by re-displaying the same session
+displayPracticeSession(persistSession);
+
+// Re-check if hints remain visible after re-display
+const newBtn = document.querySelector('.hint-reveal-btn');
+const newContainer = newBtn.parentElement.querySelector('.hints-container');
+const newHints = Array.from(newContainer.querySelectorAll('.hint'));
+window.__persistenceTest.hints2VisibleAfter = newHints.slice(0, 2).every(h => isActuallyVisible(h));
+window.__persistenceTest.sessionRevealedCount = persistSession.revealedHints.ex1;
+""")
+
+check("T16: Hint reveal persists after navigation",
+      "window.__persistenceTest.hints2VisibleBefore && window.__persistenceTest.hints2VisibleAfter && window.__persistenceTest.sessionRevealedCount === 2")
+
+c.js(r"""
+// Test hint safety - no HTML injection
+const maliciousWorksheet = window.__hintsTest.mockWorksheet;
+maliciousWorksheet.exercises[0].hints[0] = '<script>alert("xss")</script>';
+
+window.__hintsTest.injectionTest = {
+    attempted: true,
+    caught: false
+};
+
+try {
+    validateWorksheet(maliciousWorksheet);
+} catch (e) {
+    window.__hintsTest.injectionTest.caught = e.message.includes('suspicious');
+}
+""")
+
+check("T16: Hints reject HTML injection",
+      "window.__hintsTest.injectionTest.caught")
+
+c.js(r"""
+// Test optional hints - exercises without hints still work
+const noHintsWorksheet = {
+    metadata: {
+        id: 'ws1',
+        title: 'Optional Hints Test',
+        topic: 'Verb conjugation',
+        sourceLanguage: 'en',
+        targetLanguage: 'uk',
+        level: 'A1',
+        generatedAt: Date.now()
+    },
+    context: { sourceText: 'Test' },
+    exercises: [
+        {
+            id: 'ex_with_hints',
+            type: 'fill_form',
+            instruction: 'Fill',
+            prompt: 'I ___ (know)',
+            expectedConcept: 'verb',
+            difficulty: 1,
+            hints: ['Hint 1', 'Hint 2']
+        },
+        {
+            id: 'ex_no_hints',
+            type: 'conjugation',
+            instruction: 'Conjugate',
+            prompt: 'know',
+            expectedConcept: 'conjugation',
+            difficulty: 2
+            // No hints on this exercise
+        }
+    ]
+};
+
+window.__hintsTest.noHintsTest = {
+    validationPassed: false,
+    rendersCorrectly: false,
+    ex1HasHints: false,
+    ex2NoHints: false
+};
+
+try {
+    validateWorksheet(noHintsWorksheet);
+    window.__hintsTest.noHintsTest.validationPassed = true;
+} catch (e) {
+    window.__hintsTest.noHintsTest.validationError = e.message;
+}
+
+// Render and check
+const sessionNoHints = {status: 'ready', worksheet: noHintsWorksheet, currentPage: 0, revealedHints: {}};
+currentPracticeSession = sessionNoHints;
+displayPracticeSession(sessionNoHints);
+
+const ex1HintsEl = document.querySelector('[data-id="ex_with_hints"]').querySelector('.exercise-hints');
+const ex2HintsEl = document.querySelector('[data-id="ex_no_hints"]').querySelector('.exercise-hints');
+
+window.__hintsTest.noHintsTest.ex1HasHints = ex1HintsEl !== null;
+window.__hintsTest.noHintsTest.ex2NoHints = ex2HintsEl === null;
+window.__hintsTest.noHintsTest.rendersCorrectly = window.__hintsTest.noHintsTest.ex1HasHints && window.__hintsTest.noHintsTest.ex2NoHints;
+""")
+
+check("T16: Optional hints work correctly",
+      "window.__hintsTest.noHintsTest.validationPassed && window.__hintsTest.noHintsTest.rendersCorrectly && window.__hintsTest.noHintsTest.ex1HasHints && window.__hintsTest.noHintsTest.ex2NoHints")
+
 print("\n=== ALL PRACTICE STUDIO TESTS PASSED ===")
