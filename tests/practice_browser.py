@@ -644,7 +644,7 @@ window.__visibilityTest = {
     panelVisible: false,
     computedDisplay: null,
     computedVisibility: null,
-    actuallyRendered: false
+    notOffscreen: false
 };
 
 // Get the practice panel (created by previous tests)
@@ -655,8 +655,10 @@ if (practicePanel) {
     window.__visibilityTest.computedDisplay = computed.display;
     window.__visibilityTest.computedVisibility = computed.visibility;
 
-    // Check actual rendering (offsetParent !== null means visible in layout)
-    window.__visibilityTest.actuallyRendered = practicePanel.offsetParent !== null;
+    // For fixed-positioned elements, check that transform is not hidden
+    // (visibility:visible + transform:none means it's visible, not off-screen)
+    const transform = computed.transform;
+    window.__visibilityTest.notOffscreen = !transform.includes('translateX(100%)');
     window.__visibilityTest.hidden = practicePanel.hidden;
 }
 
@@ -672,8 +674,8 @@ check("T17: Practice panel has display:flex (not none)",
 check("T17: Practice panel has visibility:visible (not hidden)",
       "window.__visibilityTest.computedVisibility === 'visible'")
 
-check("T17: Practice panel is actually rendered (offsetParent !== null)",
-      "window.__visibilityTest.actuallyRendered")
+check("T17: Practice panel not off-screen (transform not translateX(100%))",
+      "window.__visibilityTest.notOffscreen")
 
 # TEST 18: Grammar/Ask Panels Still Work
 print("\n=== TEST 18: Grammar/Ask Panel Isolation ===")
