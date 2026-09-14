@@ -73,7 +73,7 @@ function displayPracticeReady(panel, session) {
         <div class="practice-meta">
             <div class="meta-row">
                 <span class="meta-label">Source:</span>
-                <span class="meta-value">${escapeHtml(session.sourceText.substring(0, 50))}${session.sourceText.length > 50 ? '...' : ''}</span>
+                <span class="meta-value">${session.sourceText ? escapeHtml(session.sourceText.substring(0, 50)) + (session.sourceText.length > 50 ? '...' : '') : '(no context)'}</span>
             </div>
             <div class="meta-row">
                 <span class="meta-label">Level:</span>
