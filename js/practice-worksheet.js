@@ -360,84 +360,95 @@ function revealNextHint(button) {
 
 // Setup answer input and checking controls (Phase 3C)
 function setupAnswerControls() {
-    const session = getCurrentPracticeSession();
-    if (!session) return;
+    try {
+        const session = getCurrentPracticeSession();
+        if (!session || !session.worksheet) return;
 
-    const checkButtons = document.querySelectorAll('.answer-check-btn');
-    const answerInputs = document.querySelectorAll('.answer-input');
+        const checkButtons = document.querySelectorAll('.answer-check-btn');
+        const answerInputs = document.querySelectorAll('.answer-input');
 
-    // Persist answer when user types
-    answerInputs.forEach(input => {
-        input.addEventListener('input', () => {
-            const exerciseEl = input.closest('.exercise');
-            if (exerciseEl) {
-                const exerciseId = exerciseEl.dataset.id;
-                if (!session.answers) session.answers = {};
-                if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
-                session.answers[exerciseId].answer = input.value;
-                persistPracticeSession(session);
-            }
-        });
+        if (checkButtons.length === 0 || answerInputs.length === 0) return;
 
-        // Allow checking with Enter key for single-line inputs
-        if (input.tagName === 'INPUT') {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const btn = input.closest('.exercise-input').querySelector('.answer-check-btn');
-                    if (btn) btn.click();
+        // Persist answer when user types
+        answerInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                const exerciseEl = input.closest('.exercise');
+                if (exerciseEl) {
+                    const exerciseId = exerciseEl.dataset.id;
+                    if (!session.answers) session.answers = {};
+                    if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
+                    session.answers[exerciseId].answer = input.value;
+                    persistPracticeSession(session);
                 }
             });
-        }
-    });
 
-    // Attach check button handlers
-    checkButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const exerciseId = btn.dataset.exerciseId;
-            const hasExpectedAnswer = btn.dataset.hasAnswer === 'true';
-            const exerciseEl = document.querySelector(`.exercise[data-id="${CSS.escape(exerciseId)}"]`);
-            const inputEl = exerciseEl?.querySelector('.answer-input');
-
-            if (!exerciseEl || !inputEl) return;
-
-            const userAnswer = inputEl.value;
-            const exercise = session.worksheet?.exercises?.find(ex => ex.id === exerciseId);
-            if (!exercise) return;
-
-            // Grade the answer
-            const feedback = gradeExerciseAnswer(exercise, userAnswer);
-
-            // Store feedback in session
-            if (!session.answers) session.answers = {};
-            if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
-            session.answers[exerciseId].answer = userAnswer;
-            session.answers[exerciseId].feedback = feedback;
-            persistPracticeSession(session);
-
-            // Show feedback
-            const feedbackEl = exerciseEl.querySelector('.exercise-feedback');
-            if (feedbackEl) {
-                feedbackEl.remove();
-            }
-
-            const feedbackClass = feedback.isCorrect ? 'feedback-correct' : 'feedback-incorrect';
-            const feedbackIcon = feedback.needsReview ? '📝' : (feedback.isCorrect ? '✓' : '✗');
-            const feedbackHtml = `
-                <div class="exercise-feedback ${feedbackClass}">
-                    ${feedbackIcon}
-                    ${escapeHtml(feedback.feedback)}
-                </div>
-            `;
-
-            // Insert feedback before hints
-            const hintsEl = exerciseEl.querySelector('.exercise-hints');
-            if (hintsEl) {
-                hintsEl.insertAdjacentHTML('beforebegin', feedbackHtml);
-            } else {
-                exerciseEl.insertAdjacentHTML('beforeend', feedbackHtml);
+            // Allow checking with Enter key for single-line inputs
+            if (input.tagName === 'INPUT') {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const btn = input.closest('.exercise-input')?.querySelector('.answer-check-btn');
+                        if (btn) btn.click();
+                    }
+                });
             }
         });
-    });
+
+        // Attach check button handlers
+        checkButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                try {
+                    const exerciseId = btn.dataset.exerciseId;
+                    if (!exerciseId) return;
+
+                    const exerciseEl = document.querySelector(`.exercise[data-id="${CSS.escape(exerciseId)}"]`);
+                    const inputEl = exerciseEl?.querySelector('.answer-input');
+
+                    if (!exerciseEl || !inputEl) return;
+
+                    const userAnswer = inputEl.value;
+                    const exercise = session.worksheet?.exercises?.find(ex => ex.id === exerciseId);
+                    if (!exercise) return;
+
+                    // Grade the answer
+                    const feedback = gradeExerciseAnswer(exercise, userAnswer);
+
+                    // Store feedback in session
+                    if (!session.answers) session.answers = {};
+                    if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
+                    session.answers[exerciseId].answer = userAnswer;
+                    session.answers[exerciseId].feedback = feedback;
+                    persistPracticeSession(session);
+
+                    // Show feedback
+                    const feedbackEl = exerciseEl.querySelector('.exercise-feedback');
+                    if (feedbackEl) {
+                        feedbackEl.remove();
+                    }
+
+                    const feedbackClass = feedback.isCorrect ? 'feedback-correct' : 'feedback-incorrect';
+                    const feedbackIcon = feedback.needsReview ? '📝' : (feedback.isCorrect ? '✓' : '✗');
+                    const feedbackHtml = `
+                        <div class="exercise-feedback ${feedbackClass}">
+                            ${feedbackIcon}
+                            ${escapeHtml(feedback.feedback)}
+                        </div>
+                    `;
+
+                    // Insert feedback before hints
+                    const hintsEl = exerciseEl.querySelector('.exercise-hints');
+                    if (hintsEl) {
+                        hintsEl.insertAdjacentHTML('beforebegin', feedbackHtml);
+                    } else {
+                        exerciseEl.insertAdjacentHTML('beforeend', feedbackHtml);
+                    }
+                } catch (e) {
+                    console.warn('Error checking answer:', e.message);
+                }
+            });
+        });
+    } catch (e) {
+        console.warn('Error setting up answer controls:', e.message);
+    }
 }
 
 // Show error state
