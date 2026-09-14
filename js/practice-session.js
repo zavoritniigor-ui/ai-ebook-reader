@@ -252,8 +252,23 @@ async function generatePracticeWorksheet(context) {
     } catch (err) {
         // Check if task is still current
         if (!task.current()) {
-            console.info('Practice generation error on stale task (ignoring)');
-            return null;
+            // Task became stale - do not leave session stuck in generating
+            // Update it to error state so UI can transition out of spinner
+            session.status = 'error';
+            session.lastError = {
+                message: 'Practice generation was cancelled (another request started)',
+                code: 'StaleTaskError',
+                timestamp: Date.now()
+            };
+            session.updatedAt = Date.now();
+
+            // Persist cancelled state so UI can show error
+            persistPracticeSession(session);
+            currentPracticeSession = session;
+
+            // Return the session with error state instead of null
+            // This prevents the UI from being stuck in generating
+            return session;
         }
 
         // Real error - update session with error state
