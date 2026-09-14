@@ -495,7 +495,7 @@ const I18N = {
     tVoice:         { uk: 'Голос',          en: 'Voice',          fr: 'Voix',           ru: 'Голос' },
     tTargetLang:    { uk: 'Мова перекладу', en: 'Translation language', fr: 'Langue de traduction', ru: 'Язык перевода' },
     tUiLang:        { uk: 'Мова інтерфейсу', en: 'Interface language', fr: "Langue de l'interface", ru: 'Язык интерфейса' },
-    tExpand:        { uk: 'Розширити: до кінця речення → усе речення → абзац', en: 'Expand: to end of sentence → whole sentence → paragraph', fr: 'Étendre : jusqu'à la fin de la phrase → phrase entière → paragraphe', ru: 'Расширить: до конца предложения → всё предложение → абзац' },
+    tExpand:        { uk: 'Розширити: до кінця речення → усе речення → абзац', en: 'Expand: to end of sentence → whole sentence → paragraph', fr: "Étendre : jusqu'à la fin de la phrase → phrase entière → paragraphe", ru: 'Расширить: до конца предложения → всё предложение → абзац' },
     tSvo:           { uk: 'Показати підмет, присудок і додаток', en: 'Show subject, verb and object', fr: 'Afficher sujet, verbe et complément', ru: 'Показать подлежащее, сказуемое и дополнение' },
     tSpeakTr:       { uk: 'Озвучити переклад', en: 'Speak the translation', fr: 'Lire la traduction', ru: 'Озвучить перевод' },
     tSpeakOrig:     { uk: 'Озвучити оригінал', en: 'Speak the original', fr: "Lire l'original", ru: 'Озвучить оригинал' },
@@ -590,7 +590,7 @@ const I18N = {
     statsTappedVocabulary: { uk: 'Лексика із запитом', en: 'Tapped vocabulary', fr: 'Vocabulaire touché', ru: 'Лексика с запросом' },
     statsUnknown: { uk: 'Не класифіковано', en: 'Unclassified', fr: 'Non classé', ru: 'Не классифицировано' },
     statsUnknownShort: { uk: 'Інше', en: 'Other', fr: 'Autre', ru: 'Другое' },
-    statsNoHelp: { uk: 'Ще немає запитів допомоги', en: 'No help requests yet', fr: 'Aucune demande d'aide', ru: 'Запросов помощи пока нет' },
+    statsNoHelp: { uk: 'Ще немає запитів допомоги', en: 'No help requests yet', fr: "Aucune demande d'aide", ru: 'Запросов помощи пока нет' },
     // Practice Studio UI strings
     practiceSource:     { uk: 'Джерело:', en: 'Source:', fr: 'Source:', ru: 'Источник:' },
     practiceLevel:      { uk: 'Рівень:', en: 'Level:', fr: 'Niveau:', ru: 'Уровень:' },
