@@ -452,7 +452,7 @@ const I18N = {
     cancel:         { uk: 'Скасувати',       en: 'Cancel',         fr: 'Annuler',        ru: 'Отмена' },
     askHint:        { uk: 'Тапніть слово й натисніть «Запитай AI» — значення, вживання та сталі сполучення.',
                       en: 'Tap a word and press "Ask AI" — meaning, usage and common collocations.',
-                      fr: "Touchez un mot et appuyez sur « Demander à l'IA » — sens, usage et expressions courantes.',
+                      fr: "Touchez un mot et appuyez sur « Demander à l'IA » — sens, usage et expressions courantes.",
                       ru: 'Нажмите на слово и выберите «Спросить AI» — значение, употребление и устойчивые сочетания.' },
     grammarHint:    { uk: 'Виділіть слово і натисніть «Граматика» для аналізу.',
                       en: 'Select a word and press "Grammar" to analyse it.',
