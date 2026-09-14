@@ -944,14 +944,8 @@
                 <button class="close-panel-btn" onclick="document.getElementById('grammar-panel').classList.remove('expanded')" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
             <div class="tense-bar" id="tense-bar">
-                <button data-t="indicatif présent">présent</button>
-                <button data-t="imparfait">imparfait</button>
-                <button data-t="passé composé">passé comp.</button>
-                <button data-t="futur simple">futur</button>
-                <button data-t="conditionnel présent">conditionnel</button>
-                <button data-t="subjonctif présent">subjonctif</button>
-                <button data-t="impératif présent">impératif</button>
-                <button data-t="plus-que-parfait">plus-que-parf.</button>
+                <!-- Dynamically populated by grammar-svo.js:renderTenseBar()
+                     based on detected source language (English/French) -->
             </div>
             <div id="grammar-content" class="panel-content">
                 <div style="text-align:center; padding-top: 50px; color: gray;" data-i18n="grammarHint">…</div>
@@ -1035,7 +1029,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=dccddde2d34e"></script>
+    <script src="js/core.js?v=5453c8da26e4"></script>
     <script src="js/lang-detect.js?v=21625d365df7"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1052,7 +1046,7 @@
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
-    <script src="js/grammar-svo.js?v=1f8128c339d6"></script>
+    <script src="js/grammar-svo.js?v=784efec46bf2"></script>
     <script src="js/ai-client.js?v=82020067e03c"></script>
     <script src="js/practice-session.js?v=b44cc72eddea"></script>
     <script src="js/practice-worksheet.js?v=bdd9b1538588"></script>

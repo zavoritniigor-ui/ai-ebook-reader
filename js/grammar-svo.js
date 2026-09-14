@@ -15,6 +15,28 @@
  * відкладено — файл завантажується раніше, ніж використовується.
  */
 
+// Canonical grammar context: tracks source language for the current analysis
+// Ensures language doesn't get mixed during a single grammar session
+let grammarContext = {
+    sourceLanguage: null,  // 'en', 'fr', etc. — detected from full sentence
+    sentence: null,        // full sentence being analyzed
+    selectedText: null,    // selected word/phrase
+    timestamp: 0           // epoch when context was set (invalidate on book/page change)
+};
+
+function setGrammarContext(sourceText, sourceLang) {
+    grammarContext = {
+        sourceLanguage: sourceLang || null,
+        sentence: sourceText || null,
+        selectedText: sourceText || null,
+        timestamp: Date.now()
+    };
+}
+
+function getGrammarSourceLanguage() {
+    return grammarContext.sourceLanguage;
+}
+
 // AI ПАНЕЛІ (ЯЗИЧКИ)
 els.grammarTab.onclick = () => { els.grammarPanel.classList.toggle('expanded'); els.askPanel.classList.remove('expanded'); els.grammarPanel.classList.remove('loading', 'ready'); };
 els.askTab.onclick = () => { els.askPanel.classList.toggle('expanded'); els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.remove('loading', 'ready'); };
@@ -52,11 +74,17 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     // пішло б у промпт цілком.
     contextText = (contextText || '').slice(0, AI_PROMPT_TEXT_MAX);
     const task = beginAsyncTask(mode === 'grammar' ? 'grammar' : 'ask');
-    if (mode === 'grammar') cancelAsyncTasks(['conjugation']);
+    if (mode === 'grammar') {
+        cancelAsyncTasks(['conjugation']);
+        // Detect source language once for this grammar session
+        const detectedLang = detectLang(state.lastGrammarSentence || contextText);
+        const sourceLang = detectedLang ? detectedLang.slice(0, 2).toLowerCase() : 'en';
+        setGrammarContext(state.lastGrammarSentence || contextText, sourceLang);
+    }
     else cancelAsyncTasks(['panelTranslate']);
-    const panel = mode === 'grammar' ? els.grammarPanel : els.askPanel; 
+    const panel = mode === 'grammar' ? els.grammarPanel : els.askPanel;
     const content = mode === 'grammar' ? els.grammarContent : els.askContent;
-    
+
     panel.classList.remove('expanded'); // Залишаємо панель згорнутою!
     if (mode === 'ask' || mode === 'level') state.lastAskContext = contextText;
 
@@ -91,7 +119,10 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         // а таблиця всередині <p> — невалідний HTML, браузер розриває розмітку.
         content.innerHTML = safeHtml(text, true);
         // Одразу будуємо ряд дієслів унизо панелі з отриманого розбору.
-        if (mode === 'grammar') renderVerbBar();
+        if (mode === 'grammar') {
+            renderTenseBar(); // Render language-specific tense buttons
+            renderVerbBar();  // Render verb buttons from analysis
+        }
         // Add Practice button for grammar learning context
         if (mode === 'grammar' && typeof generatePracticeWorksheet === 'function') {
             const practiceBtn = document.createElement('button');
@@ -100,19 +131,46 @@ async function startAiTask(contextText, mode, userPrompt = "") {
             practiceBtn.setAttribute('data-i18n', 'practice');
             practiceBtn.textContent = t('practice');
             practiceBtn.onclick = () => {
-                generatePracticeWorksheet({
+                // Validate AI availability immediately
+                if (!aiAvailable()) {
+                    return showToast(t('needKey'));
+                }
+
+                // Create Practice context from grammar context
+                const sourceLang = getGrammarSourceLanguage() || pageLang().slice(0, 2).toLowerCase();
+                const practiceContext = {
                     sourceText: state.lastGrammarSentence || contextText,
-                    sourceLanguage: pageLang().slice(0, 2).toLowerCase(),
+                    sourceLanguage: sourceLang,
                     targetLanguage: state.targetLang,
                     bookId: state.bookKey,
                     level: null  // CEFR level unknown unless explicitly set
-                }).then(session => {
-                    if (session) displayPracticeSession(session);
-                }).catch(err => {
-                    console.error('Practice generation failed:', err);
-                    const updated = getCurrentPracticeSession();
-                    if (updated) displayPracticeSession(updated);
-                });
+                };
+
+                // IMMEDIATE FEEDBACK: Start generation and show panel immediately
+                // Then update when AI completes
+                const generatePromise = generatePracticeWorksheet(practiceContext);
+
+                // Get the session that was just created (in 'generating' state)
+                const generatingSession = getCurrentPracticeSession();
+                if (generatingSession) {
+                    // Display IMMEDIATELY with generating state
+                    displayPracticeSession(generatingSession);
+                }
+
+                // Continue with AI in background; update display when complete
+                generatePromise
+                    .then(session => {
+                        if (session) {
+                            displayPracticeSession(session);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Practice generation failed:', err);
+                        const updated = getCurrentPracticeSession();
+                        if (updated) {
+                            displayPracticeSession(updated);
+                        }
+                    });
             };
             content.appendChild(practiceBtn);
         }
@@ -445,13 +503,21 @@ Les constructions pertinentes peuvent inclure passé composé, imparfait, plus-q
 Si aucun verbe : une seule ligne — catégorie grammaticale, genre et nombre si pertinent.`;
 }
 
-// Відмінювання конкретного дієслова в обраному часі — для кнопок під панеллю.
-function buildConjugationPrompt(verb, tense) {
-    return `Conjugue le verbe français "${verb}" au ${tense}.
+// Conjugation prompt: requests verb conjugation in the SOURCE LANGUAGE
+// sourceLanguage: 'en', 'fr', or other 2-letter language code
+// tenseId: system-specific tense identifier (e.g. 'present_simple', 'indicatif_present')
+// tenseLabel: human-readable tense label (e.g. 'Present Simple', 'Présent')
+function buildConjugationPrompt(verb, sourceLanguage, tenseId, tenseLabel) {
+    sourceLanguage = sourceLanguage || 'en';
+    tenseLabel = tenseLabel || tenseId;
+
+    if (sourceLanguage.startsWith('fr')) {
+        // French: conjugate French verb in French
+        return `Conjugue le verbe français "${verb}" au ${tenseLabel}.
 Réponds uniquement en français, en HTML brut (sans markdown, sans \`\`\`), sans commentaire.
 
 Format EXACT :
-<b>${verb}</b> — <b>${tense}</b>
+<b>${verb}</b> — <b>${tenseLabel}</b>
 <table><tr><th>personne</th><th>forme</th></tr>
 <tr><td>je</td><td>suis</td></tr><tr><td>tu</td><td>es</td></tr>
 <tr><td>il, elle, on</td><td>est</td></tr><tr><td>nous</td><td>sommes</td></tr>
@@ -462,6 +528,29 @@ RÈGLES IMPÉRATIVES :
 • la colonne « forme » contient la forme CONJUGUÉE et différente à chaque ligne — ne répète jamais l'infinitif ;
 • temps composé : écris l'auxiliaire conjugué + le participe passé (ex. « j'ai fait », « je suis allé(e) ») ;
 • impératif : seulement 2e sg, 1re pl, 2e pl.`;
+    } else if (sourceLanguage.startsWith('en')) {
+        // English: conjugate English verb in English
+        return `Conjugate the English verb "${verb}" in the ${tenseLabel}.
+Respond only in English, in raw HTML (no markdown, no \`\`\`), no comments.
+
+EXACT format:
+<b>${verb}</b> — <b>${tenseLabel}</b>
+<table><tr><th>person</th><th>form</th></tr>
+<tr><td>I</td><td>know</td></tr><tr><td>you</td><td>know</td></tr>
+<tr><td>he / she / it</td><td>knows</td></tr><tr><td>we</td><td>know</td></tr>
+<tr><td>you (plural)</td><td>know</td></tr><tr><td>they</td><td>know</td></tr></table>
+
+MANDATORY RULES:
+• "person" column contains PRONOUNS ONLY (I, you, he/she/it, we, you (plural), they) — never abbreviations or numbers;
+• "form" column contains the CONJUGATED form and must be different on each line — never repeat the infinitive;
+• for compound tenses (e.g., present perfect): write auxiliary conjugated + past participle (e.g., "have known", "has known");
+• for simple tenses: write the bare verb form (no auxiliaries unless part of the tense itself).`;
+    } else {
+        // Unsupported language: show a generic message
+        return `Conjugate the verb "${verb}" in the ${tenseLabel}.
+Provide the conjugation table for the major persons/pronouns in the source language.
+Format as HTML table with "person" and "form" columns.`;
+    }
 }
 
 
@@ -585,6 +674,32 @@ function collectVerbsFromAnalysis() {
     return verbs;
 }
 
+// Render language-specific tense bar based on source language
+function renderTenseBar() {
+    const tenseBar = document.getElementById('tense-bar');
+    if (!tenseBar) return; // Safety check
+
+    tenseBar.innerHTML = ''; // Clear existing buttons
+
+    const sourceLang = getGrammarSourceLanguage() || 'en';
+    const tenses = TENSE_SYSTEMS[sourceLang] || TENSE_SYSTEMS.en;
+
+    tenses.forEach(tense => {
+        const btn = document.createElement('button');
+        btn.textContent = tense.label;
+        btn.dataset.tenseId = tense.id;
+        btn.dataset.tenseLabel = tense.label;
+        tenseBar.appendChild(btn);
+    });
+
+    // Set initial active tense
+    const defaultTense = tenses[0];
+    if (!state.activeTense) {
+        state.activeTense = defaultTense.id;
+    }
+    highlightActiveVerb();
+}
+
 function renderVerbBar() {
     const bar = document.getElementById('verb-bar');
     bar.innerHTML = '';
@@ -609,13 +724,14 @@ function highlightActiveVerb() {
     });
 }
 
-// Показує обране дієслово: спершу його стан у реченні, під ним — відмінювання
-// в обраному часі за всіма особами.
-async function showVerb(verb, tense) {
+// Show verb conjugation: displays the verb's form in the sentence,
+// then conjugation in the selected tense for all persons
+// Uses source language from grammarContext to ensure correct conjugation
+async function showVerb(verb, tenseId, tenseLabel) {
     const task = beginAsyncTask('conjugation');
     els.grammarContent.querySelectorAll('.verb-focus').forEach(n => n.remove());
     state.activeVerb = verb;
-    state.activeTense = tense;
+    state.activeTense = tenseId;
     highlightActiveVerb();
 
     const info = state.verbs.find(v => v.inf === verb);
@@ -628,7 +744,10 @@ async function showVerb(verb, tense) {
     els.grammarContent.scrollTop = 0;
 
     try {
-        const out = await callAI(buildConjugationPrompt(verb, tense), task.signal, 'conjugation');
+        // Get source language from grammar context (detected once per session)
+        const sourceLang = getGrammarSourceLanguage() || 'en';
+        const prompt = buildConjugationPrompt(verb, sourceLang, tenseId, tenseLabel);
+        const out = await callAI(prompt, task.signal, 'conjugation');
         if (!task.current() || !box.isConnected) return;
         box.innerHTML = `<div class="verb-head"><b>${escapeHtml(verb)}</b>` +
             (info && info.forme ? ` <span class="verb-forme">${escapeHtml(info.forme)}</span>` : '') +
@@ -646,12 +765,23 @@ async function showVerb(verb, tense) {
     }
 }
 
-function selectVerb(verb) { showVerb(verb, state.activeTense || 'indicatif présent'); }
+function selectVerb(verb) {
+    // Get default tense for source language
+    const sourceLang = getGrammarSourceLanguage() || 'en';
+    const tenses = TENSE_SYSTEMS[sourceLang] || TENSE_SYSTEMS.en;
+    const defaultTense = tenses[0]; // Use first tense as default
+    const tenseId = state.activeTense || defaultTense.id;
+    const tenseLabel = defaultTense.label;
+    showVerb(verb, tenseId, tenseLabel);
+}
 
 document.getElementById('tense-bar').addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const verb = state.activeVerb || (state.verbs[0] && state.verbs[0].inf);
     if (!verb) { alert(t('pickVerb')); return; }
-    showVerb(verb, btn.dataset.t);
+    // Get tense info from button dataset
+    const tenseId = btn.dataset.tenseId;
+    const tenseLabel = btn.dataset.tenseLabel || btn.textContent;
+    showVerb(verb, tenseId, tenseLabel);
 });

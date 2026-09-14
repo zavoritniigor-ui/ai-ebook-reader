@@ -196,6 +196,38 @@ const LANGUAGE_CONFIG = {
     ga: { locale: 'ga-IE', aiName: 'ірландською', promptName: 'Irish' }
 };
 const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG);
+
+// Language-specific verb tense systems for grammar analysis
+// Maps source language code to available tense/mood labels
+const TENSE_SYSTEMS = {
+    en: [
+        { id: 'present_simple', label: 'Present Simple', en: 'Present Simple', fr: 'Présent Simple' },
+        { id: 'present_continuous', label: 'Present Continuous', en: 'Present Continuous', fr: 'Présent Continu' },
+        { id: 'past_simple', label: 'Past Simple', en: 'Past Simple', fr: 'Passé Simple' },
+        { id: 'past_continuous', label: 'Past Continuous', en: 'Past Continuous', fr: 'Passé Continu' },
+        { id: 'present_perfect', label: 'Present Perfect', en: 'Present Perfect', fr: 'Présent Parfait' },
+        { id: 'past_perfect', label: 'Past Perfect', en: 'Past Perfect', fr: 'Passé Parfait' },
+        { id: 'future_simple', label: 'Future Simple', en: 'Future Simple', fr: 'Futur Simple' },
+        { id: 'conditional', label: 'Conditional', en: 'Conditional', fr: 'Conditionnel' }
+    ],
+    fr: [
+        { id: 'indicatif_present', label: 'Présent', en: 'Present', fr: 'Présent' },
+        { id: 'indicatif_imparfait', label: 'Imparfait', en: 'Imperfect', fr: 'Imparfait' },
+        { id: 'indicatif_passe_compose', label: 'Passé Composé', en: 'Compound Past', fr: 'Passé Composé' },
+        { id: 'indicatif_futur', label: 'Futur Simple', en: 'Future Simple', fr: 'Futur Simple' },
+        { id: 'conditionnel_present', label: 'Conditionnel', en: 'Conditional', fr: 'Conditionnel' },
+        { id: 'subjonctif_present', label: 'Subjonctif', en: 'Subjunctive', fr: 'Subjonctif' },
+        { id: 'imperatif', label: 'Impératif', en: 'Imperative', fr: 'Impératif' },
+        { id: 'plus_que_parfait', label: 'Plus-que-parfait', en: 'Pluperfect', fr: 'Plus-que-parfait' }
+    ]
+};
+
+// Default tense for each language (for initial UI state)
+const DEFAULT_TENSE = {
+    en: 'present_simple',
+    fr: 'indicatif_present'
+};
+
 function storedLanguage(key, fallback) {
     const value = readStored(key);
     return SUPPORTED_LANGUAGE_CODES.includes(value) ? value : fallback;
