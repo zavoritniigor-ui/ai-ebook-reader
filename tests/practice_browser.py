@@ -760,14 +760,14 @@ true;
 
 # Test single successful generation
 c.js(r"""
-const singleContext = {
-    sourceText: 'Single test',
-    sourceLanguage: 'en',
-    targetLanguage: 'uk',
-    level: 'A1'
-};
+window.__asyncTest.singlePromise = (async () => {
+    const singleContext = {
+        sourceText: 'Single test',
+        sourceLanguage: 'en',
+        targetLanguage: 'uk',
+        level: 'A1'
+    };
 
-(async () => {
     try {
         window.__asyncTest.singleSuccess.sessionCreated = false;
         const before = getCurrentPracticeSession();
@@ -784,10 +784,17 @@ const singleContext = {
     }
 })();
 
-// Wait for async
-await new Promise(resolve => setTimeout(resolve, 200));
 true;
 """)
+
+# Wait for async completion
+c.js(r"""
+(async () => {
+    await window.__asyncTest.singlePromise;
+    await new Promise(resolve => setTimeout(resolve, 100));
+})();
+true;
+""", timeout=10000)
 
 check("T19: Session created and ready after generation",
       "window.__asyncTest.singleSuccess.sessionCreated && window.__asyncTest.singleSuccess.readyShown")
@@ -823,7 +830,7 @@ true;
 """)
 
 c.js(r"""
-(async () => {
+window.__asyncTest.racePromise = (async () => {
     try {
         const contextA = {
             sourceText: 'Request A',
@@ -867,10 +874,17 @@ c.js(r"""
     }
 })();
 
-// Wait for async race
-await new Promise(resolve => setTimeout(resolve, 300));
 true;
 """)
+
+# Wait for race test to complete
+c.js(r"""
+(async () => {
+    await window.__asyncTest.racePromise;
+    await new Promise(resolve => setTimeout(resolve, 100));
+})();
+true;
+""", timeout=10000)
 
 check("T20: Requests A and B create different sessions",
       "window.__asyncTest.raceTest.bothCreated")
