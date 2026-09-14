@@ -688,13 +688,13 @@ window.__isolationTest = {
     noConflict: true
 };
 
-const grammarPanel = document.getElementById('grammar-panel');
-const askPanel = document.getElementById('ask-panel');
-const practicePanel = document.getElementById('practice-panel');
+const grammarPanelT18 = document.getElementById('grammar-panel');
+const askPanelT18 = document.getElementById('ask-panel');
+const practicePanelT18 = document.getElementById('practice-panel');
 
-if (grammarPanel) window.__isolationTest.grammarHidden = grammarPanel.hidden;
-if (askPanel) window.__isolationTest.askHidden = askPanel.hidden;
-if (practicePanel) window.__isolationTest.practiceHidden = practicePanel.hidden;
+if (grammarPanelT18) window.__isolationTest.grammarHidden = grammarPanelT18.hidden;
+if (askPanelT18) window.__isolationTest.askHidden = askPanelT18.hidden;
+if (practicePanelT18) window.__isolationTest.practiceHidden = practicePanelT18.hidden;
 
 // All should be independent
 window.__isolationTest.noConflict =
