@@ -495,16 +495,30 @@ check("T16: All hints revealed and button disables on final hint",
 
 c.js(r"""
 // Test hint persistence across navigation
-// Simulate revealing 2 hints
+// Reset worksheet to clean state (previous mutations from injection test)
+window.__hintsTest.mockWorksheet.exercises[0].hints = [
+    'Think about the present tense of know',
+    'It is a simple form',
+    'The answer is "know"'
+];
+
 window.__persistenceTest = {
-    sessionBefore: null,
-    sessionAfter: null,
     hints2VisibleBefore: false,
-    hints2VisibleAfter: false
+    hints2VisibleAfter: false,
+    revealCount: 0
 };
 
-const currentSession = getCurrentPracticeSession();
-window.__persistenceTest.sessionBefore = currentSession;
+// Display fresh session
+const persistSession = {
+    id: 'persist_hints_test',
+    status: 'ready',
+    worksheet: window.__hintsTest.mockWorksheet,
+    currentPage: 0,
+    revealedHints: {}
+};
+currentPracticeSession = persistSession;
+
+displayPracticeSession(persistSession);
 
 // Get fresh reference to button and hints
 const persistBtn = document.querySelector('.hint-reveal-btn');
@@ -521,20 +535,21 @@ persistBtn.click();
 persistBtn.click();
 
 window.__persistenceTest.hints2VisibleBefore = persistHints.slice(0, 2).every(h => isActuallyVisible(h));
+window.__persistenceTest.revealCount = persistSession.revealedHints.ex1;
 
-// Simulate page navigation by re-displaying the same worksheet
-displayPracticeSession(currentSession);
+// Simulate page navigation by re-displaying the same session
+displayPracticeSession(persistSession);
 
-// Re-check if hints remain visible
+// Re-check if hints remain visible after re-display
 const newBtn = document.querySelector('.hint-reveal-btn');
 const newContainer = newBtn.parentElement.querySelector('.hints-container');
 const newHints = Array.from(newContainer.querySelectorAll('.hint'));
 window.__persistenceTest.hints2VisibleAfter = newHints.slice(0, 2).every(h => isActuallyVisible(h));
-window.__persistenceTest.sessionAfter = getCurrentPracticeSession();
+window.__persistenceTest.sessionRevealedCount = persistSession.revealedHints.ex1;
 """)
 
 check("T16: Hint reveal persists after navigation",
-      "window.__persistenceTest.hints2VisibleBefore && window.__persistenceTest.hints2VisibleAfter && window.__persistenceTest.sessionAfter.revealedHints.ex1 === 2")
+      "window.__persistenceTest.hints2VisibleBefore && window.__persistenceTest.hints2VisibleAfter && window.__persistenceTest.sessionRevealedCount === 2")
 
 c.js(r"""
 // Test hint safety - no HTML injection
@@ -558,12 +573,44 @@ check("T16: Hints reject HTML injection",
 
 c.js(r"""
 // Test optional hints - exercises without hints still work
-const noHintsWorksheet = window.__hintsTest.mockWorksheet;
-delete noHintsWorksheet.exercises[1].hints;
+const noHintsWorksheet = {
+    metadata: {
+        id: 'ws1',
+        title: 'Optional Hints Test',
+        topic: 'Verb conjugation',
+        sourceLanguage: 'en',
+        targetLanguage: 'uk',
+        level: 'A1',
+        generatedAt: Date.now()
+    },
+    context: { sourceText: 'Test' },
+    exercises: [
+        {
+            id: 'ex_with_hints',
+            type: 'fill_form',
+            instruction: 'Fill',
+            prompt: 'I ___ (know)',
+            expectedConcept: 'verb',
+            difficulty: 1,
+            hints: ['Hint 1', 'Hint 2']
+        },
+        {
+            id: 'ex_no_hints',
+            type: 'conjugation',
+            instruction: 'Conjugate',
+            prompt: 'know',
+            expectedConcept: 'conjugation',
+            difficulty: 2
+            // No hints on this exercise
+        }
+    ]
+};
 
 window.__hintsTest.noHintsTest = {
     validationPassed: false,
-    rendersCorrectly: false
+    rendersCorrectly: false,
+    ex1HasHints: false,
+    ex2NoHints: false
 };
 
 try {
@@ -574,12 +621,19 @@ try {
 }
 
 // Render and check
-displayPracticeSession({status: 'ready', worksheet: noHintsWorksheet, currentPage: 0});
-const ex2Hints = document.querySelector('[data-id="ex2"]').querySelector('.exercise-hints');
-window.__hintsTest.noHintsTest.rendersCorrectly = ex2Hints === null;
+const sessionNoHints = {status: 'ready', worksheet: noHintsWorksheet, currentPage: 0, revealedHints: {}};
+currentPracticeSession = sessionNoHints;
+displayPracticeSession(sessionNoHints);
+
+const ex1HintsEl = document.querySelector('[data-id="ex_with_hints"]').querySelector('.exercise-hints');
+const ex2HintsEl = document.querySelector('[data-id="ex_no_hints"]').querySelector('.exercise-hints');
+
+window.__hintsTest.noHintsTest.ex1HasHints = ex1HintsEl !== null;
+window.__hintsTest.noHintsTest.ex2NoHints = ex2HintsEl === null;
+window.__hintsTest.noHintsTest.rendersCorrectly = window.__hintsTest.noHintsTest.ex1HasHints && window.__hintsTest.noHintsTest.ex2NoHints;
 """)
 
 check("T16: Optional hints work correctly",
-      "window.__hintsTest.noHintsTest.validationPassed && window.__hintsTest.noHintsTest.rendersCorrectly")
+      "window.__hintsTest.noHintsTest.validationPassed && window.__hintsTest.noHintsTest.rendersCorrectly && window.__hintsTest.noHintsTest.ex1HasHints && window.__hintsTest.noHintsTest.ex2NoHints")
 
 print("\n=== ALL PRACTICE STUDIO TESTS PASSED ===")
