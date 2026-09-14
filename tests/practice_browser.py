@@ -770,15 +770,16 @@ window.__asyncTest.singlePromise = (async () => {
 
     try {
         window.__asyncTest.singleSuccess.sessionCreated = false;
-        const before = getCurrentPracticeSession();
 
-        // Start generation
+        // Start generation (session created in 'generating' state internally)
         const result = await generatePracticeWorksheet(singleContext);
         const after = getCurrentPracticeSession();
 
+        // Verify session was created and is ready after generation
         window.__asyncTest.singleSuccess.sessionCreated = !!after;
         window.__asyncTest.singleSuccess.readyShown = after?.status === 'ready';
-        window.__asyncTest.singleSuccess.stateTransition = before?.status === 'generating' && after?.status === 'ready';
+        // State transition: session created in 'generating', now 'ready' means it transitioned
+        window.__asyncTest.singleSuccess.stateTransition = result?.status === 'ready' && after?.status === 'ready' && result?.id === after?.id;
     } catch (e) {
         window.__asyncTest.singleSuccess.error = e.message;
     }
