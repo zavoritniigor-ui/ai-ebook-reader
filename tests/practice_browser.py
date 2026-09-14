@@ -363,4 +363,151 @@ check("T15: No API keys in session",
 check("T15: No credentials in storage",
       r"!window.__secTest.storageKeys.some(k => localStorage[k]?.includes('sk-') || localStorage[k]?.includes('gsk_'))")
 
+# Phase 3B: Hints tests
+print("\n=== TEST 16: Phase 3B - Hints Support ===")
+
+c.js(r"""
+window.__hintsTest = {
+    mockWorksheet: null,
+    hintValidationPassed: false,
+    hintsRendered: false,
+    hintRevealWorks: false
+};
+
+// Create worksheet with hints for testing
+window.__hintsTest.mockWorksheet = {
+    metadata: {
+        id: 'ws1',
+        title: 'Hints Practice',
+        topic: 'Verb conjugation',
+        sourceLanguage: 'en',
+        targetLanguage: 'uk',
+        level: 'A1',
+        generatedAt: Date.now()
+    },
+    context: { sourceText: 'I know the answer' },
+    exercises: [
+        {
+            id: 'ex1',
+            type: 'fill_form',
+            instruction: 'Fill the blank',
+            prompt: 'I ___ (know) the answer',
+            expectedConcept: 'verb knowledge',
+            difficulty: 1,
+            hints: [
+                'Think about the present tense of know',
+                'It is a simple form',
+                'The answer is "know"'
+            ]
+        },
+        {
+            id: 'ex2',
+            type: 'conjugation',
+            instruction: 'Conjugate',
+            prompt: 'know',
+            expectedConcept: 'conjugation',
+            difficulty: 2
+            // No hints on this exercise - optional
+        }
+    ]
+};
+
+// Test hints validation
+try {
+    validateWorksheet(window.__hintsTest.mockWorksheet);
+    window.__hintsTest.hintValidationPassed = true;
+} catch (e) {
+    window.__hintsTest.hintValidationError = e.message;
+}
+
+true;
+""")
+
+check("T16: Hints validation accepts valid hints",
+      "window.__hintsTest.hintValidationPassed")
+
+c.js(r"""
+// Test hint rendering
+displayPracticeSession({status: 'ready', worksheet: window.__hintsTest.mockWorksheet, currentPage: 0});
+window.__hintsTest.hintsRendered = document.querySelectorAll('.hint-reveal-btn').length === 1;
+window.__hintsTest.hintCount = document.querySelectorAll('.hint').length;
+""")
+
+check("T16: Hints render with buttons",
+      "window.__hintsTest.hintsRendered && window.__hintsTest.hintCount === 3")
+
+c.js(r"""
+// Test progressive hint reveal
+const hintBtn = document.querySelector('.hint-reveal-btn');
+const hintsContainer = hintBtn.parentElement.querySelector('.hints-container');
+window.__hintsTest.beforeClick = {
+    visible: Array.from(hintsContainer.querySelectorAll('.hint')).filter(h => h.style.display !== 'none').length,
+    buttonText: hintBtn.textContent.trim()
+};
+
+// Click to reveal first hint
+hintBtn.click();
+
+window.__hintsTest.afterClick1 = {
+    visible: Array.from(hintsContainer.querySelectorAll('.hint')).filter(h => h.style.display !== 'none').length
+};
+
+// Click again to reveal second hint
+hintBtn.click();
+
+window.__hintsTest.afterClick2 = {
+    visible: Array.from(hintsContainer.querySelectorAll('.hint')).filter(h => h.style.display !== 'none').length,
+    btnDisabled: hintBtn.disabled
+};
+""")
+
+check("T16: Hints reveal progressively",
+      "window.__hintsTest.beforeClick.visible === 0 && window.__hintsTest.afterClick1.visible === 1 && window.__hintsTest.afterClick2.visible === 2")
+
+c.js(r"""
+// Test hint safety - no HTML injection
+const maliciousWorksheet = window.__hintsTest.mockWorksheet;
+maliciousWorksheet.exercises[0].hints[0] = '<script>alert("xss")</script>';
+
+window.__hintsTest.injectionTest = {
+    attempted: true,
+    caught: false
+};
+
+try {
+    validateWorksheet(maliciousWorksheet);
+} catch (e) {
+    window.__hintsTest.injectionTest.caught = e.message.includes('suspicious');
+}
+""")
+
+check("T16: Hints reject HTML injection",
+      "window.__hintsTest.injectionTest.caught")
+
+c.js(r"""
+// Test optional hints - exercises without hints still work
+const noHintsWorksheet = window.__hintsTest.mockWorksheet;
+delete noHintsWorksheet.exercises[1].hints;
+
+window.__hintsTest.noHintsTest = {
+    validationPassed: false,
+    rendersCorrectly: false
+};
+
+try {
+    validateWorksheet(noHintsWorksheet);
+    window.__hintsTest.noHintsTest.validationPassed = true;
+} catch (e) {
+    window.__hintsTest.noHintsTest.validationError = e.message;
+}
+
+// Render and check
+displayPracticeSession({status: 'ready', worksheet: noHintsWorksheet, currentPage: 0});
+const ex2Hints = document.querySelector('[data-id="ex2"]').querySelector('.exercise-hints');
+window.__hintsTest.noHintsTest.rendersCorrectly = ex2Hints === null;
+""")
+
+check("T16: Optional hints work correctly",
+      "window.__hintsTest.noHintsTest.validationPassed && window.__hintsTest.noHintsTest.rendersCorrectly")
+
 print("\n=== ALL PRACTICE STUDIO TESTS PASSED ===")

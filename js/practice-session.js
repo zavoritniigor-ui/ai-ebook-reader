@@ -103,6 +103,28 @@ function validateWorksheet(data) {
             throw new Error(`Invalid worksheet: exercise ${ex.id} has invalid difficulty`);
         }
 
+        // Validate optional hints (Phase 3B)
+        if (ex.hints !== undefined) {
+            if (!Array.isArray(ex.hints)) {
+                throw new Error(`Invalid worksheet: exercise ${ex.id} hints must be an array`);
+            }
+            if (ex.hints.length > 0) {
+                // Hints are optional, but if provided must be strings with no HTML
+                ex.hints.forEach((hint, hintIdx) => {
+                    if (typeof hint !== 'string' || hint.length === 0) {
+                        throw new Error(`Invalid worksheet: exercise ${ex.id} hint ${hintIdx} must be nonempty string`);
+                    }
+                    if (/<script|<iframe|on\w+\s*=/i.test(hint)) {
+                        throw new Error(`Invalid worksheet: exercise ${ex.id} hint ${hintIdx} contains suspicious content`);
+                    }
+                });
+                // Limit hints per exercise (3 progressive hints max)
+                if (ex.hints.length > 3) {
+                    throw new Error(`Invalid worksheet: exercise ${ex.id} has too many hints (max 3)`);
+                }
+            }
+        }
+
         // Content safety: no HTML/script tags
         const contentFields = [ex.instruction, ex.prompt, ex.expectedConcept];
         contentFields.forEach(field => {
@@ -290,7 +312,12 @@ Worksheet schema:
       "instruction": "Fill in the blank with the correct form",
       "prompt": "I ___ (go) to school yesterday",
       "expectedConcept": "past tense, first person singular",
-      "difficulty": 1
+      "difficulty": 1,
+      "hints": [
+        "Think about the past tense of 'go'",
+        "The answer is a two-word form",
+        "The answer is 'went'"
+      ]
     }
   ]
 }
@@ -304,6 +331,10 @@ Requirements:
 - Difficulty should progress 1 (easy) → 5 (hard)
 - Each exercise should teach/reinforce concepts from the context
 - All string fields must be nonempty
+- Optional: provide 1–3 progressive hints per exercise (each hint builds on the previous)
+  * Hint 1: General guidance or mental model
+  * Hint 2: More specific clue
+  * Hint 3: Direct answer or final hint
 - No HTML, scripts, or code in any field
 - Return valid JSON only`;
 

@@ -130,6 +130,41 @@ function displayPracticeReady(panel, session) {
             displayPracticeSession(session);
         };
     }
+
+    // Phase 3B: Attach hint reveal handlers
+    setupHintControls();
+}
+
+// Setup hint reveal controls for all exercises
+function setupHintControls() {
+    const hintButtons = document.querySelectorAll('.hint-reveal-btn');
+    hintButtons.forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            revealNextHint(btn);
+        };
+    });
+}
+
+// Reveal next hint progressively for an exercise
+function revealNextHint(button) {
+    const hintsContainer = button.parentElement.querySelector('.hints-container');
+    const hints = hintsContainer.querySelectorAll('.hint');
+
+    // Find first hidden hint
+    for (let i = 0; i < hints.length; i++) {
+        if (hints[i].style.display === 'none') {
+            // Reveal this hint
+            hints[i].style.display = 'block';
+
+            // Update button text when all hints shown
+            if (i === hints.length - 1) {
+                button.textContent = `✓ ${t('hint')}`;
+                button.disabled = true;
+            }
+            return;
+        }
+    }
 }
 
 // Show error state
@@ -186,6 +221,7 @@ function renderWorksheetPages(worksheet, currentPage) {
 function renderExercise(exercise, number) {
     const typeIcon = getExerciseTypeIcon(exercise.type);
     const difficulty = '●'.repeat(exercise.difficulty) + '○'.repeat(5 - exercise.difficulty);
+    const hasHints = exercise.hints && exercise.hints.length > 0;
 
     let html = `
         <div class="exercise" data-id="${escapeHtml(exercise.id)}">
@@ -197,6 +233,32 @@ function renderExercise(exercise, number) {
                 <span class="exercise-difficulty" title="Difficulty">${difficulty}</span>
                 <span class="exercise-concept">${escapeHtml(exercise.expectedConcept)}</span>
             </div>
+    `;
+
+    // Phase 3B: Progressive hints
+    if (hasHints) {
+        html += `
+            <div class="exercise-hints" data-exercise-id="${escapeHtml(exercise.id)}">
+                <button class="hint-reveal-btn" type="button" title="Show hint">💡 ${t('hint')}</button>
+                <div class="hints-container" style="display:none;">
+        `;
+
+        exercise.hints.forEach((hint, idx) => {
+            html += `
+                <div class="hint hint-${idx + 1}" style="display:none;">
+                    <span class="hint-level">Hint ${idx + 1}:</span>
+                    <span class="hint-text">${escapeHtml(hint)}</span>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+    }
+
+    html += `
         </div>
     `;
 
@@ -430,6 +492,79 @@ const practiceStyles = `
 .exercise-concept {
     color: #666;
     font-style: italic;
+}
+
+/* Phase 3B: Hint controls */
+.exercise-hints {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.hint-reveal-btn {
+    background: none;
+    border: 1px solid #ddd;
+    color: #0066cc;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.hint-reveal-btn:hover:not(:disabled) {
+    background: #f0f7ff;
+    border-color: #0066cc;
+}
+
+.hint-reveal-btn:disabled {
+    color: #999;
+    border-color: #ddd;
+    cursor: not-allowed;
+}
+
+.hints-container {
+    margin-top: 8px;
+    padding-left: 12px;
+    border-left: 3px solid #ffc107;
+}
+
+.hint {
+    margin: 6px 0;
+    padding: 6px 8px;
+    background: #fffbf0;
+    border-radius: 3px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.hint-level {
+    font-weight: bold;
+    color: #ff8c00;
+    margin-right: 4px;
+}
+
+.hint-text {
+    color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+    .hint {
+        background: #3d2a00;
+        color: #ffd700;
+    }
+    .hint-text {
+        color: #ffd700;
+    }
+    .hint-reveal-btn {
+        border-color: #444;
+        color: #4da6ff;
+    }
+    .hint-reveal-btn:hover:not(:disabled) {
+        background: #0d1b33;
+        border-color: #4da6ff;
+    }
 }
 
 .practice-pagination {
