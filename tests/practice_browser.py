@@ -794,7 +794,7 @@ c.js(r"""
     await new Promise(resolve => setTimeout(resolve, 100));
 })();
 true;
-""", timeout=10000)
+""")
 
 check("T19: Session created and ready after generation",
       "window.__asyncTest.singleSuccess.sessionCreated && window.__asyncTest.singleSuccess.readyShown")
@@ -884,7 +884,7 @@ c.js(r"""
     await new Promise(resolve => setTimeout(resolve, 100));
 })();
 true;
-""", timeout=10000)
+""")
 
 check("T20: Requests A and B create different sessions",
       "window.__asyncTest.raceTest.bothCreated")
