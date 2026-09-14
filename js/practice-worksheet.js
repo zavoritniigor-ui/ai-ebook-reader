@@ -280,6 +280,9 @@ function displayPracticeReady(panel, session) {
 
     // Phase 3B: Attach hint reveal handlers
     setupHintControls();
+
+    // Phase 3C: Attach answer checking handlers
+    setupAnswerControls();
 }
 
 // Setup hint reveal controls for all exercises
@@ -356,6 +359,88 @@ function revealNextHint(button) {
     }
 }
 
+// Setup answer input and checking controls (Phase 3C)
+function setupAnswerControls() {
+    const session = getCurrentPracticeSession();
+    if (!session) return;
+
+    const checkButtons = document.querySelectorAll('.answer-check-btn');
+    const answerInputs = document.querySelectorAll('.answer-input');
+
+    // Persist answer when user types
+    answerInputs.forEach(input => {
+        input.addEventListener('input', () => {
+            const exerciseEl = input.closest('.exercise');
+            if (exerciseEl) {
+                const exerciseId = exerciseEl.dataset.id;
+                if (!session.answers) session.answers = {};
+                if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
+                session.answers[exerciseId].answer = input.value;
+                persistPracticeSession(session);
+            }
+        });
+
+        // Allow checking with Enter key for single-line inputs
+        if (input.tagName === 'INPUT') {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const btn = input.closest('.exercise-input').querySelector('.answer-check-btn');
+                    if (btn) btn.click();
+                }
+            });
+        }
+    });
+
+    // Attach check button handlers
+    checkButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const exerciseId = btn.dataset.exerciseId;
+            const hasExpectedAnswer = btn.dataset.hasAnswer === 'true';
+            const exerciseEl = document.querySelector(`.exercise[data-id="${CSS.escape(exerciseId)}"]`);
+            const inputEl = exerciseEl?.querySelector('.answer-input');
+
+            if (!exerciseEl || !inputEl) return;
+
+            const userAnswer = inputEl.value;
+            const exercise = session.worksheet?.exercises?.find(ex => ex.id === exerciseId);
+            if (!exercise) return;
+
+            // Grade the answer
+            const feedback = gradeExerciseAnswer(exercise, userAnswer);
+
+            // Store feedback in session
+            if (!session.answers) session.answers = {};
+            if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
+            session.answers[exerciseId].answer = userAnswer;
+            session.answers[exerciseId].feedback = feedback;
+            persistPracticeSession(session);
+
+            // Show feedback
+            const feedbackEl = exerciseEl.querySelector('.exercise-feedback');
+            if (feedbackEl) {
+                feedbackEl.remove();
+            }
+
+            const feedbackClass = feedback.isCorrect ? 'feedback-correct' : 'feedback-incorrect';
+            const feedbackIcon = feedback.needsReview ? '📝' : (feedback.isCorrect ? '✓' : '✗');
+            const feedbackHtml = `
+                <div class="exercise-feedback ${feedbackClass}">
+                    ${feedbackIcon}
+                    ${escapeHtml(feedback.feedback)}
+                </div>
+            `;
+
+            // Insert feedback before hints
+            const hintsEl = exerciseEl.querySelector('.exercise-hints');
+            if (hintsEl) {
+                hintsEl.insertAdjacentHTML('beforebegin', feedbackHtml);
+            } else {
+                exerciseEl.insertAdjacentHTML('beforeend', feedbackHtml);
+            }
+        });
+    });
+}
+
 // Show error state
 function displayPracticeError(panel, session) {
     const error = session.lastError || { message: t('practiceUnknownError') };
@@ -380,11 +465,11 @@ function displayPracticeError(panel, session) {
     document.getElementById('practice-close-error').onclick = closePractice;
 }
 
-// Get exercises per page (responsive)
+// Get exercises per page (responsive) - compact layout
 function getExercisesPerPage() {
-    // Mobile: 5 per page
-    // Tablet+: 12-15 per page
-    return window.innerWidth < 768 ? 5 : 12;
+    // Mobile: show more with compact layout
+    // Tablet+: show many exercises per page
+    return window.innerWidth < 768 ? 8 : 20;
 }
 
 // Render worksheet pages
@@ -407,25 +492,42 @@ function renderWorksheetPages(worksheet, currentPage) {
     return html;
 }
 
-// Render single exercise
+// Render single exercise with compact layout and answer input
 function renderExercise(exercise, number) {
     const typeIcon = getExerciseTypeIcon(exercise.type);
-    const difficulty = '●'.repeat(exercise.difficulty) + '○'.repeat(5 - exercise.difficulty);
     const hasHints = exercise.hints && exercise.hints.length > 0;
+    const session = getCurrentPracticeSession();
+    const savedAnswer = session?.answers?.[exercise.id]?.answer || '';
+    const savedFeedback = session?.answers?.[exercise.id]?.feedback || null;
+
+    // Build answer input control based on exercise type
+    let answerControl = buildAnswerControl(exercise, savedAnswer);
 
     let html = `
-        <div class="exercise" data-id="${escapeHtml(exercise.id)}">
-            <div class="exercise-number">${number}. ${typeIcon}</div>
-            <div class="exercise-instruction">${escapeHtml(exercise.instruction)}</div>
+        <div class="exercise" data-id="${escapeHtml(exercise.id)}" data-type="${escapeHtml(exercise.type)}">
+            <div class="exercise-header">
+                <span class="exercise-number">${number}</span>
+                <span class="exercise-type-icon" title="${exercise.type}">${typeIcon}</span>
+                <span class="exercise-instruction">${escapeHtml(exercise.instruction)}</span>
+            </div>
             <div class="exercise-prompt">${escapeHtml(exercise.prompt)}</div>
-            <div class="exercise-answer-space"></div>
-            <div class="exercise-meta">
-                <span class="exercise-difficulty" title="Difficulty">${difficulty}</span>
-                <span class="exercise-concept">${escapeHtml(exercise.expectedConcept)}</span>
+            <div class="exercise-input">
+                ${answerControl}
             </div>
     `;
 
-    // Phase 3B: Progressive hints
+    // Show feedback if answer was checked
+    if (savedFeedback) {
+        const feedbackClass = savedFeedback.isCorrect ? 'feedback-correct' : 'feedback-incorrect';
+        html += `
+            <div class="exercise-feedback ${feedbackClass}">
+                ${savedFeedback.needsReview ? '📝' : (savedFeedback.isCorrect ? '✓' : '✗')}
+                ${escapeHtml(savedFeedback.feedback)}
+            </div>
+        `;
+    }
+
+    // Phase 3B/3C: Progressive hints
     if (hasHints) {
         html += `
             <div class="exercise-hints" data-exercise-id="${escapeHtml(exercise.id)}">
@@ -448,11 +550,38 @@ function renderExercise(exercise, number) {
         `;
     }
 
-    html += `
-        </div>
-    `;
-
+    html += `</div>`;
     return html;
+}
+
+// Build answer input control appropriate for exercise type
+function buildAnswerControl(exercise, savedValue) {
+    const id = `answer_${escapeHtml(exercise.id)}`;
+    const types = {
+        'fill_form': 'text',
+        'auxiliary': 'text',
+        'conjugation': 'text',
+        'transform': 'textarea',
+        'correct_error': 'text',
+        'translate': 'text',
+        'short_production': 'textarea',
+        'contextual_usage': 'textarea'
+    };
+
+    const inputType = types[exercise.type] || 'text';
+    const checkButtonLabel = exercise.expectedAnswer ? 'Check' : 'Submit';
+
+    if (inputType === 'textarea') {
+        return `
+            <textarea id="${id}" class="answer-input" placeholder="Your answer..." rows="2">${escapeHtml(savedValue)}</textarea>
+            <button class="answer-check-btn" data-exercise-id="${escapeHtml(exercise.id)}" data-has-answer="${!!exercise.expectedAnswer}">${checkButtonLabel}</button>
+        `;
+    } else {
+        return `
+            <input type="text" id="${id}" class="answer-input" placeholder="Your answer..." value="${escapeHtml(savedValue)}" />
+            <button class="answer-check-btn" data-exercise-id="${escapeHtml(exercise.id)}" data-has-answer="${!!exercise.expectedAnswer}">${checkButtonLabel}</button>
+        `;
+    }
 }
 
 // Get icon for exercise type
@@ -594,15 +723,34 @@ const practiceStyles = `
     position: relative;
 }
 #practice-restore[data-mode="bookmark"] {
-    position: absolute; height: 112px; min-height: 44px;
-    flex-direction: column; gap: 8px; padding: 10px 0;
-    background: color-mix(in srgb, var(--panel-bg) 90%, #6383e8);
-    color: var(--text-color); border: 1px solid color-mix(in srgb, var(--border-color) 75%, #6383e8);
-    border-right: 3px solid #6383e8; border-radius: 8px 0 0 8px;
-    box-shadow: -3px 2px 8px #0001; font-size: 12px;
+    position: absolute; height: auto; width: 44px; min-height: 100px; max-height: 120px;
+    flex-direction: column; gap: 4px; padding: 8px 4px;
+    background: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--accent-color);
+    border-radius: 0;
+    box-shadow: 2px 2px 6px #0002;
+    font-size: 10px;
+    font-weight: 600;
+    justify-content: flex-start;
 }
-#practice-restore[data-mode="bookmark"] span { writing-mode: vertical-rl; }
-#practice-restore[data-mode="bookmark"]:hover { background: color-mix(in srgb, var(--panel-bg) 80%, #6383e8); }
+#practice-restore[data-mode="bookmark"] svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+#practice-restore[data-mode="bookmark"] span {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    word-break: break-word;
+    text-align: center;
+    flex: 1;
+}
+#practice-restore[data-mode="bookmark"]:hover {
+    background: var(--surface-2);
+    border-left-color: var(--accent-color);
+}
 #practice-restore:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
 @media (prefers-reduced-motion: reduce) {
     #practice-panel { transition: none; }
@@ -637,25 +785,32 @@ const practiceStyles = `
 }
 
 .practice-meta {
-    padding: 10px 15px;
-    background: var(--background-color-alt);
-    font-size: 13px;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    font-size: 12px;
     flex-shrink: 0;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .meta-row {
     display: flex;
     gap: 8px;
-    margin: 4px 0;
+    margin: 3px 0;
+    align-items: center;
 }
 
 .meta-label {
-    font-weight: bold;
-    min-width: 70px;
+    font-weight: 600;
+    min-width: 60px;
+    color: var(--text-color);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .meta-value {
-    color: var(--text-color-secondary);
+    color: var(--text-muted);
+    font-size: 12px;
 }
 
 .practice-content,
@@ -672,179 +827,263 @@ const practiceStyles = `
 .practice-worksheet {
     flex: 1;
     overflow-y: auto;
-    padding: 15px;
+    padding: 12px;
 }
 
 .worksheet-page {
-    background: white;
-    padding: 20px;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    background: var(--panel-bg);
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
 }
 
 .worksheet-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
-    margin: 0 0 20px 0;
+    margin: 0 0 12px 0;
+    padding: 0 8px;
     color: var(--text-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 8px;
 }
 
 .exercise {
-    margin-bottom: 25px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 12px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
 }
 
 .exercise:last-child {
     border-bottom: none;
+    margin-bottom: 0;
+}
+
+.exercise-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
 }
 
 .exercise-number {
-    font-weight: bold;
-    font-size: 14px;
-    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 12px;
+    min-width: 24px;
+    color: var(--text-color);
+    background: var(--surface-2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-align: center;
+}
+
+.exercise-type-icon {
+    font-size: 12px;
+    color: var(--text-muted);
 }
 
 .exercise-instruction {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    flex: 1;
 }
 
 .exercise-prompt {
-    font-size: 14px;
-    margin-bottom: 15px;
-    padding: 8px;
-    background: #f5f5f5;
+    font-size: 13px;
+    margin: 0;
+    padding: 6px 8px;
+    background: var(--surface-2);
+    border-left: 3px solid var(--accent-color);
+    border-radius: 2px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.4;
+}
+
+.exercise-input {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+    align-items: center;
+}
+
+.answer-input {
+    font-size: 13px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
     border-radius: 3px;
-    font-family: monospace;
+    background: var(--panel-bg);
+    color: var(--text-color);
+    font-family: inherit;
+    min-height: 32px;
 }
 
-.exercise-answer-space {
-    min-height: 40px;
-    border-bottom: 2px solid #333;
-    margin: 15px 0;
+.answer-input:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -1px;
 }
 
-.exercise-meta {
+.answer-input[type="text"] {
+    min-width: 150px;
+}
+
+.answer-input[type="text"]::placeholder,
+.answer-input[type="textarea"]::placeholder {
+    color: var(--text-muted);
+}
+
+.answer-check-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+.answer-check-btn:hover {
+    opacity: 0.9;
+}
+
+.answer-check-btn:active {
+    opacity: 0.8;
+}
+
+.exercise-feedback {
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 3px;
     display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: #999;
+    gap: 6px;
+    align-items: flex-start;
+    margin-top: 4px;
 }
 
-.exercise-difficulty {
-    font-size: 12px;
-    letter-spacing: 1px;
+.feedback-correct {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-left: 3px solid #4caf50;
 }
 
-.exercise-concept {
-    color: #666;
-    font-style: italic;
+.feedback-incorrect {
+    background: #ffebee;
+    color: #c62828;
+    border-left: 3px solid #f44336;
 }
 
-/* Phase 3B: Hint controls */
+@media (prefers-color-scheme: dark) {
+    .feedback-correct {
+        background: color-mix(in srgb, #4caf50 15%, var(--panel-bg));
+        color: #81c784;
+    }
+
+    .feedback-incorrect {
+        background: color-mix(in srgb, #f44336 15%, var(--panel-bg));
+        color: #e57373;
+    }
+}
+
+/* Phase 3B: Hint controls with theme support */
 .exercise-hints {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #f0f0f0;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-color);
 }
 
 .hint-reveal-btn {
-    background: none;
-    border: 1px solid #ddd;
-    color: #0066cc;
-    padding: 6px 12px;
-    border-radius: 3px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    color: var(--accent-color);
+    padding: 4px 8px;
+    border-radius: 2px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     transition: all 0.2s;
 }
 
 .hint-reveal-btn:hover:not(:disabled) {
-    background: #f0f7ff;
-    border-color: #0066cc;
+    background: var(--surface-2);
+    border-color: var(--accent-color);
 }
 
 .hint-reveal-btn:disabled {
-    color: #999;
-    border-color: #ddd;
+    color: var(--text-muted);
+    border-color: var(--border-color);
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .hints-container {
-    margin-top: 8px;
-    padding-left: 12px;
-    border-left: 3px solid #ffc107;
+    margin-top: 6px;
+    padding-left: 8px;
+    border-left: 3px solid var(--accent-color);
 }
 
 .hint {
-    margin: 6px 0;
-    padding: 6px 8px;
-    background: #fffbf0;
-    border-radius: 3px;
-    font-size: 12px;
+    margin: 4px 0;
+    padding: 4px 6px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    font-size: 11px;
     line-height: 1.4;
+    color: var(--text-color);
 }
 
 .hint-level {
-    font-weight: bold;
-    color: #ff8c00;
+    font-weight: 600;
+    color: var(--accent-color);
     margin-right: 4px;
 }
 
 .hint-text {
-    color: #333;
-}
-
-@media (prefers-color-scheme: dark) {
-    .hint {
-        background: #3d2a00;
-        color: #ffd700;
-    }
-    .hint-text {
-        color: #ffd700;
-    }
-    .hint-reveal-btn {
-        border-color: #444;
-        color: #4da6ff;
-    }
-    .hint-reveal-btn:hover:not(:disabled) {
-        background: #0d1b33;
-        border-color: #4da6ff;
-    }
+    color: var(--text-color);
 }
 
 .practice-pagination {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 15px;
+    padding: 8px 12px;
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
-    font-size: 13px;
+    font-size: 12px;
+    gap: 8px;
 }
 
 .practice-pagination button {
-    padding: 6px 12px;
-    background: #007AFF;
+    padding: 4px 10px;
+    background: var(--accent-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 3px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 11px;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.practice-pagination button:hover {
+    opacity: 0.9;
 }
 
 .practice-pagination button:disabled {
-    background: #ccc;
+    background: var(--border-color);
+    color: var(--text-muted);
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .practice-actions {
     display: flex;
-    gap: 8px;
-    padding: 15px;
+    gap: 6px;
+    padding: 8px 12px;
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
     flex-wrap: wrap;
@@ -852,38 +1091,40 @@ const practiceStyles = `
 
 .practice-actions button {
     flex: 1;
-    min-width: 100px;
-    padding: 8px 12px;
+    min-width: 80px;
+    padding: 6px 10px;
     border: none;
-    border-radius: 4px;
+    border-radius: 3px;
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 500;
+    transition: opacity 0.2s;
 }
 
 .btn-primary {
-    background: #007AFF;
+    background: var(--accent-color);
     color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: #0051cc;
+    opacity: 0.9;
 }
 
 .btn-secondary {
-    background: #f0f0f0;
-    color: #333;
-    border: 1px solid #ddd;
+    background: var(--surface-2);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-    background: #e0e0e0;
+    background: var(--border-color);
 }
 
 .btn-primary:disabled {
-    background: #ccc;
-    color: #999;
+    background: var(--border-color);
+    color: var(--text-muted);
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
 /* Mobile responsiveness */
