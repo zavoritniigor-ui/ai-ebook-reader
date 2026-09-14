@@ -437,32 +437,104 @@ check("T16: Hints render with buttons",
       "window.__hintsTest.hintsRendered && window.__hintsTest.hintCount === 3")
 
 c.js(r"""
-// Test progressive hint reveal
+// Test progressive hint reveal with actual visibility checks
 const hintBtn = document.querySelector('.hint-reveal-btn');
 const hintsContainer = hintBtn.parentElement.querySelector('.hints-container');
+const hints = Array.from(hintsContainer.querySelectorAll('.hint'));
+
+// Helper to check actual visibility (parent and self)
+function isActuallyVisible(el) {
+    return el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
+}
+
 window.__hintsTest.beforeClick = {
-    visible: Array.from(hintsContainer.querySelectorAll('.hint')).filter(h => h.style.display !== 'none').length,
-    buttonText: hintBtn.textContent.trim()
+    containerVisible: isActuallyVisible(hintsContainer),
+    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
+    buttonDisabled: hintBtn.disabled
 };
 
 // Click to reveal first hint
 hintBtn.click();
 
 window.__hintsTest.afterClick1 = {
-    visible: Array.from(hintsContainer.querySelectorAll('.hint')).filter(h => h.style.display !== 'none').length
+    containerVisible: isActuallyVisible(hintsContainer),
+    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
+    buttonDisabled: hintBtn.disabled
 };
 
 // Click again to reveal second hint
 hintBtn.click();
 
 window.__hintsTest.afterClick2 = {
-    visible: Array.from(hintsContainer.querySelectorAll('.hint')).filter(h => h.style.display !== 'none').length,
-    btnDisabled: hintBtn.disabled
+    containerVisible: isActuallyVisible(hintsContainer),
+    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
+    buttonDisabled: hintBtn.disabled
+};
+
+// Click to reveal third (final) hint
+hintBtn.click();
+
+window.__hintsTest.afterClick3 = {
+    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
+    buttonDisabled: hintBtn.disabled,
+    buttonText: hintBtn.textContent.trim()
 };
 """)
 
-check("T16: Hints reveal progressively",
-      "window.__hintsTest.beforeClick.visible === 0 && window.__hintsTest.afterClick1.visible === 1 && window.__hintsTest.afterClick2.visible === 2")
+check("T16: Container hidden before reveal",
+      "!window.__hintsTest.beforeClick.containerVisible && window.__hintsTest.beforeClick.visibleCount === 0")
+
+check("T16: First hint reveals and container becomes visible",
+      "window.__hintsTest.afterClick1.containerVisible && window.__hintsTest.afterClick1.visibleCount === 1 && !window.__hintsTest.afterClick1.buttonDisabled")
+
+check("T16: Second hint reveals progressively",
+      "window.__hintsTest.afterClick2.containerVisible && window.__hintsTest.afterClick2.visibleCount === 2 && !window.__hintsTest.afterClick2.buttonDisabled")
+
+check("T16: All hints revealed and button disables on final hint",
+      "window.__hintsTest.afterClick3.visibleCount === 3 && window.__hintsTest.afterClick3.buttonDisabled && window.__hintsTest.afterClick3.buttonText.includes('✓')")
+
+c.js(r"""
+// Test hint persistence across navigation
+// Simulate revealing 2 hints
+window.__persistenceTest = {
+    sessionBefore: null,
+    sessionAfter: null,
+    hints2VisibleBefore: false,
+    hints2VisibleAfter: false
+};
+
+const currentSession = getCurrentPracticeSession();
+window.__persistenceTest.sessionBefore = currentSession;
+
+// Get fresh reference to button and hints
+const persistBtn = document.querySelector('.hint-reveal-btn');
+const persistContainer = persistBtn.parentElement.querySelector('.hints-container');
+const persistHints = Array.from(persistContainer.querySelectorAll('.hint'));
+
+function isActuallyVisible(el) {
+    return el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
+}
+
+// Reveal first hint
+persistBtn.click();
+// Reveal second hint
+persistBtn.click();
+
+window.__persistenceTest.hints2VisibleBefore = persistHints.slice(0, 2).every(h => isActuallyVisible(h));
+
+// Simulate page navigation by re-displaying the same worksheet
+displayPracticeSession(currentSession);
+
+// Re-check if hints remain visible
+const newBtn = document.querySelector('.hint-reveal-btn');
+const newContainer = newBtn.parentElement.querySelector('.hints-container');
+const newHints = Array.from(newContainer.querySelectorAll('.hint'));
+window.__persistenceTest.hints2VisibleAfter = newHints.slice(0, 2).every(h => isActuallyVisible(h));
+window.__persistenceTest.sessionAfter = getCurrentPracticeSession();
+""")
+
+check("T16: Hint reveal persists after navigation",
+      "window.__persistenceTest.hints2VisibleBefore && window.__persistenceTest.hints2VisibleAfter && window.__persistenceTest.sessionAfter.revealedHints.ex1 === 2")
 
 c.js(r"""
 // Test hint safety - no HTML injection

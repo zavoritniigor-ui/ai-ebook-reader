@@ -41,6 +41,9 @@ function createPracticeSession(context) {
         worksheet: null,
         currentPage: 0,
 
+        // Phase 3B: Track revealed hints per exercise (ex: { "ex1": 2, "ex2": 0 })
+        revealedHints: {},
+
         // Error handling
         lastError: null
     };

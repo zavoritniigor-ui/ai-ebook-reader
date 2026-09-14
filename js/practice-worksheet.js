@@ -138,7 +138,31 @@ function displayPracticeReady(panel, session) {
 // Setup hint reveal controls for all exercises
 function setupHintControls() {
     const hintButtons = document.querySelectorAll('.hint-reveal-btn');
+    const session = getCurrentPracticeSession();
+
     hintButtons.forEach(btn => {
+        const exerciseId = btn.closest('.exercise-hints')?.dataset.exerciseId;
+
+        // Restore previously revealed hints for this exercise
+        if (session && exerciseId && session.revealedHints[exerciseId]) {
+            const revealedCount = session.revealedHints[exerciseId];
+            const hints = btn.parentElement.querySelector('.hints-container')?.querySelectorAll('.hint') || [];
+
+            // Show container and previously revealed hints
+            if (revealedCount > 0) {
+                btn.parentElement.querySelector('.hints-container').style.display = 'block';
+                for (let i = 0; i < revealedCount && i < hints.length; i++) {
+                    hints[i].style.display = 'block';
+                }
+
+                // Update button state if all hints revealed
+                if (revealedCount >= hints.length) {
+                    btn.textContent = `✓ ${t('hint')}`;
+                    btn.disabled = true;
+                }
+            }
+        }
+
         btn.onclick = (e) => {
             e.preventDefault();
             revealNextHint(btn);
@@ -150,19 +174,37 @@ function setupHintControls() {
 function revealNextHint(button) {
     const hintsContainer = button.parentElement.querySelector('.hints-container');
     const hints = hintsContainer.querySelectorAll('.hint');
+    const exerciseId = button.closest('.exercise-hints')?.dataset.exerciseId;
+    const session = getCurrentPracticeSession();
+
+    // Show container on first reveal
+    if (hintsContainer.style.display === 'none') {
+        hintsContainer.style.display = 'block';
+    }
 
     // Find first hidden hint
+    let revealedCount = 0;
     for (let i = 0; i < hints.length; i++) {
         if (hints[i].style.display === 'none') {
             // Reveal this hint
             hints[i].style.display = 'block';
+            revealedCount = i + 1;
 
             // Update button text when all hints shown
             if (i === hints.length - 1) {
                 button.textContent = `✓ ${t('hint')}`;
                 button.disabled = true;
             }
+
+            // Persist hint reveal state to session
+            if (session && exerciseId) {
+                session.revealedHints[exerciseId] = revealedCount;
+                persistPracticeSession(session);
+            }
+
             return;
+        } else {
+            revealedCount++;
         }
     }
 }
