@@ -723,141 +723,162 @@ check("T18: Practice panel visible (not hidden)",
 check("T18: No panel conflicts",
       "window.__isolationTest.noConflict")
 
-# TEST 19: Async Lifecycle - Single Click Generation
-print("\n=== TEST 19: Async Lifecycle - Single Click (Regression) ===")
+# TEST 19: Async Lifecycle - Single Request Success
+print("\n=== TEST 19: Async Lifecycle - Single Request Success (Regression) ===")
 
 c.js(r"""
-window.__lifecycleTest = {
-    singleClickTest: {
+window.__asyncTest = {
+    singleSuccess: {
         sessionCreated: false,
-        sessionStatus: null,
-        isGenerating: false,
-        notStuck: false
+        generatingShown: false,
+        readyShown: false,
+        stateTransition: false
+    },
+    raceTest: {
+        bothCreated: false,
+        aNotOverwriteB: false,
+        bFinal: false
     }
 };
 
-// Simulate what happens on one Practice click
-// Create a session in generating state (done by generatePracticeWorksheet)
-const testSession = {
-    id: 'test_lifecycle_single_' + Date.now(),
-    status: 'generating',
-    sourceText: 'Test text',
-    sourceLanguage: 'en',
-    targetLanguage: 'uk',
-    worksheet: null,
-    createdAt: Date.now(),
-    revealedHints: {}
-};
-
-// Store it like generatePracticeWorksheet does
-currentPracticeSession = testSession;
-
-window.__lifecycleTest.singleClickTest.sessionCreated = !!currentPracticeSession;
-window.__lifecycleTest.singleClickTest.sessionStatus = currentPracticeSession?.status;
-window.__lifecycleTest.singleClickTest.isGenerating = currentPracticeSession?.status === 'generating';
-
-// Simulate error handling - session should transition to error state
-// even if task becomes stale
-const errorSession = {
-    ...testSession,
-    status: 'error',
-    lastError: {
-        message: 'Practice generation was cancelled (another request started)',
-        code: 'StaleTaskError',
-        timestamp: Date.now()
+// Mock callAI to return success after a brief delay
+const origCallAI = window.callAI;
+let testCallCount = 0;
+window.callAI = async function(prompt, signal, task) {
+    if (task === 'practice') {
+        testCallCount++;
+        // Simulate brief generation time
+        await new Promise(resolve => setTimeout(resolve, 50));
+        // Return success with mock worksheet
+        return JSON.stringify(__practiceTests.mockWorksheet);
     }
+    return origCallAI(prompt, signal, task);
 };
-
-currentPracticeSession = errorSession;
-window.__lifecycleTest.singleClickTest.notStuck = currentPracticeSession?.status === 'error';
 
 true;
 """)
 
-check("T19: Session created in generating state",
-      "window.__lifecycleTest.singleClickTest.sessionCreated")
+# Test single successful generation
+c.js(r"""
+const singleContext = {
+    sourceText: 'Single test',
+    sourceLanguage: 'en',
+    targetLanguage: 'uk',
+    level: 'A1'
+};
 
-check("T19: Session status is 'generating'",
-      "window.__lifecycleTest.singleClickTest.isGenerating")
+(async () => {
+    try {
+        window.__asyncTest.singleSuccess.sessionCreated = false;
+        const before = getCurrentPracticeSession();
 
-check("T19: Stale task transitions to error (not stuck in generating)",
-      "window.__lifecycleTest.singleClickTest.notStuck")
+        // Start generation
+        const result = await generatePracticeWorksheet(singleContext);
+        const after = getCurrentPracticeSession();
 
-# TEST 20: Async Lifecycle - Race Condition (A starts, B starts, A fails)
+        window.__asyncTest.singleSuccess.sessionCreated = !!after;
+        window.__asyncTest.singleSuccess.readyShown = after?.status === 'ready';
+        window.__asyncTest.singleSuccess.stateTransition = before?.status === 'generating' && after?.status === 'ready';
+    } catch (e) {
+        window.__asyncTest.singleSuccess.error = e.message;
+    }
+})();
+
+// Wait for async
+await new Promise(resolve => setTimeout(resolve, 200));
+true;
+""")
+
+check("T19: Session created and ready after generation",
+      "window.__asyncTest.singleSuccess.sessionCreated && window.__asyncTest.singleSuccess.readyShown")
+
+check("T19: Session transitioned generating → ready",
+      "window.__asyncTest.singleSuccess.stateTransition")
+
+# TEST 20: Async Lifecycle - Race Condition (A starts, B starts, A fails late)
 print("\n=== TEST 20: Async Lifecycle - Race Condition (Regression) ===")
 
 c.js(r"""
-window.__lifecycleTest.raceTest = {
-    requestAId: 'task_a_' + Date.now(),
-    requestBId: 'task_b_' + Date.now(),
-    bothCreated: false,
-    aCannotOverwriteB: false,
-    sessionStable: false
-};
-
-// Simulate request A starting
-const sessionA = {
-    id: window.__lifecycleTest.raceTest.requestAId,
-    status: 'generating',
-    sourceText: 'Request A text',
-    createdAt: Date.now(),
-    revealedHints: {}
-};
-currentPracticeSession = sessionA;
-const sessionAId = sessionA.id;
-
-// Simulate request B starting (user clicks Practice again)
-const sessionB = {
-    id: window.__lifecycleTest.raceTest.requestBId,
-    status: 'generating',
-    sourceText: 'Request B text',
-    createdAt: Date.now() + 1,  // B created slightly later
-    revealedHints: {}
-};
-currentPracticeSession = sessionB;
-const sessionBId = sessionB.id;
-
-window.__lifecycleTest.raceTest.bothCreated = sessionAId !== sessionBId;
-
-// Simulate A's error response arriving late (stale)
-// It should NOT overwrite B's session
-const staleAError = {
-    id: sessionAId,
-    status: 'error',
-    lastError: { message: 'Stale' }
-};
-
-// Check: current session is still B, not overwritten by A's error
-window.__lifecycleTest.raceTest.aCannotOverwriteB =
-    currentPracticeSession?.id === sessionBId;
-
-// Simulate B completing successfully
-const sessionBReady = {
-    ...sessionB,
-    status: 'ready',
-    worksheet: {
-        metadata: { title: 'Ready worksheet' },
-        exercises: []
+// Mock callAI for race test: A fails after delay, B succeeds quickly
+let raceCallCount = 0;
+window.callAI = async function(prompt, signal, task) {
+    if (task === 'practice') {
+        const callNum = ++raceCallCount;
+        if (callNum === 1) {
+            // A: fail after a delay (to ensure B completes first)
+            await new Promise(resolve => setTimeout(resolve, 150));
+            if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+            throw new Error('A failed deliberately for race test');
+        } else if (callNum === 2) {
+            // B: succeed quickly
+            await new Promise(resolve => setTimeout(resolve, 30));
+            if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+            return JSON.stringify(__practiceTests.mockWorksheet);
+        }
     }
+    return origCallAI(prompt, signal, task);
 };
-currentPracticeSession = sessionBReady;
 
-// Final check: session is stable at B's successful state
-window.__lifecycleTest.raceTest.sessionStable =
-    currentPracticeSession?.id === sessionBId &&
-    currentPracticeSession?.status === 'ready' &&
-    !!currentPracticeSession?.worksheet;
+true;
+""")
 
+c.js(r"""
+(async () => {
+    try {
+        const contextA = {
+            sourceText: 'Request A',
+            sourceLanguage: 'en',
+            targetLanguage: 'uk',
+            level: 'A1'
+        };
+        const contextB = {
+            sourceText: 'Request B',
+            sourceLanguage: 'en',
+            targetLanguage: 'uk',
+            level: 'A1'
+        };
+
+        // Start A
+        const promiseA = generatePracticeWorksheet(contextA);
+        const sessionAId = getCurrentPracticeSession()?.id;
+
+        // Immediately start B (before A completes)
+        await new Promise(resolve => setTimeout(resolve, 10));
+        const promiseB = generatePracticeWorksheet(contextB);
+        const sessionBId = getCurrentPracticeSession()?.id;
+
+        window.__asyncTest.raceTest.bothCreated = sessionAId !== sessionBId;
+
+        // Wait for both to complete
+        const resultA = await promiseA.catch(e => ({ error: e.message }));
+        const resultB = await promiseB.catch(e => ({ error: e.message }));
+
+        const finalSession = getCurrentPracticeSession();
+
+        // A should fail but NOT overwrite B
+        window.__asyncTest.raceTest.aNotOverwriteB =
+            finalSession?.id === sessionBId &&
+            finalSession?.status === 'ready' &&
+            !!finalSession?.worksheet;
+
+        window.__asyncTest.raceTest.bFinal = finalSession?.id === sessionBId;
+    } catch (e) {
+        window.__asyncTest.raceTest.error = e.message;
+    }
+})();
+
+// Wait for async race
+await new Promise(resolve => setTimeout(resolve, 300));
 true;
 """)
 
 check("T20: Requests A and B create different sessions",
-      "window.__lifecycleTest.raceTest.bothCreated")
+      "window.__asyncTest.raceTest.bothCreated")
 
-check("T20: Stale request A cannot overwrite active request B",
-      "window.__lifecycleTest.raceTest.aCannotOverwriteB")
+check("T20: Stale request A cannot overwrite active B",
+      "window.__asyncTest.raceTest.aNotOverwriteB")
 
-check("T20: Final session is B's ready state (stable)",
-      "window.__lifecycleTest.raceTest.sessionStable")
+check("T20: Final session is B's ready state",
+      "window.__asyncTest.raceTest.bFinal")
 
 print("\n=== ALL PRACTICE STUDIO TESTS PASSED ===")
