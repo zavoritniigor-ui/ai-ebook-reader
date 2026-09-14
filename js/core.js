@@ -443,6 +443,7 @@ const I18N = {
     btnSentence:    { uk: 'речення ⤢',      en: 'sentence ⤢',     fr: 'phrase ⤢',       ru: 'предложение ⤢' },
     btnAsk:         { uk: '🤖 Запитай AI',  en: '🤖 Ask AI',      fr: '🤖 Demander à l’IA', ru: '🤖 Спросить AI' },
     btnGrammar:     { uk: '✨ Граматика',   en: '✨ Grammar',     fr: '✨ Grammaire',   ru: '✨ Грамматика' },
+    practice:       { uk: '📚 Практика',    en: '📚 Practice',    fr: '📚 Pratique',    ru: '📚 Практика' },
     translating:    { uk: 'Переклад...',    en: 'Translating...', fr: 'Traduction...',  ru: 'Перевод...' },
     panelAsk:       { uk: '🤖 Пояснення слова', en: '🤖 Word explanation', fr: '🤖 Explication du mot', ru: '🤖 Объяснение слова' },
     panelGrammar:   { uk: '📝 Граматика',   en: '📝 Grammar',     fr: '📝 Grammaire',   ru: '📝 Грамматика' },
