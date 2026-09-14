@@ -141,6 +141,7 @@ jobs:
           python3 -u tests/pwa_start_url_browser.py
 
           python3 -u tests/ai_providers_browser.py
+          python3 -u tests/practice_browser.py
 
           python3 -u tests/quick_wheel_browser.py
           python3 -u tests/quick_wheel_drag_browser.py

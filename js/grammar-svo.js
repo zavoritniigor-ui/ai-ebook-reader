@@ -90,8 +90,32 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         // Без обгортки <p>: відповідь тепер містить таблицю відмінювання й списки,
         // а таблиця всередині <p> — невалідний HTML, браузер розриває розмітку.
         content.innerHTML = safeHtml(text, true);
-        // Одразу будуємо ряд дієслів унизу панелі з отриманого розбору.
+        // Одразу будуємо ряд дієслів унизо панелі з отриманого розбору.
         if (mode === 'grammar') renderVerbBar();
+        // Add Practice button for grammar learning context
+        if (mode === 'grammar' && typeof generatePracticeWorksheet === 'function') {
+            const practiceBtn = document.createElement('button');
+            practiceBtn.className = 'btn-secondary';
+            practiceBtn.style.marginTop = '15px';
+            practiceBtn.setAttribute('data-i18n', 'practice');
+            practiceBtn.textContent = t('practice');
+            practiceBtn.onclick = () => {
+                generatePracticeWorksheet({
+                    sourceText: state.lastGrammarSentence || contextText,
+                    sourceLanguage: pageLang().slice(0, 2).toLowerCase(),
+                    targetLanguage: state.targetLang,
+                    bookId: state.bookKey,
+                    level: null  // CEFR level unknown unless explicitly set
+                }).then(session => {
+                    if (session) displayPracticeSession(session);
+                }).catch(err => {
+                    console.error('Practice generation failed:', err);
+                    const updated = getCurrentPracticeSession();
+                    if (updated) displayPracticeSession(updated);
+                });
+            };
+            content.appendChild(practiceBtn);
+        }
     } catch (err) {
         if (!task.current()) {
             // Помилка на скасованому запиті — не показуємо її, просто мовчки виходимо
