@@ -252,7 +252,6 @@ function displayPracticeReady(panel, session) {
         <div class="practice-actions">
             <button id="practice-retry" class="btn-secondary">${t('retry')}</button>
             <button id="practice-regenerate" class="btn-secondary">${t('practiceRegenerate')}</button>
-            <button id="practice-check" class="btn-primary" disabled title="${t('practiceComingSoon')}">${t('practiceCheck')} (${t('practiceComingSoon')})</button>
         </div>
     `;
 
