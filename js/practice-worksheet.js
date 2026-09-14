@@ -2,6 +2,120 @@
  * Displays worksheets safely without executing AI-generated HTML.
  */
 
+// UI state deliberately lives outside the persisted PracticeSession.
+let practiceWorkspaceMode = 'expanded';
+let practiceWorkspaceFrame = 0;
+
+function schedulePracticeWorkspaceLayout() {
+    if (practiceWorkspaceFrame) return;
+    practiceWorkspaceFrame = requestAnimationFrame(() => {
+        practiceWorkspaceFrame = 0;
+        layoutPracticeWorkspace();
+    });
+}
+
+function layoutPracticeWorkspace(dockDrawers = false) {
+    const panel = document.getElementById('practice-panel');
+    if (!panel || panel.hidden) return;
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft || 0;
+    const top = viewport?.offsetTop || 0;
+    const width = viewport?.width || innerWidth;
+    const height = viewport?.height || innerHeight;
+    const main = document.getElementById('main-area').getBoundingClientRect();
+    const grammar = document.getElementById('grammar-panel');
+    const ask = document.getElementById('ask-panel');
+    const nav = document.querySelector('nav');
+    const grammarWidth = grammar.classList.contains('expanded') ? grammar.offsetWidth : 0;
+    const askWidth = ask.classList.contains('expanded') ? ask.offsetWidth : 0;
+    const navWidth = nav && !nav.classList.contains('collapsed') ? nav.offsetWidth : 0;
+    let start = Math.max(left, askWidth, navWidth);
+    let end = Math.min(left + width, innerWidth - grammarWidth);
+    // When drawers leave no usable worksheet, retain their contents in the existing tabs.
+    if (end - start < Math.min(width, 288)) {
+        if (practiceWorkspaceMode === 'expanded' && !dockDrawers) {
+            setPracticeWorkspaceMode('collapsed-bottom');
+            return;
+        }
+        if (practiceWorkspaceMode === 'expanded') {
+            grammar.classList.remove('expanded');
+            ask.classList.remove('expanded');
+        }
+        start = left;
+        end = left + width;
+    }
+    const y = Math.max(top, main.top);
+    const bottom = Math.min(top + height, main.bottom);
+    panel.style.left = start + 'px';
+    panel.style.top = y + 'px';
+    panel.style.width = Math.max(0, end - start) + 'px';
+    panel.style.height = Math.max(0, bottom - y) + 'px';
+    const restore = document.getElementById('practice-restore');
+    if (practiceWorkspaceMode === 'bookmark') {
+        // The tab is a child of Grammar, so it follows the drawer's edge even in motion.
+        restore.style.left = '-44px';
+        restore.style.top = Math.max(12, Math.min(grammar.offsetHeight - 112,
+            (grammar.querySelector('.panel-header')?.offsetHeight || 56) + 16)) + 'px';
+        restore.style.width = '44px';
+    } else {
+        restore.style.left = start + 'px';
+        restore.style.top = bottom - 44 + 'px';
+        restore.style.width = Math.max(0, end - start) + 'px';
+    }
+}
+
+function syncPracticeRestore(panel) {
+    const restore = document.getElementById('practice-restore');
+    const grammar = document.getElementById('grammar-panel');
+    const bookmarked = !panel.hidden && practiceWorkspaceMode === 'bookmark';
+    grammar.classList.toggle('practice-bookmark-dock', bookmarked);
+    const parent = bookmarked ? grammar : document.body;
+    if (restore.parentElement !== parent) parent.appendChild(restore);
+    restore.dataset.mode = practiceWorkspaceMode;
+    restore.hidden = practiceWorkspaceMode === 'expanded' || panel.hidden;
+
+}
+
+function setPracticeWorkspaceMode(mode) {
+    if (!['expanded', 'collapsed-bottom', 'bookmark'].includes(mode)) return;
+    const panel = getPracticePanel();
+    practiceWorkspaceMode = mode;
+    panel.dataset.mode = mode;
+    panel.inert = mode !== 'expanded';
+    panel.setAttribute('aria-hidden', String(mode !== 'expanded'));
+    const restore = document.getElementById('practice-restore');
+    syncPracticeRestore(panel);
+    layoutPracticeWorkspace(mode === 'expanded');
+    if (mode !== 'expanded') restore.focus({ preventScroll: true });
+    else panel.querySelector('#practice-collapse')?.focus({ preventScroll: true });
+}
+
+function mountPracticeWorkspaceControls(panel) {
+    const header = panel.querySelector('.practice-header');
+    if (!header || header.querySelector('#practice-collapse')) return;
+    for (const [id, icon, label, mode] of [
+        ['practice-collapse', '↓', 'Collapse Practice down', 'collapsed-bottom'],
+        ['practice-bookmark', '▯', 'Minimize Practice to bookmark', 'bookmark']
+    ]) {
+        const button = document.createElement('button');
+        button.id = id;
+        button.type = 'button';
+        button.textContent = icon;
+        if (mode === 'bookmark') {
+            button.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>';
+        }
+        button.title = label;
+        button.setAttribute('aria-label', label);
+        button.onclick = () => setPracticeWorkspaceMode(mode);
+        header.appendChild(button);
+    }
+    // One bounded scroll container keeps controls visible even in short viewports.
+    const body = document.createElement('div');
+    body.className = 'practice-scroll';
+    while (header.nextSibling) body.appendChild(header.nextSibling);
+    panel.appendChild(body);
+}
+
 // Create or get practice panel
 function getPracticePanel() {
     let panel = document.getElementById('practice-panel');
@@ -9,6 +123,7 @@ function getPracticePanel() {
         panel = document.createElement('div');
         panel.id = 'practice-panel';
         panel.className = 'side-panel';
+        panel.hidden = true;
         panel.setAttribute('role', 'region');
         panel.setAttribute('aria-label', 'Practice Studio');
 
@@ -20,12 +135,35 @@ function getPracticePanel() {
             document.body.appendChild(panel);
         }
     }
+    if (!document.getElementById('practice-restore')) {
+        const restore = document.createElement('button');
+        restore.id = 'practice-restore';
+        restore.className = 'side-panel practice-restore';
+        restore.type = 'button';
+        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span>Practice</span>';
+        restore.title = 'Restore Practice workspace';
+        restore.setAttribute('aria-label', 'Restore Practice workspace');
+        restore.setAttribute('aria-controls', 'practice-panel');
+        restore.hidden = true;
+        restore.onclick = () => setPracticeWorkspaceMode('expanded');
+        document.body.appendChild(restore);
+        const observer = new MutationObserver(schedulePracticeWorkspaceLayout);
+        const resize = new ResizeObserver(schedulePracticeWorkspaceLayout);
+        for (const element of [document.getElementById('grammar-panel'), document.getElementById('ask-panel'), document.querySelector('nav'), document.getElementById('main-area')]) {
+            observer.observe(element, { attributes: true, attributeFilter: ['class', 'style'] });
+            resize.observe(element);
+        }
+        window.addEventListener('resize', schedulePracticeWorkspaceLayout);
+        window.visualViewport?.addEventListener('resize', schedulePracticeWorkspaceLayout);
+        window.visualViewport?.addEventListener('scroll', schedulePracticeWorkspaceLayout);
+    }
     return panel;
 }
 
 // Show practice panel with worksheet
 function displayPracticeSession(session) {
     const panel = getPracticePanel();
+    const opening = panel.hidden;
 
     if (session.status === 'generating') {
         displayPracticeGenerating(panel, session);
@@ -36,6 +174,13 @@ function displayPracticeSession(session) {
     }
 
     panel.hidden = false;
+    mountPracticeWorkspaceControls(panel);
+    if (opening) practiceWorkspaceMode = 'expanded';
+    panel.dataset.mode = practiceWorkspaceMode;
+    panel.inert = practiceWorkspaceMode !== 'expanded';
+    panel.setAttribute('aria-hidden', String(panel.inert));
+    syncPracticeRestore(panel);
+    layoutPracticeWorkspace(opening);
 }
 
 // Show generating state
@@ -54,6 +199,7 @@ function displayPracticeGenerating(panel, session) {
     `;
 
     document.getElementById('practice-close').onclick = closePractice;
+    mountPracticeWorkspaceControls(panel);
 }
 
 // Show ready state with worksheet
@@ -114,6 +260,7 @@ function displayPracticeReady(panel, session) {
 
     // Attach event handlers
     document.getElementById('practice-close').onclick = closePractice;
+    mountPracticeWorkspaceControls(panel);
     document.getElementById('practice-retry').onclick = retryPractice;
     document.getElementById('practice-regenerate').onclick = regeneratePractice;
 
@@ -229,6 +376,7 @@ function displayPracticeError(panel, session) {
 
     document.getElementById('practice-retry').onclick = retryPractice;
     document.getElementById('practice-close').onclick = closePractice;
+    mountPracticeWorkspaceControls(panel);
     document.getElementById('practice-close-error').onclick = closePractice;
 }
 
@@ -328,6 +476,8 @@ function closePractice() {
     if (panel) {
         panel.hidden = true;
     }
+    document.getElementById('practice-restore')?.setAttribute('hidden', '');
+    document.getElementById('grammar-panel').classList.remove('practice-bookmark-dock');
     closePracticeSession();
 }
 
@@ -393,12 +543,69 @@ async function regeneratePractice() {
 // CSS styles for practice panel and worksheet
 const practiceStyles = `
 #practice-panel {
+    position: fixed;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    overflow-y: auto;
+    min-width: 0;
+    min-height: 0;
+    max-height: 100dvh;
+    overflow: hidden;
     padding: 0;
-    background: var(--background-color);
+    right: auto;
+    border-radius: 8px;
+    background: var(--panel-bg);
+    z-index: 10001;
+    transition: transform 180ms ease, opacity 180ms ease, visibility 180ms;
+}
+#practice-panel[hidden], #practice-restore[hidden] { display: none; }
+#practice-panel:not([hidden])[data-mode="collapsed-bottom"] {
+    transform: translateY(35%); opacity: 0; visibility: hidden; pointer-events: none;
+}
+#practice-panel:not([hidden])[data-mode="bookmark"] {
+    transform: translateX(12%); opacity: 0; visibility: hidden; pointer-events: none;
+}
+.practice-scroll {
+    flex: 1; min-height: 0; min-width: 0; overflow-y: auto;
+    overflow-x: hidden; overscroll-behavior: contain; overflow-wrap: anywhere;
+}
+#practice-panel .practice-worksheet, #practice-panel .practice-content,
+#practice-panel .practice-error { overflow: visible; }
+#practice-panel .practice-header { padding: 6px; min-width: 0; }
+#practice-panel .practice-header h2 {
+    min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#practice-panel .practice-header button {
+    flex: 0 0 44px; min-height: 44px; cursor: pointer;
+    background: var(--panel-bg); color: var(--text-color);
+    border: 1px solid var(--border-color); border-radius: 6px; font-size: 22px;
+}
+#practice-restore {
+    position: fixed; height: 44px; min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    visibility: visible; transform: none; z-index: 20001;
+    background: var(--panel-bg); color: var(--text-color);
+    border: 1px solid var(--border-color); border-radius: 8px 8px 0 0;
+    cursor: pointer; box-shadow: 0 -2px 10px #0002;
+}
+#practice-restore { flex-direction: row; gap: 8px; font-weight: 600; }
+/* Reserve a slim outside rail and provide positioning context for bookmark tab. */
+#grammar-panel.practice-bookmark-dock {
+    max-width: calc(100vw - 44px);
+    position: relative;
+}
+#practice-restore[data-mode="bookmark"] {
+    position: absolute; height: 112px; min-height: 44px;
+    flex-direction: column; gap: 8px; padding: 10px 0;
+    background: color-mix(in srgb, var(--panel-bg) 90%, #6383e8);
+    color: var(--text-color); border: 1px solid color-mix(in srgb, var(--border-color) 75%, #6383e8);
+    border-right: 3px solid #6383e8; border-radius: 8px 0 0 8px;
+    box-shadow: -3px 2px 8px #0001; font-size: 12px;
+}
+#practice-restore[data-mode="bookmark"] span { writing-mode: vertical-rl; }
+#practice-restore[data-mode="bookmark"]:hover { background: color-mix(in srgb, var(--panel-bg) 80%, #6383e8); }
+#practice-restore:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
+@media (prefers-reduced-motion: reduce) {
+    #practice-panel { transition: none; }
 }
 
 .practice-header {

@@ -293,3 +293,18 @@ printing, keyboard/pointer interactions and UI cleanup. It loads before `main.js
 so its translated labels exist before `applyI18n()`, and before the PWA overlay
 stack. Existing controls own every action. See `QUICK_WHEEL.md` for the complete
 menu action map, interaction details and regression coverage.
+
+## Practice workspace
+
+`js/practice-session.js` owns worksheet generation, persistence and async session guards.
+`js/practice-worksheet.js` owns safe rendering and the separate, non-persisted
+`practiceWorkspaceMode` (`expanded`, `collapsed-bottom`, `bookmark`). UI transitions
+keep the worksheet DOM mounted and inert while concealed; only explicit Close ends
+the session. A bounded `.practice-scroll` preserves scrolling across those transitions.
+The workspace measures the main reading area, visual viewport, navigation and open
+Grammar/Ask panels, and updates on layout changes. Where drawers leave insufficient
+room, expanding Practice docks them into their existing tabs without clearing content;
+opening a drawer then collapses Practice. The bookmark is attached outside Grammar’s
+left edge and follows its drawer motion; phones reserve a 44px rail to avoid covering
+Grammar content. `tests/practice_workspace_browser.py` covers
+geometry, retained session/page/hints/scroll, async rendering and narrow layouts.
