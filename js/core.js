@@ -484,7 +484,7 @@ const I18N = {
                       fr: "Une nouvelle version de l'application est disponible.", ru: 'Доступна новая версия приложения.' },
     updateReload:   { uk: 'Оновити', en: 'Update', fr: 'Mettre à jour', ru: 'Обновить' },
     archiveGuardFailed: { uk: 'Не вдалося перевірити безпеку файла. Спробуйте ще раз або перезавантажте сторінку.',
-                      en: 'Could not verify the file's safety. Try again or reload the page.',
+                      en: "Could not verify the file's safety. Try again or reload the page.",
                       fr: 'Impossible de vérifier la sécurité du fichier. Réessayez ou rechargez la page.',
                       ru: 'Не удалось проверить безопасность файла. Попробуйте снова или перезагрузите страницу.' },
     tAltVoices:     { uk: 'Чергувати два голоси під час читання', en: 'Alternate two voices while reading', fr: 'Alterner deux voix pendant la lecture', ru: 'Чередовать два голоса при чтении' },
