@@ -787,20 +787,13 @@ window.__asyncTest.singlePromise = (async () => {
 true;
 """)
 
-# Wait for async completion
-c.js(r"""
-(async () => {
-    await window.__asyncTest.singlePromise;
-    await new Promise(resolve => setTimeout(resolve, 100));
-})();
-true;
-""")
-
 check("T19: Session created and ready after generation",
-      "window.__asyncTest.singleSuccess.sessionCreated && window.__asyncTest.singleSuccess.readyShown")
+      "window.__asyncTest.singleSuccess.sessionCreated && window.__asyncTest.singleSuccess.readyShown",
+      timeout=2)
 
 check("T19: Session transitioned generating → ready",
-      "window.__asyncTest.singleSuccess.stateTransition")
+      "window.__asyncTest.singleSuccess.stateTransition",
+      timeout=2)
 
 # TEST 20: Async Lifecycle - Race Condition (A starts, B starts, A fails late)
 print("\n=== TEST 20: Async Lifecycle - Race Condition (Regression) ===")
@@ -877,20 +870,13 @@ window.__asyncTest.racePromise = (async () => {
 true;
 """)
 
-# Wait for race test to complete
-c.js(r"""
-(async () => {
-    await window.__asyncTest.racePromise;
-    await new Promise(resolve => setTimeout(resolve, 100));
-})();
-true;
-""")
-
 check("T20: Requests A and B create different sessions",
-      "window.__asyncTest.raceTest.bothCreated")
+      "window.__asyncTest.raceTest.bothCreated",
+      timeout=2)
 
 check("T20: Stale request A cannot overwrite active B",
-      "window.__asyncTest.raceTest.aNotOverwriteB")
+      "window.__asyncTest.raceTest.aNotOverwriteB",
+      timeout=2)
 
 check("T20: Final session is B's ready state",
       "window.__asyncTest.raceTest.bFinal")
