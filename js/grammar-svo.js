@@ -160,12 +160,16 @@ async function startAiTask(contextText, mode, userPrompt = "") {
                 // Continue with AI in background; update display when complete
                 generatePromise
                     .then(session => {
-                        if (session) {
-                            displayPracticeSession(session);
+                        // Always update display, even if session is null or error state
+                        // (session will have status='error' if generation failed or was stale)
+                        const finalSession = session || getCurrentPracticeSession();
+                        if (finalSession) {
+                            displayPracticeSession(finalSession);
                         }
                     })
                     .catch(err => {
                         console.error('Practice generation failed:', err);
+                        // Even on throw, get the current session which will have error state
                         const updated = getCurrentPracticeSession();
                         if (updated) {
                             displayPracticeSession(updated);

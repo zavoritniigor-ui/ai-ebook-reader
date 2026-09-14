@@ -484,6 +484,9 @@
         
         #ask-panel { left: 0; transform: translateX(-100%); box-shadow: 5px 0 25px rgba(0,0,0,0.2); border-radius: 0 16px 16px 0; }
         #ask-panel.expanded { transform: none; visibility: visible; }
+
+        #practice-panel { right: 0; transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.2); border-radius: 16px 0 0 16px; }
+        #practice-panel:not([hidden]) { transform: none; visibility: visible; }
         
         /* Прозорі напівкруглі "ручки" панелей — жодного малюнка, у спокої повністю прозорі.
            Права ручка = граматика, ліва = запит до AI (як просив користувач).
@@ -1046,9 +1049,9 @@
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
-    <script src="js/grammar-svo.js?v=784efec46bf2"></script>
+    <script src="js/grammar-svo.js?v=1e2cc926855e"></script>
     <script src="js/ai-client.js?v=82020067e03c"></script>
-    <script src="js/practice-session.js?v=8f379a8efaaa"></script>
+    <script src="js/practice-session.js?v=fb69a3b6c60e"></script>
     <script src="js/practice-worksheet.js?v=4e57bf6456a0"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=cdef18c51883"></script>

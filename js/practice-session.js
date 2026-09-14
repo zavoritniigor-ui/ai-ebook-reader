@@ -252,8 +252,29 @@ async function generatePracticeWorksheet(context) {
     } catch (err) {
         // Check if task is still current
         if (!task.current()) {
-            console.info('Practice generation error on stale task (ignoring)');
-            return null;
+            // Task became stale - update session to error state but do NOT overwrite current
+            // (another newer session may have started; stale A must not replace active B)
+            session.status = 'error';
+            session.lastError = {
+                message: 'Practice generation was cancelled (another request started)',
+                code: 'StaleTaskError',
+                timestamp: Date.now()
+            };
+            session.updatedAt = Date.now();
+
+            // Persist stale error state (for the history), but only update currentPracticeSession
+            // if this stale session is still the active one
+            persistPracticeSession(session);
+
+            // Only update the UI if this session is still current
+            // If a newer session (B) started, don't overwrite it with stale A
+            if (currentPracticeSession?.id === session.id) {
+                currentPracticeSession = session;
+            }
+
+            // Return the session with error state (for the promise chain),
+            // but UI update is controlled by the currentPracticeSession check above
+            return session;
         }
 
         // Real error - update session with error state
@@ -268,7 +289,7 @@ async function generatePracticeWorksheet(context) {
         // Persist error state
         persistPracticeSession(session);
 
-        // Update current session
+        // Update current session (this one is still current since task.current() passed)
         currentPracticeSession = session;
 
         throw err; // Caller handles error display

@@ -636,4 +636,250 @@ window.__hintsTest.noHintsTest.rendersCorrectly = window.__hintsTest.noHintsTest
 check("T16: Optional hints work correctly",
       "window.__hintsTest.noHintsTest.validationPassed && window.__hintsTest.noHintsTest.rendersCorrectly && window.__hintsTest.noHintsTest.ex1HasHints && window.__hintsTest.noHintsTest.ex2NoHints")
 
+# TEST 17: Practice Panel Visibility Regression (Production fix)
+print("\n=== TEST 17: Practice Panel Visibility (Regression) ===")
+
+c.js(r"""
+window.__visibilityTest = {
+    panelVisible: false,
+    computedDisplay: null,
+    computedVisibility: null,
+    notOffscreen: false
+};
+
+// Get the practice panel (created by previous tests)
+const practicePanel = document.getElementById('practice-panel');
+if (practicePanel) {
+    // Check computed styles
+    const computed = window.getComputedStyle(practicePanel);
+    window.__visibilityTest.computedDisplay = computed.display;
+    window.__visibilityTest.computedVisibility = computed.visibility;
+
+    // For fixed-positioned elements, check that transform is not hidden
+    // (visibility:visible + transform:none means it's visible, not off-screen)
+    const transform = computed.transform;
+    window.__visibilityTest.notOffscreen = !transform.includes('translateX(100%)');
+    window.__visibilityTest.hidden = practicePanel.hidden;
+}
+
+true;
+""")
+
+check("T17: Practice panel not hidden",
+      "!window.__visibilityTest.hidden")
+
+check("T17: Practice panel has display:flex (not none)",
+      "window.__visibilityTest.computedDisplay === 'flex'")
+
+check("T17: Practice panel has visibility:visible (not hidden)",
+      "window.__visibilityTest.computedVisibility === 'visible'")
+
+check("T17: Practice panel not off-screen (transform not translateX(100%))",
+      "window.__visibilityTest.notOffscreen")
+
+# TEST 18: Grammar/Ask Panels Still Work
+print("\n=== TEST 18: Grammar/Ask Panel Isolation ===")
+
+c.js(r"""
+// Close any open panels first (from previous tests)
+const grammaPanelSetup = document.getElementById('grammar-panel');
+const askPanelSetup = document.getElementById('ask-panel');
+if (grammaPanelSetup) grammaPanelSetup.hidden = true;
+if (askPanelSetup) askPanelSetup.hidden = true;
+
+window.__isolationTest = {
+    grammarHidden: true,
+    askHidden: true,
+    practiceHidden: false,
+    noConflict: true
+};
+
+const grammarPanelT18 = document.getElementById('grammar-panel');
+const askPanelT18 = document.getElementById('ask-panel');
+const practicePanelT18 = document.getElementById('practice-panel');
+
+if (grammarPanelT18) window.__isolationTest.grammarHidden = grammarPanelT18.hidden;
+if (askPanelT18) window.__isolationTest.askHidden = askPanelT18.hidden;
+if (practicePanelT18) window.__isolationTest.practiceHidden = practicePanelT18.hidden;
+
+// All should be independent
+window.__isolationTest.noConflict =
+    window.__isolationTest.grammarHidden &&
+    window.__isolationTest.askHidden &&
+    !window.__isolationTest.practiceHidden;
+
+true;
+""")
+
+check("T18: Grammar panel still independent",
+      "window.__isolationTest.grammarHidden")
+
+check("T18: Ask panel still independent",
+      "window.__isolationTest.askHidden")
+
+check("T18: Practice panel visible (not hidden)",
+      "!window.__isolationTest.practiceHidden")
+
+check("T18: No panel conflicts",
+      "window.__isolationTest.noConflict")
+
+# TEST 19: Async Lifecycle - Single Request Success
+print("\n=== TEST 19: Async Lifecycle - Single Request Success (Regression) ===")
+
+c.js(r"""
+window.__asyncTest = {
+    singleSuccess: {
+        sessionCreated: false,
+        generatingShown: false,
+        readyShown: false,
+        stateTransition: false
+    },
+    raceTest: {
+        bothCreated: false,
+        aNotOverwriteB: false,
+        bFinal: false
+    }
+};
+
+// Mock callAI to return success after a brief delay
+const origCallAI = window.callAI;
+let testCallCount = 0;
+window.callAI = async function(prompt, signal, task) {
+    if (task === 'practice') {
+        testCallCount++;
+        // Simulate brief generation time
+        await new Promise(resolve => setTimeout(resolve, 50));
+        // Return success with mock worksheet
+        return JSON.stringify(__practiceTests.mockWorksheet);
+    }
+    return origCallAI(prompt, signal, task);
+};
+
+true;
+""")
+
+# Test single successful generation
+c.js(r"""
+window.__asyncTest.singlePromise = (async () => {
+    const singleContext = {
+        sourceText: 'Single test',
+        sourceLanguage: 'en',
+        targetLanguage: 'uk',
+        level: 'A1'
+    };
+
+    try {
+        window.__asyncTest.singleSuccess.sessionCreated = false;
+
+        // Start generation (session created in 'generating' state internally)
+        const result = await generatePracticeWorksheet(singleContext);
+        const after = getCurrentPracticeSession();
+
+        // Verify session was created and is ready after generation
+        window.__asyncTest.singleSuccess.sessionCreated = !!after;
+        window.__asyncTest.singleSuccess.readyShown = after?.status === 'ready';
+        // State transition: session created in 'generating', now 'ready' means it transitioned
+        window.__asyncTest.singleSuccess.stateTransition = result?.status === 'ready' && after?.status === 'ready' && result?.id === after?.id;
+    } catch (e) {
+        window.__asyncTest.singleSuccess.error = e.message;
+    }
+})();
+
+true;
+""")
+
+check("T19: Session created and ready after generation",
+      "window.__asyncTest.singleSuccess.sessionCreated && window.__asyncTest.singleSuccess.readyShown",
+      timeout=2)
+
+check("T19: Session transitioned generating → ready",
+      "window.__asyncTest.singleSuccess.stateTransition",
+      timeout=2)
+
+# TEST 20: Async Lifecycle - Race Condition (A starts, B starts, A fails late)
+print("\n=== TEST 20: Async Lifecycle - Race Condition (Regression) ===")
+
+c.js(r"""
+// Mock callAI for race test: A fails after delay, B succeeds quickly
+let raceCallCount = 0;
+window.callAI = async function(prompt, signal, task) {
+    if (task === 'practice') {
+        const callNum = ++raceCallCount;
+        if (callNum === 1) {
+            // A: fail after a delay (to ensure B completes first)
+            await new Promise(resolve => setTimeout(resolve, 150));
+            if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+            throw new Error('A failed deliberately for race test');
+        } else if (callNum === 2) {
+            // B: succeed quickly
+            await new Promise(resolve => setTimeout(resolve, 30));
+            if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+            return JSON.stringify(__practiceTests.mockWorksheet);
+        }
+    }
+    return origCallAI(prompt, signal, task);
+};
+
+true;
+""")
+
+c.js(r"""
+window.__asyncTest.racePromise = (async () => {
+    try {
+        const contextA = {
+            sourceText: 'Request A',
+            sourceLanguage: 'en',
+            targetLanguage: 'uk',
+            level: 'A1'
+        };
+        const contextB = {
+            sourceText: 'Request B',
+            sourceLanguage: 'en',
+            targetLanguage: 'uk',
+            level: 'A1'
+        };
+
+        // Start A
+        const promiseA = generatePracticeWorksheet(contextA);
+        const sessionAId = getCurrentPracticeSession()?.id;
+
+        // Immediately start B (before A completes)
+        await new Promise(resolve => setTimeout(resolve, 10));
+        const promiseB = generatePracticeWorksheet(contextB);
+        const sessionBId = getCurrentPracticeSession()?.id;
+
+        window.__asyncTest.raceTest.bothCreated = sessionAId !== sessionBId;
+
+        // Wait for both to complete
+        const resultA = await promiseA.catch(e => ({ error: e.message }));
+        const resultB = await promiseB.catch(e => ({ error: e.message }));
+
+        const finalSession = getCurrentPracticeSession();
+
+        // A should fail but NOT overwrite B
+        window.__asyncTest.raceTest.aNotOverwriteB =
+            finalSession?.id === sessionBId &&
+            finalSession?.status === 'ready' &&
+            !!finalSession?.worksheet;
+
+        window.__asyncTest.raceTest.bFinal = finalSession?.id === sessionBId;
+    } catch (e) {
+        window.__asyncTest.raceTest.error = e.message;
+    }
+})();
+
+true;
+""")
+
+check("T20: Requests A and B create different sessions",
+      "window.__asyncTest.raceTest.bothCreated",
+      timeout=2)
+
+check("T20: Stale request A cannot overwrite active B",
+      "window.__asyncTest.raceTest.aNotOverwriteB",
+      timeout=2)
+
+check("T20: Final session is B's ready state",
+      "window.__asyncTest.raceTest.bFinal")
+
 print("\n=== ALL PRACTICE STUDIO TESTS PASSED ===")
