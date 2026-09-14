@@ -311,8 +311,18 @@ Target language: ${safeLangName}
 Level: ${safeLevel}
 Context: "${safeSourceText}"
 
+ALLOWED EXERCISE TYPES (use ONLY these):
+- fill_form: fill in blanks with correct words/forms
+- auxiliary: identify or use auxiliary verbs
+- conjugation: conjugate verbs in specific tenses/moods
+- transform: transform sentences (passive to active, etc.)
+- correct_error: identify and correct grammatical errors
+- translate: translate words or phrases
+- short_production: produce short responses or sentences
+- contextual_usage: use words/phrases in appropriate context
+
 Generate 15 practice exercises for teaching the key concepts from the context above.
-Exercises should progress from recognition (easier) to production (harder).
+Exercises should progress from easier (recognition/receptive skills) to harder (production/active skills).
 
 Return ONLY valid JSON (no markdown, no explanation).
 
@@ -346,12 +356,10 @@ Worksheet schema:
   ]
 }
 
-Exercise types allowed: fill_form, auxiliary, conjugation, transform, correct_error, translate, short_production, contextual_usage
-
 Requirements:
 - Exactly 15 exercises
 - All IDs must be unique (ex1, ex2, ..., ex15)
-- All types must be from the allowed list above
+- CRITICAL: All exercise types MUST be from the allowed list above (fill_form, auxiliary, conjugation, transform, correct_error, translate, short_production, contextual_usage) — NO OTHER TYPES
 - Difficulty should progress 1 (easy) → 5 (hard)
 - Each exercise should teach/reinforce concepts from the context
 - All string fields must be nonempty

@@ -882,4 +882,65 @@ check("T20: Stale request A cannot overwrite active B",
 check("T20: Final session is B's ready state",
       "window.__asyncTest.raceTest.bFinal")
 
+# TEST 21: Worksheet Type Constraint (Regression test for AI-generated unsupported types)
+print("\n=== TEST 21: Worksheet Type Constraint (Regression) ===")
+
+c.js(r"""
+window.__typeConstraintTest = {
+    unsupportedTypeRejected: false,
+    supportedTypesAccepted: false
+};
+
+// Test that unsupported types like "recognition" are rejected
+const unsupportedWorksheet = {
+    metadata: __practiceTests.mockWorksheet.metadata,
+    context: __practiceTests.mockWorksheet.context,
+    exercises: [{
+        id: 'ex1',
+        type: 'recognition',  // This is NOT an allowed type
+        instruction: 'Identify the correct form',
+        prompt: 'What is the past tense?',
+        expectedConcept: 'past tense',
+        difficulty: 1
+    }]
+};
+
+try {
+    validateWorksheet(unsupportedWorksheet);
+    __typeConstraintTest.unsupportedTypeRejected = false;
+} catch (e) {
+    // Should throw for unsupported type
+    __typeConstraintTest.unsupportedTypeRejected = e.message.includes('unsupported') || e.message.includes('type');
+}
+
+// Test that all supported types are accepted
+const supportedWorksheet = {
+    metadata: __practiceTests.mockWorksheet.metadata,
+    context: __practiceTests.mockWorksheet.context,
+    exercises: [
+        { id: 'ex1', type: 'fill_form', instruction: 'Fill', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
+        { id: 'ex2', type: 'auxiliary', instruction: 'Aux', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
+        { id: 'ex3', type: 'conjugation', instruction: 'Conj', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
+        { id: 'ex4', type: 'transform', instruction: 'Transform', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
+        { id: 'ex5', type: 'correct_error', instruction: 'Error', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
+        { id: 'ex6', type: 'translate', instruction: 'Trans', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
+        { id: 'ex7', type: 'short_production', instruction: 'Prod', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
+        { id: 'ex8', type: 'contextual_usage', instruction: 'Context', prompt: 'Test', expectedConcept: 'test', difficulty: 1 }
+    ]
+};
+
+try {
+    validateWorksheet(supportedWorksheet);
+    __typeConstraintTest.supportedTypesAccepted = true;
+} catch (e) {
+    __typeConstraintTest.supportedTypesAccepted = false;
+}
+""")
+
+check("T21: Unsupported type 'recognition' is rejected",
+      "window.__typeConstraintTest.unsupportedTypeRejected")
+
+check("T21: All supported types are accepted",
+      "window.__typeConstraintTest.supportedTypesAccepted")
+
 print("\n=== ALL PRACTICE STUDIO TESTS PASSED ===")
