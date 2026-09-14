@@ -717,3 +717,28 @@ Second CI follow-up: FB2.ZIP coordinate selection race recurred on the next
 commit. `tests/formats_browser.py` now waits for layout and finite animations
 after book replacement before hit-testing; selection assertions and application
 code are unchanged. Run this targeted suite, then push and verify new CI/preview.
+
+## Phase 3B Final UX — Practice workspace (2026-09-14)
+
+User requests a new branch/PR and explicitly prohibits automatic merge.
+Branch: `feature/practice-workspace-ux`, based on `origin/main` at `f374602`.
+PR #107 is confirmed merged; no pre-existing open PR was present at preflight.
+Implemented UI-only expanded / collapsed-bottom / bookmark modes, measured central
+workspace geometry, retained mounted scroll/session state, compact accessible
+controls and narrow-layout drawer access. No grading or session-engine changes.
+Modified: `js/practice-worksheet.js`, generated `index.html`/`sw.js` versions,
+new `tests/practice_workspace_browser.py`, CI wiring, architecture and this handoff.
+Focused workspace and existing Practice suites pass, including stale-response tests.
+Syntax, shell versions, CI coverage and CDP transport pass. Full local browser
+regressions are running in `/tmp/practice-full-suite.log`; changes are uncommitted.
+Next: finish regressions, review diff, run pre-push gates, commit and push this branch,
+create PR to main, verify exact SHA CI. Do not merge. Production deployment and
+physical device acceptance remain pending user review.
+
+User correction: original floating yellow bookmark rejected. Replaced with a compact
+book-icon tab attached OUTSIDE Grammar’s left edge (child of drawer), with a reserved
+44px rail on phones. New browser geometry and touch assertions pass; screenshot at
+`/tmp/practice-edge-bookmark-mobile.png` shows tab x=0..44 and Grammar x=44..390.
+Full PDF/learning and first six CI suites passed; provider rerun passes on fresh
+Chrome after initial translation failure. Remaining regressions are being checked
+by the validation agent (`/tmp/practice-remaining-regression.log`). No push or PR yet.
