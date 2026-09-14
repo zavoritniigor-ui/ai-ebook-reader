@@ -590,7 +590,19 @@ const I18N = {
     statsTappedVocabulary: { uk: 'Лексика із запитом', en: 'Tapped vocabulary', fr: 'Vocabulaire touché', ru: 'Лексика с запросом' },
     statsUnknown: { uk: 'Не класифіковано', en: 'Unclassified', fr: 'Non classé', ru: 'Не классифицировано' },
     statsUnknownShort: { uk: 'Інше', en: 'Other', fr: 'Autre', ru: 'Другое' },
-    statsNoHelp: { uk: 'Ще немає запитів допомоги', en: 'No help requests yet', fr: 'Aucune demande d’aide', ru: 'Запросов помощи пока нет' }
+    statsNoHelp: { uk: ‘Ще немає запитів допомоги’, en: ‘No help requests yet’, fr: ‘Aucune demande d’aide’, ru: ‘Запросов помощи пока нет’ },
+    // Practice Studio UI strings
+    practiceSource:     { uk: ‘Джерело:’, en: ‘Source:’, fr: ‘Source:’, ru: ‘Источник:’ },
+    practiceLevel:      { uk: ‘Рівень:’, en: ‘Level:’, fr: ‘Niveau:’, ru: ‘Уровень:’ },
+    practiceExercises:  { uk: ‘Вправи:’, en: ‘Exercises:’, fr: ‘Exercices:’, ru: ‘Упражнения:’ },
+    practicePrevious:   { uk: ‘← Попереднє’, en: ‘← Previous’, fr: ‘← Précédent’, ru: ‘← Назад’ },
+    practicePage:       { uk: ‘Сторінка’, en: ‘Page’, fr: ‘Page’, ru: ‘Страница’ },
+    practiceNext:       { uk: ‘Наступне →’, en: ‘Next →’, fr: ‘Suivant →’, ru: ‘Дальше →’ },
+    practiceRegenerate: { uk: ‘Регенерувати’, en: ‘Regenerate’, fr: ‘Régénérer’, ru: ‘Перегенерировать’ },
+    practiceCheck:      { uk: ‘Перевірити AI’, en: ‘Check with AI’, fr: ‘Vérifier avec l\’IA’, ru: ‘Проверить с AI’ },
+    practiceComingSoon: { uk: ‘(буде скоро)’, en: ‘(coming soon)’, fr: ‘(bientôt)’, ru: ‘(скоро)’ },
+    practiceError:      { uk: ‘Помилка практики’, en: ‘Practice Error’, fr: ‘Erreur de pratique’, ru: ‘Ошибка практики’ },
+    practiceUnknownError: { uk: ‘Невідома помилка’, en: ‘Unknown error’, fr: ‘Erreur inconnue’, ru: ‘Неизвестная ошибка’ }
 };
 
 // Additional interface locales extend the existing dictionary. Keys not yet

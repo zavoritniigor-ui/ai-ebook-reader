@@ -4,6 +4,7 @@
  */
 
 const PRACTICE_SESSION_PREFIX = 'practice_session:';
+const PRACTICE_SESSION_LATEST_KEY = 'practice_session_latest_id';
 const PRACTICE_SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const ALLOWED_EXERCISE_TYPES = new Set([
     'fill_form', 'auxiliary', 'conjugation', 'transform',
@@ -29,12 +30,12 @@ function createPracticeSession(context) {
         updatedAt: Date.now(),
 
         // Learning context
-        sourceLanguage: context.sourceLanguage || 'en',
-        targetLanguage: context.targetLanguage || state.targetLang || 'uk',
-        bookId: context.bookId,
-        sourceText: context.sourceText || '',
-        sourceContext: context.sourceContext || '',
-        level: context.level || 'unknown',
+        sourceLanguage: context.sourceLanguage || null,
+        targetLanguage: context.targetLanguage || null,
+        bookId: context.bookId || null,
+        sourceText: context.sourceText || null,
+        sourceContext: context.sourceContext || null,
+        level: context.level || null,
 
         // Worksheet
         worksheet: null,
@@ -141,6 +142,10 @@ function persistPracticeSession(session) {
             PRACTICE_SESSION_PREFIX + session.id,
             JSON.stringify(session)
         );
+        // Track latest session ID for restoration on reload
+        if (session.status === 'ready') {
+            localStorage.setItem(PRACTICE_SESSION_LATEST_KEY, session.id);
+        }
     } catch (e) {
         console.warn('Failed to persist practice session:', e.message);
     }
@@ -392,7 +397,19 @@ function cleanupExpiredPracticeSessions() {
     }
 }
 
-// On app startup, clean up old sessions
+// On app startup, restore latest session and clean up old ones
 document.addEventListener('DOMContentLoaded', () => {
+    // Attempt to restore latest practice session if available
+    const latestSessionId = localStorage.getItem(PRACTICE_SESSION_LATEST_KEY);
+    if (latestSessionId) {
+        const restored = loadPracticeSession(latestSessionId);
+        if (restored && restored.status === 'ready') {
+            currentPracticeSession = restored;
+        } else {
+            // Clear stale/invalid latest reference
+            localStorage.removeItem(PRACTICE_SESSION_LATEST_KEY);
+        }
+    }
+    
     cleanupExpiredPracticeSessions();
 });

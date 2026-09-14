@@ -67,20 +67,20 @@ function displayPracticeReady(panel, session) {
 
     let html = `
         <div class="practice-header">
-            <button id="practice-close" class="icon-btn" title="Close" aria-label="Close Practice">←</button>
+            <button id="practice-close" class="icon-btn" title="${t('tClose')}" aria-label="${t('tClose')}">←</button>
             <h2>${escapeHtml(metadata.title)}</h2>
         </div>
         <div class="practice-meta">
             <div class="meta-row">
-                <span class="meta-label">Source:</span>
-                <span class="meta-value">${session.sourceText ? escapeHtml(session.sourceText.substring(0, 50)) + (session.sourceText.length > 50 ? '...' : '') : '(no context)'}</span>
+                <span class="meta-label">${t('practiceSource')}</span>
+                <span class="meta-value">${session.sourceText ? escapeHtml(session.sourceText.substring(0, 50)) + (session.sourceText.length > 50 ? '...' : '') : '—'}</span>
             </div>
             <div class="meta-row">
-                <span class="meta-label">Level:</span>
-                <span class="meta-value">${escapeHtml(session.level)}</span>
+                <span class="meta-label">${t('practiceLevel')}</span>
+                <span class="meta-value">${session.level ? escapeHtml(session.level) : '—'}</span>
             </div>
             <div class="meta-row">
-                <span class="meta-label">Exercises:</span>
+                <span class="meta-label">${t('practiceExercises')}</span>
                 <span class="meta-value">${exercises.length}</span>
             </div>
         </div>
@@ -95,9 +95,9 @@ function displayPracticeReady(panel, session) {
     if (maxPage > 1) {
         html += `
             <div class="practice-pagination">
-                <button id="practice-prev-page" ${session.currentPage === 0 ? 'disabled' : ''}>← Previous</button>
-                <span>Page ${session.currentPage + 1}/${maxPage}</span>
-                <button id="practice-next-page" ${session.currentPage >= maxPage - 1 ? 'disabled' : ''}>Next →</button>
+                <button id="practice-prev-page" ${session.currentPage === 0 ? 'disabled' : ''}>${t('practicePrevious')}</button>
+                <span>${t('practicePage')} ${session.currentPage + 1}/${maxPage}</span>
+                <button id="practice-next-page" ${session.currentPage >= maxPage - 1 ? 'disabled' : ''}>${t('practiceNext')}</button>
             </div>
         `;
     }
@@ -105,8 +105,8 @@ function displayPracticeReady(panel, session) {
     html += `
         <div class="practice-actions">
             <button id="practice-retry" class="btn-secondary">${t('retry')}</button>
-            <button id="practice-regenerate" class="btn-secondary">Regenerate</button>
-            <button id="practice-check" class="btn-primary" disabled title="Coming soon">Check with AI (coming soon)</button>
+            <button id="practice-regenerate" class="btn-secondary">${t('practiceRegenerate')}</button>
+            <button id="practice-check" class="btn-primary" disabled title="${t('practiceComingSoon')}">${t('practiceCheck')} ${t('practiceComingSoon')}</button>
         </div>
     `;
 
@@ -134,18 +134,18 @@ function displayPracticeReady(panel, session) {
 
 // Show error state
 function displayPracticeError(panel, session) {
-    const error = session.lastError || { message: 'Unknown error' };
+    const error = session.lastError || { message: t('practiceUnknownError') };
 
     panel.innerHTML = `
         <div class="practice-header">
-            <button id="practice-close" class="icon-btn" title="Close" aria-label="Close Practice">←</button>
-            <h2>Practice Error</h2>
+            <button id="practice-close" class="icon-btn" title="${t('tClose')}" aria-label="${t('tClose')}">←</button>
+            <h2>${t('practiceError')}</h2>
         </div>
         <div class="practice-error">
             <p style="color: red; margin: 20px 0;">⚠️ ${escapeHtml(error.message)}</p>
             <div class="practice-actions">
                 <button id="practice-retry" class="btn-primary">${t('retry')}</button>
-                <button id="practice-close-error" class="btn-secondary">Close</button>
+                <button id="practice-close-error" class="btn-secondary">${t('tClose')}</button>
             </div>
         </div>
     `;
