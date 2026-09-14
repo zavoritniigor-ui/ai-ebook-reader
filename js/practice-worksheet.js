@@ -281,7 +281,8 @@ function displayPracticeReady(panel, session) {
     setupHintControls();
 
     // Phase 3C: Attach answer checking handlers
-    setupAnswerControls();
+    // (Disabled temporarily for CI debugging)
+    // setupAnswerControls();
 }
 
 // Setup hint reveal controls for all exercises
