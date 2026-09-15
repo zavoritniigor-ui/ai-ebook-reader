@@ -44,6 +44,9 @@ function createPracticeSession(context) {
         // Phase 3B: Track revealed hints per exercise (ex: { "ex1": 2, "ex2": 0 })
         revealedHints: {},
 
+        // Phase 3C: Answer storage and feedback (ex: { "ex1": { answer: "went", feedback: "correct" } })
+        answers: {},
+
         // Error handling
         lastError: null
     };
@@ -128,6 +131,29 @@ function validateWorksheet(data) {
             }
         }
 
+        // Validate optional answer fields (Phase 3C)
+        if (ex.expectedAnswer !== undefined) {
+            if (typeof ex.expectedAnswer !== 'string' || ex.expectedAnswer.length === 0) {
+                throw new Error(`Invalid worksheet: exercise ${ex.id} expectedAnswer must be nonempty string if provided`);
+            }
+        }
+        if (ex.acceptedAnswers !== undefined) {
+            if (!Array.isArray(ex.acceptedAnswers)) {
+                throw new Error(`Invalid worksheet: exercise ${ex.id} acceptedAnswers must be an array`);
+            }
+            if (ex.acceptedAnswers.length > 0) {
+                ex.acceptedAnswers.forEach((ans, idx) => {
+                    if (typeof ans !== 'string' || ans.length === 0) {
+                        throw new Error(`Invalid worksheet: exercise ${ex.id} acceptedAnswer ${idx} must be nonempty string`);
+                    }
+                });
+                // Limit accepted answers (reasonable limit to prevent bloat)
+                if (ex.acceptedAnswers.length > 10) {
+                    throw new Error(`Invalid worksheet: exercise ${ex.id} has too many acceptedAnswers (max 10)`);
+                }
+            }
+        }
+
         // Content safety: no HTML/script tags
         const contentFields = [ex.instruction, ex.prompt, ex.expectedConcept];
         contentFields.forEach(field => {
@@ -138,6 +164,56 @@ function validateWorksheet(data) {
     });
 
     return data;
+}
+
+// Grade an answer locally for deterministic exercise types
+// Returns { isCorrect: boolean, feedback: string, needsReview: boolean }
+function gradeExerciseAnswer(exercise, userAnswer) {
+    // Only grade exercises with deterministic answers
+    if (!exercise.expectedAnswer) {
+        return {
+            isCorrect: null,
+            feedback: 'This exercise requires review by a language expert.',
+            needsReview: true
+        };
+    }
+
+    // Normalize user answer: trim whitespace
+    const normalized = (userAnswer || '').trim();
+
+    // Empty answer
+    if (normalized.length === 0) {
+        return {
+            isCorrect: false,
+            feedback: 'Please provide an answer before checking.',
+            needsReview: false
+        };
+    }
+
+    // Build list of acceptable answers (lowercase for comparison, preserve diacritics)
+    const acceptableAnswers = [exercise.expectedAnswer];
+    if (exercise.acceptedAnswers && Array.isArray(exercise.acceptedAnswers)) {
+        acceptableAnswers.push(...exercise.acceptedAnswers);
+    }
+
+    // Case-insensitive comparison (preserves diacritics/accents)
+    const normalizedLower = normalized.toLowerCase();
+    const isCorrect = acceptableAnswers.some(ans => ans.toLowerCase() === normalizedLower);
+
+    if (isCorrect) {
+        return {
+            isCorrect: true,
+            feedback: 'Correct! Well done.',
+            needsReview: false
+        };
+    } else {
+        // For fill_form and similar, show that it was incorrect but not the answer yet
+        return {
+            isCorrect: false,
+            feedback: `Not quite. Try again or reveal a hint for guidance.`,
+            needsReview: false
+        };
+    }
 }
 
 // Parse AI response and validate
@@ -296,7 +372,7 @@ async function generatePracticeWorksheet(context) {
     }
 }
 
-// Build practice generation prompt
+// Build practice generation prompt with language-specific guidance
 function buildPracticePrompt(session, langName) {
     // Handle null/undefined values safely
     const safeSourceText = session.sourceText || '[no context provided]';
@@ -305,11 +381,56 @@ function buildPracticePrompt(session, langName) {
     const safeSourceLang = session.sourceLanguage || 'unknown';
     const safeTargetLang = session.targetLanguage || 'unknown';
 
+    // Language-specific grammar priorities
+    let languageGuidance = '';
+    if (safeTargetLang === 'uk') {
+        languageGuidance = `
+UKRAINIAN GRAMMAR PRIORITIES (when relevant to context):
+- Verb aspect (perfective vs imperfective)
+- Tense and mood
+- Case agreement (nominative, genitive, dative, accusative, instrumental, locative, vocative)
+- Gender and number agreement
+- Prepositions with cases
+- Aspect-based word choice
+Focus on structural patterns unique to Ukrainian morphology and syntax.`;
+    } else if (safeTargetLang === 'fr') {
+        languageGuidance = `
+FRENCH GRAMMAR PRIORITIES (when relevant to context):
+- Conjugaison (tenses, moods, aspects)
+- Temps verbaux (passé composé, imparfait, conditionnel, subjonctif)
+- Accord sujet-verbe
+- Accord adjectif-nom
+- Articles (défini, indéfini, partitif)
+- Pronoms (personnels, relatifs, possessifs)
+- Prépositions
+- Négation (ne...pas, ne...rien, etc.)
+- Ordre des mots
+- Auxiliaires (avoir, être)
+- Accord du participe passé
+Focus on French-specific morphological and syntactic patterns.`;
+    } else if (safeTargetLang === 'en') {
+        languageGuidance = `
+ENGLISH GRAMMAR PRIORITIES (when relevant to context):
+- Tense and aspect (simple/continuous/perfect)
+- Auxiliaries (do, have, be, modal verbs)
+- Subject-verb agreement
+- Articles and determiners
+- Prepositions
+- Pronouns
+- Word order (especially in questions and negation)
+- Modals and conditionals
+- Relative clauses
+- Collocations and phrasal verbs
+- Comparison structures
+Focus only on English patterns that are pedagogically relevant to the selected context.`;
+    }
+
     const basePrompt = `You are a language learning expert creating a structured practice worksheet.
 
 Target language: ${safeLangName}
 Level: ${safeLevel}
 Context: "${safeSourceText}"
+${languageGuidance}
 
 ALLOWED EXERCISE TYPES (use ONLY these):
 - fill_form: fill in blanks with correct words/forms
@@ -321,8 +442,34 @@ ALLOWED EXERCISE TYPES (use ONLY these):
 - short_production: produce short responses or sentences
 - contextual_usage: use words/phrases in appropriate context
 
-Generate 15 practice exercises for teaching the key concepts from the context above.
-Exercises should progress from easier (recognition/receptive skills) to harder (production/active skills).
+PEDAGOGICAL PROGRESSION (organize exercises as a learning sequence):
+A. Recognition/Understanding (Exercises 1-3: easier, receptive)
+   - Multiple choice or identification tasks
+   - Recognize patterns, choose correct forms
+   - Build foundational understanding
+
+B. Controlled Form Practice (Exercises 4-9: medium, guided production)
+   - Fill in forms, complete conjugations
+   - Transform or correct within constraints
+   - Apply rules with support
+
+C. Context Practice (Exercises 10-12: harder, contextual)
+   - Complete sentences based on context
+   - Use target grammar in realistic situations
+   - Require understanding of meaning
+
+D. Production (Exercises 13-15: hardest, free production)
+   - Write sentences using the target rule
+   - Short scenario-based production
+   - Demonstrate independent mastery
+
+Generate 8-12 practice exercises (not rigid 15) that form a coherent pedagogical progression.
+Exercises should move from recognition/understanding → controlled practice → contextual use → free production.
+
+IMPORTANT for answer grading:
+- For deterministic exercises (fill_form, conjugation, translate, correct_error): include "expectedAnswer" and optionally "acceptedAnswers" array for alternate correct forms
+- For free-production exercises (short_production, contextual_usage): omit these fields (AI grading or manual review)
+- Normalize expected answers: trim whitespace, lowercase is acceptable for most cases
 
 Return ONLY valid JSON (no markdown, no explanation).
 
@@ -343,30 +490,33 @@ Worksheet schema:
     {
       "id": "ex1",
       "type": "fill_form",
-      "instruction": "Fill in the blank with the correct form",
-      "prompt": "I ___ (go) to school yesterday",
-      "expectedConcept": "past tense, first person singular",
+      "instruction": "Fill in the blank with the correct word",
+      "prompt": "The cat ___ sleeping on the sofa.",
+      "expectedConcept": "present continuous: is",
       "difficulty": 1,
+      "expectedAnswer": "is",
+      "acceptedAnswers": ["is"],
       "hints": [
-        "Think about the past tense of 'go'",
-        "The answer is a two-word form",
-        "The answer is 'went'"
+        "Think about the action happening now",
+        "What auxiliary verb matches 'is/are'?",
+        "The answer is 'is'"
       ]
     }
   ]
 }
 
 Requirements:
-- Exactly 15 exercises
-- All IDs must be unique (ex1, ex2, ..., ex15)
-- CRITICAL: All exercise types MUST be from the allowed list above (fill_form, auxiliary, conjugation, transform, correct_error, translate, short_production, contextual_usage) — NO OTHER TYPES
-- Difficulty should progress 1 (easy) → 5 (hard)
-- Each exercise should teach/reinforce concepts from the context
+- Generate 8-12 exercises (NOT a rigid 15)
+- All IDs must be unique (ex1, ex2, ..., exN)
+- CRITICAL: All exercise types MUST be from the allowed list — NO OTHER TYPES
+- Organize pedagogically: recognition → controlled practice → context → production
+- Difficulty should generally progress 1 (easy) → 5 (hard), but may vary within sections
+- Each exercise should teach concepts from the context
+- For deterministic exercises: always include "expectedAnswer" (string, exact answer)
+- For deterministic exercises: optionally include "acceptedAnswers" array for common alternate forms
+- For free-production exercises (short_production, contextual_usage): omit expectedAnswer/acceptedAnswers
 - All string fields must be nonempty
-- Optional: provide 1–3 progressive hints per exercise (each hint builds on the previous)
-  * Hint 1: General guidance or mental model
-  * Hint 2: More specific clue
-  * Hint 3: Direct answer or final hint
+- Provide 1–3 progressive hints per exercise (Hint 1: general, Hint 2: specific, Hint 3: direct answer)
 - No HTML, scripts, or code in any field
 - Return valid JSON only`;
 
