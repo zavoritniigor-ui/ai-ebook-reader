@@ -476,11 +476,11 @@ function displayPracticeError(panel, session) {
     document.getElementById('practice-close-error').onclick = closePractice;
 }
 
-// Get exercises per page (responsive) - compact layout
+// Get exercises per page (responsive)
 function getExercisesPerPage() {
-    // Mobile: show more with compact layout
-    // Tablet+: show many exercises per page
-    return window.innerWidth < 768 ? 8 : 20;
+    // Mobile: 5 per page
+    // Tablet+: 12 per page (enough for pagination testing)
+    return window.innerWidth < 768 ? 5 : 12;
 }
 
 // Render worksheet pages
