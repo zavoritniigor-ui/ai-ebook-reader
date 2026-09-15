@@ -635,7 +635,9 @@ const I18N = {
     practiceComingSoon: { uk: '(буде скоро)', en: '(coming soon)', fr: '(bientôt)', ru: '(скоро)' },
     practiceError:      { uk: 'Помилка практики', en: 'Practice Error', fr: 'Erreur de pratique', ru: 'Ошибка практики' },
     practiceUnknownError: { uk: 'Невідома помилка', en: 'Unknown error', fr: 'Erreur inconnue', ru: 'Неизвестная ошибка' },
-    hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' }
+    hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' },
+    answerPlaceholder:  { uk: 'Ваша відповідь…', en: 'Your answer…', fr: 'Votre réponse…', ru: 'Ваш ответ…' },
+    check:              { uk: 'Перевірити', en: 'Check', fr: 'Vérifier', ru: 'Проверить' }
 };
 
 // Additional interface locales extend the existing dictionary. Keys not yet
