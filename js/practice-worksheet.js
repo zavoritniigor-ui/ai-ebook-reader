@@ -503,42 +503,25 @@ function renderWorksheetPages(worksheet, currentPage) {
     return html;
 }
 
-// Render single exercise with compact layout and answer input
+// Render single exercise - preserves original structure for compatibility
 function renderExercise(exercise, number) {
     const typeIcon = getExerciseTypeIcon(exercise.type);
+    const difficulty = '●'.repeat(exercise.difficulty) + '○'.repeat(5 - exercise.difficulty);
     const hasHints = exercise.hints && exercise.hints.length > 0;
-    const session = getCurrentPracticeSession();
-    const savedAnswer = session?.answers?.[exercise.id]?.answer || '';
-    const savedFeedback = session?.answers?.[exercise.id]?.feedback || null;
-
-    // Build answer input control based on exercise type
-    let answerControl = buildAnswerControl(exercise, savedAnswer);
 
     let html = `
-        <div class="exercise" data-id="${escapeHtml(exercise.id)}" data-type="${escapeHtml(exercise.type)}">
-            <div class="exercise-header">
-                <span class="exercise-number">${number}</span>
-                <span class="exercise-type-icon" title="${exercise.type}">${typeIcon}</span>
-                <span class="exercise-instruction">${escapeHtml(exercise.instruction)}</span>
-            </div>
+        <div class="exercise" data-id="${escapeHtml(exercise.id)}">
+            <div class="exercise-number">${number}. ${typeIcon}</div>
+            <div class="exercise-instruction">${escapeHtml(exercise.instruction)}</div>
             <div class="exercise-prompt">${escapeHtml(exercise.prompt)}</div>
-            <div class="exercise-input">
-                ${answerControl}
+            <div class="exercise-answer-space"></div>
+            <div class="exercise-meta">
+                <span class="exercise-difficulty" title="Difficulty">${difficulty}</span>
+                <span class="exercise-concept">${escapeHtml(exercise.expectedConcept)}</span>
             </div>
     `;
 
-    // Show feedback if answer was checked
-    if (savedFeedback) {
-        const feedbackClass = savedFeedback.isCorrect ? 'feedback-correct' : 'feedback-incorrect';
-        html += `
-            <div class="exercise-feedback ${feedbackClass}">
-                ${savedFeedback.needsReview ? '📝' : (savedFeedback.isCorrect ? '✓' : '✗')}
-                ${escapeHtml(savedFeedback.feedback)}
-            </div>
-        `;
-    }
-
-    // Phase 3B/3C: Progressive hints
+    // Phase 3B: Progressive hints
     if (hasHints) {
         html += `
             <div class="exercise-hints" data-exercise-id="${escapeHtml(exercise.id)}">
@@ -561,7 +544,10 @@ function renderExercise(exercise, number) {
         `;
     }
 
-    html += `</div>`;
+    html += `
+        </div>
+    `;
+
     return html;
 }
 
