@@ -6,11 +6,12 @@
 const PRACTICE_SESSION_PREFIX = 'practice_session:';
 const PRACTICE_SESSION_LATEST_KEY = 'practice_session_latest_id';
 const PRACTICE_SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const PRACTICE_SESSION_SCHEMA_VERSION = 2; // Version 2: A4 worksheet with source analysis
 const ALLOWED_EXERCISE_TYPES = new Set([
     'fill_form', 'auxiliary', 'conjugation', 'transform',
     'correct_error', 'translate', 'short_production', 'contextual_usage'
 ]);
-const MAX_EXERCISES = 20;
+const MAX_EXERCISES = 30; // Increased for A4 density
 const MIN_EXERCISES = 1;
 
 // Current practice session (in memory)
@@ -24,6 +25,9 @@ function generateSessionId() {
 // Create new practice session from context
 function createPracticeSession(context) {
     return {
+        // Schema version for migration
+        schemaVersion: PRACTICE_SESSION_SCHEMA_VERSION,
+
         id: generateSessionId(),
         status: 'generating', // 'generating' | 'ready' | 'error'
         createdAt: Date.now(),
@@ -37,15 +41,33 @@ function createPracticeSession(context) {
         sourceContext: context.sourceContext || null,
         level: context.level || null,
 
-        // Worksheet
+        // Source analysis: grammatical relationships and structures
+        sourceAnalysis: {
+            language: context.targetLanguage || null,
+            detectedStructures: [],  // [{structure: "past tense", count: 2, relevance: "high"}, ...]
+            relationships: []  // [{entity: "filles", type: "noun", role: "subject", controls: ["agreement", "tense"]}, ...]
+        },
+
+        // Worksheet (A4 layout)
         worksheet: null,
         currentPage: 0,
+        answerMode: 'handwriting', // 'handwriting' | 'keyboard' (Phase C)
+
+        // Handwriting persistence (Phase C)
+        handwritingStrokes: {},  // { "ex1": [stroke, stroke, ...], "ex2": [...] }
+
+        // Keyboard answers (Phase C)
+        keyboardAnswers: {},  // { "ex1": "user answer", ... }
 
         // Phase 3B: Track revealed hints per exercise (ex: { "ex1": 2, "ex2": 0 })
         revealedHints: {},
 
         // Phase 3C: Answer storage and feedback (ex: { "ex1": { answer: "went", feedback: "correct" } })
         answers: {},
+
+        // Review/grading workflow (Phase C)
+        reviewStatus: 'pending',  // 'pending' | 'submitted' | 'in_review' | 'graded'
+        gradeResponse: null,  // { results: [...] } after AI review
 
         // Error handling
         lastError: null
@@ -252,6 +274,46 @@ function persistPracticeSession(session) {
     }
 }
 
+// Migrate old session schema to new version
+function migrateSession(session) {
+    // If schemaVersion is missing, it's a v1 session (Phase 3B/3C)
+    if (!session.schemaVersion || session.schemaVersion < 2) {
+        // Upgrade to schema v2 (A4 worksheet with source analysis)
+        session.schemaVersion = 2;
+
+        // Add new fields with safe defaults
+        if (!session.sourceAnalysis) {
+            session.sourceAnalysis = {
+                language: session.targetLanguage || null,
+                detectedStructures: [],
+                relationships: []
+            };
+        }
+
+        if (!session.answerMode) {
+            session.answerMode = 'handwriting';
+        }
+
+        if (!session.handwritingStrokes) {
+            session.handwritingStrokes = {};
+        }
+
+        if (!session.keyboardAnswers) {
+            session.keyboardAnswers = {};
+        }
+
+        if (!session.reviewStatus) {
+            session.reviewStatus = 'pending';
+        }
+
+        if (!session.gradeResponse) {
+            session.gradeResponse = null;
+        }
+    }
+
+    return session;
+}
+
 // Load session from localStorage
 function loadPracticeSession(sessionId) {
     try {
@@ -259,13 +321,16 @@ function loadPracticeSession(sessionId) {
         const json = localStorage.getItem(key);
         if (!json) return null;
 
-        const session = JSON.parse(json);
+        let session = JSON.parse(json);
 
         // Check TTL
         if (Date.now() - session.createdAt > PRACTICE_SESSION_TTL) {
             localStorage.removeItem(key);
             return null;
         }
+
+        // Migrate if needed
+        session = migrateSession(session);
 
         return session;
     } catch (e) {
@@ -289,6 +354,11 @@ async function generatePracticeWorksheet(context) {
     const session = createPracticeSession(context);
     currentPracticeSession = session;
 
+    // Analyze source text for grammatical structures
+    if (session.sourceText && session.targetLanguage) {
+        session.sourceAnalysis = analyzeSourceGrammar(session.sourceText, session.targetLanguage);
+    }
+
     // Begin async task with cancellation support
     const task = beginAsyncTask('practice');
 
@@ -296,7 +366,7 @@ async function generatePracticeWorksheet(context) {
     persistPracticeSession(session);
 
     try {
-        // Build prompt with bounded context
+        // Build prompt with bounded context (now includes source analysis)
         const langName = LANG_NAMES[session.targetLanguage] || 'Ukrainian';
         const prompt = buildPracticePrompt(session, langName);
 
@@ -372,6 +442,128 @@ async function generatePracticeWorksheet(context) {
     }
 }
 
+// Analyze source text for grammatical structures and relationships
+// This helps the AI generator create exercises grounded in the actual text
+function analyzeSourceGrammar(sourceText, targetLanguage) {
+    const analysis = {
+        language: targetLanguage,
+        detectedStructures: [],
+        relationships: []
+    };
+
+    if (!sourceText || sourceText.length === 0) {
+        return analysis;
+    }
+
+    const text = sourceText.toLowerCase();
+    const words = sourceText.split(/\s+/);
+
+    // Language-specific analysis patterns
+    if (targetLanguage === 'fr') {
+        // French: detect verbs, tenses, agreement patterns
+        const frenchPastIndicators = /\b(était|ont|a|avez|avais|étaient)\b/gi;
+        const frenchPresentContinuous = /\b(suis|es|est|sommes|êtes|sont)\s+\w+ing\b/gi;
+        const frenchArticles = /\b(le|la|les|un|une|des|du)\b/gi;
+
+        if (frenchPastIndicators.test(text)) {
+            analysis.detectedStructures.push({
+                structure: "past tense (passé composé, imparfait)",
+                count: (text.match(frenchPastIndicators) || []).length,
+                relevance: "high"
+            });
+        }
+
+        if (frenchArticles.test(text)) {
+            analysis.detectedStructures.push({
+                structure: "articles and determiners",
+                count: (text.match(frenchArticles) || []).length,
+                relevance: "high"
+            });
+        }
+
+        // Detect adjectives (often follow nouns in French)
+        const commonAdjectives = /\b(ancien|nouvelle|petit|grand|joli|important|different)\b/gi;
+        if (commonAdjectives.test(text)) {
+            analysis.detectedStructures.push({
+                structure: "adjective agreement (gender/number)",
+                count: 1,
+                relevance: "high"
+            });
+        }
+
+        // Subject-verb relationships
+        if (/\b(elle|il|ils|elles|je|tu|nous|vous|on)\s+\w+/gi.test(sourceText)) {
+            analysis.detectedStructures.push({
+                structure: "subject-verb agreement",
+                count: 1,
+                relevance: "high"
+            });
+        }
+
+    } else if (targetLanguage === 'en') {
+        // English: detect tense, auxiliaries, pronouns
+        const englishPast = /\b(was|were|had|did|went|came|got|saw|heard)\b/gi;
+        const englishPresent = /\b(is|are|has|have|does|do|go|come|see|hear)\b/gi;
+        const englishAuxiliaries = /\b(is|are|was|were|have|has|had|do|does|did|can|could|will|would|shall|should|may|might|must)\b/gi;
+
+        if (englishPast.test(text)) {
+            analysis.detectedStructures.push({
+                structure: "past tense",
+                count: (text.match(englishPast) || []).length,
+                relevance: "high"
+            });
+        }
+
+        if (englishAuxiliaries.test(text)) {
+            analysis.detectedStructures.push({
+                structure: "auxiliaries (be, have, do, modals)",
+                count: (text.match(englishAuxiliaries) || []).length,
+                relevance: "high"
+            });
+        }
+
+        // Pronouns
+        const pronouns = /\b(I|you|he|she|it|we|they|me|him|her|us|them)\b/gi;
+        if (pronouns.test(sourceText)) {
+            analysis.detectedStructures.push({
+                structure: "pronouns and subject-verb agreement",
+                count: (sourceText.match(pronouns) || []).length / 2,
+                relevance: "high"
+            });
+        }
+
+    } else if (targetLanguage === 'uk') {
+        // Ukrainian: detect aspect, tense, case
+        const ukrainianPast = /\b(був|була|було|були|прийшов|пішла)\b/gi;
+        const ukrainianImperfectiveAspect = /\b(робив|робила|робило|робили|читав|читала)\b/gi;
+
+        if (ukrainianPast.test(text)) {
+            analysis.detectedStructures.push({
+                structure: "past tense and aspect",
+                count: 1,
+                relevance: "high"
+            });
+        }
+
+        if (ukrainianImperfectiveAspect.test(text)) {
+            analysis.detectedStructures.push({
+                structure: "imperfective aspect",
+                count: 1,
+                relevance: "high"
+            });
+        }
+
+        // Case and agreement (simplified)
+        analysis.detectedStructures.push({
+            structure: "case agreement and inflection",
+            count: 1,
+            relevance: "high"
+        });
+    }
+
+    return analysis;
+}
+
 // Build practice generation prompt with language-specific guidance
 function buildPracticePrompt(session, langName) {
     // Handle null/undefined values safely
@@ -425,12 +617,22 @@ ENGLISH GRAMMAR PRIORITIES (when relevant to context):
 Focus only on English patterns that are pedagogically relevant to the selected context.`;
     }
 
+    // Build detected structures summary for the prompt
+    const detectedStructuresSummary = session.sourceAnalysis && session.sourceAnalysis.detectedStructures.length > 0
+        ? `\nDETECTED GRAMMATICAL STRUCTURES IN SOURCE TEXT:
+${session.sourceAnalysis.detectedStructures.map(s => `- ${s.structure} (relevance: ${s.relevance})`).join('\n')}\n`
+        : '';
+
     const basePrompt = `You are a language learning expert creating a structured practice worksheet.
 
 Target language: ${safeLangName}
 Level: ${safeLevel}
 Context: "${safeSourceText}"
 ${languageGuidance}
+${detectedStructuresSummary}
+FOCUS ON CREATING EXERCISES THAT PRACTICE THE DETECTED STRUCTURES ABOVE.
+Exercises should remain grounded in the selected passage and grammar patterns.
+Generate variations and transformations of similar structures, not unrelated grammar.
 
 ALLOWED EXERCISE TYPES (use ONLY these):
 - fill_form: fill in blanks with correct words/forms

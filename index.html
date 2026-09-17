@@ -561,6 +561,27 @@
         #practice-collapse { width: 40px; height: 40px; padding: 0; border-radius: 50%; font-size: 16px; }
         #practice-bookmark { width: 40px; height: 40px; padding: 0; border-radius: 50%; font-size: 16px; }
 
+        /* A4 Workbook Worksheet Layout (Phase B) — compact, dense exercises */
+        .practice-worksheet { background: #faf9f7; }
+        .worksheet-page { background: #ffffff; padding: 20px 16px; margin: 0; }
+        .practice-question { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0; font-size: 12px; line-height: 1.5; }
+        .question-num { flex-shrink: 0; font-weight: 700; color: var(--text-muted); min-width: 20px; }
+        .question-text { flex: 1; color: var(--text-color); word-break: break-word; }
+        .answer-blank-inline { flex: 0 1 auto; min-width: 60px; max-width: 120px; padding: 1px 4px; border: none;
+                              border-bottom: 1px solid var(--text-muted); background: transparent; font-size: 12px;
+                              font-family: inherit; color: var(--text-color); }
+        .answer-blank-inline:focus { outline: none; border-bottom-color: var(--accent-color); background: rgba(var(--accent-color), 0.05); }
+        .answer-area-long { display: flex; padding: 4px 0; margin-left: 26px; }
+        .answer-blank { flex: 1; padding: 2px 4px; border: none; border-bottom: 1px solid var(--text-muted);
+                       background: transparent; font-size: 12px; font-family: inherit; color: var(--text-color); }
+        .answer-blank:focus { outline: none; border-bottom-color: var(--accent-color); background: rgba(var(--accent-color), 0.05); }
+        .answer-feedback { display: block; margin-left: 26px; font-size: 11px; margin-top: 2px; padding: 2px 4px;
+                          border-radius: 2px; }
+        .answer-feedback.feedback-correct { background: rgba(25, 135, 84, 0.1); color: #198754; }
+        .answer-feedback.feedback-incorrect { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+        .exercise-hints { margin-left: 26px; margin-top: 2px; }
+        .hint-reveal-btn { padding: 2px 6px; font-size: 11px; }
+
         /* Прозорі напівкруглі "ручки" панелей — жодного малюнка, у спокої повністю прозорі.
            Права ручка = граматика, ліва = запит до AI (як просив користувач).
            Раніше язичок стояв на top:30% ВІД ВИСОТИ ПАНЕЛІ (6vh–94vh на планшеті,
