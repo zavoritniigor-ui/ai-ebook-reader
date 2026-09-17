@@ -281,8 +281,11 @@ function displayPracticeReady(panel, session) {
     setupHintControls();
 
     // Phase 3C: Attach answer checking handlers
-    // (Disabled temporarily for CI debugging)
-    // setupAnswerControls();
+    try {
+        setupAnswerControls();
+    } catch (e) {
+        console.warn('Error in setupAnswerControls:', e.message);
+    }
 }
 
 // Setup hint reveal controls for all exercises
@@ -359,23 +362,29 @@ function revealNextHint(button) {
     }
 }
 
-// Setup answer input and checking controls (Phase 3C)
+// Setup answer input and checking controls (Phase 3C, A4 layout)
 function setupAnswerControls() {
     try {
         const session = getCurrentPracticeSession();
         if (!session || !session.worksheet) return;
 
-        const checkButtons = document.querySelectorAll('.answer-check-btn');
-        const answerInputs = document.querySelectorAll('.answer-input');
+        // Select all answer blanks (both inline and long-form)
+        const answerBlanks = document.querySelectorAll('.answer-blank, .answer-blank-inline');
 
-        if (checkButtons.length === 0 || answerInputs.length === 0) return;
+        if (answerBlanks.length === 0) return;
 
-        // Persist answer when user types
-        answerInputs.forEach(input => {
+        // Restore previously saved answers and set up event listeners
+        answerBlanks.forEach(input => {
+            const questionEl = input.closest('.practice-question');
+            const exerciseId = questionEl?.dataset.id;
+
+            // Restore saved answer if it exists
+            if (exerciseId && session.answers && session.answers[exerciseId] && session.answers[exerciseId].answer) {
+                input.value = session.answers[exerciseId].answer;
+            }
+
             input.addEventListener('input', () => {
-                const exerciseEl = input.closest('.exercise');
-                if (exerciseEl) {
-                    const exerciseId = exerciseEl.dataset.id;
+                if (exerciseId) {
                     if (!session.answers) session.answers = {};
                     if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
                     session.answers[exerciseId].answer = input.value;
@@ -384,71 +393,55 @@ function setupAnswerControls() {
             });
 
             // Allow checking with Enter key for single-line inputs
-            if (input.tagName === 'INPUT') {
+            if (input.tagName === 'INPUT' && input.classList.contains('answer-blank-inline')) {
                 input.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        const btn = input.closest('.exercise-input')?.querySelector('.answer-check-btn');
-                        if (btn) btn.click();
+                        const questionEl = input.closest('.practice-question');
+                        if (questionEl) {
+                            const exerciseId = questionEl.dataset.id;
+                            const exercise = session.worksheet?.exercises?.find(ex => ex.id === exerciseId);
+                            if (exercise) {
+                                performAnswerCheck(exercise, input, session);
+                            }
+                        }
                     }
                 });
             }
         });
-
-        // Attach check button handlers
-        checkButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                try {
-                    const exerciseId = btn.dataset.exerciseId;
-                    if (!exerciseId) return;
-
-                    const exerciseEl = document.querySelector(`.exercise[data-id="${CSS.escape(exerciseId)}"]`);
-                    const inputEl = exerciseEl?.querySelector('.answer-input');
-
-                    if (!exerciseEl || !inputEl) return;
-
-                    const userAnswer = inputEl.value;
-                    const exercise = session.worksheet?.exercises?.find(ex => ex.id === exerciseId);
-                    if (!exercise) return;
-
-                    // Grade the answer
-                    const feedback = gradeExerciseAnswer(exercise, userAnswer);
-
-                    // Store feedback in session
-                    if (!session.answers) session.answers = {};
-                    if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
-                    session.answers[exerciseId].answer = userAnswer;
-                    session.answers[exerciseId].feedback = feedback;
-                    persistPracticeSession(session);
-
-                    // Show feedback
-                    const feedbackEl = exerciseEl.querySelector('.exercise-feedback');
-                    if (feedbackEl) {
-                        feedbackEl.remove();
-                    }
-
-                    const feedbackClass = feedback.isCorrect ? 'feedback-correct' : 'feedback-incorrect';
-                    const feedbackIcon = feedback.needsReview ? '📝' : (feedback.isCorrect ? '✓' : '✗');
-                    const feedbackHtml = `
-                        <div class="exercise-feedback ${feedbackClass}">
-                            ${feedbackIcon}
-                            ${escapeHtml(feedback.feedback)}
-                        </div>
-                    `;
-
-                    // Insert feedback before hints
-                    const hintsEl = exerciseEl.querySelector('.exercise-hints');
-                    if (hintsEl) {
-                        hintsEl.insertAdjacentHTML('beforebegin', feedbackHtml);
-                    } else {
-                        exerciseEl.insertAdjacentHTML('beforeend', feedbackHtml);
-                    }
-                } catch (e) {
-                    console.warn('Error checking answer:', e.message);
-                }
-            });
-        });
     } catch (e) {
         console.warn('Error setting up answer controls:', e.message);
+    }
+}
+
+// Perform answer checking and grading
+function performAnswerCheck(exercise, inputEl, session) {
+    try {
+        const userAnswer = inputEl.value;
+        const feedback = gradeExerciseAnswer(exercise, userAnswer);
+
+        // Store feedback in session
+        if (!session.answers) session.answers = {};
+        if (!session.answers[exercise.id]) session.answers[exercise.id] = {};
+        session.answers[exercise.id].answer = userAnswer;
+        session.answers[exercise.id].feedback = feedback;
+        persistPracticeSession(session);
+
+        // Show feedback inline
+        const questionEl = inputEl.closest('.practice-question');
+        if (questionEl) {
+            const feedbackClass = feedback.isCorrect ? 'feedback-correct' : 'feedback-incorrect';
+            const feedbackIcon = feedback.needsReview ? '📝' : (feedback.isCorrect ? '✓' : '✗');
+            const feedbackHtml = `<span class="answer-feedback ${feedbackClass}">${feedbackIcon} ${escapeHtml(feedback.feedback)}</span>`;
+
+            // Remove existing feedback
+            const existingFeedback = questionEl.querySelector('.answer-feedback');
+            if (existingFeedback) existingFeedback.remove();
+
+            // Add feedback after the input
+            inputEl.insertAdjacentHTML('afterend', feedbackHtml);
+        }
+    } catch (e) {
+        console.warn('Error checking answer:', e.message);
     }
 }
 
@@ -476,11 +469,15 @@ function displayPracticeError(panel, session) {
     document.getElementById('practice-close-error').onclick = closePractice;
 }
 
-// Get exercises per page (responsive)
+// Get exercises per page (responsive) - A4 density
 function getExercisesPerPage() {
-    // Mobile: 5 per page
-    // Tablet+: 12 per page (enough for pagination testing)
-    return window.innerWidth < 768 ? 5 : 12;
+    // A4 worksheet target density: many compact exercises per page
+    // Mobile: 10 per page (compact, scrollable)
+    // Tablet: 18 per page (A4-like)
+    // Desktop: 20 per page (full A4 sheet)
+    if (window.innerWidth < 600) return 10;
+    if (window.innerWidth < 1024) return 18;
+    return 20;
 }
 
 // Render worksheet pages
@@ -503,50 +500,42 @@ function renderWorksheetPages(worksheet, currentPage) {
     return html;
 }
 
-// Render single exercise - preserves original structure for compatibility
+// Render single exercise - A4 workbook style (compact, dense layout)
 function renderExercise(exercise, number) {
-    const typeIcon = getExerciseTypeIcon(exercise.type);
-    const difficulty = '●'.repeat(exercise.difficulty) + '○'.repeat(5 - exercise.difficulty);
     const hasHints = exercise.hints && exercise.hints.length > 0;
+    const inputId = `answer_${escapeHtml(exercise.id)}`;
+    const isLongAnswer = ['transform', 'short_production', 'contextual_usage'].includes(exercise.type);
 
-    let html = `
-        <div class="exercise" data-id="${escapeHtml(exercise.id)}">
-            <div class="exercise-number">${number}. ${typeIcon}</div>
-            <div class="exercise-instruction">${escapeHtml(exercise.instruction)}</div>
-            <div class="exercise-prompt">${escapeHtml(exercise.prompt)}</div>
-            <div class="exercise-answer-space"></div>
-            <div class="exercise-meta">
-                <span class="exercise-difficulty" title="Difficulty">${difficulty}</span>
-                <span class="exercise-concept">${escapeHtml(exercise.expectedConcept)}</span>
-            </div>
-    `;
+    let html = `<div class="practice-question" data-id="${escapeHtml(exercise.id)}" data-type="${escapeHtml(exercise.type)}">
+        <span class="question-num">${number}.</span>
+        <span class="question-text">${escapeHtml(exercise.prompt)}</span>`;
 
-    // Phase 3B: Progressive hints
-    if (hasHints) {
+    // Answer blank - inline for short answers, separate line(s) for long answers
+    if (isLongAnswer) {
+        html += `</div>
+        <div class="answer-area-long" data-exercise-id="${escapeHtml(exercise.id)}">
+            <input type="text" id="${inputId}" class="answer-blank" data-exercise-id="${escapeHtml(exercise.id)}" placeholder=" " />
+        </div>`;
+    } else {
+        // Inline blank for fill_form, conjugation, correct_error, etc.
         html += `
-            <div class="exercise-hints" data-exercise-id="${escapeHtml(exercise.id)}">
-                <button class="hint-reveal-btn" type="button" title="Show hint">💡 ${t('hint')}</button>
-                <div class="hints-container" style="display:none;">
-        `;
-
-        exercise.hints.forEach((hint, idx) => {
-            html += `
-                <div class="hint hint-${idx + 1}" style="display:none;">
-                    <span class="hint-level">Hint ${idx + 1}:</span>
-                    <span class="hint-text">${escapeHtml(hint)}</span>
-                </div>
-            `;
-        });
-
-        html += `
-                </div>
-            </div>
-        `;
+            <input type="text" id="${inputId}" class="answer-blank-inline" data-exercise-id="${escapeHtml(exercise.id)}" />
+        </div>`;
     }
 
-    html += `
-        </div>
-    `;
+    // Hints (collapsed by default, revealed on demand)
+    if (hasHints) {
+        html += `<div class="exercise-hints" data-exercise-id="${escapeHtml(exercise.id)}">
+            <button class="hint-reveal-btn" type="button" title="Show hint">💡</button>
+            <div class="hints-container" style="display:none;">`;
+
+        exercise.hints.forEach((hint, idx) => {
+            html += `<div class="hint hint-${idx + 1}" style="display:none;">${escapeHtml(hint)}</div>`;
+        });
+
+        html += `</div>
+        </div>`;
+    }
 
     return html;
 }

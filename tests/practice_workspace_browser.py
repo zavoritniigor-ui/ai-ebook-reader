@@ -35,7 +35,7 @@ callAI = async () => { workspaceRequests++; throw new Error('Unexpected generati
 currentPracticeSession = createPracticeSession({sourceLanguage:'en', targetLanguage:'uk'});
 currentPracticeSession.status = 'ready';
 currentPracticeSession.worksheet = {metadata:{title:'Workspace exercises'}, exercises:
-    Array.from({length:20}, (_, i) => ({id:'workspace-'+i, type:'fill_form', difficulty:1,
+    Array.from({length:21}, (_, i) => ({id:'workspace-'+i, type:'fill_form', difficulty:1,
         instruction:'Complete the sentence', prompt:'A long exercise sentence. '.repeat(12),
         expectedConcept:'past tense', hints:['First hint', 'Second hint']}))};
 window.workspaceSession = currentPracticeSession;
@@ -76,7 +76,7 @@ check('Bottom collapse keeps mounted content and reveals book', "workspacePanel.
 check('Bottom bar is visible and inside viewport', "!document.getElementById('practice-restore').hidden && document.getElementById('practice-restore').getBoundingClientRect().bottom<=innerHeight && practiceWorkspaceMode==='collapsed-bottom'")
 c.js("document.getElementById('practice-restore').click()")
 settle()
-check('Restore preserves session, page, hints, DOM and scroll', "getCurrentPracticeSession()===workspaceSession && workspaceSession.currentPage===1 && workspaceSession.revealedHints['workspace-12']===1 && mountedScroll===workspacePanel.querySelector('.practice-scroll') && mountedScroll.scrollTop===savedScroll && !workspacePanel.inert")
+check('Restore preserves session, page, hints, DOM and scroll', "getCurrentPracticeSession()===workspaceSession && workspaceSession.currentPage===1 && workspaceSession.revealedHints['workspace-20']===1 && mountedScroll===workspacePanel.querySelector('.practice-scroll') && mountedScroll.scrollTop===savedScroll && !workspacePanel.inert")
 c.js("document.getElementById('practice-bookmark').click()")
 settle()
 check('Bookmark attached outside Grammar left edge', "(() => {const tab=document.getElementById('practice-restore').getBoundingClientRect(), grammar=document.getElementById('grammar-panel').getBoundingClientRect();return Math.abs(tab.right-grammar.left)<2 && tab.left>=0;})()")
