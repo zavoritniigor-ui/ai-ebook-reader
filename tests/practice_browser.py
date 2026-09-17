@@ -152,7 +152,7 @@ c.js(r"""
 window.__tooMany = {
     metadata: __practiceTests.mockWorksheet.metadata,
     context: __practiceTests.mockWorksheet.context,
-    exercises: Array.from({length: 25}, (_, i) => ({
+    exercises: Array.from({length: 31}, (_, i) => ({
         id: 'ex' + i, type: 'fill_form', instruction: 'T', prompt: 'T', expectedConcept: 'T', difficulty: 1
     }))
 };
@@ -218,7 +218,7 @@ displayPracticeSession({status: 'ready', worksheet: multiType, currentPage: 0});
 """)
 
 check("T8: All 8 types render",
-      "document.querySelectorAll('.exercise').length === 8")
+      "document.querySelectorAll('.practice-question').length === 8")
 
 # TEST 9: Session persistence
 print("\n=== TEST 9: Session Persistence ===")
@@ -625,8 +625,9 @@ const sessionNoHints = {status: 'ready', worksheet: noHintsWorksheet, currentPag
 currentPracticeSession = sessionNoHints;
 displayPracticeSession(sessionNoHints);
 
-const ex1HintsEl = document.querySelector('[data-id="ex_with_hints"]').querySelector('.exercise-hints');
-const ex2HintsEl = document.querySelector('[data-id="ex_no_hints"]').querySelector('.exercise-hints');
+// Hints are now siblings with data-exercise-id attribute (A4 layout)
+const ex1HintsEl = document.querySelector('.exercise-hints[data-exercise-id="ex_with_hints"]');
+const ex2HintsEl = document.querySelector('.exercise-hints[data-exercise-id="ex_no_hints"]');
 
 window.__hintsTest.noHintsTest.ex1HasHints = ex1HintsEl !== null;
 window.__hintsTest.noHintsTest.ex2NoHints = ex2HintsEl === null;
