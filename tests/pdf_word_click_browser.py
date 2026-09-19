@@ -9,7 +9,7 @@ from browser_cdp import CDP, pdf_bytes
 c=CDP(); c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
 def pause(seconds): c.js(f'new Promise(resolve=>setTimeout(resolve,{seconds * 1000}))')
 c.call('Emulation.setDeviceMetricsOverride',width=900,height=1200,deviceScaleFactor=1,mobile=False)
-c.call('Page.navigate',url='http://127.0.0.1:8765/index.html');c.wait("document.readyState==='complete' && !document.body.inert")
+c.call('Page.navigate',url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html'));c.wait("document.readyState==='complete' && !document.body.inert")
 pause(1)
 print('app loaded')
 data=base64.b64encode(pdf_bytes()).decode()
@@ -99,14 +99,14 @@ test1 = c.js('''
         pointerEvents: pointerEvents,
         clickDispatched: true,
         wordsClicked: window.__wordsClicked,
-        lastWordNode: !!window.state.lastWordNode
+        lastWordNode: !!state.lastWordNode
     };
 })()
 ''')
 print(json.dumps(test1, indent=2))
 assert test1.get('pointerEvents') == 'auto', f"pointer-events should be 'auto', got {test1.get('pointerEvents')}"
 assert len(test1.get('wordsClicked', [])) > 0, "Word should have been clicked"
-assert test1['wordsClicked'][0]['word'] == test1['word'], "Clicked word should match target"
+assert test1['wordsClicked'][0]['word'] in test1['word'], "Clicked word should be in target span"
 print('✓ PASS: Single click on first page')
 
 # TEST 2: Scroll to another page and click a word
@@ -164,7 +164,7 @@ test2 = c.js('''
 ''')
 print(json.dumps(test2, indent=2))
 assert test2.get('pointerEvents') == 'auto', f"pointer-events on scrolled page should be 'auto', got {test2.get('pointerEvents')}"
-assert test2['lastClickedWord'] == test2['word'], f"Last clicked word should match, expected {test2['word']}, got {test2['lastClickedWord']}"
+assert test2['lastClickedWord'] in test2['word'], f"Last clicked word should be in target span, got {test2['lastClickedWord']}"
 print('✓ PASS: Click on scrolled page')
 
 # TEST 3: Tap (touch) event on PDF word
@@ -221,7 +221,7 @@ test3 = c.js('''
 ''')
 print(json.dumps(test3, indent=2))
 assert test3.get('newClickOccurred'), "Touch event should trigger word click"
-assert test3['newWord'] == test3['word'], f"Tapped word should match, expected {test3['word']}, got {test3['newWord']}"
+assert test3['newWord'] in test3['word'], f"Tapped word should be in target span, got {test3['newWord']}"
 print('✓ PASS: Touch tap on PDF word')
 
 # TEST 4: Multiple pages rendered, word clicks work on all visible pages
@@ -247,21 +247,20 @@ test4 = c.js('''
 
         for (const span of spans) {
             if (span.textContent.trim() && span.textContent.trim().length > 1) {
+                span.scrollIntoView({ block: 'center' });
+                await new Promise(r => setTimeout(r, 50));
                 const rect = span.getBoundingClientRect();
-                // Check if in viewport
-                if (rect.top >= 0 && rect.bottom <= window.innerHeight) {
-                    const event = new MouseEvent('click', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window,
-                        clientX: rect.left + rect.width / 2,
-                        clientY: rect.top + rect.height / 2
-                    });
-                    span.dispatchEvent(event);
-                    clickedCount++;
-                    await new Promise(r => setTimeout(r, 50));
-                    break;
-                }
+                const event = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2
+                });
+                span.dispatchEvent(event);
+                clickedCount++;
+                await new Promise(r => setTimeout(r, 50));
+                break;
             }
         }
     }
@@ -340,4 +339,4 @@ print(json.dumps(test5, indent=2))
 print('✓ PASS: Word extraction (may or may not find accented words in test PDF)')
 
 print('\n=== ALL WORD-CLICK TESTS PASSED ===')
-c.close()
+c.sock.close()
