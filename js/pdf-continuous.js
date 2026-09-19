@@ -240,6 +240,27 @@ function navigateToPdfPage(pageIndex, options = {}) {
         top -= els.container.clientHeight * 0.15; // keep a little context above the destination, like Chrome
     }
     top = Math.max(0, top);
+    // An INSTANT jump (thumbnail/outline/link/scrubber/initial-open — every
+    // caller except goNext/goPrev's single-page smooth step) can land far
+    // from where the viewport just was. pdfVisibleRatios is deliberately
+    // kept "across callbacks" for cheap incremental updates during normal
+    // scrolling, but that means a stale high-ratio entry for a page nowhere
+    // near the new position can still be sitting in it — IntersectionObserver
+    // only reports a page once ITS OWN intersection actually changes, so a
+    // batch delivered shortly after this jump is not guaranteed to already
+    // include that stale page's "no longer intersecting" update. Left alone,
+    // handlePdfIntersection's next firing could pick that stale entry as
+    // "best" and silently override the page we just explicitly navigated to.
+    // Suppressing tracking + dropping the stale bookkeeping for one frame
+    // gives the browser a chance to deliver a batch reflecting the NEW
+    // position before tracking (and the Map) resume from a clean slate.
+    if (options.instant) {
+        pdfSuppressActiveTracking = true;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            pdfVisibleRatios.clear();
+            pdfSuppressActiveTracking = false;
+        }));
+    }
     els.container.scrollTo({ top, left: 0, behavior: options.instant ? 'auto' : 'smooth' });
     pdfActivePage = pageIndex; state.currentIndex = pageIndex;
     els.progress.textContent = `${pageIndex} ${t('of')} ${state.totalPages}`;
