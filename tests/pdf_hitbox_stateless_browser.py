@@ -76,8 +76,8 @@ loaded = c.js(f'''(async()=>{{
     window.__opened=[]; window.__realHandle=handleWordOrSelection;
     handleWordOrSelection=(word,x,y)=>{{__opened.push(word); els.tooltip.style.display='flex';}};
     window.__pendingPdfRenders=0; window.__lastPdfRender=performance.now();
-    const originalRender=renderPdfPage;
-    renderPdfPage=async(...args)=>{{
+    const originalRender=renderPdfPageInto;
+    renderPdfPageInto=async(...args)=>{{
         __pendingPdfRenders++; __lastPdfRender=performance.now();
         try {{ return await originalRender(...args); }}
         finally {{ __pendingPdfRenders--; __lastPdfRender=performance.now(); }}

@@ -216,6 +216,46 @@
         #toc-list li:hover { background: var(--hover-color); }
         #toc-list li:active { background: var(--border-color); }
 
+        /* PDF left sidebar: Thumbnails / Contents (outline) dual mode. #toc-list
+           (book chapter TOC for epub/txt/doc) and #pdf-sidebar are mutually
+           exclusive, toggled by body.pdf-mode — kept as separate DOM subtrees so
+           neither system's behavior can leak into the other. */
+        #pdf-sidebar { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+        body.pdf-mode #toc-list { display: none; }
+        body.pdf-mode #pdf-sidebar { display: flex; }
+        #pdf-sidebar-tabs { display: flex; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .pdf-sidebar-tab { flex: 1; padding: 10px 6px; background: none; border: none; border-bottom: 2px solid transparent;
+                          color: var(--text-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; letter-spacing: .02em; }
+        .pdf-sidebar-tab:hover:not(:disabled) { background: var(--hover-color); }
+        .pdf-sidebar-tab.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+        .pdf-sidebar-tab:disabled { opacity: .4; cursor: not-allowed; }
+        .pdf-sidebar-list { list-style: none; margin: 0; padding: 10px; overflow-y: auto; flex: 1; }
+
+        /* Thumbnails */
+        .pdf-thumb-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; margin-bottom: 4px;
+                         border-radius: var(--radius-sm); cursor: pointer; border: 2px solid transparent; }
+        .pdf-thumb-item:hover { background: var(--hover-color); }
+        .pdf-thumb-item.active { border-color: var(--accent-color); background: var(--hover-color); }
+        .pdf-thumb-item canvas, .pdf-thumb-item .pdf-thumb-placeholder {
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2); background: var(--surface-2); display: block; max-width: 100%;
+        }
+        .pdf-thumb-item .pdf-thumb-num { font-size: 11.5px; color: var(--text-muted); }
+        .pdf-thumb-item.active .pdf-thumb-num { color: var(--accent-color); font-weight: 700; }
+
+        /* Contents (outline) */
+        .pdf-outline-item { padding: 7px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13.5px;
+                           color: var(--text-color); line-height: 1.35; }
+        .pdf-outline-item:hover { background: var(--hover-color); }
+        .pdf-outline-children { list-style: none; margin: 0; padding-left: 14px; }
+        .pdf-outline-item.disabled { cursor: default; color: var(--text-muted); }
+
+        /* Native PDF link annotations — an invisible clickable overlay positioned
+           over the annotation's real rect from PDF.js page.getAnnotations(), never
+           a visually-detected/guessed link. */
+        .pdf-link-layer { position: absolute; left: 0; top: 0; }
+        .pdf-link-annotation { position: absolute; cursor: pointer; }
+        .pdf-link-annotation:hover { background: rgba(26, 86, 219, 0.08); }
+
         main { flex: 1; display: flex; justify-content: center; position: relative; overflow: hidden; background: var(--bg-color); }
         #reader-container {
             width: 100%; max-width: 900px; height: 100%; background: var(--panel-bg);
@@ -326,10 +366,11 @@
             body.pdf-mode #reader-container { max-width: 100%; padding: 8px; }
             body.pdf-mode:not(.mode-translate-on) #reader-container { cursor: grab; }
         }
-        /* Шар для письма поверх сторінки PDF */
-        #ink-layer { position: absolute; left: 0; top: 0; touch-action: none; }
-        body:not(.ink-mode) #ink-layer { pointer-events: none; }
-        body.ink-mode #ink-layer { pointer-events: auto; cursor: crosshair; }
+        /* Шар для письма поверх сторінки PDF — клас (не id): continuous scroll
+           рендерить кілька сторінок одночасно, кожна зі своїм ink-канвасом. */
+        .ink-layer { position: absolute; left: 0; top: 0; touch-action: none; }
+        body:not(.ink-mode) .ink-layer { pointer-events: none; }
+        body.ink-mode .ink-layer { pointer-events: auto; cursor: crosshair; }
         #ink-tools { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
                      display: none; align-items: center; gap: 8px; z-index: 30100;
                      background: rgba(33,37,41,0.94); padding: 8px 12px; border-radius: 26px;
@@ -732,10 +773,20 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
         #sw-update-banner button { height: 30px; padding: 0 14px; font-size: 12.5px; }
-        /* PDF gestures own the surface; controls retain native touch behavior. */
-        body.pdf-mode #reader-container { touch-action: none !important; overflow-anchor: none; scrollbar-gutter: stable; }
-        body.pdf-mode #reader-pages { position: relative; overflow: hidden; }
-        body.pdf-mode .pdf-page-wrapper { position: absolute; left: 0; top: 0; margin: 0; }
+        /* Continuous PDF viewer: #reader-container is the real vertical scroll
+           viewport (native wheel/touch/scrollbar/PageUp/PageDown all just work —
+           it is a normal scrollable block, not JS-driven scrollLeft/scrollTop).
+           touch-action:pan-y (not none) is what makes single-finger touch
+           scrolling native; pinch (2-finger) is still captured by the existing
+           pointer-based gesture code in pdf-zoom-pan.js, which is unaffected by
+           pan-y since it only governs single-touch default browser behavior. */
+        body.pdf-mode #reader-container { touch-action: pan-y !important; overflow-anchor: none; scrollbar-gutter: stable; overflow-y: auto; }
+        body.pdf-mode #reader-pages { position: relative; height: auto; min-height: 100%; }
+        /* .pdf-page-wrapper keeps its base (non-pdf) rule here — position:relative,
+           margin-bottom gap — so multiple pages stack in normal document flow.
+           A prior version forced position:absolute (single-page-only layout);
+           removed as part of the continuous-scroll rewrite. */
+        .pdf-page-wrapper.pdf-placeholder { background: var(--surface-2); }
         #pdf-fit { display: none; }
         body.pdf-mode #pdf-fit { display: inline-flex; }
         #ink-tools { max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; }
@@ -885,8 +936,18 @@
     </header>
 
     <div class="workspace">
-        <nav id="sidebar" class="collapsed"><ul id="toc-list"><li style="color: gray; padding: 20px;" data-i18n="noBook">Книгу не завантажено</li></ul></nav>
-        
+        <nav id="sidebar" class="collapsed">
+            <ul id="toc-list"><li style="color: gray; padding: 20px;" data-i18n="noBook">Книгу не завантажено</li></ul>
+            <div id="pdf-sidebar">
+                <div id="pdf-sidebar-tabs">
+                    <button type="button" id="pdf-tab-thumbs" class="pdf-sidebar-tab active" data-mode="thumbnails">Thumbnails</button>
+                    <button type="button" id="pdf-tab-outline" class="pdf-sidebar-tab" data-mode="outline" disabled>Contents</button>
+                </div>
+                <ul id="pdf-thumb-list" class="pdf-sidebar-list"></ul>
+                <ul id="pdf-outline-list" class="pdf-sidebar-list" hidden></ul>
+            </div>
+        </nav>
+
         <main id="main-area">
             <div id="reader-container"><div id="reader-pages">
                 <p data-i18n="welcome">Натисніть «Відкрити», щоб завантажити книгу (EPUB, PDF або TXT).</p>
@@ -1032,7 +1093,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=0294f01107c0"></script>
+    <script src="js/core.js?v=9f2bd42e3152"></script>
     <script src="js/lang-detect.js?v=21625d365df7"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1044,9 +1105,9 @@
     </script>
     <script src="js/tts.js?v=d0219e4d74e8"></script>
     <script src="js/selection.js?v=887b5c4cb5a3"></script>
-    <script src="js/learning-stats.js?v=67246f255f39"></script>
-    <script src="js/navigation.js?v=cd49774de655"></script>
-    <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
+    <script src="js/learning-stats.js?v=38a697ac8915"></script>
+    <script src="js/navigation.js?v=4a21bdd73fa1"></script>
+    <script src="js/pdf-zoom-pan.js?v=935b695bb74d"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
     <script src="js/grammar-svo.js?v=1e2cc926855e"></script>
@@ -1054,13 +1115,16 @@
     <script src="js/practice-session.js?v=33a9e03c4ee0"></script>
     <script src="js/practice-worksheet.js?v=acbcb2afec03"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
-    <script src="js/pdf-ink.js?v=cdef18c51883"></script>
-    <script src="js/pdf-crop.js?v=331b25dbd978"></script>
-    <script src="js/pdf-render.js?v=64ef9f00575d"></script>
+    <script src="js/pdf-ink.js?v=9c7619668e39"></script>
+    <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
+    <script src="js/pdf-outline.js?v=182374b75727"></script>
+    <script src="js/pdf-thumbnails.js?v=abcb9d03700f"></script>
+    <script src="js/pdf-continuous.js?v=e2af8dfde79c"></script>
+    <script src="js/pdf-render.js?v=62747661943d"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/quick-wheel.js?v=9908358a1e32"></script>
-    <script src="js/main.js?v=b1568be2db5e"></script>
+    <script src="js/main.js?v=51248a413b8e"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
 </html>

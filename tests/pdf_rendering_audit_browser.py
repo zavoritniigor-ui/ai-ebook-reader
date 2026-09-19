@@ -25,15 +25,15 @@ addEventListener('error',e=>__pdfAuditErrors.push(e.message));
 addEventListener('unhandledrejection',e=>__pdfAuditErrors.push(String(e.reason)));
 const oldWarn=console.warn;console.warn=(...args)=>{__pdfAuditWarnings.push(args.join(' '));oldWarn(...args)};
 window.__pdfSettled=async()=>{await new Promise(r=>setTimeout(r,700));
-for(let i=0;i<200&&(pdfTasks.render||pdfTasks.text);i++)await new Promise(r=>setTimeout(r,50));
+for(let i=0;i<200&&(typeof pdfInFlightRenders!=='undefined'?pdfInFlightRenders>0:(pdfTasks.render||pdfTasks.text));i++)await new Promise(r=>setTimeout(r,50));
 await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))};
-window.__pixels=()=>{const c=els.pages.querySelector('.pdf-canvas');if(!c)return {canvas:false,text:els.pages.textContent};
+window.__pixels=()=>{const root=(typeof pdfPageWrappers!=='undefined'&&pdfPageWrappers[state.currentIndex])||els.pages;const c=root.querySelector('.pdf-canvas');if(!c)return {canvas:false,text:els.pages.textContent};
 const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
 let painted=0,opaque=0;for(let i=0;i<d.length;i+=4){if(d[i+3]>0)opaque++;if(d[i+3]>0&&Math.min(d[i],d[i+1],d[i+2])<235)painted++;}
 const r=c.getBoundingClientRect(),style=getComputedStyle(c);
 return {canvas:true,width:c.width,height:c.height,painted,opaque,total:d.length/4,
 fraction:painted/(d.length/4),visible:r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&style.display!=='none'&&style.visibility!=='hidden'&&style.opacity!=='0',
-text:els.pages.querySelector('.pdf-text-layer')?.textContent||'',page:state.currentIndex,pages:state.totalPages};};""")
+text:(typeof pdfPageWrappers!=='undefined'?pdfPageWrappers[state.currentIndex]:els.pages)?.querySelector('.pdf-text-layer')?.textContent||'',page:state.currentIndex,pages:state.totalPages};};""")
 
 
 def check(name, condition, details=None):
@@ -67,8 +67,8 @@ if '--repro-only' in sys.argv:
 upload(fixtures['G no extractable text'], 'text extraction independence.pdf')
 result = c.js("""(async()=>{const p=await state.pdfDoc.getPage(1),original=p.getTextContent;
 p.getTextContent=async()=>{throw new Error('audit injected text extraction failure')};
-els.pages.replaceChildren();const ok=await renderPdfPage(1);p.getTextContent=original;
-await __pdfSettled();return {ok,pixels:__pixels()};})()""")
+await setupContinuousPdf(state.pdfDoc,1,null);p.getTextContent=original;
+await __pdfSettled();return {ok:true,pixels:__pixels()};})()""")
 assert_pixels('text extraction failure preserves graphical page', result['pixels'])
 if '--text-repro-only' in sys.argv:
     print('PDF TEXT EXTRACTION REGRESSION PASSED')
@@ -89,7 +89,7 @@ for name, data in fixtures.items():
     if result.get('pages',0)>1:
         pages = list(range(2,result['pages']+1)) if result['pages']<=4 else [2,24,48,1]
         for page in pages:
-            later = c.js(f'(async()=>{{await renderPdfPage({page});await __pdfSettled();return __pixels()}})()')
+            later = c.js(f'(async()=>{{navigateToPdfPage({page},{{instant:true}});await __pdfSettled();return __pixels()}})()')
             assert_pixels(f'{name} page {page}', later, .0001)
 
 for filename in ['reportlab-multilingual-illustrated.pdf','ghostscript-illustrated.pdf','high-resolution-photo.pdf']:
@@ -106,7 +106,7 @@ for label,width,height,mobile,dpr in [('desktop',1280,900,False,1),('phone portr
     for name in ['B image-heavy JPX','C image-only scan CCITT','D full-page JPEG','H scanned invisible OCR','M rotated','O large embedded bitmap']:
         result=upload(fixtures[name],f'{label} {name}.pdf')
         assert_pixels(label+' '+name,result)
-        result=c.js('(async()=>{state.pdfFit="free";state.pdfScale=4;await renderPdfPage(state.totalPages,{preserve:true});await __pdfSettled();return __pixels()})()')
+        result=c.js('(async()=>{state.pdfFit="free";state.pdfScale=4;persistPdfZoom();navigateToPdfPage(state.totalPages,{instant:true});relayoutContinuousPdfAtScale();await __pdfSettled();return __pixels()})()')
         assert_pixels(label+' zoom and navigation '+name,result)
 # CI runs every *_browser.py suite against the SAME Chrome tab in one session
 # (see .github/workflows/ci.yml): an emulated viewport left active here leaks
@@ -145,7 +145,7 @@ await openBookFile(new File(['Readable other book.'], 'switch.txt'));
 return {destroyed:__destroyedPdf.loadingTask.destroyed,canvases:els.pages.querySelectorAll('canvas').length}})()''')
     check(f'cycle {cycle} destroys old PDF',result['destroyed'] and result['canvases']==0,result)
     assert_pixels(f'cycle {cycle} reopen',upload(fixtures['B image-heavy JPX'],f'reopen {cycle}.pdf'))
-    c.js('(async()=>{await Promise.all([renderPdfPage(1),renderPdfPage(1),renderPdfPage(1)]);await __pdfSettled()})()')
+    c.js('(async()=>{navigateToPdfPage(1,{instant:true});navigateToPdfPage(1,{instant:true});navigateToPdfPage(1,{instant:true});await __pdfSettled()})()')
     assert_pixels(f'cycle {cycle} concurrent rerenders',c.js('__pixels()'))
 c.call('HeapProfiler.collectGarbage')
 after=c.call('Memory.getDOMCounters')

@@ -272,6 +272,10 @@ const state = {
     refinedKeys: new Set(),
     sourceLang: 'en-US', ctxSentence: '',
     ink: {}, inkMode: false, inkErase: false, inkColor: '#1a56db',
+    // Continuous PDF viewer (js/pdf-continuous.js et al.): pdfDoc set by initPdf,
+    // pdfPageMeta[n] caches {width,height} natural size once page n is measured,
+    // pdfOutline/pdfPageLabels cached from getOutline()/getPageLabels().
+    pdfDoc: null, pdfPageMeta: [], pdfOutline: null, pdfPageLabels: null,
     measuredStep: 0, animTimer: null, dragRange: null, lookupToken: 0, selSpans: [], touchSelecting: false, speakingSide: null, speakingId: 0, speakPos: 0, speakBase: 0, speakResume: null,
     altVoices: readStored('reader_alt_voices') === '1'
 };
