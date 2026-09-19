@@ -481,7 +481,32 @@
         
         #grammar-panel { right: 0; transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.2); border-radius: 16px 0 0 16px; }
         #grammar-panel.expanded { transform: none; visibility: visible; }
-        
+
+        /* French adjective analysis — dense textbook-style rows (Learning panel) */
+        .adj-analysis-box { padding: 10px 14px; border-bottom: 1px solid var(--border-color); }
+        .adj-source-sentence { font-size: 13px; font-style: italic; color: var(--text-muted); margin-bottom: 8px; padding: 6px 8px; background: var(--surface-2); border-radius: var(--radius-sm); }
+        .adj-empty { color: var(--text-muted); font-size: 13px; padding: 8px 0; }
+        .adj-rows { display: flex; flex-direction: column; gap: 6px; }
+        .adj-row { font-size: 12px; line-height: 1.4; padding: 6px 8px; border-left: 3px solid var(--border-color); border-radius: 2px; }
+        .adj-row.conf-confirmed, .adj-row.conf-high_confidence { border-left-color: #198754; }
+        .adj-row.conf-ai_assisted { border-left-color: #1a56db; }
+        .adj-row.conf-heuristic { border-left-color: #ffc107; }
+        .adj-row.conf-ambiguous { border-left-color: #dc3545; }
+        .adj-row-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+        .adj-row-head strong { font-size: 13px; }
+        .adj-chain { color: var(--text-muted); font-family: monospace; font-size: 11px; }
+        .adj-mark { margin-left: auto; font-weight: 700; }
+        .adj-mark.conf-ok { color: #198754; }
+        .adj-mark.conf-ai { color: #1a56db; }
+        .adj-mark.conf-low { color: #dc3545; }
+        .adj-row-meta { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+        .adj-row-rule { font-size: 11px; margin-top: 2px; }
+        .adj-row-explain { font-size: 11px; color: var(--text-color); margin-top: 2px; }
+        .adj-resolve-btn { margin-top: 4px; padding: 3px 8px; font-size: 11px; background: var(--surface-2); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; color: var(--text-color); }
+        .adj-resolve-btn:hover { background: var(--hover-color); }
+        .adj-resolve-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        #adjective-analysis-btn { font-size: 12px; padding: 4px 10px; margin-right: 6px; }
+
         #ask-panel { left: 0; transform: translateX(-100%); box-shadow: 5px 0 25px rgba(0,0,0,0.2); border-radius: 0 16px 16px 0; }
         #ask-panel.expanded { transform: none; visibility: visible; }
 
@@ -944,6 +969,7 @@
             <button type="button" id="grammar-tab" class="panel-tab" aria-label="Граматика" data-i18n-title="tGrammarPanel"></button>
             <div class="panel-header">
                 <h3 data-i18n="panelGrammar">📝 Граматика</h3>
+                <button type="button" id="adjective-analysis-btn" title="Аналіз прикметників (French)">Прикм.</button>
                 <button class="close-panel-btn" onclick="document.getElementById('grammar-panel').classList.remove('expanded')" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
             <div class="tense-bar" id="tense-bar">
@@ -1049,7 +1075,12 @@
     <script src="js/pdf-zoom-pan.js?v=998e78d2c132"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
+    <script src="js/grammar-adjectives.js?v=a33cd547f4dd"></script>
+    <script src="js/grammar-rules.js?v=70b8e8d09740"></script>
+    <script src="js/grammar-analysis-schema.js?v=6f547f6893a5"></script>
+    <script src="js/grammar-adjectives-analyzer.js?v=fe0515defc86"></script>
     <script src="js/grammar-svo.js?v=1e2cc926855e"></script>
+    <script src="js/grammar-adjectives-ui.js?v=607df2983904"></script>
     <script src="js/ai-client.js?v=82020067e03c"></script>
     <script src="js/practice-session.js?v=33a9e03c4ee0"></script>
     <script src="js/practice-worksheet.js?v=acbcb2afec03"></script>
