@@ -1,11 +1,13 @@
-/* pdf-ink.js — письмо поверх сторінки PDF: canvas-шар (inkCanvas), штрихи у
- * ВІДНОСНИХ координатах (0..1, не в пікселях — сторінку можна масштабувати й
- * перевідкривати, написане лишається на місці й не розмивається, бо
- * перемальовується заново у поточній роздільності), збереження/завантаження
- * (saveInk/loadInk через state.ink, ключ — inkPageKey), перемальовування
- * (redrawInk), малювання пером/пальцем/мишею (bindInkCanvas/inkPoint), гумка
- * (inkEraseAt), товщина/колір (updateInkWidth/updateInkTools) і кнопки
- * інструментів (перо/гумка/колір/undo/очистити/готово).
+/* pdf-ink.js — письмо поверх сторінки PDF: canvas-шар ПЕР сторінка (клас
+ * .ink-layer + data-page, а не єдиний #ink-layer — continuous-scroll рендерить
+ * кілька сторінок одночасно), штрихи у ВІДНОСНИХ координатах (0..1, не в
+ * пікселях), збереження/завантаження (saveInk/loadInk через state.ink, ключ —
+ * inkPageKey(pageNum)), перемальовування (redrawInk(canvas, pageNum)),
+ * малювання пером/пальцем/мишею (bindInkCanvas(canvas, pageNum)/inkPoint),
+ * гумка (inkEraseAt), товщина/колір (updateInkWidth/updateInkTools) і кнопки
+ * інструментів (перо/гумка/колір/undo/очистити/готово) — усі діють на
+ * "активну" сторінку письма (activeInkPage), тобто ту, на якій востаннє
+ * почався штрих.
  *
  * Класичний <script src>, НЕ ES-модуль — див. js/core.js. Завантажується одразу
  * після js/ai-client.js. inkDrawing/inkCurrent — власний глобальний стан цього
@@ -15,26 +17,32 @@
  * pdfAnchor).
  */
 
-// ========== ПИСЬМО ПОВЕРХ СТОРІНКИ ==========
-// Штрихи зберігаються у ВІДНОСНИХ координатах (0..1), а не в пікселях: сторінку можна
-// масштабувати й перевідкривати — написане лишається на своєму місці й не розмивається,
-// бо перемальовується заново у поточній роздільності.
-function inkCanvas() { return els.pages.querySelector('#ink-layer'); }
-function inkPageKey() { return String(state.currentIndex); }
-function inkStrokes() {
-    if (!state.ink[inkPageKey()]) state.ink[inkPageKey()] = [];
-    return state.ink[inkPageKey()];
+// ========== ПИСЬМО ПОВЕРХ СТОРІНКИ (per-page canvases) ==========
+// Штрихи зберігаються у ВІДНОСНИХ координатах (0..1, не в пікселях): сторінку
+// можна масштабувати й перевідкривати — написане лишається на своєму місці й
+// не розмивається, бо перемальовується заново у поточній роздільності.
+let inkActivePage = 0; // last page a stroke was drawn/erased on — toolbar (undo/clear/done) targets this
+function activeInkPage() { return inkActivePage || state.currentIndex; }
+function activeInkCanvas() {
+    const w = typeof pdfPageWrappers !== 'undefined' ? pdfPageWrappers[activeInkPage()] : null;
+    return w ? w.querySelector('.ink-layer') : null;
 }
-// Історія операцій для Undo/Redo: кожна операція — draw, erase або clear
+function inkPageKey(pageNum) { return String(pageNum ?? activeInkPage()); }
+function inkStrokes(pageNum) {
+    const key = inkPageKey(pageNum);
+    if (!state.ink[key]) state.ink[key] = [];
+    return state.ink[key];
+}
+// Історія операцій для Undo/Redo: кожна операція — draw, erase або clear, ключ per-сторінка
 let inkHistory = {}, inkRedoStack = {};
-function inkHistoryKey() { return 'history_' + inkPageKey(); }
-function getInkHistory() {
-    const key = inkHistoryKey();
+function inkHistoryKey(pageNum) { return 'history_' + inkPageKey(pageNum); }
+function getInkHistory(pageNum) {
+    const key = inkHistoryKey(pageNum);
     if (!inkHistory[key]) inkHistory[key] = [];
     return inkHistory[key];
 }
-function getInkRedoStack() {
-    const key = inkHistoryKey();
+function getInkRedoStack(pageNum) {
+    const key = inkHistoryKey(pageNum);
     if (!inkRedoStack[key]) inkRedoStack[key] = [];
     return inkRedoStack[key];
 }
@@ -56,13 +64,13 @@ function loadInk() {
         state.ink = JSON.parse(raw || '{}');
     } catch (e) { state.ink = {}; }
 }
-function redrawInk() {
-    const cv = inkCanvas();
+function redrawInk(cv, pageNum) {
+    cv ??= activeInkCanvas(); pageNum ??= activeInkPage();
     if (!cv) return;
     const ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    (state.ink[inkPageKey()] || []).forEach(st => {
+    (state.ink[inkPageKey(pageNum)] || []).forEach(st => {
         if (!st.p || st.p.length < 1) return;
         ctx.strokeStyle = st.c;
         ctx.lineWidth = st.w * cv.width;
@@ -73,6 +81,17 @@ function redrawInk() {
         });
         if (st.p.length === 1) { ctx.fillStyle = st.c; ctx.arc(st.p[0][0]*cv.width, st.p[0][1]*cv.height, ctx.lineWidth/2, 0, Math.PI*2); ctx.fill(); }
         else ctx.stroke();
+    });
+}
+// Redraws every currently-rendered page's ink layer — used after a document-
+// wide change (e.g. zoom re-render) where several pages' canvases were
+// recreated at once.
+function redrawAllVisibleInk() {
+    if (typeof pdfPageWrappers === 'undefined') return;
+    pdfPageWrappers.forEach((w, n) => {
+        if (!w) return;
+        const cv = w.querySelector('.ink-layer');
+        if (cv) redrawInk(cv, n);
     });
 }
 
@@ -99,73 +118,67 @@ function distanceToSegment(pt, p1, p2) {
     const closestX = x1 + t * dx, closestY = y1 + t * dy;
     return Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
 }
-function bindInkCanvas() {
-    const cv = inkCanvas();
+// Bound once per rendered canvas (continuous mode re-creates canvases as
+// pages enter/leave the render window, so this is called per page-render,
+// not once globally — cv.dataset.bound still prevents double-binding the
+// SAME canvas instance).
+function bindInkCanvas(cv, pageNum) {
     if (!cv || cv.dataset.bound) return;
     cv.dataset.bound = '1';
     cv.addEventListener('pointerdown', (e) => {
         if (!state.inkMode || inkDrawing || pdfPointers.size > 1) return;
+        inkActivePage = pageNum;
         inkPointerId = e.pointerId;
         e.preventDefault();
         cv.setPointerCapture(e.pointerId);
         inkDrawing = true;
-        if (state.inkErase) { inkEraseAt(inkPoint(e, cv)); return; }
+        if (state.inkErase) { inkEraseAt(inkPoint(e, cv), cv, pageNum); return; }
         inkCurrent = { c: state.inkColor, w: Number(inkWidth.value) / cv.getBoundingClientRect().width, p: [inkPoint(e, cv)] };
-        inkStrokes().push(inkCurrent); redrawInk();
-        // Чистимо Redo-стек при новій операції
-        getInkRedoStack().length = 0;
+        inkStrokes(pageNum).push(inkCurrent); redrawInk(cv, pageNum);
+        getInkRedoStack(pageNum).length = 0;
     });
     cv.addEventListener('pointermove', (e) => {
         if (!state.inkMode || !inkDrawing || inkPointerId !== e.pointerId || pdfPointers.size > 1) return;
         const pt = inkPoint(e, cv);
-        if (state.inkErase) { inkEraseAt(pt); return; }
+        if (state.inkErase) { inkEraseAt(pt, cv, pageNum); return; }
         inkCurrent.p.push(pt);
-        redrawInk();
+        redrawInk(cv, pageNum);
     });
     const finishStroke = (e) => {
         if (e.pointerId !== inkPointerId) return;
         if (!inkDrawing) return;
-        // Записуємо до історії ДО очищення inkCurrent
         if (inkCurrent && inkCurrent.p.length > 0) {
-            getInkHistory().push({ type: 'draw', stroke: { ...inkCurrent } });
-            const hist = getInkHistory();
+            getInkHistory(pageNum).push({ type: 'draw', stroke: { ...inkCurrent } });
+            const hist = getInkHistory(pageNum);
             if (hist.length > 50) hist.shift();
         }
         inkDrawing = false; inkCurrent = null;
-        redrawInk(); saveInk();
+        redrawInk(cv, pageNum); saveInk();
     };
     cv.addEventListener('pointerup', finishStroke);
     cv.addEventListener('pointercancel', finishStroke);
     cv.addEventListener('lostpointercapture', finishStroke);
 }
 // Гумка стирає штрих цілком — перевіряє відстань як до точок, так і до сегментів лінії
-function inkEraseAt(pt) {
-    const list = inkStrokes();
-    const R = 0.02;  // Допуск для чутливості гумки (передбачуваний при різному масштабі)
+function inkEraseAt(pt, cv, pageNum) {
+    const list = inkStrokes(pageNum);
+    const R = 0.02;
     for (let i = list.length - 1; i >= 0; i--) {
         const stroke = list[i];
         let erased = false;
-        // Перевіряємо точки
-        if (stroke.p.some(p => Math.abs(p[0] - pt[0]) < R && Math.abs(p[1] - pt[1]) < R)) {
-            erased = true;
-        }
-        // Перевіряємо сегменти між точками
+        if (stroke.p.some(p => Math.abs(p[0] - pt[0]) < R && Math.abs(p[1] - pt[1]) < R)) erased = true;
         if (!erased && stroke.p.length > 1) {
             for (let j = 0; j < stroke.p.length - 1; j++) {
-                if (distanceToSegment(pt, stroke.p[j], stroke.p[j + 1]) < R) {
-                    erased = true;
-                    break;
-                }
+                if (distanceToSegment(pt, stroke.p[j], stroke.p[j + 1]) < R) { erased = true; break; }
             }
         }
         if (erased) {
             const erasedStroke = list.splice(i, 1)[0];
-            redrawInk(); saveInk();
-            // Додаємо операцію erase до історії
-            getInkHistory().push({ type: 'erase', stroke: erasedStroke, index: i });
-            const hist = getInkHistory();
+            redrawInk(cv, pageNum); saveInk();
+            getInkHistory(pageNum).push({ type: 'erase', stroke: erasedStroke, index: i });
+            const hist = getInkHistory(pageNum);
             if (hist.length > 50) hist.shift();
-            getInkRedoStack().length = 0;  // Чистимо Redo
+            getInkRedoStack(pageNum).length = 0;
             return;
         }
     }
@@ -176,7 +189,7 @@ document.getElementById('btn-ink').onclick = () => {
     exitRegionMode();
     state.inkMode = true;
     document.body.classList.add('ink-mode', 'immersive-mode');
-    bindInkCanvas();
+    document.querySelectorAll('.ink-layer').forEach(cv => bindInkCanvas(cv, Number(cv.dataset.page)));
     updateInkTools();
 };
 function updateInkTools() {
@@ -190,41 +203,37 @@ document.querySelectorAll('.ink-color').forEach(b => {
     b.onclick = () => { state.inkColor = b.dataset.c; state.inkErase = false; updateInkTools(); };
 });
 document.getElementById('ink-undo').onclick = () => {
-    const hist = getInkHistory();
+    const pageNum = activeInkPage();
+    const hist = getInkHistory(pageNum);
     if (hist.length === 0) return;
     const op = hist.pop();
-    const list = inkStrokes();
+    const list = inkStrokes(pageNum);
 
     if (op.type === 'draw') {
-        // Скасовуємо малювання — видаляємо доданий штрих
         list.splice(list.indexOf(op.stroke), 1);
-        getInkRedoStack().push({ type: 'draw', stroke: op.stroke });
+        getInkRedoStack(pageNum).push({ type: 'draw', stroke: op.stroke });
     } else if (op.type === 'erase') {
-        // Скасовуємо стирання — повертаємо стертий штрих на його місце
         list.splice(op.index, 0, op.stroke);
-        getInkRedoStack().push({ type: 'erase', stroke: op.stroke, index: op.index });
+        getInkRedoStack(pageNum).push({ type: 'erase', stroke: op.stroke, index: op.index });
     } else if (op.type === 'clear') {
-        // Скасовуємо очищення — повертаємо всі штрихи
-        state.ink[inkPageKey()] = op.strokes || [];
-        getInkRedoStack().push({ type: 'clear', strokes: op.strokes });
+        state.ink[inkPageKey(pageNum)] = op.strokes || [];
+        getInkRedoStack(pageNum).push({ type: 'clear', strokes: op.strokes });
     }
-
-    // Обмежуємо Redo до 50 операцій
-    const redo = getInkRedoStack();
+    const redo = getInkRedoStack(pageNum);
     if (redo.length > 50) redo.shift();
 
-    redrawInk(); saveInk();
+    redrawInk(activeInkCanvas(), pageNum); saveInk();
 };
 document.getElementById('ink-clear').onclick = () => {
     if (!confirm(t('clearPageAsk'))) return;
-    const clearedStrokes = inkStrokes();
-    // Додаємо операцію clear до історії з копією розміру strokes
-    getInkHistory().push({ type: 'clear', strokes: clearedStrokes.slice() });
-    const hist = getInkHistory();
+    const pageNum = activeInkPage();
+    const clearedStrokes = inkStrokes(pageNum);
+    getInkHistory(pageNum).push({ type: 'clear', strokes: clearedStrokes.slice() });
+    const hist = getInkHistory(pageNum);
     if (hist.length > 50) hist.shift();
-    state.ink[inkPageKey()] = [];
-    getInkRedoStack().length = 0;  // Чистимо Redo
-    redrawInk(); saveInk();
+    state.ink[inkPageKey(pageNum)] = [];
+    getInkRedoStack(pageNum).length = 0;
+    redrawInk(activeInkCanvas(), pageNum); saveInk();
 };
 document.getElementById('ink-done').onclick = () => {
     state.inkMode = false;

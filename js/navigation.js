@@ -157,14 +157,17 @@ function loadBookmark() {
 function goNext() {
     invalidateSelection();
     if (isSpeakingGlobal) stopGlobalTTS();
-    if (state.format === 'pdf') { if (state.currentIndex < state.totalPages) renderPdfPage(state.currentIndex + 1); return; }
+    // PDF Prev/Next remain secondary navigation (spec §12) but now scroll
+    // through the SAME continuous viewer via the canonical navigateToPdfPage,
+    // instead of rebuilding the document view through a separate path.
+    if (state.format === 'pdf') { if (state.currentIndex < state.totalPages) navigateToPdfPage(state.currentIndex + 1); return; }
     if (state.pageInChapter < state.totalPagesInChapter - 1) goToPageInChapter(state.pageInChapter + 1);
     else if (state.currentIndex < state.totalPages - 1) { if (state.format === 'epub') loadEpubChapter(state.currentIndex + 1); else if (state.docChapters) renderDocChapter(state.currentIndex + 1); else renderTxtPage(state.currentIndex + 1); }
 }
 function goPrev() {
     invalidateSelection();
     if (isSpeakingGlobal) stopGlobalTTS();
-    if (state.format === 'pdf') { if (state.currentIndex > 1) renderPdfPage(state.currentIndex - 1); return; }
+    if (state.format === 'pdf') { if (state.currentIndex > 1) navigateToPdfPage(state.currentIndex - 1); return; }
     if (state.pageInChapter > 0) goToPageInChapter(state.pageInChapter - 1);
     else if (state.currentIndex > 0) { if (state.format === 'epub') loadEpubChapter(state.currentIndex - 1, true); else if (state.docChapters) renderDocChapter(state.currentIndex - 1, true); else renderTxtPage(state.currentIndex - 1, true); }
 }
@@ -264,11 +267,22 @@ const containerResizeObserver = new ResizeObserver((entries) => {
     // кадр CSS-переходу .workspace (margin-top/height, 0.3s), де розмір насправді
     // ще не змінився відносно попереднього виміру.
     if (lastContainerResizeSize && Math.abs(lastContainerResizeSize.w - w) < 1 && Math.abs(lastContainerResizeSize.h - h) < 1) return;
+    // Capture the PDF anchor using the container size from just BEFORE this
+    // resize (still in lastContainerResizeSize, about to be overwritten) —
+    // by the time the debounced relayout below runs, els.container is
+    // already at its NEW size, so a fresh pdfAnchor() there would pair that
+    // new size with the still-old page-wrapper size and mis-locate the point
+    // that was actually centered on screen pre-resize. See pdfAnchor()'s doc
+    // comment in pdf-zoom-pan.js.
+    const pdfResizeAnchor = (state.format === 'pdf' && state.pdfDoc && pdfContinuousReady && lastContainerResizeSize)
+        ? pdfAnchor(lastContainerResizeSize.w, lastContainerResizeSize.h) : null;
     lastContainerResizeSize = { w, h };
-    const focus = pdfViewFocus;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-        if (state.format === 'pdf') { if (state.pdfDoc && !document.hidden) { cancelPdfInteraction(); renderPdfPage(state.currentIndex, { preserve: true, focus }); } }
+        // A resize can change the fit-width scale for every page (side panel
+        // opened/closed, orientation change) — re-layout the whole continuous
+        // stack rather than just re-rendering one page.
+        if (state.format === 'pdf') { if (state.pdfDoc && !document.hidden && pdfContinuousReady) { cancelPdfInteraction(); relayoutContinuousPdfAtScale(pdfResizeAnchor); } }
         else if (state.format) repaginateBook();
     }, 250);
 });

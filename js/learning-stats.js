@@ -94,7 +94,15 @@ function pdfTextItem(node, root) {
     return el;
 }
 function readableTextModel() {
-    const root = state.format === 'pdf' ? els.pages.querySelector('.pdf-text-layer') : els.pages;
+    // Continuous scroll can have several pages' text layers in the DOM at
+    // once — target the ACTIVE page specifically, not just the first match.
+    // Falls back to a plain search of els.pages when no page wrapper exists
+    // for the current index (e.g. a test harness or other caller that sets
+    // state.format='pdf' and injects a text layer directly without going
+    // through the real continuous-scroll setup).
+    const root = state.format === 'pdf'
+        ? (pdfPageWrappers?.[state.currentIndex]?.querySelector('.pdf-text-layer') || els.pages.querySelector('.pdf-text-layer'))
+        : els.pages;
     if (!root || !state.bookKey || !state.format) return { text: '', segments: [], root };
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
         acceptNode(node) {
