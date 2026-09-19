@@ -57,9 +57,12 @@ regionOverlay.addEventListener('pointerup', async (e) => {
         left: Math.min(e.clientX, regionStart.x), top: Math.min(e.clientY, regionStart.y),
         width: Math.abs(e.clientX - regionStart.x), height: Math.abs(e.clientY - regionStart.y)
     };
+    // Resolve WHICH page the gesture started on — continuous scroll can have
+    // several pages rendered at once, unlike the old single-page layout.
+    const startWrapper = document.elementFromPoint(regionStart.x, regionStart.y)?.closest('.pdf-page-wrapper');
     exitRegionMode();
     if (rect.width < 20 || rect.height < 20) return;   // випадковий тап
-    const dataUrl = cropPdfRegion(rect);
+    const dataUrl = cropPdfRegion(rect, startWrapper);
     if (!dataUrl) { showToast(t('regionFail')); return; }
     openCropPreview(dataUrl);
 });
@@ -127,8 +130,16 @@ document.getElementById('crop-ai').onclick = () => {
 
 // Вирізає ділянку з полотна сторінки PDF у власній роздільності полотна,
 // а не екрана — тому дрібний рукописний текст лишається читабельним.
-function cropPdfRegion(rect) {
-    const canvas = els.pages.querySelector('canvas.pdf-canvas');
+// `pageWrapper` — обгортка сторінки, на якій почався жест (continuous scroll
+// рендерить кілька сторінок одночасно, тому querySelector-по-першій-сторінці
+// вже недостатній); якщо не визначено, беремо активну сторінку як і раніше.
+function cropPdfRegion(rect, pageWrapper) {
+    // Fall back to the currently VISIBLE page (state.currentIndex), not
+    // activeInkPage() — that tracks "last page ink was drawn on" for the ink
+    // undo/clear toolbar, a different page entirely once the reader has
+    // since scrolled/jumped elsewhere without drawing again.
+    const wrapper = pageWrapper || pdfPageWrappers?.[state.currentIndex] || els.pages.querySelector('.pdf-page-wrapper');
+    const canvas = wrapper?.querySelector('canvas.pdf-canvas');
     if (!canvas) return null;
     const cr = canvas.getBoundingClientRect();
     const kx = canvas.width / cr.width, ky = canvas.height / cr.height;
@@ -148,7 +159,7 @@ function cropPdfRegion(rect) {
     octx.fillRect(0, 0, out.width, out.height);
     octx.drawImage(canvas, sx, sy, sw, sh, 0, 0, out.width, out.height);
     // Накладаємо написане від руки — саме воно й має піти на перевірку разом із вправою.
-    const ink = inkCanvas();
+    const ink = wrapper.querySelector('.ink-layer');
     if (ink && ink.width === canvas.width) {
         octx.drawImage(ink, sx, sy, sw, sh, 0, 0, out.width, out.height);
     }

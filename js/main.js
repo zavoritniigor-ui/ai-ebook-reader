@@ -133,6 +133,17 @@ async function openBookFile(file) {
     pdfTasks.render?.cancel(); pdfTasks.render = null;
     if (pdfTasks.loading) { pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null; }
     else if (state.pdfDoc) state.pdfDoc.loadingTask.destroy().catch(() => {});
+    // Continuous PDF viewer: stop the previous document's observers before
+    // its wrapper elements are wiped below — an IntersectionObserver whose
+    // targets are already removed from the DOM is harmless, but disconnecting
+    // explicitly avoids a stray callback referencing the old page count.
+    pdfContinuousReady = false;
+    pdfPageObserver?.disconnect(); pdfPageObserver = null;
+    pdfThumbObserver?.disconnect(); pdfThumbObserver = null;
+    document.getElementById('pdf-thumb-list').replaceChildren();
+    document.getElementById('pdf-outline-list').replaceChildren();
+    document.getElementById('pdf-tab-outline').disabled = true;
+    setPdfSidebarMode('thumbnails');
     state.pdfDoc = null; state.epubZip = null; state.spine = []; state.txtLines = [];
     state.bookTextOffset = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;

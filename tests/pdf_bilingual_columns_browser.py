@@ -56,8 +56,8 @@ loaded = c.js(f'''(async()=>{{
     document.body.classList.add('pdf-mode','immersive-mode');
     window.__errors=[]; window.addEventListener('error',e=>__errors.push(e.message));
     window.__pendingPdfRenders=0; window.__lastPdfRender=performance.now();
-    const originalRender=renderPdfPage;
-    renderPdfPage=async(...args)=>{{
+    const originalRender=renderPdfPageInto;
+    renderPdfPageInto=async(...args)=>{{
         __pendingPdfRenders++; __lastPdfRender=performance.now();
         try {{ return await originalRender(...args); }}
         finally {{ __pendingPdfRenders--; __lastPdfRender=performance.now(); }}
