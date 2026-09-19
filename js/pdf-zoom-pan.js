@@ -113,11 +113,22 @@ function restorePdfZoomAnchor(a) {
 // wrapper — stable across reopening the book even if viewport size changed,
 // unlike a raw scroll pixel offset. Used by saveBookmark()/navigateToPdfPage's
 // options.focus (not by the live zoom gesture above).
-function pdfAnchor() {
+//
+// containerW/containerH: optional override for the "viewport center" this is
+// measured against. Every normal caller wants the CURRENT container size —
+// but the one caller that doesn't (navigation.js's ResizeObserver) needs the
+// container's size from just BEFORE the resize it's reacting to: by the time
+// that observer fires, els.container has already been laid out at its NEW
+// size (that's what triggered it), while the page wrapper's own explicit
+// pixel size is still untouched (old). Reading clientWidth/Height fresh here
+// would pair the new container size with the old wrapper size and silently
+// mis-capture which point was actually centered on screen.
+function pdfAnchor(containerW, containerH) {
     const w = pdfPageWrappers[pdfActivePage];
     if (!w) return null;
     const r = w.getBoundingClientRect(), c = els.container.getBoundingClientRect();
-    const clientX = c.left + els.container.clientWidth / 2, clientY = c.top + els.container.clientHeight / 2;
+    const cw = containerW ?? els.container.clientWidth, ch = containerH ?? els.container.clientHeight;
+    const clientX = c.left + cw / 2, clientY = c.top + ch / 2;
     return { page: pdfActivePage, x: (clientX - r.left) / Math.max(1, r.width), y: (clientY - r.top) / Math.max(1, r.height) };
 }
 
@@ -130,11 +141,17 @@ function layoutPdfZoom(zoom) {
     state.pdfZoom = zoom;
     els.pages.style.transformOrigin = '0 0';
     els.pages.style.transform = `scale(${zoom})`;
-    // Explicit pixel size (not just the transform) keeps the container's
-    // native scrollWidth/Height correct DURING the live gesture — a CSS
-    // transform alone does not affect layout/scroll range.
-    els.pages.style.width = `${pdfStackBaseWidth * zoom}px`;
-    els.pages.style.height = `${pdfStackBaseHeight * zoom}px`;
+    // Deliberately NOT resizing width/height here. #reader-pages already sits
+    // at its committed pdfStackBaseWidth/Height (set by setupContinuousPdf/
+    // relayoutContinuousPdfAtScale and left untouched by this function) —
+    // Chrome already extends the scroll container's scrollable-overflow
+    // region to cover the transformed (post-scale) box on its own, so the
+    // transform alone gives the container the correct scrollWidth/Height
+    // during a live gesture. Also setting an explicit *zoom pixel size here
+    // would inflate this same box's own layout size by zoom and THEN
+    // transform-scale that already-inflated box again, compounding to zoom²
+    // visually while state.pdfScale only ever commits a single zoom factor —
+    // exactly the mismatch that broke the post-gesture anchor restore.
     els.pages.style.margin = '0 auto';
 }
 function applyPdfZoom(zoom, x, y) {
@@ -157,9 +174,15 @@ function setPdfScale(scale) {
 // scale (cheap — style writes, not renders) and re-render just the
 // currently-visible window at full resolution, preserving the on-screen
 // anchor point. Clears the live transform/explicit size back to normal flow.
-function relayoutContinuousPdfAtScale() {
+//
+// explicitAnchor: optional pre-captured pdfAnchor()-shaped {page,x,y}, used
+// only by navigation.js's container-resize handler — see pdfAnchor()'s doc
+// comment for why a resize can't just let this function capture its own
+// anchor fresh. Every other caller (zoom/fit-mode changes, where the
+// container itself never resizes) omits it and gets the normal fresh read.
+function relayoutContinuousPdfAtScale(explicitAnchor) {
     if (!pdfContinuousReady) return;
-    const anchor = pdfAnchor();
+    const anchor = explicitAnchor || pdfAnchor();
     let stackHeight = 0, stackWidth = 0;
     for (let n = 1; n <= state.totalPages; n++) {
         const w = pdfPageWrappers[n];
@@ -174,7 +197,15 @@ function relayoutContinuousPdfAtScale() {
     }
     pdfStackBaseWidth = stackWidth; pdfStackBaseHeight = stackHeight;
     els.pages.style.transform = 'none';
-    els.pages.style.width = ''; els.pages.style.height = ''; els.pages.style.margin = '';
+    // #reader-pages is a plain block box: width:auto takes the CONTAINING
+    // block's width, not its children's — it does NOT grow to fit a page
+    // wrapper wider than the container (e.g. any zoom over 100% in free-fit
+    // mode). Clearing width here (as the live-gesture path's own explicit
+    // width does) would silently narrow #reader-pages back to container
+    // width, corrupting anchor math (pdfZoomAnchor reads its rect) and the
+    // horizontal scroll range alike. Keep it explicit, matching actual
+    // content width, the same way the live transform already did.
+    els.pages.style.width = `${stackWidth}px`; els.pages.style.height = ''; els.pages.style.margin = '0 auto';
     // The new render IS already at the committed absolute scale — no extra
     // transform multiplier needed on top (mirrors the old single-page
     // renderer's layoutPdfZoom(1) reset after swapping in a freshly-rendered
@@ -186,15 +217,42 @@ function relayoutContinuousPdfAtScale() {
     pdfRenderedPages.clear();
     updatePdfRenderWindow(pdfActivePage);
     pdfSuppressActiveTracking = false;
-    // navigateToPdfPage() already schedules a DEBOUNCED bookmark save (see
-    // scheduleBookmarkSave in pdf-continuous.js) — an extra IMMEDIATE
-    // saveBookmark() here was redundant and, worse, could fire
-    // scheduleReaderOnboarding() (saveBookmark's own side effect) at an
-    // unpredictable moment relative to whatever the reader is doing right
-    // after a resize/zoom settles. Only the rare case with no anchor (no
-    // page wrapper resolved) needs an explicit fallback save.
-    if (anchor) navigateToPdfPage(anchor.page, { instant: true, yFraction: 1 - anchor.y });
-    else saveBookmark();
+    // Restore the EXACT pixel the anchor pointed at — not a "jump to this
+    // page" navigation. navigateToPdfPage()'s yFraction option deliberately
+    // subtracts a 15% context margin (right for a thumbnail/outline/link
+    // jump, which should show a little of what's above the destination);
+    // a zoom settle instead must put back precisely what the live gesture
+    // was already showing under the cursor, or the page visibly hops by
+    // that same margin the instant the gesture ends. Same math as the old
+    // single-page restorePdfAnchor(), generalized to the page's offset
+    // within the whole continuous stack.
+    if (anchor) {
+        const w = pdfPageWrappers[anchor.page];
+        if (w) {
+            // Delta-adjust off the wrapper's live getBoundingClientRect (like
+            // restorePdfZoomAnchor above), not offsetTop/offsetLeft — those
+            // are measured relative to w's offsetParent's padding edge, which
+            // does not line up 1:1 with #reader-container's scrollLeft/Top
+            // coordinate space whenever the container (or an ancestor in the
+            // offsetParent chain) has its own padding, and silently mis-
+            // restores the anchor by that padding amount.
+            const c = els.container.getBoundingClientRect();
+            const targetX = c.left + els.container.clientWidth / 2;
+            const targetY = c.top + els.container.clientHeight / 2;
+            const r = w.getBoundingClientRect();
+            els.container.scrollLeft += r.left + anchor.x * r.width - targetX;
+            els.container.scrollTop += r.top + anchor.y * r.height - targetY;
+            pdfActivePage = anchor.page; state.currentIndex = anchor.page;
+            updatePdfScrubber();
+            syncActiveThumbnail(anchor.page);
+        }
+    }
+    // navigateToPdfPage() (used elsewhere) already schedules a debounced
+    // bookmark save — mirror that here rather than an immediate save, which
+    // was redundant and could fire scheduleReaderOnboarding() (saveBookmark's
+    // own side effect) at an unpredictable moment relative to whatever the
+    // reader is doing right after a resize/zoom settles.
+    scheduleBookmarkSave();
 }
 
 function cancelPdfRender() {

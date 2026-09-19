@@ -61,7 +61,10 @@ check('quick menu preserves PDF state before gesture regressions', "(()=>{const 
 # render before starting an explicit render that it could otherwise cancel.
 c.wait("document.getElementById('quick-menu').hidden && __pendingRenders===0 && performance.now()-window.__lastRenderAt>400")
 check('plain text and single text layer',"els.pages.textContent.includes('Hello world') && [...document.querySelectorAll('.pdf-page-wrapper')].every(w=>w.querySelectorAll('.pdf-text-layer').length<=1)", timeout=10)
-c.js("navigateToPdfPage(2)")
+# instant: a smooth-scroll animation still in flight when the pinch gesture
+# below starts (worse under CI's more variable scheduling than local) would
+# make the anchor math race against a moving scroll position.
+c.js("navigateToPdfPage(2, {instant:true})")
 check('illustration page',"els.pages.textContent.includes('Illustration caption')", timeout=10)
 c.js("Promise.all(document.getAnimations().filter(a=>a.effect.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))")
 c.js('window.__before=__renders; window.__anchor=pdfZoomAnchor(450,500)')

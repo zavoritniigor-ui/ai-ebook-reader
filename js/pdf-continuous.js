@@ -99,6 +99,12 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     }
     els.pages.appendChild(frag);
     pdfStackBaseWidth = stackWidth; pdfStackBaseHeight = stackHeight;
+    // #reader-pages is a plain block box — width:auto takes the CONTAINING
+    // block's width, not its widest child's, so a restored bookmark that
+    // reopens already zoomed past 100% (free fit) would otherwise leave
+    // #reader-pages narrower than its own content. See the matching
+    // explanation in relayoutContinuousPdfAtScale (pdf-zoom-pan.js).
+    els.pages.style.width = `${stackWidth}px`; els.pages.style.margin = '0 auto';
     state.pdfScale = state.pdfScale; // unchanged; kept for clarity at call site
     persistPdfZoom();
 

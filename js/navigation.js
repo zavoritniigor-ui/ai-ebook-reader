@@ -267,13 +267,22 @@ const containerResizeObserver = new ResizeObserver((entries) => {
     // кадр CSS-переходу .workspace (margin-top/height, 0.3s), де розмір насправді
     // ще не змінився відносно попереднього виміру.
     if (lastContainerResizeSize && Math.abs(lastContainerResizeSize.w - w) < 1 && Math.abs(lastContainerResizeSize.h - h) < 1) return;
+    // Capture the PDF anchor using the container size from just BEFORE this
+    // resize (still in lastContainerResizeSize, about to be overwritten) —
+    // by the time the debounced relayout below runs, els.container is
+    // already at its NEW size, so a fresh pdfAnchor() there would pair that
+    // new size with the still-old page-wrapper size and mis-locate the point
+    // that was actually centered on screen pre-resize. See pdfAnchor()'s doc
+    // comment in pdf-zoom-pan.js.
+    const pdfResizeAnchor = (state.format === 'pdf' && state.pdfDoc && pdfContinuousReady && lastContainerResizeSize)
+        ? pdfAnchor(lastContainerResizeSize.w, lastContainerResizeSize.h) : null;
     lastContainerResizeSize = { w, h };
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
         // A resize can change the fit-width scale for every page (side panel
         // opened/closed, orientation change) — re-layout the whole continuous
         // stack rather than just re-rendering one page.
-        if (state.format === 'pdf') { if (state.pdfDoc && !document.hidden && pdfContinuousReady) { cancelPdfInteraction(); relayoutContinuousPdfAtScale(); } }
+        if (state.format === 'pdf') { if (state.pdfDoc && !document.hidden && pdfContinuousReady) { cancelPdfInteraction(); relayoutContinuousPdfAtScale(pdfResizeAnchor); } }
         else if (state.format) repaginateBook();
     }, 250);
 });
