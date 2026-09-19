@@ -336,7 +336,8 @@
             position: static; font: inherit; transform: none;
         }
         .pdf-text-layer .markedContent { display: contents; }
-        .mode-translate .pdf-text-layer span { pointer-events: auto; cursor: text; }
+        .mode-translate .pdf-text-layer span,
+        body.mode-translate-on .pdf-text-layer span { pointer-events: auto; cursor: text; }
 
         footer#app-footer { position: fixed; bottom: 0; left: 0; width: 100%; height: 50px; background: var(--panel-bg); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; gap: 20px; z-index: 10000; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         /* Плаваюче керування читанням — напівпрозоре, поверх тексту, з'являється лише
