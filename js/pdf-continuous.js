@@ -26,7 +26,6 @@ let pdfContinuousReady = false;
 // geometry change of a watched target fires it, independent of scrolling),
 // which would otherwise start real page renders mid-gesture and defeat the
 // "live transform only, real render after settling" design. Set by
-// pdf-zoom-pan.js around each gesture.
 let pdfSuppressActiveTracking = false;
 let pdfStackBaseWidth = 0, pdfStackBaseHeight = 0; // sum/max at zoom=1 (relative to fit), for live-zoom sizing
 
@@ -64,6 +63,19 @@ function pdfWrapperEstimate(doc) {
     return state.pdfPageMeta[state.currentIndex] || state.pdfPageMeta[1] || { width: 612, height: 792 };
 }
 
+function updatePdfProgressText(pageIndex) {
+    if (state.format !== 'pdf') return;
+    const bookLabel = typeof pdfBookPageLabel === 'function' ? pdfBookPageLabel(pageIndex) : null;
+    const hasBookScheme = state.pdfPageLabels || (state.pdfLabelToPhysical && state.pdfLabelToPhysical.size > 0);
+    if (bookLabel !== null) {
+        els.progress.textContent = `p. ${bookLabel} (${pageIndex}/${state.totalPages})`;
+    } else if (hasBookScheme && state.pdfPrintedPageLabels && state.pdfPrintedPageLabels[pageIndex] === null) {
+        els.progress.textContent = `— (${pageIndex}/${state.totalPages})`;
+    } else {
+        els.progress.textContent = `${pageIndex} ${t('of')} ${state.totalPages}`;
+    }
+}
+
 async function setupContinuousPdf(doc, startPage, bookmark) {
     pdfContinuousReady = false;
     if (pdfPageObserver) { pdfPageObserver.disconnect(); pdfPageObserver = null; }
@@ -72,6 +84,14 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     pdfRenderedPages.clear();
     pdfVisibleRatios.clear();
     state.pdfPageMeta = new Array(state.totalPages + 1).fill(null);
+    if (typeof resetPdfPageLabels === 'function') {
+        resetPdfPageLabels();
+    } else {
+        state.pdfPageLabels = null;
+        state.pdfPrintedPageLabels = null;
+        state.pdfLabelToPhysical = new Map();
+        state.pdfLabelsFullyScanned = false;
+    }
     state.currentIndex = startPage; pdfActivePage = startPage;
 
     await measurePdfPage(doc, startPage);
@@ -114,8 +134,13 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     pdfPageWrappers.forEach(w => w && pdfPageObserver.observe(w));
 
     updatePdfScrubber();
-    els.progress.textContent = `${startPage} ${t('of')} ${state.totalPages}`;
+    updatePdfProgressText(startPage);
     pdfContinuousReady = true;
+
+    // Background, best-effort — never blocks first paint.
+    loadPdfOutline(doc);
+    loadPdfPageLabels(doc);
+    setupPdfThumbnailSidebar(doc);
 
     // Initial scroll BEFORE the observer has settled, so there is no visible
     // jump once it fires. The START page is explicitly AWAITED — callers of
@@ -125,11 +150,6 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     navigateToPdfPage(startPage, { instant: true, focus: bookmark?.pdfFocus, skipHistory: true });
     const renders = updatePdfRenderWindow(startPage);
     await renders.get(startPage);
-
-    // Background, best-effort — never blocks first paint.
-    loadPdfOutline(doc);
-    loadPdfPageLabels(doc);
-    setupPdfThumbnailSidebar(doc);
 }
 
 function handlePdfIntersection(entries) {
@@ -143,7 +163,7 @@ function handlePdfIntersection(entries) {
     pdfVisibleRatios.forEach((ratio, n) => { if (ratio > bestRatio) { bestRatio = ratio; best = n; } });
     if (bestRatio <= 0 || best === pdfActivePage) return;
     pdfActivePage = best; state.currentIndex = best;
-    els.progress.textContent = `${best} ${t('of')} ${state.totalPages}`;
+    updatePdfProgressText(best);
     updatePdfScrubber();
     updatePdfRenderWindow(best);
     syncActiveThumbnail(best);
@@ -229,6 +249,7 @@ function correctPlaceholderSize(pageNum, meta, scale) {
 // directly, so there is exactly one page-navigation code path.
 function navigateToPdfPage(pageIndex, options = {}) {
     if (!pdfContinuousReady || state.format !== 'pdf') return;
+    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     pageIndex = Math.max(1, Math.min(state.totalPages, Math.trunc(pageIndex)));
     const w = pdfPageWrappers[pageIndex];
     if (!w) return;
@@ -263,7 +284,7 @@ function navigateToPdfPage(pageIndex, options = {}) {
     }
     els.container.scrollTo({ top, left: 0, behavior: options.instant ? 'auto' : 'smooth' });
     pdfActivePage = pageIndex; state.currentIndex = pageIndex;
-    els.progress.textContent = `${pageIndex} ${t('of')} ${state.totalPages}`;
+    updatePdfProgressText(pageIndex);
     updatePdfScrubber();
     syncActiveThumbnail(pageIndex);
     if (options.focus && Number.isFinite(options.focus.x) && Number.isFinite(options.focus.y)) {

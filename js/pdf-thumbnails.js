@@ -72,6 +72,14 @@ async function runPdfThumbQueue(doc) {
     pdfThumbQueueRunning = true;
     try {
         while (pdfThumbQueue.length) {
+            if (els.sidebar.classList.contains('collapsed')) {
+                pdfThumbQueue.length = 0;
+                return;
+            }
+            while (typeof pdfInFlightRenders !== 'undefined' && pdfInFlightRenders > 0) {
+                await new Promise(r => setTimeout(r, 60));
+                if (document.hidden) return;
+            }
             const { pageNum, generation } = pdfThumbQueue.shift();
             if (generation !== pdfThumbGeneration || document.hidden) continue;
             const li = pdfThumbItems[pageNum];
@@ -91,6 +99,7 @@ async function runPdfThumbQueue(doc) {
                 const ph = li.querySelector('.pdf-thumb-placeholder');
                 if (ph) ph.replaceWith(c); else li.prepend(c);
             } catch (e) { /* one failed thumbnail must not stop the rest */ }
+            await new Promise(r => setTimeout(r, 20));
         }
     } finally { pdfThumbQueueRunning = false; }
 }
@@ -99,4 +108,13 @@ function syncActiveThumbnail(pageNum) {
     pdfThumbItems.forEach((li, n) => { if (li) li.classList.toggle('active', n === pageNum); });
     const active = pdfThumbItems[pageNum];
     if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function updatePdfThumbnailLabel(pageNum) {
+    const li = pdfThumbItems?.[pageNum];
+    if (!li) return;
+    const label = li.querySelector('.pdf-thumb-num');
+    if (label && typeof pdfDisplayLabel === 'function') {
+        label.textContent = pdfDisplayLabel(pageNum);
+    }
 }

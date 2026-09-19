@@ -19,10 +19,10 @@ async function initPdf(file, epoch = readerEpoch.book) {
     let cancelled = false;
     const reading = { destroy: async () => { cancelled = true; } };
     pdfTasks.loading = reading;
-    let data;
     try { data = await file.arrayBuffer(); }
     finally { if (pdfTasks.loading === reading) pdfTasks.loading = null; }
     if (cancelled || epoch !== readerEpoch.book) return;
+    if (typeof resetPdfPageLabels === 'function') resetPdfPageLabels();
     // isEvalSupported прибрано разом з переходом на PDF.js 6.x: єдиний код, що колись
     // використовував eval (PostScriptCompiler для PDF-функцій), сама бібліотека видалила
     // як мертвий — тепер eval у PDF.js не використовується взагалі, і цей прапорець
@@ -131,6 +131,12 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         let textTask = null;
         try {
             const textContent = await page.getTextContent();
+            if (!state.pdfPageLabels && typeof recordPdfPageLabel === 'function' && typeof extractPrintedPageLabel === 'function') {
+                if (!state.pdfPrintedPageLabels || state.pdfPrintedPageLabels[pageNum] === undefined) {
+                    const label = extractPrintedPageLabel(textContent.items, vp);
+                    recordPdfPageLabel(pageNum, label);
+                }
+            }
             if (!isWanted()) return false;
             const textLayer = new pdfjsLib.TextLayer({ textContentSource: textContent, container: tl, viewport: vp });
             textTask = textLayer; activeTask.current = textLayer;
@@ -187,8 +193,19 @@ let scrubDragging = false, scrubTimer, scrubPendingPage = null;
 function updatePdfScrubber() {
     document.getElementById('pdf-scrubber').classList.toggle('available', state.totalPages > 1);
     pdfPageRange.max = state.totalPages; pdfPageRange.value = state.currentIndex;
-    document.getElementById('pdf-page-preview').value = state.currentIndex;
-    pdfPageRange.setAttribute('aria-valuetext', `${state.currentIndex} / ${state.totalPages}`);
+    const bookLabel = typeof pdfBookPageLabel === 'function' ? pdfBookPageLabel(state.currentIndex) : null;
+    const hasBookScheme = state.pdfPageLabels || (state.pdfLabelToPhysical && state.pdfLabelToPhysical.size > 0);
+    const preview = document.getElementById('pdf-page-preview');
+    if (bookLabel !== null) {
+        preview.value = `p. ${bookLabel} (${state.currentIndex})`;
+        pdfPageRange.setAttribute('aria-valuetext', `Page ${bookLabel}, physical ${state.currentIndex} of ${state.totalPages}`);
+    } else if (hasBookScheme && state.pdfPrintedPageLabels && state.pdfPrintedPageLabels[state.currentIndex] === null) {
+        preview.value = `— (${state.currentIndex})`;
+        pdfPageRange.setAttribute('aria-valuetext', `Unnumbered, physical ${state.currentIndex} of ${state.totalPages}`);
+    } else {
+        preview.value = state.currentIndex;
+        pdfPageRange.setAttribute('aria-valuetext', `${state.currentIndex} / ${state.totalPages}`);
+    }
 }
 function commitPdfScrub() {
     clearTimeout(scrubTimer);
@@ -208,8 +225,20 @@ pdfPageRange.addEventListener('pointerdown', e => {
     scrubDragging = true; clearTimeout(scrubTimer); pdfPageRange.setPointerCapture(e.pointerId);
 });
 pdfPageRange.addEventListener('input', () => {
-    document.getElementById('pdf-page-preview').value = pdfPageRange.value;
-    pdfPageRange.setAttribute('aria-valuetext', `${pdfPageRange.value} / ${state.totalPages}`);
+    const val = Number(pdfPageRange.value);
+    const bookLabel = typeof pdfBookPageLabel === 'function' ? pdfBookPageLabel(val) : null;
+    const hasBookScheme = state.pdfPageLabels || (state.pdfLabelToPhysical && state.pdfLabelToPhysical.size > 0);
+    const preview = document.getElementById('pdf-page-preview');
+    if (bookLabel !== null) {
+        preview.value = `p. ${bookLabel} (${val})`;
+        pdfPageRange.setAttribute('aria-valuetext', `Page ${bookLabel}, physical ${val} of ${state.totalPages}`);
+    } else if (hasBookScheme && state.pdfPrintedPageLabels && state.pdfPrintedPageLabels[val] === null) {
+        preview.value = `— (${val})`;
+        pdfPageRange.setAttribute('aria-valuetext', `Unnumbered, physical ${val} of ${state.totalPages}`);
+    } else {
+        preview.value = val;
+        pdfPageRange.setAttribute('aria-valuetext', `${val} / ${state.totalPages}`);
+    }
 });
 pdfPageRange.addEventListener('pointerup', () => { scrubDragging = false; commitPdfScrub(); });
 pdfPageRange.addEventListener('pointercancel', () => { scrubDragging = false; clearTimeout(scrubTimer); updatePdfScrubber(); });

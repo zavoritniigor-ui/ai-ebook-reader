@@ -125,7 +125,11 @@ function goToPageInChapter(p, animate = true) {
     saveBookmark();
 }
 function updateProgressText() {
-    if (state.format === 'pdf') { els.progress.textContent = `${state.currentIndex} ${t('of')} ${state.totalPages}`; return; }
+    if (state.format === 'pdf') {
+        if (typeof updatePdfProgressText === 'function') updatePdfProgressText(state.currentIndex);
+        else els.progress.textContent = `${state.currentIndex} ${t('of')} ${state.totalPages}`;
+        return;
+    }
     const label = t(state.format === 'epub' ? 'chapter' : 'block');
     els.progress.textContent = `${label} ${state.currentIndex + 1}/${state.totalPages} · ${t('page')} ${state.pageInChapter + 1} ${t('of')} ${state.totalPagesInChapter}`;
 }
@@ -253,8 +257,12 @@ els.mainArea.addEventListener('wheel', (e) => {
 // ResizeObserver і так спрацює, — або не міняє його зовсім, у якому разі
 // репагінація й не була б потрібна). Тому цей ResizeObserver ПОВНІСТЮ замінює
 // колишній window.addEventListener('resize', ...), а не доповнює його.
-let resizeTimer;
+let resizeTimer = null;
 let lastContainerResizeSize = null;
+let pendingPdfResizeAnchor = null;
+function invalidatePendingPdfResizeAnchor() {
+    if (resizeTimer !== null) pendingPdfResizeAnchor = null;
+}
 const containerResizeObserver = new ResizeObserver((entries) => {
     if (document.body.inert) return;
     const entry = entries[0];
@@ -274,15 +282,23 @@ const containerResizeObserver = new ResizeObserver((entries) => {
     // new size with the still-old page-wrapper size and mis-locate the point
     // that was actually centered on screen pre-resize. See pdfAnchor()'s doc
     // comment in pdf-zoom-pan.js.
-    const pdfResizeAnchor = (state.format === 'pdf' && state.pdfDoc && pdfContinuousReady && lastContainerResizeSize)
+    pendingPdfResizeAnchor = (state.format === 'pdf' && state.pdfDoc && pdfContinuousReady && lastContainerResizeSize)
         ? pdfAnchor(lastContainerResizeSize.w, lastContainerResizeSize.h) : null;
     lastContainerResizeSize = { w, h };
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
+        resizeTimer = null;
         // A resize can change the fit-width scale for every page (side panel
         // opened/closed, orientation change) — re-layout the whole continuous
         // stack rather than just re-rendering one page.
-        if (state.format === 'pdf') { if (state.pdfDoc && !document.hidden && pdfContinuousReady) { cancelPdfInteraction(); relayoutContinuousPdfAtScale(pdfResizeAnchor); } }
+        if (state.format === 'pdf') {
+            if (state.pdfDoc && !document.hidden && pdfContinuousReady) {
+                cancelPdfInteraction();
+                const anchor = pendingPdfResizeAnchor;
+                pendingPdfResizeAnchor = null;
+                relayoutContinuousPdfAtScale(anchor);
+            }
+        }
         else if (state.format) repaginateBook();
     }, 250);
 });

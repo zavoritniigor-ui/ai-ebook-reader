@@ -142,9 +142,9 @@ async function openBookFile(file) {
     pdfThumbObserver?.disconnect(); pdfThumbObserver = null;
     document.getElementById('pdf-thumb-list').replaceChildren();
     document.getElementById('pdf-outline-list').replaceChildren();
-    document.getElementById('pdf-tab-outline').disabled = true;
     setPdfSidebarMode('thumbnails');
-    state.pdfDoc = null; state.epubZip = null; state.spine = []; state.txtLines = [];
+    state.pdfDoc = null; state.pdfOutline = null; state.epubZip = null; state.spine = []; state.txtLines = [];
+    if (typeof resetPdfPageLabels === 'function') resetPdfPageLabels();
     state.bookTextOffset = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
     state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = '';

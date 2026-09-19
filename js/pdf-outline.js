@@ -16,21 +16,205 @@
  * handlers only, the same safe pattern used throughout the PDF modules).
  */
 
-// ===================== PAGE LABELS =====================
-async function loadPdfPageLabels(doc) {
+// ===================== PAGE IDENTITY & LABELS =====================
+// Internal navigation always uses 1-based physicalPdfPage (1..totalPages).
+// User-facing UI displays bookPageLabel (e.g. "210", "ix", or null for unnumbered).
+// There is NO constant global offset (e.g. page - 11 is forbidden).
+
+function extractPrintedPageLabel(items, vp) {
+    if (!items || !items.length) return null;
+    const allText = items.map(i => i.str.trim()).filter(Boolean).join(' ');
+    if (!allText || /intentionally left blank/i.test(allText)) return null;
+
+    const footerItems = [];
+    const headerItems = [];
+    const height = vp?.height || 792;
+
+    for (const item of items) {
+        const s = item.str.trim();
+        if (!s) continue;
+        const yRel = item.transform[5] / height;
+        if (yRel <= 0.08) footerItems.push(s);
+        else if (yRel >= 0.92) headerItems.push(s);
+    }
+
+    const isArabic = s => /^\d{1,4}$/.test(s);
+    const isRoman = s => /^(?=[ivxlcdm]+$)(m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3}))$/i.test(s);
+
+    for (const s of footerItems) {
+        if (isArabic(s)) return s;
+        if (isRoman(s)) return s.toLowerCase();
+    }
+    for (const s of headerItems) {
+        if (isArabic(s)) return s;
+        if (isRoman(s)) return s.toLowerCase();
+    }
+
+    return null;
+}
+
+function recordPdfPageLabel(pageNum, label) {
+    if (!state.pdfPrintedPageLabels) {
+        state.pdfPrintedPageLabels = new Array(state.totalPages + 1).fill(undefined);
+    }
+    state.pdfPrintedPageLabels[pageNum] = label;
+    if (label && state.pdfLabelToPhysical) {
+        const key = String(label).trim().toLowerCase();
+        if (!state.pdfLabelToPhysical.has(key)) {
+            state.pdfLabelToPhysical.set(key, pageNum);
+        }
+    }
+    if (typeof updatePdfThumbnailLabel === 'function') {
+        updatePdfThumbnailLabel(pageNum);
+    }
+    if (pageNum === state.currentIndex) {
+        if (typeof updatePdfProgressText === 'function') updatePdfProgressText(pageNum);
+        if (typeof updatePdfScrubber === 'function') updatePdfScrubber();
+    }
+}
+
+let pdfLabelScanGeneration = 0;
+
+function resetPdfPageLabels() {
+    pdfLabelScanGeneration++;
     state.pdfPageLabels = null;
+    state.pdfPrintedPageLabels = null;
+    state.pdfLabelToPhysical = new Map();
+    state.pdfLabelsFullyScanned = false;
+}
+
+let pdfLabelScanTimer = null;
+function schedulePrintedPageLabelScan(doc) {
+    clearTimeout(pdfLabelScanTimer);
+    pdfLabelScanTimer = setTimeout(() => {
+        startPrintedPageLabelScan(doc);
+    }, 4000);
+}
+
+async function startPrintedPageLabelScan(doc) {
+    const gen = ++pdfLabelScanGeneration;
+    state.pdfLabelsFullyScanned = false;
+    if (gen !== pdfLabelScanGeneration || state.format !== 'pdf') return;
+
+    for (let p = 1; p <= state.totalPages; p++) {
+        if (gen !== pdfLabelScanGeneration || state.format !== 'pdf') return;
+        while (typeof pdfInFlightRenders !== 'undefined' && pdfInFlightRenders > 0) {
+            await new Promise(r => setTimeout(r, 100));
+            if (gen !== pdfLabelScanGeneration || state.format !== 'pdf') return;
+        }
+        if (!state.pdfPrintedPageLabels || state.pdfPrintedPageLabels[p] === undefined) {
+            try {
+                const page = await doc.getPage(p);
+                if (gen !== pdfLabelScanGeneration) return;
+                const vp = page.getViewport({ scale: 1 });
+                const tc = await page.getTextContent();
+                const label = extractPrintedPageLabel(tc.items, vp);
+                recordPdfPageLabel(p, label);
+            } catch (e) {
+                recordPdfPageLabel(p, null);
+            }
+            await new Promise(r => setTimeout(r, 60));
+        }
+    }
+    if (gen === pdfLabelScanGeneration) {
+        state.pdfLabelsFullyScanned = true;
+    }
+}
+
+async function loadPdfPageLabels(doc) {
+    resetPdfPageLabels();
     try {
         const labels = await doc.getPageLabels();
-        if (Array.isArray(labels) && labels.length === state.totalPages) state.pdfPageLabels = labels;
+        if (Array.isArray(labels) && labels.length === state.totalPages) {
+            state.pdfPageLabels = labels;
+            labels.forEach((l, i) => {
+                if (l) state.pdfLabelToPhysical.set(String(l).trim().toLowerCase(), i + 1);
+            });
+            state.pdfLabelsFullyScanned = true;
+            return;
+        }
     } catch (e) { /* labels are optional */ }
+
+    state.pdfPrintedPageLabels = new Array(state.totalPages + 1).fill(undefined);
+    schedulePrintedPageLabelScan(doc);
 }
 
 // Display label for a physical (1-based) page index — printed book page
-// number when PageLabels exist, otherwise the physical index itself.
-// Navigation NEVER uses this — only the physical index is ever passed to
-// navigateToPdfPage; this is display-only, by design (no "-11" hardcoding).
+// number when present, '—' for unnumbered pages, otherwise physical index.
 function pdfDisplayLabel(pageIndex) {
-    return state.pdfPageLabels?.[pageIndex - 1] ?? String(pageIndex);
+    if (state.pdfPageLabels) return state.pdfPageLabels[pageIndex - 1] ?? String(pageIndex);
+    if (state.pdfPrintedPageLabels) {
+        const l = state.pdfPrintedPageLabels[pageIndex];
+        if (l) return l;
+        if (l === null && state.pdfLabelToPhysical && state.pdfLabelToPhysical.size > 0) {
+            return '—';
+        }
+    }
+    return String(pageIndex);
+}
+
+// User-facing book page label (e.g. "210", "ix", or null for unnumbered / unknown)
+function pdfBookPageLabel(pageIndex) {
+    if (state.pdfPageLabels) return state.pdfPageLabels[pageIndex - 1] ?? null;
+    if (state.pdfPrintedPageLabels) {
+        const l = state.pdfPrintedPageLabels[pageIndex];
+        return (l !== undefined) ? l : null;
+    }
+    return null;
+}
+
+// Canonical API: Navigate by 1-based physical PDF page index
+function goToPhysicalPage(physicalPdfPage, options = {}) {
+    return navigateToPdfPage(physicalPdfPage, options);
+}
+
+// Canonical API: Navigate by user-facing logical book page label
+async function goToBookPage(bookPageLabel, options = {}) {
+    if (bookPageLabel === null || bookPageLabel === undefined) return false;
+    const target = String(bookPageLabel).trim().toLowerCase();
+    if (!target) return false;
+
+    // 1. Native PageLabels lookup
+    if (state.pdfPageLabels) {
+        const idx = state.pdfPageLabels.findIndex(l => l && String(l).trim().toLowerCase() === target);
+        if (idx !== -1) {
+            goToPhysicalPage(idx + 1, options);
+            return true;
+        }
+    }
+
+    // 2. Already mapped printed label
+    if (state.pdfLabelToPhysical && state.pdfLabelToPhysical.has(target)) {
+        const physical = state.pdfLabelToPhysical.get(target);
+        goToPhysicalPage(physical, options);
+        return true;
+    }
+
+    // 3. On-demand search through un-scanned pages
+    if (state.pdfDoc && !state.pdfLabelsFullyScanned) {
+        if (!state.pdfPrintedPageLabels) {
+            state.pdfPrintedPageLabels = new Array(state.totalPages + 1).fill(undefined);
+        }
+        for (let p = 1; p <= state.totalPages; p++) {
+            if (state.pdfPrintedPageLabels[p] === undefined) {
+                try {
+                    const page = await state.pdfDoc.getPage(p);
+                    const vp = page.getViewport({ scale: 1 });
+                    const tc = await page.getTextContent();
+                    const label = extractPrintedPageLabel(tc.items, vp);
+                    recordPdfPageLabel(p, label);
+                    if (label && label.trim().toLowerCase() === target) {
+                        goToPhysicalPage(p, options);
+                        return true;
+                    }
+                } catch (e) {
+                    recordPdfPageLabel(p, null);
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 // ===================== OUTLINE (CONTENTS) =====================

@@ -276,6 +276,7 @@ const state = {
     // pdfPageMeta[n] caches {width,height} natural size once page n is measured,
     // pdfOutline/pdfPageLabels cached from getOutline()/getPageLabels().
     pdfDoc: null, pdfPageMeta: [], pdfOutline: null, pdfPageLabels: null,
+    pdfPrintedPageLabels: null, pdfLabelToPhysical: null, pdfLabelsFullyScanned: false,
     measuredStep: 0, animTimer: null, dragRange: null, lookupToken: 0, selSpans: [], touchSelecting: false, speakingSide: null, speakingId: 0, speakPos: 0, speakBase: 0, speakResume: null,
     altVoices: readStored('reader_alt_voices') === '1'
 };
