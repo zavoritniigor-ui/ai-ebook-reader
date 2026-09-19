@@ -69,7 +69,29 @@ async function renderPdfPageInto(pageNum, wrapperEl, scale, isWanted) {
         pdfInFlightRenders--;
     }
 }
+// isWanted() alone only stops THIS call from touching the DOM once it's
+// already finished a step — it does nothing to stop pdf.js from spending
+// real CPU/time finishing a text-layer or canvas rasterization nobody wants
+// anymore. Rapid repeated re-render requests for the SAME page (a fast zoom
+// drag, or updatePdfRenderWindow being called many times before any one
+// settles) would otherwise stack up several full in-flight renders per page
+// before any of them naturally resolve — wasted work, and each one briefly
+// builds (and only eventually discards) a full canvas+text-layer+link-layer+
+// ink-layer DOM subtree. pdfPageActiveTask tracks whichever pdf.js task is
+// currently running for a given page so a superseding request can cancel it
+// immediately via cancelPdfPageRenderTask() instead of letting it run to
+// completion first.
+const pdfPageActiveTask = new Map(); // pageNum -> {cancel()}
+function cancelPdfPageRenderTask(pageNum) {
+    const t = pdfPageActiveTask.get(pageNum);
+    if (!t) return;
+    pdfPageActiveTask.delete(pageNum);
+    t.cancel();
+}
+function pdfPagesWithActiveRenderTask() { return [...pdfPageActiveTask.keys()]; }
 async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
+    const activeTask = { current: null, cancel() { try { this.current?.cancel(); } catch (e) {} } };
+    pdfPageActiveTask.set(pageNum, activeTask);
     try {
         const page = await state.pdfDoc.getPage(pageNum);
         if (!isWanted()) return false;
@@ -111,8 +133,8 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
             const textContent = await page.getTextContent();
             if (!isWanted()) return false;
             const textLayer = new pdfjsLib.TextLayer({ textContentSource: textContent, container: tl, viewport: vp });
-            textTask = textLayer;
-            try { await textLayer.render(); } finally { if (textTask === textLayer) textTask = null; }
+            textTask = textLayer; activeTask.current = textLayer;
+            try { await textLayer.render(); } finally { if (textTask === textLayer) textTask = null; if (activeTask.current === textLayer) activeTask.current = null; }
             if (!isWanted()) return false;
             tl.style.width = `${vp.rotation % 180 === 0 ? vp.width : vp.height}px`;
             tl.style.height = `${vp.rotation % 180 === 0 ? vp.height : vp.width}px`;
@@ -127,10 +149,11 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
             viewport: vp,
             transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
         });
+        activeTask.current = renderTask;
         try { await renderTask.promise; } catch (err) {
             if (err.name === 'RenderingCancelledException') return false;
             throw err;
-        }
+        } finally { if (activeTask.current === renderTask) activeTask.current = null; }
         if (!isWanted()) return false;
 
         // Native PDF link annotations — clickable overlay from real annotation
@@ -154,6 +177,8 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         if (!isWanted()) return false;
         console.warn('PDF page render failed', pageNum, err);
         return false;
+    } finally {
+        if (pdfPageActiveTask.get(pageNum) === activeTask) pdfPageActiveTask.delete(pageNum);
     }
 }
 

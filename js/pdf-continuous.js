@@ -165,7 +165,10 @@ function updatePdfRenderWindow(activePage) {
 
     // Drop pages that fell outside the window: cancel any in-flight render
     // and collapse back to a lightweight placeholder (keeps its measured
-    // height, so scroll position never jumps).
+    // height, so scroll position never jumps). This also covers pages that
+    // are STILL mid-render (not yet in pdfRenderedPages) but no longer
+    // wanted — pdfRenderedPages alone only tracks completed ones.
+    pdfPagesWithActiveRenderTask().forEach(n => { if (!wanted.has(n)) cancelPdfPageRenderTask(n); });
     pdfRenderedPages.forEach(n => {
         if (wanted.has(n)) return;
         pdfPageTokens[n]++;
@@ -185,6 +188,13 @@ function updatePdfRenderWindow(activePage) {
         if (pdfRenderedPages.has(n)) { pending.set(n, Promise.resolve(true)); return; }
         const w = pdfPageWrappers[n];
         if (!w) return;
+        // A still-wanted page can ALSO have a stale in-flight render — e.g.
+        // this same function called again (new scale, scroll settle) before
+        // the previous call's render for this page finished. Cancel it
+        // outright instead of leaving it to run to completion only to be
+        // discarded by the token check below: rapid repeated calls would
+        // otherwise stack up many full in-flight renders per page.
+        cancelPdfPageRenderTask(n);
         const token = ++pdfPageTokens[n];
         const isWanted = () => pdfPageTokens[n] === token && state.format === 'pdf' && !document.hidden;
         const promise = measurePdfPage(state.pdfDoc, n).then(meta => {

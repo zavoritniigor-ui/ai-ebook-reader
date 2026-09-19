@@ -252,6 +252,12 @@ check('crop clips both left and top edges', "(async()=>{const cv=pdfPageWrappers
 # Repeated zooms must release detached DOM/listeners after garbage collection.
 c.call('HeapProfiler.collectGarbage'); baseline=c.call('Memory.getDOMCounters')
 c.js("(async()=>{for(let i=0;i<24;i++){state.pdfFit='free';state.pdfScale=1+i%4;relayoutContinuousPdfAtScale();await new Promise(r=>setTimeout(r,20))}})()")
+# The 24th cycle's own render is legitimate (not superseded by anything) and
+# may still be finishing its rasterization right as the loop above returns —
+# waiting it out here (like pdf_rendering_audit_browser.py's __pdfSettled)
+# avoids snapshotting DOM counts mid-render, which would count real
+# in-progress work as if it were unreleased garbage.
+c.js("(async()=>{for(let i=0;i<200&&pdfInFlightRenders>0;i++)await new Promise(r=>setTimeout(r,50))})()")
 c.call('HeapProfiler.collectGarbage'); after=c.call('Memory.getDOMCounters')
 assert after['jsEventListeners']<=baseline['jsEventListeners']+3,(baseline,after)
 assert after['nodes']<=baseline['nodes']+20,(baseline,after)
