@@ -143,6 +143,12 @@ for mode in ['ask','grammar','level']:
 check('OpenAI image exercises use existing rendering', "(async()=>{await checkExerciseImage('data:image/png;base64,AA==');return els.askContent.textContent.includes('Provider answer')&&!els.askContent.querySelector('script,[onerror]')})()")
 c.js("__mode='translation'")
 check('AI translation routes to OpenAI', "(async()=>await aiTranslateText('Hello','en',undefined,'fr')==='Bonjour')()")
+check('translation normalizes trailing Chinese contamination', "normalizeTranslation('справді彩在线', 'uk', true)==='справді'")
+check('translation normalizes trailing Chinese block with parens', "normalizeTranslation('справді (彩在线)', 'uk', true)==='справді'")
+check('translation preserves valid Chinese when target is zh', "normalizeTranslation('真的', 'zh', true)==='真的'")
+check('translation normalizes English with trailing Chinese', "normalizeTranslation('really彩在线', 'en', true)==='really'")
+check('aiTranslateText normalizes contaminated translation', "(async()=>{const old=callAI;callAI=async()=>'справді彩在线';const res=await aiTranslateText('vraiment','fr',undefined,'uk');callAI=old;return res==='справді'})()")
+check('callGroq sets hidden reasoning and bounded max tokens for translation', "GROQ_TASK_PROFILES.translation.max_completion_tokens===256")
 for mode,key in [('401','aiAuthError'),('429','aiRateError'),('network','aiNetworkError'),('malformed','aiInvalidResponse'),('null','aiInvalidResponse'),('empty','aiEmptyResponse'),('incomplete','aiInvalidResponse'),('refusal','aiEmptyResponse')]:
     c.js(f"__mode='{mode}';__calls=[]")
     check('safe localized '+mode+' error in existing panel',f"(async()=>{{await startAiTask('test','ask');const msg=t('{key}').replace('{{provider}}','OpenAI');return els.askContent.textContent.includes(msg) && __calls.length===1 && !Object.values(__keys).some(k=>els.askContent.textContent.includes(k)) && !els.askPanel.classList.contains('loading')}})()")

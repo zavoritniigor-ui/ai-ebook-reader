@@ -453,9 +453,9 @@
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
         
-        .tt-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; gap: 8px;}
-        .tt-original-wrapper { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1; }
-        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+        .tt-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; flex-shrink: 0; }
+        .tt-original-wrapper { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; overflow: hidden; flex-shrink: 0; }
+        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 70px; min-width: 70px; }
         .tt-replay-btn {
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff;
             border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
@@ -463,8 +463,8 @@
         }
         .tt-replay-btn:hover { background: rgba(255,255,255,0.14); }
         /* Кнопка виділення речення — помітніша за динамік, щоб її не плутали з оформленням */
-        #tt-expand-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(16,163,127,0.16); border-color: transparent; color: #3ddba8; white-space: nowrap; }
-        #tt-svo-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(255,193,7,0.16); border-color: transparent; color: #ffc107; white-space: nowrap; }
+        #tt-expand-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(16,163,127,0.16); border-color: transparent; color: #3ddba8; white-space: nowrap; flex-shrink: 0; }
+        #tt-svo-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(255,193,7,0.16); border-color: transparent; color: #ffc107; white-space: nowrap; flex-shrink: 0; }
         #tt-expand-btn:hover { background: rgba(16,163,127,0.28); }
         #tt-svo-btn:hover { background: rgba(255,193,7,0.28); }
         /* Члени речення прямо в тексті: підмет / присудок / додаток */
@@ -486,10 +486,10 @@
         .tt-ai-label { display: block; font-size: 11px; color: #0dcaf0; letter-spacing: .3px; margin-bottom: 2px; }
         .tt-ai-text { display: block; font-size: 16px; font-weight: bold; color: #fff; line-height: 1.35; }
         
-        .tt-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .tt-actions { display: flex; gap: 8px; width: 100%; flex-shrink: 0; margin-top: 0; }
         .tt-ai-btn, .tt-ask-btn {
             border: none; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
-            cursor: pointer; white-space: nowrap; flex: 1; transition: filter .15s, transform .1s;
+            cursor: pointer; white-space: nowrap; flex: 1 1 0; min-width: 0; flex-shrink: 0; transition: filter .15s, transform .1s;
         }
         .tt-ai-btn { background: #10a37f; color: white; }
         .tt-ask-btn { background: #0dcaf0; color: #0b2226; }
@@ -803,9 +803,6 @@
         #crop-preview { display: block; max-width: 100%; max-height: 60dvh; margin: 12px auto; object-fit: contain; }
         #crop-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
         #word-tooltip { position: fixed; }
-        body.pdf-mode #word-tooltip .tt-original-wrapper { flex-basis: 100%; flex-wrap: wrap; overflow: visible; }
-        body.pdf-mode #word-tooltip .tt-original { flex: 1; min-width: 70px; max-width: none; }
-        body.pdf-mode #word-tooltip .tt-actions { width: 100%; margin-top: 0; }
         #region-cancel { position: absolute; right: 12px; bottom: 24px; background: var(--panel-bg); }
         .dictation-status { padding: 0 16px 8px; font-size: 13px; color: var(--text-muted); min-height: 24px; }
         .dictation-status:empty { display: none; }
@@ -1107,7 +1104,7 @@
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
     <script src="js/grammar-svo.js?v=1e2cc926855e"></script>
-    <script src="js/ai-client.js?v=82020067e03c"></script>
+    <script src="js/ai-client.js?v=413306b7022c"></script>
     <script src="js/practice-session.js?v=33a9e03c4ee0"></script>
     <script src="js/practice-worksheet.js?v=acbcb2afec03"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
