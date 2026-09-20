@@ -88,6 +88,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     const isCurrent = () => generation === pdfContinuousGeneration && epoch === readerEpoch.book && state.pdfDoc === doc && state.format === 'pdf';
     pdfContinuousReady = false;
     pdfSuppressActiveTracking = false;
+    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     clearTimeout(bookmarkSaveTimer);
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
     if (pdfPageObserver) { pdfPageObserver.disconnect(); pdfPageObserver = null; }
@@ -178,6 +179,7 @@ function handlePdfIntersection(entries) {
     let best = pdfActivePage, bestRatio = -1;
     pdfVisibleRatios.forEach((ratio, n) => { if (ratio > bestRatio) { bestRatio = ratio; best = n; } });
     if (bestRatio <= 0 || best === pdfActivePage) return;
+    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     pdfActivePage = best; state.currentIndex = best;
     updatePdfProgressText(best);
     updatePdfScrubber();

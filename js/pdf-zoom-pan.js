@@ -83,6 +83,7 @@ const pdfPointers = new Map();
 let pdfGesture = null, pdfBlockClick = false, pdfFrame = 0, pdfInkSnapshot = null;
 els.container.addEventListener('scroll', () => {
     if (state.format !== 'pdf' || document.hidden) return;
+    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     if (els.tooltip.style.display === 'flex') invalidateSelection();
 }, { passive: true });
 
@@ -182,7 +183,7 @@ function setPdfScale(scale) {
 // container itself never resizes) omits it and gets the normal fresh read.
 function relayoutContinuousPdfAtScale(explicitAnchor) {
     if (!pdfContinuousReady) return;
-    const anchor = explicitAnchor || pdfAnchor();
+    const anchor = (explicitAnchor && explicitAnchor.page === pdfActivePage) ? explicitAnchor : pdfAnchor();
     let stackHeight = 0, stackWidth = 0;
     for (let n = 1; n <= state.totalPages; n++) {
         const w = pdfPageWrappers[n];
