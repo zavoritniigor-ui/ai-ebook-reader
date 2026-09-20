@@ -17,6 +17,7 @@ async function initPdf(file, epoch = readerEpoch.book) {
     if (!window.pdfjsLib) throw new Error('Не завантажено бібліотеку PDF. Перевірте з’єднання та оновіть сторінку.');
     // Track the file-read phase too, before PDF.js has a loading task to destroy.
     let cancelled = false;
+    let data;
     const reading = { destroy: async () => { cancelled = true; } };
     pdfTasks.loading = reading;
     try { data = await file.arrayBuffer(); }
@@ -131,9 +132,10 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         let textTask = null;
         try {
             const textContent = await page.getTextContent();
+            if (!isWanted()) return false;
             if (!state.pdfPageLabels && typeof recordPdfPageLabel === 'function' && typeof extractPrintedPageLabel === 'function') {
                 if (!state.pdfPrintedPageLabels || state.pdfPrintedPageLabels[pageNum] === undefined) {
-                    const label = extractPrintedPageLabel(textContent.items, vp);
+                    const label = extractPrintedPageLabel(textContent.items, page.getViewport({ scale: 1 }));
                     recordPdfPageLabel(pageNum, label);
                 }
             }
@@ -199,7 +201,7 @@ function updatePdfScrubber() {
     if (bookLabel !== null) {
         preview.value = `p. ${bookLabel} (${state.currentIndex})`;
         pdfPageRange.setAttribute('aria-valuetext', `Page ${bookLabel}, physical ${state.currentIndex} of ${state.totalPages}`);
-    } else if (hasBookScheme && state.pdfPrintedPageLabels && state.pdfPrintedPageLabels[state.currentIndex] === null) {
+    } else if (hasBookScheme && (state.pdfPageLabels || state.pdfPrintedPageLabels?.[state.currentIndex] === null)) {
         preview.value = `— (${state.currentIndex})`;
         pdfPageRange.setAttribute('aria-valuetext', `Unnumbered, physical ${state.currentIndex} of ${state.totalPages}`);
     } else {
@@ -232,7 +234,7 @@ pdfPageRange.addEventListener('input', () => {
     if (bookLabel !== null) {
         preview.value = `p. ${bookLabel} (${val})`;
         pdfPageRange.setAttribute('aria-valuetext', `Page ${bookLabel}, physical ${val} of ${state.totalPages}`);
-    } else if (hasBookScheme && state.pdfPrintedPageLabels && state.pdfPrintedPageLabels[val] === null) {
+    } else if (hasBookScheme && (state.pdfPageLabels || state.pdfPrintedPageLabels?.[val] === null)) {
         preview.value = `— (${val})`;
         pdfPageRange.setAttribute('aria-valuetext', `Unnumbered, physical ${val} of ${state.totalPages}`);
     } else {

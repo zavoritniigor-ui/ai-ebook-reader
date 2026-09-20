@@ -130,6 +130,7 @@ async function openBookFile(file) {
     cancelPdfInteraction(); closeCropPreview(); pdfTasks.text?.cancel(); pdfTasks.text = null; state.pdfZoom = 1;
     cancelAsyncTasks(); invalidateSelection();
     stopGlobalTTS(); stopTooltipSpeech();
+    cancelPdfRender();
     pdfTasks.render?.cancel(); pdfTasks.render = null;
     if (pdfTasks.loading) { pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null; }
     else if (state.pdfDoc) state.pdfDoc.loadingTask.destroy().catch(() => {});

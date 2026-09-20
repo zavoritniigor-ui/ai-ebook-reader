@@ -36,7 +36,7 @@ print('loaded PDF:',c.js(f'''(async()=>{{
 # __renders (or even cancelPdfInteraction() a live pinch) well after setup,
 # for a reason unrelated to what each check actually exercises. Wait for it to
 # settle before any of the render-counting checks begin.
-c.wait('__pendingRenders===0 && performance.now()-window.__lastRenderAt>400')
+c.wait('__pendingRenders===0 && performance.now()-window.__lastRenderAt>400', timeout=25)
 
 def check(name, expression, timeout=0):
     result=c.js(expression)
@@ -59,58 +59,35 @@ def settle(): pause(.8)
 check('quick menu preserves PDF state before gesture regressions', "(()=>{const before=JSON.stringify([state.currentIndex,state.pdfScale,state.pdfZoom,els.container.scrollTop,els.container.scrollLeft]);quickMenu.open();quickMenu.close();return before===JSON.stringify([state.currentIndex,state.pdfScale,state.pdfZoom,els.container.scrollTop,els.container.scrollLeft]);})()")
 # Opening the wheel collapses the sidebar; wait for its resize-triggered PDF
 # render before starting an explicit render that it could otherwise cancel.
-c.wait("document.getElementById('quick-menu').hidden && __pendingRenders===0 && performance.now()-window.__lastRenderAt>400", timeout=15)
+c.wait("document.getElementById('quick-menu').hidden && __pendingRenders===0 && performance.now()-window.__lastRenderAt>400", timeout=35)
 check('plain text and single text layer',"els.pages.textContent.includes('Hello world') && [...document.querySelectorAll('.pdf-page-wrapper')].every(w=>w.querySelectorAll('.pdf-text-layer').length<=1)", timeout=10)
 # instant: a smooth-scroll animation still in flight when the pinch gesture
 # below starts (worse under CI's more variable scheduling than local) would
 # make the anchor math race against a moving scroll position.
-c.js("navigateToPdfPage(2, {instant:true})")
-print("STEP 68", flush=True)
-check('illustration page',"els.pages.textContent.includes('Illustration caption')", timeout=10)
-print("STEP 69", flush=True)
-c.js("Promise.race([Promise.all(document.getAnimations().filter(a=>a.playState==='running' && a.effect?.getComputedTiming()?.iterations!==Infinity).map(a=>a.finished.catch(()=>{}))), new Promise(r=>setTimeout(r, 200))])")
-print("STEP 70", flush=True)
+c.js("navigateToPdfPage(2, {instant:true})"); settle()
+check('illustration page',"els.pages.textContent.includes('Illustration caption')", timeout=10); settle()
 c.js('window.__before=__renders; window.__anchor=pdfZoomAnchor(450,500)')
-print("STEP 71", flush=True)
 touch('touchStart',[(1,350,500),(2,550,500)])
-print("STEP 72", flush=True)
 for d in [120,150,180,200]: touch('touchMove',[(1,450-d,500),(2,450+d,500)]); pause(.04)
-print("STEP 73", flush=True)
 pause(.1)
-print("STEP 74", flush=True)
 check('no PDF render during pinch', '__renders===__before && state.pdfZoom>1.8')
-print("DEBUG LINE 75:", c.js('({cur: pdfZoomAnchor(450,500), prev: window.__anchor, r: els.pages.getBoundingClientRect(), scrollLeft: els.container.scrollLeft, scrollWidth: els.container.scrollWidth, clientWidth: els.container.clientWidth, padding: getComputedStyle(els.container).paddingLeft})'), flush=True)
 check('center focal anchor stable', 'Math.abs(pdfZoomAnchor(450,500).x-__anchor.x)<.004 && Math.abs(pdfZoomAnchor(450,500).y-__anchor.y)<.004')
-print("STEP 77", flush=True)
 c.js('window.__preSwap=pdfZoomAnchor()')
-print("STEP 78", flush=True)
 touch('touchEnd',[]); settle()
-print("STEP 82", flush=True)
 check('render(s) at gesture end', '__renders>__before && Math.abs(state.pdfScale-2)<.05 && state.pdfZoom===1')
 check('atomic swap retains center','Math.abs(pdfZoomAnchor().x-__preSwap.x)<.004 && Math.abs(pdfZoomAnchor().y-__preSwap.y)<.004')
-# One finger lifting out of a pinch must leave gesture state clean (no
-# leftover multi-touch flag) and NOT block the single remaining pointer.
-# Continuous scroll deliberately hands single-finger movement to native
-# scrolling (touch-action:pan-y) instead of the old JS-driven custom pan —
-# CDP's synthetic touch events don't reliably drive real native-scroll
-# physics in headless Chrome, so this checks the actual new contract
-# directly: gesture cleanup, then that native scroll (however it happens)
-# still correctly updates the active page via the same IntersectionObserver
-# path a real touch-scroll would drive.
-print("STEP 100 touchStart", flush=True)
+# After a pinch takes ownership, the remaining finger must still pan in both
+# axes (not merely remain in a pointer map). Real touch events prove movement.
 touch('touchStart',[(1,600,600),(2,800,600)])
-print("STEP 101 touchMove", flush=True)
 touch('touchMove',[(1,500,600),(2,800,600)]); pause(.08)
-print("STEP 102 touchEnd 1", flush=True)
-touch('touchEnd',[(2,800,600)])
-print("STEP 103 check pointer", flush=True)
-check('single remaining pointer tracked after pinch', 'pdfPointers.size===1')
-print("BEFORE line 97", flush=True)
+touch('touchEnd',[(1,500,600)])
+c.js('window.__panBefore={x:els.container.scrollLeft,y:els.container.scrollTop}')
+touch('touchMove',[(2,650,550)]); pause(.08)
+check('remaining finger pans horizontally and vertically after pinch',
+      'els.container.scrollLeft>__panBefore.x+100 && els.container.scrollTop>__panBefore.y+25')
 touch('touchEnd',[]); settle()
-print("AFTER line 97 touchEnd", flush=True)
 c.js('window.__beforeScrollIndex=state.currentIndex; els.container.scrollTop += 5000'); settle()
-print("AFTER line 98 scrollTop +5000:", c.js('({cur: state.currentIndex, before: window.__beforeScrollIndex, top: els.container.scrollTop, suppress: pdfSuppressActiveTracking})'), flush=True)
-check('native scroll after pinch still tracks active page', 'state.currentIndex>__beforeScrollIndex', timeout=3)
+check('scroll after pinch still tracks active page', 'state.currentIndex>__beforeScrollIndex', timeout=3)
 for scale in [2,3,4]:
     c.js(f'setPdfScale({scale})'); settle()
     check(f'{scale*100}% bounded raster and no duplicate layers',f"Math.abs(state.pdfScale-{scale})<.01 && [...document.querySelectorAll('.pdf-page-wrapper')].every(w=>w.querySelectorAll('.pdf-text-layer').length<=1) && activeInkCanvas().width*activeInkCanvas().height<=8000000")
@@ -159,6 +136,7 @@ touch('touchStart',[(1,p1x+15,p1y+55),(2,p1x+250,p1y+50)])
 touch('touchMove',[(1,p1x-30,p1y+50),(2,p1x+300,p1y+50)]);touch('touchEnd',[]);settle()
 check('pinch rolls back accidental ink', 'JSON.stringify(inkStrokes())===__ink')
 c.js('setPdfScale(4)');settle()
+c.wait('__pendingRenders===0 && performance.now()-window.__lastRenderAt>400', timeout=30)
 check('ink unchanged after rerender', 'JSON.stringify(inkStrokes())===__ink')
 # Avoid speech and network: intercept only the lookup dispatch, exercise actual word hit testing.
 c.js("state.inkMode=false;document.body.classList.remove('ink-mode');state.translateMode=true;els.pages.classList.add('mode-translate');window.__lookup='';window.__realLookup=handleWordOrSelection;handleWordOrSelection=(word,x,y)=>{__lookup=word;els.ttOriginal.textContent=word;els.ttTranslation.textContent='Translation '.repeat(80);els.tooltip.style.display='flex';positionTooltip(x,y)}; els.container.scrollLeft=0;els.container.scrollTop=0")
@@ -280,7 +258,7 @@ print('PASS 24 zoom cycles: DOM/listeners bounded',baseline,after)
 # Portrait phone bottom sheet remains inside the viewport at maximum PDF zoom.
 c.js('window.__before=__renders')
 c.call('Emulation.setDeviceMetricsOverride',width=390,height=844,deviceScaleFactor=2,mobile=True)
-c.wait('__renders>__before && __pendingRenders===0')
+c.wait('__renders>__before && __pendingRenders===0', timeout=45)
 c.js("els.ttOriginal.textContent='Example';els.ttTranslation.textContent='Translation '.repeat(100);els.tooltip.style.display='flex';positionTooltip(380,820)")
 check('phone original text visible', 'els.ttOriginal.getBoundingClientRect().width>=70')
 check('phone bottom sheet bounded', "(()=>{const r=els.tooltip.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight})()")

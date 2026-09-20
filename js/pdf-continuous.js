@@ -16,6 +16,8 @@ const PDF_RENDER_BUFFER = 2; // pages beyond the viewport kept rendered at full 
 let pdfPageWrappers = [];    // 1-indexed: pdfPageWrappers[pageNum] -> wrapper element
 let pdfPageTokens = [];      // 1-indexed: bumped to invalidate an in-flight render
 let pdfRenderedPages = new Set();
+let pdfWantedPages = new Set();
+let pdfContinuousGeneration = 0;
 let pdfPageObserver = null;
 let pdfVisibleRatios = new Map(); // pageNum -> intersectionRatio, maintained across callbacks
 let pdfActivePage = 1;
@@ -30,11 +32,15 @@ let pdfSuppressActiveTracking = false;
 let pdfStackBaseWidth = 0, pdfStackBaseHeight = 0; // sum/max at zoom=1 (relative to fit), for live-zoom sizing
 
 async function measurePdfPage(doc, pageNum) {
-    if (state.pdfPageMeta[pageNum]) return state.pdfPageMeta[pageNum];
+    const metadata = state.pdfPageMeta;
+    const epoch = readerEpoch.book;
+    if (doc !== state.pdfDoc || state.format !== 'pdf') return null;
+    if (metadata[pageNum]) return metadata[pageNum];
     const page = await doc.getPage(pageNum);
+    if (doc !== state.pdfDoc || epoch !== readerEpoch.book || metadata !== state.pdfPageMeta) return null;
     const natural = page.getViewport({ scale: 1 });
-    state.pdfPageMeta[pageNum] = { width: natural.width, height: natural.height };
-    return state.pdfPageMeta[pageNum];
+    metadata[pageNum] = { width: natural.width, height: natural.height };
+    return metadata[pageNum];
 }
 
 function pdfContainerAvailWidth() {
@@ -69,7 +75,7 @@ function updatePdfProgressText(pageIndex) {
     const hasBookScheme = state.pdfPageLabels || (state.pdfLabelToPhysical && state.pdfLabelToPhysical.size > 0);
     if (bookLabel !== null) {
         els.progress.textContent = `p. ${bookLabel} (${pageIndex}/${state.totalPages})`;
-    } else if (hasBookScheme && state.pdfPrintedPageLabels && state.pdfPrintedPageLabels[pageIndex] === null) {
+    } else if (hasBookScheme && (state.pdfPageLabels || state.pdfPrintedPageLabels?.[pageIndex] === null)) {
         els.progress.textContent = `— (${pageIndex}/${state.totalPages})`;
     } else {
         els.progress.textContent = `${pageIndex} ${t('of')} ${state.totalPages}`;
@@ -77,11 +83,18 @@ function updatePdfProgressText(pageIndex) {
 }
 
 async function setupContinuousPdf(doc, startPage, bookmark) {
+    const generation = ++pdfContinuousGeneration;
+    const epoch = readerEpoch.book;
+    const isCurrent = () => generation === pdfContinuousGeneration && epoch === readerEpoch.book && state.pdfDoc === doc && state.format === 'pdf';
     pdfContinuousReady = false;
+    pdfSuppressActiveTracking = false;
+    clearTimeout(bookmarkSaveTimer);
+    pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
     if (pdfPageObserver) { pdfPageObserver.disconnect(); pdfPageObserver = null; }
     pdfPageWrappers = new Array(state.totalPages + 1).fill(null);
     pdfPageTokens = new Array(state.totalPages + 1).fill(0);
     pdfRenderedPages.clear();
+    pdfWantedPages.clear();
     pdfVisibleRatios.clear();
     state.pdfPageMeta = new Array(state.totalPages + 1).fill(null);
     if (typeof resetPdfPageLabels === 'function') {
@@ -95,6 +108,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     state.currentIndex = startPage; pdfActivePage = startPage;
 
     await measurePdfPage(doc, startPage);
+    if (!isCurrent()) return;
     const estimate = pdfWrapperEstimate(doc);
     const scale = pdfScaleForPage(estimate);
 
@@ -128,7 +142,9 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     state.pdfScale = state.pdfScale; // unchanged; kept for clarity at call site
     persistPdfZoom();
 
-    pdfPageObserver = new IntersectionObserver(handlePdfIntersection, {
+    pdfPageObserver = new IntersectionObserver(entries => {
+        if (isCurrent()) handlePdfIntersection(entries);
+    }, {
         root: els.container, threshold: [0, .1, .25, .5, .75, .9, 1]
     });
     pdfPageWrappers.forEach(w => w && pdfPageObserver.observe(w));
@@ -153,7 +169,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
 }
 
 function handlePdfIntersection(entries) {
-    if (pdfSuppressActiveTracking) return;
+    if (!pdfContinuousReady || state.format !== 'pdf' || pdfSuppressActiveTracking) return;
     entries.forEach(e => {
         const n = Number(e.target.dataset.page);
         if (!n) return;
@@ -173,15 +189,32 @@ function handlePdfIntersection(entries) {
 let bookmarkSaveTimer = null;
 function scheduleBookmarkSave() {
     clearTimeout(bookmarkSaveTimer);
-    bookmarkSaveTimer = setTimeout(() => { if (state.format === 'pdf') saveBookmark(); }, 400);
+    const epoch = readerEpoch.book;
+    const doc = state.pdfDoc;
+    bookmarkSaveTimer = setTimeout(() => {
+        if (state.format === 'pdf' && readerEpoch.book === epoch && state.pdfDoc === doc) saveBookmark();
+    }, 400);
+}
+
+function cancelContinuousPdfRenders() {
+    // Keep completed pages mounted, but invalidate work still measuring or
+    // rendering. A later window update can retry every unfinished page.
+    pdfWantedPages.forEach(n => { pdfPageTokens[n]++; });
+    pdfWantedPages.clear();
+    pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
 }
 
 function updatePdfRenderWindow(activePage) {
-    if (!state.pdfDoc) return;
+    if (!pdfContinuousReady || state.format !== 'pdf' || !state.pdfDoc) return new Map();
+    const doc = state.pdfDoc, epoch = readerEpoch.book, generation = pdfContinuousGeneration;
     const lo = Math.max(1, activePage - PDF_RENDER_BUFFER);
     const hi = Math.min(state.totalPages, activePage + PDF_RENDER_BUFFER);
     const wanted = new Set();
     for (let n = lo; n <= hi; n++) wanted.add(n);
+    // getPage()/measurement can still be pending before a cancelable PDF.js
+    // render task exists. Invalidate those requests when their page leaves.
+    pdfWantedPages.forEach(n => { if (!wanted.has(n)) pdfPageTokens[n]++; });
+    pdfWantedPages = wanted;
 
     // Drop pages that fell outside the window: cancel any in-flight render
     // and collapse back to a lightweight placeholder (keeps its measured
@@ -194,11 +227,12 @@ function updatePdfRenderWindow(activePage) {
         pdfPageTokens[n]++;
         const w = pdfPageWrappers[n];
         if (w) {
-            const meta = state.pdfPageMeta[n];
             w.replaceChildren();
             w.classList.add('pdf-placeholder');
             delete w.dataset.rendered;
-            if (meta) { w.style.width = `${meta.width * (Number(w.dataset.scale) || 1)}px`; w.style.height = `${meta.height * (Number(w.dataset.scale) || 1)}px`; }
+            // Keep the measured CSS dimensions. dataset.scale is only the
+            // relative zoom multiplier, so multiplying natural page sizes by
+            // it here would lose the fit scale and shift every later page.
         }
         pdfRenderedPages.delete(n);
     });
@@ -216,12 +250,19 @@ function updatePdfRenderWindow(activePage) {
         // otherwise stack up many full in-flight renders per page.
         cancelPdfPageRenderTask(n);
         const token = ++pdfPageTokens[n];
-        const isWanted = () => pdfPageTokens[n] === token && state.format === 'pdf' && !document.hidden;
-        const promise = measurePdfPage(state.pdfDoc, n).then(meta => {
-            if (!isWanted()) return false;
+        const isWanted = () => state.pdfDoc === doc && readerEpoch.book === epoch && pdfContinuousGeneration === generation &&
+            pdfPageWrappers[n] === w && pdfWantedPages.has(n) && pdfPageTokens[n] === token && state.format === 'pdf' && !document.hidden;
+        const promise = measurePdfPage(doc, n).then(meta => {
+            if (!meta || !isWanted()) return false;
             const scale = pdfScaleForPage(meta);
             correctPlaceholderSize(n, meta, scale);
-            return renderPdfPageInto(n, w, scale, isWanted).then(ok => { if (ok) pdfRenderedPages.add(n); return ok; });
+            return renderPdfPageInto(n, w, scale, isWanted).then(ok => {
+                if (ok && isWanted()) pdfRenderedPages.add(n);
+                return ok && isWanted();
+            });
+        }).catch(err => {
+            if (isWanted()) console.warn('PDF page measurement failed', n, err);
+            return false;
         });
         pending.set(n, promise);
     });
@@ -249,10 +290,14 @@ function correctPlaceholderSize(pageNum, meta, scale) {
 // directly, so there is exactly one page-navigation code path.
 function navigateToPdfPage(pageIndex, options = {}) {
     if (!pdfContinuousReady || state.format !== 'pdf') return;
+    if (typeof cancelPdfBookNavigation === 'function') cancelPdfBookNavigation();
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     pageIndex = Math.max(1, Math.min(state.totalPages, Math.trunc(pageIndex)));
     const w = pdfPageWrappers[pageIndex];
     if (!w) return;
+    const doc = state.pdfDoc, epoch = readerEpoch.book, generation = pdfContinuousGeneration;
+    const isCurrent = () => state.pdfDoc === doc && readerEpoch.book === epoch && pdfContinuousGeneration === generation &&
+        state.format === 'pdf' && pdfPageWrappers[pageIndex] === w;
     invalidateSelection();
     updatePdfRenderWindow(pageIndex); // render target (+neighbors) right away, don't wait for scroll to settle
     let top = w.offsetTop;
@@ -278,6 +323,7 @@ function navigateToPdfPage(pageIndex, options = {}) {
     if (options.instant) {
         pdfSuppressActiveTracking = true;
         requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (!isCurrent()) return;
             pdfVisibleRatios.clear();
             pdfSuppressActiveTracking = false;
         }));
@@ -290,8 +336,11 @@ function navigateToPdfPage(pageIndex, options = {}) {
     if (options.focus && Number.isFinite(options.focus.x) && Number.isFinite(options.focus.y)) {
         // Restore the fine-grained anchor saved by rememberPdfFocus() (bookmark).
         requestAnimationFrame(() => {
+            if (!isCurrent()) return;
             const r = w.getBoundingClientRect();
-            els.container.scrollTop += r.top + options.focus.y * r.height - els.container.getBoundingClientRect().top - els.container.clientHeight / 2;
+            const c = els.container.getBoundingClientRect();
+            els.container.scrollLeft += r.left + options.focus.x * r.width - c.left - els.container.clientWidth / 2;
+            els.container.scrollTop += r.top + options.focus.y * r.height - c.top - els.container.clientHeight / 2;
         });
     }
     if (!options.skipHistory) scheduleBookmarkSave();

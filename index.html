@@ -774,14 +774,9 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
         #sw-update-banner button { height: 30px; padding: 0 14px; font-size: 12.5px; }
-        /* Continuous PDF viewer: #reader-container is the real vertical scroll
-           viewport (native wheel/touch/scrollbar/PageUp/PageDown all just work —
-           it is a normal scrollable block, not JS-driven scrollLeft/scrollTop).
-           touch-action:pan-y (not none) is what makes single-finger touch
-           scrolling native; pinch (2-finger) is still captured by the existing
-           pointer-based gesture code in pdf-zoom-pan.js, which is unaffected by
-           pan-y since it only governs single-touch default browser behavior. */
-        body.pdf-mode #reader-container { touch-action: pan-y !important; overflow-anchor: none; scrollbar-gutter: stable; overflow-y: auto; }
+        /* Native one-finger scrolling works in both axes; browser pinch zoom is
+           excluded because the PDF gesture handler owns two-finger scaling. */
+        body.pdf-mode #reader-container { touch-action: pan-x pan-y !important; overflow-anchor: none; scrollbar-gutter: stable; overflow: auto; }
         body.pdf-mode #reader-pages { position: relative; height: auto; min-height: 100%; }
         /* .pdf-page-wrapper keeps its base (non-pdf) rule here — position:relative,
            margin-bottom gap — so multiple pages stack in normal document flow.
@@ -1107,8 +1102,8 @@
     <script src="js/tts.js?v=d0219e4d74e8"></script>
     <script src="js/selection.js?v=887b5c4cb5a3"></script>
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
-    <script src="js/navigation.js?v=acb789e5ea0a"></script>
-    <script src="js/pdf-zoom-pan.js?v=aa9200af9ce2"></script>
+    <script src="js/navigation.js?v=35e62f613b99"></script>
+    <script src="js/pdf-zoom-pan.js?v=b3dd0e7dda71"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
     <script src="js/grammar-svo.js?v=1e2cc926855e"></script>
@@ -1118,14 +1113,14 @@
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
-    <script src="js/pdf-outline.js?v=0002ad18f36c"></script>
-    <script src="js/pdf-thumbnails.js?v=dcfce562cb0d"></script>
-    <script src="js/pdf-continuous.js?v=5dcf0cf06356"></script>
-    <script src="js/pdf-render.js?v=d63388729c7d"></script>
+    <script src="js/pdf-outline.js?v=1865bd2eb877"></script>
+    <script src="js/pdf-thumbnails.js?v=ca9551e0f416"></script>
+    <script src="js/pdf-continuous.js?v=42ecc4f54f56"></script>
+    <script src="js/pdf-render.js?v=f7f068dd2502"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=9908358a1e32"></script>
-    <script src="js/main.js?v=f43578a5e98f"></script>
+    <script src="js/quick-wheel.js?v=4be0c2aad933"></script>
+    <script src="js/main.js?v=2a36869ae4ec"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
 </html>

@@ -58,6 +58,73 @@ check('only a small window is actually rendered (not all 30)',
 check('far pages are placeholders, not full canvases',
       'pdfPageWrappers[30].classList.contains("pdf-placeholder") && !pdfPageWrappers[30].querySelector("canvas.pdf-canvas")')
 
+# Eviction must preserve fit-scaled placeholder geometry. The relative zoom
+# multiplier is not the absolute PDF.js scale (600pt pages fit a wider view).
+c.wait("pdfRenderedPages.has(1) && pdfInFlightRenders===0", timeout=10)
+check('eviction preserves page size and every later page offset', """
+(async () => {
+  const first = pdfPageWrappers[1], later = pdfPageWrappers[10];
+  const before = [first.offsetWidth, first.offsetHeight, later.offsetTop, els.container.scrollHeight];
+  if (Math.abs(first.offsetWidth-state.pdfPageMeta[1].width) < 20) return false;
+  await Promise.all(updatePdfRenderWindow(10).values());
+  const after = [first.offsetWidth, first.offsetHeight, later.offsetTop, els.container.scrollHeight];
+  return !first.querySelector('canvas') && before.every((value, i) => Math.abs(value-after[i]) <= 1);
+})()
+""")
+c.js("navigateToPdfPage(1, {instant:true})")
+c.wait("pdfRenderedPages.has(1) && pdfInFlightRenders===0", timeout=10)
+
+# A page can leave the window while getPage is pending, before there is a
+# cancelable render task. Releasing that request must not render it offscreen.
+check('late page measurement cannot render outside the current window', """
+(async () => {
+  const doc = state.pdfDoc, original = doc.getPage;
+  const oldPage = await original.call(doc, 29);
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  state.pdfPageMeta[29] = null;
+  doc.getPage = async function(n) {
+    if (n === 29) { await gate; return oldPage; }
+    return original.call(this, n);
+  };
+  try {
+    const pending = updatePdfRenderWindow(29).get(29);
+    await Promise.all(updatePdfRenderWindow(1).values());
+    release();
+    const result = await pending;
+    return result === false && !pdfRenderedPages.has(29) && !pdfPageWrappers[29].querySelector('canvas');
+  } finally { release(); doc.getPage = original; }
+})()
+""")
+
+check('canceling pending measurements preserves mounted pages and allows retry', """
+(async () => {
+  const doc = state.pdfDoc, original = doc.getPage;
+  const mounted = pdfPageWrappers[1].firstChild;
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  try {
+    // Start one render in an already-visible page's window, then cancel it
+    // before getPage resolves. Existing page 1 must remain mounted.
+    pdfRenderedPages.delete(2);
+    state.pdfPageMeta[2] = null;
+    doc.getPage = async function(n) {
+      if (n === 2) { await gate; return original.call(this, n); }
+      return original.call(this, n);
+    };
+    const pending = updatePdfRenderWindow(1).get(2);
+    cancelContinuousPdfRenders();
+    release();
+    const canceled = await pending;
+    const retained = pdfPageWrappers[1].firstChild === mounted;
+    doc.getPage = original;
+    await Promise.all(updatePdfRenderWindow(1).values());
+    return canceled === false && retained && pdfRenderedPages.has(2) &&
+      !!pdfPageWrappers[2].querySelector('canvas.pdf-canvas');
+  } finally { release(); doc.getPage = original; }
+})()
+""")
+
 # ============================================================
 # TEST 2: scrolling updates active page
 # ============================================================
@@ -212,6 +279,37 @@ check('active page wrapper is not hidden underneath the panel', """
 })()
 """)
 c.js("document.getElementById('grammar-panel').classList.remove('expanded')")
+
+# Hold the old document's first-page measurement across a real upload of a
+# differently sized PDF. Finishing stale setup must not replace the new DOM,
+# overwrite its metadata, or reconnect old observers.
+replacement_b64 = base64.b64encode(pdf_document([
+    {'text': f'Replacement document page {i+1}.', 'size': (400, 650)} for i in range(6)
+])).decode()
+check('old document setup cannot overwrite a newly opened PDF', f"""
+(async () => {{
+  const oldDoc = state.pdfDoc, original = oldDoc.getPage;
+  const oldPage = await original.call(oldDoc, 1);
+  let release;
+  const gate = new Promise(resolve => {{ release = resolve; }});
+  oldDoc.getPage = async function(n) {{
+    if (n === 1) {{ await gate; return oldPage; }}
+    return original.call(this, n);
+  }};
+  const staleSetup = setupContinuousPdf(oldDoc, 1, null);
+  try {{
+    const bytes = Uint8Array.from(atob({replacement_b64!r}), c => c.charCodeAt(0));
+    await openBookFile(new File([bytes], 'replacement.pdf', {{type:'application/pdf'}}));
+    const currentDoc = state.pdfDoc, wrapper = pdfPageWrappers[1], observer = pdfPageObserver;
+    release();
+    await staleSetup;
+    return currentDoc !== oldDoc && state.pdfDoc === currentDoc && pdfContinuousReady &&
+      state.totalPages === 6 && state.pdfPageMeta[1].width === 400 &&
+      pdfPageWrappers[1] === wrapper && pdfPageObserver === observer &&
+      wrapper.textContent.includes('Replacement document page 1.');
+  }} finally {{ release(); oldDoc.getPage = original; }}
+}})()
+""")
 
 check('no application errors', '!window.__errors || window.__errors.length === 0')
 print("\n=== ALL PDF CONTINUOUS VIEWER CHECKS PASSED ===")

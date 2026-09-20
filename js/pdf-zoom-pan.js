@@ -256,8 +256,7 @@ function relayoutContinuousPdfAtScale(explicitAnchor) {
 }
 
 function cancelPdfRender() {
-    // Kept for compatibility with call sites elsewhere; per-page render
-    // cancellation now happens inside updatePdfRenderWindow via pdfPageTokens.
+    cancelContinuousPdfRenders();
 }
 function cancelPdfInteraction() {
     clearTimeout(wheelZoomTimer); cancelAnimationFrame(pdfFrame); pdfFrame = 0;
@@ -316,13 +315,18 @@ document.addEventListener('pointermove', e => {
         if (!pdfFrame) pdfFrame = requestAnimationFrame(paintPdfGesture);
         e.preventDefault(); e.stopPropagation(); return;
     }
-    if (state.inkMode || document.body.classList.contains('region-mode')) {
-        if (pdfGesture?.multi) { e.preventDefault(); e.stopPropagation(); }
+    // Native scrolling cannot resume within a gesture after our pinch handler
+    // took ownership. Keep the remaining finger panning until it lifts.
+    if (pdfGesture?.multi) {
+        els.container.scrollLeft -= dx;
+        els.container.scrollTop -= dy;
+        pdfBlockClick = true;
+        e.preventDefault(); e.stopPropagation();
         return;
     }
-    // Single-touch: let NATIVE scrolling handle vertical movement (touch-action:
-    // pan-y). We no longer hijack single-finger drags into custom scrollLeft/Top
-    // — that was needed only when the container had no native scroll range.
+    // Fresh single-finger gestures use native scrolling in both axes. Ink and
+    // crop layers retain their own touch-action:none and drawing handlers.
+
 }, { capture: true, passive: false });
 function endPdfPointer(e) {
     if (!pdfPointers.has(e.pointerId)) return;

@@ -1,7 +1,7 @@
 """Learning UX checks. Uses isolated Chrome/server as documented in README.
 SpeechRecognition and AI are mocked; browser DOM, touch and layout are real.
 """
-import base64, json, time
+import base64, json, os, time
 from browser_cdp import CDP, pdf_bytes
 c=CDP();c.call('Emulation.setEmulatedMedia',features=[]);c.call('Page.enable');c.call('Network.setBypassServiceWorker',bypass=True)
 # Keep gesture/timer waits on the browser clock even when the Python process is descheduled.
@@ -23,7 +23,7 @@ window.SpeechRecognition=class {
  error(error){this.onerror?.({error});this.onend?.()}
 };
 ''')['identifier']
-c.call('Page.navigate',url='http://127.0.0.1:8765/index.html');c.wait("document.readyState==='complete' && !document.body.inert");pause(1)
+c.call('Page.navigate',url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html'));c.wait("document.readyState==='complete' && !document.body.inert");pause(1)
 def js(s):return c.js(s)
 def check(name,s):
  r=js(s);assert r is True,(name,r);print('PASS',name,flush=True)
@@ -55,7 +55,7 @@ check('closing panel stops dictation','!dictation.wanted')
 js("els.askPanel.classList.add('expanded');toggleDictation();recognition.end()")
 pause(1.3);js('recognition.end()');pause(2.5);js('recognition.end()');pause(3.1);js('recognition.end()');settle()
 check('empty restart loop is bounded','!dictation.wanted && dictation.timer===null')
-js("els.askPanel.classList.remove('expanded');state.translateMode=true;state.format='txt';els.pages.classList.add('no-anim');els.pages.style.transform='none';document.body.classList.add('immersive-mode');window.__prompts=[];aiAvailable=()=>true;speakText=()=>{};speakInLang=()=>{};machineTranslate=async()=>({plain:'Fallback',html:'Fallback',extras:''});callAI=async prompt=>{__prompts.push(prompt);return JSON.stringify(__fixture)}")
+js("Object.defineProperty(navigator,'onLine',{get:()=>true,configurable:true});els.askPanel.classList.remove('expanded');state.translateMode=true;state.format='txt';els.pages.classList.add('no-anim');els.pages.style.transform='none';document.body.classList.add('immersive-mode');window.__prompts=[];aiAvailable=()=>true;speakText=()=>{};speakInLang=()=>{};machineTranslate=async()=>({plain:'Fallback',html:'Fallback',extras:''});callAI=async prompt=>{__prompts.push(prompt);return JSON.stringify(__fixture)}")
 cases=[
  ('simple English','The cat sleeps.','Кіт спить.',[(['The cat'],'Кіт'),(['sleeps'],'спить')]),
  ('French','Je vois la maison.','Я бачу будинок.',[(['Je'],'Я'),(['vois'],'бачу'),(['la maison'],'будинок')]),
@@ -109,7 +109,7 @@ js('flashAlignment(0)')
 check('PDF source flash follows transformed screen coordinates', "(()=>{const a=alignmentFlash.firstElementChild?.getBoundingClientRect();const b=sourceAlignmentRanges(activeAlignment.links[0])[0].getBoundingClientRect();return a && Math.abs(a.left-b.left)<1 && Math.abs(a.width-b.width)<1})()")
 # Grammar click/phrase calls the current lookup, preserving language context and markup.
 js("invalidateSelection();els.grammarPanel.classList.add('expanded');window.__lookups=[];handleWordOrSelection=(word,x,y)=>__lookups.push({word,lang:langForText(word),context:state.ctxSentence});")
-c.wait("getComputedStyle(els.grammarPanel).transform==='none'")
+c.wait("getComputedStyle(els.grammarPanel).transform==='none'", timeout=25)
 for text,lang in [('The birds are singing.','en'),('Les oiseaux chantent.','fr')]:
  js(f"els.grammarContent.innerHTML='<p></p>';els.grammarContent.firstChild.textContent={json.dumps(text)}")
  pos=js("(()=>{const node=els.grammarContent.firstChild.firstChild;const r=document.createRange();const start=node.textContent.indexOf(' ')+1;r.setStart(node,start);r.setEnd(node,node.textContent.indexOf(' ',start));const b=r.getBoundingClientRect();return {x:b.left+b.width/2,y:b.top+b.height/2}})()")
@@ -124,7 +124,8 @@ check('grammar controls do not trigger translation','__lookups.length===__calls'
 js("els.grammarPanel.classList.remove('expanded','loading','ready');els.askPanel.classList.remove('expanded','loading','ready');stopOnboarding();onboardingState={};localStorage.removeItem(ONBOARDING_KEY);state.bookKey='learning-fixture';state.format='pdf';state.currentIndex=1;scheduleReaderOnboarding();window.__onboardingAtStart=new Promise(resolve=>setTimeout(()=>resolve(getComputedStyle(els.askTab).animationIterationCount===\"3\" && els.askTab.classList.contains(\"onboarding-cue\") && els.menuHandle.classList.contains(\"onboarding-cue\")),800))")
 check('three soft onboarding cycles','__onboardingAtStart')
 check('onboarding state persisted at start','JSON.parse(localStorage.getItem(ONBOARDING_KEY)).ask===true')
-js("els.askPanel.classList.add('loading')");settle()
+js("els.askPanel.classList.add('loading')")
+c.wait("!els.askTab.classList.contains('onboarding-cue') && getComputedStyle(els.askTab).backgroundColor==='rgba(220, 53, 69, 0.14)'", timeout=5)
 check('red request status overrides onboarding',"!els.askTab.classList.contains('onboarding-cue') && getComputedStyle(els.askTab).backgroundColor==='rgba(220, 53, 69, 0.14)'")
 js("els.askPanel.classList.remove('loading');els.grammarTab.click();stopOnboarding();state.currentIndex=2;scheduleReaderOnboarding()");pause(.8)
 check('interaction/page two never repeats onboarding',"!document.querySelector('.onboarding-cue, .onboarding-static')")

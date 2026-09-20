@@ -135,8 +135,13 @@ test2 = c.js('''
 
     if (!targetSpan) return { error: 'no target span on scrolled pages' };
 
+    targetSpan.scrollIntoView({ block: 'center' });
+    await new Promise(r => setTimeout(r, 150));
+
     const word = targetSpan.textContent.trim();
     const rect = targetSpan.getBoundingClientRect();
+
+    const countBefore = window.__wordsClicked.length;
 
     // Check pointer-events
     const pointerEvents = window.getComputedStyle(targetSpan).pointerEvents;
@@ -157,6 +162,7 @@ test2 = c.js('''
         pointerEvents: pointerEvents,
         scrollTop: els.container.scrollTop,
         clickDispatched: true,
+        clicksBefore: countBefore,
         wordsClickedCount: window.__wordsClicked.length,
         lastClickedWord: window.__wordsClicked[window.__wordsClicked.length - 1]?.word
     };
@@ -187,6 +193,9 @@ test3 = c.js('''
     }
 
     if (!targetSpan) return { error: 'no target span' };
+
+    targetSpan.scrollIntoView({ block: 'center' });
+    await new Promise(r => setTimeout(r, 150));
 
     const word = targetSpan.textContent.trim();
     const rect = targetSpan.getBoundingClientRect();
