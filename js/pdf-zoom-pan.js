@@ -82,7 +82,7 @@ window.addEventListener('pointerup', () => {
 const pdfPointers = new Map();
 let pdfGesture = null, pdfBlockClick = false, pdfFrame = 0, pdfInkSnapshot = null;
 els.container.addEventListener('scroll', () => {
-    if (state.format !== 'pdf' || document.hidden) return;
+    if (state.format !== 'pdf') return;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     if (typeof updatePdfActivePageOnScroll === 'function') updatePdfActivePageOnScroll();
     if (els.tooltip.style.display === 'flex') invalidateSelection();

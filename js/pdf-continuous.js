@@ -178,7 +178,11 @@ function handlePdfIntersection(entries) {
     });
     let best = pdfActivePage, bestRatio = -1;
     pdfVisibleRatios.forEach((ratio, n) => { if (ratio > bestRatio) { bestRatio = ratio; best = n; } });
-    if (bestRatio <= 0 || best === pdfActivePage) return;
+    if (bestRatio <= 0) {
+        const center = getPdfPageAtViewportCenter();
+        if (center && center !== pdfActivePage) best = center;
+        else return;
+    } else if (best === pdfActivePage) return;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     pdfActivePage = best; state.currentIndex = best;
     updatePdfProgressText(best);

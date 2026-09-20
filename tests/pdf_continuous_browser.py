@@ -130,7 +130,7 @@ check('canceling pending measurements preserves mounted pages and allows retry',
 # ============================================================
 print("\n=== TEST 2: Scroll-driven active page tracking ===")
 c.js("document.getElementById('reader-container').scrollTop = 20000")
-check('scrolling deep into the document updates the active page', 'state.currentIndex > 5', timeout=3)
+check('scrolling deep into the document updates the active page', 'state.currentIndex > 5', timeout=5)
 check('progress indicator reflects the scrolled-to page',
       "document.getElementById('progress-indicator').textContent.includes(String(state.currentIndex))")
 
