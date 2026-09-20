@@ -176,12 +176,12 @@ function handlePdfIntersection(entries) {
         if (!n) return;
         pdfVisibleRatios.set(n, e.isIntersecting ? e.intersectionRatio : 0);
     });
-    let best = pdfActivePage, bestRatio = -1;
+    const center = getPdfPageAtViewportCenter();
+    let best = center || pdfActivePage, bestRatio = -1;
     pdfVisibleRatios.forEach((ratio, n) => { if (ratio > bestRatio) { bestRatio = ratio; best = n; } });
-    if (bestRatio <= 0) {
-        const center = getPdfPageAtViewportCenter();
+    if (bestRatio <= 0 || (center && Math.abs(best - center) > 1)) {
         if (center && center !== pdfActivePage) best = center;
-        else return;
+        else if (best === pdfActivePage) return;
     } else if (best === pdfActivePage) return;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     pdfActivePage = best; state.currentIndex = best;
@@ -361,17 +361,7 @@ function navigateToPdfPage(pageIndex, options = {}) {
     // gives the browser a chance to deliver a batch reflecting the NEW
     // position before tracking (and the Map) resume from a clean slate.
     if (options.instant) {
-        pdfSuppressActiveTracking = true;
-        let restored = false;
-        const restoreTracking = () => {
-            if (restored) return;
-            restored = true;
-            if (!isCurrent()) return;
-            pdfVisibleRatios.clear();
-            pdfSuppressActiveTracking = false;
-        };
-        requestAnimationFrame(() => requestAnimationFrame(restoreTracking));
-        setTimeout(restoreTracking, 100);
+        pdfVisibleRatios.clear();
     }
     els.container.scrollTo({ top, left: 0, behavior: options.instant ? 'auto' : 'smooth' });
     pdfActivePage = pageIndex; state.currentIndex = pageIndex;

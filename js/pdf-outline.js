@@ -241,6 +241,59 @@ async function goToBookPage(bookPageLabel, options = {}) {
         if (!state.pdfPrintedPageLabels) {
             state.pdfPrintedPageLabels = new Array(state.totalPages + 1).fill(undefined);
         }
+        const inspectPage = async (p) => {
+            if (p < 1 || p > doc.numPages) return null;
+            if (state.pdfPrintedPageLabels[p] !== undefined) return state.pdfPrintedPageLabels[p];
+            try {
+                const page = await doc.getPage(p);
+                if (!isCurrent()) return null;
+                const vp = page.getViewport({ scale: 1 });
+                const tc = await page.getTextContent();
+                if (!isCurrent()) return null;
+                const label = extractPrintedPageLabel(tc.items, vp);
+                recordPdfPageLabel(p, label);
+                return label;
+            } catch (e) {
+                if (isCurrent()) recordPdfPageLabel(p, null);
+                return null;
+            }
+        };
+
+        const targetNum = parseInt(target, 10);
+        if (Number.isFinite(targetNum)) {
+            let probe = Math.max(1, Math.min(doc.numPages, targetNum));
+            for (let attempt = 0; attempt < 5; attempt++) {
+                if (!isCurrent()) return false;
+                if (state.pdfLabelToPhysical.has(target)) {
+                    goToPhysicalPage(state.pdfLabelToPhysical.get(target), options);
+                    return true;
+                }
+                const label = await inspectPage(probe);
+                if (!isCurrent()) return false;
+                if (label && String(label).trim().toLowerCase() === target) {
+                    goToPhysicalPage(probe, options);
+                    return true;
+                }
+                const parsedLabel = parseInt(label, 10);
+                if (Number.isFinite(parsedLabel)) {
+                    const diff = targetNum - parsedLabel;
+                    if (diff === 0) {
+                        goToPhysicalPage(probe, options);
+                        return true;
+                    }
+                    const nextProbe = probe + diff;
+                    if (nextProbe === probe || nextProbe < 1 || nextProbe > doc.numPages) break;
+                    probe = nextProbe;
+                } else {
+                    break;
+                }
+            }
+            if (state.pdfLabelToPhysical.has(target)) {
+                goToPhysicalPage(state.pdfLabelToPhysical.get(target), options);
+                return true;
+            }
+        }
+
         for (let p = 1; p <= doc.numPages; p++) {
             if (!isCurrent()) return false;
             // A concurrent background scan may have resolved the target while
@@ -250,21 +303,11 @@ async function goToBookPage(bookPageLabel, options = {}) {
                 return true;
             }
             if (state.pdfPrintedPageLabels[p] === undefined) {
-                try {
-                    const page = await doc.getPage(p);
-                    if (!isCurrent()) return false;
-                    const vp = page.getViewport({ scale: 1 });
-                    const tc = await page.getTextContent();
-                    if (!isCurrent()) return false;
-                    const label = extractPrintedPageLabel(tc.items, vp);
-                    recordPdfPageLabel(p, label);
-                    if (label && label.trim().toLowerCase() === target) {
-                        goToPhysicalPage(p, options);
-                        return true;
-                    }
-                } catch (e) {
-                    if (!isCurrent()) return false;
-                    recordPdfPageLabel(p, null);
+                const label = await inspectPage(p);
+                if (!isCurrent()) return false;
+                if (label && String(label).trim().toLowerCase() === target) {
+                    goToPhysicalPage(p, options);
+                    return true;
                 }
             }
         }

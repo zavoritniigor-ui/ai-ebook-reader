@@ -272,6 +272,7 @@ function cancelPdfInteraction() {
     // place this clears) is deliberately skipped — without this, that path
     // would leave active-page tracking suppressed forever.
     pdfSuppressActiveTracking = false;
+    if (typeof updatePdfActivePageOnScroll === 'function') updatePdfActivePageOnScroll();
 }
 function pinchMetrics() {
     const [a,b] = [...pdfPointers.values()];
