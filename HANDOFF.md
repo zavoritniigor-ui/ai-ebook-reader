@@ -18,13 +18,33 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **PR #118 READY FOR MERGE (Continuous PDF Viewer Foundation)** (2026-09-20).
-- Branch: `pdf-continuous-viewer`
-- PR: https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/118 (#118)
-- PR Head SHA: `6522ba9b06e372edb9974828225e5e7032805e06`
-- CI Status: **ALL CHECKS GREEN** (GitHub Actions run `35516728647` passed, Cloudflare Pages deployed)
-- Verification: 100% PASS across all 31 browser suites (including `pdf_continuous_browser.py`, `pdf_page_identity_browser.py` with the 657-page textbook, `pdf_word_click_browser.py`, `pdf_ux_browser.py`, `learning_ux_browser.py`).
+Status: **PR #121 READY FOR MERGE (Selection Popup: Script Contamination & Responsive Header)** (2026-09-20).
+- Branch: `fix/selection-popup-translation-responsive`
+- PR: https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/121 (#121)
+- PR Head SHA: `86cede7b2c20ef933dbd7c224cf1d723dd7d2dfe`
+- CI Status: **ALL CHECKS GREEN** (GitHub Actions run `35542733072` passed in 7m38s, Cloudflare Pages deployed)
+- Root Causes Fixed:
+  1. Mixed-script translation corruption: When translating French words (e.g. `vraiment`) to Ukrainian (`uk`), open-weights models on Groq (`openai/gpt-oss-120b`) hallucinated Common Crawl gambling/SEO spam tokens (`彩在线`) appended directly to the Ukrainian word (`справді彩在线 ⚡`). Fixed by:
+     - Constraining Groq requests with `GROQ_TASK_PROFILES` (`max_completion_tokens: 256` for translation) and passing `reasoning_format: 'hidden'`.
+     - Passing `task` from `requestAI` to `callGroq`.
+     - Implementing script-aware `normalizeTranslation` in `js/ai-client.js` with `TRANSLATION_SCRIPT_RULES` that strips trailing alien script contamination (e.g. Han script spillover in Ukrainian, Russian, Latin, Hindi, or Korean targets) while preserving authentic Han script when `targetLang === 'zh'`.
+  2. Responsive selection-popup header: Long selections caused `.tt-original` to expand horizontally, pushing action controls (`🔊`, `речення ⤢`, `S-V-O`, `🤖 Запитай AI`, `✨ Граматика`) out of the popup or into broken wrapped lines. Fixed by:
+     - Restructuring `.tt-header` into a flex-column layout with full-width `.tt-original-wrapper` (row 1) and full-width `.tt-actions` (row 2).
+     - Setting `.tt-original` to `flex: 1 1 70px; min-width: 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`.
+     - Setting all action controls to `flex-shrink: 0` so they never shrink or wrap destructively.
+     - Removing conflicting `body.pdf-mode` wrapper overrides.
+- Verification:
+  - Local browser test verification passed across 375px mobile and 1280px desktop viewports.
+  - `tests/ai_providers_browser.py`: all 65 checks PASS.
+  - `tests/pdf_ux_browser.py`: all 35 checks PASS including mobile long-selection bounds and ellipsis.
+  - `node --check` syntax gate for all JS files, `sw.js`, and `archive-guard.worker.js` passed.
+  - `tests/app_shell_versions.py` and `tests/ci_suite_coverage.py` passed.
 - Next Action: Ready for user-approved merge into `main`. Do NOT merge without explicit user approval.
+- Concurrent Work Note: Zero modifications to Claude's active Grammar/Practice redesign files (`js/grammar-svo.js`, `js/practice-session.js`, `js/practice-worksheet.js`).
+
+Status: **PR #118 MERGED INTO MAIN (Continuous PDF Viewer Foundation)** (2026-09-20).
+- Branch: `pdf-continuous-viewer`
+- Base: Merged into `main` (`ddcd0b2`).
 
 Status: **Phase 2 IN PROGRESS - 5 User Work Preservation Fixes Implemented** (2026-09-13 ~23:00 UTC). Latest: 95fc1ac 
 
