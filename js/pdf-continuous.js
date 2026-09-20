@@ -176,9 +176,13 @@ function handlePdfIntersection(entries) {
         if (!n) return;
         pdfVisibleRatios.set(n, e.isIntersecting ? e.intersectionRatio : 0);
     });
-    let best = pdfActivePage, bestRatio = -1;
+    const center = getPdfPageAtViewportCenter();
+    let best = center || pdfActivePage, bestRatio = -1;
     pdfVisibleRatios.forEach((ratio, n) => { if (ratio > bestRatio) { bestRatio = ratio; best = n; } });
-    if (bestRatio <= 0 || best === pdfActivePage) return;
+    if (bestRatio <= 0 || (center && Math.abs(best - center) > 1)) {
+        if (center && center !== pdfActivePage) best = center;
+        else if (best === pdfActivePage) return;
+    } else if (best === pdfActivePage) return;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     pdfActivePage = best; state.currentIndex = best;
     updatePdfProgressText(best);
@@ -186,6 +190,40 @@ function handlePdfIntersection(entries) {
     updatePdfRenderWindow(best);
     syncActiveThumbnail(best);
     scheduleBookmarkSave();
+}
+
+function getPdfPageAtViewportCenter(containerH) {
+    if (!pdfPageWrappers || pdfPageWrappers.length <= 1) return pdfActivePage;
+    const center = els.container.scrollTop + (containerH ?? els.container.clientHeight) / 2;
+    let low = 1, high = state.totalPages;
+    while (low <= high) {
+        const mid = (low + high) >> 1;
+        const w = pdfPageWrappers[mid];
+        if (!w) break;
+        const top = w.offsetTop;
+        const bottom = top + w.offsetHeight;
+        if (center < top) {
+            high = mid - 1;
+        } else if (center > bottom) {
+            low = mid + 1;
+        } else {
+            return mid;
+        }
+    }
+    return Math.max(1, Math.min(state.totalPages, low <= state.totalPages ? low : high));
+}
+
+function updatePdfActivePageOnScroll() {
+    if (!pdfContinuousReady || state.format !== 'pdf' || pdfSuppressActiveTracking) return;
+    const centerPage = getPdfPageAtViewportCenter();
+    if (centerPage && centerPage !== pdfActivePage) {
+        pdfActivePage = centerPage; state.currentIndex = centerPage;
+        updatePdfProgressText(centerPage);
+        updatePdfScrubber();
+        syncActiveThumbnail(centerPage);
+        updatePdfRenderWindow(centerPage);
+        scheduleBookmarkSave();
+    }
 }
 
 let bookmarkSaveTimer = null;
@@ -323,12 +361,7 @@ function navigateToPdfPage(pageIndex, options = {}) {
     // gives the browser a chance to deliver a batch reflecting the NEW
     // position before tracking (and the Map) resume from a clean slate.
     if (options.instant) {
-        pdfSuppressActiveTracking = true;
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            if (!isCurrent()) return;
-            pdfVisibleRatios.clear();
-            pdfSuppressActiveTracking = false;
-        }));
+        pdfVisibleRatios.clear();
     }
     els.container.scrollTo({ top, left: 0, behavior: options.instant ? 'auto' : 'smooth' });
     pdfActivePage = pageIndex; state.currentIndex = pageIndex;

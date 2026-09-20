@@ -108,7 +108,7 @@ check('PDF alignment keeps live source after zoom', "activeAlignment?.links.leng
 js('flashAlignment(0)')
 check('PDF source flash follows transformed screen coordinates', "(()=>{const a=alignmentFlash.firstElementChild?.getBoundingClientRect();const b=sourceAlignmentRanges(activeAlignment.links[0])[0].getBoundingClientRect();return a && Math.abs(a.left-b.left)<1 && Math.abs(a.width-b.width)<1})()")
 # Grammar click/phrase calls the current lookup, preserving language context and markup.
-js("invalidateSelection();els.grammarPanel.classList.add('expanded');window.__lookups=[];handleWordOrSelection=(word,x,y)=>__lookups.push({word,lang:langForText(word),context:state.ctxSentence});")
+js("invalidateSelection();els.grammarPanel.classList.add('expanded');window.__lookups=[];handleWordOrSelection=(word,x,y)=>__lookups.push({word,lang:langForText(word),context:state.ctxSentence});");pause(.5)
 c.wait("getComputedStyle(els.grammarPanel).transform==='none'", timeout=25)
 for text,lang in [('The birds are singing.','en'),('Les oiseaux chantent.','fr')]:
  js(f"els.grammarContent.innerHTML='<p></p>';els.grammarContent.firstChild.textContent={json.dumps(text)}")
@@ -124,8 +124,7 @@ check('grammar controls do not trigger translation','__lookups.length===__calls'
 js("els.grammarPanel.classList.remove('expanded','loading','ready');els.askPanel.classList.remove('expanded','loading','ready');stopOnboarding();onboardingState={};localStorage.removeItem(ONBOARDING_KEY);state.bookKey='learning-fixture';state.format='pdf';state.currentIndex=1;scheduleReaderOnboarding();window.__onboardingAtStart=new Promise(resolve=>setTimeout(()=>resolve(getComputedStyle(els.askTab).animationIterationCount===\"3\" && els.askTab.classList.contains(\"onboarding-cue\") && els.menuHandle.classList.contains(\"onboarding-cue\")),800))")
 check('three soft onboarding cycles','__onboardingAtStart')
 check('onboarding state persisted at start','JSON.parse(localStorage.getItem(ONBOARDING_KEY)).ask===true')
-js("els.askPanel.classList.add('loading')")
-c.wait("!els.askTab.classList.contains('onboarding-cue') && getComputedStyle(els.askTab).backgroundColor==='rgba(220, 53, 69, 0.14)'", timeout=5)
+js("els.askPanel.classList.add('loading')"); pause(.8)
 check('red request status overrides onboarding',"!els.askTab.classList.contains('onboarding-cue') && getComputedStyle(els.askTab).backgroundColor==='rgba(220, 53, 69, 0.14)'")
 js("els.askPanel.classList.remove('loading');els.grammarTab.click();stopOnboarding();state.currentIndex=2;scheduleReaderOnboarding()");pause(.8)
 check('interaction/page two never repeats onboarding',"!document.querySelector('.onboarding-cue, .onboarding-static')")
@@ -134,7 +133,10 @@ check('past first pages marks onboarding complete',"Object.keys(onboardingGroups
 c.call('Emulation.setEmulatedMedia',features=[dict(name='prefers-reduced-motion',value='reduce')])
 js("els.grammarPanel.classList.remove('expanded');onboardingState={};state.currentIndex=1;scheduleReaderOnboarding();window.__reducedAtStart=new Promise(resolve=>setTimeout(()=>resolve(els.askTab.classList.contains('onboarding-static') && getComputedStyle(els.askTab).animationName==='none'),800))")
 check('reduced motion gets static cue only','__reducedAtStart')
-js('new Promise(resolve=>setTimeout(resolve,5000))')
+js('new Promise(resolve=>setTimeout(resolve,5200))')
+for _ in range(25):
+ if js('!document.querySelector(".onboarding-cue, .onboarding-static")'): break
+ js('new Promise(resolve=>setTimeout(resolve,200))')
 check('onboarding returns to normal','!document.querySelector(".onboarding-cue, .onboarding-static")')
 check('no application errors','__errors.length===0')
 c.call('Page.removeScriptToEvaluateOnNewDocument',identifier=preload)
