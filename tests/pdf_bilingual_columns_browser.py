@@ -125,5 +125,53 @@ print('PASS English column group contains no French text at all', flush=True)
 assert 'Deuxiemement' in groups['fr'] and 'Secondly' in groups['en'], groups
 print('PASS both columns still contain their own full text (nothing lost)', flush=True)
 
+# Defect 1 regression: Fill-in-the-blank exercise line with large horizontal gap (~175px)
+# must not be split into separate columns by pdfVisualGroup, and buildSentenceRangesFromSpans
+# must reconstruct the complete sentence.
+exercise_test = c.js('''(() => {
+    const container = document.createElement('div');
+    container.className = 'pdf-text-layer';
+    container.style.cssText = 'position:relative;width:1000px;height:200px;';
+
+    // Exercise line 3: "3. Ils (plaindre)" [175px gap] "la pauvre femme."
+    const span3a = document.createElement('span');
+    span3a.textContent = '3. Ils (plaindre)';
+    span3a.style.cssText = 'position:absolute;left:190px;top:50px;width:130px;height:20px;';
+
+    const span3b = document.createElement('span');
+    span3b.textContent = 'la pauvre femme.';
+    span3b.style.cssText = 'position:absolute;left:495px;top:50px;width:150px;height:20px;';
+
+    // Exercise line 4: "4. La muraille (ceindre)" [175px gap] "la ville."
+    const span4a = document.createElement('span');
+    span4a.textContent = '4. La muraille (ceindre)';
+    span4a.style.cssText = 'position:absolute;left:190px;top:90px;width:190px;height:20px;';
+
+    const span4b = document.createElement('span');
+    span4b.textContent = 'la ville.';
+    span4b.style.cssText = 'position:absolute;left:555px;top:90px;width:60px;height:20px;';
+
+    container.appendChild(span3a);
+    container.appendChild(span3b);
+    container.appendChild(span4a);
+    container.appendChild(span4b);
+    document.body.appendChild(container);
+
+    const g3a = pdfVisualGroup(container, span3a);
+    const g3b = pdfVisualGroup(container, span3b);
+    const sentences3a = buildSentenceRangesFromSpans(g3a);
+    const plaindreSentence = sentences3a.find(s => s.text.includes('plaindre'));
+
+    const result = {
+        sameGroup: g3a.includes(span3b) && g3b.includes(span3a),
+        sentence: plaindreSentence ? plaindreSentence.text : null
+    };
+    container.remove();
+    return result;
+})()''')
+assert exercise_test['sameGroup'] is True, exercise_test
+assert exercise_test['sentence'] == 'Ils (plaindre) la pauvre femme.', exercise_test
+print('PASS Defect 1 regression: fill-in-the-blank exercise preserves complete sentence across gap', flush=True)
+
 check('no application errors', 'window.__errors.length===0 || JSON.stringify(window.__errors)')
 print('ALL PDF BILINGUAL COLUMN CHECKS PASSED', flush=True)

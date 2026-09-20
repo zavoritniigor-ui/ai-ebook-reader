@@ -42,6 +42,18 @@ const EN_COMMON_WORDS = new Set('means'.split(' '));
 // достатні, щоб вважати слово "певним" (див. STRONG_MIN нижче), лише додатковий бал.
 const FR_SHAPE_RE = /(eaux?$|eux$|oir$|oire$|aient$|ais$|ez$|ent$|ique$|té$|tion$|aison$|ance$|ence$|euse$|ette$|eur$|ère$|ien$|ienne$|ois$|elle$|ille|ouill|jour|oux$|ault$|gn[aeiou]|^qu[aeiou])/i;
 const EN_SHAPE_RE = /(ing$|ed$|ly$|ness$|ship$|ough|augh|^wh|ck|^sh|oo|ee|y$)/i;
+const FR_VERB_SHAPE_RE = /^(?:(?:se|s['’])\s+)?[a-zà-öø-ÿ]+(?:er|ir|re|oir)$/i;
+const FR_IRREGULAR_VERBS = new Set(['être', 'avoir', 'faire', 'aller']);
+function isFrenchVerbTarget(text) {
+    const clean = (text || '').trim().toLowerCase();
+    if (!clean) return false;
+    if (FR_IRREGULAR_VERBS.has(clean) || FR_VERB_SHAPE_RE.test(clean)) return true;
+    const words = clean.match(/[a-zà-öø-ÿ]+/gu) || [];
+    if (!words.length) return false;
+    const hasVerb = words.some(w => FR_IRREGULAR_VERBS.has(w) || FR_VERB_SHAPE_RE.test(w));
+    const hasEn = words.some(w => EN_WORDS.has(w) || EN_COMMON_WORDS.has(w));
+    return hasVerb && !hasEn;
+}
 // Поріг "сильного" сигналу: службове слово / елізія / діакритика (4-5 балів) — а не
 // орфографічна здогадка (1 бал). Тільки сильні токени можуть відкрити новий "острівець".
 const STRONG_MIN = 4;
@@ -277,10 +289,23 @@ function buildLanguageSegments(text, priorLang2) {
     if (parts.length === 1 && !parts[0].paren) return buildFlatSegments(text, priorLang2);
     const out = [];
     let lastLang = null;
-    for (const part of parts) {
+    for (let pIdx = 0; pIdx < parts.length; pIdx++) {
+        const part = parts[pIdx];
         let segs;
         if (part.paren) {
-            const innerPrior = lastLang ? (lastLang === 'fr' ? 'en' : 'fr') : priorLang2;
+            const isFrVerb = isFrenchVerbTarget(part.inner);
+            const prevPart = pIdx > 0 ? parts[pIdx - 1] : null;
+            const nextPart = pIdx < parts.length - 1 ? parts[pIdx + 1] : null;
+            const isContinuation = prevPart && !/[.!?]\s*$/.test(prevPart.text || '') && nextPart && /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(nextPart.text || '') && !/^[\s\W]*[.!?]/.test(nextPart.text || '');
+            const innerTokens = tokenizeForLang(part.inner).filter(t => t.isWord);
+            const hasEnWord = innerTokens.some(t => EN_WORDS.has(t.text.toLowerCase()) || EN_COMMON_WORDS.has(t.text.toLowerCase()));
+            const isFrContext = lastLang === 'fr' || (!lastLang && priorLang2 === 'fr');
+            let innerPrior;
+            if (isFrContext && (isFrVerb || (isContinuation && !hasEnWord && (isFrVerb || FR_WORDS.has(part.inner.trim().toLowerCase()))))) {
+                innerPrior = 'fr';
+            } else {
+                innerPrior = lastLang ? (lastLang === 'fr' ? 'en' : 'fr') : priorLang2;
+            }
             segs = wrapParenSegments(buildLanguageSegments(part.inner, innerPrior), part.open, part.close, innerPrior);
         } else {
             if (!part.text) continue;
@@ -294,7 +319,8 @@ function buildLanguageSegments(text, priorLang2) {
         // жодного слова — не даємо йому підмінити "останню реальну мову" для протилежної
         // підказки наступній дільниці.
         if (/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(part.paren ? part.inner : part.text)) {
-            lastLang = segs[segs.length - 1].lang;
+            const lastWordSeg = segs.slice().reverse().find(s => /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(s.text));
+            if (lastWordSeg) lastLang = lastWordSeg.lang;
         }
     }
     return mergeAdjacentSameLang(out);

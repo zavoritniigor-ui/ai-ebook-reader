@@ -32,6 +32,14 @@ cases = [
     [('fr', "J'aime l'école et qu'il parle.")],
     [('fr', 'Exemple:'), ('fr', 'une bonne question.')],
     [('fr', 'Il est très important'), ('en', 'to pronounce it correctly.')],
+    # Вправи з французькими дієсловами в дужках: інфінітив лишається французькою,
+    # а не помилково розпізнається як англійська (Defect 2).
+    [('fr', 'Ils (plaindre) la pauvre femme.')],
+    [('fr', 'La muraille (ceindre) la ville.')],
+    [('fr', '3. Ils (plaindre) la pauvre femme.')],
+    [('fr', 'Elle (se plaindre) souvent.')],
+    [('fr', 'Tu (finir) le travail.')],
+    [('fr', 'Nous (être) là.')],
 ]
 failures = []
 for expected in cases:
@@ -45,4 +53,16 @@ for expected in cases:
     if result is not True: failures.append(result)
     else: print('PASS', text, flush=True)
 assert not failures, json.dumps(failures, ensure_ascii=False, indent=2)
+
+# Targeted API checks for Defect 2 (fragmentLangInContext and grammarSourceLanguageFor)
+assert c.js("fragmentLangInContext('plaindre', 'Ils (plaindre) la pauvre femme.')") == 'fr'
+assert c.js("grammarSourceLanguageFor('plaindre', 'Ils (plaindre) la pauvre femme.')") == 'fr'
+assert c.js("fragmentLangInContext('ceindre', '4. La muraille (ceindre) la ville.')") == 'fr'
+assert c.js("grammarSourceLanguageFor('ceindre', '4. La muraille (ceindre) la ville.')") == 'fr'
+assert c.js("fragmentLangInContext('hello', 'bonjour (hello)')") == 'en'
+assert c.js("grammarSourceLanguageFor('hello', 'bonjour (hello)')") == 'en'
+assert c.js("fragmentLangInContext('maison', 'house (maison)')") == 'fr'
+assert c.js("grammarSourceLanguageFor('maison', 'house (maison)')") == 'fr'
+print('PASS Defect 2 targeted API checks (fragmentLangInContext / grammarSourceLanguageFor)', flush=True)
+
 print('ALL PARENTHESES/LANGUAGE CHECKS PASSED')

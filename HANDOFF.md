@@ -47,6 +47,24 @@ Integration with `main`: `main` already contains the squash-merged PDF work (#11
 
 Next action: exact-SHA CI for the pushed branch; when green, review the PR diff (it should contain only Grammar/Practice changes once merged with `main`). Do NOT merge without explicit user approval.
 
+### Independent Release QA — PDF + Grammar Integration Bugfixes (2026-09-20)
+
+Worktree `/home/igor/Projects/AI-Ebook-Reader-Grammar`, branch `grammar-redesign`, PR #119 (open, base `main`).
+
+Independent release QA identified and resolved two edge-case defects in the integrated PDF and Grammar stack:
+
+1. **Defect 1 — PDF exercise sentence context across fill-in-the-blank gaps (`js/selection.js`)**:
+   - *Problem*: In `pdfVisualGroup`, horizontal fill-in-the-blank gaps (e.g. 175px on physical PDF page 221 of *Complete French All-in-One*: `3. Ils (plaindre) [gap] la pauvre femme.`) exceeded the column threshold `Math.max(24, layerWidth * 0.08)`, erroneously splitting the visual line into two separate columns. Tapping `plaindre` truncated the sentence context to `"Ils (plaindre) 4."`.
+   - *Fix*: Added `isExerciseBlankContinuation(leftText, rightText)` to `js/selection.js`. Unclosed exercise item lines or lines ending in parenthetical prompt / fill-in blank followed by sentence continuation / non-item text are preserved in the same visual group. Tapping `plaindre` now correctly extracts `"Ils (plaindre) la pauvre femme."`.
+   - *Regression guard*: Added synthetic exercise line assertion in `tests/pdf_bilingual_columns_browser.py`, verifying complete sentence extraction while ensuring legitimate bilingual multi-column boundaries remain 100% isolated.
+
+2. **Defect 2 — Parenthesized French verb exercise targets misdetected as English (`js/lang-detect.js`)**:
+   - *Problem*: In `buildLanguageSegments`, parenthesized text in a French sentence had its prior language flipped to English under the translation-gloss assumption (`innerPrior = lastLang === 'fr' ? 'en' : 'fr'`). For exercise targets without diacritics like `(plaindre)`, language detection fell back to English, prompting the Grammar AI in English and causing a strict validation `language_mismatch` error.
+   - *Fix*: Added `isFrenchVerbTarget` and French sentence continuation check in `js/lang-detect.js`. French verb infinitives (`-er`, `-ir`, `-re`, `-oir`, `être`, `avoir`, `faire`, `aller`) in French context preserve French prior language while genuine bilingual translation pairs (e.g. `bonjour (hello)`, `the house (la maison)`) continue to resolve to their respective languages.
+   - *Regression guard*: Added French exercise target cases and direct API checks (`fragmentLangInContext` and `grammarSourceLanguageFor`) to `tests/language_paren_browser.py`.
+
+All 6 regression suites (`language_paren_browser.py`, `language_context_browser.py`, `grammar_language_isolation_browser.py`, `pdf_bilingual_columns_browser.py`, `grammar_french_browser.py`, `grammar_redesign_browser.py`) pass 100%. App shell versions regenerated.
+
 ---
 
 Status: **PR #118 READY FOR MERGE (Continuous PDF Viewer Foundation)** (2026-09-20).

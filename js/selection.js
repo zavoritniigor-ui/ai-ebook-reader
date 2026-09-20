@@ -174,6 +174,23 @@ function pdfTextSpans(layer) {
         !s.classList.contains('markedContent') && s.textContent.trim() &&
         !s.parentElement.closest('span:not(.markedContent)'));
 }
+function isExerciseBlankContinuation(leftText, rightText) {
+    if (!leftText || !rightText) return false;
+    const ITEM_RE = /^\s*(?:\d+[\.\)]|[a-zA-Z][\.\)]|[•\-\–\—])\s*/;
+    const hasItemMarker = ITEM_RE.test(leftText);
+    const leftBody = (hasItemMarker ? leftText.replace(ITEM_RE, '') : leftText).trim();
+    const leftEndsTerminal = /[.!?]$/.test(leftBody);
+    if (leftEndsTerminal) return false;
+
+    const rightHasItemMarker = ITEM_RE.test(rightText);
+    const rightStartsLower = /^[\s\W]*[\p{Ll}]/u.test(rightText);
+    const leftEndsParenOrBlank = /(?:\([^)]+\)|_{2,}|\.{3,})\s*$/.test(leftBody);
+
+    if (hasItemMarker && !rightHasItemMarker && (rightStartsLower || leftEndsParenOrBlank)) return true;
+    if (leftEndsParenOrBlank && (rightStartsLower || !rightHasItemMarker)) return true;
+    if (hasItemMarker && !rightHasItemMarker && rightStartsLower) return true;
+    return false;
+}
 function pdfVisualGroup(layer, targetSpan) {
     const spans = pdfTextSpans(layer);
     if (!spans.length) return [];
@@ -214,8 +231,18 @@ function pdfVisualGroup(layer, targetSpan) {
         let seg = null;
         for (const i of byLeft) {
             const r = rects[i];
-            if (seg && r.left - seg.right <= columnGapThreshold) { seg.indices.push(i); seg.right = Math.max(seg.right, r.right); }
-            else { seg = { left: r.left, right: r.right, indices: [i] }; segments.push(seg); }
+            const gap = seg ? r.left - seg.right : 0;
+            const isExerciseGap = seg && gap > columnGapThreshold && isExerciseBlankContinuation(
+                seg.indices.map(k => spans[k].textContent).join(' ').trim(),
+                spans[i].textContent.trim()
+            );
+            if (seg && (gap <= columnGapThreshold || isExerciseGap)) {
+                seg.indices.push(i);
+                seg.right = Math.max(seg.right, r.right);
+            } else {
+                seg = { left: r.left, right: r.right, indices: [i] };
+                segments.push(seg);
+            }
         }
     }
     const segLeft = segments.map(s => s.left);
