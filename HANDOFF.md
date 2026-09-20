@@ -18,6 +18,22 @@ part of normal task startup.
 
 ## Current handoff
 
+### Grammar + contextual Practice redesign — branch `grammar-redesign` (2026-09-20)
+
+Worktree `/home/igor/Projects/AI-Ebook-Reader-Grammar`, branch `grammar-redesign` (based on `82acc93`), **never pushed to `main`; no merge authorized**. Gemini owns the PDF subsystem in a separate worktree — none of `pdf-*.js`, `selection.js` or `translation.js` were touched.
+
+Done: Grammar panel rebuilt as a Verbs/Adjectives contextual-learning panel (`js/grammar-svo.js`, `js/core.js` `GRAMMAR_LANG_CONFIG`, `index.html`); Practice rebuilt as a contextual READING surface with highlighted, clickable target forms that focus the Grammar panel on that exact occurrence (`js/practice-session.js`, `js/practice-worksheet.js`). All quiz UI (answer inputs, Check, hints, exercise types, pagination, grading) was removed. See `ARCHITECTURE.md` (`grammar-svo.js` row, "Practice workspace", test map) for the design.
+
+Tests: new `tests/grammar_redesign_browser.py` (73 checks, wired into CI); rewrote `practice_browser.py` and `grammar_language_isolation_browser.py` for the new model (old exercise/hint/tense-only expectations were intentionally obsolete); adapted `learning_stats_languages_grammar_browser.py`, `ai_providers_browser.py`, `format_reader_audit_browser.py`, `practice_workspace_*` fixtures. All directly affected suites pass locally (redesign 73, isolation 16, practice 42, workspace 30, learning-stats/grammar 30, providers 61, ask-AI 9, migration audit 35). Real-mouse browser acceptance with mocked AI: 0 console errors.
+
+Known, NOT caused by this branch (verified against the unmodified baseline): `learning_ux_browser.py`'s last check `onboarding returns to normal` fails identically on baseline; `format_reader_audit_browser.py`'s reopen-position checks are intermittently flaky (~1 in 3 runs, same rate on baseline and on this branch, on the PDF reopen check).
+
+Limitations to know: no real AI key was available, so every AI response in tests/acceptance was mocked — prompts are unverified against a live model; Polish is NOT a supported app language (only uk/en/fr/ru/zh/ko/hi/ga), so it is one new `GRAMMAR_LANG_CONFIG` entry away, not implemented; grammar labels/paradigms for zh/ko/hi/ga/ru are reasonable defaults, not linguist-reviewed; the full 657-page French PDF acceptance was deliberately not run. Not yet done: push, PR, exact-SHA CI. Do NOT merge without explicit user approval.
+
+Next action: push `grammar-redesign`, open a PR against `main`, monitor CI for that exact SHA. When Gemini's PDF branch lands, re-check that a PDF word click still routes to Grammar (`startAiTask(..., 'grammar')` signature is unchanged, so no change is expected).
+
+---
+
 Status: **Phase 2 IN PROGRESS - 5 User Work Preservation Fixes Implemented** (2026-09-13 ~23:00 UTC). Latest: 95fc1ac 
 
 **5-Priority P1 Fixes Implementation (2026-09-13 - ALL COMPLETED):**

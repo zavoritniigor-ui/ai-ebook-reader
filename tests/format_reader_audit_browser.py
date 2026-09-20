@@ -126,14 +126,14 @@ def main():
           try{
             state.groqKey='audit-placeholder';state.translationCache={};
             aiTranslateText=async()=> 'Переклад перевірено';machineTranslate=async()=>({html:'Переклад перевірено',extras:''});
-            aiAvailable=()=>true;callAI=async()=>'<p>Audit response</p><script>window.__auditUnsafe=1</script>';
+            aiAvailable=()=>true;callAI=async(prompt,signal,task)=>task==='grammar_analysis'?JSON.stringify({items:[{pos:'verb',lemma:'audit',surface:'Hello',sentence:'Hello world.',features:{},explanation:'Audit response',stemBreakdown:null,forms:null}]}):'<p>Audit response</p><script>window.__auditUnsafe=1</script>';
             const {x,y}=__auditPoint;
             await handleWordOrSelection('Hello',x,y);
             if(!els.ttTranslation.textContent.includes('Переклад перевірено'))return 'translation';
             els.ttAskBtn.click();await new Promise(r=>setTimeout(r,20));
             if(!els.askPanel.classList.contains('ready')||!els.askContent.textContent.includes('Audit response'))return 'Ask';
             els.ttAiBtn.click();await new Promise(r=>setTimeout(r,20));
-            if(!els.grammarPanel.classList.contains('ready')||!els.grammarContent.textContent.includes('Audit response'))return 'grammar';
+            if(!els.grammarPanel.classList.contains('ready')||!els.grammarContent.querySelector('.grammar-card'))return 'grammar';
             return !window.__auditUnsafe&&!els.askContent.querySelector('script')&&calculateCurrentPageStats().helped>0;
           }finally{
             [aiTranslateText,machineTranslate,callAI,aiAvailable,state.groqKey]=old;

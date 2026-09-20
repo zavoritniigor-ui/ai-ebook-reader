@@ -613,24 +613,42 @@
         /* contain: paint у деяких браузерах ховає власні смуги прокрутки контейнера,
            тому в режимі PDF це обмеження знімаємо. */
         body.pdf-mode #reader-container { scrollbar-width: auto; scrollbar-color: rgba(110,110,110,0.75) rgba(128,128,128,0.18); contain: none; }
-        /* Дієслова з речення — кнопками; під ними ряд часів для відмінювання */
-        .verb-card { margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2);
-                     border-left: 4px solid #10a37f; box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
-        /* Ряд дієслів закріплений унизу панелі: він не прокручується разом із текстом,
-           тому дієслова лишаються під рукою навіть коли розбір довгий. */
-        .verb-bar { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap;
-                    padding: 10px 15px; border-top: 1px solid var(--border-color);
-                    background: var(--hover-color); max-height: 96px; overflow-y: auto; }
-        .verb-bar:empty { display: none; }
-        .verb-chips { display: none; }
-        .verb-chip { background: #10a37f; color: #fff; border: none; padding: 6px 12px; border-radius: 14px; font-size: 14px; cursor: pointer; }
-        .verb-chip.active { outline: 2px solid var(--text-color); }
-        .tense-bar { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 15px 0; }
-        .tense-bar button { background: var(--border-color); color: var(--text-color); border: none; padding: 6px 11px; border-radius: 13px; font-size: 13px; cursor: pointer; }
-        .tense-bar button.active { background: #10a37f; color: #fff; }
-        .verb-focus { border-left-color: #0d6efd; }
-        .verb-head { margin-bottom: 8px; font-size: 17px; }
-        .verb-forme { font-size: 13px; color: var(--text-color); opacity: .75; font-style: italic; }
+        /* Redesigned Grammar panel: Verbs/Adjectives mode toggle, language-specific
+           tense/mood controls, and compact lemma cards — deliberately calm and
+           learner-oriented rather than raw parser/debugger output (task section 16). */
+        .grammar-mode-bar { display: flex; gap: 6px; padding: 12px 15px 0; flex-shrink: 0; }
+        .grammar-mode-btn { flex: 1; background: var(--surface-2); color: var(--text-color); border: 1px solid var(--border-color);
+                             padding: 8px 10px; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+        .grammar-mode-btn.active { background: #10a37f; color: #fff; border-color: #10a37f; }
+        .grammar-controls-bar { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 15px 0; }
+        .grammar-controls-bar:empty { padding: 0; }
+        .grammar-controls-bar button { background: var(--border-color); color: var(--text-color); border: none; padding: 6px 11px; border-radius: 13px; font-size: 13px; cursor: pointer; }
+        .grammar-controls-bar button.active { background: #10a37f; color: #fff; }
+        .grammar-empty { text-align: center; color: var(--text-muted, gray); padding-top: 50px; }
+        .grammar-card { margin: 10px 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-2); }
+        .grammar-card-lemma { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text-color);
+                               font-size: 16px; font-weight: 700; padding: 0; cursor: pointer; }
+        .grammar-card-forms { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+        .grammar-form-chip { background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
+                              padding: 4px 10px; border-radius: 12px; font-size: 12.5px; cursor: pointer; }
+        .grammar-focus { margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2);
+                          border-left: 4px solid #0d6efd; box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
+        .grammar-focus-head { font-size: 18px; margin-bottom: 6px; }
+        .grammar-focus-lemma { font-size: 14px; color: var(--text-color); opacity: .7; font-style: italic; }
+        .grammar-focus-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+        .grammar-badge { background: var(--border-color); color: var(--text-color); border-radius: 10px; padding: 2px 9px; font-size: 12px; }
+        .grammar-focus-pattern { font-family: ui-monospace, monospace; font-size: 15px; margin-bottom: 8px; }
+        .grammar-stem { color: var(--text-color); }
+        .grammar-ending { color: #10a37f; font-weight: 700; }
+        .grammar-grid-title { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; opacity: .65; margin: 6px 0 4px; }
+        .grammar-focus-grid { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; font-size: 14px; }
+        .grammar-grid-row { display: grid; grid-template-columns: 10em 1fr; column-gap: 12px; }
+        .grammar-grid-label { color: var(--text-color); opacity: .7; }
+        .grammar-grid-value { font-weight: 600; }
+        .grammar-focus-context { font-size: 14px; line-height: 1.5; margin: 8px 0; }
+        .grammar-context-target { background: none; color: inherit; font-weight: 700; border-bottom: 2px solid #10a37f; }
+        .grammar-focus-why { font-size: 13.5px; line-height: 1.5; color: var(--text-color); opacity: .9; margin: 0; }
+        .grammar-practice-btn { margin-top: 15px; }
         #ask-content { cursor: text; }
         .panel-actions { padding: 12px 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
         .panel-action-btn {
@@ -996,21 +1014,28 @@
             <div id="dictation-status" class="dictation-status" role="status" aria-live="polite"></div>
         </div>
 
-        <!-- ПРАВА ПАНЕЛЬ (Граматика) -->
+        <!-- ПРАВА ПАНЕЛЬ (Граматика: контекстна панель Verbs/Adjectives) -->
         <div id="grammar-panel" class="side-panel">
             <button type="button" id="grammar-tab" class="panel-tab" aria-label="Граматика" data-i18n-title="tGrammarPanel"></button>
             <div class="panel-header">
                 <h3 data-i18n="panelGrammar">📝 Граматика</h3>
                 <button class="close-panel-btn" onclick="document.getElementById('grammar-panel').classList.remove('expanded')" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
-            <div class="tense-bar" id="tense-bar">
-                <!-- Dynamically populated by grammar-svo.js:renderTenseBar()
-                     based on detected source language (English/French) -->
+            <div class="grammar-mode-bar" id="grammar-mode-bar">
+                <!-- Verbs/Adjectives toggle. Labels are set by
+                     grammar-svo.js:renderGrammarModeBar() in the SOURCE language's
+                     OWN terms (e.g. "Verbes"/"Adjectifs" for French text), not the
+                     interface language — see GRAMMAR_LANG_CONFIG in js/core.js. -->
+                <button type="button" id="grammar-mode-verbs" class="grammar-mode-btn active">Verbs</button>
+                <button type="button" id="grammar-mode-adjectives" class="grammar-mode-btn">Adjectives</button>
+            </div>
+            <div class="grammar-controls-bar" id="grammar-controls-bar">
+                <!-- Dynamically populated by grammar-svo.js:renderGrammarControlsBar():
+                     tense/mood buttons in Verbs mode, empty in Adjectives mode. -->
             </div>
             <div id="grammar-content" class="panel-content">
                 <div style="text-align:center; padding-top: 50px; color: gray;" data-i18n="grammarHint">…</div>
             </div>
-            <div class="verb-bar" id="verb-bar"></div>
         </div>
     </div>
 
@@ -1089,7 +1114,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=de6ed588ca16"></script>
+    <script src="js/core.js?v=ddb66d7bb6a4"></script>
     <script src="js/lang-detect.js?v=21625d365df7"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1106,10 +1131,10 @@
     <script src="js/pdf-zoom-pan.js?v=f71892ac0dc5"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
-    <script src="js/grammar-svo.js?v=1e2cc926855e"></script>
-    <script src="js/ai-client.js?v=82020067e03c"></script>
-    <script src="js/practice-session.js?v=33a9e03c4ee0"></script>
-    <script src="js/practice-worksheet.js?v=acbcb2afec03"></script>
+    <script src="js/grammar-svo.js?v=e875bad5d324"></script>
+    <script src="js/ai-client.js?v=e0ffbb63b46c"></script>
+    <script src="js/practice-session.js?v=694ff17c53a0"></script>
+    <script src="js/practice-worksheet.js?v=b79d1ccf7716"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
@@ -1120,7 +1145,7 @@
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/quick-wheel.js?v=4be0c2aad933"></script>
-    <script src="js/main.js?v=2a36869ae4ec"></script>
+    <script src="js/main.js?v=fb7e1a9c2c8d"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
 </html>

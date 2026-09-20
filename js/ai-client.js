@@ -13,9 +13,15 @@ const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 // Task-specific OpenAI profiles: optimize reasoning effort, max_output_tokens, and streaming per workload
 const OPENAI_TASK_PROFILES = {
     translation: { reasoning: 'none', max_output_tokens: 128, stream: false },
-    grammar: { reasoning: 'none', max_output_tokens: 700, stream: false },
+    grammar: { reasoning: 'none', max_output_tokens: 700, stream: false }, // inline S-V-O tooltip analysis (js/grammar-svo.js:analyzeSVO)
     ask: { reasoning: 'low', max_output_tokens: 1200, stream: true },
-    conjugation: { reasoning: 'none', max_output_tokens: 200, stream: false },
+    // Redesigned Grammar panel (Verbs/Adjectives): one structured multi-item JSON
+    // analysis, plus a small targeted per-lemma conjugation/agreement lookup.
+    grammar_analysis: { reasoning: 'low', max_output_tokens: 1400, stream: false },
+    grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
+    // Contextual Practice reading passage: multi-paragraph text + a targets array,
+    // needs materially more budget than the old single-worksheet-exercise profile.
+    practice_reading: { reasoning: 'low', max_output_tokens: 2200, stream: false },
     language_level: { reasoning: 'low', max_output_tokens: 800, stream: true },
     vision: { reasoning: 'low', max_output_tokens: 1200, stream: false },
     default: { reasoning: 'low', max_output_tokens: 4096, stream: false }

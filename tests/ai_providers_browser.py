@@ -69,6 +69,11 @@ window.fetch=async(url,options={})=>{
   });
  }
  if(__mode==='translation')return response('Bonjour');
+ if(__mode==='grammar_json'){
+  const hostile='<img src="x" onerror="window.__unsafe=1"><script>window.__unsafe=1</script>';
+  const grammarText=JSON.stringify({items:[{pos:'verb',lemma:'hello',surface:'Hello',sentence:'Hello there, friend.',features:{tense:hostile},explanation:hostile+' why',stemBreakdown:null,forms:null}]});
+  return response(grammarText);
+ }
 
  return provider==='openai'&&body.stream?sseResponse('<p>Provider answer</p><img src="x" onerror="window.__unsafe=1"><script>window.__unsafe=1</script>'):response('<p>Provider answer</p><img src="x" onerror="window.__unsafe=1"><script>window.__unsafe=1</script>');
 };
@@ -138,8 +143,17 @@ check('OpenAI Responses request contract', "(async()=>{await callAIVision('image
 c.js("__mode='multi'")
 check('REST text blocks normalized, reasoning ignored', "(async()=>await callAI('test')===['One','Two'].join(String.fromCharCode(10)))()")
 c.js("__mode='success'")
-for mode in ['ask','grammar','level']:
-    check('OpenAI '+mode+' uses existing safe rendering',f"(async()=>{{await startAiTask('Hello world.','{mode}');const el={'els.grammarContent' if mode=='grammar' else 'els.askContent'};return el.textContent.includes('Provider answer')&&!el.querySelector('script,[onerror]')&&!window.__unsafe}})()")
+for mode in ['ask','level']:
+    check('OpenAI '+mode+' uses existing safe rendering',f"(async()=>{{await startAiTask('Hello world.','{mode}');const el=els.askContent;return el.textContent.includes('Provider answer')&&!el.querySelector('script,[onerror]')&&!window.__unsafe}})()")
+# Grammar (redesigned): the panel is built from structured JSON via createElement/textContent.
+# A provider reply that is NOT the structured contract (here the hostile HTML fixture used for
+# Ask/Level) must degrade to a safe localized empty state - never render, echo or execute it.
+c.js('__calls=[]')
+check('OpenAI grammar degrades an unstructured provider reply to a safe empty state',"(async()=>{await startAiTask('Hello world.','grammar');const el=els.grammarContent;return !!el.querySelector('.grammar-empty')&&!el.textContent.includes('Provider answer')&&!el.querySelector('script,[onerror],img')&&!window.__unsafe&&els.grammarPanel.classList.contains('ready')&&__calls.length===1&&__calls[0].provider==='openai'})()")
+# Structured reply whose FIELD VALUES are hostile markup: must appear as inert literal text only.
+c.js("__mode='grammar_json';__calls=[]")
+check('OpenAI grammar renders hostile structured field values as inert text',"(async()=>{await startAiTask('Hello there, friend.','grammar');const el=els.grammarContent;const lemma=el.querySelector('.grammar-card-lemma');if(!lemma)return 'no-card';lemma.click();const d=el.querySelector('.grammar-focus');return !!d&&d.textContent.includes('<img')&&!el.querySelector('img,script,[onerror]')&&!window.__unsafe&&__calls.length===1&&__calls[0].provider==='openai'})()")
+c.js("__mode='success'")
 check('OpenAI image exercises use existing rendering', "(async()=>{await checkExerciseImage('data:image/png;base64,AA==');return els.askContent.textContent.includes('Provider answer')&&!els.askContent.querySelector('script,[onerror]')})()")
 c.js("__mode='translation'")
 check('AI translation routes to OpenAI', "(async()=>await aiTranslateText('Hello','en',undefined,'fr')==='Bonjour')()")

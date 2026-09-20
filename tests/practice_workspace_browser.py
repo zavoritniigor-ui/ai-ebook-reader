@@ -32,12 +32,11 @@ document.querySelector('nav').classList.add('collapsed');
 initTxt('Original book text. '.repeat(500));
 window.workspaceRequests = 0;
 callAI = async () => { workspaceRequests++; throw new Error('Unexpected generation'); };
-currentPracticeSession = createPracticeSession({sourceLanguage:'en', targetLanguage:'uk'});
+currentPracticeSession = createPracticeSession({sourceLanguage:'en', targetLanguage:'uk', mode:'verbs'});
 currentPracticeSession.status = 'ready';
-currentPracticeSession.worksheet = {metadata:{title:'Workspace exercises'}, exercises:
-    Array.from({length:20}, (_, i) => ({id:'workspace-'+i, type:'fill_form', difficulty:1,
-        instruction:'Complete the sentence', prompt:'A long exercise sentence. '.repeat(12),
-        expectedConcept:'past tense', hints:['First hint', 'Second hint']}))};
+currentPracticeSession.reading = {title:'Workspace reading', language:'en', mode:'verbs',
+    paragraphs: Array.from({length:20}, (_, i) => 'Paragraph ' + i + ': a long reading sentence repeated for scroll height. '.repeat(6)),
+    targets: []};
 window.workspaceSession = currentPracticeSession;
 window.grammarNode = document.createElement('button');
 grammarNode.textContent = 'Reference rule';
@@ -70,20 +69,26 @@ check('Reserves Ask AI and Grammar widths', '''(() => {
 const p=workspacePanel.getBoundingClientRect(), a=document.getElementById('ask-panel').getBoundingClientRect(), g=document.getElementById('grammar-panel').getBoundingClientRect();
 return p.left>=a.right-1 && p.right<=g.left+1 && boundsOK();
 })()''')
-c.js("document.getElementById('ask-panel').classList.remove('expanded'); document.getElementById('practice-next-page').click(); workspacePanel.querySelector('.hint-reveal-btn').click(); window.mountedScroll=workspacePanel.querySelector('.practice-scroll'); mountedScroll.scrollTop=180; window.savedScroll=mountedScroll.scrollTop; document.getElementById('practice-collapse').click()")
+# Let the width change from closing Ask finish reflowing the reading BEFORE recording
+# the scroll position: closing Ask widens the panel, the text reflows shorter and
+# scroll anchoring shifts scrollTop, which is unrelated to what this check verifies
+# (that collapse/restore itself preserves the mounted scroll position).
+c.js("document.getElementById('ask-panel').classList.remove('expanded')")
+settle()
+c.js("window.mountedScroll=workspacePanel.querySelector('.practice-scroll'); mountedScroll.scrollTop=180; window.savedScroll=mountedScroll.scrollTop; document.getElementById('practice-collapse').click()")
 settle()
 check('Bottom collapse keeps mounted content and reveals book', "workspacePanel.inert && mountedScroll.isConnected && getComputedStyle(workspacePanel).visibility==='hidden' && document.elementFromPoint(300,400).closest('#main-area') !== null")
 check('Bottom bar is visible and inside viewport', "!document.getElementById('practice-restore').hidden && document.getElementById('practice-restore').getBoundingClientRect().bottom<=innerHeight && practiceWorkspaceMode==='collapsed-bottom'")
 c.js("document.getElementById('practice-restore').click()")
 settle()
-check('Restore preserves session, page, hints, DOM and scroll', "getCurrentPracticeSession()===workspaceSession && workspaceSession.currentPage===1 && workspaceSession.revealedHints['workspace-12']===1 && mountedScroll===workspacePanel.querySelector('.practice-scroll') && mountedScroll.scrollTop===savedScroll && !workspacePanel.inert")
+check('Restore preserves session, DOM and scroll', "getCurrentPracticeSession()===workspaceSession && mountedScroll===workspacePanel.querySelector('.practice-scroll') && mountedScroll.scrollTop===savedScroll && !workspacePanel.inert")
 c.js("document.getElementById('practice-bookmark').click()")
 settle()
 check('Bookmark attached outside Grammar left edge', "(() => {const tab=document.getElementById('practice-restore').getBoundingClientRect(), grammar=document.getElementById('grammar-panel').getBoundingClientRect();return Math.abs(tab.right-grammar.left)<2 && tab.left>=0;})()")
 check('Bookmark leaves only vertical tab', "practiceWorkspaceMode==='bookmark' && getComputedStyle(workspacePanel).visibility==='hidden' && !document.getElementById('practice-restore').hidden && document.getElementById('practice-restore').getBoundingClientRect().width===44")
 c.js("document.getElementById('practice-restore').click()")
 settle()
-check('Bookmark restore preserves session without requests', "getCurrentPracticeSession()===workspaceSession && workspaceSession.currentPage===1 && workspaceRequests===0 && mountedScroll.scrollTop===savedScroll")
+check('Bookmark restore preserves session without requests', "getCurrentPracticeSession()===workspaceSession && workspaceRequests===0 && mountedScroll.scrollTop===savedScroll")
 check('No body overflow on desktop', 'noOverflow()')
 # Finishing asynchronous rendering must not expand a collapsed workspace.
 c.js("setPracticeWorkspaceMode('collapsed-bottom'); workspaceSession.status='generating'; displayPracticeSession(workspaceSession); workspaceSession.status='error'; workspaceSession.lastError={message:'Network unavailable'}; displayPracticeSession(workspaceSession)")

@@ -38,7 +38,11 @@ function safeHtml(value, ai = false) {
     const output = document.createElement('div');
     const tags = new Set('p div span section article header footer main aside h1 h2 h3 h4 h5 h6 b strong i em u s del ins small sub sup br hr blockquote pre code ul ol li dl dt dd table caption thead tbody tfoot tr th td colgroup col a img figure figcaption ruby rt rp abbr button'.split(' '));
     const drop = new Set('script style link meta base title iframe frame frameset object embed applet svg math template noscript textarea select input audio video source form'.split(' '));
-    const classes = new Set('verb-card verb-head verb-forme verb-chips verb-chip lvl lvl-block tt-note'.split(' '));
+    // verb-card/verb-head/verb-forme/verb-chips/verb-chip retired with the old raw-HTML
+    // Grammar-panel contract: the redesigned panel builds its DOM from structured JSON
+    // fields via createElement/textContent, never from innerHTML of AI text (see
+    // js/grammar-svo.js), so those classes are no longer needed here.
+    const classes = new Set('lvl lvl-block tt-note'.split(' '));
     const styles = new Set('color background-color font-size font-weight font-style font-family text-align text-decoration line-height white-space border border-color border-width border-style border-collapse padding padding-left padding-right padding-top padding-bottom margin margin-left margin-right margin-top margin-bottom'.split(' '));
     function copy(node, parent) {
         if (node.nodeType === Node.TEXT_NODE) { parent.appendChild(document.createTextNode(node.nodeValue)); return; }
@@ -197,36 +201,187 @@ const LANGUAGE_CONFIG = {
 };
 const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG);
 
-// Language-specific verb tense systems for grammar analysis
-// Maps source language code to available tense/mood labels
-const TENSE_SYSTEMS = {
-    en: [
-        { id: 'present_simple', label: 'Present Simple', en: 'Present Simple', fr: 'Présent Simple' },
-        { id: 'present_continuous', label: 'Present Continuous', en: 'Present Continuous', fr: 'Présent Continu' },
-        { id: 'past_simple', label: 'Past Simple', en: 'Past Simple', fr: 'Passé Simple' },
-        { id: 'past_continuous', label: 'Past Continuous', en: 'Past Continuous', fr: 'Passé Continu' },
-        { id: 'present_perfect', label: 'Present Perfect', en: 'Present Perfect', fr: 'Présent Parfait' },
-        { id: 'past_perfect', label: 'Past Perfect', en: 'Past Perfect', fr: 'Passé Parfait' },
-        { id: 'future_simple', label: 'Future Simple', en: 'Future Simple', fr: 'Futur Simple' },
-        { id: 'conditional', label: 'Conditional', en: 'Conditional', fr: 'Conditionnel' }
-    ],
-    fr: [
-        { id: 'indicatif_present', label: 'Présent', en: 'Present', fr: 'Présent' },
-        { id: 'indicatif_imparfait', label: 'Imparfait', en: 'Imperfect', fr: 'Imparfait' },
-        { id: 'indicatif_passe_compose', label: 'Passé Composé', en: 'Compound Past', fr: 'Passé Composé' },
-        { id: 'indicatif_futur', label: 'Futur Simple', en: 'Future Simple', fr: 'Futur Simple' },
-        { id: 'conditionnel_present', label: 'Conditionnel', en: 'Conditional', fr: 'Conditionnel' },
-        { id: 'subjonctif_present', label: 'Subjonctif', en: 'Subjunctive', fr: 'Subjonctif' },
-        { id: 'imperatif', label: 'Impératif', en: 'Imperative', fr: 'Impératif' },
-        { id: 'plus_que_parfait', label: 'Plus-que-parfait', en: 'Pluperfect', fr: 'Plus-que-parfait' }
-    ]
+// Language-aware grammar configuration for the redesigned Grammar panel
+// (Verbs/Adjectives contextual-learning modes). One entry per SUPPORTED_LANGUAGE_CODES
+// member. Each entry declares:
+//   - labels: the Verbs/Adjectives tab text IN THAT LANGUAGE ITSELF (not the interface
+//     language — the panel names its own subject matter, e.g. "Verbes" for French text
+//     no matter what the reader's UI language is set to);
+//   - verb/adjective.features: the ONLY grammatical dimensions the AI is allowed to
+//     report for that part of speech in that language. This is the actual mechanism
+//     behind "don't show meaningless categories" (task section 5/7): normalizeGrammar-
+//     Features() strips anything not in this list before it ever reaches the UI, so a
+//     language with no grammatical gender can never get a fabricated gender badge;
+//   - verb.tenses: the enumerated tense/mood list driving the Verbs-mode control bar
+//     (replaces the old hardcoded EN/FR-only TENSE_SYSTEMS — every other language used
+//     to silently reuse the English tense bar, which was simply wrong for its grammar);
+//   - verb.persons / adjective.forms: the paradigm slots requested when a learner clicks
+//     a specific lemma (conjugation table / agreement grid).
+// A language with no explicit entry falls back to DEFAULT_GRAMMAR_LANG rather than
+// crashing, so a future addition (e.g. Polish) only needs one new object here.
+const GRAMMAR_LANG_CONFIG = {
+    en: {
+        labels: { verbs: 'Verbs', adjectives: 'Adjectives' },
+        verb: {
+            features: ['tense', 'aspect', 'person', 'number', 'auxiliary'],
+            tenses: [
+                { id: 'present_simple', label: 'Present Simple' },
+                { id: 'present_continuous', label: 'Present Continuous' },
+                { id: 'past_simple', label: 'Past Simple' },
+                { id: 'past_continuous', label: 'Past Continuous' },
+                { id: 'present_perfect', label: 'Present Perfect' },
+                { id: 'past_perfect', label: 'Past Perfect' },
+                { id: 'future_simple', label: 'Future Simple' },
+                { id: 'conditional', label: 'Conditional' }
+            ],
+            persons: ['I', 'you', 'he / she / it', 'we', 'you (plural)', 'they']
+        },
+        adjective: { features: ['degree'], forms: [] }
+    },
+    fr: {
+        labels: { verbs: 'Verbes', adjectives: 'Adjectifs' },
+        verb: {
+            features: ['tense', 'mood', 'person', 'number', 'auxiliary', 'participle'],
+            tenses: [
+                { id: 'indicatif_present', label: 'Présent' },
+                { id: 'indicatif_imparfait', label: 'Imparfait' },
+                { id: 'indicatif_passe_compose', label: 'Passé composé' },
+                { id: 'indicatif_futur', label: 'Futur simple' },
+                { id: 'conditionnel_present', label: 'Conditionnel' },
+                { id: 'subjonctif_present', label: 'Subjonctif' },
+                { id: 'imperatif', label: 'Impératif' },
+                { id: 'plus_que_parfait', label: 'Plus-que-parfait' }
+            ],
+            persons: ['je', 'tu', 'il / elle / on', 'nous', 'vous', 'ils / elles']
+        },
+        adjective: {
+            features: ['gender', 'number'],
+            forms: [
+                { id: 'ms', label: 'masculin singulier' }, { id: 'fs', label: 'féminin singulier' },
+                { id: 'mp', label: 'masculin pluriel' }, { id: 'fp', label: 'féminin pluriel' }
+            ]
+        }
+    },
+    uk: {
+        labels: { verbs: 'Дієслова', adjectives: 'Прикметники' },
+        verb: {
+            features: ['aspect', 'tense', 'mood', 'person', 'number', 'gender'],
+            tenses: [
+                { id: 'present', label: 'Теперішній час' },
+                { id: 'past', label: 'Минулий час' },
+                { id: 'future', label: 'Майбутній час' },
+                { id: 'imperative', label: 'Наказовий спосіб' },
+                { id: 'conditional', label: 'Умовний спосіб' }
+            ],
+            persons: ['я', 'ти', 'він / вона / воно', 'ми', 'ви', 'вони']
+        },
+        adjective: {
+            features: ['gender', 'number', 'case'],
+            forms: [
+                { id: 'nom_ms', label: 'чол. рід, називний' }, { id: 'nom_fs', label: 'жін. рід, називний' },
+                { id: 'nom_ns', label: 'сер. рід, називний' }, { id: 'nom_pl', label: 'множина, називний' }
+            ]
+        }
+    },
+    ru: {
+        labels: { verbs: 'Глаголы', adjectives: 'Прилагательные' },
+        verb: {
+            features: ['aspect', 'tense', 'mood', 'person', 'number', 'gender'],
+            tenses: [
+                { id: 'present', label: 'Настоящее время' },
+                { id: 'past', label: 'Прошедшее время' },
+                { id: 'future', label: 'Будущее время' },
+                { id: 'imperative', label: 'Повелительное наклонение' },
+                { id: 'conditional', label: 'Условное наклонение' }
+            ],
+            persons: ['я', 'ты', 'он / она / оно', 'мы', 'вы', 'они']
+        },
+        adjective: {
+            features: ['gender', 'number', 'case'],
+            forms: [
+                { id: 'nom_ms', label: 'муж. род, именительный' }, { id: 'nom_fs', label: 'жен. род, именительный' },
+                { id: 'nom_ns', label: 'ср. род, именительный' }, { id: 'nom_pl', label: 'мн. число, именительный' }
+            ]
+        }
+    },
+    zh: {
+        labels: { verbs: '动词', adjectives: '形容词' },
+        verb: {
+            features: ['aspect'],
+            tenses: [
+                { id: 'default', label: '一般' }, { id: 'le', label: '了（完成）' },
+                { id: 'zhe', label: '着（进行/持续）' }, { id: 'guo', label: '过（经历）' }
+            ],
+            persons: []
+        },
+        adjective: { features: ['degree'], forms: [] }
+    },
+    ko: {
+        labels: { verbs: '동사', adjectives: '형용사' },
+        verb: {
+            features: ['tense', 'honorific'],
+            tenses: [
+                { id: 'present', label: '현재' }, { id: 'past', label: '과거' }, { id: 'future', label: '미래' }
+            ],
+            persons: []
+        },
+        adjective: { features: ['tense', 'honorific'], forms: [] }
+    },
+    hi: {
+        labels: { verbs: 'क्रिया', adjectives: 'विशेषण' },
+        verb: {
+            features: ['tense', 'aspect', 'gender', 'number', 'person'],
+            tenses: [
+                { id: 'present', label: 'वर्तमान काल' }, { id: 'past', label: 'भूत काल' }, { id: 'future', label: 'भविष्य काल' }
+            ],
+            persons: ['मैं', 'तुम', 'वह', 'हम', 'आप', 'वे']
+        },
+        adjective: {
+            features: ['gender', 'number'],
+            forms: [
+                { id: 'ms', label: 'पुल्लिंग एकवचन' }, { id: 'fs', label: 'स्त्रीलिंग एकवचन' },
+                { id: 'mp', label: 'पुल्लिंग बहुवचन' }, { id: 'fp', label: 'स्त्रीलिंग बहुवचन' }
+            ]
+        }
+    },
+    ga: {
+        labels: { verbs: 'Briathra', adjectives: 'Aidiachtaí' },
+        verb: {
+            features: ['tense', 'mood', 'person', 'number'],
+            tenses: [
+                { id: 'present', label: 'Aimsir Láithreach' }, { id: 'past', label: 'Aimsir Chaite' },
+                { id: 'future', label: 'Aimsir Fháistineach' }, { id: 'conditional', label: 'Modh Coinníollach' }
+            ],
+            persons: ['mé', 'tú', 'sé / sí', 'muid', 'sibh', 'siad']
+        },
+        adjective: {
+            features: ['gender', 'number'],
+            forms: [
+                { id: 'ms', label: 'firinscneach uatha' }, { id: 'fs', label: 'baininscneach uatha' },
+                { id: 'pl', label: 'iolra' }
+            ]
+        }
+    }
 };
-
-// Default tense for each language (for initial UI state)
-const DEFAULT_TENSE = {
-    en: 'present_simple',
-    fr: 'indicatif_present'
-};
+const DEFAULT_GRAMMAR_LANG = 'en';
+function grammarConfigFor(langCode) {
+    return GRAMMAR_LANG_CONFIG[langCode] || GRAMMAR_LANG_CONFIG[DEFAULT_GRAMMAR_LANG];
+}
+// The actual fix for fabricated/meaningless grammar categories (task section 7): the
+// model may propose any key, but only dimensions this language's config lists for this
+// part of speech ever survive to the UI. Also drops null/empty values outright.
+function normalizeGrammarFeatures(pos, langCode, rawFeatures) {
+    const cfg = grammarConfigFor(langCode)[pos === 'adjective' ? 'adjective' : 'verb'];
+    const out = {};
+    if (rawFeatures && typeof rawFeatures === 'object') {
+        for (const key of cfg.features) {
+            const v = rawFeatures[key];
+            if (v === undefined || v === null || v === '') continue;
+            if (typeof v === 'string' || typeof v === 'number') out[key] = v;
+        }
+    }
+    return out;
+}
 
 function storedLanguage(key, fallback) {
     const value = readStored(key);
@@ -268,7 +423,7 @@ const state = {
     targetLang: storedLanguage('reader_target_lang', 'uk'),
     uiLang: storedLanguage('reader_ui_lang', 'uk'),
     speakSide: readStored('reader_speak_side') || 'original',
-    lastGrammarSentence: '', lastAskParagraph: '', activeVerb: null, activeTense: 'indicatif présent', verbs: [], docChapters: null,
+    lastGrammarSentence: '', lastAskParagraph: '', docChapters: null,
     refinedKeys: new Set(),
     sourceLang: 'en-US', ctxSentence: '',
     ink: {}, inkMode: false, inkErase: false, inkColor: '#1a56db',
@@ -640,7 +795,14 @@ const I18N = {
     practiceComingSoon: { uk: '(буде скоро)', en: '(coming soon)', fr: '(bientôt)', ru: '(скоро)' },
     practiceError:      { uk: 'Помилка практики', en: 'Practice Error', fr: 'Erreur de pratique', ru: 'Ошибка практики' },
     practiceUnknownError: { uk: 'Невідома помилка', en: 'Unknown error', fr: 'Erreur inconnue', ru: 'Неизвестная ошибка' },
-    hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' }
+    hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' },
+    // Redesigned Grammar/Practice UI strings (contextual Verbs/Adjectives panel + reading Practice).
+    grammarEmptyVerbs:      { uk: 'У цьому фрагменті дієслів не знайдено.', en: 'No verbs found in this selection.', fr: 'Aucun verbe trouvé dans cette sélection.', ru: 'В этом фрагменте глаголов не найдено.' },
+    grammarEmptyAdjectives: { uk: 'У цьому фрагменті прикметників не знайдено.', en: 'No adjectives found in this selection.', fr: 'Aucun adjectif trouvé dans cette sélection.', ru: 'В этом фрагменте прилагательных не найдено.' },
+    grammarWhy:              { uk: 'Чому', en: 'Why', fr: 'Pourquoi', ru: 'Почему' },
+    retry:                   { uk: 'Повторити', en: 'Retry', fr: 'Réessayer', ru: 'Повторить' },
+    practiceReadingHint:     { uk: 'Натисніть «Практика» в Граматиці, щоб отримати текст для читання.', en: 'Press "Practice" in Grammar to get a reading passage.', fr: 'Appuyez sur « Pratique » dans Grammaire pour obtenir un texte de lecture.', ru: 'Нажмите «Практика» в Грамматике, чтобы получить текст для чтения.' },
+    practiceNoTargets:      { uk: 'Немає виділених прикладів у цьому тексті.', en: 'No highlighted examples in this text.', fr: 'Aucun exemple mis en évidence dans ce texte.', ru: 'Нет выделенных примеров в этом тексте.' }
 };
 
 // Additional interface locales extend the existing dictionary. Keys not yet
