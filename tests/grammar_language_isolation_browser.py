@@ -93,8 +93,8 @@ window.__grammarTests.forms = {
 };
 true;
 """)
-check("T3: French adjectives declare a 4-cell gender/number agreement grid",
-      "window.__grammarTests.forms.frAdjForms.length === 4 && window.__grammarTests.forms.frAdjForms.includes('fp')")
+check("T3: French adjectives declare the 4-cell gender/number agreement grid plus the before-vowel slot (bel/nouvel/vieil/fol/mol)",
+      "['ms','fs','mp','fp','ms_vowel'].every(id => window.__grammarTests.forms.frAdjForms.includes(id)) && window.__grammarTests.forms.frAdjForms.length === 5")
 check("T3: English adjectives declare no agreement grid (no grammatical gender)",
       "window.__grammarTests.forms.enAdjForms.length === 0")
 check("T3: Chinese verbs declare no person-based paradigm (not person-inflected)",

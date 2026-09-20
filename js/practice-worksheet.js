@@ -282,20 +282,22 @@ function renderPracticeReading(reading) {
     return wrap;
 }
 
-// Finds each target's own occurrence position within the paragraph text (advancing
-// past earlier matches of the same surface form so repeats map to distinct
-// positions), then rebuilds the paragraph as text nodes with a clickable <button>
-// wrapped around ONLY that exact occurrence — never every occurrence of the word,
-// since each target's explanation is tied to one specific sentence (task section 12/13).
+// Places each target at its OWN occurrence in the paragraph — the offsets validated when the
+// reading was accepted (validatePracticeReading), or, for a session persisted before offsets
+// existed, the first WHOLE-WORD match (never a bare substring: "est" inside "reste") — and rebuilds
+// the paragraph as text nodes with a clickable <button> wrapped around ONLY that exact occurrence,
+// never every occurrence of the word, since each target's explanation is tied to one specific
+// sentence (task section 12/13).
 function renderParagraphWithTargets(container, text, targets, langCode) {
-    const searchFrom = {};
     const positioned = [];
     for (const target of targets) {
-        const from = searchFrom[target.surface] || 0;
-        const idx = text.indexOf(target.surface, from);
-        if (idx === -1) continue;
-        positioned.push({ target, start: idx, end: idx + target.surface.length });
-        searchFrom[target.surface] = idx + target.surface.length;
+        let start = Number.isInteger(target.start) && target.start >= 0 && text.startsWith(target.surface, target.start) ? target.start : -1;
+        if (start === -1) {
+            const found = findSurfaceOccurrences(text, target.surface);
+            start = found.length ? found[0] : -1;
+        }
+        if (start === -1) continue;
+        positioned.push({ target, start, end: start + target.surface.length });
     }
     positioned.sort((a, b) => a.start - b.start);
 
@@ -307,32 +309,45 @@ function renderParagraphWithTargets(container, text, targets, langCode) {
         btn.type = 'button';
         btn.className = 'practice-target practice-target-' + target.pos;
         btn.textContent = text.slice(start, end);
-        btn.onclick = () => focusGrammarItem({
-            pos: target.pos, lemma: target.lemma, surface: target.surface,
-            sentence: sentenceAround(text, start, end),
-            features: target.features || {}, explanation: target.explanation || '',
-            stemBreakdown: null, forms: target.forms || null
-        }, langCode);
+        btn.dataset.lemma = target.lemma;
+        btn.onclick = () => {
+            const span = sentenceSpanAround(text, start, end);
+            focusGrammarItem({
+                pos: target.pos, lemma: target.lemma, surface: target.surface,
+                sentence: text.slice(span.from, span.to), start: start - span.from, end: end - span.from,
+                features: target.features || {}, explanation: target.explanation || '',
+                stemBreakdown: null, forms: target.forms || null,
+                transformations: target.transformations || null, irregularForms: target.irregularForms || null
+            }, langCode);
+        };
         container.appendChild(btn);
         cursor = end;
     }
     if (cursor < text.length) container.appendChild(document.createTextNode(text.slice(cursor)));
 }
 
-// Extracts the sentence a [start,end) span sits in, for the Grammar focus card's
-// "used in context" display when a Practice target is clicked.
-function sentenceAround(text, start, end) {
+// The [from, to) slice of `text` that is the sentence a [start,end) span sits in (trimmed),
+// for the Grammar focus card's "used in context" display when a Practice target is clicked.
+// Terminators include the CJK / Devanagari full stops so non-Latin readings split correctly.
+const PRACTICE_SENTENCE_END = ['.', '!', '?', '。', '！', '？', '।'];
+function sentenceSpanAround(text, start, end) {
     let from = 0;
-    for (const p of ['.', '!', '?']) {
-        const i = text.lastIndexOf(p, start);
+    for (const p of PRACTICE_SENTENCE_END) {
+        const i = text.lastIndexOf(p, start - 1);
         if (i !== -1) from = Math.max(from, i + 1);
     }
     let to = text.length;
-    for (const p of ['.', '!', '?']) {
+    for (const p of PRACTICE_SENTENCE_END) {
         const i = text.indexOf(p, end);
         if (i !== -1) to = Math.min(to, i + 1);
     }
-    return text.slice(from, to).trim();
+    while (from < start && /\s/.test(text[from])) from++;
+    while (to > end && /\s/.test(text[to - 1])) to--;
+    return { from, to };
+}
+function sentenceAround(text, start, end) {
+    const span = sentenceSpanAround(text, start, end);
+    return text.slice(span.from, span.to);
 }
 
 // Show error state

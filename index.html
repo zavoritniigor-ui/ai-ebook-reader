@@ -642,11 +642,17 @@
         .grammar-ending { color: #10a37f; font-weight: 700; }
         .grammar-grid-title { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; opacity: .65; margin: 6px 0 4px; }
         .grammar-focus-grid { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; font-size: 14px; }
-        .grammar-grid-row { display: grid; grid-template-columns: 10em 1fr; column-gap: 12px; }
+        .grammar-grid-row { display: grid; grid-template-columns: minmax(6.5em, 10em) 1fr auto; column-gap: 12px; align-items: baseline; padding: 1px 6px; margin: 0 -6px; border-radius: 6px; }
+        .grammar-grid-row.current { background: rgba(16,163,127,.16); box-shadow: inset 3px 0 0 #10a37f; }
+        .grammar-grid-change { font-family: ui-monospace, monospace; font-size: 12px; opacity: .7; white-space: nowrap; }
+        .grammar-grid-change.irregular { opacity: 1; color: #d9822b; font-weight: 700; }
+        .grammar-grid-note { font-size: 13px; opacity: .7; margin: 4px 0 8px; }
+        .grammar-focus-agrees { font-size: 13.5px; margin: 0 0 8px; }
         .grammar-grid-label { color: var(--text-color); opacity: .7; }
         .grammar-grid-value { font-weight: 600; }
         .grammar-focus-context { font-size: 14px; line-height: 1.5; margin: 8px 0; }
         .grammar-context-target { background: none; color: inherit; font-weight: 700; border-bottom: 2px solid #10a37f; }
+        .grammar-context-agrees { background: none; color: inherit; border-bottom: 2px dotted #d9822b; }
         .grammar-focus-why { font-size: 13.5px; line-height: 1.5; color: var(--text-color); opacity: .9; margin: 0; }
         .grammar-practice-btn { margin-top: 15px; }
         #ask-content { cursor: text; }
@@ -1114,7 +1120,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=ddb66d7bb6a4"></script>
+    <script src="js/core.js?v=a75d9901633f"></script>
     <script src="js/lang-detect.js?v=21625d365df7"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1131,10 +1137,10 @@
     <script src="js/pdf-zoom-pan.js?v=f71892ac0dc5"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
-    <script src="js/grammar-svo.js?v=e875bad5d324"></script>
+    <script src="js/grammar-svo.js?v=f9404d587aa3"></script>
     <script src="js/ai-client.js?v=e0ffbb63b46c"></script>
-    <script src="js/practice-session.js?v=694ff17c53a0"></script>
-    <script src="js/practice-worksheet.js?v=b79d1ccf7716"></script>
+    <script src="js/practice-session.js?v=7c1a4d63cda1"></script>
+    <script src="js/practice-worksheet.js?v=83e1221cf795"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>

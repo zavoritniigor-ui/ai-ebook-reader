@@ -154,6 +154,7 @@ jobs:
           python3 -u tests/practice_workspace_browser.py
           python3 -u tests/grammar_language_isolation_browser.py
           python3 -u tests/grammar_redesign_browser.py
+          python3 -u tests/grammar_french_browser.py
 
           python3 -u tests/quick_wheel_browser.py
           python3 -u tests/quick_wheel_drag_browser.py

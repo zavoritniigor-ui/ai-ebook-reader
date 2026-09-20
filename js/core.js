@@ -218,7 +218,8 @@ const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG);
 //   - verb.persons / adjective.forms: the paradigm slots requested when a learner clicks
 //     a specific lemma (conjugation table / agreement grid).
 // A language with no explicit entry falls back to DEFAULT_GRAMMAR_LANG rather than
-// crashing, so a future addition (e.g. Polish) only needs one new object here.
+// crashing; callers that must NOT silently analyse a language with another language's
+// categories check hasGrammarConfig() first.
 const GRAMMAR_LANG_CONFIG = {
     en: {
         labels: { verbs: 'Verbs', adjectives: 'Adjectives' },
@@ -234,9 +235,22 @@ const GRAMMAR_LANG_CONFIG = {
                 { id: 'future_simple', label: 'Future Simple' },
                 { id: 'conditional', label: 'Conditional' }
             ],
-            persons: ['I', 'you', 'he / she / it', 'we', 'you (plural)', 'they']
+            persons: ['I', 'you', 'he / she / it', 'we', 'you (plural)', 'they'],
+            // Regular English inflection only ever adds one of these to a stem (walk+ed,
+            // stud+ies, runn+ing); a "stem/ending" split ending in anything else is bogus.
+            endings: ['s', 'es', 'ed', 'd', 'ing', 'ies', 'ied'],
+            // When true, a conjugation table the model returns with an analysis must contain
+            // the analysed surface form in one of its rows, or the table is discarded.
+            verifyForms: true,
+            // Irregular verbs have no teachable stem+ending split (went, taken, been).
+            irregularRe: /^(?:be|have|do|go|say|get|make|know|think|take|see|come|give|find|tell|become|leave|feel|put|bring|begin|keep|hold|write|stand|hear|let|mean|set|meet|run|pay|sit|speak|lie|lead|read|grow|lose|fall|send|build|understand|draw|break|spend|cut|rise|drive|buy|wear|choose|eat|drink|sing|swim|fly|forget|sleep|wake|win|throw|catch|teach|sell|fight|hit|hide|shake|steal|tear|bear|ring|sink|swing|shoot|shut|split|spread|strike|swear|sweep|feed|flee|forgive|freeze|hang|lay|lend|ride|seek|show|shrink|slide|stick|sting|bite|blow|bind|bleed|breed|burst|cast|cling|creep|deal|dig|dive|fit|kneel|leap|overcome|undo|weave|withdraw|can|could|may|might|must|shall|should|will|would|ought)$/i,
+            auxiliaries: ['am', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'shall', 'should', 'can', 'could', 'may', 'might', 'must'],
+            promptNote: 'English: the lemma is the bare base form without "to" (walk, be, give up). When an auxiliary and its main verb are ADJACENT in the text (has been eating, did not know, will go) use the whole contiguous group as "surface", otherwise the main verb alone with features.auxiliary. A phrasal verb whose particle is adjacent (give up) uses both words as surface. Never tag a gerund or participle that is only a noun or a plain adjective as a verb. Explain WHY this tense/aspect is used here (e.g. present perfect for a past action with present relevance).'
         },
-        adjective: { features: ['degree'], forms: [] }
+        adjective: {
+            features: ['degree'], forms: [],
+            promptNote: 'English adjectives do not agree with the noun. Give the plain positive form as lemma (big for bigger/biggest) and report features.degree only for a comparative or superlative form. A participle counts as an adjective only when it modifies a noun or follows a linking verb (a tired man, I am tired). Set "agreesWith" to the noun or pronoun the adjective describes.'
+        }
     },
     fr: {
         labels: { verbs: 'Verbes', adjectives: 'Adjectifs' },
@@ -252,14 +266,50 @@ const GRAMMAR_LANG_CONFIG = {
                 { id: 'imperatif', label: 'Impératif' },
                 { id: 'plus_que_parfait', label: 'Plus-que-parfait' }
             ],
-            persons: ['je', 'tu', 'il / elle / on', 'nous', 'vous', 'ils / elles']
+            persons: ['je', 'tu', 'il / elle / on', 'nous', 'vous', 'ils / elles'],
+            // A French dictionary form is an infinitive: -er, -ir, -re or -oir, optionally
+            // reflexive (se lever, s'asseoir, s'en aller). A finite form given as the lemma
+            // (parlait, mange) is a model error and the item is rejected.
+            verifyForms: true,
+            lemmaRe: /^(?:s['’]|se\s+)?(?:en\s+)?\p{L}+(?:er|ir|re|oir)$/u,
+            // Irregular verbs (and their prefixed derivatives) have no honest "stem + ending"
+            // split — nous sommes, ils vont, il fait — so any split is discarded.
+            irregularRe: /(?:^|[\s'’])(?:être|avoir|aller)$|(?:aire|dire|voir|loir|seoir|venir|tenir|mettre|prendre|duire|struire|cevoir|courir|mourir|vivre|suivre|rire|crire|lire|croire|boire|aître|aitre|aindre|eindre|oindre|vaincre|battre|partir|sortir|dormir|servir|sentir|mentir|cueillir|frir|vrir|clure|luire|nuire|coudre|moudre|soudre|fuir|vêtir|quérir|bouillir|saillir|haïr)$/u,
+            // Every legitimate French verb ending (present, imparfait, futur, conditionnel,
+            // subjonctif, impératif, passé simple, participles). A stem/ending split whose
+            // ending is not one of these is not a real, teachable pattern.
+            endings: ['e', 'es', 'ent', 'ons', 'ez', 'ai', 'as', 'a', 'ont', 'ais', 'ait', 'aient', 'ions', 'iez', 'âmes', 'âtes', 'èrent',
+                'is', 'it', 'issons', 'issez', 'issent', 'issais', 'issait', 'issions', 'issiez', 'issaient', 'isse', 'isses', 'issant', 'ant',
+                's', 't', 'd', 'x', 'é', 'ée', 'és', 'ées', 'i', 'ie', 'is', 'ies', 'u', 'ue', 'us', 'ues', 'îmes', 'îtes', 'irent', 'ut', 'ûmes', 'ûtes', 'urent',
+                'rai', 'ras', 'ra', 'rons', 'rez', 'ront', 'rais', 'rait', 'rions', 'riez', 'raient',
+                'erai', 'eras', 'era', 'erons', 'erez', 'eront', 'erais', 'erait', 'erions', 'eriez', 'eraient',
+                'irai', 'iras', 'ira', 'irons', 'irez', 'iront', 'irais', 'irait', 'irions', 'iriez', 'iraient',
+                'ent', 'er', 'ir', 're', 'îs', 'ît', 'ât'],
+            // First token of a compound-tense group (a mangé, est allée, avait fini, aurait pu).
+            auxiliaries: ['ai', 'as', 'a', 'avons', 'avez', 'ont', 'avais', 'avait', 'avions', 'aviez', 'avaient', 'aurai', 'auras', 'aura', 'aurons', 'aurez', 'auront',
+                'aurais', 'aurait', 'aurions', 'auriez', 'auraient', 'aie', 'aies', 'ait', 'ayons', 'ayez', 'aient', 'eus', 'eut', 'eûmes', 'eûtes', 'eurent',
+                'suis', 'es', 'est', 'sommes', 'êtes', 'sont', 'étais', 'était', 'étions', 'étiez', 'étaient', 'serai', 'seras', 'sera', 'serons', 'serez', 'seront',
+                'serais', 'serait', 'serions', 'seriez', 'seraient', 'sois', 'soit', 'soyons', 'soyez', 'soient', 'fus', 'fut', 'fûmes', 'fûtes', 'furent'],
+            promptNote: 'French verbs: the lemma is the INFINITIVE (parler, être, se lever). For a compound tense (passé composé, plus-que-parfait, futur antérieur, conditionnel passé, subjonctif passé…) whose auxiliary and participle are ADJACENT in the text use the whole group as "surface" (e.g. "a mangé", "est allée") and set features.auxiliary to the auxiliary\'s infinitive (avoir / être) and features.participle to the participle; if a pronoun or adverb separates them, use the past participle alone as surface. Report features.mood in standard French terms (indicatif, subjonctif, conditionnel, impératif) and person as "1re / 2e / 3e personne". Explain WHY this tense or mood is used here (imparfait for a habitual or background past action, passé composé for a completed event, subjonctif after "il faut que" / "bien que", agreement of a participle with a preceding direct object or with the subject after être). For irregular verbs (être, avoir, aller, faire, pouvoir, vouloir, savoir, venir, prendre, mettre, dire, voir…) set stemBreakdown to null.'
         },
         adjective: {
             features: ['gender', 'number'],
             forms: [
                 { id: 'ms', label: 'masculin singulier' }, { id: 'fs', label: 'féminin singulier' },
-                { id: 'mp', label: 'masculin pluriel' }, { id: 'fp', label: 'féminin pluriel' }
-            ]
+                { id: 'mp', label: 'masculin pluriel' }, { id: 'fp', label: 'féminin pluriel' },
+                { id: 'ms_vowel', label: 'masculin sing. devant voyelle' }
+            ],
+            // Slot ids the regular-transformation display is derived from: each derived
+            // form is described relative to the base (petit → petite: +e; heureux → heureuse:
+            // −x +se), computed from the grid itself rather than asserted by the model.
+            paradigm: { base: 'ms', derived: ['fs', 'mp', 'fp'] },
+            // The agreement grid the model returns must contain the analysed surface form,
+            // and its masculine-singular cell must be the lemma, or the grid is discarded.
+            verifyForms: true,
+            // The only five adjectives with a distinct masculine form before a vowel or
+            // mute h (un bel homme, un nouvel ami, un vieil arbre, un fol espoir, un mol effort).
+            specialForms: { ms_vowel: { beau: 'bel', nouveau: 'nouvel', vieux: 'vieil', fou: 'fol', mou: 'mol' } },
+            promptNote: 'French adjectives: the lemma is the MASCULINE SINGULAR (petit, heureux, beau, nouveau). features.gender and features.number describe THIS exact form. Set "agreesWith" to the noun or pronoun in the sentence the adjective modifies, copied exactly. The "forms" grid MUST contain this exact surface and follow French orthography: regular +e / +s / +es; and the irregular patterns heureux→heureuse, blanc→blanche, beau→belle/beaux, vieux→vieille, nouveau→nouvelle/nouveaux, cher→chère, doux→douce, long→longue, favori→favorite, actif→active, bon→bonne, gentil→gentille; an invariable adjective (marron, orange, rouge in the masculine/feminine singular) repeats the same string. Add "ms_vowel" ONLY for beau→bel, nouveau→nouvel, vieux→vieil, fou→fol, mou→mol — never for any other adjective. Explain WHY this form: which noun it agrees with, that noun\'s gender and number, and (when it matters) why the adjective precedes or follows the noun.'
         }
     },
     uk: {
@@ -381,6 +431,78 @@ function normalizeGrammarFeatures(pos, langCode, rawFeatures) {
         }
     }
     return out;
+}
+
+// The model is asked to echo the language of the text it analysed. Accepts the bare code, a
+// regional tag ("fr-FR"), or the language's English name ("French", "Simplified Chinese").
+function languageEchoMatches(echoed, langCode) {
+    const value = String(echoed == null ? '' : echoed).trim().toLowerCase();
+    const name = (LANGUAGE_CONFIG[langCode]?.promptName || '').toLowerCase();
+    return value.slice(0, 2) === langCode || (value.length >= 4 && (value === name || name.includes(value)));
+}
+
+function hasGrammarConfig(langCode) {
+    return Object.prototype.hasOwnProperty.call(GRAMMAR_LANG_CONFIG, langCode);
+}
+
+// NFC + collapsed whitespace: PDF text layers deliver decomposed diacritics (e + U+0301
+// instead of é) and line-break whitespace, and either makes an otherwise exact surface
+// form fail a literal match. Grammar and Practice normalise BOTH sides the same way.
+function normalizeGrammarText(text) {
+    return String(text == null ? '' : text).normalize('NFC').replace(/\s+/g, ' ').trim();
+}
+
+// Word-boundary-aware occurrence search. A plain includes()/indexOf() treats "is" as
+// present inside "this" and French "est" as present inside "reste", which both fabricates
+// a match and highlights the wrong span. Boundaries are enforced only for
+// scripts that separate words with spaces; Han/Hangul run words together, so there a
+// plain substring match is the only meaningful one. A surface whose own edge is not a
+// letter (e.g. "qu'") skips the check on that edge.
+const GRAMMAR_SPACED_SCRIPT_RE = /[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Devanagari}]/u;
+const GRAMMAR_WORD_CHAR_RE = /[\p{L}\p{M}\p{N}]/u;
+function findSurfaceOccurrences(text, surface) {
+    const found = [];
+    if (!text || !surface) return found;
+    const strict = GRAMMAR_SPACED_SCRIPT_RE.test(surface);
+    const firstChar = Array.from(surface)[0], lastChar = Array.from(surface).pop();
+    const checkBefore = strict && GRAMMAR_WORD_CHAR_RE.test(firstChar);
+    const checkAfter = strict && GRAMMAR_WORD_CHAR_RE.test(lastChar);
+    let from = 0;
+    for (;;) {
+        const idx = text.indexOf(surface, from);
+        if (idx === -1) break;
+        from = idx + 1;
+        if (checkBefore && idx > 0 && GRAMMAR_WORD_CHAR_RE.test(Array.from(text.slice(Math.max(0, idx - 2), idx)).pop())) continue;
+        const end = idx + surface.length;
+        if (checkAfter && end < text.length && GRAMMAR_WORD_CHAR_RE.test(String.fromCodePoint(text.codePointAt(end)))) continue;
+        found.push(idx);
+    }
+    return found;
+}
+
+// The AI is asked for a bare JSON object but routinely adds a code fence or a sentence
+// of preamble. Returns the parsed OBJECT, or null when nothing parseable (or not an
+// object — arrays/primitives are never valid contracts here) can be recovered.
+function parseAiJsonObject(raw) {
+    let text = String(raw == null ? '' : raw).trim().replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '').trim();
+    const attempt = candidate => {
+        try { const value = JSON.parse(candidate); return value && typeof value === 'object' && !Array.isArray(value) ? value : null; }
+        catch (e) { return null; }
+    };
+    const direct = attempt(text);
+    if (direct) return direct;
+    const first = text.indexOf('{'), last = text.lastIndexOf('}');
+    return first !== -1 && last > first ? attempt(text.slice(first, last + 1)) : null;
+}
+
+// A lemma that is written in a different script from its own surface form is a
+// translation or transliteration, not a lemma (Latin surface -> Cyrillic lemma, etc.).
+// Only checked for space-delimited scripts, where romanisation is not a convention.
+function lemmaScriptMatchesSurface(lemma, surface) {
+    if (!GRAMMAR_SPACED_SCRIPT_RE.test(surface)) return true;
+    const scriptOf = ch => /\p{Script=Latin}/u.test(ch) ? 'L' : /\p{Script=Cyrillic}/u.test(ch) ? 'C' : /\p{Script=Devanagari}/u.test(ch) ? 'D' : /\p{L}/u.test(ch) ? 'X' : '';
+    const surfaceScripts = new Set(Array.from(surface).map(scriptOf).filter(Boolean));
+    return Array.from(lemma).map(scriptOf).filter(Boolean).every(sc => surfaceScripts.has(sc));
 }
 
 function storedLanguage(key, fallback) {
@@ -800,6 +922,9 @@ const I18N = {
     grammarEmptyVerbs:      { uk: 'У цьому фрагменті дієслів не знайдено.', en: 'No verbs found in this selection.', fr: 'Aucun verbe trouvé dans cette sélection.', ru: 'В этом фрагменте глаголов не найдено.' },
     grammarEmptyAdjectives: { uk: 'У цьому фрагменті прикметників не знайдено.', en: 'No adjectives found in this selection.', fr: 'Aucun adjectif trouvé dans cette sélection.', ru: 'В этом фрагменте прилагательных не найдено.' },
     grammarWhy:              { uk: 'Чому', en: 'Why', fr: 'Pourquoi', ru: 'Почему' },
+    grammarAgreesWith:       { uk: 'Узгоджується з', en: 'Agrees with', fr: 'Accord avec', ru: 'Согласуется с' },
+    grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },
+    grammarUnsupportedLanguage: { uk: 'Граматичний розбір для цієї мови ще не підтримується.', en: 'Grammar analysis is not supported for this language yet.', fr: "L'analyse grammaticale n'est pas encore disponible pour cette langue.", ru: 'Грамматический разбор для этого языка пока не поддерживается.' },
     retry:                   { uk: 'Повторити', en: 'Retry', fr: 'Réessayer', ru: 'Повторить' },
     practiceReadingHint:     { uk: 'Натисніть «Практика» в Граматиці, щоб отримати текст для читання.', en: 'Press "Practice" in Grammar to get a reading passage.', fr: 'Appuyez sur « Pratique » dans Grammaire pour obtenir un texte de lecture.', ru: 'Нажмите «Практика» в Грамматике, чтобы получить текст для чтения.' },
     practiceNoTargets:      { uk: 'Немає виділених прикладів у цьому тексті.', en: 'No highlighted examples in this text.', fr: 'Aucun exemple mis en évidence dans ce texte.', ru: 'Нет выделенных примеров в этом тексте.' }
