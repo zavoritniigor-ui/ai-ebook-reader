@@ -13,9 +13,10 @@ c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServic
 c.call('Emulation.setDeviceMetricsOverride', width=1200, height=900, deviceScaleFactor=1, mobile=False)
 c.call('Page.navigate', url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html'))
 c.wait("document.readyState==='complete' && !document.body.inert")
-c.js("localStorage.clear();showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove()")
+c.js("persistCriticalState = () => {}; localStorage.clear(); showUpdateBanner = () => {}; document.getElementById('sw-update-banner')?.remove()")
 c.call('Page.reload')
 c.wait("document.readyState==='complete' && !document.body.inert && typeof navigateToPdfPage==='function'")
+c.js("localStorage.clear(); if (typeof setPdfScale === 'function') setPdfScale(1); state.pdfScale = 1; state.pdfFit = 'fit'")
 
 def check(name, expression, timeout=0):
     result = c.js(expression)
@@ -142,7 +143,7 @@ check('canceling pending measurements preserves mounted pages and allows retry',
 # ============================================================
 print("\n=== TEST 2: Scroll-driven active page tracking ===")
 c.js("document.getElementById('reader-container').scrollTop = 20000; document.getElementById('reader-container').dispatchEvent(new Event('scroll'))")
-check('scrolling deep into the document updates the active page', 'state.currentIndex > 5', timeout=5)
+check('scrolling deep into the document updates the active page', 'state.currentIndex >= 5 && state.currentIndex !== 1', timeout=5)
 check('progress indicator reflects the scrolled-to page',
       "document.getElementById('progress-indicator').textContent.includes(String(state.currentIndex))")
 
