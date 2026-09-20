@@ -912,14 +912,8 @@ const I18N = {
     statsNoHelp: { uk: 'Ще немає запитів допомоги', en: 'No help requests yet', fr: "Aucune demande d'aide", ru: 'Запросов помощи пока нет' },
     // Practice Studio UI strings
     practiceSource:     { uk: 'Джерело:', en: 'Source:', fr: 'Source:', ru: 'Источник:' },
-    practiceLevel:      { uk: 'Рівень:', en: 'Level:', fr: 'Niveau:', ru: 'Уровень:' },
-    practiceExercises:  { uk: 'Вправи:', en: 'Exercises:', fr: 'Exercices:', ru: 'Упражнения:' },
-    practicePrevious:   { uk: '← Попереднє', en: '← Previous', fr: '← Précédent', ru: '← Назад' },
-    practicePage:       { uk: 'Сторінка', en: 'Page', fr: 'Page', ru: 'Страница' },
-    practiceNext:       { uk: 'Наступне →', en: 'Next →', fr: 'Suivant →', ru: 'Дальше →' },
+    practiceFocus:      { uk: 'Слова:', en: 'Words:', fr: 'Mots :', ru: 'Слова:' },
     practiceRegenerate: { uk: 'Регенерувати', en: 'Regenerate', fr: 'Régénérer', ru: 'Перегенерировать' },
-    practiceCheck:      { uk: 'Перевірити AI', en: 'Check with AI', fr: "Vérifier avec l'IA", ru: 'Проверить с AI' },
-    practiceComingSoon: { uk: '(буде скоро)', en: '(coming soon)', fr: '(bientôt)', ru: '(скоро)' },
     practiceError:      { uk: 'Помилка практики', en: 'Practice Error', fr: 'Erreur de pratique', ru: 'Ошибка практики' },
     practiceUnknownError: { uk: 'Невідома помилка', en: 'Unknown error', fr: 'Erreur inconnue', ru: 'Неизвестная ошибка' },
     hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' },
@@ -931,8 +925,6 @@ const I18N = {
     grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },
     grammarUnsupportedLanguage: { uk: 'Граматичний розбір для цієї мови ще не підтримується.', en: 'Grammar analysis is not supported for this language yet.', fr: "L'analyse grammaticale n'est pas encore disponible pour cette langue.", ru: 'Грамматический разбор для этого языка пока не поддерживается.' },
     retry:                   { uk: 'Повторити', en: 'Retry', fr: 'Réessayer', ru: 'Повторить' },
-    practiceReadingHint:     { uk: 'Натисніть «Практика» в Граматиці, щоб отримати текст для читання.', en: 'Press "Practice" in Grammar to get a reading passage.', fr: 'Appuyez sur « Pratique » dans Grammaire pour obtenir un texte de lecture.', ru: 'Нажмите «Практика» в Грамматике, чтобы получить текст для чтения.' },
-    practiceNoTargets:      { uk: 'Немає виділених прикладів у цьому тексті.', en: 'No highlighted examples in this text.', fr: 'Aucun exemple mis en évidence dans ce texte.', ru: 'Нет выделенных примеров в этом тексте.' }
 };
 
 // Additional interface locales extend the existing dictionary. Keys not yet

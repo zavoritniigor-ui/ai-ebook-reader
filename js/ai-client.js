@@ -19,13 +19,17 @@ const OPENAI_TASK_PROFILES = {
     // analysis, plus a small targeted per-lemma conjugation/agreement lookup.
     grammar_analysis: { reasoning: 'low', max_output_tokens: 1400, stream: false },
     grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
-    // Contextual Practice reading passage: multi-paragraph text + a targets array,
-    // needs materially more budget than the old single-worksheet-exercise profile.
-    practice_reading: { reasoning: 'low', max_output_tokens: 2200, stream: false },
+    // Practice reading: per-word example sentences + connected paragraphs, each with its own
+    // annotated targets — several minutes of material, so by far the largest structured reply.
+    practice_reading: { reasoning: 'low', max_output_tokens: 8000, stream: false },
     language_level: { reasoning: 'low', max_output_tokens: 800, stream: true },
     vision: { reasoning: 'low', max_output_tokens: 1200, stream: false },
     default: { reasoning: 'low', max_output_tokens: 4096, stream: false }
 };
+
+// A long structured reply cannot fit the 45s default of fetchWithTimeout; per-task overrides (ms).
+const AI_TASK_TIMEOUT_MS = { practice_reading: 150000 };
+function aiTaskTimeout(task) { return AI_TASK_TIMEOUT_MS[task] || 45000; }
 
 // Development-only latency tracking (no keys or user text logged)
 const latencyStats = new Map();
@@ -72,11 +76,11 @@ function aiHttpError(provider, status) {
     const key = status === 401 || status === 403 ? 'aiAuthError' : status === 429 ? 'aiRateError' : 'aiRequestError';
     return new Error(t(key).replace('{provider}', AI_PROVIDERS[provider].name));
 }
-async function aiJsonRequest(provider, key, url, body, signal) {
+async function aiJsonRequest(provider, key, url, body, signal, timeoutMs) {
     const headers = { 'Content-Type': 'application/json' };
     headers[provider === 'gemini' ? 'x-goog-api-key' : 'Authorization'] = provider === 'gemini' ? key : `Bearer ${key}`;
     let res;
-    try { res = await fetchWithTimeout(url, { method: 'POST', headers, body: JSON.stringify(body), signal }); }
+    try { res = await fetchWithTimeout(url, { method: 'POST', headers, body: JSON.stringify(body), signal }, timeoutMs); }
     catch (err) {
         if (signal.aborted || err.name === 'AbortError') throw new DOMException('Cancelled', 'AbortError');
         // Never relay error.message: a provider/browser may echo credentials.
@@ -228,7 +232,7 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
         const data = await aiJsonRequest('openai', key, 'https://api.openai.com/v1/responses', {
             model: OPENAI_MODEL, input, store: false, max_output_tokens: profile.max_output_tokens,
             reasoning: { effort: profile.reasoning }
-        }, signal);
+        }, signal, aiTaskTimeout(task));
         if (data.error || (data.status && data.status !== 'completed')) throw new Error(t('aiInvalidResponse'));
         // REST output may contain reasoning/tool items before assistant messages.
         result = (Array.isArray(data.output) ? data.output : [])
@@ -244,16 +248,16 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
     return result;
 }
 function dataUrlMime(u) { const m = /^data:([^;]+);/.exec(u); return m ? m[1] : 'image/jpeg'; }
-async function callGemini(prompt, dataUrl, key, signal) {
+async function callGemini(prompt, dataUrl, key, signal, task) {
     const parts = [{ text: prompt }];
     if (dataUrl) parts.push({ inline_data: { mime_type: dataUrlMime(dataUrl), data: dataUrl.split(',')[1] } });
     const data = await aiJsonRequest('gemini', key,
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
-        { contents: [{ parts }] }, signal);
+        { contents: [{ parts }] }, signal, aiTaskTimeout(task));
     const result = data.candidates?.[0]?.content?.parts;
     return Array.isArray(result) ? result.filter(part => typeof part?.text === 'string').map(part => part.text).join('\n') : '';
 }
-async function callGroq(prompt, dataUrl, key, signal) {
+async function callGroq(prompt, dataUrl, key, signal, task) {
     const body = dataUrl ? {
         model: GROQ_VISION_MODEL, reasoning_format: 'hidden', max_completion_tokens: 700,
         messages: [{ role: 'user', content: [
@@ -263,7 +267,7 @@ async function callGroq(prompt, dataUrl, key, signal) {
         model: GROQ_MODEL, include_reasoning: false, reasoning_effort: 'low',
         messages: [{ role: 'user', content: prompt }]
     };
-    const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal);
+    const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal, aiTaskTimeout(task));
     return data.choices?.[0]?.message?.content;
 }
 function callAI(prompt, signal, task = 'default', onDelta) { return requestAI(prompt, null, signal, task, onDelta); }
@@ -283,8 +287,8 @@ async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta) {
         let out;
         switch (provider) {
             case 'openai': out = await callOpenAI(prompt, dataUrl, key, controller.signal, task, onDelta); break;
-            case 'groq': out = await callGroq(prompt, dataUrl, key, controller.signal); break;
-            case 'gemini': out = await callGemini(prompt, dataUrl, key, controller.signal); break;
+            case 'groq': out = await callGroq(prompt, dataUrl, key, controller.signal, task); break;
+            case 'gemini': out = await callGemini(prompt, dataUrl, key, controller.signal, task); break;
         }
         if (!current()) throw new DOMException('Cancelled', 'AbortError');
         if (out != null && typeof out !== 'string') throw new Error(t('aiInvalidResponse'));

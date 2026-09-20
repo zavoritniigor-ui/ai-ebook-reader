@@ -10,6 +10,7 @@ the exact occurrence end to end, with no needless AI calls and no stale overwrit
 """
 import json, os, time
 from browser_cdp import CDP
+import practice_fixtures as PF
 
 c = CDP(); c.sock.settimeout(60)
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
@@ -735,17 +736,27 @@ print('PASS a cached conjugation table is reused (no second AI call)')
 print("\n=== SECTION 9: Practice reading passage -> exact occurrence in Grammar ===")
 PP0 = "Il reste à la maison le matin. Marie chante souvent, et le soir, elle chante encore avec ses amis. Le jardin est calme, et les enfants jouent tranquillement près de la fontaine pendant que leurs parents préparent le dîner."
 PP1 = "Après le repas, tout le monde s'assoit sur la terrasse et regarde les étoiles briller doucement au-dessus des arbres endormis."
-V = lambda **kw: dict(dict(pos='verb', paragraphIndex=0, features={}, explanation='Because of the context.', forms=None), **kw)
-reading = dict(title='Une soirée tranquille', language='fr', mode='verbs', paragraphs=[PP0, PP1], targets=[
-    V(surface='est', lemma='être', features=dict(tense='présent', mood='indicatif', person='3e personne', number='singulier'), explanation="'est' is the present of être linking 'jardin' and 'calme'."),
-    V(surface='chante', lemma='chanter', occurrence=2, features=dict(tense='présent'), explanation="Second 'chante': habitual action of the evening."),
-    V(surface='jouent', lemma='jouer'),
-    V(surface='regarde', lemma='regarder', paragraphIndex=1),
-    dict(pos='adjective', surface='calme', lemma='calme', paragraphIndex=0, features={}, explanation='wrong POS for a Verbs session', forms=None),
-    V(surface='ste', lemma='rester'),                    # inside 'reste': not a whole word
-    V(surface='jouent', lemma='jouent'),                 # finite form as lemma
-    V(surface='volent', lemma='voler'),                  # not in the paragraph at all
-])
+T = lambda surface, lemma, why='Because of the context.', **kw: PF.tgt(surface, lemma, why, **kw)
+FILLERS = ["Tous les samedis, ma tante prépare un grand repas pour toute la famille.",
+           "Pendant les vacances, nous visitons souvent de petits villages de montagne.",
+           "Le professeur explique la leçon lentement pour que chacun comprenne bien.",
+           "Mon voisin répare son vieux vélo devant la maison chaque dimanche matin.",
+           "Après le travail, elle rentre à pied en écoutant de la musique tranquille.",
+           "Les enfants apprennent leurs leçons pendant que le soleil se couche sur la ville.",
+           "Chaque hiver, mes parents partent quelques jours dans une petite maison au bord du lac.",
+           "Dans cette librairie, on trouve des livres anciens et des cartes postales de tous les pays."]
+reading = PF.reading('Une soirée tranquille', 'verbs',
+    PF.section('', 'examples', *[PF.item(f) for f in FILLERS]),
+    PF.section('', 'story',
+        PF.item(PP0,
+                T('est', 'être', "'est' is the present of être linking 'jardin' and 'calme'.", tense='présent', mood='indicatif', person='3e personne', number='singulier'),
+                T('chante', 'chanter', "Second 'chante': habitual action of the evening.", occurrence=2, tense='présent'),
+                T('jouent', 'jouer'),
+                dict(T('calme', 'calme', 'wrong POS for a Verbs session'), pos='adjective'),
+                T('ste', 'rester'),                    # inside 'reste': not a whole word
+                T('jouent', 'jouent'),                 # finite form as lemma
+                T('volent', 'voler')),                 # not in the paragraph at all
+        PF.item(PP1, T('regarde', 'regarder'))))
 c.js("window.__reading=" + json.dumps(reading, ensure_ascii=False))
 ok = c.js("(()=>{ const v=validatePracticeReading(__reading,{language:'fr',mode:'verbs'}); window.__v=v; return v.targets.map(t=>t.surface+':'+t.lemma).join('|') })()")
 assert ok == 'est:être|chante:chanter|jouent:jouer|regarde:regarder', ok

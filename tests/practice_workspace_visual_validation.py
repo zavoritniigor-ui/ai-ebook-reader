@@ -82,12 +82,14 @@ c.js('''
         level: 'A1'
     });
     currentPracticeSession.status = 'ready';
+    const visualParagraphs = Array.from({length: 25}, (_, i) =>
+        'Paragraph ' + i + ' with some length. '.repeat(8));
     currentPracticeSession.reading = {
         title: 'Visual Test Reading',
         language: 'en',
         mode: 'verbs',
-        paragraphs: Array.from({length: 25}, (_, i) =>
-            'Paragraph ' + i + ' with some length. '.repeat(8)),
+        paragraphs: visualParagraphs,
+        sections: [{heading: '', kind: 'story', start: 0, end: visualParagraphs.length}],
         targets: []
     };
 

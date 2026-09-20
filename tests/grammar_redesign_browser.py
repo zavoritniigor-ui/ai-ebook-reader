@@ -11,6 +11,7 @@ quiz/answer-input UI in this Practice mode.
 """
 import json, os, time
 from browser_cdp import CDP
+from practice_fixtures import item, tgt, section, reading, to_json
 
 c = CDP(); c.sock.settimeout(45)
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
@@ -268,39 +269,40 @@ check("the stale (slow) request never overwrote the panel even after it resolved
 # ---------------------------------------------------------------------------
 print("\n=== SECTION 6: Practice reading validation (structural safety) ===")
 
-c.js(r"""
-window.__goodReading = {
-    title: 'Un après-midi tranquille',
-    language: 'fr',
-    mode: 'verbs',
-    paragraphs: [
-        "Quand j'étais jeune, je parlais souvent avec mon grand-père. Nous prenions le café ensemble et il racontait des histoires anciennes.",
-        "Un jour, nous sommes partis ensemble au marché. Le quartier était très animé et les rues étaient pleines de monde ce matin-là."
-    ],
-    targets: [
-        {pos:'verb', surface:'parlais', lemma:'parler', paragraphIndex:0, features:{tense:'imparfait'}, explanation:'action habituelle dans le passé.', forms:null},
-        {pos:'verb', surface:'racontait', lemma:'raconter', paragraphIndex:0, features:{tense:'imparfait'}, explanation:'description répétée dans le passé.', forms:null},
-        {pos:'verb', surface:'sommes partis', lemma:'partir', paragraphIndex:1, features:{tense:'passé composé'}, explanation:'action ponctuelle terminée.', forms:null},
-        {pos:'verb', surface:'NEVER_IN_TEXT', lemma:'inventer', paragraphIndex:0, features:{}, explanation:'should be dropped', forms:null}
-    ]
-};
-window.__validated = validatePracticeReading(window.__goodReading);
-true;
-""")
+GOOD = reading(
+    'Un après-midi tranquille', 'verbs',
+    section('parler', 'examples',
+            item("Quand j'étais jeune, je parlais souvent avec mon grand-père.",
+                 tgt('parlais', 'parler', 'action habituelle dans le passé.', tense='imparfait', mood='indicatif')),
+            item('Nous prenions le café ensemble et il racontait des histoires anciennes.',
+                 tgt('racontait', 'raconter', 'description répétée dans le passé.', tense='imparfait')),
+            item('Un jour, nous sommes partis ensemble au marché ce matin-là.',
+                 tgt('sommes partis', 'partir', 'action ponctuelle terminée.', tense='passé composé'),
+                 tgt('NEVER_IN_TEXT', 'inventer', 'should be dropped')),
+            item('Le quartier était très animé et les rues étaient pleines de monde.'),
+            item('Tout le monde riait dans la grande salle avec les enfants du village.'),
+            item('Ma grand-mère préparait une soupe chaude pour toute la famille.'),
+            item("Après le repas, les enfants jouaient dans le jardin jusqu'à la nuit."),
+            item('Mon grand-père connaissait tous les voisins du quartier depuis très longtemps.'),
+            item("L'été suivant, nous avons voyagé ensemble dans le sud de la France."),
+            item('Il faisait déjà nuit quand la vieille voiture est enfin arrivée devant la maison.')),
+    section('', 'story',
+            item("Le soir, nous sommes rentrés lentement. Le grand-père parlait encore de son enfance et personne ne voulait dormir avant la fin de l'histoire. Dehors, la pluie tombait doucement sur les toits de la vieille ville, et la maison sentait le café et le pain chaud. Nous avons écouté jusqu'à minuit.")))
+c.js("window.__goodReading = " + to_json(GOOD) + "; window.__validated = validatePracticeReading(window.__goodReading); true;")
 
-check("a well-formed substantial reading passes validation",
-      "__validated.paragraphs.length===2 && __validated.title==='Un après-midi tranquille'")
+check("a well-formed substantial reading passes validation and is flattened to sentences/paragraphs + sections",
+      "__validated.paragraphs.length===11 && __validated.sections.length===2 && __validated.title==='Un après-midi tranquille'")
 check("a target whose surface never occurs in its paragraph is silently dropped, not rejected wholesale",
       "__validated.targets.length===3 && !__validated.targets.some(t => t.lemma==='inventer')")
 
 check("missing title is rejected",
       "(() => { try { validatePracticeReading({...__goodReading, title:''}); return false; } catch(e) { return true; } })()")
 check("too-short passage (below the substantiality floor) is rejected",
-      "(() => { try { validatePracticeReading({...__goodReading, paragraphs:['Je parle.', 'Tu parles.']}); return false; } catch(e) { return e.message.includes('short') || e.message.includes('substantial'); } })()")
-check("HTML/script injection in a paragraph is rejected",
-      "(() => { try { validatePracticeReading({...__goodReading, paragraphs:['<script>alert(1)</script>' + 'x'.repeat(250)]}); return false; } catch(e) { return true; } })()")
-check("too many paragraphs is rejected",
-      "(() => { try { validatePracticeReading({...__goodReading, paragraphs: Array.from({length:9}, (_,i)=>'Paragraph number ' + i + ' with enough words to not be trivially short at all here.')}); return false; } catch(e) { return true; } })()")
+      "(() => { try { validatePracticeReading({...__goodReading, sections:[{heading:'parler', kind:'examples', items:[{text:'Je parle.'}, {text:'Tu parles.'}]}]}); return false; } catch(e) { return e.message.includes('little material') || e.message.includes('short') || e.message.includes('substantial'); } })()")
+check("HTML/script injection in a sentence is rejected",
+      "(() => { try { validatePracticeReading({...__goodReading, sections:[{heading:'x', kind:'examples', items:[{text:'<script>alert(1)</script>' + 'x'.repeat(250)}]}]}); return false; } catch(e) { return true; } })()")
+check("too many sections is rejected",
+      "(() => { try { validatePracticeReading({...__goodReading, sections: Array.from({length:13}, (_,i)=>({heading:'w'+i, kind:'examples', items:[{text:'Sentence number ' + i + ' with enough words to not be trivially short at all here.'}]}))}); return false; } catch(e) { return true; } })()")
 
 
 # ---------------------------------------------------------------------------
@@ -318,14 +320,14 @@ displayPracticeSession(session);
 true;
 """)
 
-check("the reading renders as paragraphs, not an exercise worksheet",
-      "document.querySelectorAll('.practice-paragraph').length===2 && document.querySelectorAll('.exercise').length===0")
+check("the reading renders as example sentences + a connected paragraph, not an exercise worksheet",
+      "document.querySelectorAll('.practice-sentence').length===10 && document.querySelectorAll('.practice-paragraph').length===1 && document.querySelectorAll('.exercise').length===0")
 check("target forms are highlighted as clickable buttons — one per real occurrence",
       "document.querySelectorAll('.practice-target').length===3")
 check("NO traditional quiz/answer-input UI exists anywhere in this Practice panel",
       "document.querySelectorAll('.answer-input, .answer-check-btn, .hint-reveal-btn, .exercise-hints, .practice-pagination').length===0")
-check("the passage is substantial, not two trivial disconnected lines",
-      "document.querySelectorAll('.practice-paragraph')[0].textContent.length > 100")
+check("the reading is substantial, not two trivial disconnected lines",
+      "[...document.querySelectorAll('.practice-reading p')].map(p => p.textContent).join(' ').length > 400")
 
 
 # ---------------------------------------------------------------------------
@@ -491,7 +493,7 @@ check("re-selecting an already-fetched tense is served from cache (no third requ
 # (5) the model's language code is normalized before it selects a language config
 check("a locale-style language code from the model ('fr-FR') is normalized to 'fr' before feature filtering",
       """(() => {
-        const r = validatePracticeReading({...__goodReading, language:'fr-FR', targets:[{pos:'verb', surface:'parlais', lemma:'parler', paragraphIndex:0, features:{tense:'imparfait', mood:'indicatif'}, explanation:'x', forms:null}]});
+        const r = validatePracticeReading({...__goodReading, language:'fr-FR'});
         return r.language==='fr' && r.targets[0].features.mood==='indicatif';
       })()""")
 

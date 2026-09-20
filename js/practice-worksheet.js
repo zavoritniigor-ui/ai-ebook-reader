@@ -1,9 +1,10 @@
-/* practice-worksheet.js — contextual reading rendering and Practice workspace UI.
- * Displays the AI-generated reading passage safely (createElement/textContent
- * throughout, never innerHTML of AI text) with clickable highlighted target forms
- * that focus the Grammar panel (see focusGrammarItem in js/grammar-svo.js). The
- * three-mode workspace positioning (expanded/collapsed-bottom/bookmark) below is
- * unrelated to the content model and unchanged by the redesign.
+/* practice-worksheet.js — Practice reading rendering and Practice workspace UI.
+ * Renders the generated reading — per-word example sentences and connected paragraphs — safely
+ * (createElement/textContent throughout, never innerHTML of AI text) with every target form
+ * highlighted and clickable (see focusGrammarItem in js/grammar-svo.js). There is NOTHING to answer
+ * here: no inputs, no hints, no check/submit, no grading — and no renderer for the retired exercise
+ * worksheet exists any more. The three-mode workspace positioning (expanded/collapsed-bottom/
+ * bookmark) below is unrelated to the content model.
  */
 
 // UI state deliberately lives outside the persisted PracticeSession.
@@ -169,9 +170,13 @@ function displayPracticeSession(session) {
     const panel = getPracticePanel();
     const opening = panel.hidden;
 
-    if (session.status === 'generating') {
+    if (!isValidPracticeSession(session)) {
+        // A session of another schema (e.g. the retired exercise worksheet) or a broken payload is never
+        // rendered — not even partially. The learner gets a clear, retryable error instead.
+        displayPracticeError(panel, { lastError: { message: t('practiceUnknownError') } });
+    } else if (session.status === 'generating') {
         displayPracticeGenerating(panel, session);
-    } else if (session.status === 'ready' && session.reading) {
+    } else if (session.status === 'ready') {
         displayPracticeReady(panel, session);
     } else if (session.status === 'error') {
         displayPracticeError(panel, session);
@@ -223,13 +228,15 @@ function displayPracticeReady(panel, session) {
     header.append(closeBtn, h2);
     panel.appendChild(header);
 
-    if (session.sourceText) {
+    // What is being practised — the words, NOT the raw selection: that is often a book exercise
+    // ("Ils (plaindre) …") and must not appear on a reading surface.
+    const focusWords = (session.lemmas && session.lemmas.length ? session.lemmas : [...new Set(reading.targets.map(x => x.lemma))]).slice(0, PRACTICE_MAX_LEMMAS);
+    if (focusWords.length) {
         const meta = document.createElement('div');
         meta.className = 'practice-meta';
         const row = document.createElement('div'); row.className = 'meta-row';
-        const label = document.createElement('span'); label.className = 'meta-label'; label.textContent = t('practiceSource');
-        const value = document.createElement('span'); value.className = 'meta-value';
-        value.textContent = session.sourceText.length > 60 ? session.sourceText.slice(0, 60) + '…' : session.sourceText;
+        const label = document.createElement('span'); label.className = 'meta-label'; label.textContent = t('practiceFocus');
+        const value = document.createElement('span'); value.className = 'meta-value'; value.textContent = focusWords.join(' · ');
         row.append(label, value);
         meta.appendChild(row);
         panel.appendChild(meta);
@@ -251,10 +258,10 @@ function displayPracticeReady(panel, session) {
     regenBtn.onclick = regeneratePractice;
 }
 
-// Renders the full reading passage: title + paragraphs with their target forms
-// highlighted and clickable. Built with createElement/textContent throughout —
-// the AI response is untrusted input and is NEVER assigned via innerHTML (task
-// section 21/16), unlike the old free-text Grammar-panel contract.
+// Renders the whole reading: for each section a quiet heading, then either its example sentences (one
+// per line) or its connected paragraphs, with every target form highlighted and clickable. Built with
+// createElement/textContent throughout — the AI response is untrusted input and is NEVER assigned via
+// innerHTML. There is no numbering and nothing to fill in.
 function renderPracticeReading(reading) {
     const wrap = document.createElement('div');
     wrap.className = 'practice-reading';
@@ -265,19 +272,24 @@ function renderPracticeReading(reading) {
         targetsByParagraph.get(target.paragraphIndex).push(target);
     });
 
-    (reading.paragraphs || []).forEach((text, idx) => {
-        const p = document.createElement('p');
-        p.className = 'practice-paragraph';
-        renderParagraphWithTargets(p, text, targetsByParagraph.get(idx) || [], reading.language);
-        wrap.appendChild(p);
+    (reading.sections || []).forEach(section => {
+        const block = document.createElement('section');
+        block.className = 'practice-section practice-section-' + section.kind;
+        if (section.heading) {
+            const h = document.createElement('h3');
+            h.className = 'practice-section-title';
+            h.textContent = section.heading;
+            block.appendChild(h);
+        }
+        for (let idx = section.start; idx < section.end; idx++) {
+            const p = document.createElement('p');
+            p.className = section.kind === 'story' ? 'practice-paragraph' : 'practice-sentence';
+            p.dataset.paragraph = String(idx);
+            renderParagraphWithTargets(p, reading.paragraphs[idx], targetsByParagraph.get(idx) || [], reading.language);
+            block.appendChild(p);
+        }
+        wrap.appendChild(block);
     });
-
-    if (!(reading.targets || []).length) {
-        const note = document.createElement('p');
-        note.className = 'practice-empty-note';
-        note.textContent = t('practiceNoTargets');
-        wrap.appendChild(note);
-    }
 
     return wrap;
 }
@@ -415,14 +427,7 @@ async function regeneratePractice() {
     const session = getCurrentPracticeSession();
     if (!session) return;
 
-    const context = {
-        sourceLanguage: session.sourceLanguage,
-        targetLanguage: session.targetLanguage,
-        bookId: session.bookId,
-        sourceText: session.sourceText,
-        sourceContext: session.sourceContext,
-        level: session.level
-    };
+    const context = practiceContextFromSession(session);
 
     const panel = getPracticePanel();
 
@@ -474,7 +479,10 @@ const practiceStyles = `
 }
 #practice-panel .practice-reading, #practice-panel .practice-content,
 #practice-panel .practice-error { overflow: visible; }
-#practice-panel .practice-header { padding: 6px; min-width: 0; }
+/* The floating menu handle (#menu-handle, fixed 44px circle at the top-left, z-index above every panel) sits
+   over the panel's left edge; the app's own toolbar reserves 60px for it, and so must this header, otherwise the
+   Close button underneath is covered and cannot be clicked. */
+#practice-panel .practice-header { padding: 6px 6px 6px max(60px, calc(env(safe-area-inset-left, 0px) + 52px)); min-width: 0; }
 #practice-panel .practice-header h2 {
     min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -615,10 +623,25 @@ const practiceStyles = `
     color: var(--text-color);
 }
 
-.practice-empty-note {
-    text-align: center;
+/* One section per practised word (or one connected story): a quiet heading, then its sentences, one
+   per line. No numbering, no boxes — reading material, not a worksheet. */
+.practice-section {
+    margin: 0 0 20px 0;
+}
+.practice-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .03em;
     color: var(--text-muted);
-    padding-top: 30px;
+    margin: 0 0 8px 0;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border-color);
+}
+.practice-sentence {
+    font-size: 15px;
+    line-height: 1.65;
+    margin: 0 0 8px 0;
+    color: var(--text-color);
 }
 
 .practice-target {

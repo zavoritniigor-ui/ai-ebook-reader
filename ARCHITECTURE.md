@@ -298,25 +298,40 @@ menu action map, interaction details and regression coverage.
 
 ## Practice workspace
 
-Practice is a **contextual reading surface, not a quiz**. `js/practice-session.js`
-generates a short multi-paragraph passage grounded in the lemmas the Grammar panel
-detected (`generatePracticeReading`, task `practice_reading`, strict JSON:
-`{title, language, mode, paragraphs, targets[]}`) and owns persistence and async
-session guards. `validatePracticeReading(data, expected)` throws on structural problems (missing
-title/language, HTML/script injection, >8 paragraphs, a passage below
-`MIN_READING_CHARS` — the "not two trivial sentences" floor — or, when the session's
-`expected` `{language, mode}` is given, a passage written in the WRONG language) but silently DROPS an
-individual bad target so one bad occurrence cannot discard a good passage: not a whole-word
-occurrence in its paragraph (`findSurfaceOccurrences`; `occurrence` picks the nth), wrong part
-of speech for the session mode (a Verbs session never highlights adjectives), a verb lemma that
-is not an infinitive, unsafe text, or a duplicate lemma+surface. Each kept target stores its exact
-`start`/`end`, and forms grids go through the shared `sanitizeGrammarForms`.
-There are no exercises, hints, answer inputs, Check button, grading or pagination.
-`js/practice-worksheet.js` renders the passage with `createElement`/`textContent`
-only; each target's own occurrence (by stored offset; whole-word search for sessions
-persisted before offsets existed) is wrapped in a `.practice-target` button, and
-clicking it calls `focusGrammarItem` (`grammar-svo.js`) with the exact sentence and offsets, data already in hand —
-zero extra AI calls, and Practice stays on screen. The separate, non-persisted
+Practice is a **reading / examples surface, never an exercise**. `js/practice-session.js`
+turns the verbs (or adjectives) the Grammar panel detected into NEW natural material in the language
+being studied (`generatePracticeReading`, task `practice_reading`): per-lemma **example sentences** shown
+in useful grammatical variety (persons/tenses/moods from `GRAMMAR_LANG_CONFIG` for verbs; gender/number/
+case agreement with different nouns for adjectives — never tenses) plus a few **connected paragraphs**,
+enough to read for several minutes. Strict JSON contract (the only one):
+`{title, language, mode, sections:[{heading, kind:'examples'|'story', items:[{text, targets:[{surface, lemma,
+occurrence, features, explanation, forms}]}]}]}` — each target lives on the sentence it is in, so an
+occurrence is unambiguous by construction. `validatePracticeReading(data, expected)` flattens it to
+`{title, language, mode, sections:[{heading,kind,start,end}], paragraphs[], targets[]}` (`paragraphIndex` is
+the flat index, so the renderer and the click path are unchanged). It throws on structural problems (missing
+title/language, HTML/script injection, >`MAX_SECTIONS`, fewer than `MIN_ITEMS` / `MIN_READING_CHARS` — the floor
+against "Je parle. Tu parles." or a truncated reply — fewer than `MIN_TARGETS`, a reply that is mostly exercises,
+or, when `expected` `{language, mode}` is given, a passage in the WRONG language) but silently DROPS a bad ITEM
+(an exercise artifact — blank/underscores/`....`, `3.` numbering, a parenthesised French cue verb via the shared
+`isFrenchExerciseCue`, or a one-line drill under 4 words; `practiceLooksLikeExercise`) or a bad TARGET (not a
+whole-word occurrence in its sentence — `findSurfaceOccurrences`, `occurrence` picks the nth; wrong part of speech
+for the session mode; a verb lemma that is not an infinitive; unsafe text; a duplicate). Each kept target stores its
+exact `start`/`end`; forms grids go through the shared `sanitizeGrammarForms`. The prompt (`buildPracticeReadingPrompt`)
+uses only the lemmas + the forms the learner met: **a selection that is itself a book exercise is never shown to the
+model**, so it cannot be imitated. A session stores its `mode` and `lemmas` (Retry/Regenerate rebuild the SAME kind
+of reading — `practiceContextFromSession`). Long structured replies get their own budget: `practice_reading` has an
+8000-token OpenAI profile and a 150s per-task timeout (`AI_TASK_TIMEOUT_MS` / `aiTaskTimeout`, used by all three
+providers; the default stays 45s). There are no exercises, hints, answer inputs, Check button, grading or pagination,
+and **no renderer for the retired exercise worksheet exists**. Storage is versioned (`PRACTICE_SCHEMA_VERSION`): at
+startup `purgeLegacyPracticeStorage()` removes every `practice_*` entry that is not a valid, unexpired session of the
+current schema (the old worksheet's sessions used these very keys and `status:'ready'`), `loadPracticeSession` refuses
+the same, and `displayPracticeSession` shows a retryable error — never partial legacy content — for any invalid session.
+`js/practice-worksheet.js` renders it with `createElement`/`textContent` only: per section a quiet heading (the lemma),
+then one `.practice-sentence` per example line or one `.practice-paragraph` per story paragraph; each target's own
+occurrence (stored offset) is a `.practice-target` button (bold + accent underline, same size), and clicking it calls
+`focusGrammarItem` (`grammar-svo.js`) with the exact sentence and offsets, data already in hand —
+zero extra AI calls, and Practice stays on screen. The header reserves the 60px the floating menu handle covers.
+The separate, non-persisted
 `practiceWorkspaceMode` (`expanded`, `collapsed-bottom`, `bookmark`) is unchanged.
 UI transitions keep the DOM mounted and inert while concealed; only explicit Close
 ends the session. A bounded `.practice-scroll` preserves scrolling across those
@@ -328,4 +343,8 @@ attached outside Grammar's left edge and follows its drawer motion; phones reser
 44px rail to avoid covering Grammar content. `tests/practice_workspace_browser.py`
 covers geometry, retained session/scroll, async rendering and narrow layouts;
 `tests/practice_browser.py` covers the reading schema, persistence, stale-response
-races and the explicit absence of quiz UI.
+races and the explicit absence of quiz UI; `tests/practice_reading_browser.py` is the user-facing
+acceptance through the real UI (natural sentences, no blanks/hints/answers/grading, highlighted clickable
+verb/adjective targets, exact occurrence incl. repeated forms with zero AI calls, Verbs/Adjectives isolation,
+Regenerate keeping mode+lemmas, legacy-storage purge, a real service-worker activation, all three provider paths,
+touch layout); the shared gold readings live in `tests/practice_fixtures.py`.

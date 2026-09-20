@@ -34,9 +34,9 @@ window.workspaceRequests = 0;
 callAI = async () => { workspaceRequests++; throw new Error('Unexpected generation'); };
 currentPracticeSession = createPracticeSession({sourceLanguage:'en', targetLanguage:'uk', mode:'verbs'});
 currentPracticeSession.status = 'ready';
+const workspaceParagraphs = Array.from({length:20}, (_, i) => 'Paragraph ' + i + ': a long reading sentence repeated for scroll height. '.repeat(6));
 currentPracticeSession.reading = {title:'Workspace reading', language:'en', mode:'verbs',
-    paragraphs: Array.from({length:20}, (_, i) => 'Paragraph ' + i + ': a long reading sentence repeated for scroll height. '.repeat(6)),
-    targets: []};
+    paragraphs: workspaceParagraphs, sections: [{heading:'', kind:'story', start:0, end:workspaceParagraphs.length}], targets: []};
 window.workspaceSession = currentPracticeSession;
 window.grammarNode = document.createElement('button');
 grammarNode.textContent = 'Reference rule';

@@ -1147,13 +1147,16 @@ function maybeShowPracticeButton() {
         const mode = grammarContext.mode;
         const wantPos = mode === 'adjectives' ? 'adjective' : 'verb';
         const items = (grammarContext.analysis?.items || []).filter(it => it.pos === wantPos);
+        // The focused word's lemma first, then the tapped/detected order: Practice keeps only the first few.
+        const focused = grammarContext.focused && grammarContext.focused.pos === wantPos ? [grammarContext.focused] : [];
         const practiceContext = {
             sourceText: grammarContext.sentence || grammarContext.selectedText || '',
             sourceLanguage: sourceLang,
             targetLanguage: state.targetLang,
             bookId: state.bookKey,
             mode,
-            lemmas: Array.from(new Set(items.map(it => it.lemma))).slice(0, 12),
+            lemmas: Array.from(new Set([...focused, ...items].map(it => it.lemma))).slice(0, 12),
+            seenForms: [...focused, ...items].slice(0, 12).map(it => ({ surface: it.surface, lemma: it.lemma })),
             level: null
         };
         const generatePromise = generatePracticeReading(practiceContext);

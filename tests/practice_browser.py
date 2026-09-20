@@ -14,9 +14,17 @@ their reading-schema equivalents. The old T16 (hints) and T21 (exercise-type
 constraint) tested UX this redesign explicitly removes per product spec section 9
 ("no traditional answer-input quiz UI") — T21 below now asserts that removal
 directly, which is the new product requirement replacing the old one.
+
+Contract v2 (this file's mocks): the model returns `sections` of example sentences / connected
+paragraphs, each item carrying its own targets (see tests/practice_fixtures.py); the validator
+flattens that to `paragraphs` + `sections` ranges + `targets`. A payload handed to the renderer or
+stored in a session is the VALIDATED reading, not the raw model reply. The user-facing acceptance
+(sentences, no exercise UI, highlighting, click -> exact Grammar occurrence, isolation, legacy
+storage) lives in tests/practice_reading_browser.py.
 """
 import json, os, time
 from browser_cdp import CDP
+from practice_fixtures import VERBS_FR, ADJECTIVES_FR, to_json
 
 c = CDP(); c.sock.settimeout(45)
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
@@ -39,29 +47,21 @@ def check(name, expression, timeout=0):
     print('PASS', name)
 
 # Initialize test harness
-mockReading = {
-    "title": "Un dimanche au marché",
-    "language": "fr",
-    "mode": "verbs",
-    "paragraphs": [
-        "Le dimanche matin, Marie allait toujours au marché avec sa grand-mère. Elles achetaient des légumes frais et parlaient avec les vendeurs pendant une bonne heure.",
-        "Un jour, il a plu très fort et elles sont rentrées plus tôt que d'habitude, trempées mais heureuses de leur promenade."
-    ],
-    "targets": [
-        {"pos": "verb", "surface": "allait", "lemma": "aller", "paragraphIndex": 0, "features": {"tense": "imparfait"}, "explanation": "action habituelle répétée dans le passé.", "forms": None},
-        {"pos": "verb", "surface": "achetaient", "lemma": "acheter", "paragraphIndex": 0, "features": {"tense": "imparfait"}, "explanation": "action habituelle décrite au passé.", "forms": None},
-        {"pos": "verb", "surface": "a plu", "lemma": "pleuvoir", "paragraphIndex": 1, "features": {"tense": "passé composé"}, "explanation": "événement ponctuel achevé.", "forms": None}
-    ]
-}
+mockReading = VERBS_FR
+N_SENTENCES = sum(len(sec['items']) for sec in VERBS_FR['sections'] if sec['kind'] == 'examples')
+N_STORIES = sum(len(sec['items']) for sec in VERBS_FR['sections'] if sec['kind'] == 'story')
+N_ADJ_TARGETS = sum(len(i['targets']) for sec in ADJECTIVES_FR['sections'] for i in sec['items'])
 
 c.js(r'''
 window.__practiceTests = {
-    mockReading: ''' + json.dumps(mockReading) + r''',
+    mockReading: ''' + to_json(mockReading) + r''',
     generateCount: 0,
     requestCount: 0,
     hostileInputCaught: false,
     lastError: null
 };
+// The VALIDATED reading (flattened paragraphs/sections/targets): what sessions store and the renderer takes.
+window.__practiceTests.validReading = validatePracticeReading(window.__practiceTests.mockReading, {language: 'fr', mode: 'verbs'});
 
 // Mock callAI
 window.__originalCallAI = callAI;
@@ -124,8 +124,7 @@ print("\n=== TEST 3: Invalid Reading Rejection ===")
 c.js(r"""
 window.__badReading = {
     title: '', language: 'fr', mode: 'verbs',
-    paragraphs: ['Some paragraph text that is long enough to pass the length check on its own here.'],
-    targets: []
+    sections: [{heading: 'x', kind: 'examples', items: [{text: 'Some sentence text that is long enough to pass the length check on its own here.', targets: []}]}]
 };
 try {
     validatePracticeReading(window.__badReading);
@@ -144,8 +143,7 @@ print("\n=== TEST 4: Trivial Passage Rejection ===")
 c.js(r"""
 window.__trivialReading = {
     title: 'Trivial', language: 'fr', mode: 'verbs',
-    paragraphs: ['Je parle.', 'Tu parles.'],
-    targets: []
+    sections: [{heading: 'parler', kind: 'examples', items: [{text: 'Je parle.', targets: []}, {text: 'Tu parles.', targets: []}]}]
 };
 try {
     validatePracticeReading(window.__trivialReading);
@@ -157,15 +155,16 @@ try {
 
 check("T4: Trivial two-line passage is rejected as insubstantial",
       "window.__practiceTests.lastError && window.__practiceTests.lastError !== 'Should have thrown'")
+check("T4: ...because it is too little material, not for an unrelated reason",
+      "/too little material|too short/.test(window.__practiceTests.lastError)")
 
 # TEST 5: Paragraph count bounds
-print("\n=== TEST 5: Paragraph Count Bounds ===")
+print("\n=== TEST 5: Section Count Bounds ===")
 
 c.js(r"""
 window.__tooMany = {
     title: 'Too many', language: 'fr', mode: 'verbs',
-    paragraphs: Array.from({length: 9}, (_, i) => 'Paragraph number ' + i + ' with plenty of words so it is not trivially short by itself.'),
-    targets: []
+    sections: Array.from({length: 13}, (_, i) => ({heading: 'w' + i, kind: 'examples', items: [{text: 'Sentence number ' + i + ' with plenty of words so it is not trivially short by itself.', targets: []}]}))
 };
 try {
     validatePracticeReading(window.__tooMany);
@@ -175,7 +174,7 @@ try {
 }
 """)
 
-check("T5: Excessive paragraph count rejected",
+check("T5: Excessive section count rejected",
       "window.__practiceTests.lastError && window.__practiceTests.lastError.includes('many')")
 
 # TEST 6: HTML injection safety
@@ -184,8 +183,7 @@ print("\n=== TEST 6: HTML Content Safety ===")
 c.js(r"""
 window.__malicious = {
     title: 'Test<script>alert("xss")</script>', language: 'fr', mode: 'verbs',
-    paragraphs: ['A normal-looking paragraph with <img onerror=alert(1)> embedded and enough length to pass otherwise.'],
-    targets: []
+    sections: [{heading: 'x', kind: 'examples', items: [{text: 'A normal-looking sentence with <img onerror=alert(1)> embedded and enough length to pass otherwise.', targets: []}]}]
 };
 try {
     validatePracticeReading(window.__malicious);
@@ -204,12 +202,12 @@ print("\n=== TEST 7: Reading Rendering Safety ===")
 c.js(r"""
 getPracticePanel();
 const s = createPracticeSession({sourceLanguage:'fr', targetLanguage:'uk', mode:'verbs'});
-s.status = 'ready'; s.reading = __practiceTests.mockReading;
+s.status = 'ready'; s.reading = __practiceTests.validReading;
 displayPracticeSession(s);
 """)
 
-check("T7: Reading renders",
-      "document.querySelector('.practice-reading') !== null && document.querySelectorAll('.practice-paragraph').length === 2")
+check("T7: Reading renders: one line per example sentence, one paragraph per story, a heading per section",
+      "document.querySelector('.practice-reading') !== null && document.querySelectorAll('.practice-sentence').length === %d && document.querySelectorAll('.practice-paragraph').length === %d && document.querySelectorAll('.practice-section-title').length === 2" % (N_SENTENCES, N_STORIES))
 
 check("T7: Content not executed",
       r"!window.__practiceTests.hostileInputCaught")
@@ -218,37 +216,23 @@ check("T7: Content not executed",
 print("\n=== TEST 8: Target Highlighting Renders For Both Modes ===")
 
 c.js(r"""
-const adjReading = {
-    title: 'Les couleurs du jardin', language: 'fr', mode: 'adjectives',
-    paragraphs: [
-        "Le jardin était magnifique ce matin-là. Les fleurs bleues et les roses rouges couvraient les allées silencieuses sous un ciel dégagé."
-    ],
-    targets: [
-        {pos: 'adjective', surface: 'bleues', lemma: 'bleu', paragraphIndex: 0, features: {gender: 'féminin', number: 'pluriel'}, explanation: "accord avec 'fleurs', féminin pluriel.", forms: {ms:'bleu', fs:'bleue', mp:'bleus', fp:'bleues'}},
-        {pos: 'adjective', surface: 'rouges', lemma: 'rouge', paragraphIndex: 0, features: {gender: 'féminin', number: 'pluriel'}, explanation: "accord avec 'roses', féminin pluriel.", forms: null}
-    ]
-};
+window.__adjValid = validatePracticeReading(%s, {language: 'fr', mode: 'adjectives'});
 const s2 = createPracticeSession({sourceLanguage:'fr', targetLanguage:'uk', mode:'adjectives'});
-s2.status = 'ready'; s2.reading = adjReading;
+s2.status = 'ready'; s2.reading = window.__adjValid;
 displayPracticeSession(s2);
-""")
+""" % to_json(ADJECTIVES_FR))
 
 check("T8: Adjective targets render as highlighted clickable buttons",
-      "document.querySelectorAll('.practice-target-adjective').length === 2")
+      "document.querySelectorAll('.practice-target-adjective').length === %d && document.querySelectorAll('.practice-target-verb').length === 0" % N_ADJ_TARGETS)
 
 # TEST 9: Session persistence
 print("\n=== TEST 9: Session Persistence ===")
 
 c.js(r"""
-window.__persistedSession = {
-    id: 'test_persist_123',
-    status: 'ready',
-    sourceText: 'Test',
-    sourceLanguage: 'fr',
-    targetLanguage: 'uk',
-    reading: __practiceTests.mockReading,
-    createdAt: Date.now()
-};
+window.__persistedSession = createPracticeSession({sourceText: 'Test', sourceLanguage: 'fr', targetLanguage: 'uk', mode: 'verbs', lemmas: ['parler']});
+window.__persistedSession.id = 'test_persist_123';
+window.__persistedSession.status = 'ready';
+window.__persistedSession.reading = __practiceTests.validReading;
 persistPracticeSession(__persistedSession);
 """)
 
@@ -341,15 +325,10 @@ c.js("callAI = window.__origCallAI13;")
 print("\n=== TEST 14: Session Persistence After UI Close ===")
 
 c.js(r"""
-const readySession = {
-    id: 'persist_test',
-    status: 'ready',
-    sourceText: 'Test',
-    sourceLanguage: 'fr',
-    targetLanguage: 'uk',
-    reading: __practiceTests.mockReading,
-    createdAt: Date.now()
-};
+const readySession = createPracticeSession({sourceText: 'Test', sourceLanguage: 'fr', targetLanguage: 'uk', mode: 'verbs'});
+readySession.id = 'persist_test';
+readySession.status = 'ready';
+readySession.reading = __practiceTests.validReading;
 persistPracticeSession(readySession);
 currentPracticeSession = readySession;
 window.__beforeClose = {hasSession: !!getCurrentPracticeSession()};
@@ -374,7 +353,7 @@ const session = {
     sourceText: 'Test',
     sourceLanguage: 'fr',
     targetLanguage: 'uk',
-    reading: __practiceTests.mockReading
+    reading: __practiceTests.validReading
 };
 window.__secTest = {
     sessionStr: JSON.stringify(session),
@@ -392,32 +371,24 @@ check("T15: No credentials in storage",
 print("\n=== TEST 16: Target Schema Robustness ===")
 
 c.js(r"""
-window.__dupReading = {
-    title: 'Duplicate targets', language: 'fr', mode: 'verbs',
-    paragraphs: ["Elle chantait souvent le matin, et elle chantait aussi le soir avec beaucoup de plaisir chaque jour. Le soleil brillait sur la ville et tout le monde semblait content de cette belle journée de printemps, alors les voisins ouvraient leurs fenêtres pour l'écouter."],
-    targets: [
-        {pos: 'verb', surface: 'chantait', lemma: 'chanter', paragraphIndex: 0, features: {tense:'imparfait'}, explanation: 'premier.', forms: null},
-        {pos: 'verb', surface: 'chantait', lemma: 'chanter', paragraphIndex: 0, features: {tense:'imparfait'}, explanation: 'duplicate — must be dropped.', forms: null}
-    ]
-};
-window.__dupValidated = validatePracticeReading(window.__dupReading);
+const cloneBase = () => JSON.parse(JSON.stringify(__practiceTests.mockReading));
+window.__baseTargets = validatePracticeReading(cloneBase(), {language: 'fr', mode: 'verbs'}).targets.length;
+const dup = cloneBase();
+const firstTargets = dup.sections[0].items[0].targets;
+firstTargets.push(Object.assign({}, firstTargets[0], {explanation: 'duplicate — must be dropped.'}));
+window.__dupValidated = validatePracticeReading(dup, {language: 'fr', mode: 'verbs'});
 """)
 
-check("T16: Duplicate paragraph+surface target pairs are deduplicated at validation",
-      "window.__dupValidated.targets.length === 1")
+check("T16: Duplicate sentence+surface target pairs are deduplicated at validation",
+      "window.__dupValidated.targets.length === window.__baseTargets")
 
 c.js(r"""
-window.__explanationInjection = {
-    title: 'Explanation safety', language: 'fr', mode: 'verbs',
-    paragraphs: ["Elle chantait souvent le matin avec beaucoup de plaisir et de joie chaque jour de la semaine. Le soleil brillait sur la ville et tout le monde semblait content de cette belle journée de printemps, alors les voisins ouvraient leurs fenêtres pour l'écouter."],
-    targets: [
-        {pos: 'verb', surface: 'chantait', lemma: 'chanter', paragraphIndex: 0, features: {}, explanation: '<script>alert(1)</script>', forms: null}
-    ]
-};
-window.__explValidated = validatePracticeReading(window.__explanationInjection);
+const inj = JSON.parse(JSON.stringify(__practiceTests.mockReading));
+inj.sections[0].items[0].targets[0].explanation = '<script>alert(1)</script>';
+window.__explValidated = validatePracticeReading(inj, {language: 'fr', mode: 'verbs'});
 """)
 check("T16: A target with an unsafe explanation is dropped, not sanitized-and-kept",
-      "window.__explValidated.targets.length === 0")
+      "window.__explValidated.targets.length === window.__baseTargets - 1")
 
 # TEST 17: Practice Panel Visibility Regression (Production fix)
 print("\n=== TEST 17: Practice Panel Visibility (Regression) ===")
@@ -624,7 +595,7 @@ print("\n=== TEST 21: No Traditional Quiz UI (Regression for removed UX) ===")
 c.js(r"""
 const finalSession = createPracticeSession({sourceLanguage:'fr', targetLanguage:'uk', mode:'verbs'});
 finalSession.status = 'ready';
-finalSession.reading = __practiceTests.mockReading;
+finalSession.reading = __practiceTests.validReading;
 displayPracticeSession(finalSession);
 window.__quizUiCheck = {
     answerInputs: document.querySelectorAll('#practice-panel input, #practice-panel textarea').length,
