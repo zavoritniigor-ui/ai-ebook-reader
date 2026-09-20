@@ -130,10 +130,22 @@ async function openBookFile(file) {
     cancelPdfInteraction(); closeCropPreview(); pdfTasks.text?.cancel(); pdfTasks.text = null; state.pdfZoom = 1;
     cancelAsyncTasks(); invalidateSelection();
     stopGlobalTTS(); stopTooltipSpeech();
+    cancelPdfRender();
     pdfTasks.render?.cancel(); pdfTasks.render = null;
     if (pdfTasks.loading) { pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null; }
     else if (state.pdfDoc) state.pdfDoc.loadingTask.destroy().catch(() => {});
-    state.pdfDoc = null; state.epubZip = null; state.spine = []; state.txtLines = [];
+    // Continuous PDF viewer: stop the previous document's observers before
+    // its wrapper elements are wiped below — an IntersectionObserver whose
+    // targets are already removed from the DOM is harmless, but disconnecting
+    // explicitly avoids a stray callback referencing the old page count.
+    pdfContinuousReady = false;
+    pdfPageObserver?.disconnect(); pdfPageObserver = null;
+    pdfThumbObserver?.disconnect(); pdfThumbObserver = null;
+    document.getElementById('pdf-thumb-list').replaceChildren();
+    document.getElementById('pdf-outline-list').replaceChildren();
+    setPdfSidebarMode('thumbnails');
+    state.pdfDoc = null; state.pdfOutline = null; state.epubZip = null; state.spine = []; state.txtLines = [];
+    if (typeof resetPdfPageLabels === 'function') resetPdfPageLabels();
     state.bookTextOffset = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
     state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = '';

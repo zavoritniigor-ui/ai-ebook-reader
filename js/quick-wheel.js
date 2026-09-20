@@ -197,7 +197,7 @@ const quickMenu = (() => {
         launcher.setAttribute('aria-expanded', 'false');
         isDragging = false; pointer = null; velocity = 0;
         frameTime = performance.now();
-        if (reducedMotion()) { reveal = 0; render(); panel.hidden = true; backdrop.hidden = true; }
+        if (reducedMotion() || !reveal) { reveal = 0; render(); panel.hidden = true; backdrop.hidden = true; }
         else schedule();
         if (restore && panel.contains(document.activeElement)) {
             (previousFocus?.isConnected && previousFocus !== document.body ? previousFocus : launcher).focus({ preventScroll: true });

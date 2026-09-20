@@ -10,10 +10,17 @@ import struct
 ASSETS = Path(__file__).parent / 'fixtures' / 'pdf'
 
 
-def pdf_document(pages):
-    objects = [b'<< /Type /Catalog /Pages 2 0 R >>', b'',
+def pdf_document(pages, outline=None, page_labels=None):
+    """outline: list of {'title': str, 'page': 1-based int, 'children': [...]}
+    building a real /Outlines bookmark tree with explicit page destinations.
+    page_labels: list of {'style': 'D'|'r'|'R'|None, 'start': int (1-based
+    physical page this range begins at), 'prefix': str} building /PageLabels.
+    Each page spec may include 'links': [{'rect': [x1,y1,x2,y2], 'page': N}]
+    for real Link annotations (destination = top of target page N)."""
+    objects = [None, b'',
                b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
     kids = []
+    page_ids = []  # filled in as pages are built, index 0 -> page 1's object id
 
     def add(value):
         objects.append(value)
@@ -21,6 +28,11 @@ def pdf_document(pages):
 
     def stream(data, attrs=''):
         return add(f'<< /Length {len(data)} {attrs} >>\nstream\n'.encode() + data + b'\nendstream')
+
+    # Reserve page object numbers up front so a link/outline destination can
+    # reference ANY page (including ones not yet built, i.e. forward refs).
+    for _ in pages:
+        page_ids.append(add(b''))
 
     for number, spec in enumerate(pages, 1):
         width, height = spec.get('size', (600, 800))
@@ -74,9 +86,59 @@ def pdf_document(pages):
             if spec.get('text'):
                 ops.append(f'BT /F1 13 Tf 20 {height-65} Td (Second paragraph: image and text document page {number}.) Tj ET')
         contents = stream('\n'.join(ops).encode())
-        page_id = add(f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] /Rotate {spec.get("rotate", 0)} /Resources << /Font << /F1 3 0 R >> {resource} >> /Contents {contents} 0 R >>'.encode())
+        page_id = page_ids[number - 1]
+        annots = ''
+        for link in spec.get('links', []):
+            target_id = page_ids[link['page'] - 1]
+            rect = ' '.join(str(v) for v in link['rect'])
+            ann_id = add(f'<< /Type /Annot /Subtype /Link /Rect [{rect}] /Border [0 0 0] /Dest [{target_id} 0 R /XYZ null null null] >>'.encode())
+            annots += f'{ann_id} 0 R '
+        annots_entry = f' /Annots [{annots.strip()}]' if annots else ''
+        objects[page_id - 1] = f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] /Rotate {spec.get("rotate", 0)} /Resources << /Font << /F1 3 0 R >> {resource} >> /Contents {contents} 0 R{annots_entry} >>'.encode()
         kids.append(f'{page_id} 0 R')
     objects[1] = f'<< /Type /Pages /Count {len(kids)} /Kids [{" ".join(kids)}] >>'.encode()
+
+    catalog_extra = ''
+    if outline:
+        def build_outline_items(items, parent_id):
+            ids = []
+            for item in items:
+                item_id = add(b'')  # reserved; filled in after children are known
+                child_first = child_last = 'null'
+                if item.get('children'):
+                    child_ids = build_outline_items(item['children'], item_id)
+                    child_first, child_last = f'{child_ids[0]} 0 R', f'{child_ids[-1]} 0 R'
+                title = item['title'].replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+                dest = f'[{page_ids[item["page"] - 1]} 0 R /XYZ null null null]' if item.get('page') else 'null'
+                count = f' /Count {len(item.get("children", []))}' if item.get('children') else ''
+                objects[item_id - 1] = (
+                    f'<< /Title ({title}) /Parent {parent_id} 0 R /Dest {dest}'
+                    f'{f" /First {child_first} /Last {child_last}" if item.get("children") else ""}{count} >>'
+                ).encode()
+                ids.append(item_id)
+            for i, item_id in enumerate(ids):
+                obj = objects[item_id - 1].decode()
+                prev = f' /Prev {ids[i-1]} 0 R' if i > 0 else ''
+                nxt = f' /Next {ids[i+1]} 0 R' if i < len(ids) - 1 else ''
+                objects[item_id - 1] = (obj[:-3] + prev + nxt + ' >>').encode()
+            return ids
+        outline_root_id = add(b'')
+        top_ids = build_outline_items(outline, outline_root_id)
+        objects[outline_root_id - 1] = f'<< /Type /Outlines /First {top_ids[0]} 0 R /Last {top_ids[-1]} 0 R /Count {len(top_ids)} >>'.encode()
+        catalog_extra += f' /Outlines {outline_root_id} 0 R'
+
+    if page_labels:
+        nums = []
+        for rng in page_labels:
+            entry = '<<'
+            if rng.get('style'): entry += f' /S /{rng["style"]}'
+            if rng.get('prefix'): entry += f' /P ({rng["prefix"]})'
+            entry += ' >>'
+            nums.append(f'{rng["start"] - 1} {entry}')
+        labels_id = add(f'<< /Nums [{" ".join(nums)}] >>'.encode())
+        catalog_extra += f' /PageLabels {labels_id} 0 R'
+
+    objects[0] = f'<< /Type /Catalog /Pages 2 0 R{catalog_extra} >>'.encode()
     data = b'%PDF-1.7\n%\xe2\xe3\xcf\xd3\n'
     offsets = []
     for i, obj in enumerate(objects, 1):

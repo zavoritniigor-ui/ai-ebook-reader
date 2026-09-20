@@ -18,6 +18,14 @@ part of normal task startup.
 
 ## Current handoff
 
+Status: **PR #118 READY FOR MERGE (Continuous PDF Viewer Foundation)** (2026-09-20).
+- Branch: `pdf-continuous-viewer`
+- PR: https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/118 (#118)
+- PR Head SHA: `6522ba9b06e372edb9974828225e5e7032805e06`
+- CI Status: **ALL CHECKS GREEN** (GitHub Actions run `35516728647` passed, Cloudflare Pages deployed)
+- Verification: 100% PASS across all 31 browser suites (including `pdf_continuous_browser.py`, `pdf_page_identity_browser.py` with the 657-page textbook, `pdf_word_click_browser.py`, `pdf_ux_browser.py`, `learning_ux_browser.py`).
+- Next Action: Ready for user-approved merge into `main`. Do NOT merge without explicit user approval.
+
 Status: **Phase 2 IN PROGRESS - 5 User Work Preservation Fixes Implemented** (2026-09-13 ~23:00 UTC). Latest: 95fc1ac 
 
 **5-Priority P1 Fixes Implementation (2026-09-13 - ALL COMPLETED):**
