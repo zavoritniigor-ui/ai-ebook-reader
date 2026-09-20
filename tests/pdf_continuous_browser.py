@@ -21,8 +21,20 @@ def check(name, expression, timeout=0):
     result = c.js(expression)
     deadline = time.monotonic() + timeout
     while result is not True and time.monotonic() < deadline:
-        time.sleep(0.1)
+        c.js("new Promise(r => setTimeout(r, 50))")
         result = c.js(expression)
+    if result is not True:
+        diag = c.js("""({
+            currentIndex: typeof state !== 'undefined' ? state.currentIndex : null,
+            activePage: typeof pdfActivePage !== 'undefined' ? pdfActivePage : null,
+            scrollTop: document.getElementById('reader-container')?.scrollTop,
+            scrollHeight: document.getElementById('reader-container')?.scrollHeight,
+            clientHeight: document.getElementById('reader-container')?.clientHeight,
+            suppress: typeof pdfSuppressActiveTracking !== 'undefined' ? pdfSuppressActiveTracking : null,
+            ready: typeof pdfContinuousReady !== 'undefined' ? pdfContinuousReady : null,
+            ratios: typeof pdfVisibleRatios !== 'undefined' ? Array.from(pdfVisibleRatios.entries()) : null
+        })""")
+        print(f"FAILED CHECK '{name}': {diag}")
     assert result is True, (name, result)
     print('PASS', name)
 
@@ -129,7 +141,7 @@ check('canceling pending measurements preserves mounted pages and allows retry',
 # TEST 2: scrolling updates active page
 # ============================================================
 print("\n=== TEST 2: Scroll-driven active page tracking ===")
-c.js("document.getElementById('reader-container').scrollTop = 20000")
+c.js("document.getElementById('reader-container').scrollTop = 20000; document.getElementById('reader-container').dispatchEvent(new Event('scroll'))")
 check('scrolling deep into the document updates the active page', 'state.currentIndex > 5', timeout=5)
 check('progress indicator reflects the scrolled-to page',
       "document.getElementById('progress-indicator').textContent.includes(String(state.currentIndex))")
