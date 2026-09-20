@@ -501,6 +501,89 @@ c.js("[...document.querySelectorAll('#grammar-content .grammar-card-lemma')].fin
 check("irregular verb detail: no stem/ending pattern is offered",
       "document.querySelector('#grammar-content .grammar-focus').dataset.pos==='verb' && !document.querySelector('#grammar-content .grammar-focus-pattern')")
 
+print("\n=== SECTION 6a: the tapped occurrence is on screen; a tense chip belongs to its focus; chips are labelled ===")
+# Acceptance findings: (1) tapping an ADJECTIVE opened Grammar in Verbs mode showing an unrelated verb card, and a
+# tapped verb showed only a bare lemma card (the analysis was hidden behind an undiscoverable click); (2) a tense
+# chip stayed lit after another word was focused, labelling the wrong conjugation; (3) bare "être" / "allé" chips
+# gave no hint of their role in a compound tense.
+c.js("switchGrammarMode('verbs')")
+
+
+def close_drawer():
+    """The learner closes the Grammar drawer before reading on (an open drawer covers the right of the page)."""
+    c.js("els.grammarPanel.classList.remove('expanded')")
+    time.sleep(0.6)   # the drawer slides out; a click during the transition would still land on it
+
+
+close_drawer(); fresh_paragraph(); n0 = grammar_calls()
+tap('rouge'); press_ai()
+check("tapping an ADJECTIVE opens Grammar in Adjectives mode with THAT adjective already focused",
+      """grammarContext.mode==='adjectives' && grammarContext.focused?.surface==='rouge' && els.grammarPanel.classList.contains('ready') &&
+         document.querySelector('#grammar-content .grammar-focus')?.dataset.pos==='adjective' &&
+         document.getElementById('grammar-mode-adjectives').classList.contains('active') && !document.getElementById('grammar-mode-verbs').classList.contains('active') &&
+         document.querySelectorAll('#grammar-controls-bar button').length===0 && document.querySelector('#grammar-content .grammar-context-agrees')?.textContent==='pomme'""", timeout=6)
+assert grammar_calls() == n0 + 1
+assert c.js("els.grammarPanel.classList.contains('expanded')") is False, 'the drawer stays closed until the learner opens it'
+print('PASS a tapped adjective is shown in Adjectives mode, agreement target highlighted, no verb controls, ONE AI call, drawer left closed')
+
+close_drawer(); fresh_paragraph()
+tap('mangé'); press_ai()
+check("tapping a VERB opens Grammar in Verbs mode with the compound occurrence focused and the tense controls active-ready",
+      """grammarContext.mode==='verbs' && grammarContext.focused?.surface==='a mangé' && document.querySelector('#grammar-content .grammar-focus')?.dataset.pos==='verb' &&
+         document.querySelectorAll('#grammar-controls-bar button').length===GRAMMAR_LANG_CONFIG.fr.verb.tenses.length &&
+         document.querySelectorAll('#grammar-controls-bar button.active').length===0""", timeout=6)
+badges = c.js("[...document.querySelectorAll('#grammar-content .grammar-focus .grammar-badge')].map(b=>b.textContent)")
+assert badges == ['passé composé', 'indicatif', '3e personne', 'singulier', 'auxiliaire: avoir', 'participe: mangé'], badges
+assert c.js("[...document.querySelectorAll('#grammar-content .grammar-focus .grammar-badge')].map(b=>b.dataset.feature).join()") == 'tense,mood,person,number,auxiliary,participle'
+print("PASS compound-tense chips say what they are: 'auxiliaire: avoir', 'participe: mangé' (not a bare 'avoir' / 'mangé')")
+
+# the same tap answered from the CACHE also opens the tapped occurrence, still with no AI call
+n0 = grammar_calls()
+close_drawer(); fresh_paragraph(); tap('mangé'); press_ai()
+check("a cached re-tap also opens the tapped occurrence", "grammarContext.focused?.surface==='a mangé' && !!document.querySelector('#grammar-content .grammar-focus')", timeout=4)
+assert grammar_calls() == n0
+
+# (2) a tense chip is tied to the focus it was pressed on
+close_drawer(); fresh_paragraph(); tap('parlions'); press_ai()
+check("tapping 'parlions' focuses it (regular -ions pattern visible)",
+      "grammarContext.focused?.surface==='parlions' && document.querySelector('#grammar-content .grammar-ending')?.textContent==='ions'", timeout=6)
+c.js("document.querySelector('#grammar-controls-bar button[data-tense-id=indicatif_passe_compose]').click()")
+check("pressing 'Passé composé' lights that chip", "[...document.querySelectorAll('#grammar-controls-bar button.active')].map(b=>b.textContent).join()==='Passé composé'", timeout=4)
+c.js("[...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].find(b=>b.textContent==='finir').click()")
+check("focusing ANOTHER word clears the lit chip and shows that word's own forms, not the previous tense's table",
+      """grammarContext.focused?.surface==='finissent' && grammarContext.activeTenseId===null &&
+         document.querySelectorAll('#grammar-controls-bar button.active').length===0 &&
+         !document.querySelector('#grammar-content .grammar-grid-title') && !document.querySelector('#grammar-content .grammar-grid-note') &&
+         document.querySelector('#grammar-content .grammar-grid-row.current .grammar-grid-value')?.textContent==='finissent'""", timeout=4)
+print('PASS a tense chip cannot stay lit over a different word\'s conjugation')
+
+# a sentence / paragraph selection has NO tapped word: nothing is auto-focused, the cards are listed
+n0 = grammar_calls()
+c.js("runGrammarAnalysis(%s,'')" % json.dumps(S3, ensure_ascii=False))
+check("a SENTENCE selection lists its verbs and focuses nothing",
+      "grammarContext.focused===null && [...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].map(b=>b.textContent).join()==='parler,finir,rire' && !document.querySelector('#grammar-content .grammar-focus')", timeout=6)
+c.js("runGrammarAnalysis(%s,'')" % json.dumps(P1, ensure_ascii=False))
+check("a PARAGRAPH selection lists every sentence's verbs and focuses nothing",
+      "grammarContext.focused===null && document.querySelectorAll('#grammar-content > .grammar-card').length>=5 && !document.querySelector('#grammar-content .grammar-focus')", timeout=6)
+print('PASS sentence and paragraph selections keep the list (no guessed focus)')
+
+# a tapped word that maps to several items cannot be told apart: right mode, no guessed focus
+c.js(r"""(()=>{
+    const mk=(lemma,surface)=>({pos:'adjective',lemma,surface,sentence:'x',start:0,end:1,tapped:true,features:{},explanation:'',forms:null});
+    grammarContext.mode='verbs'; grammarContext.focused=null;
+    grammarContext.analysis={language:'fr',ok:true,items:[mk('grand','grande'),mk('grande','grande')]};
+    presentGrammarAnalysis(grammarContext.analysis,'fr'); return true;})()""")
+check("an ambiguous tapped word gets the right mode and its chips, but no guessed focus",
+      "grammarContext.mode==='adjectives' && grammarContext.focused===null && document.querySelectorAll('#grammar-content > .grammar-card').length===2", timeout=2)
+print('PASS ambiguous tapped word: mode follows its part of speech, no guess')
+
+# English labels the auxiliary too, in English terms
+c.js("focusGrammarItem(%s,'en',{reveal:false})" % json.dumps(ei['has been reading']))
+assert 'auxiliary: has been' in c.js("[...document.querySelectorAll('#grammar-content .grammar-focus .grammar-badge')].map(b=>b.textContent)")
+assert c.js("els.grammarPanel.classList.contains('expanded')") is False, "focusGrammarItem(reveal:false) must not open the drawer"
+print("PASS English labels its auxiliary chip in English ('auxiliary: has been'); reveal:false leaves the drawer closed")
+c.js("grammarContext.analysis=null; grammarContext.focused=null; grammarContext.mode='verbs'; grammarContext.sourceLanguage=null")
+
 print("\n=== SECTION 6b: context lost upstream (selection.js could not wrap the word) is recovered ===")
 # selection.js falls back to state.lastWordNode = the WHOLE block when it cannot wrap the tapped word;
 # sentenceRangeAt() then answers with the block's FIRST sentence, which does not contain the word.
@@ -661,6 +744,7 @@ c.js("[...document.querySelectorAll('#practice-panel .practice-target')].find(x=
 check("clicking the highlighted 2nd 'chante' focuses THAT occurrence in Grammar (Practice stays open)",
       """(()=>{const d=document.querySelector('#grammar-content .grammar-focus'), mark=d?.querySelector('.grammar-context-target');
         return !!d && grammarContext.focused.lemma==='chanter' && grammarContext.mode==='verbs' && els.grammarPanel.classList.contains('expanded') &&
+          document.querySelectorAll('#grammar-content > .grammar-card').length===0 &&
           mark.textContent==='chante' && mark.previousSibling.textContent.endsWith('elle ') &&
           d.querySelector('.grammar-focus-why').textContent.includes('Second') && !document.getElementById('practice-panel').hidden})()""")
 assert c.js("__calls.length") == n, 'a Practice click must be answered from data already in hand'

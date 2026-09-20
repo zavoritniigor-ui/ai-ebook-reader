@@ -938,12 +938,13 @@ function renderGrammarFocusDetail(item, langCode) {
     if (featureEntries.length) {
         const badges = document.createElement('div');
         badges.className = 'grammar-focus-badges';
+        const featureLabels = grammarConfigFor(langCode)[item.pos === 'adjective' ? 'adjective' : 'verb'].featureLabels || {};
         for (const [key, value] of featureEntries) {
             const badge = document.createElement('span');
             badge.className = 'grammar-badge';
             badge.title = key;
             badge.dataset.feature = key;
-            badge.textContent = String(value);
+            badge.textContent = featureLabels[key] ? featureLabels[key] + ': ' + value : String(value);
             badges.appendChild(badge);
         }
         detail.appendChild(badges);
@@ -1025,25 +1026,47 @@ function renderGrammarFocusDetail(item, langCode) {
 // Grammar-panel lemma/form chip AND from a clicked highlighted word inside
 // Practice's contextual reading — same function, same rendering, so a Practice
 // click never needs its own AI round trip when the occurrence data is already known.
-function focusGrammarItem(item, langCode) {
+// `reveal:false` focuses without opening the drawer (used right after an analysis so the learner's
+// own tapped word is already on screen when they open the panel themselves).
+function focusGrammarItem(item, langCode, { reveal = true } = {}) {
     langCode = langCode || grammarContext.sourceLanguage || DEFAULT_GRAMMAR_LANG;
     // A conjugation lookup still in flight belongs to the PREVIOUS focus; it must not land on this one.
     cancelAsyncTasks(['grammarParadigm']);
     if (grammarContext.analysis && grammarContext.analysis.language !== langCode) {
         grammarContext.analysis = null;               // another language's results must not leak in
         grammarContext.paradigmCache = new Map();
-        grammarContext.activeTenseId = null;
     }
     grammarContext.sourceLanguage = langCode;
     grammarContext.focused = item;
+    // A tense chip belongs to the focus it was pressed on: the detail below now shows THIS item's own
+    // forms, so a chip left lit from a previous verb would label the wrong conjugation.
+    grammarContext.activeTenseId = null;
     grammarContext.mode = item.pos === 'adjective' ? 'adjectives' : 'verbs';
     renderGrammarModeBar(langCode);
     renderGrammarControlsBar(langCode);
-    renderGrammarPanel();
+    // The lemma cards list THIS analysis' selection. An occurrence that is not part of it (a Practice
+    // target, from a passage the model wrote) must not sit above unrelated cards from the book text.
+    if (grammarContext.analysis && grammarContext.analysis.items.includes(item)) renderGrammarPanel();
+    else els.grammarContent.replaceChildren();
     renderGrammarFocusDetail(item, langCode);
+    if (!reveal) return;
     els.grammarPanel.classList.add('expanded');
     els.grammarPanel.classList.remove('loading');
     els.grammarPanel.classList.add('ready');
+}
+
+// Puts a fresh (or cached) analysis on screen. When the learner tapped ONE word, that word's own
+// occurrence is opened straight away — in the mode of ITS part of speech (a tapped adjective must not
+// land on a Verbs list that does not contain it) — instead of a bare lemma list to dig through. A
+// tapped word that occurs several times in its sentence cannot be told apart from the tap, so those
+// get the right mode and the chips, not a guess; a sentence/paragraph selection has no tapped word.
+function presentGrammarAnalysis(analysis, langCode) {
+    const tapped = analysis.items.filter(it => it.tapped);
+    if (tapped.length === 1) { focusGrammarItem(tapped[0], langCode, { reveal: false }); return; }
+    if (tapped.length) grammarContext.mode = tapped[0].pos === 'adjective' ? 'adjectives' : 'verbs';
+    renderGrammarModeBar(langCode);
+    renderGrammarControlsBar(langCode);
+    renderGrammarPanel();
 }
 
 async function selectGrammarTense(tenseId, tenseLabel, langCode) {
@@ -1247,8 +1270,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     const cached = grammarAnalysisCache.get(key);
     if (cached) {
         grammarContext.analysis = cached;
-        renderGrammarControlsBar(sourceLang);
-        renderGrammarPanel();
+        presentGrammarAnalysis(cached, sourceLang);
         panel.classList.remove('loading'); panel.classList.add('ready');
         return;
     }
@@ -1283,8 +1305,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
         cacheGrammarAnalysis(key, analysis);
         grammarContext.analysis = analysis;
         panel.classList.remove('loading'); panel.classList.add('ready');
-        renderGrammarControlsBar(sourceLang);
-        renderGrammarPanel();
+        presentGrammarAnalysis(analysis, sourceLang);
     } catch (err) {
         if (!task.current()) { panel.classList.remove('loading'); return; }
         panel.classList.remove('loading');

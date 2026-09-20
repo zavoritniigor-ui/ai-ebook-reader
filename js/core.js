@@ -225,6 +225,9 @@ const GRAMMAR_LANG_CONFIG = {
         labels: { verbs: 'Verbs', adjectives: 'Adjectives' },
         verb: {
             features: ['tense', 'aspect', 'person', 'number', 'auxiliary'],
+            // Features whose bare value is not self-explanatory on a chip ("has" alone could be anything):
+            // shown as "label: value", in the source language's own term.
+            featureLabels: { auxiliary: 'auxiliary' },
             tenses: [
                 { id: 'present_simple', label: 'Present Simple' },
                 { id: 'present_continuous', label: 'Present Continuous' },
@@ -256,6 +259,8 @@ const GRAMMAR_LANG_CONFIG = {
         labels: { verbs: 'Verbes', adjectives: 'Adjectifs' },
         verb: {
             features: ['tense', 'mood', 'person', 'number', 'auxiliary', 'participle'],
+            // "être" / "allé" alone beside "3e personne" do not say WHICH role they play in a compound tense.
+            featureLabels: { auxiliary: 'auxiliaire', participle: 'participe' },
             tenses: [
                 { id: 'indicatif_present', label: 'Présent' },
                 { id: 'indicatif_imparfait', label: 'Imparfait' },
