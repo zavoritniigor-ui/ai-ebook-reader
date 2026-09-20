@@ -584,6 +584,47 @@ assert c.js("els.grammarPanel.classList.contains('expanded')") is False, "focusG
 print("PASS English labels its auxiliary chip in English ('auxiliary: has been'); reveal:false leaves the drawer closed")
 c.js("grammarContext.analysis=null; grammarContext.focused=null; grammarContext.mode='verbs'; grammarContext.sourceLanguage=null")
 
+print("\n=== SECTION 6c: a fill-in-the-blank cue is analysed as FRENCH (real tap); an English gloss stays English ===")
+# Real reproduction (Complete French All-in-One, p.221): tapping "plaindre" in "Ils (plaindre) la pauvre femme."
+# detected English, the prompt asked for English, the model answered French and the validator showed an error.
+EX = ["Ils (plaindre) la pauvre femme.", "Nous (finir) le travail.", "Elle (aller) à Paris.", "Vous (être) prêts."]
+EX_ITEMS = {'plaindre': ('plaindre', EX[0]), 'finir': ('finir', EX[1]), 'aller': ('aller', EX[2]), 'être': ('être', EX[3])}
+
+
+def fresh_text(text):
+    c.js(r"""(()=>{const p=document.createElement('p'); p.textContent=%s; p.style.cssText='margin:180px 20px;font-size:18px;line-height:1.6;max-width:640px';
+        els.pages.replaceChildren(p); window.__p=p; state.lastWordNode=null; state.lastSelectedRange=null; state.ctxSentence=''; return true;})()""" % json.dumps(text, ensure_ascii=False))
+
+
+for word, (lemma, sentence) in EX_ITEMS.items():
+    c.js("grammarAnalysisCache.clear()")
+    c.js("window.__grammarReply=()=>" + json.dumps(json.dumps(dict(language='fr', items=[dict(
+        pos='verb', lemma=lemma, surface=word, sentence=sentence, occurrence=1, agreesWith=None,
+        features=dict(mood='infinitif'), explanation="Infinitif indiqué entre parenthèses : c'est le verbe à conjuguer dans cette phrase.",
+        stemBreakdown=None, forms=None)]), ensure_ascii=False)))
+    close_drawer(); fresh_text(" ".join(EX)); n = grammar_calls()
+    tap(word); press_ai()
+    check("real tap on the cue '%s': French request, French analysis accepted, occurrence focused" % word,
+          "__calls.filter(x=>x.task==='grammar_analysis').length===%d && grammarContext.sourceLanguage==='fr' && grammarContext.analysis?.ok===true && grammarContext.focused?.surface===%s"
+          % (n + 1, json.dumps(word, ensure_ascii=False)), timeout=6)
+    prompt = last_grammar_prompt()
+    assert 'language code "fr"' in prompt and 'written in French' in prompt, prompt[:300]
+    assert json.dumps(sentence, ensure_ascii=False) in prompt, ('the exercise sentence itself is the analysed context', prompt[:400])
+print("PASS tapping the cue in 'Ils (plaindre)…', 'Nous (finir)…', 'Elle (aller)…', 'Vous (être)…' sends a French request with the exercise sentence and the French reply is accepted")
+
+# the same words as GENUINE English glosses stay English end to end
+GL = "Le père (father) parle avec le professeur (teacher)."
+c.js("grammarAnalysisCache.clear(); window.__grammarReply=()=>" + json.dumps(json.dumps(dict(language='en', items=[]))))
+close_drawer(); fresh_text(GL); n = grammar_calls()
+tap('father'); press_ai()
+check("real tap on the English gloss 'father': the request is ENGLISH (not mislabelled French by its -er ending)",
+      "__calls.filter(x=>x.task==='grammar_analysis').length===%d && grammarContext.sourceLanguage==='en'" % (n + 1), timeout=6)
+assert 'language code "en"' in last_grammar_prompt()
+close_drawer(); fresh_text(GL); c.js("grammarAnalysisCache.clear()")
+tap('teacher'); press_ai()
+check("real tap on the English gloss 'teacher' is English too", "grammarContext.sourceLanguage==='en'", timeout=6)
+print('PASS genuine English glosses (father, teacher) still resolve to English through the real tap flow')
+
 print("\n=== SECTION 6b: context lost upstream (selection.js could not wrap the word) is recovered ===")
 # selection.js falls back to state.lastWordNode = the WHOLE block when it cannot wrap the tapped word;
 # sentenceRangeAt() then answers with the block's FIRST sentence, which does not contain the word.

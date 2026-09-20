@@ -32,7 +32,7 @@ within a line and realistically large across the column gutter, the same way a
 real PDF generator lays them out — not hand-picked X offsets that could pass a
 test for the wrong reason. READER_TTS_URL can target production.
 """
-import base64, os
+import base64, os, json
 from browser_cdp import CDP, bilingual_pdf_bytes
 
 c = CDP(); c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
@@ -172,6 +172,89 @@ exercise_test = c.js('''(() => {
 assert exercise_test['sameGroup'] is True, exercise_test
 assert exercise_test['sentence'] == 'Ils (plaindre) la pauvre femme.', exercise_test
 print('PASS Defect 1 regression: fill-in-the-blank exercise preserves complete sentence across gap', flush=True)
+
+# ---------------------------------------------------------------------------------------
+# Fill-in-the-blank exercise lines vs REAL column gutters (the PDF is "Complete French All-in-One":
+# "3. Ils (plaindre)   <blank>   la pauvre femme."). The blank is wider than a column gap but the
+# halves are ONE line -- and ONLY unmistakable exercise content may bridge it. Geometry below is the
+# real page 221 one (left fragment x=176..296, right fragment x=457..594 on a ~1000px layer).
+# ---------------------------------------------------------------------------------------
+LAYOUT_JS = '''(rows => {
+    const container = document.createElement('div'); container.className = 'pdf-text-layer';
+    container.style.cssText = 'position:relative;width:1000px;height:' + (rows.length * 40 + 80) + 'px;';
+    document.body.appendChild(container);
+    const spans = rows.map((row, ri) => row.map(([text, left, width]) => {
+        const s = document.createElement('span'); s.textContent = text;
+        s.style.cssText = 'position:absolute;left:' + left + 'px;top:' + (40 + ri * 40) + 'px;width:' + width + 'px;height:20px;';
+        container.appendChild(s); return s; }));
+    const out = spans.map(row => {
+        const g = pdfVisualGroup(container, row[0]);
+        return { joined: row.slice(1).every(sp => g.includes(sp)), sentences: buildSentenceRangesFromSpans(g).map(x => x.text) };
+    });
+    container.remove(); return out; })(%s)'''
+
+
+def layout(rows):
+    """rows: [[(text, left, width), ...], ...], one visual line each (40px apart) -> per row {joined, sentences}."""
+    return c.js(LAYOUT_JS % json.dumps(rows, ensure_ascii=False))
+
+
+# --- exercise lines with the real page-221 geometry: every one becomes its complete sentence
+real221 = layout([
+    [('3. Ils (plaindre)', 176, 120), ('la pauvre femme.', 457, 137)],
+    [('4. La muraille (ceindre)', 176, 150), ('la ville.', 457, 60)],
+    [('5. Vous (feindre)', 176, 120), ('l’indifférence.', 457, 100)],
+    [('6. Nous (craindre)', 176, 125), ('le ridicule.', 457, 80)],
+    [('10. Elle (se plaindre)', 176, 140), ('tout le temps.', 457, 90)],
+])
+assert all(r['joined'] for r in real221), real221
+wanted = ['Ils (plaindre) la pauvre femme.', 'La muraille (ceindre) la ville.', 'Vous (feindre) l’indifférence.',
+          'Nous (craindre) le ridicule.', 'Elle (se plaindre) tout le temps.']
+for row, sentence in zip(real221, wanted):
+    assert sentence in row['sentences'], (sentence, row['sentences'])
+print('PASS real page-221 exercise geometry: each line yields its complete sentence (not "Ils (plaindre) 4.")', flush=True)
+
+# --- other real cue shapes: reflexive after a modal, negated, interrogative, bare "?" continuation, blank marks
+shapes = layout([
+    [('1. J’aime (se promener)', 176, 150), ('le long de la Seine.', 457, 130)],
+    [('2. Leurs méthodes (ne pas être)', 176, 190), ('très efficaces.', 457, 100)],
+    [('3. Est-ce qu’il (être)', 176, 130), ('aussi amusant que son frère?', 457, 190)],
+    [('4. Ça (aller)', 176, 80), ('?', 457, 10)],
+    [('5. Elle ______', 176, 90), ('à la banque.', 457, 90)],
+])
+assert all(r['joined'] for r in shapes), shapes
+assert 'J’aime (se promener) le long de la Seine.' in shapes[0]['sentences'], shapes[0]
+assert 'Leurs méthodes (ne pas être) très efficaces.' in shapes[1]['sentences'], shapes[1]
+assert 'Elle ______ à la banque.' in shapes[4]['sentences'], shapes[4]
+print('PASS reflexive / negated / interrogative / bare-? / underscore-blank exercise lines are one line', flush=True)
+
+
+# --- NEGATIVE CONTROLS: real column gutters and tables must NOT be bridged
+def stays_apart(name, rows):
+    r = layout(rows)
+    assert not any(x['joined'] for x in r), (name, r)
+    left_key, right_key = rows[0][0][0].split()[-1], rows[0][1][0].split()[0]
+    assert not any(left_key in t and right_key in t for x in r for t in x['sentences']), (name, r)
+    print('PASS still separate columns: ' + name, flush=True)
+
+
+stays_apart('vocabulary rows ending in a gender tag  "l’allemand (m.) | German"',
+            [[('l’allemand (m.)', 176, 110), ('German', 457, 50)], [('l’anglais (m.)', 176, 100), ('English', 457, 55)]])
+stays_apart('a French line ending in an English gloss  "le professeur (teacher) | the teacher"',
+            [[('le professeur (teacher)', 176, 170), ('the teacher', 457, 80)]])
+stays_apart('a wrapped numbered list whose right column starts lowercase (the old marker+lowercase rule merged it)',
+            [[('3. Il parle avec son ami et', 176, 200), ('his friend listens', 457, 130)]])
+stays_apart('a table cell ending in "(familiar)"', [[('tu es you are (familiar)', 176, 180), ('vous êtes you are', 457, 130)]])
+stays_apart('a gender tag followed by lowercase text in the next column', [[('la lettre (f.)', 176, 100), ('the letter', 457, 70)]])
+
+# two-column EXERCISES: the right column's own item number means it is a different item, not a continuation
+two_col = layout([[('3. Ils (plaindre)', 176, 120), ('8. Ils (craindre)', 457, 120)]])
+assert not two_col[0]['joined'], two_col
+print('PASS two-column exercises: the right column starts with its own item number, so it is not merged', flush=True)
+
+# the original bilingual two-column separation is unchanged
+assert 'Deuxiemement' in groups['fr'] and 'Secondly' in groups['en'] and 'Secondly' not in groups['fr'], groups
+print('PASS the original bilingual two-column separation is unchanged', flush=True)
 
 check('no application errors', 'window.__errors.length===0 || JSON.stringify(window.__errors)')
 print('ALL PDF BILINGUAL COLUMN CHECKS PASSED', flush=True)

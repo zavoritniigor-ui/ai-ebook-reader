@@ -174,22 +174,20 @@ function pdfTextSpans(layer) {
         !s.classList.contains('markedContent') && s.textContent.trim() &&
         !s.parentElement.closest('span:not(.markedContent)'));
 }
+// Вправа "поставте дієслово у потрібну форму" друкує підказку в дужках і лишає широкий
+// пропуск перед рештою речення: "3. Ils (plaindre)            la pauvre femme." Пропуск
+// ширший за міжколонковий, але обидва фрагменти — ОДИН рядок. Тому рядок продовжується лише
+// коли ліворуч безсумнівна ознака вправи: французька дієслівна підказка (той самий предикат
+// isFrenchExerciseCue з js/lang-detect.js, що й для визначення мови) або явна лінія-пропуск.
+// Усе інше — справжня межа колонок: "l'allemand (m.)   German" (рід у дужках у словнику),
+// звичайний текст у двох колонках, наступний нумерований пункт праворуч.
+const EXERCISE_ITEM_RE = /^\s*(?:\d+[.)]|[a-zA-Z][.)]|•)\s/;
 function isExerciseBlankContinuation(leftText, rightText) {
-    if (!leftText || !rightText) return false;
-    const ITEM_RE = /^\s*(?:\d+[\.\)]|[a-zA-Z][\.\)]|[•\-\–\—])\s*/;
-    const hasItemMarker = ITEM_RE.test(leftText);
-    const leftBody = (hasItemMarker ? leftText.replace(ITEM_RE, '') : leftText).trim();
-    const leftEndsTerminal = /[.!?]$/.test(leftBody);
-    if (leftEndsTerminal) return false;
-
-    const rightHasItemMarker = ITEM_RE.test(rightText);
-    const rightStartsLower = /^[\s\W]*[\p{Ll}]/u.test(rightText);
-    const leftEndsParenOrBlank = /(?:\([^)]+\)|_{2,}|\.{3,})\s*$/.test(leftBody);
-
-    if (hasItemMarker && !rightHasItemMarker && (rightStartsLower || leftEndsParenOrBlank)) return true;
-    if (leftEndsParenOrBlank && (rightStartsLower || !rightHasItemMarker)) return true;
-    if (hasItemMarker && !rightHasItemMarker && rightStartsLower) return true;
-    return false;
+    const left = (leftText || '').trim(), right = (rightText || '').trim();
+    if (!left || !right || EXERCISE_ITEM_RE.test(right)) return false;   // наступний пункт — не продовження
+    if (/(?:_{2,}|\.{4,}|…)$/.test(left)) return true;                    // явна лінія-пропуск
+    const cue = /^([\s\S]*)\(([^()]{1,40})\)$/.exec(left);
+    return !!cue && typeof isFrenchExerciseCue === 'function' && isFrenchExerciseCue(cue[2], cue[1]);
 }
 function pdfVisualGroup(layer, targetSpan) {
     const spans = pdfTextSpans(layer);
