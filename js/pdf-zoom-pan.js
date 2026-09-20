@@ -84,6 +84,7 @@ let pdfGesture = null, pdfBlockClick = false, pdfFrame = 0, pdfInkSnapshot = nul
 els.container.addEventListener('scroll', () => {
     if (state.format !== 'pdf' || document.hidden) return;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
+    if (typeof updatePdfActivePageOnScroll === 'function') updatePdfActivePageOnScroll();
     if (els.tooltip.style.display === 'flex') invalidateSelection();
 }, { passive: true });
 
@@ -125,12 +126,14 @@ function restorePdfZoomAnchor(a) {
 // would pair the new container size with the old wrapper size and silently
 // mis-capture which point was actually centered on screen.
 function pdfAnchor(containerW, containerH) {
-    const w = pdfPageWrappers[pdfActivePage];
+    const page = (typeof getPdfPageAtViewportCenter === 'function' && pdfContinuousReady && pdfPageWrappers?.length > 1)
+        ? getPdfPageAtViewportCenter(containerH) : pdfActivePage;
+    const w = pdfPageWrappers[page];
     if (!w) return null;
     const r = w.getBoundingClientRect(), c = els.container.getBoundingClientRect();
     const cw = containerW ?? els.container.clientWidth, ch = containerH ?? els.container.clientHeight;
     const clientX = c.left + cw / 2, clientY = c.top + ch / 2;
-    return { page: pdfActivePage, x: (clientX - r.left) / Math.max(1, r.width), y: (clientY - r.top) / Math.max(1, r.height) };
+    return { page, x: (clientX - r.left) / Math.max(1, r.width), y: (clientY - r.top) / Math.max(1, r.height) };
 }
 
 function layoutPdfZoom(zoom) {
