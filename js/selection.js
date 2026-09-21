@@ -281,17 +281,33 @@ function pdfVisualGroup(layer, targetSpan) {
 // точний зібраний текст: звичайний Range.toString() однаково пройшовся б по DOM/
 // content-stream порядку між startContainer і endContainer і міг би знову зачепити
 // фрагмент іншої колонки, що лежить між ними в розмітці.
+// PDFs split ONE word into several text items: a detached first letter ("a" + "ppliquer"), small-caps
+// headings cut mid-word ("Pr","ÉP","ar","E","r"). Such an item starts exactly where the previous one ends,
+// on the same line. Joining those (and only those) keeps the word whole; a word space, a bullet, another
+// line or another column always leaves a real gap, so those still separate. The tolerance is a fraction of
+// the glyph height, well below a space (~0.25em), so a stream that omitted its space chars still separates.
+const PDF_SPAN_JOIN_GAP = 0.12;
+function pdfSpansContinueWord(prev, next) {
+    if (!prev || !next) return false;
+    const a = prev.getBoundingClientRect(), b = next.getBoundingClientRect();
+    const h = Math.min(a.height, b.height);
+    if (!(h > 0) || Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)) > h * 0.4) return false;   // another line
+    const gap = b.left - a.right;
+    return gap <= h * PDF_SPAN_JOIN_GAP && gap >= -h * 0.6;       // continues the run (a little overlap is normal); not a big backwards jump
+}
 function buildSentenceRangesFromSpans(spans) {
     const chars = [];
-    for (const span of spans) {
+    for (let s = 0; s < spans.length; s++) {
+        const span = spans[s];
         const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
         let node;
         while (node = walker.nextNode()) {
             const text = node.nodeValue || '';
             for (let i = 0; i < text.length; i++) chars.push({ node, offset: i, ch: text[i], span });
         }
-        // PDF text items/lines need a separator even when the stream omits spaces.
-        if (chars.length && !/\s/.test(chars.at(-1).ch)) chars.push({ ...chars.at(-1), ch: ' ', separator: true });
+        // PDF text items/lines need a separator even when the stream omits spaces -- unless the next item merely
+        // CONTINUES this one's word (see pdfSpansContinueWord).
+        if (chars.length && !/\s/.test(chars.at(-1).ch) && !pdfSpansContinueWord(span, spans[s + 1])) chars.push({ ...chars.at(-1), ch: ' ', separator: true });
     }
     const sentences = [];
     let buffer = '', startNode = null, startOffset = 0, nodes = [], pieces = [];

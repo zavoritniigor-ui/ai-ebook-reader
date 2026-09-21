@@ -256,5 +256,35 @@ print('PASS two-column exercises: the right column starts with its own item numb
 assert 'Deuxiemement' in groups['fr'] and 'Secondly' in groups['en'] and 'Secondly' not in groups['fr'], groups
 print('PASS the original bilingual two-column separation is unchanged', flush=True)
 
+# ---------------------------------------------------------------------------------------
+# Words the PDF splits into several text items (real page: GUIAPP_systeme_frigorifique_classe_1.pdf, p.11).
+# A line such as "3. a|ppliquer les mesures ..." has a DETACHED FIRST LETTER, and small-caps headings
+# ("Préparer les travaux") are cut mid-word ("Pr","ÉP","ar","E","r"). The sentence builder used to put a space
+# after EVERY span, so the model was handed "a ppliquer" and "Pr ÉP ar E r LES trava U x" -- a word it can
+# never return as a valid (whole-word, literal) item. Spans that CONTINUE a glyph run on the same line are now
+# joined; a real gap (a word space, a bullet, another line) still separates. Geometry below is the real page's.
+# ---------------------------------------------------------------------------------------
+split_words = layout([
+    [('3.', 109, 13), ('a', 134, 10), ('ppliquer les mesures sécuritaires liées au travail.', 145, 500)],
+    [('4.', 109, 13), ('a', 134, 10), ('ssurer l’approvisionnement en divers matériaux.', 145, 360)],
+    [('A', 115, 23), ('Pr', 164, 22), ('ÉP', 186, 21), ('ar', 206, 24), ('E', 230, 13), ('r', 240, 6), ('LES', 256, 30), ('trava', 289, 57), ('U', 346, 14), ('x.', 359, 10)],
+])
+sents = [x for r in split_words for x in r['sentences']]
+assert 'appliquer les mesures sécuritaires liées au travail.' in sents, sents
+assert 'assurer l’approvisionnement en divers matériaux.' in sents, sents
+assert any(x.endswith('PrÉParEr LES travaUx.') for x in sents), sents          # the PDF's own letters, joined into words
+assert not any('a ppliquer' in x or 'a ssurer' in x or 'Pr ÉP' in x for x in sents), sents
+print('PASS split words: a detached first letter is joined (appliquer, assurer) and a small-caps heading is not exploded into letters: %r' % [x for x in sents if 'LES' in x][0], flush=True)
+
+# real gaps still separate: the word space before LES (10px), the bullet before its text, and two lines
+gaps = layout([
+    [('¡', 132, 6), ('Observation visuelle et olfactive', 151, 300)],
+    [('Utilisation', 102, 90), ('appropriée', 197, 90)],                 # 5px gap: a real word space with the space char omitted
+    [('à effectuer', 102, 90)], [('Décision justifiée', 102, 120)],       # two separate lines
+])
+joined = ' '.join(' '.join(r['sentences']) for r in gaps)
+assert '¡ Observation visuelle et olfactive' in joined and 'Utilisation appropriée' in joined and 'effectuer Décision' in joined, joined
+print('PASS real gaps are kept: bullet / word space / next line still separate the words', flush=True)
+
 check('no application errors', 'window.__errors.length===0 || JSON.stringify(window.__errors)')
 print('ALL PDF BILINGUAL COLUMN CHECKS PASSED', flush=True)

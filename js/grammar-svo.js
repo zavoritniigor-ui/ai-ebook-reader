@@ -459,12 +459,46 @@ function grammarProfile(text, forceLite = false) {
     const maxOutputTokens = Math.max(2500, Math.min(9000, 2200 + (lite ? 130 : 260) * expected));
     return { words, itemBudget, expected, lite, maxOutputTokens, timeoutMs: maxOutputTokens > 3500 ? 120000 : 75000 };
 }
-// Keeps WHOLE sentences from the start of `text` until the cap; a single over-long unpunctuated run (PDF headings/bullets)
-// is cut at a word boundary. Returns { text, trimmed, sentencesKept, sentencesTotal }.
-function boundGrammarText(text, cap = GRAMMAR_TEXT_CAP_CHARS) {
+// Where each sentence starts and ends in `clean` (the same segmentation as grammarSplitSentences, with positions).
+function grammarSentenceSpans(clean) {
+    const out = [], re = /[^.!?…。！？।]+(?:[.!?…。！？।]+|$)\s*/g;
+    let m;
+    while ((m = re.exec(clean))) { const t = m[0].trimEnd(); if (t.trim()) out.push([m.index, m.index + t.length]); }
+    return out;
+}
+// The part of a long text to analyse when the learner TAPPED a word inside it: the sentence holding that word, plus as many
+// neighbouring whole sentences as fit; if that one sentence alone is longer than the cap (an unpunctuated PDF run of bullets),
+// a word-aligned window around the word. The tapped word is always inside the returned text.
+function grammarWindowAround(clean, from, to, cap, totalSentences) {
+    const spans = grammarSentenceSpans(clean);
+    let k = spans.findIndex(([a, b]) => from >= a && from <= b);
+    if (k < 0) k = 0;
+    let lo = k, hi = k;
+    if (spans[k][1] - spans[k][0] <= cap) {
+        for (let grew = true; grew;) {
+            grew = false;
+            if (lo > 0 && spans[hi][1] - spans[lo - 1][0] <= cap) { lo--; grew = true; }
+            if (hi < spans.length - 1 && spans[hi + 1][1] - spans[lo][0] <= cap) { hi++; grew = true; }
+        }
+        return { text: clean.slice(spans[lo][0], spans[hi][1]), trimmed: true, sentencesKept: hi - lo + 1, sentencesTotal: spans.length || totalSentences };
+    }
+    const [a, b] = spans[k], mid = Math.floor((from + to) / 2);
+    let wa = Math.max(a, Math.min(mid - Math.floor(cap / 2), b - cap)), wb = Math.min(b, wa + cap);
+    while (wa > a && wa < from && !/\s/.test(clean[wa - 1])) wa++;         // start on a word boundary, never past the word
+    while (wb < b && wb > to && !/\s/.test(clean[wb])) wb--;               // end on a word boundary, never before it
+    return { text: clean.slice(wa, wb).trim(), trimmed: true, sentencesKept: 1, sentencesTotal: spans.length || totalSentences };
+}
+// Keeps WHOLE sentences until the cap. For a selection that is the START of the text; when `focus` (the word the learner
+// tapped) is given and occurs in it, the kept part is the one AROUND that word instead -- a tapped word must never be cut out
+// of the text the model is asked about. A single over-long unpunctuated run is cut at a word boundary.
+// Returns { text, trimmed, sentencesKept, sentencesTotal }.
+function boundGrammarText(text, cap = GRAMMAR_TEXT_CAP_CHARS, focus = '') {
     const clean = normalizeGrammarText(text);
     const sentences = grammarSplitSentences(clean);
     if (clean.length <= cap) return { text: clean, trimmed: false, sentencesKept: sentences.length, sentencesTotal: sentences.length };
+    const f = normalizeGrammarText(focus);
+    const at = f && f !== clean ? findSurfaceOccurrences(clean, f) : [];
+    if (at.length) return grammarWindowAround(clean, at[0], at[0] + f.length, cap, sentences.length);
     let kept = [], total = 0;
     for (const sent of sentences) {
         if (total + sent.length + (kept.length ? 1 : 0) > cap) break;
@@ -476,12 +510,23 @@ function boundGrammarText(text, cap = GRAMMAR_TEXT_CAP_CHARS) {
     }
     return { text: kept.join(' '), trimmed: kept.length < sentences.length, sentencesKept: kept.length, sentencesTotal: sentences.length };
 }
-// The first half of the sentences — the bounded retry after a reply was cut off with nothing recoverable.
-function halveGrammarText(text) {
+// One half of the text — the bounded retry after a reply was cut off with nothing recoverable. The half that CONTAINS the
+// tapped word (`focus`) when there is one, otherwise the first half.
+function halveGrammarText(text, focus = '') {
+    const f = normalizeGrammarText(focus);
+    const has = part => !!f && findSurfaceOccurrences(part, f).length > 0;
     const sentences = grammarSplitSentences(text);
-    if (sentences.length >= 2) return { text: sentences.slice(0, Math.ceil(sentences.length / 2)).join(' '), sentencesKept: Math.ceil(sentences.length / 2), sentencesTotal: sentences.length };
+    if (sentences.length >= 2) {
+        const mid = Math.ceil(sentences.length / 2), first = sentences.slice(0, mid), second = sentences.slice(mid);
+        const part = f && !first.some(has) && second.some(has) ? second : first;
+        return { text: part.join(' '), sentencesKept: part.length, sentencesTotal: sentences.length };
+    }
     const words = String(text).split(/\s+/);
-    if (words.length >= 12) return { text: words.slice(0, Math.ceil(words.length / 2)).join(' '), sentencesKept: 1, sentencesTotal: 1 };
+    if (words.length >= 12) {
+        const mid = Math.ceil(words.length / 2), firstText = words.slice(0, mid).join(' ');
+        const at = f ? String(text).indexOf(f) : -1;
+        return { text: (at >= firstText.length ? words.slice(mid) : words.slice(0, mid)).join(' '), sentencesKept: 1, sentencesTotal: 1 };
+    }
     return null;
 }
 
@@ -1512,7 +1557,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     // The bounded text actually analysed (whole sentences, capped). A tapped word inside a sentence is unaffected.
     let attemptText = analysisText;
     let focus = context;
-    let scope = boundGrammarText(analysisText);
+    let scope = boundGrammarText(analysisText, GRAMMAR_TEXT_CAP_CHARS, analysisText !== context ? context : '');   // a tapped word stays inside the analysed text
     if (scope.trimmed && analysisText === context) { attemptText = scope.text; focus = scope.text; }
     else if (scope.trimmed) attemptText = scope.text;
     const fail = (message, reason) => {
@@ -1547,7 +1592,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
             }, aiRawExcerpts(out), { capture: { sourceLanguage: sourceLang, text: attemptText, raw: out } }));
             // Cut off with nothing usable: ONE bounded retry on the first half of the text (lite contract).
             if (truncated && attempt === 0 && (!analysis.ok || !analysis.items.length)) {
-                const half = halveGrammarText(attemptText);
+                const half = halveGrammarText(attemptText, focus !== attemptText ? focus : '');   // the half that holds the tapped word
                 if (half) {
                     attemptText = half.text; if (focus !== context) focus = half.text;
                     scope = { text: half.text, trimmed: true, sentencesKept: half.sentencesKept, sentencesTotal: scope.sentencesTotal > 1 ? Math.max(scope.sentencesTotal, half.sentencesTotal) : half.sentencesTotal };

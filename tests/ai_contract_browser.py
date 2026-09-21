@@ -82,7 +82,7 @@ window.fetch = async (url, opts) => {
     if (!provider) return __realFetch(url, opts);
     const body = opts && opts.body ? JSON.parse(opts.body) : {};
     const prompt = promptOf(provider, body), kind = kindOf(prompt);
-    const rec = {provider, kind, url:u, maxTokens: body.max_output_tokens || null, chars: textOf(prompt).length, lite: /always null/.test(prompt), promptHasTapped: /The learner tapped/.test(prompt)};
+    const rec = {provider, kind, url:u, maxTokens: body.max_output_tokens || null, text: textOf(prompt), chars: textOf(prompt).length, lite: /always null/.test(prompt), promptHasTapped: /The learner tapped/.test(prompt)};
     __stub.requests.push(rec);
     const spec = __stub.raw.shift();
     let step;
@@ -395,6 +395,38 @@ print("PASS E: A LARGE PAGE SELECTION (%d chars): only whole sentences up to %d 
 assert tokA < c_['requests'][0]['maxTokens'] <= e_['requests'][0]['maxTokens'] <= 9000
 print("PASS A-E: the output budget scales with the selection (%d < %d <= %d <= 9000 tokens); the OLD fixed cap was 1400 for all of them" % (tokA, c_['requests'][0]['maxTokens'], e_['requests'][0]['maxTokens']), flush=True)
 
+# A2. a TAP deep inside a very long UNPUNCTUATED run (a dense PDF bullet list; the real page's run is 320-400 chars, denser pages are longer).
+# The analysed text is capped, and the cap used to keep only the START of the run: the tapped word was then not in the text the model saw.
+BULLETS = ['Observation visuelle et olfactive de l’équipement', 'Utilisation appropriée des instruments de mesure', 'Diagnostic précis de la situation', 'Vérification des bons de travail antérieurs',
+           'Consultation des intervenants impliqués', 'Cadenassage et mesures de sécurité appropriées', 'Bonnes méthodes de travail', 'Interprétation correcte des pictogrammes']
+LONG_RUN = ' ¡ '.join(BULLETS * 5) + ' ¡ Décision de faire effectuer la réparation par un électricien'
+assert len(LONG_RUN) > 1600 and not re.search(r'[.!?]', LONG_RUN)
+GRAMMAR_TEXTS = "__stub.requests.filter(r=>r.kind==='grammar').map(r=>r.text)"
+a2 = run_grammar('effectuer', LONG_RUN, plan=[dict(mode='ok')])
+sent = c.js(GRAMMAR_TEXTS)[-1]
+assert a2['error'] is None and len(sent) <= 1400 and 'effectuer' in sent and sent.endswith('par un électricien'), (a2['error'], len(sent), sent[-60:])
+assert a2['requests'][-1]['tapped'] is True
+print("PASS A2: a tap at the END of a %d-char unpunctuated run keeps the tapped word in the %d chars actually analysed (the cap used to keep the start and drop it)" % (len(LONG_RUN), len(sent)), flush=True)
+first = LONG_RUN.replace('Décision de faire effectuer la réparation par un électricien', 'x').replace('Observation visuelle et olfactive de l’équipement ¡', 'Observation visuelle et olfactive de l’effectuer ¡', 1)
+a3 = run_grammar('effectuer', first, plan=[dict(mode='ok')])
+sent3 = c.js(GRAMMAR_TEXTS)[-1]
+assert 'effectuer' in sent3 and sent3.startswith('Observation visuelle') and len(sent3) <= 1400, sent3[:80]
+print("PASS A2: a tap near the START of the run is analysed from the start (the window follows the tapped word, it is not always centred on the end)", flush=True)
+# the bounded retry after a cut-off reply keeps the half that contains the tapped word (it used to keep the first half)
+c.js("__stub.requests.length=0")
+a4 = run_grammar('effectuer', LONG_RUN, plan=[dict(mode='reasoning_only')])
+texts = c.js(GRAMMAR_TEXTS)
+assert len(texts) == 2 and len(texts[1]) < len(texts[0]) and all('effectuer' in t for t in texts), [(len(t), 'effectuer' in t) for t in texts]
+print("PASS A2: after a cut-off reply the ONE bounded retry (%d -> %d chars) still contains the tapped word (it used to retry on the first half, without it)" % (len(texts[0]), len(texts[1])), flush=True)
+# a tap in the middle of a long MULTI-sentence text: that whole sentence plus neighbours, not a raw character cut; the tapped sentence is placed
+# BEYOND the first 1400 characters so that a bound taken from the start would miss it
+mid = c.js("""(()=>{ const ss=[]; for (let i=0;i<60;i++) ss.push('Phrase numéro '+i+' avec des mots pour remplir la ligne assez longue.'); ss[45]='Il faut effectuer ce travail avec soin.';
+    const text=ss.join(' '); const b=boundGrammarText(text, 1400, 'effectuer'), plain=boundGrammarText(text, 1400);
+    return {n:b.text.length, has:b.text.includes('Il faut effectuer ce travail avec soin.'), wholeSentences: /^(Phrase|Il )/.test(b.text) && /\\.$/.test(b.text), kept:b.sentencesKept, total:b.sentencesTotal, plainHasIt: plain.text.includes('effectuer'), plainStart: plain.text.slice(0,14)}; })()""")
+assert mid['n'] <= 1400 and mid['has'] and mid['wholeSentences'] and 1 < mid['kept'] < mid['total'] == 60, mid
+assert mid['plainHasIt'] is False and mid['plainStart'] == 'Phrase numéro ', mid            # a SELECTION (no tapped word) is still bounded from its start
+print("PASS A2: a tap in the middle sentence of a long text keeps that whole sentence and its neighbours (%d of %d sentences, %d chars); a selection without a tapped word is still cut from its start" % (mid['kept'], mid['total'], mid['n']), flush=True)
+
 # cut-off replies through the real pipeline
 p1 = run_grammar(F.SEVERAL_C, plan=[dict(mode='truncate', keep=4)])
 assert p1['error'] is None and p1['items'] == 4 and p1['partial'] is True and len(p1['requests']) == 1, p1
@@ -523,7 +555,7 @@ RUN = 'PRÉPARER LES TRAVAUX Établi un diagnostic du travail à effectuer Obser
 c.js("if (typeof pdfContinuousReady !== 'undefined') pdfContinuousReady = false;")
 c.js("""(() => { const bytes = Uint8Array.from(atob(%s), ch=>ch.charCodeAt(0)); const file = new File([bytes], 'hvac.pdf', {type:'application/pdf'});
   const dt = new DataTransfer(); dt.items.add(file); const i=document.getElementById('file-upload'); i.files = dt.files; i.dispatchEvent(new Event('change')); })()""" % json.dumps(base64.b64encode(F.hvac_pdf()).decode()))
-c.wait("state.format==='pdf' && !!state.pdfDoc", timeout=30)
+c.wait("state.format==='pdf' && pdfContinuousReady && !!state.pdfDoc", timeout=60)
 c.wait("!!document.querySelector('.pdf-page-wrapper[data-page=\"1\"] .pdf-text-layer span')", timeout=30); time.sleep(1.5)
 if not c.js("state.translateMode"):
     c.js("els.translateBtn.click()"); time.sleep(0.4)
@@ -536,11 +568,46 @@ def mouse(x, y):
         c.call('Input.dispatchMouseEvent', type=kind, x=x, y=y, button='left', clickCount=1)
 
 
-def tap_pdf_word(word):
-    pos = c.js("""(()=>{ const layer=document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer'); const w=%s; const walker=document.createTreeWalker(layer, NodeFilter.SHOW_TEXT); let n;
-      while((n=walker.nextNode())){ const i=n.nodeValue.indexOf(w); if(i!==-1){ const r=document.createRange(); r.setStart(n,i); r.setEnd(n,i+w.length); const b=r.getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2}; } } return null })()""" % json.dumps(word))
-    mouse(pos['x'], pos['y'])
-    c.wait("els.tooltip.style.display==='flex'", timeout=8)
+CLEAN_UI_JS = """(()=>{ if (typeof closePractice==='function') closePractice(); els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.remove('expanded'); els.tooltip.style.display='none'; return true; })()"""
+# (a Practice panel or a drawer left open by an earlier section covers the left of the reader: a tap there lands on it, not on the page)
+
+WORD_POS_JS = """(()=>{ const layer=document.querySelector('.pdf-page-wrapper[data-page="%d"] .pdf-text-layer'); if(!layer) return null; const w=%s; const walker=document.createTreeWalker(layer, NodeFilter.SHOW_TEXT); let n;
+      while((n=walker.nextNode())){ const i=n.nodeValue.indexOf(w); if(i!==-1){ n.parentElement.scrollIntoView({block:'center', inline:'nearest'}); const r=document.createRange(); r.setStart(n,i); r.setEnd(n,i+w.length); const b=r.getBoundingClientRect(); return {x:Math.round((b.left+b.width/2)*10)/10,y:Math.round((b.top+b.height/2)*10)/10,layer:layer.dataset.k||(layer.dataset.k=String(Math.random()))}; } } return null; })()"""
+
+
+def stable_word_pos(word, need=4, timeout=15, page=1):
+    """The word's centre once the layout has stopped moving (same text layer, same rect for `need` samples 250 ms apart), after
+    scrolling it into view as a user would. A tap measured while the viewer was still re-rendering lands on the OLD position, and
+    one aimed at a word outside the viewport lands on nothing -- both depend on the machine, so neither may be left to chance."""
+    deadline, last, same = time.time() + timeout, None, 0
+    while time.time() < deadline:
+        pos = c.js(WORD_POS_JS % (page, json.dumps(word, ensure_ascii=False)))
+        same = same + 1 if pos and last and pos == last else (1 if pos else 0)
+        if same >= need:
+            return pos
+        last = pos
+        time.sleep(0.25)
+    raise AssertionError(('the word never settled in the text layer', word, last))
+
+
+def tap_pdf_word(word, attempts=4, page=1):
+    """A real mouse tap on `word`, then the tooltip's Grammar button. If the tooltip does not open (a late re-render moved
+    the word) the position is re-measured and tapped again, as a user would; after the last attempt the failure carries
+    everything needed to see why (what is under the pointer, viewport, learning mode, viewer state)."""
+    c.js(CLEAN_UI_JS)
+    seen = []
+    for _ in range(attempts):
+        pos = stable_word_pos(word, page=page)
+        mouse(pos['x'], pos['y'])
+        try:
+            c.wait("els.tooltip.style.display==='flex'", timeout=3)
+            break
+        except TimeoutError:
+            seen.append(c.js("""(()=>{ const e=document.elementFromPoint(%f,%f); return {at:[%f,%f], under:e?(e.tagName+'.'+e.className+' '+(e.textContent||'').slice(0,30)):null, viewport:[innerWidth,innerHeight],
+                translateMode:state.translateMode, continuousReady:pdfContinuousReady, format:state.format, tooltip:els.tooltip.style.display, layers:document.querySelectorAll('.pdf-text-layer').length,
+                lastTap:state.lastTapPoint||null}; })()""" % (pos['x'], pos['y'], pos['x'], pos['y'])))
+    else:
+        raise AssertionError(('tapping %r never opened the tooltip' % word, seen))
     b = c.js("(()=>{const r=els.ttAiBtn.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
     mouse(b['x'], b['y'])
 
@@ -587,5 +654,68 @@ n1 = c.js("__stub.requests.length")
 c.js("document.querySelectorAll('#practice-panel .practice-target')[2].click()")
 check("9: Practice (generated through the same provider path) still focuses the exact clicked occurrence with zero further requests",
       "!!document.querySelector('#grammar-content .grammar-focus') && document.querySelector('#grammar-content .grammar-context-target')?.textContent===getCurrentPracticeSession().reading.targets[2].surface && __stub.requests.length===%d" % n1)
+
+
+# ==============================================================================================================================
+print("\n=== SECTION 10: the REAL reported page (GUIAPP_systeme_frigorifique_classe_1.pdf, when the file is present) ===")
+REAL_PDF = os.environ.get('READER_HVAC_PDF') or os.path.expanduser('~/Books/GUIAPP_systeme_frigorifique_classe_1.pdf')
+if not os.path.exists(REAL_PDF):
+    print('NOTE 10: %s not present -- real-page checks skipped (CI has no copy of the book)' % REAL_PDF, flush=True)
+else:
+    c.js("__stub.plan.length=0; __stub.requests.length=0; grammarAnalysisCache.clear(); if (typeof pdfContinuousReady !== 'undefined') pdfContinuousReady = false;")
+    c.js("""(() => { const bytes = Uint8Array.from(atob(%s), ch=>ch.charCodeAt(0)); const file = new File([bytes], 'guiapp.pdf', {type:'application/pdf'});
+      const dt = new DataTransfer(); dt.items.add(file); const i=document.getElementById('file-upload'); i.files = dt.files; i.dispatchEvent(new Event('change')); })()""" % json.dumps(base64.b64encode(open(REAL_PDF, 'rb').read()).decode()))
+    c.wait("state.format==='pdf' && pdfContinuousReady && !!state.pdfDoc", timeout=90)
+    PG = c.js("""(async()=>{ for (let p=1;p<=state.totalPages;p++){ const pg=await state.pdfDoc.getPage(p); const tc=await pg.getTextContent(); if (tc.items.some(i=>/Observation visuelle et olfactive/.test(i.str))) return p; } return null; })()""")
+    assert PG, 'the reported page was not found in the real PDF'
+    c.js("goToPhysicalPage(%d,{instant:true})" % PG); c.wait("state.currentIndex===%d" % PG, timeout=30)
+    c.wait("!!document.querySelector('.pdf-page-wrapper[data-page=\"%d\"] .pdf-text-layer span')" % PG, timeout=30); time.sleep(2)
+    if not c.js("state.translateMode"):
+        c.js("els.translateBtn.click()"); time.sleep(0.4)
+    c.js("showToast=()=>{}; state.targetLang='uk'; els.tooltip.style.display='none'")
+    use('openai')
+
+    def real_tap(word):
+        c.js("els.tooltip.style.display='none'; els.grammarPanel.classList.remove('expanded'); grammarAnalysisCache.clear(); __stub.requests.length=0")
+        time.sleep(0.4)
+        tap_pdf_word(word, page=PG)
+        c.wait("__stub.requests.filter(r=>r.kind==='grammar').length>=1", timeout=20)
+        return c.js("__stub.requests.filter(r=>r.kind==='grammar').at(-1)")
+
+    # the body line the user tapped
+    r1 = real_tap('effectuer')
+    assert r1['text'].startswith('Établir un diagnostic du travail à effectuer') and r1['promptHasTapped'], r1['text'][:120]
+    assert 300 < r1['chars'] < 600 and r1['lite'] is True and r1['maxTokens'] >= 3500, r1
+    print("PASS 10: tapping 'effectuer' on the real page sends the whole unpunctuated bullet run (%d chars, lite contract, %d-token budget; the old code sent 1400)" % (r1['chars'], r1['maxTokens']), flush=True)
+    # words the PDF splits into several text items reach the model WHOLE (they used to arrive as "a ppliquer", "a ssurer")
+    r2 = real_tap('ppliquer')
+    assert r2['text'].startswith('appliquer les mesures sécuritaires liées au travail à effectuer') and 'a ppliquer' not in r2['text'], r2['text'][:120]
+    r3 = real_tap('ssurer')
+    assert r3['text'].startswith('assurer l’approvisionnement en divers matériaux') and 'a ssurer' not in r3['text'], r3['text'][:120]
+    r4 = real_tap('trava')
+    assert 'PrÉParEr LES travaUx' in r4['text'] and 'Pr ÉP ar E r' not in r4['text'], r4['text']
+    print("PASS 10: 'appliquer', 'assurer' and the small-caps heading reach the model as whole words (were 'a ppliquer', 'a ssurer', 'Pr ÉP ar E r LES trava U x')", flush=True)
+
+    # a realistic reply for the real request: a model that lower-cases the capitalised heading word, names the language in full and fences its JSON must still be accepted
+    RUN = r1['text']
+    def on_run(pos, lemma, surface, **kw):
+        return dict(dict(pos=pos, lemma=lemma, surface=surface, sentence=RUN, occurrence=1, agreesWith=None, features={}, explanation="Пояснення.", stemBreakdown=None, forms=None), **kw)
+    live_like = dict(language='French', items=[on_run('verb', 'effectuer', 'effectuer', features={'mood': 'infinitif'}), on_run('verb', 'établir', 'établir', features={'mood': 'infinitif'}),
+                                                on_run('adjective', 'visuel', 'visuelle', agreesWith='Observation', features={'gender': 'féminin', 'number': 'singulier'}),
+                                                on_run('adjective', 'justifié', 'justifiée', features={'gender': 'féminin', 'number': 'singulier'})])
+    c.js("els.tooltip.style.display='none'; grammarAnalysisCache.clear(); __stub.plan.length=0; __stub.requests.length=0; __stub.plan.push(%s)" % json.dumps(dict(mode='raw', text='Voici l’analyse demandée :\n```json\n' + json.dumps(live_like, ensure_ascii=False, indent=2) + '\n```\nN’hésitez pas si vous avez besoin d’autre chose.'), ensure_ascii=False))
+    time.sleep(0.4)
+    tap_pdf_word('effectuer', page=PG)
+    c.wait("!!grammarContext.analysis", timeout=20)
+    st = c.js("""({ok:grammarContext.analysis.ok, n:grammarContext.analysis.items.length, surfaces:grammarContext.analysis.items.map(i=>i.pos+':'+i.surface), rejected:grammarContext.analysis.rejected.map(r=>r.reason+':'+r.surface),
+        adjusted:grammarContext.analysis.adjusted.map(a=>a.reason), notes:grammarContext.analysis.notes, lang:grammarContext.sourceLanguage, focused:grammarContext.focused&&grammarContext.focused.surface, mode:grammarContext.mode,
+        chips:[...document.querySelectorAll('#grammar-controls-bar button')].map(b=>b.textContent), banner:!!document.querySelector('#grammar-content span[style*="red"]')})""")
+    assert st['ok'] is True and st['lang'] == 'fr' and st['mode'] == 'verbs' and not st['banner'], st
+    assert st['n'] == 4, ('all four items of the fenced reply must be accepted on the real page', st)
+    assert st['focused'] == 'effectuer', ("the tapped word's own occurrence is focused", st)
+    assert st['chips'] == c.js("GRAMMAR_LANG_CONFIG.fr.verb.tenses.map(t=>t.label)"), ('French tense controls only', st['chips'])
+    print("PASS 10: a fenced reply that names the language 'French' and lower-cases 'Établir' is accepted on the real page (4 items, recovered: %s), the tapped 'effectuer' is focused, Verbes mode, French controls only" % st['notes'], flush=True)
+    assert any(i['surface'] == 'Établir' for i in c.js("grammarContext.analysis.items")), "the displayed surface must be the SOURCE text's own spelling"
+    print("PASS 10: the surface shown for the lower-cased 'établir' is the page's own 'Établir'", flush=True)
 
 print("\n=== ALL AI CONTRACT CHECKS PASSED ===")
