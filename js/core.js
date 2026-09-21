@@ -162,7 +162,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 45000) {
         const body = await response.arrayBuffer();
         return new Response([204, 205, 304].includes(response.status) ? null : body, { status: response.status, statusText: response.statusText, headers: response.headers });
     } catch (err) {
-        if (timedOut) throw new Error('Сервер не відповів вчасно. Спробуйте ще раз.');
+        if (timedOut) { const e = new Error('Сервер не відповів вчасно. Спробуйте ще раз.'); e.reason = 'timeout'; throw e; }
         if (err.name === 'AbortError') throw err;
         if (err instanceof TypeError) throw new Error(t('errNoConnection'));
         throw err;
@@ -256,6 +256,9 @@ const GRAMMAR_LANG_CONFIG = {
         }
     },
     fr: {
+        // Dictionary forms are lower case, but headings in books are ALL CAPS ("PRÉPARER LES TRAVAUX"): a model echoing
+        // the capitals as the lemma must not create a second card next to "préparer".
+        lemmaCase: 'lower',
         labels: { verbs: 'Verbes', adjectives: 'Adjectifs' },
         verb: {
             features: ['tense', 'mood', 'person', 'number', 'auxiliary', 'participle'],
@@ -485,19 +488,137 @@ function findSurfaceOccurrences(text, surface) {
     return found;
 }
 
-// The AI is asked for a bare JSON object but routinely adds a code fence or a sentence
-// of preamble. Returns the parsed OBJECT, or null when nothing parseable (or not an
-// object — arrays/primitives are never valid contracts here) can be recovered.
-function parseAiJsonObject(raw) {
-    let text = String(raw == null ? '' : raw).trim().replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '').trim();
-    const attempt = candidate => {
-        try { const value = JSON.parse(candidate); return value && typeof value === 'object' && !Array.isArray(value) ? value : null; }
-        catch (e) { return null; }
+// ---- Tolerant JSON extraction for structured AI replies ----------------------------------------------
+// The AI is asked for bare JSON but real models routinely: wrap it in a code fence or a sentence of
+// preamble/epilogue, leave a trailing comma, put a raw newline inside a string, and — most damaging —
+// write an unescaped double quote INSIDE a string value (an `explanation` quoting the French word it
+// explains). Strict JSON.parse then rejects the WHOLE reply for one cosmetic slip. Only FORMATTING is
+// repaired here; every repaired value still goes through the same semantic validation as any other
+// (a fabricated surface/lemma/sentence is still rejected). A reply that is cut off mid-way (token cap) is
+// closed at the last COMPLETE element so the complete items before the cut survive.
+//
+// scanAiJson(text, start) walks the text once, string-aware, and returns
+//   { text: repaired JSON of the root value (only if complete), complete, salvage: repaired JSON closed at the
+//     last complete element (when incomplete), notes: [repairs applied] }.
+function scanAiJson(src, start) {
+    const out = [], notes = new Set(), stack = [];   // stack entries: { type:'{'|'[', expectKey:boolean }
+    let inStr = false, isKey = false, i = start, safe = null, lastSig = -1;
+    const n = src.length;
+    const top = () => stack[stack.length - 1];
+    // A safe point is where the reply may be closed if it is cut off. ONLY at element boundaries: after a complete
+    // member of a root-level object, or a complete element of an array. A half-built array element (an item cut
+    // mid-way) is not an item and is never kept.
+    const markSafe = () => {
+        if (!stack.length) return;
+        if (top().type === '[' || stack.every(e => e.type === '{')) safe = { len: out.length, stack: stack.map(e => e.type) };
     };
-    const direct = attempt(text);
-    if (direct) return direct;
-    const first = text.indexOf('{'), last = text.lastIndexOf('}');
-    return first !== -1 && last > first ? attempt(text.slice(first, last + 1)) : null;
+    const emit = ch => { out.push(ch); if (!inStr && !/\s/.test(ch)) lastSig = out.length - 1; };
+    const valueDone = () => { const t = top(); if (t && t.type === '{') t.expectKey = false; };
+    // What may legitimately follow a string's closing quote: , } ] : (and end of text). After a comma the next
+    // significant char must start another member/value, otherwise the quote was an inner one.
+    const closesString = j => {
+        while (j < n && /\s/.test(src[j])) j++;
+        if (j >= n) return true;
+        const c = src[j];
+        if (c === '}' || c === ']' || c === ':') return true;
+        if (c !== ',') return false;
+        j++;
+        while (j < n && /\s/.test(src[j])) j++;
+        if (j >= n) return true;
+        const d = src[j];
+        if (d === '"' || d === '{' || d === '[' || d === '}' || d === ']' || d === '-' || (d >= '0' && d <= '9')) return true;
+        if (d === '/' && (src[j + 1] === '/' || src[j + 1] === '*')) return true;   // a comment follows
+        return /^(?:true|false|null)\b/.test(src.slice(j, j + 6));
+    };
+    while (i < n) {
+        const ch = src[i];
+        if (inStr) {
+            if (ch === '\\') {
+                const nx = src[i + 1];
+                if (nx === undefined) { i++; break; }
+                if ('"\\/bfnrtu'.includes(nx)) { out.push(ch, nx); } else { out.push(nx); notes.add('bad_escape'); }
+                i += 2; continue;
+            }
+            if (ch === '"') {
+                if (closesString(i + 1)) {
+                    inStr = false; out.push('"');
+                    if (isKey) { top().expectKey = false; top().awaitColon = true; } else { valueDone(); markSafe(); }
+                } else { out.push('\\', '"'); notes.add('inner_quotes'); }
+                i++; continue;
+            }
+            const code = ch.charCodeAt(0);
+            if (code < 0x20) { out.push(ch === '\n' ? '\\n' : ch === '\t' ? '\\t' : ch === '\r' ? '\\r' : '\\u' + code.toString(16).padStart(4, '0')); notes.add('control_chars'); i++; continue; }
+            out.push(ch); i++; continue;
+        }
+        if (/\s/.test(ch)) { out.push(ch); i++; continue; }
+        if (ch === '/' && src[i + 1] === '/') { while (i < n && src[i] !== '\n') i++; notes.add('comments'); continue; }
+        if (ch === '/' && src[i + 1] === '*') { const e = src.indexOf('*/', i + 2); i = e === -1 ? n : e + 2; notes.add('comments'); continue; }
+        if (ch === '"') { inStr = true; isKey = !!(top() && top().type === '{' && top().expectKey); emit(ch); i++; continue; }
+        if (ch === '{' || ch === '[') { stack.push({ type: ch, expectKey: ch === '{' }); emit(ch); i++; continue; }
+        if (ch === '}' || ch === ']') {
+            const t = top();
+            if (!t || t.type !== (ch === '}' ? '{' : '[')) return { text: null, complete: false, salvage: null, notes: [...notes], error: 'mismatched_bracket' };
+            if (out[lastSig] === ',') { out.splice(lastSig, 1); lastSig = -1; notes.add('trailing_comma'); }
+            stack.pop(); emit(ch);
+            if (!stack.length) return { text: out.join(''), complete: true, salvage: null, notes: [...notes] };
+            valueDone(); markSafe(); i++; continue;
+        }
+        if (ch === ',') { const t = top(); if (t && t.type === '{') t.expectKey = true; emit(ch); i++; continue; }
+        if (ch === ':') { emit(ch); i++; continue; }
+        // number / true / false / null (also tolerate the Python spellings)
+        let j = i; while (j < n && /[^\s,\]}:"]/.test(src[j])) j++;
+        let tok = src.slice(i, j);
+        if (tok === 'None') { tok = 'null'; notes.add('python_literals'); } else if (tok === 'True') { tok = 'true'; notes.add('python_literals'); } else if (tok === 'False') { tok = 'false'; notes.add('python_literals'); }
+        if (!/^(?:-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)$/.test(tok)) {
+            if (j >= n) break;                                    // cut off inside a token: incomplete
+            return { text: null, complete: false, salvage: null, notes: [...notes], error: 'bad_token' };
+        }
+        for (const c of tok) emit(c);
+        i = j;
+        if (i < n) { valueDone(); markSafe(); }                   // only complete when a delimiter follows it
+    }
+    // Ran out of text: incomplete. Close at the last complete element.
+    let salvage = null;
+    if (safe) salvage = out.slice(0, safe.len).join('') + safe.stack.slice().reverse().map(t => t === '{' ? '}' : ']').join('');
+    return { text: null, complete: false, salvage, notes: [...notes] };
+}
+
+// Strips fences / zero-width characters and locates the root value. `array:true` also accepts a bare
+// top-level array. Returns { ok, value, notes, truncated, error }.
+function parseAiJson(raw, options = {}) {
+    let text = String(raw == null ? '' : raw).replace(/^﻿/, '').replace(/[​-‍⁠]/g, '').trim();
+    const notes = [];
+    if (!text) return { ok: false, value: null, notes, truncated: false, error: 'empty' };
+    if (!options.array && /^\[/.test(text.replace(/^```[a-zA-Z0-9_-]*[ \t]*\r?\n?/, ''))) return { ok: false, value: null, notes, truncated: false, error: 'array_root' };
+    if (/```/.test(text)) { text = text.replace(/```[a-zA-Z0-9_-]*[ \t]*\r?\n?/g, '').trim(); notes.push('fence'); }
+    const accept = v => v && typeof v === 'object' && (options.array || !Array.isArray(v));
+    const firstObj = text.indexOf('{'), firstArr = options.array ? text.indexOf('[') : -1;
+    const start = firstArr !== -1 && (firstObj === -1 || firstArr < firstObj) ? firstArr : firstObj;
+    if (start === -1) return { ok: false, value: null, notes, truncated: false, error: 'no_json' };
+    if (start > 0) notes.push('preamble');
+    // 1) plain JSON — the overwhelmingly common case — first from `start` to the last matching closer
+    const lastClose = text.lastIndexOf(text[start] === '{' ? '}' : ']');
+    if (lastClose > start) {
+        try { const v = JSON.parse(text.slice(start, lastClose + 1)); if (accept(v)) return { ok: true, value: v, notes: lastClose < text.length - 1 ? notes.concat('epilogue') : notes, truncated: false }; } catch (e) { /* repair below */ }
+    }
+    // 2) formatting repair, string-aware
+    const scanned = scanAiJson(text, start);
+    for (const n of scanned.notes) notes.push(n);
+    if (scanned.complete) {
+        try { const v = JSON.parse(scanned.text); if (accept(v)) return { ok: true, value: v, notes, truncated: false }; } catch (e) { return { ok: false, value: null, notes, truncated: false, error: 'unparsable' }; }
+    }
+    // 3) cut off mid-reply: keep everything up to the last complete element
+    if (!scanned.complete && scanned.salvage) {
+        try { const v = JSON.parse(scanned.salvage); if (accept(v)) return { ok: true, value: v, notes: notes.concat('truncated_salvaged'), truncated: true }; } catch (e) { /* fall through */ }
+    }
+    return { ok: false, value: null, notes, truncated: !scanned.complete && !scanned.error, error: scanned.error || (scanned.complete ? 'unparsable' : 'truncated') };
+}
+
+// The parsed OBJECT, or null when nothing parseable (or not an object) can be recovered. Used by every
+// caller that predates parseAiJson (Practice, conjugation lookup, tests).
+function parseAiJsonObject(raw) {
+    const r = parseAiJson(raw);
+    return r.ok ? r.value : null;
 }
 
 // A lemma that is written in a different script from its own surface form is a
@@ -520,7 +641,7 @@ const state = {
     // раніше кожен холодний старт (у т.ч. після повернення з фону, коли Android
     // вивантажив сторінку) скидав їх до типових значень.
     pdfScale: readStoredNumber('reader_pdf_scale', 1, 0.25, 4),
-    pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width',
+    pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width Tag verbs in ordinary prose, not only in conjugation exercises: infinitives after a preposition or another verb (à effectuer, pour établir, mettre en place → lemma "mettre"), past participles used as verbs (Établi un diagnostic, Appliquer les mesures), and headings written in CAPITALS (PRÉPARER LES TRAVAUX): copy the surface exactly as written, capitals included, and give the lemma in lower case. Never tag a word that is only a noun or a plain adjective.',
     fontSize: readStoredNumber('reader_font_size', 18, 12, 40),
     epubZip: null, spine: [], txtLines: [],
     translateMode: readStored('reader_translate_mode') === '1', extractedTextForTTS: "", currentLangCode: 'en-US',
@@ -924,6 +1045,10 @@ const I18N = {
     grammarAgreesWith:       { uk: 'Узгоджується з', en: 'Agrees with', fr: 'Accord avec', ru: 'Согласуется с' },
     grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },
     grammarUnsupportedLanguage: { uk: 'Граматичний розбір для цієї мови ще не підтримується.', en: 'Grammar analysis is not supported for this language yet.', fr: "L'analyse grammaticale n'est pas encore disponible pour cette langue.", ru: 'Грамматический разбор для этого языка пока не поддерживается.' },
+    aiTruncated:            { uk: 'Відповідь AI обірвалась через обмеження довжини. Виділіть менше тексту й спробуйте ще раз.', en: 'The AI reply was cut off. Select less text and try again.', fr: 'La réponse IA a été coupée. Sélectionnez moins de texte et réessayez.', ru: 'Ответ AI оборвался из-за ограничения длины. Выделите меньше текста и повторите.' },
+    grammarPartial:         { uk: 'Неповний розбір: відповідь AI обірвалась. Виділіть менше тексту для повного розбору.', en: 'Partial analysis: the AI reply was cut off. Select less text for a complete analysis.', fr: 'Analyse partielle : la réponse IA a été coupée. Sélectionnez moins de texte pour une analyse complète.', ru: 'Неполный разбор: ответ AI оборвался. Выделите меньше текста для полного разбора.' },
+    grammarTrimmed:         { uk: 'Проаналізовано перші {n} із {m} речень виділення.', en: 'Analysed the first {n} of {m} sentences of the selection.', fr: 'Les {n} premières phrases sur {m} de la sélection ont été analysées.', ru: 'Проанализированы первые {n} из {m} предложений выделения.' },
+    grammarNoUsableForms:   { uk: 'Відповідь AI не містила придатних форм. Спробуйте ще раз.', en: 'The AI reply contained no usable forms. Please try again.', fr: 'La réponse IA ne contenait aucune forme exploitable. Réessayez.', ru: 'Ответ AI не содержал пригодных форм. Попробуйте ещё раз.' },
     retry:                   { uk: 'Повторити', en: 'Retry', fr: 'Réessayer', ru: 'Повторить' },
 };
 

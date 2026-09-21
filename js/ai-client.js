@@ -8,6 +8,7 @@ const OPENAI_MODEL = 'gpt-5.6-luna';
 // Centralized default: "low" for ordinary reader workloads.
 const OPENAI_REASONING_EFFORT = 'low';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
+const GEMINI_MODEL = 'gemini-3.6-flash';
 const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 
 // Task-specific OpenAI profiles: optimize reasoning effort, max_output_tokens, and streaming per workload
@@ -17,7 +18,8 @@ const OPENAI_TASK_PROFILES = {
     ask: { reasoning: 'low', max_output_tokens: 1200, stream: true },
     // Redesigned Grammar panel (Verbs/Adjectives): one structured multi-item JSON
     // analysis, plus a small targeted per-lemma conjugation/agreement lookup.
-    grammar_analysis: { reasoning: 'low', max_output_tokens: 1400, stream: false },
+    // The per-request budget is set by grammarProfile() (grammar-svo.js) from the size of the text; this is only the fallback.
+    grammar_analysis: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
     // Practice reading: per-word example sentences + connected paragraphs, each with its own
     // annotated targets — several minutes of material, so by far the largest structured reply.
@@ -30,6 +32,60 @@ const OPENAI_TASK_PROFILES = {
 // A long structured reply cannot fit the 45s default of fetchWithTimeout; per-task overrides (ms).
 const AI_TASK_TIMEOUT_MS = { practice_reading: 150000 };
 function aiTaskTimeout(task) { return AI_TASK_TIMEOUT_MS[task] || 45000; }
+
+// ===== Typed provider errors and the development diagnostics =====================================================
+// Every failure carries a machine-readable `reason` so the cause is knowable — the learner still sees ONE simple,
+// localised, retryable message. reason: network | timeout | http | provider_error | envelope_invalid | empty_reply |
+// truncated | blocked. A truncated reply keeps whatever text arrived in `partial` so a structured caller (Grammar,
+// Practice) can recover the complete items before the cut instead of losing everything.
+class AiRequestError extends Error {
+    constructor(message, reason, details = {}) {
+        super(message);
+        this.name = 'AiRequestError';
+        this.reason = reason;
+        Object.assign(this, details);
+    }
+}
+// Diagnostics never contain a prompt or a key. They are kept in memory only (a bounded ring), are always readable
+// through readerAiDiagnostics(), and are shown next to an error only when the developer switch is on:
+//   localStorage.reader_ai_debug = '1'   or   ?aiDebug=1 in the URL.
+const AI_DIAG_MAX = 40;
+const aiDiagnostics = [];
+function aiDebugEnabled() {
+    try { return readStored('reader_ai_debug') === '1' || /(?:^|[?&])aiDebug=1(?:&|$)/.test(location.search); } catch (e) { return false; }
+}
+function redactAiText(value, max = 300) {
+    let s = String(value == null ? '' : value);
+    for (const k of [state.apiKey, state.groqKey, state.openaiKey]) if (k && String(k).length >= 8) s = s.split(String(k)).join('[key]');
+    s = s.replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,}|gsk_[A-Za-z0-9]{16,})\b/g, '[key]');
+    return s.length > max ? s.slice(0, max) + '…' : s;
+}
+function recordAiDiagnostic(entry) {
+    const e = Object.assign({ at: new Date().toISOString() }, entry);
+    delete e.prompt; delete e.key; delete e.apiKey;
+    // Developer switch only: the FULL raw reply and the analysed text, so a failing response can be copied out and replayed as a
+    // regression test (tests/live_responses/). Never the prompt, never a key.
+    if (e.capture) {
+        if (!aiDebugEnabled()) delete e.capture;
+        else e.capture = { sourceLanguage: e.capture.sourceLanguage, mode: e.capture.mode, text: redactAiText(e.capture.text, 20000), raw: redactAiText(e.capture.raw, 60000) };
+    }
+    for (const k of ['rawHead', 'rawTail', 'providerMessage', 'message']) if (typeof e[k] === 'string') e[k] = redactAiText(e[k], 300);
+    aiDiagnostics.push(e);
+    if (aiDiagnostics.length > AI_DIAG_MAX) aiDiagnostics.shift();
+    if (aiDebugEnabled()) { try { console.warn('[reader-ai]', e.task, e.outcome, e.reason || '', e.provider || '', e.model || ''); } catch (err) { /* console unavailable */ } }
+    return e;
+}
+function readerAiDiagnostics() { return aiDiagnostics.map(e => Object.assign({}, e)); }
+window.readerAiDiagnostics = readerAiDiagnostics;
+// Head/tail excerpts of a raw model reply for the diagnostics (bounded; redacted on record).
+function aiRawExcerpts(raw) {
+    const text = String(raw == null ? '' : raw);
+    return { rawChars: text.length, rawHead: text.slice(0, 240), rawTail: text.length > 240 ? text.slice(-240) : '' };
+}
+function providerErrorText(body) {
+    try { const j = JSON.parse(body); const m = j?.error?.message || j?.error?.status || j?.message; if (m) return String(m); } catch (e) { /* not JSON */ }
+    return String(body || '').slice(0, 200);
+}
 
 // Development-only latency tracking (no keys or user text logged)
 const latencyStats = new Map();
@@ -72,9 +128,9 @@ function cancelAIRequests() {
     state.lookupToken++;
     state.translationCache = {};
 }
-function aiHttpError(provider, status) {
+function aiHttpError(provider, status, providerMessage = '') {
     const key = status === 401 || status === 403 ? 'aiAuthError' : status === 429 ? 'aiRateError' : 'aiRequestError';
-    return new Error(t(key).replace('{provider}', AI_PROVIDERS[provider].name));
+    return new AiRequestError(t(key).replace('{provider}', AI_PROVIDERS[provider].name), 'http', { status, providerMessage });
 }
 async function aiJsonRequest(provider, key, url, body, signal, timeoutMs) {
     const headers = { 'Content-Type': 'application/json' };
@@ -83,16 +139,21 @@ async function aiJsonRequest(provider, key, url, body, signal, timeoutMs) {
     try { res = await fetchWithTimeout(url, { method: 'POST', headers, body: JSON.stringify(body), signal }, timeoutMs); }
     catch (err) {
         if (signal.aborted || err.name === 'AbortError') throw new DOMException('Cancelled', 'AbortError');
-        // Never relay error.message: a provider/browser may echo credentials.
-        throw new Error(t('aiNetworkError'));
+        // Never relay error.message to the learner: a provider/browser may echo credentials.
+        throw new AiRequestError(t('aiNetworkError'), err && err.reason === 'timeout' ? 'timeout' : 'network');
     }
-    if (!res.ok) throw aiHttpError(provider, res.status);
+    if (!res.ok) {
+        // The provider's own explanation (e.g. "max_output_tokens too small") is kept for the developer diagnostics only.
+        let providerMessage = '';
+        try { providerMessage = providerErrorText(await res.text()); } catch (e) { /* body unreadable */ }
+        throw aiHttpError(provider, res.status, providerMessage);
+    }
     try {
         const data = await res.json();
         if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error();
         return data;
     }
-    catch (_) { throw new Error(t('aiInvalidResponse')); }
+    catch (_) { throw new AiRequestError(t('aiInvalidResponse'), 'envelope_invalid'); }
 }
 
 // Streaming fetch with proper timeout and signal handling (for SSE responses).
@@ -190,7 +251,7 @@ async function parseOpenAIStream(reader, signal, onDelta) {
     return { result, firstTokenTime };
 }
 
-async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelta) {
+async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelta, options = {}) {
     const profile = OPENAI_TASK_PROFILES[task] || OPENAI_TASK_PROFILES.default;
     const input = dataUrl ? [{ role: 'user', content: [
         { type: 'input_text', text: prompt },
@@ -230,16 +291,29 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
     } else {
         // Non-streaming response (translations, grammar, conjugation)
         const data = await aiJsonRequest('openai', key, 'https://api.openai.com/v1/responses', {
-            model: OPENAI_MODEL, input, store: false, max_output_tokens: profile.max_output_tokens,
+            model: OPENAI_MODEL, input, store: false, max_output_tokens: options.maxOutputTokens || profile.max_output_tokens,
             reasoning: { effort: profile.reasoning }
-        }, signal, aiTaskTimeout(task));
-        if (data.error || (data.status && data.status !== 'completed')) throw new Error(t('aiInvalidResponse'));
+        }, signal, options.timeoutMs || aiTaskTimeout(task));
+        const meta = options.meta || {};
+        meta.model = typeof data.model === 'string' ? data.model : OPENAI_MODEL;
+        meta.finish = data.status || null;
+        if (data.usage && typeof data.usage === 'object') meta.usage = { in: data.usage.input_tokens, out: data.usage.output_tokens, reasoning: data.usage.output_tokens_details?.reasoning_tokens };
         // REST output may contain reasoning/tool items before assistant messages.
         result = (Array.isArray(data.output) ? data.output : [])
             .filter(item => item?.type === 'message' && item.role === 'assistant')
             .flatMap(item => Array.isArray(item.content) ? item.content : [])
             .filter(part => part?.type === 'output_text' && typeof part.text === 'string')
             .map(part => part.text).join('\n');
+        const hasError = data.error && (typeof data.error !== 'object' || Object.keys(data.error).length);
+        if (hasError) throw new AiRequestError(t('aiInvalidResponse'), 'provider_error', { providerMessage: providerErrorText(JSON.stringify({ error: data.error })), meta });
+        if (data.status && data.status !== 'completed') {
+            // "incomplete" is a TRUNCATED reply (usually max_output_tokens — and the budget also pays for reasoning), not an
+            // invalid one. What arrived is kept so a structured caller can recover the complete items before the cut.
+            const why = data.incomplete_details && data.incomplete_details.reason;
+            meta.finishReason = why || null;
+            if (data.status === 'incomplete') throw new AiRequestError(t('aiInvalidResponse'), why === 'content_filter' ? 'blocked' : 'truncated', { partial: result, providerMessage: why || 'incomplete', meta });
+            throw new AiRequestError(t('aiInvalidResponse'), 'provider_error', { providerMessage: String(data.status), meta });
+        }
         firstTokenTime = performance.now() - startTime;
     }
 
@@ -248,16 +322,28 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
     return result;
 }
 function dataUrlMime(u) { const m = /^data:([^;]+);/.exec(u); return m ? m[1] : 'image/jpeg'; }
-async function callGemini(prompt, dataUrl, key, signal, task) {
+async function callGemini(prompt, dataUrl, key, signal, task, options = {}) {
     const parts = [{ text: prompt }];
     if (dataUrl) parts.push({ inline_data: { mime_type: dataUrlMime(dataUrl), data: dataUrl.split(',')[1] } });
     const data = await aiJsonRequest('gemini', key,
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
-        { contents: [{ parts }] }, signal, aiTaskTimeout(task));
-    const result = data.candidates?.[0]?.content?.parts;
-    return Array.isArray(result) ? result.filter(part => typeof part?.text === 'string').map(part => part.text).join('\n') : '';
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+        { contents: [{ parts }] }, signal, options.timeoutMs || aiTaskTimeout(task));
+    const meta = options.meta || {};
+    const cand = Array.isArray(data.candidates) ? data.candidates[0] : null;
+    const finish = cand && cand.finishReason;
+    meta.model = typeof data.modelVersion === 'string' ? data.modelVersion : GEMINI_MODEL;
+    meta.finish = finish || null;
+    if (data.usageMetadata && typeof data.usageMetadata === 'object') meta.usage = { in: data.usageMetadata.promptTokenCount, out: data.usageMetadata.candidatesTokenCount, reasoning: data.usageMetadata.thoughtsTokenCount };
+    // Thought summaries (if the model returns any) are not part of the answer.
+    const result = cand && cand.content && cand.content.parts;
+    const text = Array.isArray(result) ? result.filter(part => typeof part?.text === 'string' && !part.thought).map(part => part.text).join('\n') : '';
+    const blockReason = data.promptFeedback && data.promptFeedback.blockReason;
+    if (blockReason) throw new AiRequestError(t('aiEmptyResponse'), 'blocked', { providerMessage: String(blockReason), meta });
+    if (finish === 'MAX_TOKENS') throw new AiRequestError(t('aiInvalidResponse'), 'truncated', { partial: text, providerMessage: 'MAX_TOKENS', meta });
+    if (!text && finish && finish !== 'STOP') throw new AiRequestError(t('aiEmptyResponse'), 'blocked', { providerMessage: String(finish), meta });
+    return text;
 }
-async function callGroq(prompt, dataUrl, key, signal, task) {
+async function callGroq(prompt, dataUrl, key, signal, task, options = {}) {
     const body = dataUrl ? {
         model: GROQ_VISION_MODEL, reasoning_format: 'hidden', max_completion_tokens: 700,
         messages: [{ role: 'user', content: [
@@ -267,12 +353,20 @@ async function callGroq(prompt, dataUrl, key, signal, task) {
         model: GROQ_MODEL, include_reasoning: false, reasoning_effort: 'low',
         messages: [{ role: 'user', content: prompt }]
     };
-    const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal, aiTaskTimeout(task));
-    return data.choices?.[0]?.message?.content;
+    const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal, options.timeoutMs || aiTaskTimeout(task));
+    const meta = options.meta || {};
+    const choice = Array.isArray(data.choices) ? data.choices[0] : null;
+    meta.model = typeof data.model === 'string' ? data.model : (dataUrl ? GROQ_VISION_MODEL : GROQ_MODEL);
+    meta.finish = (choice && choice.finish_reason) || null;
+    if (data.usage && typeof data.usage === 'object') meta.usage = { in: data.usage.prompt_tokens, out: data.usage.completion_tokens, reasoning: data.usage.completion_tokens_details?.reasoning_tokens };
+    const content = choice && choice.message ? choice.message.content : undefined;
+    if (meta.finish === 'length') throw new AiRequestError(t('aiInvalidResponse'), 'truncated', { partial: typeof content === 'string' ? content : '', providerMessage: 'length', meta });
+    return content;
 }
-function callAI(prompt, signal, task = 'default', onDelta) { return requestAI(prompt, null, signal, task, onDelta); }
+// options (all optional): { maxOutputTokens, timeoutMs, meta } — meta is filled with { provider, model, finish, usage, elapsedMs, rawChars }.
+function callAI(prompt, signal, task = 'default', onDelta, options) { return requestAI(prompt, null, signal, task, onDelta, options); }
 function callAIVision(prompt, dataUrl, signal) { return requestAI(prompt, dataUrl, signal, 'vision'); }
-async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta) {
+async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
     const provider = state.activeAiProvider, key = aiProviderKey(provider);
     if (!key) throw new Error(missingAiKey(provider));
@@ -283,20 +377,31 @@ async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta) {
     const position = () => JSON.stringify([readerEpoch.book, state.currentIndex, state.pageInChapter]);
     const startedAt = position();
     const current = () => !controller.signal.aborted && provider === state.activeAiProvider && key === aiProviderKey(provider) && startedAt === position();
+    const meta = options.meta || (options.meta = {});
+    meta.provider = provider; meta.task = task;
+    meta.maxOutputTokens = options.maxOutputTokens || (provider === 'openai' ? (OPENAI_TASK_PROFILES[task] || OPENAI_TASK_PROFILES.default).max_output_tokens : null);
+    const started = performance.now();
     try {
         let out;
         switch (provider) {
-            case 'openai': out = await callOpenAI(prompt, dataUrl, key, controller.signal, task, onDelta); break;
-            case 'groq': out = await callGroq(prompt, dataUrl, key, controller.signal, task); break;
-            case 'gemini': out = await callGemini(prompt, dataUrl, key, controller.signal, task); break;
+            case 'openai': out = await callOpenAI(prompt, dataUrl, key, controller.signal, task, onDelta, options); break;
+            case 'groq': out = await callGroq(prompt, dataUrl, key, controller.signal, task, options); break;
+            case 'gemini': out = await callGemini(prompt, dataUrl, key, controller.signal, task, options); break;
         }
         if (!current()) throw new DOMException('Cancelled', 'AbortError');
-        if (out != null && typeof out !== 'string') throw new Error(t('aiInvalidResponse'));
+        if (out != null && typeof out !== 'string') throw new AiRequestError(t('aiInvalidResponse'), 'envelope_invalid', { providerMessage: 'non-string content' });
         const text = sanitizeAI(out);
-        if (!text) throw new Error(t('aiEmptyResponse'));
+        if (!text) throw new AiRequestError(t('aiEmptyResponse'), 'empty_reply');
+        meta.elapsedMs = Math.round(performance.now() - started);
+        meta.rawChars = text.length;
         return text;
     } catch (err) {
         if (!current()) throw new DOMException('Cancelled', 'AbortError');
+        meta.elapsedMs = Math.round(performance.now() - started);
+        // The provider-level cause, recorded once here. (Validation failures are recorded by the caller that validates.)
+        recordAiDiagnostic(Object.assign({ task, outcome: 'error', phase: 'provider', reason: err && err.reason || 'error', provider, model: meta.model,
+            httpStatus: err && err.status, providerMessage: err && err.providerMessage, finish: meta.finish, usage: meta.usage, maxOutputTokens: meta.maxOutputTokens,
+            elapsedMs: meta.elapsedMs }, err && err.partial !== undefined ? aiRawExcerpts(err.partial) : {}));
         throw err;
     } finally {
         signal?.removeEventListener('abort', abort);

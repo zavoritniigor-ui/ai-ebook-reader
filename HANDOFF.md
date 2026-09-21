@@ -18,6 +18,24 @@ part of normal task startup.
 
 ## Current handoff
 
+### Live-AI acceptance FAILED → real-model contract hardened (2026-09-20, branch `grammar-redesign`, PR #119 — NOT merged)
+
+A live acceptance run (preview `98f4b680.ai-ebook-reader.pages.dev`, real French PDF, HVAC page "PRÉPARER LES TRAVAUX / Établi un diagnostic du travail à effectuer / Observation visuelle et olfactive... / Mettre en place les mesures pour effectuer le travail / Appliquer les mesures sécuritaires…") entered French **Verbes** but showed "Відповідь AI некоректна або неповна". Every mocked test had passed because every mock was an ideal reply.
+
+**LIVE AI TESTED: NO** (direct provider). No provider credential exists in this environment, and the user's own browser profile / `~/.gemini` OAuth token were deliberately not read; `agy` (an autonomous agent) was not used as a completion sampler. **The failing raw reply was therefore NOT captured**, and the exact rejection point in that session cannot be named from evidence. What IS proven (`tests/ai_contract_browser.py`, 64 checks, real `callAI` path with only `fetch` stubbed): the reported banner is reproduced on the old code through the real OpenAI path by an `incomplete`/`max_output_tokens` reply, and the old parser also rejected unescaped inner quotes, trailing commas and cut-off replies as `malformed_json` and kept 2 of 5 items of a model-style reply. A single word tap on a PDF page with unpunctuated headings analyses the whole merged run (measured: 101 chars / 14 words) with a full-contract multi-item request that the old 1400-token OpenAI cap could not hold (reasoning tokens count against `max_output_tokens`).
+
+What changed (all layers keep their strictness; only harmless deviations are normalised):
+- `ai-client.js`: typed `AiRequestError` reasons per provider (network/timeout/http/envelope_invalid/empty_reply/blocked/provider_error/truncated), truncation keeps `partial`, provider/model/finish/usage in `meta`, bounded diagnostics ring, developer panel only with `?aiDebug=1`.
+- `core.js`: `parseAiJson` (string-aware; fences, prose, trailing commas, comments, unescaped inner quotes; truncated → salvage at array-element boundary; bare array still rejected); French `lemmaCase:'lower'`.
+- `grammar-svo.js`: `grammarProfile` (bounded whole-sentence input ≤1400 chars, output budget from expected items, lite contract for long selections), hardened prompt, partial recovery + visible note, ONE bounded retry on the first half, per-reason diagnostics, extra fields ignored.
+- `practice-session.js`: same extraction/truncation/diagnostics for `practice_reading` (validator unchanged; v2 reading-only Practice from `9b56d25` intact).
+- `tests/ai_contract_browser.py` + `ai_contract_fixtures.py` (wired into CI), `tests/live_responses/` (replay directory), `tools/live_ai_probe.py`.
+
+**External blocker / how to close it (needs the user's key):**
+1. Reproduce on the preview with `?aiDebug=1`; the red banner now carries "AI diagnostics (developer)" with the exact `reason`; press **Copy**, save as `tests/live_responses/<name>.json` (README there) — CI then replays the REAL failing reply through the pipeline.
+2. Or run the whole A–E + real-PDF + Practice acceptance against the real provider: `READER_LIVE_AI_PROVIDER=openai READER_LIVE_AI_KEY=… python3 tools/live_ai_probe.py --pdf` (throw-away Chrome profile, key from the environment only, scrubbed from all output; failures are written as replay-ready files under `live_ai_probe_out/`). `--url https://<hash>.ai-ebook-reader.pages.dev/` drives a deployed build. Report "LIVE AI TESTED: YES" only from that output.
+Remaining risks: real-model behaviour with the new long prompts/budgets (latency up to the 150s Practice timeout, larger OpenAI output caps) is unverified live; Practice has the same untested-live status.
+
 ### Grammar + contextual Practice redesign — branch `grammar-redesign` (2026-09-20)
 
 Worktree `/media/igor/SAMSUNG_LINUX/Projects/AI-Ebook-Reader-Grammar`, branch `grammar-redesign`, PR #119 (open, base `main`). **No merge to `main` is authorized.** Gemini owns the PDF subsystem — none of `pdf-*.js`, `selection.js` or `translation.js` were modified by this work.

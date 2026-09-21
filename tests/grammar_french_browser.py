@@ -246,7 +246,7 @@ print('PASS the requested lemma budget is ENFORCED (11 returned, 8 allowed for a
 # malformed / wrong-shape / wrong-language responses are ERRORS, not "no verbs found"
 for label, raw, err in [('prose, no JSON', 'Sorry, I cannot help with that.', 'malformed_json'),
                         ('JSON array root', '[]', 'malformed_json'),
-                        ('truncated JSON', '{"items":[{"pos":"verb"', 'malformed_json'),
+                        ('truncated JSON (cut off mid-reply: its own reason, not "malformed")', '{"items":[{"pos":"verb"', 'truncated'),
                         ('items is not an array', '{"items":"none"}', 'missing_items'),
                         ('no items key', '{"language":"fr"}', 'missing_items'),
                         ('wrong language echoed', '{"language":"en","items":[]}', 'language_mismatch'),

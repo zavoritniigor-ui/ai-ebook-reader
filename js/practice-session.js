@@ -246,11 +246,24 @@ function validatePracticeReading(data, expected) {
     return { title: data.title.trim().slice(0, 140), language, mode, sections, paragraphs, targets };
 }
 
-// Parse AI response and validate
-function parseAndValidatePracticeReading(rawResponse, expected) {
-    const data = parseAiJsonObject(rawResponse);
-    if (!data) throw new Error('Failed to parse AI response as JSON');
-    return validatePracticeReading(data, expected);
+// Parse AI response and validate. `info` (optional) receives { notes, truncated }: the formatting repairs applied and whether
+// the reply was cut off and only its complete leading sections/items were kept.
+function parseAndValidatePracticeReading(rawResponse, expected, info) {
+    const parsed = parseAiJson(rawResponse);
+    if (info) { info.notes = parsed.notes; info.truncated = !!parsed.truncated; }
+    if (!parsed.ok) throw new Error(parsed.truncated ? 'Failed to parse AI response as JSON (the reply was cut off)' : 'Failed to parse AI response as JSON');
+    return validatePracticeReading(parsed.value, expected);
+}
+// The developer-diagnostics reason for a Practice failure (the messages are the validator's own).
+function practiceFailureReason(message) {
+    const m = String(message || '');
+    if (/cut off|Failed to parse/.test(m)) return /cut off/.test(m) ? 'truncated' : 'json_extraction_failed';
+    if (/wrong language/.test(m)) return 'language_mismatch';
+    if (/sections must be|not an object|missing or empty title|missing language/.test(m)) return 'schema_failure';
+    if (/exercises/.test(m)) return 'made_of_exercises';
+    if (/too little|too short|too few/.test(m)) return 'insufficient_material';
+    if (/suspicious/.test(m)) return 'unsafe_content';
+    return 'invalid_reading';
 }
 
 // Structural check of an ALREADY-VALIDATED reading (one read back from storage, or handed to the
@@ -367,8 +380,15 @@ async function generatePracticeReading(context) {
         const langName = LANG_NAMES[session.targetLanguage] || 'Ukrainian';
         const prompt = buildPracticeReadingPrompt(session, session.lemmas, langName);
 
-        // Call active AI provider
-        const response = await callAI(prompt, task.signal, 'practice_reading');
+        // Call active AI provider. A reply cut off by the token cap keeps what arrived: the complete leading sections/items are
+        // recoverable, and the validator's floors decide whether that is enough material.
+        const meta = {};
+        let response, truncated = false;
+        try {
+            response = await callAI(prompt, task.signal, 'practice_reading', undefined, { meta });
+        } catch (err) {
+            if (err && err.reason === 'truncated') { truncated = true; response = err.partial || ''; } else throw err;
+        }
 
         // Check if task is still current (stale response guard)
         if (!task.current()) {
@@ -377,7 +397,19 @@ async function generatePracticeReading(context) {
         }
 
         // Parse and validate AI response
-        const reading = parseAndValidatePracticeReading(response, { language: session.sourceLanguage, mode: session.mode });
+        const info = {};
+        let reading;
+        try {
+            reading = parseAndValidatePracticeReading(response, { language: session.sourceLanguage, mode: session.mode }, info);
+        } catch (err) {
+            const reason = truncated ? 'truncated' : practiceFailureReason(err.message);
+            recordAiDiagnostic(Object.assign({ task: 'practice_reading', phase: 'validation', outcome: 'error', reason, message: err.message, provider: meta.provider, model: meta.model,
+                finish: meta.finish, usage: meta.usage, elapsedMs: meta.elapsedMs, mode: session.mode, sourceLanguage: session.sourceLanguage, truncatedByProvider: truncated, parseNotes: info.notes }, aiRawExcerpts(response), { capture: { sourceLanguage: session.sourceLanguage, mode: session.mode, text: '', raw: response } }));
+            throw truncated ? new AiRequestError(t('aiTruncated'), 'truncated', { partial: response, cause: err.message }) : err;
+        }
+        recordAiDiagnostic(Object.assign({ task: 'practice_reading', phase: 'validation', outcome: truncated || info.truncated ? 'partial' : 'ok', reason: truncated || info.truncated ? 'partial' : (info.notes && info.notes.length ? 'ok_recovered' : 'ok'),
+            provider: meta.provider, model: meta.model, finish: meta.finish, usage: meta.usage, elapsedMs: meta.elapsedMs, mode: session.mode, sourceLanguage: session.sourceLanguage,
+            counts: { sections: reading.sections.length, items: reading.paragraphs.length, targets: reading.targets.length }, parseNotes: info.notes }, aiRawExcerpts(response), { capture: { sourceLanguage: session.sourceLanguage, mode: session.mode, text: '', raw: response } }));
 
         // Update session with validated reading
         session.reading = reading;
