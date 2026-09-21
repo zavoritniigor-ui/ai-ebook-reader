@@ -572,7 +572,12 @@ CLEAN_UI_JS = """(()=>{ if (typeof closePractice==='function') closePractice(); 
 # (a Practice panel or a drawer left open by an earlier section covers the left of the reader: a tap there lands on it, not on the page)
 
 WORD_POS_JS = """(()=>{ const layer=document.querySelector('.pdf-page-wrapper[data-page="%d"] .pdf-text-layer'); if(!layer) return null; const w=%s; const walker=document.createTreeWalker(layer, NodeFilter.SHOW_TEXT); let n;
-      while((n=walker.nextNode())){ const i=n.nodeValue.indexOf(w); if(i!==-1){ n.parentElement.scrollIntoView({block:'center', inline:'nearest'}); const r=document.createRange(); r.setStart(n,i); r.setEnd(n,i+w.length); const b=r.getBoundingClientRect(); return {x:Math.round((b.left+b.width/2)*10)/10,y:Math.round((b.top+b.height/2)*10)/10,layer:layer.dataset.k||(layer.dataset.k=String(Math.random()))}; } } return null; })()"""
+      while((n=walker.nextNode())){ const i=n.nodeValue.indexOf(w); if(i!==-1){ n.parentElement.scrollIntoView({block:'center', inline:'nearest'}); const r=document.createRange(); r.setStart(n,i); r.setEnd(n,i+w.length); let b=r.getBoundingClientRect();
+        /* the WORD, not the span that holds it: a wide span that is partly visible gets no horizontal scroll, and its word can sit far outside the viewport */
+        const sc=els.container, cx=b.left+b.width/2, cy=b.top+b.height/2;
+        if (cx < innerWidth*0.1 || cx > innerWidth*0.9) { sc.scrollLeft += cx - innerWidth/2; b=r.getBoundingClientRect(); }
+        if (cy < innerHeight*0.1 || cy > innerHeight*0.9) { sc.scrollTop += cy - innerHeight/2; b=r.getBoundingClientRect(); }
+        return {x:Math.round((b.left+b.width/2)*10)/10,y:Math.round((b.top+b.height/2)*10)/10,layer:layer.dataset.k||(layer.dataset.k=String(Math.random()))}; } } return null; })()"""
 
 
 def stable_word_pos(word, need=4, timeout=15, page=1):
@@ -654,6 +659,19 @@ n1 = c.js("__stub.requests.length")
 c.js("document.querySelectorAll('#practice-panel .practice-target')[2].click()")
 check("9: Practice (generated through the same provider path) still focuses the exact clicked occurrence with zero further requests",
       "!!document.querySelector('#grammar-content .grammar-focus') && document.querySelector('#grammar-content .grammar-context-target')?.textContent===getCurrentPracticeSession().reading.targets[2].surface && __stub.requests.length===%d" % n1)
+
+
+# A word the learner has zoomed/panned out of view: the tap helper must bring THE WORD (not merely its wide span) into view, as CI's log showed a
+# tap aimed at x=1245 in a 1000px viewport. Zoom in so 'effectuer' is far off-screen to the right, then tap it through the same helper.
+c.js("grammarAnalysisCache.clear(); __stub.plan.length=0; __stub.requests.length=0; setPdfScale(3.5)")
+time.sleep(1.5)
+off = c.js(WORD_POS_JS % (1, json.dumps('effectuer')))
+c.js("els.container.scrollLeft=0; els.container.scrollTop=0")
+time.sleep(0.6)
+tap_pdf_word('effectuer')
+assert c.js("state.pdfScale") > 3, 'the zoom must really be in effect for this check'
+print("PASS 9: a word far outside the viewport (page zoomed in) is scrolled into view and tapped: the tooltip opens", flush=True)
+c.js("setPdfScale(1); els.tooltip.style.display='none'"); time.sleep(1.2)
 
 
 # ==============================================================================================================================
