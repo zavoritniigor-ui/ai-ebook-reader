@@ -18,6 +18,43 @@ part of normal task startup.
 
 ## Current handoff
 
+### PDF Central Workspace Layout & Sidebar Visual Depth (2026-09-22, branch `feature/pdf-workspace-layout`, base `grammar-redesign` @ `690bae8`)
+
+Worktree `/home/igor/Projects/AI-Ebook-Reader-PDFLayout`, branch `feature/pdf-workspace-layout`. Commit: `88a33c4`.
+**Concurrency boundary strictly preserved:** Zero edits to `js/grammar-svo.js`, Grammar analysis, Practice logic, language segmentation, or AI prompt code. Claude's Grammar work remains untouched.
+
+Done:
+1. **Mathematical Central Workspace Bounds**:
+   - Implemented dynamic bounding in `js/pdf-continuous.js` via `getReaderWorkspaceRect()`:
+     `availableLeft = max(mainRect.left, nav.right, ask.right)`
+     `availableRight = min(mainRect.right, grammar.left, practice.left)`
+     `availableWidth = max(1, availableRight - availableLeft)`
+   - Dynamically positions and sizes `#reader-container` strictly between active side panels.
+   - Eliminates unused blank right-side strip: Added `.pdf-page-wrapper { margin-left: auto; margin-right: auto; }` and desktop `padding: 0` in `index.html`. Pages center with 0.5px subpixel precision across all panel states.
+2. **Dynamic Scale & Manual Zoom Invariance**:
+   - `pdfScaleForPage(natural)` computes dynamic scale when `state.pdfFit` is `'page'` or `'width'`/`'fit'`.
+   - When manual zoom is selected (`'free'`), scale strictly respects user-chosen `state.pdfScale` without shrinking when panels open.
+   - Preserves reading page and relative viewport scroll anchor across panel open/close transitions and window resizes without jumps.
+3. **Left Thumbnail Sidebar Visual Depth**:
+   - Added progressive elevation and refined contrast across Light, Dark, and Sepia themes for `#pdf-thumb-list`.
+   - High-contrast active thumbnail card border and badge highlight; smooth virtualized rendering and scroll preserved.
+4. **App-Shell Hashes & CI Registration**:
+   - Ran `python3 tools/version_app_shell.py` to update `sw.js` app-shell cache.
+   - Created comprehensive acceptance test `tests/pdf_workspace_browser.py` (12 automated checks covering States A through I + thumbnail visual depth) and registered in `.github/workflows/ci.yml`.
+
+Verification results:
+- `node --check js/*.js sw.js archive-guard.worker.js` -> PASS
+- `python3 tests/app_shell_versions.py` -> PASS
+- `python3 tests/ci_suite_coverage.py` -> PASS (36/36 suites)
+- `python3 tests/pdf_workspace_browser.py` -> PASS (12/12 states)
+- `python3 tests/pdf_continuous_browser.py` -> PASS (13/13 scenarios)
+- `python3 tests/pdf_word_click_browser.py` -> PASS (5/5 scenarios)
+- `python3 tests/pdf_page_identity_browser.py` -> PASS (synthetic + 657-page textbook)
+
+Next action:
+- Branch `feature/pdf-workspace-layout` is pushed to `origin/feature/pdf-workspace-layout`.
+- Ready to open PR into `grammar-redesign` (or integrate into `main` when `grammar-redesign` / PR #119 merges).
+
 ### Live-AI acceptance FAILED → real-model contract hardened (2026-09-20, branch `grammar-redesign`, PR #119 — NOT merged)
 
 A live acceptance run (preview `98f4b680.ai-ebook-reader.pages.dev`, real French PDF, HVAC page "PRÉPARER LES TRAVAUX / Établi un diagnostic du travail à effectuer / Observation visuelle et olfactive... / Mettre en place les mesures pour effectuer le travail / Appliquer les mesures sécuritaires…") entered French **Verbes** but showed "Відповідь AI некоректна або неповна". Every mocked test had passed because every mock was an ideal reply.
