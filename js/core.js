@@ -1277,7 +1277,7 @@ function applyI18n() {
         practiceRestore.title = t('tRestorePractice');
         practiceRestore.setAttribute('aria-label', t('tRestorePractice'));
     }
-    if (els.tooltip && els.tooltip.style.display === 'flex' && state.lastSelectionWordCount > 2) {
+    if (els.tooltip && els.tooltip.style.display === 'flex' && (state.lastSelectionWordCount > 2 || (els.ttOriginal.title && els.ttOriginal.title.length > 24))) {
         els.ttOriginal.textContent = formatWordsSelected(state.lastSelectionWordCount);
     }
     if (typeof loadVoices === 'function') loadVoices();   // назви груп голосів

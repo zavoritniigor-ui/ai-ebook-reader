@@ -508,9 +508,11 @@
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
         
-        .tt-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; gap: 8px;}
+        .tt-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+        .tt-original-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-width: 0; }
         .tt-original-wrapper { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1; min-width: 0; }
-        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; flex-shrink: 1; }
+        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; flex-shrink: 1; }
+        .tt-header-tools { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .tt-replay-btn {
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff;
             border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
@@ -541,10 +543,11 @@
         .tt-ai-label { display: block; font-size: 11px; color: #0dcaf0; letter-spacing: .3px; margin-bottom: 2px; }
         .tt-ai-text { display: block; font-size: 16px; font-weight: bold; color: #fff; line-height: 1.35; }
         
-        .tt-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; flex-shrink: 0; }
+        .tt-actions { display: flex; gap: 8px; width: 100%; margin-top: 4px; flex-shrink: 0; }
         .tt-ai-btn, .tt-ask-btn {
-            border: none; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
-            cursor: pointer; white-space: nowrap; flex: 1; flex-shrink: 0; transition: filter .15s, transform .1s;
+            border: none; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            cursor: pointer; white-space: nowrap; flex: 1 1 50%; min-width: 0; text-align: center;
+            transition: filter .15s, transform .1s;
         }
         .tt-ai-btn { background: #10a37f; color: white; }
         .tt-ask-btn { background: #0dcaf0; color: #0b2226; }
@@ -1032,11 +1035,15 @@
             <div id="pdf-scrubber"><output id="pdf-page-preview">1</output><input id="pdf-page-range" aria-label="Сторінка PDF" type="range" min="1" max="1" value="1" step="1"></div>
             <div id="word-tooltip">
                 <div class="tt-header">
-                    <div class="tt-original-wrapper">
-                        <span class="tt-original" id="tt-original">word</span>
-                        <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig">🔊</button>
-                        <button class="tt-replay-btn" id="tt-expand-btn" data-i18n-title="tExpand" data-i18n="btnSentence">речення ⤢</button>
-                        <button class="tt-replay-btn" id="tt-svo-btn" data-i18n-title="tSvo">S-V-O</button>
+                    <div class="tt-original-row">
+                        <div class="tt-original-wrapper">
+                            <span class="tt-original" id="tt-original">word</span>
+                        </div>
+                        <div class="tt-header-tools">
+                            <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig">🔊</button>
+                            <button class="tt-replay-btn" id="tt-expand-btn" data-i18n-title="tExpand" data-i18n="btnSentence">речення ⤢</button>
+                            <button class="tt-replay-btn" id="tt-svo-btn" data-i18n-title="tSvo">S-V-O</button>
+                        </div>
                     </div>
                     <div class="tt-actions">
                         <button class="tt-ask-btn" id="tt-ask-btn" data-i18n="btnAsk">🤖 Запитай AI</button>
@@ -1176,7 +1183,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=8a1c612f2036"></script>
+    <script src="js/core.js?v=73aaafbca80f"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1187,12 +1194,12 @@
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
     <script src="js/tts.js?v=d0219e4d74e8"></script>
-    <script src="js/selection.js?v=e32ed68eb98e"></script>
+    <script src="js/selection.js?v=a54d3a7ebf4c"></script>
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=35e62f613b99"></script>
     <script src="js/pdf-zoom-pan.js?v=2c524012b044"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
-    <script src="js/translation.js?v=225e94ed8ca1"></script>
+    <script src="js/translation.js?v=a59c71bf5d32"></script>
     <script src="js/grammar-svo.js?v=20b4ef8f38d4"></script>
     <script src="js/ai-client.js?v=819c861727a2"></script>
     <script src="js/practice-session.js?v=2d160b51d668"></script>
@@ -1201,7 +1208,7 @@
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
     <script src="js/pdf-outline.js?v=54df75ee8ef2"></script>
-    <script src="js/pdf-thumbnails.js?v=ca9551e0f416"></script>
+    <script src="js/pdf-thumbnails.js?v=dfea24fdb33d"></script>
     <script src="js/pdf-continuous.js?v=3131f4c5c09a"></script>
     <script src="js/pdf-render.js?v=f7f068dd2502"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>

@@ -25,38 +25,42 @@ Worktree `/home/igor/Projects/AI-Ebook-Reader-PDFLayout`, branch `feature/pdf-wo
 
 Done:
 1. **Mathematical Central Workspace Bounds & Panel Overlay Fix**:
-   - `js/pdf-continuous.js` dynamic bounding via `getReaderWorkspaceRect()`, responsive centering without blank right strips.
-   - Side panels maintain strict `position: fixed` overlay behavior: prevented `#grammar-panel.practice-bookmark-dock` and `#practice-panel` from becoming in-flow flex items that steal 500px of layout width.
-   - Dynamic relayout triggers registered across all 9 panel/zoom/resize events via `registerPdfPanel()` and `updatePdfWorkspaceLayout({ immediate: true, force: true })`.
-2. **Left Thumbnail Sidebar Clean Dark Slate Look**:
-   - Styled `nav#sidebar` and `#pdf-thumb-list` with clean dark slate `#1a1f26` across Light, Dark, and Sepia themes.
-   - White PDF page thumbnails (`#ffffff`) with realistic drop-shadows (`box-shadow: 0 2px 8px rgba(0,0,0,0.4)`), `#58a6ff` active borders and badges.
-3. **Canonical Bilingual Selection & Column Isolation**:
-   - Implemented `resolveCanonicalPdfSelection(range, options)` in `js/selection.js`, producing structured `{ text, grammarText, sourceLanguage, targetLanguage, isCrossColumn, columns, studyColumnIndex, spans, range, rect, sourceType }`.
-   - When a drag begins and ends in the same visual column (`startCol === endCol`), foreign interleaved spans are excluded, `range._pdfPieces` isolates the visual column for highlighting without DOM mutation, and `cleanText`/`grammarText` isolate the single column.
-   - Verified across BOTH `'rows'` and `'columns'` content-stream orders in `tests/bilingual_selection_browser.py`: dragging across all 8 rows within the French column selects French only; dragging within the English column selects English only.
-   - Cross-column drags retain combined text for translation, while isolating the study language (`pageLang()`) into `canonical.grammarText`/`state.lastGrammarSourceText`.
-4. **Quick Wheel UI & Immediate Localization**:
-   - `formatWordsSelected(count)` in `js/core.js` with localized plural forms for Ukrainian, English, French, German, Spanish, and Russian.
-   - Quick Wheel tooltip displays compact localized count (e.g. "8 words selected") for selections $>2$ words or $>28$ characters, with full text in `title`.
-   - Controls and action buttons protected with `flex-shrink: 0` and `.tt-original` ellipsis, preventing controls from being pushed offscreen on desktop or 390px mobile.
-   - `applyI18n()` dynamically re-translates open Quick Wheel count and Practice restore tab immediately without page reload.
-5. **Practice Ready Indicator**:
-   - `syncPracticeRestore()` reflects `session.status` (`ready`, `loading`, `error`) onto collapsed Practice tab.
-   - Visual green accent and border on `ready`, cleared automatically on expanding or closing Practice.
-6. **App-Shell Hashes & CI Verification**:
-   - `tools/version_app_shell.py` updated hashes in `index.html` and `sw.js`.
-   - All tests passing 100%:
-     - `tests/bilingual_selection_browser.py` -> 100% PASS (all checks, both stream orders)
-     - `tests/practice_workspace_browser.py` -> 100% PASS (30/30 checks)
-     - `tests/pdf_workspace_browser.py` -> 100% PASS (12/12 states + visual depth)
-     - `tests/app_shell_versions.py` & `tests/ci_suite_coverage.py` -> 100% PASS
-     - Node syntax gate passes for all JS files.
+   - `js/pdf-continuous.js` dynamic bounding via `getReaderWorkspaceRect()`, responsive centering without blank right strips across States A-I.
+   - Side panels maintain strict overlay behavior: zero flex/grid width impact when collapsed.
+2. **Left Thumbnail Sidebar Clean Dark Slate Look & Bounded Predictive Scheduler**:
+   - Styled `nav#sidebar` and `#pdf-thumb-list` with clean dark slate `#1a1f26` across Light, Dark, and Sepia themes with crisp white thumbnails (`#ffffff`) and drop shadows.
+   - Replaced naive unbounded FIFO queue in `js/pdf-thumbnails.js` with bounded predictive scheduler:
+     - Moving prefetch window `[currentIndex - 10 ... currentIndex + 10]` (max 21 items).
+     - Prioritizes thumbnails closest to active center outwards.
+     - Fast-scroll debouncing (100ms) with placeholders.
+     - Stale offscreen task purging on reader navigation/jumps (e.g. page 1 -> 50) and `delete li.dataset.thumbQueued`.
+     - LRU canvas cache (`pdfThumbCache`, up to 80 canvases) for instantaneous restore without re-rasterization.
+     - Instrumentation exposed on `window.__pdfThumbQueueState()`.
+3. **Live Bilingual Drag Highlighting & Native Selection Suppression**:
+   - In `js/selection.js`, dynamically partition `range._pdfPieces` during `pointermove` and `pointerdown` to pass only target column ranges to `CSS.highlights.set('word-selection', new Highlight(...pieceRanges))`.
+   - Live drag visually paints ONLY the active column (French or English), eliminating all opposite-column highlighting during active drag and upon release.
+   - Suppressed native multi-column selection via `window.getSelection()?.removeAllRanges()`.
+4. **Touch Hold-to-Select & Drag Extension on PDF**:
+   - Removed blanket touch rejection on PDF in `js/selection.js`.
+   - Preserved 380ms hold timer to distinguish intentional selection from scrolling/panning; quick swipe (<380ms or movement >10px) cancels hold timer and preserves smooth native panning.
+5. **Quick Wheel Responsive Layout & Action Controls**:
+   - Refactored `.tt-header` in `index.html` to separate `.tt-original-row` (with original text and audio/expand/svo tools) from a dedicated, full-width `.tt-actions` row (`#tt-ask-btn` and `#tt-ai-btn` with `flex: 1 1 50%`).
+   - Compact localized count ("X слів виділено" in uk, "X words selected" in en, "X mots sélectionnés" in fr) activated when selection is $>2$ words, $>24$ chars, or overflows available width.
+   - Full text preserved in `title` and `aria-label`.
+   - Verified responsive sizing down to 390px and 320px mobile viewports without crowding or offscreen clipping.
+6. **Automated Verification Suites**:
+   - `tests/pdf_thumbnails_browser.py` -> 100% PASS (bounded queue, jump purging, fast-scroll debounce, 320/390px responsive controls, touch hold-and-drag).
+   - `tests/bilingual_selection_browser.py` -> 100% PASS (all sections, both stream orders).
+   - `tests/pdf_workspace_browser.py` -> 100% PASS (all 12 states + visual depth).
+   - `tests/practice_workspace_browser.py` -> 100% PASS (30/30 checks).
+   - `tests/ci_suite_coverage.py` & `tests/app_shell_versions.py` -> 100% PASS.
+   - All JS files pass `node --check` syntax gate.
 
 Next action:
 - Commit changes on `feature/pdf-workspace-layout`.
 - Push to `origin/feature/pdf-workspace-layout`.
-- Report commit SHA and test results; DO NOT MERGE to `main` or PR #119.
+- Provide exact Cloudflare Pages preview URL for user acceptance testing.
+- DO NOT MERGE to `main` or PR #119.
 
 ### Bilingual multi-verb selection collapsed to one lemma ("voir" only) — root cause found and fixed (2026-09-21, branch `grammar-redesign`, PR #119 — NOT merged)
 

@@ -498,12 +498,23 @@ function resolveCanonicalPdfSelection(range, options = {}) {
         const pieces = [];
         for (let i = 0; i < selectedSpans.length; i++) {
             const s = selectedSpans[i];
-            const node = s.firstChild || s;
-            const isFirst = (i === 0);
-            const isLast = (i === selectedSpans.length - 1);
-            const pStart = (isFirst && node === range.startContainer) ? range.startOffset : 0;
-            const pEnd = (isLast && node === range.endContainer) ? range.endOffset : (node.nodeValue ? node.nodeValue.length : (s.textContent || '').length);
-            pieces.push({ node, start: pStart, end: pEnd, span: s });
+            const walker = document.createTreeWalker(s, NodeFilter.SHOW_TEXT);
+            let n;
+            let foundText = false;
+            while ((n = walker.nextNode())) {
+                foundText = true;
+                const isStartNode = (n === range.startContainer);
+                const isEndNode = (n === range.endContainer);
+                const pStart = (i === 0 && isStartNode) ? range.startOffset : 0;
+                const pEnd = (i === selectedSpans.length - 1 && isEndNode) ? range.endOffset : n.nodeValue.length;
+                if (pEnd > pStart) {
+                    pieces.push({ node: n, start: pStart, end: pEnd, span: s });
+                }
+            }
+            if (!foundText && s.textContent) {
+                const node = s.firstChild || s;
+                pieces.push({ node, start: 0, end: (s.textContent || '').length, span: s });
+            }
         }
         range._pdfPieces = pieces;
         const cleanText = pdfSpansToText(selectedSpans);
@@ -919,7 +930,6 @@ let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 els.mainArea.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
     if (state.format === 'pdf' && !els.container.contains(e.target)) return;
-    if (state.inkMode || (state.format === 'pdf' && e.pointerType === 'touch')) return;      // PDF touch belongs to zoom/pan
     if (state.inkMode) return;
     if (!state.translateMode) return;
     if (e.button !== 0) return;
@@ -935,7 +945,7 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         clearTimeout(touchSelTimer);
         const px = e.clientX, py = e.clientY;
         touchSelTimer = setTimeout(() => {
-            if (state.format === 'pdf' && pdfPointers.size > 1) return;
+            if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) return;
             const w = wordBoundsAt(px, py);
             if (!w) return;
             dragSel = w;
@@ -947,9 +957,28 @@ els.mainArea.addEventListener('pointerdown', (e) => {
             els.container.style.touchAction = 'none';
             if (navigator.vibrate) navigator.vibrate(12);
             const r = rangeBetweenWords(w, w);
-            if (r && typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
+            if (r) {
                 state.dragRange = r;
-                try { CSS.highlights.set(SEL_HL_NAME, new Highlight(r)); } catch (err) {}
+                if (typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
+                    try {
+                        if (state.format === 'pdf') {
+                            resolveCanonicalPdfSelection(r, { isDragging: true });
+                            if (r._pdfPieces && r._pdfPieces.length) {
+                                const pieceRanges = r._pdfPieces.map(p => {
+                                    const pr = document.createRange();
+                                    pr.setStart(p.node, p.start);
+                                    pr.setEnd(p.node, p.end);
+                                    return pr;
+                                });
+                                CSS.highlights.set(SEL_HL_NAME, new Highlight(...pieceRanges));
+                            } else {
+                                CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                            }
+                        } else {
+                            CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                        }
+                    } catch (err) {}
+                }
             }
         }, 380);
         return;
@@ -984,8 +1013,26 @@ els.mainArea.addEventListener('pointermove', (e) => {
     // змінює DOM, розрізає текстові вузли — і вузол, з якого почалось виділення,
     // ставав недійсним. Саме через це виділення мишею й перестало працювати.
     if (typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
-        try { CSS.highlights.set(SEL_HL_NAME, new Highlight(r)); } catch (err) {}
+        try {
+            if (state.format === 'pdf') {
+                resolveCanonicalPdfSelection(r, { isDragging: true });
+                if (r._pdfPieces && r._pdfPieces.length) {
+                    const pieceRanges = r._pdfPieces.map(p => {
+                        const pr = document.createRange();
+                        pr.setStart(p.node, p.start);
+                        pr.setEnd(p.node, p.end);
+                        return pr;
+                    });
+                    CSS.highlights.set(SEL_HL_NAME, new Highlight(...pieceRanges));
+                } else {
+                    CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                }
+            } else {
+                CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+            }
+        } catch (err) {}
     }
+    window.getSelection()?.removeAllRanges();
 });
 
 els.mainArea.addEventListener('pointerup', (e) => {
@@ -995,6 +1042,7 @@ els.mainArea.addEventListener('pointerup', (e) => {
         state.touchSelecting = false;
         els.container.style.touchAction = (state.format === 'pdf') ? '' : 'pan-y';
     }
+    window.getSelection()?.removeAllRanges();
     if (!dragSel) return;
     const start = dragSel; dragSel = null;
     const r = state.dragRange;

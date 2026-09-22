@@ -185,17 +185,25 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // вже після позиціонування — і воно виїжджало за край екрана.
     const words = cleanText.trim().split(/\s+/).filter(Boolean);
     state.lastSelectionWordCount = words.length;
-    if (words.length > 2 || cleanText.length > 28) {
+    if (words.length > 2 || cleanText.length > 24) {
         els.ttOriginal.textContent = typeof formatWordsSelected === 'function' ? formatWordsSelected(words.length) : `${words.length} words selected`;
         els.ttOriginal.title = cleanText;
+        els.ttOriginal.setAttribute('aria-label', cleanText);
     } else {
         els.ttOriginal.textContent = cleanText;
         els.ttOriginal.title = '';
+        els.ttOriginal.removeAttribute('aria-label');
     }
     els.ttTranslation.textContent = t('translating');
     els.tooltip.style.visibility = 'hidden';
     els.tooltip.style.display = 'flex';
     positionTooltip(clientX, clientY, anchorRect);
+    if (words.length > 1 && els.ttOriginal.scrollWidth > els.ttOriginal.clientWidth + 2) {
+        els.ttOriginal.textContent = typeof formatWordsSelected === 'function' ? formatWordsSelected(words.length) : `${words.length} words selected`;
+        els.ttOriginal.title = cleanText;
+        els.ttOriginal.setAttribute('aria-label', cleanText);
+        positionTooltip(clientX, clientY, anchorRect);
+    }
     els.tooltip.style.visibility = 'visible';
     state.tooltipAnchor = { clientX, clientY, anchorRect };
     if (isMultiWord) cancelTooltipHide(); else scheduleTooltipHide();
