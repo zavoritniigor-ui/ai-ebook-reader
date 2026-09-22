@@ -94,7 +94,11 @@ def drag(a, b, steps=14):
 
 
 def close_ui():
-    c.js("els.tooltip.style.display='none'; els.grammarPanel.classList.remove('expanded'); if (typeof closePractice==='function') closePractice(); grammarAnalysisCache.clear(); __calls.length=0")
+    # Also clears lastTapPoint/lastSelectedRange: this file, unlike the sibling PDF-drag suites, also
+    # injects a few synthetic single-sentence selections directly (Sections 1a/1d/5) -- close_ui() is
+    # what every real PDF drag (select_between) calls first, so a synthetic selection's leftover state
+    # can never bleed into a SUBSEQUENT real drag's own tooltip/selection logic.
+    c.js("els.tooltip.style.display='none'; els.grammarPanel.classList.remove('expanded'); if (typeof closePractice==='function') closePractice(); grammarAnalysisCache.clear(); __calls.length=0; state.lastTapPoint=null; state.lastSelectedRange=null")
     time.sleep(0.3)
 
 
@@ -167,25 +171,10 @@ print("\n=== SECTION 1: the Practice button -- one verb, many verbs, one/many ad
 load_pdf(verb_table_pdf_bytes('rows'))
 install_grammar_and_practice()
 
-# 1a. ONE verb -- a clean, punctuated single sentence (not the table: an unpunctuated PDF row/column
-# legitimately sweeps into a whole-column "sentence", which is Grammar's own pre-existing, documented,
-# unrelated behaviour -- see ARCHITECTURE.md; this sub-test is about the Practice BUTTON, not selection).
-close_ui()
-c.js("""(()=>{ callAI = async (prompt, signal, task) => { __calls.push({task, prompt});
-    if (task==='grammar_analysis') return JSON.stringify({language:'fr', items:[{pos:'verb', lemma:'voir', surface:'voit', sentence:'Elle voit un bel oiseau ce matin.', occurrence:1, agreesWith:'Elle', features:{tense:'présent'}, explanation:'x', stemBreakdown:null, forms:null}]});
-    return 'ok'; }; return true; })()""")
-c.js("state.lastSelectedRange=null; state.ctxSentence='Elle voit un bel oiseau ce matin.'; state.lastSelectionText='Elle voit un bel oiseau ce matin.'; state.lastTapPoint={x:20,y:20}; state.lastGrammarSourceText=null; handleWordOrSelection('Elle voit un bel oiseau ce matin.', 20, 20, {left:0,right:0,top:0,bottom:0}, null, 'paragraph_translation')")
-c.wait("els.tooltip.style.display==='flex'", timeout=8)
-press_grammar()
-check("1a: Grammar found exactly one verb (voir)", "grammarContext.analysis.items.map(i=>i.lemma).join()==='voir'")
-install_grammar_and_practice()
-click_practice_btn()
-c.wait("getCurrentPracticeSession()?.status==='ready'", timeout=10)
-sess = c.js("getCurrentPracticeSession()")
-assert sess['lemmas'] == ['voir'], sess['lemmas']
-print("PASS 1a: Practice starts and completes for a SINGLE detected verb", flush=True)
-
-# 1b. MANY verbs (the real reported case: all 8 must reach Practice, not just the first few)
+# 1b. MANY verbs (the real reported case: all 8 must reach Practice, not just the first few). Runs FIRST,
+# right after a clean load_pdf, before any synthetic single-sentence injection below (1a/1d) -- so this
+# real PDF drag never follows a synthetic selection's leftover state (belt-and-suspenders with close_ui()
+# now also clearing lastTapPoint/lastSelectedRange).
 select_between(FR[0], EN[-1])
 press_grammar()
 check("1b: Grammar found all 8 verbs", "new Set(grammarContext.analysis.items.map(i=>i.lemma)).size===8")
@@ -214,6 +203,26 @@ c.wait("getCurrentPracticeSession()?.status==='ready'", timeout=10)
 assert c.js("__calls.length") - n0 == 1, ('a fast double-click must fire exactly ONE provider request, not two', c.js("__calls.length") - n0)
 print("PASS 1c: a duplicate click while Practice is already generating starts NO second provider request", flush=True)
 install_grammar_and_practice()   # restore the no-delay mock for the rest of the suite
+
+# 1a. ONE verb -- a clean, punctuated single sentence (not the table: an unpunctuated PDF row/column
+# legitimately sweeps into a whole-column "sentence", which is Grammar's own pre-existing, documented,
+# unrelated behaviour -- see ARCHITECTURE.md; this sub-test is about the Practice BUTTON, not selection).
+# Runs AFTER the real PDF drags above (never before one), so its synthetic injection can never precede
+# and interfere with a real drag's own selection/tooltip logic.
+close_ui()
+c.js("""(()=>{ callAI = async (prompt, signal, task) => { __calls.push({task, prompt});
+    if (task==='grammar_analysis') return JSON.stringify({language:'fr', items:[{pos:'verb', lemma:'voir', surface:'voit', sentence:'Elle voit un bel oiseau ce matin.', occurrence:1, agreesWith:'Elle', features:{tense:'présent'}, explanation:'x', stemBreakdown:null, forms:null}]});
+    return 'ok'; }; return true; })()""")
+c.js("state.lastSelectedRange=null; state.ctxSentence='Elle voit un bel oiseau ce matin.'; state.lastSelectionText='Elle voit un bel oiseau ce matin.'; state.lastTapPoint={x:20,y:20}; state.lastGrammarSourceText=null; handleWordOrSelection('Elle voit un bel oiseau ce matin.', 20, 20, {left:0,right:0,top:0,bottom:0}, null, 'paragraph_translation')")
+c.wait("els.tooltip.style.display==='flex'", timeout=8)
+press_grammar()
+check("1a: Grammar found exactly one verb (voir)", "grammarContext.analysis.items.map(i=>i.lemma).join()==='voir'")
+install_grammar_and_practice()
+click_practice_btn()
+c.wait("getCurrentPracticeSession()?.status==='ready'", timeout=10)
+sess = c.js("getCurrentPracticeSession()")
+assert sess['lemmas'] == ['voir'], sess['lemmas']
+print("PASS 1a: Practice starts and completes for a SINGLE detected verb", flush=True)
 
 # 1d. ONE adjective
 close_ui()
