@@ -102,17 +102,31 @@ def close_ui():
     time.sleep(0.3)
 
 
-def select_between(first_text, last_text, first_nth=0, last_nth=0):
+def select_between(first_text, last_text, first_nth=0, last_nth=0, attempts=3):
+    """A real mouse drag from `first_text` to `last_text`, re-measured and retried like a user would if a
+    late re-render moved either word (the same reasoning as tap_pdf_word's own retry in
+    ai_contract_browser.py). On the FINAL failure the error carries everything needed to see why (both
+    endpoints' own rects, what is actually under each one, viewport, tooltip/format/viewer state) instead
+    of a bare TimeoutError -- CI reproducibly failed here (never locally, incl. under 6x CPU throttling)
+    with no diagnosis possible from a timeout alone; this captures the real cause on its next occurrence."""
     close_ui()
-    cell_pos(first_text, first_nth, scroll=True); time.sleep(0.5)
-    a, b = cell_pos(first_text, first_nth), cell_pos(last_text, last_nth)
-    drag({'x': a['l'] + 2, 'y': a['y']}, {'x': b['r'] - 2, 'y': b['y']})
-    # 25s, not the sibling suites' 10s: on GitHub's shared runner this file's FIRST drag (the largest one
-    # in the suite -- 16 spans across 2 columns, right after a fresh page reload) was observed to sometimes
-    # take longer than 10s to open the tooltip, reproducibly on CI but never locally (incl. under 6x CPU
-    # throttling) -- genuine runner contention, not a logic bug; a wider margin costs nothing when it
-    # resolves quickly, as it does locally.
-    c.wait("els.tooltip.style.display==='flex'", timeout=25); time.sleep(0.8)
+    seen = []
+    for _ in range(attempts):
+        cell_pos(first_text, first_nth, scroll=True); time.sleep(0.5)
+        a, b = cell_pos(first_text, first_nth), cell_pos(last_text, last_nth)
+        drag({'x': a['l'] + 2, 'y': a['y']}, {'x': b['r'] - 2, 'y': b['y']})
+        try:
+            c.wait("els.tooltip.style.display==='flex'", timeout=10); time.sleep(0.8)
+            return
+        except TimeoutError:
+            seen.append(c.js("""(()=>{ const ea=document.elementFromPoint(%f,%f), eb=document.elementFromPoint(%f,%f);
+                const describe=e=>e?(e.tagName+'.'+e.className+' '+(e.textContent||'').slice(0,30)):null;
+                return { a:%s, b:%s, underA:describe(ea), underB:describe(eb), viewport:[innerWidth,innerHeight],
+                  translateMode:state.translateMode, continuousReady:pdfContinuousReady, format:state.format, tooltip:els.tooltip.style.display,
+                  layers:document.querySelectorAll('.pdf-text-layer').length, selText:state.lastSelectionText||null, hasRange:!!state.lastSelectedRange,
+                  winSel: window.getSelection ? String(window.getSelection()) : null }; })()"""
+                % (a['l'] + 2, a['y'], b['r'] - 2, b['y'], json.dumps(a), json.dumps(b))))
+    raise AssertionError(('dragging %r -> %r never opened the tooltip' % (first_text, last_text), seen))
 
 
 def press_grammar():
