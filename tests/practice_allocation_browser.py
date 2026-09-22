@@ -77,6 +77,15 @@ def load_pdf(pdf_bytes, name='table.pdf'):
     if not c.js('state.translateMode'):
         c.js('els.translateBtn.click()'); time.sleep(0.4)
     c.js("state.sourceLang='fr-FR'")
+    # Pin a deterministic scale (the PDF's own 600x800-point page renders comfortably inside the
+    # 1100x1200 viewport at 1:1): the initial auto-fit scale is derived from MEASURED glyph widths
+    # (pdf-continuous.js), which differ enough between machines/fonts that CI was observed rendering
+    # this fixture large enough to push its LAST row's cell off the right edge of the viewport entirely
+    # (a real drag's second endpoint landing off-screen, confirmed via select_between's own diagnostics:
+    # underB:None at x>viewport width) -- never reproduced locally. A fixed scale removes the
+    # font-metric dependency instead of chasing it with a wider viewport or more scrolling.
+    if c.js("typeof setPdfScale==='function'"):
+        c.js("setPdfScale(1.0)"); time.sleep(0.4)
 
 
 def cell_pos(text, nth=0, scroll=False):
