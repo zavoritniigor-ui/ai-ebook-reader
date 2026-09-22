@@ -1387,10 +1387,17 @@ function maybeShowPracticeButton() {
     practiceBtn.textContent = t('practice');
     practiceBtn.onclick = () => {
         if (!aiAvailable()) return showToast(t('needKey'));
+        // A generation is already running (e.g. a fast double-click, or Practice was reopened while its
+        // first request was still in flight): just bring the existing generating/ready panel back to the
+        // front rather than firing a second identical provider request.
+        const inFlight = getCurrentPracticeSession();
+        if (inFlight && inFlight.status === 'generating') { displayPracticeSession(inFlight); return; }
         const mode = grammarContext.mode;
         const wantPos = mode === 'adjectives' ? 'adjective' : 'verb';
         const items = (grammarContext.analysis?.items || []).filter(it => it.pos === wantPos);
-        // The focused word's lemma first, then the tapped/detected order: Practice keeps only the first few.
+        // The focused word's lemma first, then the tapped/detected order: priority, never exclusivity --
+        // every other detected lemma of this mode still rides along (sanitizePracticeLemmas is the one
+        // place that bounds the total, up to PRACTICE_MAX_LEMMAS).
         const focused = grammarContext.focused && grammarContext.focused.pos === wantPos ? [grammarContext.focused] : [];
         const practiceContext = {
             sourceText: grammarContext.sentence || grammarContext.selectedText || '',
@@ -1398,10 +1405,16 @@ function maybeShowPracticeButton() {
             targetLanguage: state.targetLang,
             bookId: state.bookKey,
             mode,
-            lemmas: Array.from(new Set([...focused, ...items].map(it => it.lemma))).slice(0, 12),
+            lemmas: Array.from(new Set([...focused, ...items].map(it => it.lemma))),
             seenForms: [...focused, ...items].slice(0, 12).map(it => ({ surface: it.surface, lemma: it.lemma })),
             level: null
         };
+        // Immediate, visible feedback on the button itself (not just the Practice panel elsewhere on
+        // screen) so a click never looks dead, and re-entrancy stays impossible for the life of this
+        // button even before the session's own 'generating' status has had a chance to be read back.
+        practiceBtn.disabled = true;
+        practiceBtn.textContent = t('generating');
+        const restoreBtn = () => { practiceBtn.disabled = false; practiceBtn.textContent = t('practice'); };
         const generatePromise = generatePracticeReading(practiceContext);
         const generatingSession = getCurrentPracticeSession();
         if (generatingSession) displayPracticeSession(generatingSession);
@@ -1412,7 +1425,7 @@ function maybeShowPracticeButton() {
             console.error('Practice generation failed:', err);
             const updated = getCurrentPracticeSession();
             if (updated) displayPracticeSession(updated);
-        });
+        }).finally(restoreBtn);
     };
     content.appendChild(practiceBtn);
 }

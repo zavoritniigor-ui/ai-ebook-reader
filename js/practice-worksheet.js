@@ -69,6 +69,18 @@ function layoutPracticeWorkspace(dockDrawers = false) {
     }
 }
 
+// Exposes the actual Practice session's status on the collapsed tab (bookmark/collapsed-bottom
+// restore button) as `.ready` / `.loading` / `.error` + `data-status`, reusing the SAME green/red
+// convention already used for the Grammar/Ask panel tabs (index.html's `.side-panel.ready .panel-tab`
+// / `.loading`) rather than inventing a second readiness state. This is deliberately the ONLY place
+// that derives it, from `getCurrentPracticeSession()` -- never a separate flag that could drift from
+// the session -- so a UI (this file's own default styling, or Gemini's own collapsed-tab component)
+// can style the tab purely from `#practice-restore[data-status]`/its classes.
+function practiceRestoreStatus() {
+    const session = getCurrentPracticeSession();
+    if (!session || !isValidPracticeSession(session)) return 'error';
+    return session.status === 'ready' ? 'ready' : session.status === 'generating' ? 'loading' : 'error';
+}
 function syncPracticeRestore(panel) {
     const restore = document.getElementById('practice-restore');
     const grammar = document.getElementById('grammar-panel');
@@ -78,7 +90,11 @@ function syncPracticeRestore(panel) {
     if (restore.parentElement !== parent) parent.appendChild(restore);
     restore.dataset.mode = practiceWorkspaceMode;
     restore.hidden = practiceWorkspaceMode === 'expanded' || panel.hidden;
-
+    const status = practiceRestoreStatus();
+    restore.dataset.status = status;
+    restore.classList.toggle('ready', status === 'ready');
+    restore.classList.toggle('loading', status === 'loading');
+    restore.classList.toggle('error', status === 'error');
 }
 
 function setPracticeWorkspaceMode(mode) {
@@ -145,7 +161,7 @@ function getPracticePanel() {
         restore.id = 'practice-restore';
         restore.className = 'side-panel practice-restore';
         restore.type = 'button';
-        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span>Practice</span>';
+        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span data-i18n="practiceTabLabel">' + t('practiceTabLabel') + '</span>';
         restore.title = 'Restore Practice workspace';
         restore.setAttribute('aria-label', 'Restore Practice workspace');
         restore.setAttribute('aria-controls', 'practice-panel');
@@ -535,6 +551,13 @@ const practiceStyles = `
     border-left-color: var(--accent-color);
 }
 #practice-restore:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
+/* Same green/red convention as the Grammar/Ask panel tabs (.side-panel.ready/.loading .panel-tab in
+   index.html) -- ready = a session is generated and waiting to be read; loading = generating; error =
+   the last attempt failed. A default so the state is visible even before any richer tab styling exists;
+   easy to override, since it is plain class + data-status, not inline style. */
+#practice-restore.ready { background: rgba(25, 135, 84, 0.14); border-color: rgba(25, 135, 84, 0.5); }
+#practice-restore.loading { background: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
+#practice-restore.error { background: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
 @media (prefers-reduced-motion: reduce) {
     #practice-panel { transition: none; }
 }

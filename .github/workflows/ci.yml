@@ -153,6 +153,7 @@ jobs:
           python3 -u tests/practice_browser.py
           python3 -u tests/practice_workspace_browser.py
           python3 -u tests/practice_reading_browser.py
+          python3 -u tests/practice_allocation_browser.py
           python3 -u tests/grammar_language_isolation_browser.py
           python3 -u tests/grammar_redesign_browser.py
           python3 -u tests/grammar_french_browser.py

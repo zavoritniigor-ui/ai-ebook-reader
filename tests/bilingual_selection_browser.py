@@ -33,7 +33,6 @@ Sections:
 """
 import base64, json, os, re, sys, time
 from browser_cdp import CDP, verb_table_pdf_bytes, VERB_TABLE_ROWS
-import practice_fixtures as PF
 
 URL = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html')
 c = CDP(); c.sock.settimeout(120)
@@ -96,7 +95,7 @@ def install_model():
     """Stub ONLY the provider call. A competent model: it reports every KNOWN form present in the text it was
     given (as a whole word) in the language the request names -- so it never invents a wrong-language item on
     its own; the isolation/validation pipeline is what this suite actually exercises."""
-    c.js("""(()=>{ aiAvailable=()=>true; showToast=()=>{}; window.__calls=[]; window.__known=%s; window.__practiceReading=%s;
+    c.js("""(()=>{ aiAvailable=()=>true; showToast=()=>{}; window.__calls=[]; window.__known=%s;
       callAI=async (prompt, signal, task, onDelta, options)=>{ const rec={task, prompt, maxTokens:options&&options.maxOutputTokens}; __calls.push(rec);
         if (task==='grammar_analysis'){
           const m=prompt.match(/Text \\(a JSON string[^:]*: (".*")\\n/); const text=JSON.parse(m[1]); rec.text=text;
@@ -105,9 +104,20 @@ def install_model():
           const items=(__known[rec.lang]||[]).filter(([s])=>text.includes(s)).map(([surface,lemma])=>({pos:'verb', lemma, surface, sentence:text, occurrence:1, agreesWith:null, features:{}, explanation:'x', stemBreakdown:null, forms:null}));
           return JSON.stringify({language:rec.lang, items}); }
         if (task==='translation'){ const m=prompt.match(/фрагмент: "([\\s\\S]*?)"\\n/); const src=m?m[1]:''; return JSON.stringify({translation:'UK[' + src.replace(/\\s+/g,' ') + ']', alignment:[]}); }
-        if (task==='practice_reading') return __practiceReading;
+        if (task==='practice_reading') {
+          // A competent model here too: cover EXACTLY the targets the prompt itself asked for (its own
+          // per-target allocation), whatever the actual detected lemma set turned out to be -- this
+          // section only exercises the CLICK -> zero-AI-calls path, not reading quality.
+          const lang=(prompt.match(/language code "(\\w+)"/)||[])[1]||'fr';
+          const alloc=[...prompt.matchAll(/- "([^"]+)": (\\d+) example/g)];
+          const sections=alloc.map(([,lemma,n])=>({heading:lemma, kind:'examples', items:Array.from({length:+n},(_,i)=>({
+            text:`Exemple ${i+1} avec ${lemma} dans une phrase complete et naturelle vraiment.`,
+            targets:[{surface:lemma, lemma, occurrence:1, features:{}, explanation:'x', forms:null}]}))}));
+          sections.push({heading:'', kind:'story', items:[{text:'Une histoire connectee qui mentionne plusieurs mots dans un contexte naturel et interessant vraiment.', targets:[]}]});
+          return JSON.stringify({title:'T', language:lang, mode:'verbs', sections});
+        }
         return 'ok'; };
-      return true; })()""" % (json.dumps(KNOWN, ensure_ascii=False), json.dumps(PF.to_json(PF.VERBS_FR), ensure_ascii=False)))
+      return true; })()""" % json.dumps(KNOWN, ensure_ascii=False))
 
 
 def cell_pos(text, nth=0, scroll=False):

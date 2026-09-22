@@ -242,6 +242,7 @@ extraction — both are **settled**, not open questions:
 | `tests/pdf_sentence_reselect_browser.py` | `selection.js`'s `anchorCaret()` fix (user-reported: tapping a PDF sentence's FIRST word, then pressing the translation popup's "select" button twice in a row, selected the wrong text the second time). Root cause: the first "select" press wraps the just-selected text in a new `span.sel-word` (`showSelectionHighlight`/`wrapRangeInSpans`, PDF path) — when the tapped word IS the sentence's first word, that new span lands INSIDE the pre-existing `span.word-visited` around the tapped word, replacing its `firstChild` with an element instead of a text node, so `anchorCaret`'s old direct `firstChild` check silently fell back from the reliable word anchor to raw-coordinate hit-testing on the second press. Uses the real PDF.js-rendered two-column synthetic fixture (`pdf_bytes(two_columns=True)`, the same "original beside its translation" layout the user described) to assert the 2nd press still selects exactly the same sentence as the 1st, and that no press ever bleeds text across the column boundary. |
 | `tests/pdf_bilingual_columns_browser.py` | `selection.js`'s `pdfVisualGroup()` fix for a REAL text-based bilingual-textbook PDF (user-reported and reproduced from a screenshot): a sentence in a row-aligned two-column layout (original left, its own-language translation right) with an inline bold marker word mid-sentence ("Premièrement,"/"First," — real "Firstly/Secondly/..." bilingual-book style) — selecting grabbed text from BOTH columns at once, and some words on the tapped column were read/detected with the OTHER column's language. Uses `bilingual_pdf_bytes()` (an actual Helvetica→Helvetica-Bold font change with runs shown continuously, no repositioning between them, so fragment gaps come out realistically small within a line and large across the true column gutter — not hand-picked offsets that could pass for the wrong reason) to assert a tap on either side of the bold-marker line reconstructs its OWN complete sentence with zero words dropped and zero bleed from the other column, and that each column's whole `pdfVisualGroup` contains only its own language. Also fill-in-the-blank exercise lines with the real page-221 geometry (complete sentence, not `Ils (plaindre) 4.`) plus negative controls that must stay separate columns: `(m.)` vocabulary rows, English glosses, a wrapped numbered list, two-column exercises. |
 | `tests/bilingual_selection_browser.py` | A real drag across a bilingual verb table (both PDF content-stream orders): the fused-text bug reproduced and fixed end to end (request -> validation -> rendering, all 8 French verbs, never English), an all-English or all-French selection still resolves as itself, single-word tap unaffected (one focused occurrence), a sentence/paragraph with several verbs (unfocused, several items), a selection over the item budget (deterministic, bounded, a visible note), focusing an already-analysed card/Practice target (zero AI calls), and the translation popup's own (documented, unfixed) behaviour for the same drag. |
+| `tests/practice_allocation_browser.py` | Grammar → Practice: the button (one/many verbs, one/many adjectives, immediate "Generating…" feedback, a fast double-click firing exactly one provider request), deterministic balanced allocation (the task's own 30-examples/7-targets worked example, several other target-count tiers, and the REAL 8-verb bilingual selection's own outgoing prompt), coverage validation (a compliant reply renders every target; a reply covering only 2 of 7 requested lemmas is rejected, never silently accepted), a reflexive verb's compound form and an adjective's irregular before-vowel form surviving the allocation refactor with correct features/no tense controls, occurrence clicks staying exact and AI-call-free, Practice following Grammar's own validated source language rather than re-detecting a bilingual raw text, the collapsed Practice tab's ready/loading/error state and localized label, and a larger (8-lemma) session round-tripping through the same schema while a legacy/corrupt payload under the same storage key is still refused. |
 | `tests/pdf_hitbox_stateless_browser.py` | `selection.js`'s `selectWordAtPoint()` fix for a state-dependent PDF hitbox bug (user-reported): blank space near a word was correctly inert BEFORE that word was ever tapped, but after tapping it once (and even after closing its popup) the SAME blank spot — and a wide radius around it, since `pdfNearestSpan()` has no maximum search distance by design — reopened its translation popup, because the "already-highlighted word tapped again" fast path returned `.word-visited` matches with no distance check at all, unlike a fresh word (which always goes through `isPointInRects()`). Confirmed the asymmetry directly via `caretRangeAt()` before vs. after selecting the same word at the same blank point, and confirmed the fix by reverting it locally and re-running (one check fails without it). Uses `edge_words_pdf_bytes()` (one word hard against each page margin, one isolated lower on the page) and real touch dispatch (exercising the actual mobile tap path, including the popup's own document-level close listener) to check blank-space taps at several margins (5/10/20/40/300px) on left-edge, right-edge, and multiply-selected words, plus a direct `selectWordAtPoint()` call for the touchstart/pointerdown-level hit-test itself. |
 | `tests/browser_cdp.py` | Not a test suite itself — the shared minimal CDP client (`CDP`) and synthetic-PDF fixtures (`pdf_bytes`, `bilingual_pdf_bytes`, `edge_words_pdf_bytes`) other suites import. Its WebSocket frame reader was rewritten during Step 6 to reassemble fragmented frames (see below); a genuine bug, not the same thing as the CI-only Chrome-startup flake below. |
 
@@ -367,9 +368,9 @@ for the session mode; a verb lemma that is not an infinitive; unsafe text; a dup
 exact `start`/`end`; forms grids go through the shared `sanitizeGrammarForms`. The prompt (`buildPracticeReadingPrompt`)
 uses only the lemmas + the forms the learner met: **a selection that is itself a book exercise is never shown to the
 model**, so it cannot be imitated. A session stores its `mode` and `lemmas` (Retry/Regenerate rebuild the SAME kind
-of reading — `practiceContextFromSession`). Long structured replies get their own budget: `practice_reading` has an
-8000-token OpenAI profile and a 150s per-task timeout (`AI_TASK_TIMEOUT_MS` / `aiTaskTimeout`, used by all three
-providers; the default stays 45s). There are no exercises, hints, answer inputs, Check button, grading or pagination,
+of reading — `practiceContextFromSession`). Long structured replies get a SIZE-AWARE budget (`practiceOutputBudget`,
+below), never a flat constant; `practice_reading` gets a per-task 150s timeout ceiling for large requests
+(`AI_TASK_TIMEOUT_MS` / `aiTaskTimeout`, used by all three providers; the default stays 45s). There are no exercises, hints, answer inputs, Check button, grading or pagination,
 and **no renderer for the retired exercise worksheet exists**. Storage is versioned (`PRACTICE_SCHEMA_VERSION`): at
 startup `purgeLegacyPracticeStorage()` removes every `practice_*` entry that is not a valid, unexpired session of the
 current schema (the old worksheet's sessions used these very keys and `status:'ready'`), `loadPracticeSession` refuses
@@ -396,6 +397,82 @@ acceptance through the real UI (natural sentences, no blanks/hints/answers/gradi
 verb/adjective targets, exact occurrence incl. repeated forms with zero AI calls, Verbs/Adjectives isolation,
 Regenerate keeping mode+lemmas, legacy-storage purge, a real service-worker activation, all three provider paths,
 touch layout); the shared gold readings live in `tests/practice_fixtures.py`.
+
+## Grammar → Practice: the button, balanced multi-target allocation, and coverage
+
+**The bug**: after Grammar was fixed to detect every verb/adjective in a multi-word selection (see "Bilingual
+PDF selections" above), Practice did not keep up — three separate defects, each a smaller echo of the ORIGINAL
+"collapses to one lemma" bug, one layer downstream:
+1. `maybeShowPracticeButton` (`grammar-svo.js`) built its lemma list from every detected item of the current
+   mode, but `sanitizePracticeLemmas`'s `PRACTICE_MAX_LEMMAS` was a hard **5** — a Grammar analysis with more
+   than 5 verbs/adjectives (routine once the multi-verb fix shipped) silently lost the rest before Practice
+   ever saw them, not at the AI boundary but on the way INTO the prompt.
+2. The prompt asked for one flat "N examples per lemma" number (a 3-tier heuristic), with no per-target plan
+   and no validator check that a reply actually covered what was asked — a reply could clear the existing
+   global floors (`MIN_ITEMS`/`MIN_TARGETS`) while covering only one or two of many requested lemmas.
+3. The Practice button itself had no re-entrancy guard and gave no immediate feedback, so a fast double-click
+   (or simply not knowing whether the first click registered) could fire two provider requests.
+
+**Fix**, all in `js/practice-session.js` unless noted:
+- `PRACTICE_MAX_LEMMAS` raised **5 → 20**, matching `grammarItemBudget`'s own ceiling in `grammar-svo.js`:
+  Practice can now demonstrate every lemma a single Grammar analysis can ever produce. `MAX_SECTIONS`
+  (`validatePracticeReading`'s structural cap) follows it, `PRACTICE_MAX_LEMMAS + 4`, so a large lemma set
+  (one "examples" section per lemma + a few "story" sections) is never rejected purely for its section count.
+- **Deterministic allocation, computed BEFORE the request**: `practiceTotalExamples(itemCount)` derives a total
+  example count from a per-target base that tapers as the set grows (8 each for ≤2 lemmas, down to 3 each for
+  11+), capped at `PRACTICE_MAX_TOTAL_EXAMPLES` (72) so the request stays bounded regardless of lemma count;
+  `allocatePracticeExamples(itemCount, total)` then does a plain base+remainder split — `base = floor(total/
+  count)` for every target, and the FIRST `remainder` targets (in the SAME order the lemmas were supplied,
+  i.e. Grammar's own detected/tapped/focused-first order — see `maybeShowPracticeButton`) get one extra. E.g.
+  7 targets / 30 examples → base 4, remainder 2 → `[5,5,4,4,4,4,4]`. The prompt (`buildPracticeReadingPrompt`)
+  tells the model this EXACT per-target count (`- "voir": 5 example sentences`, one line per target) instead
+  of one flat number, and instructs it never to shift examples between targets or skip one. If Grammar (or a
+  caller) hands Practice more lemmas than `PRACTICE_MAX_LEMMAS`, the excess are dropped deterministically by
+  `sanitizePracticeLemmas` in the SAME supplied order — the same "keep first N, in order" policy `grammar-svo.js`
+  already uses for its own over-budget lemmas, documented rather than silent.
+- **Coverage validation** (`validatePracticeReading`): after building `targets`, if the caller passed
+  `expected.lemmas` (the exact requested list — wired from `generatePracticeReading`'s own `practiceReadingBudget`
+  computation, so it is always the SAME list the prompt was built from), every requested lemma missing from the
+  accepted targets is counted; a request of 1-3 lemmas must cover ALL of them, a larger one may omit up to a
+  third (`Math.floor(count/3)`), rounded down — enough tolerance for a model to reasonably skip a rare form,
+  never enough to let a reply collapse onto one or two lemmas while silently dropping the rest (the "A, A, A,
+  B" shape while C-G vanish, task's own illustrative case). A reply that fails this throws `'Invalid reading:
+  missing coverage for N of M requested words (...)'`, caught by the SAME retryable-error path as every other
+  structural failure (`practiceFailureReason` → `'insufficient_coverage'`), so mode/lemmas/sourceLanguage are
+  preserved for Retry exactly as for any other rejection (task section 14).
+- **Output budget scaled from the SAME allocation the prompt was built from**, mirroring `grammarProfile`'s own
+  scaling in `grammar-svo.js`: `practiceOutputBudget(totalItems) = clamp(4000..16000, 2000 + 200·totalItems)`,
+  `practiceTimeoutMs` picks the larger 150s ceiling only once the budget crosses 10000 tokens. `generatePracticeReading`
+  computes this once (`practiceReadingBudget`) and passes it as `{maxOutputTokens, timeoutMs}` to `callAI` — a
+  2-lemma request no longer pays for the same headroom an 8-lemma one needs, and a large one is no longer
+  silently capped below what its own allocation asks for.
+- **The button** (`maybeShowPracticeButton`, `grammar-svo.js`): before starting a new generation it checks
+  `getCurrentPracticeSession()?.status === 'generating'` — if one is already running, the click just re-shows
+  that session instead of firing a second provider request (a fast double-click is a no-op, not two requests).
+  On click it also immediately disables itself and swaps its label to the existing `generating` string,
+  restored in a `.finally()` regardless of outcome — visible feedback that does not depend on the Practice
+  panel elsewhere on screen having rendered yet.
+- **The collapsed Practice tab** (`#practice-restore`, `js/practice-worksheet.js`): `syncPracticeRestore` now
+  derives `practiceRestoreStatus()` from `getCurrentPracticeSession()` alone (never a second, independent flag)
+  and sets `.ready`/`.loading`/`.error` + `data-status` on the tab, reusing the SAME green/red convention as
+  the Grammar/Ask panel tabs (`.side-panel.ready/.loading .panel-tab` in `index.html`) with a minimal default
+  rule so the state is visible even before any richer styling exists — easy for other styling to override
+  since it is plain class + `data-status`, not inline style. The tab's own label (previously a hard-coded
+  `<span>Practice</span>`, never touched by a UI-language switch) now carries `data-i18n="practiceTabLabel"`
+  and is picked up by the existing global `applyI18n()` sweep like any other localized element; a language
+  switch relabels it without touching the session.
+
+**Verified**: `tests/practice_allocation_browser.py` (new, 9 sections) drives the real 8-verb bilingual selection
+from "Bilingual PDF selections" above through the real button, confirms all 8 (not a truncated 5) reach the
+prompt with a near-even allocation, that a severely under-covering reply is rejected while a compliant one
+renders every target, that a reflexive verb's compound form and an adjective's irregular before-vowel form
+survive the allocation refactor, that occurrence clicks stay exact and AI-call-free, that Practice follows
+Grammar's own validated source language rather than re-detecting a bilingual raw text, that idle/loading/
+ready/error are each distinctly visible on the collapsed tab with a localized label, and that a double-click
+never fires two provider requests. `tests/practice_reading_browser.py`, `practice_browser.py` and
+`bilingual_selection_browser.py` were updated where they asserted the OLD flat prompt wording, a fixed
+lemma-to-reading mapping the new coverage check correctly rejects, or the OLD fixed 8000-token/12-section
+bounds — each updated to the new, still-strict, size-aware equivalent, never loosened.
 
 ## The live-model AI contract (Grammar + Practice)
 

@@ -18,6 +18,67 @@ part of normal task startup.
 
 ## Current handoff
 
+### Grammar → Practice: button fix, balanced multi-target allocation, coverage validation (2026-09-22, branch `grammar-redesign`, PR #119 — NOT merged)
+
+Follow-up to the bilingual multi-verb fix directly below: once Grammar correctly detects every verb/adjective
+in a selection (up to 8, in the reported real case), Practice did not keep up. Reproduced live (real 8-verb
+bilingual selection, mocked-but-realistic provider) BEFORE any change, per the task's own requirement.
+
+**Three real defects found, all in the Grammar → Practice hand-off, none in Grammar itself:**
+1. `sanitizePracticeLemmas`'s `PRACTICE_MAX_LEMMAS` was a hard **5** — with the real 8-verb selection, only
+   `voir, comprendre, jouer, traverser, aller` ever reached the Practice prompt; `partir, se promener,
+   se retrouver` were silently dropped before the AI was even asked. The exact same class of bug as the
+   original "collapses to voir" report, one layer downstream, at N=5 instead of N=1.
+2. No deterministic allocation existed: the prompt asked for one flat "N examples per lemma" number (a
+   3-tier heuristic), and the validator only checked GLOBAL floors (`MIN_ITEMS`/`MIN_TARGETS`) — a reply
+   could pass while covering only one or two of many requested lemmas.
+3. The Practice button had no re-entrancy guard and no immediate visual feedback — a fast double-click (or
+   just not knowing whether the click registered) could fire two provider requests, confirmed live: with a
+   realistic ~500ms network delay, two rapid clicks produced two `practice_reading` calls before the fix.
+
+**Fix** (`js/practice-session.js`, `js/grammar-svo.js`, `js/practice-worksheet.js`, `js/core.js` — full detail
+in `ARCHITECTURE.md`'s new "Grammar → Practice" section): `PRACTICE_MAX_LEMMAS` raised 5→20 (matches Grammar's
+own `grammarItemBudget` ceiling — Practice can now demonstrate every lemma one Grammar analysis can ever
+produce); `MAX_SECTIONS` raised to match (`PRACTICE_MAX_LEMMAS + 4`) so a large lemma set is never rejected
+purely for its own section count; a deterministic base+remainder allocation (`allocatePracticeExamples`,
+documented order: the lemmas' own supplied order, focused-first) computed BEFORE the request and told to the
+model as an explicit per-target count, replacing the old flat number; a coverage check in
+`validatePracticeReading` (1-3 requested lemmas must ALL appear, a larger set may omit up to a third) that
+rejects the exact "A, A, A, B while C-G vanish" shape the task described, wired through the SAME retryable-error
+path as every other structural failure so mode/lemmas/sourceLanguage survive for Retry; the output token budget
+now scales from the SAME allocation (`practiceOutputBudget`/`practiceTimeoutMs`, mirroring `grammarProfile`'s
+own scaling) instead of one flat per-task constant; the button now guards against a generation already in
+flight (`getCurrentPracticeSession()?.status==='generating'`) and gives immediate disabled+"Generating…"
+feedback restored in a `.finally()`; the collapsed Practice tab (`#practice-restore`) now exposes
+ready/loading/error (`.ready`/`.loading`/`.error` + `data-status`, reusing the SAME green/red convention as the
+Grammar/Ask panel tabs) derived ONLY from the real session status, and its previously hard-coded English label
+now carries `data-i18n="practiceTabLabel"` so a UI-language switch relabels it without touching the session.
+
+**Verified, live, through the real UI** (mocked-but-realistic provider: reports exactly what was allocated,
+never invents coverage): all 8 verbs from the real reported selection now reach Practice and render, in a
+near-even allocation; the exact same allocation appears in the REAL outgoing prompt; a severely under-covering
+reply is rejected while a compliant one renders every target; a reflexive verb's compound form
+(`nous sommes promenés`) and an adjective's irregular before-vowel form (`bel`) survive with correct
+features/no tense controls; occurrence clicks stay exact with zero AI calls; a bilingual raw source with
+Grammar's OWN validated `sourceLanguage:'fr'` still produces a French Practice request (never redetects and
+flips to English merely because English words are present in the raw text — task section 10); idle/loading/
+ready/error are each distinctly visible on the collapsed tab; a UI-language switch relabels the tab without
+dropping the ready session; an 8-lemma session round-trips through the unchanged schema (`PRACTICE_SCHEMA_VERSION`
+stayed 2 — no migration needed, since only prompt construction/validation/budget changed, not the stored
+session shape) while a legacy-worksheet-schema or corrupt payload under the same storage key is still refused.
+
+**Negative controls**: each of the three production fixes (the lemma cap, the coverage check, the button
+guard) was confirmed to make its own matching assertion fail when reverted individually, then restored.
+
+Tests: new `tests/practice_allocation_browser.py` (9 sections, wired into CI). `tests/practice_reading_browser.py`,
+`tests/practice_browser.py` and `tests/bilingual_selection_browser.py` were updated where they asserted the OLD
+flat prompt wording, a canned reading the NEW coverage check correctly rejects for the lemma actually requested,
+or the OLD fixed 8000-token/12-section bounds — each brought to the new, still-strict, size-aware equivalent,
+never loosened (each update's necessity was confirmed live: the OLD assertion failed for a real, explainable
+reason tied to the new size-aware design, never adjusted to paper over an unexplained failure).
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment) — see the entry below for why.
+
 ### Bilingual multi-verb selection collapsed to one lemma ("voir" only) — root cause found and fixed (2026-09-21, branch `grammar-redesign`, PR #119 — NOT merged)
 
 Real report: dragging across a bilingual page (French `avoir`/`être` + participe présent table, French left
