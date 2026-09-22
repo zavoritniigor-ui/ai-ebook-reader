@@ -225,4 +225,77 @@ assert touch_cancel_res['touchTimerCleared'] is True, "Quick touch movement befo
 assert touch_cancel_res['touchSelecting'] is False, "Quick swipe must not trigger touchSelecting"
 print("PASS Quick swipe movement successfully cancels selection hold timer to preserve native scrolling")
 
-print("\n=== ALL BOUNDED SCHEDULER, QUICK WHEEL & TOUCH SELECTION TESTS PASSED ===")
+print("\n=== 4. TESTING THUMBNAILS AT TOP WHEN AT DISTANT PAGE (Task 4) ===")
+# Simulate sidebar opening when reading at page 50: pages 1..5 must be prioritized if visible
+thumb_top_check = c.js("""(() => {
+    state.currentIndex = 50;
+    const list = document.getElementById('pdf-thumb-list');
+    list.scrollTop = 0;
+    // Open sidebar
+    els.sidebar.classList.remove('collapsed');
+    const vis = getVisibleThumbCenterPage();
+    schedulePrefetchWindow(vis);
+    const qState = window.__pdfThumbQueueState();
+    const li1 = document.querySelector('.pdf-thumb-item[data-page="1"]');
+    const li2 = document.querySelector('.pdf-thumb-item[data-page="2"]');
+    return {
+        vis,
+        activeCenter: qState.activeCenter,
+        page1Queued: !!li1?.dataset.thumbQueued || !!li1?.querySelector('canvas'),
+        page2Queued: !!li2?.dataset.thumbQueued || !!li2?.querySelector('canvas'),
+        queueLen: qState.queueLength
+    };
+})()""")
+assert thumb_top_check['vis'] == 1, f"Visible page at scrollTop 0 must be 1, got {thumb_top_check['vis']}"
+assert thumb_top_check['page1Queued'] is True, "Page 1 thumbnail must be queued/rendered when visible at top"
+assert thumb_top_check['page2Queued'] is True, "Page 2 thumbnail must be queued/rendered when visible at top"
+print(f"PASS Top thumbnails 1-5 correctly queued/rendered when sidebar opened (activeCenter={thumb_top_check['activeCenter']}, queueLen={thumb_top_check['queueLen']})")
+
+print("\n=== 5. TESTING SPEECH TICKER ANIMATION (Task 6) ===")
+ticker_check = c.js("""(() => {
+    const orig = document.getElementById('tt-original');
+    orig.textContent = 'A very long sentence selected for reading that clearly overflows the tooltip container width';
+    els.tooltip.style.display = 'flex';
+    state.speakingSide = 'orig';
+    updateSpeakerIcons();
+    const isTickerActive = orig.classList.contains('speaking-ticker');
+    
+    // Stop speech
+    stopTooltipSpeech();
+    const isTickerStopped = !orig.classList.contains('speaking-ticker');
+    els.tooltip.style.display = 'none';
+    
+    return { isTickerActive, isTickerStopped };
+})()""")
+assert ticker_check['isTickerActive'] is True, "Speaking ticker class must be added when speakingSide is 'orig' and text overflows"
+assert ticker_check['isTickerStopped'] is True, "Speaking ticker class must be removed when speech stops"
+print("PASS Speech ticker animation dynamically activates on overflow and stops cleanly")
+
+print("\n=== 6. TESTING PDF PRINTING & TOFU-PROOF RASTERIZATION (Task 7) ===")
+print_check = c.js("""(() => {
+    // 1. Check @media print CSS rules
+    let textLayerHidden = false;
+    let canvasVisible = false;
+    for (const sheet of document.styleSheets) {
+        try {
+            for (const rule of sheet.cssRules) {
+                if (rule.media && rule.media.mediaText.includes('print')) {
+                    for (const inner of rule.cssRules) {
+                        if (inner.selectorText && inner.selectorText.includes('.pdf-text-layer')) {
+                            if (inner.style.display === 'none') textLayerHidden = true;
+                        }
+                        if (inner.selectorText && inner.selectorText.includes('.pdf-canvas')) {
+                            if (inner.style.display === 'block') canvasVisible = true;
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+    return { textLayerHidden, canvasVisible };
+})()""")
+assert print_check['textLayerHidden'] is True, "@media print must hide .pdf-text-layer with display: none !important"
+assert print_check['canvasVisible'] is True, "@media print must show .pdf-canvas with display: block !important"
+print("PASS @media print rules verify: .pdf-text-layer hidden (no tofu glyphs), .pdf-canvas rendered")
+
+print("\n=== ALL BOUNDED SCHEDULER, QUICK WHEEL, TOUCH SELECTION, THUMBNAIL & PRINT TESTS PASSED ===")

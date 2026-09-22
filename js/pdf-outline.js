@@ -390,6 +390,10 @@ function setPdfSidebarMode(mode) {
     document.getElementById('pdf-tab-outline').classList.toggle('active', mode === 'outline');
     document.getElementById('pdf-thumb-list').hidden = mode !== 'thumbnails';
     document.getElementById('pdf-outline-list').hidden = mode !== 'outline';
+    if (mode === 'thumbnails' && typeof schedulePrefetchWindow === 'function') {
+        const vis = typeof getVisibleThumbCenterPage === 'function' ? (getVisibleThumbCenterPage() || 1) : 1;
+        schedulePrefetchWindow(vis);
+    }
 }
 document.getElementById('pdf-tab-thumbs').onclick = () => setPdfSidebarMode('thumbnails');
 document.getElementById('pdf-tab-outline').onclick = () => setPdfSidebarMode('outline');

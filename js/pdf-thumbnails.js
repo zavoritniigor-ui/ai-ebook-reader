@@ -99,6 +99,13 @@ function getVisibleThumbCenterPage() {
 
 function onPdfThumbListScroll() {
     if (pdfThumbProgrammaticScroll) return;
+    const list = document.getElementById('pdf-thumb-list');
+    if (list && (list.scrollTop <= 20 || list.scrollTop + list.clientHeight >= list.scrollHeight - 20)) {
+        clearTimeout(pdfThumbScrollTimer);
+        pdfThumbFastScrolling = false;
+        schedulePrefetchWindow(getVisibleThumbCenterPage());
+        return;
+    }
     pdfThumbFastScrolling = true;
     clearTimeout(pdfThumbScrollTimer);
     pdfThumbScrollTimer = setTimeout(() => {
@@ -122,12 +129,19 @@ function schedulePrefetchWindow(centerPage) {
     const minPage = Math.max(1, center - PDF_THUMB_WINDOW_RADIUS);
     const maxPage = Math.min(state.totalPages, center + PDF_THUMB_WINDOW_RADIUS);
 
-    // 1. Purge stale tasks outside [minPage - 2, maxPage + 2]
+    // Visible thumbnails currently in DOM viewport
+    const visibleCenter = getVisibleThumbCenterPage() || 1;
+    const visMin = Math.max(1, visibleCenter - 4);
+    const visMax = Math.min(state.totalPages, visibleCenter + 4);
+
+    // 1. Purge stale tasks: keep tasks within predictive window OR visible viewport
     const validMin = Math.max(1, minPage - 2);
     const validMax = Math.min(state.totalPages, maxPage + 2);
     const keptQueue = [];
     for (const task of pdfThumbQueue) {
-        if (task.generation === pdfThumbGeneration && task.pageNum >= validMin && task.pageNum <= validMax) {
+        const inWindow = (task.pageNum >= validMin && task.pageNum <= validMax);
+        const inVisible = (task.pageNum >= visMin && task.pageNum <= visMax);
+        if (task.generation === pdfThumbGeneration && (inWindow || inVisible)) {
             keptQueue.push(task);
         } else {
             const li = pdfThumbItems[task.pageNum];
@@ -136,12 +150,18 @@ function schedulePrefetchWindow(centerPage) {
     }
     pdfThumbQueue = keptQueue;
 
-    // 2. Candidate pages ordered from center outwards: 0, 1, -1, 2, -2...
-    const candidatePages = [];
-    for (let p = minPage; p <= maxPage; p++) {
-        candidatePages.push(p);
-    }
-    candidatePages.sort((a, b) => Math.abs(a - center) - Math.abs(b - center));
+    // 2. Candidate pages: visible pages first, then predictive window outwards from center
+    const candidateSet = new Set();
+    for (let p = visMin; p <= visMax; p++) candidateSet.add(p);
+    for (let p = minPage; p <= maxPage; p++) candidateSet.add(p);
+    const candidatePages = Array.from(candidateSet);
+    candidatePages.sort((a, b) => {
+        const aVis = (a >= visMin && a <= visMax);
+        const bVis = (b >= visMin && b <= visMax);
+        if (aVis && !bVis) return -1;
+        if (!aVis && bVis) return 1;
+        return Math.abs(a - center) - Math.abs(b - center);
+    });
 
     // 3. Queue candidates or restore from LRU cache
     for (const p of candidatePages) {
@@ -168,11 +188,17 @@ function schedulePrefetchWindow(centerPage) {
         }
     }
 
-    // Prioritize tasks closest to center
-    pdfThumbQueue.sort((a, b) => Math.abs(a.pageNum - center) - Math.abs(b.pageNum - center));
+    // Prioritize visible tasks, then closest to center
+    pdfThumbQueue.sort((a, b) => {
+        const aVis = (a.pageNum >= visMin && a.pageNum <= visMax);
+        const bVis = (b.pageNum >= visMin && b.pageNum <= visMax);
+        if (aVis && !bVis) return -1;
+        if (!aVis && bVis) return 1;
+        return Math.abs(a.pageNum - center) - Math.abs(b.pageNum - center);
+    });
 
-    // Bound queue length to (2 * radius + 1)
-    const maxQueueLen = 2 * PDF_THUMB_WINDOW_RADIUS + 1;
+    // Bound queue length to (2 * radius + 10) to accommodate visible + predictive
+    const maxQueueLen = 2 * PDF_THUMB_WINDOW_RADIUS + 10;
     if (pdfThumbQueue.length > maxQueueLen) {
         const dropped = pdfThumbQueue.splice(maxQueueLen);
         for (const task of dropped) {
@@ -292,7 +318,19 @@ if (typeof els !== 'undefined' && els.sidebar) {
             if (m.attributeName === 'class') {
                 if (!els.sidebar.classList.contains('collapsed')) {
                     if (state.format === 'pdf' && (state.pdfDoc || pdfThumbDoc)) {
-                        schedulePrefetchWindow(state.currentIndex || 1);
+                        const visibleCenter = getVisibleThumbCenterPage() || 1;
+                        schedulePrefetchWindow(visibleCenter);
+                        if (state.currentIndex && state.currentIndex !== visibleCenter) {
+                            const active = pdfThumbItems[state.currentIndex];
+                            if (active) {
+                                pdfThumbProgrammaticScroll = true;
+                                active.scrollIntoView({ block: 'nearest' });
+                                setTimeout(() => {
+                                    pdfThumbProgrammaticScroll = false;
+                                    schedulePrefetchWindow(getVisibleThumbCenterPage() || state.currentIndex);
+                                }, PDF_THUMB_DEBOUNCE_MS + 60);
+                            }
+                        }
                     }
                 } else {
                     purgePdfThumbQueue();

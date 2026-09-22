@@ -916,8 +916,10 @@ const I18N = {
     page:           { uk: 'стор.',          en: 'p.',             fr: 'p.',             ru: 'стр.' },
     // Підказки (title)
     tMenu:          { uk: 'Показати / сховати меню', en: 'Show / hide menu', fr: 'Afficher / masquer le menu', ru: 'Показать / скрыть меню' },
+    tMainMenu:      { uk: 'Головне меню',   en: 'Main menu',      fr: 'Menu principal', ru: 'Главное меню' },
     tocIcon:        { uk: '☰', en: '☰', fr: '☰', ru: '☰' },
     tToc:           { uk: 'Зміст',          en: 'Contents',       fr: 'Sommaire',       ru: 'Содержание' },
+    tBookContents:  { uk: 'Зміст та ескізи книги', en: 'Book contents and thumbnails', fr: "Sommaire et miniatures du livre", ru: 'Содержание и эскизы книги' },
     tAiKey:         { uk: 'Ключ AI (Gemini / Groq)', en: 'AI key (Gemini / Groq)', fr: 'Clé IA (Gemini / Groq)', ru: 'Ключ AI (Gemini / Groq)' },
     tExitApp:       { uk: 'Вийти із застосунку',    en: 'Exit app',        fr: "Quitter l'application", ru: 'Выйти из приложения' },
     exitFallback:   { uk: 'Дані збережено. Застосунок можна закрити системною кнопкою або жестом.',

@@ -482,6 +482,8 @@ function updatePdfWorkspaceLayout(options = {}) {
             width: window.innerWidth, height: window.innerHeight
         };
         const ws = getReaderWorkspaceRect();
+        document.documentElement.style.setProperty('--ws-left', `${Math.round(ws.left)}px`);
+        document.documentElement.style.setProperty('--ws-width', `${Math.round(ws.width)}px`);
         const leftReserve = Math.max(0, Math.round(ws.left - mainRect.left));
         const rightReserve = Math.max(0, Math.round(mainRect.right - ws.right));
         const availWidth = Math.max(1, Math.round(ws.width));
@@ -538,7 +540,7 @@ function updatePdfWorkspaceLayout(options = {}) {
 const layoutPdfForPanels = updatePdfWorkspaceLayout;
 
 const pdfPanelObserver = new MutationObserver(() => updatePdfWorkspaceLayout());
-['grammar-panel', 'ask-panel', 'practice-panel'].forEach(id => {
+['sidebar', 'grammar-panel', 'ask-panel', 'practice-panel'].forEach(id => {
     const el = document.getElementById(id);
     if (el) pdfPanelObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-mode'] });
 });

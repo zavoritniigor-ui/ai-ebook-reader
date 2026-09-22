@@ -946,7 +946,13 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         const px = e.clientX, py = e.clientY;
         touchSelTimer = setTimeout(() => {
             if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) return;
-            const w = wordBoundsAt(px, py);
+            let w = wordBoundsAt(px, py);
+            if (!w && state.format === 'pdf') {
+                for (const dy of [-8, 8, -16, 16]) {
+                    w = wordBoundsAt(px, py + dy);
+                    if (w) break;
+                }
+            }
             if (!w) return;
             dragSel = w;
             dragMoved = true;                 // підсвітка з першого ж слова
@@ -985,7 +991,13 @@ els.mainArea.addEventListener('pointerdown', (e) => {
     }
 
     // Миша й перо: виділення починається одразу, поріг руху нижче.
-    const w = wordBoundsAt(e.clientX, e.clientY);
+    let w = wordBoundsAt(e.clientX, e.clientY);
+    if (!w && state.format === 'pdf') {
+        for (const dy of [-6, 6, -12, 12]) {
+            w = wordBoundsAt(e.clientX, e.clientY + dy);
+            if (w) break;
+        }
+    }
     if (!w) return;
     dragSel = w;
     e.preventDefault();               // глушимо системне виділення разом з його стрибками
@@ -1004,7 +1016,13 @@ els.mainArea.addEventListener('pointermove', (e) => {
         if (Math.abs(e.clientX - dragStartX) < 6 && Math.abs(e.clientY - dragStartY) < 6) return;
         dragMoved = true;
     }
-    const w = wordBoundsAt(e.clientX, e.clientY);
+    let w = wordBoundsAt(e.clientX, e.clientY);
+    if (!w && state.format === 'pdf' && dragSel) {
+        for (const dy of [-8, 8, -16, 16, -24, 24]) {
+            w = wordBoundsAt(e.clientX, e.clientY + dy);
+            if (w) break;
+        }
+    }
     if (!w) return;
     const r = rangeBetweenWords(dragSel, w);
     if (!r) return;

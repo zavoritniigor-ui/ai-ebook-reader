@@ -306,13 +306,15 @@ c.js("""(() => {
 })()""")
 settle(150)
 
-# Check thumbnail list has progressive background styling in all themes
+# Check thumbnail list and outline list have clean dark navy (#161a20) background in all themes
 for theme in ['light', 'dark', 'sepia']:
     c.js(f"document.body.dataset.theme = {theme!r}")
     settle(100)
-    bg = c.js("getComputedStyle(document.getElementById('pdf-thumb-list')).backgroundImage")
-    assert 'gradient' in bg or 'linear-gradient' in bg, f"Thumbnail list must have progressive gradient background in {theme} theme, got: {bg}"
-    print(f"PASS Thumbnail visual depth gradient verified for theme '{theme}': {bg[:50]}...")
+    bg_color = c.js("getComputedStyle(document.getElementById('pdf-thumb-list')).backgroundColor")
+    outline_bg = c.js("getComputedStyle(document.getElementById('pdf-outline-list')).backgroundColor")
+    assert 'rgb(22, 26, 32)' in bg_color or '#161a20' in bg_color, f"Thumbnail list must have clean #161a20 dark background in {theme} theme, got: {bg_color}"
+    assert 'rgb(22, 26, 32)' in outline_bg or '#161a20' in outline_bg, f"Outline list must have clean #161a20 dark background in {theme} theme, got: {outline_bg}"
+    print(f"PASS Thumbnail & outline dark background verified for theme '{theme}': thumb={bg_color}, outline={outline_bg}")
 
 # Reset to light theme
 c.js("document.body.dataset.theme = 'light'")
@@ -342,6 +344,60 @@ scroll_metrics = c.js("""(() => {
 assert scroll_metrics['atBottom'] is True, "Thumbnail list must scroll cleanly to the bottom"
 assert scroll_metrics['atTop'] is True, "Thumbnail list must scroll cleanly to the top"
 print("PASS Thumbnail list scrolls cleanly to bottom and top without obstruction")
+
+# ------------------------------------------------------------
+# VERIFY FLOATING FOOTER NAVIGATION PILL (Task 1)
+# ------------------------------------------------------------
+print("--- Testing Floating Footer Navigation Pill & Centering ---")
+footer_geom = c.js("""(() => {
+    const footer = document.getElementById('app-footer');
+    const group = document.querySelector('.footer-nav-group');
+    const ws = getReaderWorkspaceRect();
+    const fRect = footer.getBoundingClientRect();
+    const gRect = group.getBoundingClientRect();
+    const fStyle = getComputedStyle(footer);
+    const gStyle = getComputedStyle(group);
+    const wsCenter = (ws.left + ws.right) / 2;
+    const groupCenter = (gRect.left + gRect.right) / 2;
+    return {
+        footerPointerEvents: fStyle.pointerEvents,
+        groupPointerEvents: gStyle.pointerEvents,
+        footerBg: fStyle.backgroundColor,
+        groupBg: gStyle.backgroundColor,
+        borderRadius: gStyle.borderRadius,
+        centerDiff: Math.abs(groupCenter - wsCenter),
+        groupWidth: gRect.width,
+        windowWidth: window.innerWidth,
+        wsLeft: ws.left,
+        groupLeft: gRect.left
+    };
+})()""")
+assert footer_geom['footerPointerEvents'] == 'none', "Footer container must have pointer-events: none"
+assert footer_geom['groupPointerEvents'] == 'auto', "Navigation pill must have pointer-events: auto"
+assert 'rgba(0, 0, 0, 0)' in footer_geom['footerBg'] or 'transparent' in footer_geom['footerBg'], "Footer container must be transparent"
+assert footer_geom['centerDiff'] <= 4, f"Navigation pill must be centered within central workspace (diff: {footer_geom['centerDiff']:.2f}px)"
+assert footer_geom['groupWidth'] < footer_geom['windowWidth'] * 0.5, "Navigation pill must be a compact pill, not a full-width bar"
+print(f"PASS Floating footer navigation pill is compact and centered in workspace (diff: {footer_geom['centerDiff']:.2f}px)")
+
+# ------------------------------------------------------------
+# VERIFY TOP-LEFT CONTROLS DIFFERENTIATION (Task 2)
+# ------------------------------------------------------------
+print("--- Testing Top-Left Icon Differentiation ---")
+icons_data = c.js("""(() => {
+    const menu = document.getElementById('menu-handle');
+    const toc = document.getElementById('toggle-toc-desktop');
+    const tocSvg = toc.querySelector('svg');
+    return {
+        menuText: menu.textContent.trim(),
+        menuAria: menu.getAttribute('aria-label') || menu.title,
+        tocHasSvg: !!tocSvg,
+        tocSvgClass: tocSvg ? tocSvg.className.baseVal : '',
+        tocAria: toc.getAttribute('aria-label') || toc.title
+    };
+})()""")
+assert icons_data['menuText'] == '☰', f"menu-handle must keep ☰ icon, got: {icons_data['menuText']}"
+assert icons_data['tocHasSvg'] is True, "toggle-toc-desktop must use SVG book icon rather than hamburger text"
+print(f"PASS Top-left controls clearly differentiated: menu='{icons_data['menuText']}' ({icons_data['menuAria']}), toc=SVG ({icons_data['tocAria']})")
 
 # ------------------------------------------------------------
 # SCREENSHOT CAPTURES FOR ARTIFACTS & VERIFICATION

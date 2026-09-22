@@ -53,10 +53,11 @@
         header#app-header {
             position: fixed; top: 0; left: 0; width: 100%; min-height: 58px;
             background: var(--panel-bg); border-bottom: 1px solid var(--border-color);
-            padding: 8px 18px 8px 60px; z-index: 10000; box-shadow: 0 1px 0 rgba(var(--shadow-color),0.04), 0 6px 18px -12px rgba(var(--shadow-color),0.35);
+            padding: 8px 18px 8px 66px; z-index: 10000; box-shadow: 0 1px 0 rgba(var(--shadow-color),0.04), 0 6px 18px -12px rgba(var(--shadow-color),0.35);
             display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        #toggle-toc-desktop svg { display: block; pointer-events: none; flex-shrink: 0; }
         #menu-handle {
             position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left));
             width: 44px; height: 44px; border-radius: 50%; z-index: 10050;
@@ -200,10 +201,10 @@
             min-width: 0; text-overflow: ellipsis;
         }
 
-        .workspace { margin-top: 58px; height: calc(100vh - 58px - 50px); display: flex; flex: 1; overflow: hidden; position: relative; transition: margin-top 0.3s, height 0.3s; }
+        .workspace { margin-top: 58px; height: calc(100vh - 58px); display: flex; flex: 1; overflow: hidden; position: relative; transition: margin-top 0.3s, height 0.3s; }
 
         body.immersive-mode header#app-header { transform: translateY(-100%); }
-        body.immersive-mode footer#app-footer { transform: translateY(100%); }
+        body.immersive-mode footer#app-footer { transform: translateY(120%); }
         body.immersive-mode .workspace { margin-top: 0; height: 100vh; }
 
         nav { position: absolute; top: 0; left: 0; height: 100%; width: min(280px, 82vw); background: var(--panel-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; transition: transform 0.3s; z-index: 9999; box-shadow: 2px 0 15px rgba(0,0,0,0.15); }
@@ -220,11 +221,11 @@
            (book chapter TOC for epub/txt/doc) and #pdf-sidebar are mutually
            exclusive, toggled by body.pdf-mode — kept as separate DOM subtrees so
            neither system's behavior can leak into the other. */
-        #pdf-sidebar { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+        #pdf-sidebar { display: none; flex-direction: column; height: 100%; overflow: hidden; background: #161a20; }
         body.pdf-mode #toc-list { display: none; }
         body.pdf-mode #pdf-sidebar { display: flex; }
         body.pdf-mode nav#sidebar {
-            background: #1a1f26;
+            background: #161a20;
             border-right: 1px solid rgba(255, 255, 255, 0.08);
         }
         #pdf-sidebar-tabs {
@@ -240,16 +241,36 @@
         .pdf-sidebar-tab:disabled { opacity: .4; cursor: not-allowed; }
         .pdf-sidebar-list { list-style: none; margin: 0; padding: 10px; overflow-y: auto; flex: 1; }
 
-        /* Thumbnails sidebar visual depth — clean dark slate across all themes with progressive gradient */
+        /* Thumbnails & Contents sidebar clean dark navy (#161a20) across all themes */
         #pdf-thumb-list {
             padding: 12px 10px 24px;
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0.15) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.20) 100%), #1a1f26;
+            background: #161a20;
         }
-        [data-theme="dark"] #pdf-thumb-list {
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0.24) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.28) 100%), #1a1f26;
-        }
+        [data-theme="dark"] #pdf-thumb-list,
         [data-theme="sepia"] #pdf-thumb-list {
-            background: linear-gradient(90deg, rgba(74, 54, 26, 0.05) 0%, transparent 18%, transparent 82%, rgba(74, 54, 26, 0.07) 100%), #1a1f26;
+            background: #161a20;
+        }
+        #pdf-outline-list {
+            background: #161a20;
+            color: #c9d1d9;
+        }
+        #pdf-outline-list .pdf-outline-item {
+            color: #c9d1d9;
+            transition: background-color 0.15s, color 0.15s;
+        }
+        #pdf-outline-list .pdf-outline-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+        #pdf-outline-list .pdf-outline-item.disabled {
+            color: #6e7681;
+        }
+        #pdf-thumb-list::-webkit-scrollbar, #pdf-outline-list::-webkit-scrollbar { width: 8px; }
+        #pdf-thumb-list::-webkit-scrollbar-thumb, #pdf-outline-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.18); border-radius: 4px;
+        }
+        #pdf-thumb-list::-webkit-scrollbar-track, #pdf-outline-list::-webkit-scrollbar-track {
+            background: #161a20;
         }
 
         .pdf-thumb-item {
@@ -394,7 +415,30 @@
         .mode-translate .pdf-text-layer span,
         body.mode-translate-on .pdf-text-layer span { pointer-events: auto; cursor: text; }
 
-        footer#app-footer { position: fixed; bottom: 0; left: 0; width: 100%; height: 50px; background: var(--panel-bg); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; gap: 20px; z-index: 10000; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        footer#app-footer {
+            position: fixed; bottom: 14px; left: var(--ws-left, 0px); width: var(--ws-width, 100%);
+            height: auto; min-height: 0; background: transparent !important; border: none !important;
+            box-shadow: none !important; display: flex; align-items: center; justify-content: center;
+            z-index: 90; pointer-events: none;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.15s ease, width 0.15s ease;
+        }
+        .footer-nav-group {
+            display: inline-flex; align-items: center; gap: 12px; padding: 5px 16px;
+            background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 9999px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.1); pointer-events: auto;
+            backdrop-filter: blur(8px);
+        }
+        .footer-nav-group button {
+            height: 30px; padding: 0 12px; font-size: 13px; border-radius: 15px;
+            background: transparent; border: 1px solid transparent; color: var(--text-color);
+        }
+        .footer-nav-group button:hover {
+            background: var(--hover-color); border-color: var(--border-color);
+        }
+        .footer-nav-group span#progress-indicator {
+            font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-color);
+            font-weight: 500; white-space: nowrap; padding: 0 4px;
+        }
         /* Плаваюче керування читанням — напівпрозоре, поверх тексту, з'являється лише
            під час читання. Кружечок: пауза/продовження. Стрілки: попереднє/наступне
            речення (переносять підсвітку навіть на паузі, без озвучення). */
@@ -509,9 +553,9 @@
         }
         
         .tt-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
-        .tt-original-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-width: 0; }
-        .tt-original-wrapper { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1; min-width: 0; }
-        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; flex-shrink: 1; }
+        .tt-original-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; }
+        .tt-original-wrapper { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1 1 auto; min-width: 0; }
+        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 1; }
         .tt-header-tools { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .tt-replay-btn {
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff;
@@ -524,6 +568,19 @@
         #tt-svo-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(255,193,7,0.16); border-color: transparent; color: #ffc107; white-space: nowrap; flex-shrink: 0; }
         #tt-expand-btn:hover { background: rgba(16,163,127,0.28); }
         #tt-svo-btn:hover { background: rgba(255,193,7,0.28); }
+        @keyframes tt-ticker {
+            0%, 15% { transform: translateX(0); }
+            85%, 100% { transform: translateX(calc(-100% + var(--ticker-container-w, 140px))); }
+        }
+        .tt-original.speaking-ticker {
+            max-width: none !important;
+            text-overflow: clip !important;
+            display: inline-block;
+            animation: tt-ticker 6s linear infinite alternate;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .tt-original.speaking-ticker { animation: none !important; }
+        }
         /* Члени речення прямо в тексті: підмет / присудок / додаток */
         ::highlight(svo-subject) { background-color: rgba(13, 110, 253, 0.40); }
         ::highlight(svo-verb)    { background-color: rgba(255, 193, 7, 0.48); }
@@ -547,7 +604,7 @@
         .tt-ai-btn, .tt-ask-btn {
             border: none; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
             cursor: pointer; white-space: nowrap; flex: 1 1 50%; min-width: 0; text-align: center;
-            transition: filter .15s, transform .1s;
+            transition: filter .15s, transform .1s; flex-shrink: 0;
         }
         .tt-ai-btn { background: #10a37f; color: white; }
         .tt-ask-btn { background: #0dcaf0; color: #0b2226; }
@@ -917,6 +974,41 @@
             .onboarding-cue { animation: none; background-color: rgba(128,128,128,.24); }
             .mic-btn.recording { animation: none; }
         }
+        /* PDF Printing: clean high-res visual canvas, hidden text-layer to eliminate tofu glyphs */
+        @media print {
+            #app-header, #app-footer, #menu-handle, #quick-menu-dock, #sidebar, .side-panel,
+            #tts-controls, #footer-handle, #pdf-scrubber, #word-tooltip, .ink-layer, .pdf-link-layer,
+            .panel-tab {
+                display: none !important;
+            }
+            .pdf-text-layer {
+                display: none !important;
+            }
+            .workspace {
+                margin: 0 !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            #main-area, #reader-container {
+                padding: 0 !important;
+                overflow: visible !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                height: auto !important;
+            }
+            .pdf-page-wrapper {
+                page-break-after: always;
+                break-after: page;
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 auto !important;
+            }
+            .pdf-canvas {
+                display: block !important;
+                max-width: 100% !important;
+                height: auto !important;
+            }
+        }
     </style>
 </head>
 <body data-theme="light" inert>
@@ -924,7 +1016,7 @@
     <!-- Top/full menu toggle — independent of the bottom Quick Menu. Its own control,
          its own state (body.immersive-mode), unchanged since before the Quick Menu
          existed: tap opens/closes the header+footer toolbar. -->
-    <button type="button" id="menu-handle" data-i18n-title="wheelFull" aria-expanded="false">☰</button>
+    <button type="button" id="menu-handle" data-i18n-title="tMainMenu" aria-label="Головне меню" aria-expanded="false">☰</button>
     <!-- Bottom-center Quick Menu — a separate convenience control for thumb reach.
          #quick-menu-dock is a zero-size fixed anchor; every child is absolutely
          positioned from it, so nothing invisible ever blocks page turns. -->
@@ -938,7 +1030,7 @@
         <div class="header-controls" id="header-controls">
             <!-- FILE / BOOK -->
             <div class="toolbar-group">
-                <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tToc" data-i18n="tocIcon">☰</button>
+                <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tBookContents" aria-label="Зміст та ескізи книги"><svg class="book-nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></button>
                 <label class="btn" for="file-upload" data-i18n="open">📂 Відкрити</label>
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown">
             </div>
@@ -1147,9 +1239,11 @@
 
     <div id="footer-handle" data-i18n-title="tFooter"></div>
     <footer id="app-footer">
-        <button id="prev-btn" data-i18n="prev">◀ Назад</button>
-        <span id="progress-indicator" data-i18n="waiting">Очікування...</span>
-        <button id="next-btn" data-i18n="next">Вперед ▶</button>
+        <div class="footer-nav-group">
+            <button id="prev-btn" data-i18n="prev">◀ Назад</button>
+            <span id="progress-indicator" data-i18n="waiting">Очікування...</span>
+            <button id="next-btn" data-i18n="next">Вперед ▶</button>
+        </div>
     </footer>
 
     <div id="settings-modal" onclick="if (event.target === this) closeKeySettings()">
@@ -1183,7 +1277,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=73aaafbca80f"></script>
+    <script src="js/core.js?v=de0d4bc6d5a0"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1193,8 +1287,8 @@
         // вище вже завантажений і виконаний, тож тут виклик безпечний.
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
-    <script src="js/tts.js?v=d0219e4d74e8"></script>
-    <script src="js/selection.js?v=a54d3a7ebf4c"></script>
+    <script src="js/tts.js?v=2b0767f46384"></script>
+    <script src="js/selection.js?v=35d24d96cc90"></script>
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=35e62f613b99"></script>
     <script src="js/pdf-zoom-pan.js?v=2c524012b044"></script>
@@ -1207,13 +1301,13 @@
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
-    <script src="js/pdf-outline.js?v=54df75ee8ef2"></script>
-    <script src="js/pdf-thumbnails.js?v=dfea24fdb33d"></script>
-    <script src="js/pdf-continuous.js?v=3131f4c5c09a"></script>
+    <script src="js/pdf-outline.js?v=d6a27e5aaf93"></script>
+    <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
+    <script src="js/pdf-continuous.js?v=8fbdf84f174d"></script>
     <script src="js/pdf-render.js?v=f7f068dd2502"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=4be0c2aad933"></script>
+    <script src="js/quick-wheel.js?v=19327a0ecc88"></script>
     <script src="js/main.js?v=fd7d286bd077"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
