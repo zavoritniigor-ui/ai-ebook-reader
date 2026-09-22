@@ -107,7 +107,12 @@ def select_between(first_text, last_text, first_nth=0, last_nth=0):
     cell_pos(first_text, first_nth, scroll=True); time.sleep(0.5)
     a, b = cell_pos(first_text, first_nth), cell_pos(last_text, last_nth)
     drag({'x': a['l'] + 2, 'y': a['y']}, {'x': b['r'] - 2, 'y': b['y']})
-    c.wait("els.tooltip.style.display==='flex'", timeout=10); time.sleep(0.8)
+    # 25s, not the sibling suites' 10s: on GitHub's shared runner this file's FIRST drag (the largest one
+    # in the suite -- 16 spans across 2 columns, right after a fresh page reload) was observed to sometimes
+    # take longer than 10s to open the tooltip, reproducibly on CI but never locally (incl. under 6x CPU
+    # throttling) -- genuine runner contention, not a logic bug; a wider margin costs nothing when it
+    # resolves quickly, as it does locally.
+    c.wait("els.tooltip.style.display==='flex'", timeout=25); time.sleep(0.8)
 
 
 def press_grammar():
