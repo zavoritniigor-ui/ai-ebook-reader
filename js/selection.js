@@ -189,32 +189,31 @@ function isExerciseBlankContinuation(leftText, rightText) {
     const cue = /^([\s\S]*)\(([^()]{1,40})\)$/.exec(left);
     return !!cue && typeof isFrenchExerciseCue === 'function' && isFrenchExerciseCue(cue[2], cue[1]);
 }
-function pdfVisualGroup(layer, targetSpan) {
-    const spans = pdfTextSpans(layer);
-    if (!spans.length) return [];
-    const targetIdx = spans.indexOf(targetSpan);
-    if (targetIdx < 0) return spans;
+// Колонки визначаються у ДВА кроки, не за лівими межами окремих фрагментів
+// напряму: рядок часто розбитий на кілька фрагментів через зміну стилю ПОСЕРЕД
+// рядка (напівжирне "Premièrement," посеред речення тощо, як у навчальних
+// двомовних книгах) — такий фрагмент починається глибоко ВСЕРЕДИНІ рядка, і його
+// власна ліва межа нічого не каже про те, до якої колонки належить рядок. А
+// просте групування "спершу за Y" (без урахування X) теж не підходить: у
+// двомовній книзі рядок оригіналу й рядок перекладу зазвичай лежать РІВНО на
+// тій самій висоті (переклад надруковано навпроти, рядок у рядок) — тож звичайне
+// Y-групування об'єднало б обидві колонки в один "рядок".
+// Крок 1 — Y-СМУГИ: фрагменти на приблизно однаковій висоті (це можуть бути
+// фрагменти з ОБОХ колонок одразу, якщо рядки вирівняні один навпроти одного).
+// Крок 2 — усередині кожної Y-смуги фрагменти сортуються за X і розрізаються на
+// "сегменти" там, де проміжок між ПРАВИМ краєм одного фрагмента й ЛІВИМ краєм
+// наступного помітно більший за звичайний міжслівний — це і є межа колонок.
+// Фрагменти одного стильового розриву посеред рядка (з попереднім вони СТИКУються
+// впритул, без такого розриву) лишаються в ОДНОМУ сегменті, а не поділяються.
+// Лише СТАРТОВА X-позиція кожного такого сегмента (не кожного фрагмента) далі йде
+// в кластеризацію колонок — тому текст перед стильовим розривом більше не отруює
+// її випадковими серединними X-значеннями.
+// Спільне для pdfVisualGroup (одна колонка навколо тапнутого фрагмента) і
+// pdfPartitionColumns (УСІ колонки одразу — для виділення, що навмисно захоплює і
+// оригінал, і переклад): саме групування спільне, розрізняється лише те, що
+// повертається — одна колонка чи всі.
+function pdfComputeColumns(spans, layerWidth) {
     const rects = spans.map(s => s.getBoundingClientRect());
-    // Колонки визначаються у ДВА кроки, не за лівими межами окремих фрагментів
-    // напряму: рядок часто розбитий на кілька фрагментів через зміну стилю ПОСЕРЕД
-    // рядка (напівжирне "Premièrement," посеред речення тощо, як у навчальних
-    // двомовних книгах) — такий фрагмент починається глибоко ВСЕРЕДИНІ рядка, і його
-    // власна ліва межа нічого не каже про те, до якої колонки належить рядок. А
-    // просте групування "спершу за Y" (без урахування X) теж не підходить: у
-    // двомовній книзі рядок оригіналу й рядок перекладу зазвичай лежать РІВНО на
-    // тій самій висоті (переклад надруковано навпроти, рядок у рядок) — тож звичайне
-    // Y-групування об'єднало б обидві колонки в один "рядок".
-    // Крок 1 — Y-СМУГИ: фрагменти на приблизно однаковій висоті (це можуть бути
-    // фрагменти з ОБОХ колонок одразу, якщо рядки вирівняні один навпроти одного).
-    // Крок 2 — усередині кожної Y-смуги фрагменти сортуються за X і розрізаються на
-    // "сегменти" там, де проміжок між ПРАВИМ краєм одного фрагмента й ЛІВИМ краєм
-    // наступного помітно більший за звичайний міжслівний — це і є межа колонок.
-    // Фрагменти одного стильового розриву посеред рядка (з попереднім вони СТИКУються
-    // впритул, без такого розриву) лишаються в ОДНОМУ сегменті, а не поділяються.
-    // Лише СТАРТОВА X-позиція кожного такого сегмента (не кожного фрагмента) далі йде
-    // в кластеризацію колонок — тому текст перед стильовим розривом більше не отруює
-    // її випадковими серединними X-значеннями.
-    const layerWidth = layer.getBoundingClientRect().width || 1;
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const bands = [];
     for (const i of rects.map((_, idx) => idx).sort((a, b) => rects[a].top - rects[b].top)) {
@@ -252,6 +251,36 @@ function pdfVisualGroup(layer, targetSpan) {
     }
     const spanSeg = new Array(spans.length);
     segments.forEach((seg, si) => seg.indices.forEach(i => spanSeg[i] = si));
+    return { rects, segColumn, spanSeg, columnCount: segColumn.length ? Math.max(...segColumn) + 1 : 0 };
+}
+// Усі фрагменти (не лише один навколо тапнутого), згруповані по колонках — колонка
+// 0 лівіша, і так далі; кожна група — у справжньому порядку читання. Для звичайного
+// одноколонкового тексту завжди повертає РІВНО одну групу. Використовується для
+// виділення, що навмисно тягнеться через ОБИДВІ колонки двомовної сторінки: перш
+// ніж вирішувати, яка з них — мова вивчення, треба знати, де саме проходить межа.
+function pdfPartitionColumns(spans) {
+    if (!spans.length) return [];
+    const layer = spans[0].closest('.pdf-text-layer');
+    const layerWidth = (layer && layer.getBoundingClientRect().width) || 1;
+    const { rects, segColumn, spanSeg, columnCount } = pdfComputeColumns(spans, layerWidth);
+    const groups = Array.from({ length: columnCount }, () => ({ spans: [], rects: [] }));
+    spans.forEach((s, i) => { const g = groups[segColumn[spanSeg[i]]]; g.spans.push(s); g.rects.push(rects[i]); });
+    return groups.filter(g => g.spans.length).map(g => {
+        const order = g.spans.map((_, i) => i).sort((a, b) => {
+            const ra = g.rects[a], rb = g.rects[b];
+            if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+        return order.map(i => g.spans[i]);
+    });
+}
+function pdfVisualGroup(layer, targetSpan) {
+    const spans = pdfTextSpans(layer);
+    if (!spans.length) return [];
+    const targetIdx = spans.indexOf(targetSpan);
+    if (targetIdx < 0) return spans;
+    const layerWidth = layer.getBoundingClientRect().width || 1;
+    const { rects, segColumn, spanSeg } = pdfComputeColumns(spans, layerWidth);
     const targetColumn = segColumn[spanSeg[targetIdx]];
     const sameColumn = [];
     const sameColumnRects = [];
@@ -295,7 +324,11 @@ function pdfSpansContinueWord(prev, next) {
     const gap = b.left - a.right;
     return gap <= h * PDF_SPAN_JOIN_GAP && gap >= -h * 0.6;       // continues the run (a little overlap is normal); not a big backwards jump
 }
-function buildSentenceRangesFromSpans(spans) {
+// Плоский потік символів набору фрагментів PDF, з роздільником там, де його не
+// вистачає в тексті (див. pdfSpansContinueWord) — спільне для buildSentenceRangesFromSpans
+// (ділить далі на речення) і pdfSpansToText (просто зшиває — для виділення, що
+// свідомо охоплює кілька колонок і не є одним "реченням").
+function pdfSpansToChars(spans) {
     const chars = [];
     for (let s = 0; s < spans.length; s++) {
         const span = spans[s];
@@ -309,6 +342,15 @@ function buildSentenceRangesFromSpans(spans) {
         // CONTINUES this one's word (see pdfSpansContinueWord).
         if (chars.length && !/\s/.test(chars.at(-1).ch) && !pdfSpansContinueWord(span, spans[s + 1])) chars.push({ ...chars.at(-1), ch: ' ', separator: true });
     }
+    return chars;
+}
+// Просто зшитий текст набору фрагментів — без розбиття на речення (звичайне
+// протягування мишею через кілька колонок не є "одним реченням").
+function pdfSpansToText(spans) {
+    return pdfSpansToChars(spans).map(c => c.ch).join('').trim();
+}
+function buildSentenceRangesFromSpans(spans) {
+    const chars = pdfSpansToChars(spans);
     const sentences = [];
     let buffer = '', startNode = null, startOffset = 0, nodes = [], pieces = [];
     for (let k = 0; k < chars.length; k++) {
@@ -337,6 +379,39 @@ function buildSentenceRangesFromSpans(spans) {
         }
     }
     return sentences;
+}
+// Plain text of an ARBITRARY PDF Range (a mouse drag, not built from whole spans like
+// pdfVisualGroup's group): clips partial start/end nodes correctly, and inserts a
+// separator wherever pdfSpansContinueWord says the next item is NOT a continuation of the
+// same word -- the same rule that already fixed the sentence/tap paths, now applied to a
+// raw drag range too, since a bare Range.toString() over a PDF text layer has NO
+// separator between items AT ALL (real page: a rectangle dragged across a bilingual
+// table's rows used to read "...having seenayant compris having understood...").
+function pdfRangeText(range) {
+    const root = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+        ? range.commonAncestorContainer : range.commonAncestorContainer.parentNode;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(n) { return n.nodeValue && range.intersectsNode(n) && !n.parentElement?.closest('.markedContent') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; }
+    });
+    let text = '', prevSpan = null, n;
+    while (n = walker.nextNode()) {
+        const from = (n === range.startContainer) ? range.startOffset : 0;
+        const to = (n === range.endContainer) ? range.endOffset : n.nodeValue.length;
+        if (to <= from) continue;
+        const span = n.parentElement?.closest('span') || null;
+        if (text && !/\s$/.test(text) && !pdfSpansContinueWord(prevSpan, span)) text += ' ';
+        text += n.nodeValue.slice(from, to);
+        prevSpan = span || prevSpan;
+    }
+    return text.trim();
+}
+// Every PDF text-layer span the range touches, for column partitioning (pdfPartitionColumns) --
+// whole-span granularity is enough there (a column decision is never made mid-word).
+function pdfRangeSpans(range) {
+    const startEl = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+    const layer = startEl && startEl.closest && startEl.closest('.pdf-text-layer');
+    if (!layer) return [];
+    return pdfTextSpans(layer).filter(s => range.intersectsNode(s));
 }
 function sentenceRangeAt(clientX, clientY) {
     const caret = anchorCaret(clientX, clientY);
@@ -781,8 +856,36 @@ els.mainArea.addEventListener('pointerup', (e) => {
     // Протягування не відбулось (кінець там само, де початок) — лишаємо звичайному
     // обробнику кліку, щоб слово опрацювалось як тап зі словниковою статтею.
     if (!r) return;
-    const text = r.toString().trim();
+    // A plain Range.toString() over a PDF text layer has NO separator between items at
+    // all (see pdfRangeText) -- unlike reflowable formats, where the source markup's own
+    // whitespace text nodes are already part of the DOM the Range walks.
+    const text = (state.format === 'pdf' ? pdfRangeText(r) : r.toString()).trim();
     if (!text) return;
+    // A rectangle deliberately dragged across a BILINGUAL page's original-language column
+    // AND its translation column (e.g. a French textbook's parallel English gloss) must
+    // still send only the STUDY language to Grammar -- the translation must never become
+    // "French" grammar material. Detected geometrically (the same column-clustering
+    // pdfVisualGroup already uses to keep a tap's OWN column isolated), not by scanning
+    // word-by-word for foreign vocabulary: a bilingual table's participle forms ("ayant
+    // vu", "étant parti"...) mostly carry no individual lexical signal of their own, so a
+    // purely lexical split would misjudge them; geometry never does. One-shot: read and
+    // cleared by handleWordOrSelection, so it can never leak into an unrelated later tap.
+    // A single column (the overwhelming majority of selections) leaves this null, i.e. no
+    // change from the plain `text` above -- this never affects a one-column selection, and
+    // it purposefully does not touch translation/tooltip display (see HANDOFF.md).
+    state.lastGrammarSourceText = null;
+    if (state.format === 'pdf') {
+        try {
+            const columns = pdfPartitionColumns(pdfRangeSpans(r));
+            if (columns.length > 1) {
+                const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
+                const byLang = columns.map(spans => pdfSpansToText(spans)).filter(Boolean)
+                    .map(colText => ({ text: colText, lang: (typeof detectLang === 'function' ? String(detectLang(colText) || '') : '').slice(0, 2).toLowerCase() }))
+                    .filter(c => c.lang === studyLang);
+                if (byLang.length === 1) state.lastGrammarSourceText = byLang[0].text;
+            }
+        } catch (err) { /* isolation is a best-effort refinement; the raw selection above always still works */ }
+    }
     // Capture source occurrence IDs while the drag Range still references the
     // untouched reader text layer.
     const helpContext = recordHelpForSpan(r, 'phrase_translation');

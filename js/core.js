@@ -672,6 +672,10 @@ const state = {
     uiLang: storedLanguage('reader_ui_lang', 'uk'),
     speakSide: readStored('reader_speak_side') || 'original',
     lastGrammarSentence: '', lastAskParagraph: '', docChapters: null,
+    // One-shot: set only by a PDF drag that spans a bilingual page's two columns, consumed (and
+    // cleared) by the very next handleWordOrSelection so it can never leak into a later tap — see
+    // js/selection.js's pointerup handler and js/translation.js's ttAiBtn.onclick.
+    lastGrammarSourceText: null,
     refinedKeys: new Set(),
     sourceLang: 'en-US', ctxSentence: '',
     ink: {}, inkMode: false, inkErase: false, inkColor: '#1a56db',
@@ -1048,6 +1052,7 @@ const I18N = {
     aiTruncated:            { uk: 'Відповідь AI обірвалась через обмеження довжини. Виділіть менше тексту й спробуйте ще раз.', en: 'The AI reply was cut off. Select less text and try again.', fr: 'La réponse IA a été coupée. Sélectionnez moins de texte et réessayez.', ru: 'Ответ AI оборвался из-за ограничения длины. Выделите меньше текста и повторите.' },
     grammarPartial:         { uk: 'Неповний розбір: відповідь AI обірвалась. Виділіть менше тексту для повного розбору.', en: 'Partial analysis: the AI reply was cut off. Select less text for a complete analysis.', fr: 'Analyse partielle : la réponse IA a été coupée. Sélectionnez moins de texte pour une analyse complète.', ru: 'Неполный разбор: ответ AI оборвался. Выделите меньше текста для полного разбора.' },
     grammarTrimmed:         { uk: 'Проаналізовано перші {n} із {m} речень виділення.', en: 'Analysed the first {n} of {m} sentences of the selection.', fr: 'Les {n} premières phrases sur {m} de la sélection ont été analysées.', ru: 'Проанализированы первые {n} из {m} предложений выделения.' },
+    grammarBudgetLimited:   { uk: 'Показано перші {n} із {m} знайдених форм у цьому виділенні.', en: 'Showing the first {n} of {m} forms found in this selection.', fr: 'Affichage des {n} premières formes sur {m} trouvées dans cette sélection.', ru: 'Показаны первые {n} из {m} найденных форм в этом выделении.' },
     grammarNoUsableForms:   { uk: 'Відповідь AI не містила придатних форм. Спробуйте ще раз.', en: 'The AI reply contained no usable forms. Please try again.', fr: 'La réponse IA ne contenait aucune forme exploitable. Réessayez.', ru: 'Ответ AI не содержал пригодных форм. Попробуйте ещё раз.' },
     retry:                   { uk: 'Повторити', en: 'Retry', fr: 'Réessayer', ru: 'Повторить' },
 };

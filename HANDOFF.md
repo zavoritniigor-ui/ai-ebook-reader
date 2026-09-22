@@ -18,6 +18,62 @@ part of normal task startup.
 
 ## Current handoff
 
+### Bilingual multi-verb selection collapsed to one lemma ("voir" only) — root cause found and fixed (2026-09-21, branch `grammar-redesign`, PR #119 — NOT merged)
+
+Real report: dragging across a bilingual page (French `avoir`/`être` + participe présent table, French left
+column + English translation right column — e.g. physical page 349 of "Complete French All-in-One": `ayant
+vu`/`having seen`, `ayant compris`/`having understood`, ... 8 rows) rendered ONLY `voir` in Grammar.
+
+**Root cause, reproduced with a purpose-built bilingual PDF fixture (`tests/browser_cdp.py`'s
+`verb_table_pdf_bytes`) before any fix, with only the provider call recorded** (never assumed): a PDF
+drag-selection's `Range.toString()` has NO separator between text items AT ALL — unlike the sentence/tap
+paths (already fixed for this in an earlier commit) — so the raw selection read
+`"ayant vu having seenayant compris having understood..."`; the whole-word validator then rightly rejected
+every French form with a letter glued to its left (`surface_not_in_text`), and only the very FIRST item in
+the drag (nothing precedes it) survived. Confirmed at every pipeline stage: selection extraction (fused),
+Grammar request (fused), validation (7 of 8 rejected), rendering (1 card) — never the model's fault.
+
+**Fix, `js/selection.js`'s drag-commit handler:**
+1. `pdfRangeText(range)`: the same "join only if it's a genuine word-continuation" rule
+   (`pdfSpansContinueWord`, from the earlier PDF-word-split fix) now also covers a raw drag range.
+2. `pdfPartitionColumns`/`pdfComputeColumns` (the column-clustering shared with `pdfVisualGroup`, refactored
+   out rather than duplicated): when the drag's own spans partition into MORE than one geometric column, each
+   column's own text is classified with the existing `detectLang`, and the one matching the book's persisted
+   `pageLang()` becomes `state.lastGrammarSourceText` — a ONE-SHOT value consumed by `js/translation.js`'s
+   `handleWordOrSelection` for the Grammar button only (the translation popup still sees the full raw
+   selection, unchanged). Geometry-based, not lexical: many of the real forms here ("ayant vu", "étant
+   parti"...) have no individual FR/EN dictionary signal of their own — a lexical re-split of the flattened
+   text was tried and found to flip the WHOLE selection's detected language rather than just fail to split
+   it (documented in `ARCHITECTURE.md`'s new "Bilingual PDF selections" section; not committed).
+3. `js/grammar-svo.js` needed NO changes: once `contextText` arrives already isolated, its existing
+   budget/bounding/validation treats it like any other selection.
+
+Also added: a visible note (`grammarBudgetLimited`, `js/core.js`) when a selection has more valid verbs than
+`grammarItemBudget` — previously only truncation/trimming were announced; being over budget was silent.
+
+**Verified, all through the real UI (drag/click/tap), for BOTH PDF content-stream orders (rows-interleaved
+and columns-major — column detection is geometry-based, so both work identically):** all 8 French verbs
+survive request → validation → rendering, unfocused; the Grammar request contains no English; an all-English
+or all-French selection alone still resolves as itself; a single-word tap is completely unaffected (one
+focused occurrence); a sentence/paragraph with several verbs yields several unfocused items; an
+over-budget selection is deterministic (same 14 of 16 kept every run) with a visible note; clicking an
+already-analysed card or a Practice target makes zero further AI calls; the translation request for the
+same drag is properly spaced (no fusion) but is still one combined fragment (documented limitation, not
+fixed here — translation was not made column-aware).
+
+**Negative controls**: each of the three production changes (no `pdfRangeText`; column isolation disabled;
+`translation.js` ignoring the isolated override) was reverted individually and shown to fail the exact
+matching assertion, then restored byte-identical.
+
+Tests: new `tests/bilingual_selection_browser.py` (17 checks, wired into CI). Directly-affected + required
+suites all pass locally (grammar_french 128, grammar_redesign 73, grammar_language_isolation 16,
+practice_reading 65, practice_browser 43, practice_workspace 30, ask_ai_language 9, ai_providers 61,
+language_paren 24, language_context 17, learning_stats_languages_grammar 30, learning_ux 60, migration_audit
+35, ai_contract 73, pdf_bilingual_columns 22, pdf_sentence_reselect 13, pdf_hitbox_stateless 17,
+pdf_word_click all pass). Syntax gate (27 files), app-shell versions, CI suite coverage (36 suites) pass.
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment).
+
 ### Live-AI acceptance FAILED → real-model contract hardened (2026-09-20, branch `grammar-redesign`, PR #119 — NOT merged)
 
 A live acceptance run (preview `98f4b680.ai-ebook-reader.pages.dev`, real French PDF, HVAC page "PRÉPARER LES TRAVAUX / Établi un diagnostic du travail à effectuer / Observation visuelle et olfactive... / Mettre en place les mesures pour effectuer le travail / Appliquer les mesures sécuritaires…") entered French **Verbes** but showed "Відповідь AI некоректна або неповна". Every mocked test had passed because every mock was an ideal reply.
