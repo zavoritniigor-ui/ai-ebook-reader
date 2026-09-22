@@ -18,46 +18,54 @@ part of normal task startup.
 
 ## Current handoff
 
-### PDF Central Workspace, Bilingual Selection & Quick Wheel (2026-09-22, branch `feature/pdf-workspace-layout`, base `grammar-redesign` @ `531a492`)
+### PDF Central Workspace, Floating Navigation Pill & Usability Fixes (2026-09-22, branch `feature/pdf-workspace-layout`, commit `dddeb327fb58cd5be37aa520b2c400aa2252cd3d`)
 
-Worktree `/home/igor/Projects/AI-Ebook-Reader-PDFLayout`, branch `feature/pdf-workspace-layout`.
-**Concurrency boundary strictly preserved:** Zero edits to `js/grammar-svo.js` or Claude's active linguistic/grammar analysis. DO NOT MERGE PR #119.
+Worktree `/home/igor/Projects/AI-Ebook-Reader-PDFLayout`, branch `feature/pdf-workspace-layout`, PR #122.
+**Concurrency boundary strictly preserved:** Zero edits to `js/grammar-svo.js` or Claude's active linguistic/grammar analysis. DO NOT MERGE PR #119 or PR #122.
 
 Done:
-1. **Mathematical Central Workspace Bounds & Panel Overlay Fix**:
-   - `js/pdf-continuous.js` dynamic bounding via `getReaderWorkspaceRect()`, responsive centering without blank right strips across States A-I.
-   - Side panels maintain strict overlay behavior: zero flex/grid width impact when collapsed.
-2. **Left Thumbnail Sidebar Clean Dark Slate Look & Bounded Predictive Scheduler**:
-   - Styled `nav#sidebar` and `#pdf-thumb-list` with clean dark slate `#1a1f26` across Light, Dark, and Sepia themes with crisp white thumbnails (`#ffffff`) and drop shadows.
-   - Replaced naive unbounded FIFO queue in `js/pdf-thumbnails.js` with bounded predictive scheduler:
-     - Moving prefetch window `[currentIndex - 10 ... currentIndex + 10]` (max 21 items).
-     - Prioritizes thumbnails closest to active center outwards.
-     - Fast-scroll debouncing (100ms) with placeholders.
-     - Stale offscreen task purging on reader navigation/jumps (e.g. page 1 -> 50) and `delete li.dataset.thumbQueued`.
-     - LRU canvas cache (`pdfThumbCache`, up to 80 canvases) for instantaneous restore without re-rasterization.
-     - Instrumentation exposed on `window.__pdfThumbQueueState()`.
-3. **Live Bilingual Drag Highlighting & Native Selection Suppression**:
-   - In `js/selection.js`, dynamically partition `range._pdfPieces` during `pointermove` and `pointerdown` to pass only target column ranges to `CSS.highlights.set('word-selection', new Highlight(...pieceRanges))`.
-   - Live drag visually paints ONLY the active column (French or English), eliminating all opposite-column highlighting during active drag and upon release.
-   - Suppressed native multi-column selection via `window.getSelection()?.removeAllRanges()`.
-4. **Touch Hold-to-Select & Drag Extension on PDF**:
-   - Removed blanket touch rejection on PDF in `js/selection.js`.
-   - Preserved 380ms hold timer to distinguish intentional selection from scrolling/panning; quick swipe (<380ms or movement >10px) cancels hold timer and preserves smooth native panning.
-5. **Quick Wheel Responsive Layout & Action Controls**:
-   - Refactored `.tt-header` in `index.html` to separate `.tt-original-row` (with original text and audio/expand/svo tools) from a dedicated, full-width `.tt-actions` row (`#tt-ask-btn` and `#tt-ai-btn` with `flex: 1 1 50%`).
-   - Compact localized count ("X слів виділено" in uk, "X words selected" in en, "X mots sélectionnés" in fr) activated when selection is $>2$ words, $>24$ chars, or overflows available width.
-   - Full text preserved in `title` and `aria-label`.
-   - Verified responsive sizing down to 390px and 320px mobile viewports without crowding or offscreen clipping.
-6. **Automated Verification Suites**:
-   - `tests/pdf_thumbnails_browser.py` -> 100% PASS (bounded queue, jump purging, fast-scroll debounce, 320/390px responsive controls, touch hold-and-drag).
-   - `tests/bilingual_selection_browser.py` -> 100% PASS (all sections, both stream orders).
-   - `tests/pdf_workspace_browser.py` -> 100% PASS (all 12 states + visual depth).
-   - `tests/practice_workspace_browser.py` -> 100% PASS (30/30 checks).
-   - `tests/ci_suite_coverage.py` & `tests/app_shell_versions.py` -> 100% PASS.
-   - All JS files pass `node --check` syntax gate.
+1. **Task 1 — Bottom PDF Floating Navigation Pill**:
+   - Replaced full-width bottom background bar with a compact, floating navigation pill (`◀ Previous page X/Y Next ▶`).
+   - `#app-footer` styled with `background: transparent !important`, `height: auto`, `min-height: 0`, and `pointer-events: none` so it never consumes layout height or blocks clicks to thumbnails at the bottom of `#pdf-thumb-list`.
+   - `.footer-nav-group` styled as a rounded pill (`border-radius: 9999px; backdrop-filter: blur(8px); background: var(--panel-bg); box-shadow: 0 4px 16px rgba(0,0,0,0.18)`), with `pointer-events: auto`.
+   - Centered strictly within the active reading workspace via CSS variables `--ws-left` and `--ws-width` updated dynamically in `js/pdf-continuous.js` on every panel/sidebar toggle.
+   - `.workspace` height expanded to `calc(100vh - 58px)` to maximize vertical reading area.
+2. **Task 2 — Top-Left Controls Differentiation**:
+   - `#menu-handle` preserved as the hamburger icon (`☰`) with updated localized tooltip and `aria-label` ("Main menu" / "Головне меню", `data-i18n-title="tMainMenu"`).
+   - `#toggle-toc-desktop` updated to use a clean SVG open-book icon (`<svg class="book-nav-icon" ...>`) with localized label ("Book contents and thumbnails" / "Зміст та ескізи книги", `data-i18n-title="tBookContents"`).
+   - Added spacing in `#app-header` (`padding: 8px 18px 8px 66px`) for visual clearance between buttons.
+   - Added `tMainMenu` and `tBookContents` translations across languages in `I18N` in `js/core.js`.
+3. **Task 3 — Thumbnail Sidebar Background & Outline Styling**:
+   - Styled `#pdf-sidebar`, `#pdf-thumb-list`, and `#pdf-outline-list` with clean solid dark neutral `#161a20` across Light, Dark, and Sepia themes without excessive gradients or washed-out backgrounds.
+   - Outline list (`#pdf-outline-list`) styled with high-contrast text (`color: #c9d1d9`), subtle hover (`background: rgba(255, 255, 255, 0.08); color: #ffffff`), and clean scrollbar.
+4. **Task 4 — Thumbnail Loading & Missing First Pages**:
+   - In `js/pdf-thumbnails.js`, fixed the root cause where opening a book at page 300+ left pages 1–5 blank:
+     - `schedulePrefetchWindow()` now preserves tasks in the visible DOM viewport (`visMin..visMax`) in addition to the predictive center window.
+     - Visible page tasks are prioritized first in candidate sorting and queue execution.
+     - `sidebarObserver` triggers `schedulePrefetchWindow(visibleCenter)` and syncs the active page on uncollapse.
+     - Rapid scroll boundary check (`list.scrollTop <= 20`) immediately schedules page 1 without debounce delay.
+     - In `js/pdf-outline.js`, tab switching to thumbnails immediately schedules visible thumbnails.
+5. **Task 5 — PDF Bilingual Column Selection & Drag Extension**:
+   - In `js/selection.js`, added vertical probing (±8px, ±16px, ±24px) in `pointerdown` and `pointermove` to bridge inter-line line spacing in continuous PDF without aborting touch/drag range extension.
+   - Preserved column isolation and live highlight partitioning in `resolveCanonicalPdfSelection`.
+6. **Task 6 — Quick Wheel Header & Speech Ticker Animation**:
+   - Ensured bounded header viewport in `.tt-header` (`.tt-original-wrapper` has `flex: 1 1 auto; min-width: 0; overflow: hidden;`).
+   - Action buttons and header tools have `flex-shrink: 0;` so long selections never squish controls.
+   - Added dynamic reading-follow ticker animation (`@keyframes tt-ticker`) when speech is active on `#tt-original` (`state.speakingSide === 'orig'`), respecting `prefers-reduced-motion: reduce`.
+7. **Task 7 — PDF Printing (Tofu/Square Glyphs Fix)**:
+   - Added comprehensive `@media print` rules in `index.html` hiding UI chrome and `.pdf-text-layer` (`display: none !important;`) while showing `.pdf-canvas` (`display: block !important;`).
+   - In `js/quick-wheel.js` `printCurrentReaderPage()`, converted the rendered PDF page canvas and ink overlay into a raster `<img>` tag with PNG Data URL, completely eliminating un-embedded font and tofu glyph issues.
+8. **Automated Verification**:
+   - `tests/pdf_workspace_browser.py` -> 100% PASS (floating pill centering, top-left icons, dark sidebar depth across themes).
+   - `tests/pdf_thumbnails_browser.py` -> 100% PASS (all 6 sections: bounded scheduler, jump purging, responsive controls, touch hold, distant page thumbnail loading, speech ticker, print rasterization).
+   - `tests/bilingual_selection_browser.py` -> 100% PASS.
+   - `tests/pdf_bilingual_columns_browser.py` -> 100% PASS.
+   - `tests/quick_wheel_browser.py` -> 100% PASS.
+   - `tests/learning_ux_browser.py` -> 100% PASS.
+   - Mandatory syntax checks (`node --check js/*.js sw.js archive-guard.worker.js`) and app-shell versions (`python3 tools/version_app_shell.py && python3 tests/app_shell_versions.py`) -> 100% PASS.
 
 Next action:
-- Commit changes on `feature/pdf-workspace-layout`.
+- Await user review / approval on PR #122. Do NOT merge to main.
 - Push to `origin/feature/pdf-workspace-layout`.
 - Provide exact Cloudflare Pages preview URL for user acceptance testing.
 - DO NOT MERGE to `main` or PR #119.
