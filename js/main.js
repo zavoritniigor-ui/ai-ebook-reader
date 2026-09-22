@@ -148,12 +148,14 @@ async function openBookFile(file) {
     if (typeof resetPdfPageLabels === 'function') resetPdfPageLabels();
     state.bookTextOffset = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
-    state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = '';
-    state.activeVerb = null; state.verbs = []; state.inkMode = false;
+    state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = ''; state.lastGrammarSourceText = null;
+    state.inkMode = false;
     document.body.classList.remove('ink-mode', 'region-mode', 'pdf-pannable', 'pdf-dragging');
     els.askPanel.classList.remove('loading', 'ready'); els.grammarPanel.classList.remove('loading', 'ready');
     els.askContent.textContent = t('askHint'); els.grammarContent.textContent = t('grammarHint');
-    document.getElementById('verb-bar').replaceChildren(); els.toc.replaceChildren();
+    document.getElementById('grammar-controls-bar').replaceChildren();
+    if (typeof resetGrammarState === 'function') resetGrammarState(); // no stale analysis/cache across books (section 18)
+    els.toc.replaceChildren();
     els.pages.innerHTML = `<div style="text-align:center;">${t('loading')}</div>`;
     if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
     state.bookKey = bookKeyFor(file);

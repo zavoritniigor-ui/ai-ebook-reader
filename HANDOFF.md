@@ -18,6 +18,208 @@ part of normal task startup.
 
 ## Current handoff
 
+### Grammar → Practice: button fix, balanced multi-target allocation, coverage validation (2026-09-22, branch `grammar-redesign`, PR #119 — NOT merged)
+
+Follow-up to the bilingual multi-verb fix directly below: once Grammar correctly detects every verb/adjective
+in a selection (up to 8, in the reported real case), Practice did not keep up. Reproduced live (real 8-verb
+bilingual selection, mocked-but-realistic provider) BEFORE any change, per the task's own requirement.
+
+**Three real defects found, all in the Grammar → Practice hand-off, none in Grammar itself:**
+1. `sanitizePracticeLemmas`'s `PRACTICE_MAX_LEMMAS` was a hard **5** — with the real 8-verb selection, only
+   `voir, comprendre, jouer, traverser, aller` ever reached the Practice prompt; `partir, se promener,
+   se retrouver` were silently dropped before the AI was even asked. The exact same class of bug as the
+   original "collapses to voir" report, one layer downstream, at N=5 instead of N=1.
+2. No deterministic allocation existed: the prompt asked for one flat "N examples per lemma" number (a
+   3-tier heuristic), and the validator only checked GLOBAL floors (`MIN_ITEMS`/`MIN_TARGETS`) — a reply
+   could pass while covering only one or two of many requested lemmas.
+3. The Practice button had no re-entrancy guard and no immediate visual feedback — a fast double-click (or
+   just not knowing whether the click registered) could fire two provider requests, confirmed live: with a
+   realistic ~500ms network delay, two rapid clicks produced two `practice_reading` calls before the fix.
+
+**Fix** (`js/practice-session.js`, `js/grammar-svo.js`, `js/practice-worksheet.js`, `js/core.js` — full detail
+in `ARCHITECTURE.md`'s new "Grammar → Practice" section): `PRACTICE_MAX_LEMMAS` raised 5→20 (matches Grammar's
+own `grammarItemBudget` ceiling — Practice can now demonstrate every lemma one Grammar analysis can ever
+produce); `MAX_SECTIONS` raised to match (`PRACTICE_MAX_LEMMAS + 4`) so a large lemma set is never rejected
+purely for its own section count; a deterministic base+remainder allocation (`allocatePracticeExamples`,
+documented order: the lemmas' own supplied order, focused-first) computed BEFORE the request and told to the
+model as an explicit per-target count, replacing the old flat number; a coverage check in
+`validatePracticeReading` (1-3 requested lemmas must ALL appear, a larger set may omit up to a third) that
+rejects the exact "A, A, A, B while C-G vanish" shape the task described, wired through the SAME retryable-error
+path as every other structural failure so mode/lemmas/sourceLanguage survive for Retry; the output token budget
+now scales from the SAME allocation (`practiceOutputBudget`/`practiceTimeoutMs`, mirroring `grammarProfile`'s
+own scaling) instead of one flat per-task constant; the button now guards against a generation already in
+flight (`getCurrentPracticeSession()?.status==='generating'`) and gives immediate disabled+"Generating…"
+feedback restored in a `.finally()`; the collapsed Practice tab (`#practice-restore`) now exposes
+ready/loading/error (`.ready`/`.loading`/`.error` + `data-status`, reusing the SAME green/red convention as the
+Grammar/Ask panel tabs) derived ONLY from the real session status, and its previously hard-coded English label
+now carries `data-i18n="practiceTabLabel"` so a UI-language switch relabels it without touching the session.
+
+**Verified, live, through the real UI** (mocked-but-realistic provider: reports exactly what was allocated,
+never invents coverage): all 8 verbs from the real reported selection now reach Practice and render, in a
+near-even allocation; the exact same allocation appears in the REAL outgoing prompt; a severely under-covering
+reply is rejected while a compliant one renders every target; a reflexive verb's compound form
+(`nous sommes promenés`) and an adjective's irregular before-vowel form (`bel`) survive with correct
+features/no tense controls; occurrence clicks stay exact with zero AI calls; a bilingual raw source with
+Grammar's OWN validated `sourceLanguage:'fr'` still produces a French Practice request (never redetects and
+flips to English merely because English words are present in the raw text — task section 10); idle/loading/
+ready/error are each distinctly visible on the collapsed tab; a UI-language switch relabels the tab without
+dropping the ready session; an 8-lemma session round-trips through the unchanged schema (`PRACTICE_SCHEMA_VERSION`
+stayed 2 — no migration needed, since only prompt construction/validation/budget changed, not the stored
+session shape) while a legacy-worksheet-schema or corrupt payload under the same storage key is still refused.
+
+**Negative controls**: each of the three production fixes (the lemma cap, the coverage check, the button
+guard) was confirmed to make its own matching assertion fail when reverted individually, then restored.
+
+Tests: new `tests/practice_allocation_browser.py` (9 sections, wired into CI). `tests/practice_reading_browser.py`,
+`tests/practice_browser.py` and `tests/bilingual_selection_browser.py` were updated where they asserted the OLD
+flat prompt wording, a canned reading the NEW coverage check correctly rejects for the lemma actually requested,
+or the OLD fixed 8000-token/12-section bounds — each brought to the new, still-strict, size-aware equivalent,
+never loosened (each update's necessity was confirmed live: the OLD assertion failed for a real, explainable
+reason tied to the new size-aware design, never adjusted to paper over an unexplained failure).
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment) — see the entry below for why.
+
+### Bilingual multi-verb selection collapsed to one lemma ("voir" only) — root cause found and fixed (2026-09-21, branch `grammar-redesign`, PR #119 — NOT merged)
+
+Real report: dragging across a bilingual page (French `avoir`/`être` + participe présent table, French left
+column + English translation right column — e.g. physical page 349 of "Complete French All-in-One": `ayant
+vu`/`having seen`, `ayant compris`/`having understood`, ... 8 rows) rendered ONLY `voir` in Grammar.
+
+**Root cause, reproduced with a purpose-built bilingual PDF fixture (`tests/browser_cdp.py`'s
+`verb_table_pdf_bytes`) before any fix, with only the provider call recorded** (never assumed): a PDF
+drag-selection's `Range.toString()` has NO separator between text items AT ALL — unlike the sentence/tap
+paths (already fixed for this in an earlier commit) — so the raw selection read
+`"ayant vu having seenayant compris having understood..."`; the whole-word validator then rightly rejected
+every French form with a letter glued to its left (`surface_not_in_text`), and only the very FIRST item in
+the drag (nothing precedes it) survived. Confirmed at every pipeline stage: selection extraction (fused),
+Grammar request (fused), validation (7 of 8 rejected), rendering (1 card) — never the model's fault.
+
+**Fix, `js/selection.js`'s drag-commit handler:**
+1. `pdfRangeText(range)`: the same "join only if it's a genuine word-continuation" rule
+   (`pdfSpansContinueWord`, from the earlier PDF-word-split fix) now also covers a raw drag range.
+2. `pdfPartitionColumns`/`pdfComputeColumns` (the column-clustering shared with `pdfVisualGroup`, refactored
+   out rather than duplicated): when the drag's own spans partition into MORE than one geometric column, each
+   column's own text is classified with the existing `detectLang`, and the one matching the book's persisted
+   `pageLang()` becomes `state.lastGrammarSourceText` — a ONE-SHOT value consumed by `js/translation.js`'s
+   `handleWordOrSelection` for the Grammar button only (the translation popup still sees the full raw
+   selection, unchanged). Geometry-based, not lexical: many of the real forms here ("ayant vu", "étant
+   parti"...) have no individual FR/EN dictionary signal of their own — a lexical re-split of the flattened
+   text was tried and found to flip the WHOLE selection's detected language rather than just fail to split
+   it (documented in `ARCHITECTURE.md`'s new "Bilingual PDF selections" section; not committed).
+3. `js/grammar-svo.js` needed NO changes: once `contextText` arrives already isolated, its existing
+   budget/bounding/validation treats it like any other selection.
+
+Also added: a visible note (`grammarBudgetLimited`, `js/core.js`) when a selection has more valid verbs than
+`grammarItemBudget` — previously only truncation/trimming were announced; being over budget was silent.
+
+**Verified, all through the real UI (drag/click/tap), for BOTH PDF content-stream orders (rows-interleaved
+and columns-major — column detection is geometry-based, so both work identically):** all 8 French verbs
+survive request → validation → rendering, unfocused; the Grammar request contains no English; an all-English
+or all-French selection alone still resolves as itself; a single-word tap is completely unaffected (one
+focused occurrence); a sentence/paragraph with several verbs yields several unfocused items; an
+over-budget selection is deterministic (same 14 of 16 kept every run) with a visible note; clicking an
+already-analysed card or a Practice target makes zero further AI calls; the translation request for the
+same drag is properly spaced (no fusion) but is still one combined fragment (documented limitation, not
+fixed here — translation was not made column-aware).
+
+**Negative controls**: each of the three production changes (no `pdfRangeText`; column isolation disabled;
+`translation.js` ignoring the isolated override) was reverted individually and shown to fail the exact
+matching assertion, then restored byte-identical.
+
+Tests: new `tests/bilingual_selection_browser.py` (17 checks, wired into CI). Directly-affected + required
+suites all pass locally (grammar_french 128, grammar_redesign 73, grammar_language_isolation 16,
+practice_reading 65, practice_browser 43, practice_workspace 30, ask_ai_language 9, ai_providers 61,
+language_paren 24, language_context 17, learning_stats_languages_grammar 30, learning_ux 60, migration_audit
+35, ai_contract 73, pdf_bilingual_columns 22, pdf_sentence_reselect 13, pdf_hitbox_stateless 17,
+pdf_word_click all pass). Syntax gate (27 files), app-shell versions, CI suite coverage (36 suites) pass.
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment).
+
+### Live-AI acceptance FAILED → real-model contract hardened (2026-09-20, branch `grammar-redesign`, PR #119 — NOT merged)
+
+A live acceptance run (preview `98f4b680.ai-ebook-reader.pages.dev`, real French PDF, HVAC page "PRÉPARER LES TRAVAUX / Établi un diagnostic du travail à effectuer / Observation visuelle et olfactive... / Mettre en place les mesures pour effectuer le travail / Appliquer les mesures sécuritaires…") entered French **Verbes** but showed "Відповідь AI некоректна або неповна". Every mocked test had passed because every mock was an ideal reply.
+
+**LIVE AI TESTED: NO** (direct provider). No provider credential exists in this environment, and the user's own browser profile / `~/.gemini` OAuth token were deliberately not read; `agy` (an autonomous agent) was not used as a completion sampler. **The failing raw reply was therefore NOT captured**, and the exact rejection point in that session cannot be named from evidence. What IS proven (`tests/ai_contract_browser.py`, 64 checks, real `callAI` path with only `fetch` stubbed): the reported banner is reproduced on the old code through the real OpenAI path by an `incomplete`/`max_output_tokens` reply, and the old parser also rejected unescaped inner quotes, trailing commas and cut-off replies as `malformed_json` and kept 2 of 5 items of a model-style reply. A single word tap on a PDF page with unpunctuated headings analyses the whole merged run (measured: 101 chars / 14 words) with a full-contract multi-item request that the old 1400-token OpenAI cap could not hold (reasoning tokens count against `max_output_tokens`).
+
+What changed (all layers keep their strictness; only harmless deviations are normalised):
+- `ai-client.js`: typed `AiRequestError` reasons per provider (network/timeout/http/envelope_invalid/empty_reply/blocked/provider_error/truncated), truncation keeps `partial`, provider/model/finish/usage in `meta`, bounded diagnostics ring, developer panel only with `?aiDebug=1`.
+- `core.js`: `parseAiJson` (string-aware; fences, prose, trailing commas, comments, unescaped inner quotes; truncated → salvage at array-element boundary; bare array still rejected); French `lemmaCase:'lower'`.
+- `grammar-svo.js`: `grammarProfile` (bounded whole-sentence input ≤1400 chars, output budget from expected items, lite contract for long selections), hardened prompt, partial recovery + visible note, ONE bounded retry on the first half, per-reason diagnostics, extra fields ignored.
+- `practice-session.js`: same extraction/truncation/diagnostics for `practice_reading` (validator unchanged; v2 reading-only Practice from `9b56d25` intact).
+- `tests/ai_contract_browser.py` + `ai_contract_fixtures.py` (wired into CI), `tests/live_responses/` (replay directory), `tools/live_ai_probe.py`.
+
+**External blocker / how to close it (needs the user's key):**
+1. Reproduce on the preview with `?aiDebug=1`; the red banner now carries "AI diagnostics (developer)" with the exact `reason`; press **Copy**, save as `tests/live_responses/<name>.json` (README there) — CI then replays the REAL failing reply through the pipeline.
+2. Or run the whole A–E + real-PDF + Practice acceptance against the real provider: `READER_LIVE_AI_PROVIDER=openai READER_LIVE_AI_KEY=… python3 tools/live_ai_probe.py --pdf` (throw-away Chrome profile, key from the environment only, scrubbed from all output; failures are written as replay-ready files under `live_ai_probe_out/`). `--url https://<hash>.ai-ebook-reader.pages.dev/` drives a deployed build. Report "LIVE AI TESTED: YES" only from that output.
+Remaining risks: real-model behaviour with the new long prompts/budgets (latency up to the 150s Practice timeout, larger OpenAI output caps) is unverified live; Practice has the same untested-live status.
+
+**Follow-up 2026-09-21 — real-page evidence, two more defects, CI test hardened (still LIVE AI TESTED: NO).**
+Working on the REAL reported page (`~/Books/GUIAPP_systeme_frigorifique_classe_1.pdf`, physical page 11; a local file, not in the repo) with only the provider call recorded showed what the app actually hands the model, and it is not what the mocks assumed:
+- One tap on `effectuer` sends a **320-char / 47-word unpunctuated run** (the `¡` check-box bullets never end a "sentence"): item budget 14, lite contract, 4020-token budget. The OLD code sent this under a fixed 1400-token cap with the full contract — a credible reason for OpenAI `status:'incomplete'` → "Відповідь AI некоректна або неповна". This is the most probable cause of the reported failure but is **inferred, not captured**: no raw reply exists.
+- **Defect A (fixed): PDF words split across text items were corrupted.** The page's body lines have a detached first letter (`3. a|ppliquer les mesures…`, `4. a|ssurer l'approvisionnement…`) and its small-caps headings are cut mid-word (`Pr`,`ÉP`,`ar`,`E`,`r`,`LES`,`trava`,`U`,`x`). `buildSentenceRangesFromSpans` put a space after EVERY item, so the model received `a ppliquer les mesures…` and `tâche a Pr ÉP ar E r LES trava U x` — the user's own example verbs (appliquer, assurer) could never be returned as a valid whole-word, literal item, however good the model. Now items that continue a glyph run on the same line are joined (`pdfSpansContinueWord`); real gaps (word space, bullet, next line) still separate. Regression: `tests/pdf_bilingual_columns_browser.py` (real-page geometry + a negative control) and Section 10 of `tests/ai_contract_browser.py` on the real file.
+- **Defect B (fixed): a tapped word beyond the 1400-char input cap was dropped.** `boundGrammarText` always kept the START of an over-long run, so for a tap deep in a long unpunctuated PDF run the analysed text did not contain the tapped word at all; the bounded retry after a cut-off reply kept the first half, again without it. Now the window/half follows the tapped word (`tests/ai_contract_browser.py` A2, incl. a multi-sentence case).
+- Not fixed, by design: the page's `¡` bullets still do not end a sentence (one 320–400-char run per list); the detached first letter also means a tap on `ppliquer` selects the fragment `ppliquer`, not `appliquer` (word selection across items is PDF-selection territory) — the sentence context and the model's analysis of `appliquer` are correct.
+- **Red CI on `d1a9b06` (HVAC tap never opened the tooltip) — root cause found and reproduced.** It did not reproduce under CI's Chrome flags, CI test order, 16× CPU throttling or slow network, so the tap helper was made self-diagnosing; the next CI run (`3c02d60`) then named the cause in its own failure message: the tap point was `at:[1245.9,515.4]` in a `viewport:[1000,1100]` — the word `effectuer` sat ~250 px **off-screen to the right** (`under: None`), everything else (learning mode, viewer ready, format) fine. The helper called `scrollIntoView` on the WORD'S SPAN; a span wider than the viewport that is already partly visible gets no horizontal scroll, so the word inside it stayed off-screen (the fixture's word positions depend on pdf.js's font metrics, which differ between machines; the reader container itself scrolls in PDF mode). Reproduced on demand by zooming the page in (`setPdfScale(3.5)` → `at:[1452.9,542.1]`, same signature), fixed by scrolling the reader container so the WORD is in view, and kept as a permanent scenario (`tests/ai_contract_browser.py`, end of Section 9). The helper also waits for `pdfContinuousReady`, waits for stable geometry, closes any leftover Practice panel/drawer, retries like a user, and reports what was under the pointer. It is an APP-independent test-helper defect, not an app bug (a user cannot tap a word that is off-screen). Separately, the FIRST attempt on `3c02d60` died after 16 s in the runner's Chrome start-up wait (`timeout 15 … 9222`, exit 124, no test ran): the documented CI Chrome-CDP flake, cleared by a rerun of the same SHA.
+- Housekeeping lessons: a worktree under `/tmp` is lost on reboot (this session lost its uncommitted work that way and rebuilt it); this work now lives in `.claude/worktrees/live-ai` (git-excluded). The shared checkout still holds another session's uncommitted **inverse of `d1a9b06`** (old `grammar-svo.js`/`grammar_french_browser.py`, the three live-AI files deleted): it was preserved untouched and is backed up as `refs/backup/grammar-redesign-dirty-2026-09-20` (+ `~/grammar-redesign-dirty-tree-2026-09-20.patch`); it must NOT be committed.
+
+
+### Grammar + contextual Practice redesign — branch `grammar-redesign` (2026-09-20)
+
+Worktree `/media/igor/SAMSUNG_LINUX/Projects/AI-Ebook-Reader-Grammar`, branch `grammar-redesign`, PR #119 (open, base `main`). **No merge to `main` is authorized.** Gemini owns the PDF subsystem — none of `pdf-*.js`, `selection.js` or `translation.js` were modified by this work.
+
+Done: Grammar panel is a Verbs/Adjectives contextual-learning panel (`js/grammar-svo.js`, `js/core.js` `GRAMMAR_LANG_CONFIG`, `index.html`); Practice is a contextual READING surface whose highlighted targets focus the exact occurrence in Grammar (`js/practice-session.js`, `js/practice-worksheet.js`). All quiz UI was removed. See `ARCHITECTURE.md` (`grammar-svo.js` row, "Practice workspace", test map).
+
+Hardening pass (French first, then English; scope decision: **Polish was requested, started, then explicitly dropped by the user — nothing Polish is in the tree**, `pl` is still not a supported language):
+- Structured AI contract: explicit language (name+code, echoed and verified), injection-safe embedded text, whole-word EXACT occurrences with source-derived sentence + offsets, malformed/wrong-language/unsupported-language replies are retryable errors (never "no verbs found", never cached), wrong-POS / duplicate / occurrence-conflict / lemma-shape rejection, enforced lemma budget, features/forms/stem splits validated against per-language config (French: infinitive lemma, real endings only, no split for irregular or compound forms, conjugation/agreement grids must contain the analysed form, before-vowel slot only for beau/nouveau/vieux/fou/mou, derived transformations computed from the grid, agreement target must be in the sentence).
+- Sentence context: tapped text and sentence are NFC/whitespace-normalised before matching; when `selection.js` leaves `lastWordNode` on the whole block (sentence = block's first sentence, tapped word absent) the sentence is recovered from `state.lastTapPoint`; Retry re-sends the already-resolved sentence.
+- Stale protection: a cache hit now cancels in-flight analyses (a slow earlier reply used to overwrite it); a conjugation table arriving after the learner focused another verb is dropped; mode switch clears a focused item of the other POS.
+- Practice: reading must be in the requested language, targets must be whole-word occurrences of the session's POS with stored offsets (`occurrence` supported); click → exact Grammar occurrence, zero AI calls.
+- Tests: new `tests/grammar_french_browser.py` (120 checks after the acceptance pass, wired into CI, hand-authored gold replies + real mouse tap flow). Two existing assertions were updated on purpose: French adjectives now declare 5 grid slots (`ms_vowel`), and an unstructured provider reply is now a retryable error instead of an empty state (`ai_providers_browser.py`).
+
+Final acceptance pass (2026-09-20, real browser: French Markdown book opened through `openBookFile`, real mouse taps/drags/clicks, only the network call `callAI` stubbed with hand-authored gold replies; desktop 1000px and 390px touch-emulated; light/dark/sepia). Verified OK: tap → tooltip → ✨ Grammar → Verbes/Adjectifs (0 extra AI calls, verb chips vanish in Adjectifs), être/avoir/aller, compound (`sont allés`, `a mangé`), imparfait, regular + irregular adjectives (`heureuse`, `belles`/`bel`, `blanches`, `vieille`), agreement with the real noun, tense chips (cached tenses not re-requested), one word / manual drag / sentence / paragraph selection (sentence context preserved), Practice passage → highlighted target → exact Grammar occurrence with ZERO AI calls, slow-reply-after-newer-tap, French→English book switch (no leaked labels/tenses/cards), translation, dark theme. Four real defects found and fixed in `js/grammar-svo.js`/`js/core.js`:
+1. The learner's tapped occurrence was never shown — Grammar opened on a bare lemma card (tense chips inert) and a tapped ADJECTIVE opened in Verbs mode listing an unrelated verb. Now `presentGrammarAnalysis` opens it in its own POS mode.
+2. A tense chip stayed lit after focusing a different word (labelled the wrong conjugation). `focusGrammarItem` now clears it.
+3. A Practice-target focus was rendered above the book selection's unrelated lemma cards. Cards now render only for items of the current analysis.
+4. Compound-tense chips were bare (`être`, `allé`); now `auxiliaire: être` / `participe: allé` (English `auxiliary:`), from per-language `featureLabels`.
+Each has its own failing-without-the-fix check in `tests/grammar_french_browser.py` (new SECTION 6a + one Practice-cards assertion; 120 checks total; each fix was reverted individually to prove its check fails).
+**LIVE AI NOT TESTED** — no provider key exists in this environment (BYOK in browser localStorage; none in env/repo/fresh profile) and the user's own browser profile was deliberately not read. Live-model risks that mocks cannot show: numeric feature values (`person: 3`) pass through as bare chips; two identical forms in ONE sentence (`est … est`) are de-duplicated by lemma+surface, so the tapped one cannot always be told from the other; Practice passages shorter than the 100–220 words the prompt asks for are only rejected below 220 chars.
+
+Known, NOT caused by this branch (verified against the unmodified baseline `82acc93`): `learning_ux_browser.py`'s last check `onboarding returns to normal` fails identically on baseline; `format_reader_audit_browser.py`'s reopen-position checks are intermittently flaky (~1 in 3 runs).
+
+Limitations to know: **no live AI key was available — every model reply in tests/acceptance is a hand-authored mock**, so the prompts (incl. the French/English `promptNote`s) are unverified against a real model, and the validators are calibrated to what a correct French/English reply looks like. Grammar labels/paradigms for zh/ko/hi/ga/ru are reasonable defaults, not linguist-reviewed. The full 657-page French PDF acceptance was deliberately not run from this branch. Real-device touch/stylus behaviour is not covered.
+
+Integration with `main`: `main` already contains the squash-merged PDF work (#118, `ddcd0b2`) while this branch still carries the un-squashed PDF history beneath the Grammar commits, so a plain merge reports add/add conflicts in the PDF files. Resolution policy: take `origin/main`'s version of every PDF-only file (Gemini owns them; this branch never modified them); merge `index.html`/`sw.js` by hand and regenerate hashes with `python3 tools/version_app_shell.py`.
+
+Next action: exact-SHA CI for the pushed branch; when green, review the PR diff (it should contain only Grammar/Practice changes once merged with `main`). Do NOT merge without explicit user approval.
+
+### Practice = reading/examples surface (2026-09-20, branch `grammar-redesign`, PR #119 — NOT merged)
+
+**Why the exercise UI was still visible:** PRODUCTION (`ai-ebook-reader.pages.dev`, i.e. `main`) still serves the OLD worksheet — `practice-worksheet.js` there is 37,821 bytes with `exercises`×13/`hint`×59; the branch preview (`grammar-redesign.ai-ebook-reader.pages.dev`) serves the reading surface (26,355 bytes, no exercise code) — because PR #119 is unmerged. On the branch itself there was no exercise renderer, but three real hazards: (1) the startup handler restored the latest stored session with NO schema check (the old worksheet used the same `practice_session:*` keys and `status:'ready'`); (2) `displayPracticeSession` silently rendered nothing for a ready session without `reading`, leaving a stale panel; (3) `regeneratePractice` dropped `mode` and `lemmas`, so an Adjectives session regenerated as a generic Verbs one. The reading contract was also only a 100–220-word passage, not several minutes of example sentences.
+
+Done: contract v2 (sections of per-lemma example sentences + connected paragraphs, targets attached to their own sentence) with a substantiality floor (10 items / 900 chars / 3 targets), exercise-artifact filter (blanks, numbering, parenthesised French cue verbs via `isFrenchExerciseCue`, one-line drills) and a reject-if-mostly-exercises rule; a selection that IS a book exercise is never sent to the model; session keeps mode+lemmas; schema-versioned storage with a startup purge (`purgeLegacyPracticeStorage`) and refusal at load/render; per-task AI budget (OpenAI 8000 tokens, 150s timeout for all providers); section renderer (heading per lemma, one sentence per line, subtle bold+underline targets, no numbering); "Focus: lemmas" meta row instead of the raw source text; dead exercise-era i18n strings removed; header padded 60px because the floating `☰` menu handle covered the Close button (it was unclickable). The right Grammar panel is unchanged apart from `maybeShowPracticeButton` passing prioritised lemmas + the forms the learner met.
+
+Tests: new `tests/practice_reading_browser.py` (65 checks, wired into CI; real mouse/touch, desktop + 390px) and shared `tests/practice_fixtures.py`; `practice_browser.py`, `practice_workspace_browser.py`, `grammar_redesign_browser.py`, `grammar_french_browser.py` updated to the v2 contract. Each guard was reverted individually to prove its check fails (purge, regenerate context, renderer guard, exercise filter, source withholding, load validation, header CSS). LIVE AI STILL NOT TESTED: every model reply is a hand-authored gold reply, so the new prompt (long, ~30 items with per-target annotations) is unverified against a real model — watch for truncation (retry is offered), over-long latency, and models returning the old flat shape (rejected as invalid, retryable).
+
+Next action for the user: merge decision on PR #119 (production stays on the old worksheet until then), ideally after one real-key Practice run in French verbs + adjectives.
+
+### Independent Release QA — PDF exercise context + French exercise cues (2026-09-20, audited and reworked)
+
+Worktree `/home/igor/Projects/AI-Ebook-Reader-Grammar`, branch `grammar-redesign`, PR #119 (open, base `main`). **Do NOT merge without explicit user approval.**
+
+Gemini's QA on the real 657-page *Complete French All-in-One* found two reproducible defects (page 221, `3. Ils (plaindre)   <blank>   la pauvre femme.`). Both were reproduced here on the REAL PDF (page 221 only) before any change:
+- `sentenceRangeAt` returned `Ils (plaindre) 4.` — the ~160px blank exceeded the column-gap threshold (`max(24, layerWidth*0.08)`) so the right half of the line became a separate "column" (`js/selection.js` `pdfVisualGroup`).
+- Grammar source language was `en`, the prompt asked for English, the model answered French, the validator showed `language_mismatch` — `buildLanguageSegments` gives a parenthetical the OPPOSITE language of what precedes it (a gloss), and `(plaindre)` has no diacritic/function word to say otherwise (`js/lang-detect.js`).
+
+Gemini's first fix (`66eece4`) repaired those two cases but was AUDITED against the real book and the bilingual behavior and REPLACED, because it regressed legitimate behavior: (1) `isFrenchVerbTarget` treated ANY word ending `-er/-re/-ir/-oir` as a French cue, so genuine glosses `eau (water)`, `le père (father)`, `le professeur (teacher)`, `le dîner (dinner)`, `le feu (fire)`, `le désir (desire)`… became French (12 new regressions in a 43-case matrix; `(loudspeaker)` is even a real gloss in the book); (2) `isExerciseBlankContinuation` merged any left cell ending in a parenthesis with the next fragment, so vocabulary rows `l'allemand (m.) | German` became one blob (137 fragments changed on pages 200/208/222).
+
+Final design — ONE shared structural predicate, `isFrenchExerciseCue(inner, textBefore)` in `js/lang-detect.js`. A parenthetical is a French fill-in-the-blank cue only if it is a single infinitive-shaped word (≥4 letters, optionally `ne pas …` / `se …` / `s'…`), not an English word, AND (a) a French subject pronoun (`je tu il elle on nous vous ils elles ce ça cela ceci qui que où dont`, optionally with clitics `me te se lui leur y en ne`) stands right before the `(` — any infinitive shape then, or (b) the word is reflexive, or (c) it has an ending no English word has (`-dre -ttre -uire(not -quire) -ivre -oir`, consonant+`-ir`, or être/avoir/aller/faire/dire/lire/rire/boire/croire/plaire/taire; tiny stoplist stir/emir/elixir/nadir/choir/memoir/reservoir/boudoir). Shape alone is never enough: `père (father)` and `Ils (parler)` look identical. Consumers: `buildLanguageSegments` (gives the cue French instead of the opposite-language gloss prior — fixes `fragmentLangInContext`, `grammarSourceLanguageFor`, translation direction, TTS voice) and `js/selection.js` `isExerciseBlankContinuation` (bridges the blank only when the left fragment ENDS with such a cue or an explicit `____`/`....`/`…` blank AND the right fragment is not the next item marker `N.`/`a)`/`•`). Vocabulary tags `(m.)`, `(familiar)`, glosses `(teacher)`, wrapped numbered lists and two-column exercises stay separate columns.
+
+Measured on the real book (text-only, no full acceptance): 344/361 (95.3%) of numbered exercise cues on pages 30–260 recognised, 0 false positives on 465 other parentheticals; 87 gap merges across 18 sampled pages, every one a genuine exercise line, 0 on prose/table pages. Page 221 differential vs pre-fix: exactly the ten exercise lines changed (`Ils (plaindre) la pauvre femme.`, `La muraille (ceindre) la ville.`, …); tables on pages 200/222 byte-identical; page 208 changes only because its four exercise lines now merge legitimately, which un-fuses its two-column conjugation table (a correct side effect).
+
+KNOWN LIMITATION (deliberate, not a regression — identical before): a NOUN subject with a plain `-er`/`-ire` cue (`Les enfants (manger) une pomme.`, `Lucie (travailler)`, ~9 of 361 on pages 30–260) is still read as an English gloss; without a dictionary it is indistinguishable from `le professeur (teacher)`, and keeping bilingual text correct was preferred. Also unchanged: `aimer (love)`-style lines with no French signal anywhere are undecidable.
+
+Tests: `tests/language_paren_browser.py` (18 French cues, 22 English glosses incl. `-er/-re/-ir/-oir` words, 7 French glosses after English, predicate table), `tests/pdf_bilingual_columns_browser.py` (real page-221 geometry, other cue shapes, 5 negative controls, two-column exercises), `tests/grammar_french_browser.py` SECTION 6c (real tap on the cue → French request accepted; real tap on `father`/`teacher` → English). Verified to FAIL on pre-fix `0415609` (reported defects) and on `66eece4` (the regressions above).
+
 Status: **PR #118 READY FOR MERGE (Continuous PDF Viewer Foundation)** (2026-09-20).
 - Branch: `pdf-continuous-viewer`
 - PR: https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/118 (#118)

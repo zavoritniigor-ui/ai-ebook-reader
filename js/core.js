@@ -38,7 +38,11 @@ function safeHtml(value, ai = false) {
     const output = document.createElement('div');
     const tags = new Set('p div span section article header footer main aside h1 h2 h3 h4 h5 h6 b strong i em u s del ins small sub sup br hr blockquote pre code ul ol li dl dt dd table caption thead tbody tfoot tr th td colgroup col a img figure figcaption ruby rt rp abbr button'.split(' '));
     const drop = new Set('script style link meta base title iframe frame frameset object embed applet svg math template noscript textarea select input audio video source form'.split(' '));
-    const classes = new Set('verb-card verb-head verb-forme verb-chips verb-chip lvl lvl-block tt-note'.split(' '));
+    // verb-card/verb-head/verb-forme/verb-chips/verb-chip retired with the old raw-HTML
+    // Grammar-panel contract: the redesigned panel builds its DOM from structured JSON
+    // fields via createElement/textContent, never from innerHTML of AI text (see
+    // js/grammar-svo.js), so those classes are no longer needed here.
+    const classes = new Set('lvl lvl-block tt-note'.split(' '));
     const styles = new Set('color background-color font-size font-weight font-style font-family text-align text-decoration line-height white-space border border-color border-width border-style border-collapse padding padding-left padding-right padding-top padding-bottom margin margin-left margin-right margin-top margin-bottom'.split(' '));
     function copy(node, parent) {
         if (node.nodeType === Node.TEXT_NODE) { parent.appendChild(document.createTextNode(node.nodeValue)); return; }
@@ -158,7 +162,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 45000) {
         const body = await response.arrayBuffer();
         return new Response([204, 205, 304].includes(response.status) ? null : body, { status: response.status, statusText: response.statusText, headers: response.headers });
     } catch (err) {
-        if (timedOut) throw new Error('Сервер не відповів вчасно. Спробуйте ще раз.');
+        if (timedOut) { const e = new Error('Сервер не відповів вчасно. Спробуйте ще раз.'); e.reason = 'timeout'; throw e; }
         if (err.name === 'AbortError') throw err;
         if (err instanceof TypeError) throw new Error(t('errNoConnection'));
         throw err;
@@ -197,36 +201,435 @@ const LANGUAGE_CONFIG = {
 };
 const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG);
 
-// Language-specific verb tense systems for grammar analysis
-// Maps source language code to available tense/mood labels
-const TENSE_SYSTEMS = {
-    en: [
-        { id: 'present_simple', label: 'Present Simple', en: 'Present Simple', fr: 'Présent Simple' },
-        { id: 'present_continuous', label: 'Present Continuous', en: 'Present Continuous', fr: 'Présent Continu' },
-        { id: 'past_simple', label: 'Past Simple', en: 'Past Simple', fr: 'Passé Simple' },
-        { id: 'past_continuous', label: 'Past Continuous', en: 'Past Continuous', fr: 'Passé Continu' },
-        { id: 'present_perfect', label: 'Present Perfect', en: 'Present Perfect', fr: 'Présent Parfait' },
-        { id: 'past_perfect', label: 'Past Perfect', en: 'Past Perfect', fr: 'Passé Parfait' },
-        { id: 'future_simple', label: 'Future Simple', en: 'Future Simple', fr: 'Futur Simple' },
-        { id: 'conditional', label: 'Conditional', en: 'Conditional', fr: 'Conditionnel' }
-    ],
-    fr: [
-        { id: 'indicatif_present', label: 'Présent', en: 'Present', fr: 'Présent' },
-        { id: 'indicatif_imparfait', label: 'Imparfait', en: 'Imperfect', fr: 'Imparfait' },
-        { id: 'indicatif_passe_compose', label: 'Passé Composé', en: 'Compound Past', fr: 'Passé Composé' },
-        { id: 'indicatif_futur', label: 'Futur Simple', en: 'Future Simple', fr: 'Futur Simple' },
-        { id: 'conditionnel_present', label: 'Conditionnel', en: 'Conditional', fr: 'Conditionnel' },
-        { id: 'subjonctif_present', label: 'Subjonctif', en: 'Subjunctive', fr: 'Subjonctif' },
-        { id: 'imperatif', label: 'Impératif', en: 'Imperative', fr: 'Impératif' },
-        { id: 'plus_que_parfait', label: 'Plus-que-parfait', en: 'Pluperfect', fr: 'Plus-que-parfait' }
-    ]
+// Language-aware grammar configuration for the redesigned Grammar panel
+// (Verbs/Adjectives contextual-learning modes). One entry per SUPPORTED_LANGUAGE_CODES
+// member. Each entry declares:
+//   - labels: the Verbs/Adjectives tab text IN THAT LANGUAGE ITSELF (not the interface
+//     language — the panel names its own subject matter, e.g. "Verbes" for French text
+//     no matter what the reader's UI language is set to);
+//   - verb/adjective.features: the ONLY grammatical dimensions the AI is allowed to
+//     report for that part of speech in that language. This is the actual mechanism
+//     behind "don't show meaningless categories" (task section 5/7): normalizeGrammar-
+//     Features() strips anything not in this list before it ever reaches the UI, so a
+//     language with no grammatical gender can never get a fabricated gender badge;
+//   - verb.tenses: the enumerated tense/mood list driving the Verbs-mode control bar
+//     (replaces the old hardcoded EN/FR-only TENSE_SYSTEMS — every other language used
+//     to silently reuse the English tense bar, which was simply wrong for its grammar);
+//   - verb.persons / adjective.forms: the paradigm slots requested when a learner clicks
+//     a specific lemma (conjugation table / agreement grid).
+// A language with no explicit entry falls back to DEFAULT_GRAMMAR_LANG rather than
+// crashing; callers that must NOT silently analyse a language with another language's
+// categories check hasGrammarConfig() first.
+const GRAMMAR_LANG_CONFIG = {
+    en: {
+        labels: { verbs: 'Verbs', adjectives: 'Adjectives' },
+        verb: {
+            features: ['tense', 'aspect', 'person', 'number', 'auxiliary'],
+            // Features whose bare value is not self-explanatory on a chip ("has" alone could be anything):
+            // shown as "label: value", in the source language's own term.
+            featureLabels: { auxiliary: 'auxiliary' },
+            tenses: [
+                { id: 'present_simple', label: 'Present Simple' },
+                { id: 'present_continuous', label: 'Present Continuous' },
+                { id: 'past_simple', label: 'Past Simple' },
+                { id: 'past_continuous', label: 'Past Continuous' },
+                { id: 'present_perfect', label: 'Present Perfect' },
+                { id: 'past_perfect', label: 'Past Perfect' },
+                { id: 'future_simple', label: 'Future Simple' },
+                { id: 'conditional', label: 'Conditional' }
+            ],
+            persons: ['I', 'you', 'he / she / it', 'we', 'you (plural)', 'they'],
+            // Regular English inflection only ever adds one of these to a stem (walk+ed,
+            // stud+ies, runn+ing); a "stem/ending" split ending in anything else is bogus.
+            endings: ['s', 'es', 'ed', 'd', 'ing', 'ies', 'ied'],
+            // When true, a conjugation table the model returns with an analysis must contain
+            // the analysed surface form in one of its rows, or the table is discarded.
+            verifyForms: true,
+            // Irregular verbs have no teachable stem+ending split (went, taken, been).
+            irregularRe: /^(?:be|have|do|go|say|get|make|know|think|take|see|come|give|find|tell|become|leave|feel|put|bring|begin|keep|hold|write|stand|hear|let|mean|set|meet|run|pay|sit|speak|lie|lead|read|grow|lose|fall|send|build|understand|draw|break|spend|cut|rise|drive|buy|wear|choose|eat|drink|sing|swim|fly|forget|sleep|wake|win|throw|catch|teach|sell|fight|hit|hide|shake|steal|tear|bear|ring|sink|swing|shoot|shut|split|spread|strike|swear|sweep|feed|flee|forgive|freeze|hang|lay|lend|ride|seek|show|shrink|slide|stick|sting|bite|blow|bind|bleed|breed|burst|cast|cling|creep|deal|dig|dive|fit|kneel|leap|overcome|undo|weave|withdraw|can|could|may|might|must|shall|should|will|would|ought)$/i,
+            auxiliaries: ['am', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'shall', 'should', 'can', 'could', 'may', 'might', 'must'],
+            promptNote: 'English: the lemma is the bare base form without "to" (walk, be, give up). When an auxiliary and its main verb are ADJACENT in the text (has been eating, did not know, will go) use the whole contiguous group as "surface", otherwise the main verb alone with features.auxiliary. A phrasal verb whose particle is adjacent (give up) uses both words as surface. Never tag a gerund or participle that is only a noun or a plain adjective as a verb. Explain WHY this tense/aspect is used here (e.g. present perfect for a past action with present relevance).'
+        },
+        adjective: {
+            features: ['degree'], forms: [],
+            promptNote: 'English adjectives do not agree with the noun. Give the plain positive form as lemma (big for bigger/biggest) and report features.degree only for a comparative or superlative form. A participle counts as an adjective only when it modifies a noun or follows a linking verb (a tired man, I am tired). Set "agreesWith" to the noun or pronoun the adjective describes.'
+        }
+    },
+    fr: {
+        // Dictionary forms are lower case, but headings in books are ALL CAPS ("PRÉPARER LES TRAVAUX"): a model echoing
+        // the capitals as the lemma must not create a second card next to "préparer".
+        lemmaCase: 'lower',
+        labels: { verbs: 'Verbes', adjectives: 'Adjectifs' },
+        verb: {
+            features: ['tense', 'mood', 'person', 'number', 'auxiliary', 'participle'],
+            // "être" / "allé" alone beside "3e personne" do not say WHICH role they play in a compound tense.
+            featureLabels: { auxiliary: 'auxiliaire', participle: 'participe' },
+            tenses: [
+                { id: 'indicatif_present', label: 'Présent' },
+                { id: 'indicatif_imparfait', label: 'Imparfait' },
+                { id: 'indicatif_passe_compose', label: 'Passé composé' },
+                { id: 'indicatif_futur', label: 'Futur simple' },
+                { id: 'conditionnel_present', label: 'Conditionnel' },
+                { id: 'subjonctif_present', label: 'Subjonctif' },
+                { id: 'imperatif', label: 'Impératif' },
+                { id: 'plus_que_parfait', label: 'Plus-que-parfait' }
+            ],
+            persons: ['je', 'tu', 'il / elle / on', 'nous', 'vous', 'ils / elles'],
+            // A French dictionary form is an infinitive: -er, -ir, -re or -oir, optionally
+            // reflexive (se lever, s'asseoir, s'en aller). A finite form given as the lemma
+            // (parlait, mange) is a model error and the item is rejected.
+            verifyForms: true,
+            lemmaRe: /^(?:s['’]|se\s+)?(?:en\s+)?\p{L}+(?:er|ir|re|oir)$/u,
+            // Irregular verbs (and their prefixed derivatives) have no honest "stem + ending"
+            // split — nous sommes, ils vont, il fait — so any split is discarded.
+            irregularRe: /(?:^|[\s'’])(?:être|avoir|aller)$|(?:aire|dire|voir|loir|seoir|venir|tenir|mettre|prendre|duire|struire|cevoir|courir|mourir|vivre|suivre|rire|crire|lire|croire|boire|aître|aitre|aindre|eindre|oindre|vaincre|battre|partir|sortir|dormir|servir|sentir|mentir|cueillir|frir|vrir|clure|luire|nuire|coudre|moudre|soudre|fuir|vêtir|quérir|bouillir|saillir|haïr)$/u,
+            // Every legitimate French verb ending (present, imparfait, futur, conditionnel,
+            // subjonctif, impératif, passé simple, participles). A stem/ending split whose
+            // ending is not one of these is not a real, teachable pattern.
+            endings: ['e', 'es', 'ent', 'ons', 'ez', 'ai', 'as', 'a', 'ont', 'ais', 'ait', 'aient', 'ions', 'iez', 'âmes', 'âtes', 'èrent',
+                'is', 'it', 'issons', 'issez', 'issent', 'issais', 'issait', 'issions', 'issiez', 'issaient', 'isse', 'isses', 'issant', 'ant',
+                's', 't', 'd', 'x', 'é', 'ée', 'és', 'ées', 'i', 'ie', 'is', 'ies', 'u', 'ue', 'us', 'ues', 'îmes', 'îtes', 'irent', 'ut', 'ûmes', 'ûtes', 'urent',
+                'rai', 'ras', 'ra', 'rons', 'rez', 'ront', 'rais', 'rait', 'rions', 'riez', 'raient',
+                'erai', 'eras', 'era', 'erons', 'erez', 'eront', 'erais', 'erait', 'erions', 'eriez', 'eraient',
+                'irai', 'iras', 'ira', 'irons', 'irez', 'iront', 'irais', 'irait', 'irions', 'iriez', 'iraient',
+                'ent', 'er', 'ir', 're', 'îs', 'ît', 'ât'],
+            // First token of a compound-tense group (a mangé, est allée, avait fini, aurait pu).
+            auxiliaries: ['ai', 'as', 'a', 'avons', 'avez', 'ont', 'avais', 'avait', 'avions', 'aviez', 'avaient', 'aurai', 'auras', 'aura', 'aurons', 'aurez', 'auront',
+                'aurais', 'aurait', 'aurions', 'auriez', 'auraient', 'aie', 'aies', 'ait', 'ayons', 'ayez', 'aient', 'eus', 'eut', 'eûmes', 'eûtes', 'eurent',
+                'suis', 'es', 'est', 'sommes', 'êtes', 'sont', 'étais', 'était', 'étions', 'étiez', 'étaient', 'serai', 'seras', 'sera', 'serons', 'serez', 'seront',
+                'serais', 'serait', 'serions', 'seriez', 'seraient', 'sois', 'soit', 'soyons', 'soyez', 'soient', 'fus', 'fut', 'fûmes', 'fûtes', 'furent'],
+            promptNote: 'French verbs: the lemma is the INFINITIVE (parler, être, se lever). For a compound tense (passé composé, plus-que-parfait, futur antérieur, conditionnel passé, subjonctif passé…) whose auxiliary and participle are ADJACENT in the text use the whole group as "surface" (e.g. "a mangé", "est allée") and set features.auxiliary to the auxiliary\'s infinitive (avoir / être) and features.participle to the participle; if a pronoun or adverb separates them, use the past participle alone as surface. Report features.mood in standard French terms (indicatif, subjonctif, conditionnel, impératif) and person as "1re / 2e / 3e personne". Explain WHY this tense or mood is used here (imparfait for a habitual or background past action, passé composé for a completed event, subjonctif after "il faut que" / "bien que", agreement of a participle with a preceding direct object or with the subject after être). For irregular verbs (être, avoir, aller, faire, pouvoir, vouloir, savoir, venir, prendre, mettre, dire, voir…) set stemBreakdown to null.'
+        },
+        adjective: {
+            features: ['gender', 'number'],
+            forms: [
+                { id: 'ms', label: 'masculin singulier' }, { id: 'fs', label: 'féminin singulier' },
+                { id: 'mp', label: 'masculin pluriel' }, { id: 'fp', label: 'féminin pluriel' },
+                { id: 'ms_vowel', label: 'masculin sing. devant voyelle' }
+            ],
+            // Slot ids the regular-transformation display is derived from: each derived
+            // form is described relative to the base (petit → petite: +e; heureux → heureuse:
+            // −x +se), computed from the grid itself rather than asserted by the model.
+            paradigm: { base: 'ms', derived: ['fs', 'mp', 'fp'] },
+            // The agreement grid the model returns must contain the analysed surface form,
+            // and its masculine-singular cell must be the lemma, or the grid is discarded.
+            verifyForms: true,
+            // The only five adjectives with a distinct masculine form before a vowel or
+            // mute h (un bel homme, un nouvel ami, un vieil arbre, un fol espoir, un mol effort).
+            specialForms: { ms_vowel: { beau: 'bel', nouveau: 'nouvel', vieux: 'vieil', fou: 'fol', mou: 'mol' } },
+            promptNote: 'French adjectives: the lemma is the MASCULINE SINGULAR (petit, heureux, beau, nouveau). features.gender and features.number describe THIS exact form. Set "agreesWith" to the noun or pronoun in the sentence the adjective modifies, copied exactly. The "forms" grid MUST contain this exact surface and follow French orthography: regular +e / +s / +es; and the irregular patterns heureux→heureuse, blanc→blanche, beau→belle/beaux, vieux→vieille, nouveau→nouvelle/nouveaux, cher→chère, doux→douce, long→longue, favori→favorite, actif→active, bon→bonne, gentil→gentille; an invariable adjective (marron, orange, rouge in the masculine/feminine singular) repeats the same string. Add "ms_vowel" ONLY for beau→bel, nouveau→nouvel, vieux→vieil, fou→fol, mou→mol — never for any other adjective. Explain WHY this form: which noun it agrees with, that noun\'s gender and number, and (when it matters) why the adjective precedes or follows the noun.'
+        }
+    },
+    uk: {
+        labels: { verbs: 'Дієслова', adjectives: 'Прикметники' },
+        verb: {
+            features: ['aspect', 'tense', 'mood', 'person', 'number', 'gender'],
+            tenses: [
+                { id: 'present', label: 'Теперішній час' },
+                { id: 'past', label: 'Минулий час' },
+                { id: 'future', label: 'Майбутній час' },
+                { id: 'imperative', label: 'Наказовий спосіб' },
+                { id: 'conditional', label: 'Умовний спосіб' }
+            ],
+            persons: ['я', 'ти', 'він / вона / воно', 'ми', 'ви', 'вони']
+        },
+        adjective: {
+            features: ['gender', 'number', 'case'],
+            forms: [
+                { id: 'nom_ms', label: 'чол. рід, називний' }, { id: 'nom_fs', label: 'жін. рід, називний' },
+                { id: 'nom_ns', label: 'сер. рід, називний' }, { id: 'nom_pl', label: 'множина, називний' }
+            ]
+        }
+    },
+    ru: {
+        labels: { verbs: 'Глаголы', adjectives: 'Прилагательные' },
+        verb: {
+            features: ['aspect', 'tense', 'mood', 'person', 'number', 'gender'],
+            tenses: [
+                { id: 'present', label: 'Настоящее время' },
+                { id: 'past', label: 'Прошедшее время' },
+                { id: 'future', label: 'Будущее время' },
+                { id: 'imperative', label: 'Повелительное наклонение' },
+                { id: 'conditional', label: 'Условное наклонение' }
+            ],
+            persons: ['я', 'ты', 'он / она / оно', 'мы', 'вы', 'они']
+        },
+        adjective: {
+            features: ['gender', 'number', 'case'],
+            forms: [
+                { id: 'nom_ms', label: 'муж. род, именительный' }, { id: 'nom_fs', label: 'жен. род, именительный' },
+                { id: 'nom_ns', label: 'ср. род, именительный' }, { id: 'nom_pl', label: 'мн. число, именительный' }
+            ]
+        }
+    },
+    zh: {
+        labels: { verbs: '动词', adjectives: '形容词' },
+        verb: {
+            features: ['aspect'],
+            tenses: [
+                { id: 'default', label: '一般' }, { id: 'le', label: '了（完成）' },
+                { id: 'zhe', label: '着（进行/持续）' }, { id: 'guo', label: '过（经历）' }
+            ],
+            persons: []
+        },
+        adjective: { features: ['degree'], forms: [] }
+    },
+    ko: {
+        labels: { verbs: '동사', adjectives: '형용사' },
+        verb: {
+            features: ['tense', 'honorific'],
+            tenses: [
+                { id: 'present', label: '현재' }, { id: 'past', label: '과거' }, { id: 'future', label: '미래' }
+            ],
+            persons: []
+        },
+        adjective: { features: ['tense', 'honorific'], forms: [] }
+    },
+    hi: {
+        labels: { verbs: 'क्रिया', adjectives: 'विशेषण' },
+        verb: {
+            features: ['tense', 'aspect', 'gender', 'number', 'person'],
+            tenses: [
+                { id: 'present', label: 'वर्तमान काल' }, { id: 'past', label: 'भूत काल' }, { id: 'future', label: 'भविष्य काल' }
+            ],
+            persons: ['मैं', 'तुम', 'वह', 'हम', 'आप', 'वे']
+        },
+        adjective: {
+            features: ['gender', 'number'],
+            forms: [
+                { id: 'ms', label: 'पुल्लिंग एकवचन' }, { id: 'fs', label: 'स्त्रीलिंग एकवचन' },
+                { id: 'mp', label: 'पुल्लिंग बहुवचन' }, { id: 'fp', label: 'स्त्रीलिंग बहुवचन' }
+            ]
+        }
+    },
+    ga: {
+        labels: { verbs: 'Briathra', adjectives: 'Aidiachtaí' },
+        verb: {
+            features: ['tense', 'mood', 'person', 'number'],
+            tenses: [
+                { id: 'present', label: 'Aimsir Láithreach' }, { id: 'past', label: 'Aimsir Chaite' },
+                { id: 'future', label: 'Aimsir Fháistineach' }, { id: 'conditional', label: 'Modh Coinníollach' }
+            ],
+            persons: ['mé', 'tú', 'sé / sí', 'muid', 'sibh', 'siad']
+        },
+        adjective: {
+            features: ['gender', 'number'],
+            forms: [
+                { id: 'ms', label: 'firinscneach uatha' }, { id: 'fs', label: 'baininscneach uatha' },
+                { id: 'pl', label: 'iolra' }
+            ]
+        }
+    }
 };
+const DEFAULT_GRAMMAR_LANG = 'en';
+function grammarConfigFor(langCode) {
+    return GRAMMAR_LANG_CONFIG[langCode] || GRAMMAR_LANG_CONFIG[DEFAULT_GRAMMAR_LANG];
+}
+// The actual fix for fabricated/meaningless grammar categories (task section 7): the
+// model may propose any key, but only dimensions this language's config lists for this
+// part of speech ever survive to the UI. Also drops null/empty values outright.
+function normalizeGrammarFeatures(pos, langCode, rawFeatures) {
+    const cfg = grammarConfigFor(langCode)[pos === 'adjective' ? 'adjective' : 'verb'];
+    const out = {};
+    if (rawFeatures && typeof rawFeatures === 'object') {
+        for (const key of cfg.features) {
+            const v = rawFeatures[key];
+            if (v === undefined || v === null || v === '') continue;
+            if (typeof v === 'string' || typeof v === 'number') out[key] = v;
+        }
+    }
+    return out;
+}
 
-// Default tense for each language (for initial UI state)
-const DEFAULT_TENSE = {
-    en: 'present_simple',
-    fr: 'indicatif_present'
-};
+// The model is asked to echo the language of the text it analysed. Accepts the bare code, a
+// regional tag ("fr-FR"), or the language's English name ("French", "Simplified Chinese").
+function languageEchoMatches(echoed, langCode) {
+    const value = String(echoed == null ? '' : echoed).trim().toLowerCase();
+    const name = (LANGUAGE_CONFIG[langCode]?.promptName || '').toLowerCase();
+    return value.slice(0, 2) === langCode || (value.length >= 4 && (value === name || name.includes(value)));
+}
+
+function hasGrammarConfig(langCode) {
+    return Object.prototype.hasOwnProperty.call(GRAMMAR_LANG_CONFIG, langCode);
+}
+
+// NFC + collapsed whitespace: PDF text layers deliver decomposed diacritics (e + U+0301
+// instead of é) and line-break whitespace, and either makes an otherwise exact surface
+// form fail a literal match. Grammar and Practice normalise BOTH sides the same way.
+function normalizeGrammarText(text) {
+    return String(text == null ? '' : text).normalize('NFC').replace(/\s+/g, ' ').trim();
+}
+
+// Word-boundary-aware occurrence search. A plain includes()/indexOf() treats "is" as
+// present inside "this" and French "est" as present inside "reste", which both fabricates
+// a match and highlights the wrong span. Boundaries are enforced only for
+// scripts that separate words with spaces; Han/Hangul run words together, so there a
+// plain substring match is the only meaningful one. A surface whose own edge is not a
+// letter (e.g. "qu'") skips the check on that edge.
+const GRAMMAR_SPACED_SCRIPT_RE = /[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Devanagari}]/u;
+const GRAMMAR_WORD_CHAR_RE = /[\p{L}\p{M}\p{N}]/u;
+function findSurfaceOccurrences(text, surface) {
+    const found = [];
+    if (!text || !surface) return found;
+    const strict = GRAMMAR_SPACED_SCRIPT_RE.test(surface);
+    const firstChar = Array.from(surface)[0], lastChar = Array.from(surface).pop();
+    const checkBefore = strict && GRAMMAR_WORD_CHAR_RE.test(firstChar);
+    const checkAfter = strict && GRAMMAR_WORD_CHAR_RE.test(lastChar);
+    let from = 0;
+    for (;;) {
+        const idx = text.indexOf(surface, from);
+        if (idx === -1) break;
+        from = idx + 1;
+        if (checkBefore && idx > 0 && GRAMMAR_WORD_CHAR_RE.test(Array.from(text.slice(Math.max(0, idx - 2), idx)).pop())) continue;
+        const end = idx + surface.length;
+        if (checkAfter && end < text.length && GRAMMAR_WORD_CHAR_RE.test(String.fromCodePoint(text.codePointAt(end)))) continue;
+        found.push(idx);
+    }
+    return found;
+}
+
+// ---- Tolerant JSON extraction for structured AI replies ----------------------------------------------
+// The AI is asked for bare JSON but real models routinely: wrap it in a code fence or a sentence of
+// preamble/epilogue, leave a trailing comma, put a raw newline inside a string, and — most damaging —
+// write an unescaped double quote INSIDE a string value (an `explanation` quoting the French word it
+// explains). Strict JSON.parse then rejects the WHOLE reply for one cosmetic slip. Only FORMATTING is
+// repaired here; every repaired value still goes through the same semantic validation as any other
+// (a fabricated surface/lemma/sentence is still rejected). A reply that is cut off mid-way (token cap) is
+// closed at the last COMPLETE element so the complete items before the cut survive.
+//
+// scanAiJson(text, start) walks the text once, string-aware, and returns
+//   { text: repaired JSON of the root value (only if complete), complete, salvage: repaired JSON closed at the
+//     last complete element (when incomplete), notes: [repairs applied] }.
+function scanAiJson(src, start) {
+    const out = [], notes = new Set(), stack = [];   // stack entries: { type:'{'|'[', expectKey:boolean }
+    let inStr = false, isKey = false, i = start, safe = null, lastSig = -1;
+    const n = src.length;
+    const top = () => stack[stack.length - 1];
+    // A safe point is where the reply may be closed if it is cut off. ONLY at element boundaries: after a complete
+    // member of a root-level object, or a complete element of an array. A half-built array element (an item cut
+    // mid-way) is not an item and is never kept.
+    const markSafe = () => {
+        if (!stack.length) return;
+        if (top().type === '[' || stack.every(e => e.type === '{')) safe = { len: out.length, stack: stack.map(e => e.type) };
+    };
+    const emit = ch => { out.push(ch); if (!inStr && !/\s/.test(ch)) lastSig = out.length - 1; };
+    const valueDone = () => { const t = top(); if (t && t.type === '{') t.expectKey = false; };
+    // What may legitimately follow a string's closing quote: , } ] : (and end of text). After a comma the next
+    // significant char must start another member/value, otherwise the quote was an inner one.
+    const closesString = j => {
+        while (j < n && /\s/.test(src[j])) j++;
+        if (j >= n) return true;
+        const c = src[j];
+        if (c === '}' || c === ']' || c === ':') return true;
+        if (c !== ',') return false;
+        j++;
+        while (j < n && /\s/.test(src[j])) j++;
+        if (j >= n) return true;
+        const d = src[j];
+        if (d === '"' || d === '{' || d === '[' || d === '}' || d === ']' || d === '-' || (d >= '0' && d <= '9')) return true;
+        if (d === '/' && (src[j + 1] === '/' || src[j + 1] === '*')) return true;   // a comment follows
+        return /^(?:true|false|null)\b/.test(src.slice(j, j + 6));
+    };
+    while (i < n) {
+        const ch = src[i];
+        if (inStr) {
+            if (ch === '\\') {
+                const nx = src[i + 1];
+                if (nx === undefined) { i++; break; }
+                if ('"\\/bfnrtu'.includes(nx)) { out.push(ch, nx); } else { out.push(nx); notes.add('bad_escape'); }
+                i += 2; continue;
+            }
+            if (ch === '"') {
+                if (closesString(i + 1)) {
+                    inStr = false; out.push('"');
+                    if (isKey) { top().expectKey = false; top().awaitColon = true; } else { valueDone(); markSafe(); }
+                } else { out.push('\\', '"'); notes.add('inner_quotes'); }
+                i++; continue;
+            }
+            const code = ch.charCodeAt(0);
+            if (code < 0x20) { out.push(ch === '\n' ? '\\n' : ch === '\t' ? '\\t' : ch === '\r' ? '\\r' : '\\u' + code.toString(16).padStart(4, '0')); notes.add('control_chars'); i++; continue; }
+            out.push(ch); i++; continue;
+        }
+        if (/\s/.test(ch)) { out.push(ch); i++; continue; }
+        if (ch === '/' && src[i + 1] === '/') { while (i < n && src[i] !== '\n') i++; notes.add('comments'); continue; }
+        if (ch === '/' && src[i + 1] === '*') { const e = src.indexOf('*/', i + 2); i = e === -1 ? n : e + 2; notes.add('comments'); continue; }
+        if (ch === '"') { inStr = true; isKey = !!(top() && top().type === '{' && top().expectKey); emit(ch); i++; continue; }
+        if (ch === '{' || ch === '[') { stack.push({ type: ch, expectKey: ch === '{' }); emit(ch); i++; continue; }
+        if (ch === '}' || ch === ']') {
+            const t = top();
+            if (!t || t.type !== (ch === '}' ? '{' : '[')) return { text: null, complete: false, salvage: null, notes: [...notes], error: 'mismatched_bracket' };
+            if (out[lastSig] === ',') { out.splice(lastSig, 1); lastSig = -1; notes.add('trailing_comma'); }
+            stack.pop(); emit(ch);
+            if (!stack.length) return { text: out.join(''), complete: true, salvage: null, notes: [...notes] };
+            valueDone(); markSafe(); i++; continue;
+        }
+        if (ch === ',') { const t = top(); if (t && t.type === '{') t.expectKey = true; emit(ch); i++; continue; }
+        if (ch === ':') { emit(ch); i++; continue; }
+        // number / true / false / null (also tolerate the Python spellings)
+        let j = i; while (j < n && /[^\s,\]}:"]/.test(src[j])) j++;
+        let tok = src.slice(i, j);
+        if (tok === 'None') { tok = 'null'; notes.add('python_literals'); } else if (tok === 'True') { tok = 'true'; notes.add('python_literals'); } else if (tok === 'False') { tok = 'false'; notes.add('python_literals'); }
+        if (!/^(?:-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)$/.test(tok)) {
+            if (j >= n) break;                                    // cut off inside a token: incomplete
+            return { text: null, complete: false, salvage: null, notes: [...notes], error: 'bad_token' };
+        }
+        for (const c of tok) emit(c);
+        i = j;
+        if (i < n) { valueDone(); markSafe(); }                   // only complete when a delimiter follows it
+    }
+    // Ran out of text: incomplete. Close at the last complete element.
+    let salvage = null;
+    if (safe) salvage = out.slice(0, safe.len).join('') + safe.stack.slice().reverse().map(t => t === '{' ? '}' : ']').join('');
+    return { text: null, complete: false, salvage, notes: [...notes] };
+}
+
+// Strips fences / zero-width characters and locates the root value. `array:true` also accepts a bare
+// top-level array. Returns { ok, value, notes, truncated, error }.
+function parseAiJson(raw, options = {}) {
+    let text = String(raw == null ? '' : raw).replace(/^﻿/, '').replace(/[​-‍⁠]/g, '').trim();
+    const notes = [];
+    if (!text) return { ok: false, value: null, notes, truncated: false, error: 'empty' };
+    if (!options.array && /^\[/.test(text.replace(/^```[a-zA-Z0-9_-]*[ \t]*\r?\n?/, ''))) return { ok: false, value: null, notes, truncated: false, error: 'array_root' };
+    if (/```/.test(text)) { text = text.replace(/```[a-zA-Z0-9_-]*[ \t]*\r?\n?/g, '').trim(); notes.push('fence'); }
+    const accept = v => v && typeof v === 'object' && (options.array || !Array.isArray(v));
+    const firstObj = text.indexOf('{'), firstArr = options.array ? text.indexOf('[') : -1;
+    const start = firstArr !== -1 && (firstObj === -1 || firstArr < firstObj) ? firstArr : firstObj;
+    if (start === -1) return { ok: false, value: null, notes, truncated: false, error: 'no_json' };
+    if (start > 0) notes.push('preamble');
+    // 1) plain JSON — the overwhelmingly common case — first from `start` to the last matching closer
+    const lastClose = text.lastIndexOf(text[start] === '{' ? '}' : ']');
+    if (lastClose > start) {
+        try { const v = JSON.parse(text.slice(start, lastClose + 1)); if (accept(v)) return { ok: true, value: v, notes: lastClose < text.length - 1 ? notes.concat('epilogue') : notes, truncated: false }; } catch (e) { /* repair below */ }
+    }
+    // 2) formatting repair, string-aware
+    const scanned = scanAiJson(text, start);
+    for (const n of scanned.notes) notes.push(n);
+    if (scanned.complete) {
+        try { const v = JSON.parse(scanned.text); if (accept(v)) return { ok: true, value: v, notes, truncated: false }; } catch (e) { return { ok: false, value: null, notes, truncated: false, error: 'unparsable' }; }
+    }
+    // 3) cut off mid-reply: keep everything up to the last complete element
+    if (!scanned.complete && scanned.salvage) {
+        try { const v = JSON.parse(scanned.salvage); if (accept(v)) return { ok: true, value: v, notes: notes.concat('truncated_salvaged'), truncated: true }; } catch (e) { /* fall through */ }
+    }
+    return { ok: false, value: null, notes, truncated: !scanned.complete && !scanned.error, error: scanned.error || (scanned.complete ? 'unparsable' : 'truncated') };
+}
+
+// The parsed OBJECT, or null when nothing parseable (or not an object) can be recovered. Used by every
+// caller that predates parseAiJson (Practice, conjugation lookup, tests).
+function parseAiJsonObject(raw) {
+    const r = parseAiJson(raw);
+    return r.ok ? r.value : null;
+}
+
+// A lemma that is written in a different script from its own surface form is a
+// translation or transliteration, not a lemma (Latin surface -> Cyrillic lemma, etc.).
+// Only checked for space-delimited scripts, where romanisation is not a convention.
+function lemmaScriptMatchesSurface(lemma, surface) {
+    if (!GRAMMAR_SPACED_SCRIPT_RE.test(surface)) return true;
+    const scriptOf = ch => /\p{Script=Latin}/u.test(ch) ? 'L' : /\p{Script=Cyrillic}/u.test(ch) ? 'C' : /\p{Script=Devanagari}/u.test(ch) ? 'D' : /\p{L}/u.test(ch) ? 'X' : '';
+    const surfaceScripts = new Set(Array.from(surface).map(scriptOf).filter(Boolean));
+    return Array.from(lemma).map(scriptOf).filter(Boolean).every(sc => surfaceScripts.has(sc));
+}
 
 function storedLanguage(key, fallback) {
     const value = readStored(key);
@@ -238,7 +641,7 @@ const state = {
     // раніше кожен холодний старт (у т.ч. після повернення з фону, коли Android
     // вивантажив сторінку) скидав їх до типових значень.
     pdfScale: readStoredNumber('reader_pdf_scale', 1, 0.25, 4),
-    pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width',
+    pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width Tag verbs in ordinary prose, not only in conjugation exercises: infinitives after a preposition or another verb (à effectuer, pour établir, mettre en place → lemma "mettre"), past participles used as verbs (Établi un diagnostic, Appliquer les mesures), and headings written in CAPITALS (PRÉPARER LES TRAVAUX): copy the surface exactly as written, capitals included, and give the lemma in lower case. Never tag a word that is only a noun or a plain adjective.',
     fontSize: readStoredNumber('reader_font_size', 18, 12, 40),
     epubZip: null, spine: [], txtLines: [],
     translateMode: readStored('reader_translate_mode') === '1', extractedTextForTTS: "", currentLangCode: 'en-US',
@@ -268,7 +671,11 @@ const state = {
     targetLang: storedLanguage('reader_target_lang', 'uk'),
     uiLang: storedLanguage('reader_ui_lang', 'uk'),
     speakSide: readStored('reader_speak_side') || 'original',
-    lastGrammarSentence: '', lastAskParagraph: '', activeVerb: null, activeTense: 'indicatif présent', verbs: [], docChapters: null,
+    lastGrammarSentence: '', lastAskParagraph: '', docChapters: null,
+    // One-shot: set only by a PDF drag that spans a bilingual page's two columns, consumed (and
+    // cleared) by the very next handleWordOrSelection so it can never leak into a later tap — see
+    // js/selection.js's pointerup handler and js/translation.js's ttAiBtn.onclick.
+    lastGrammarSourceText: null,
     refinedKeys: new Set(),
     sourceLang: 'en-US', ctxSentence: '',
     ink: {}, inkMode: false, inkErase: false, inkColor: '#1a56db',
@@ -481,6 +888,10 @@ const I18N = {
     btnAsk:         { uk: '🤖 Запитай AI',  en: '🤖 Ask AI',      fr: "🤖 Demander à l'IA", ru: '🤖 Спросить AI' },
     btnGrammar:     { uk: '✨ Граматика',   en: '✨ Grammar',     fr: '✨ Grammaire',   ru: '✨ Грамматика' },
     practice:       { uk: '📚 Практика',    en: '📚 Practice',    fr: '📚 Pratique',    ru: '📚 Практика' },
+    // The collapsed Practice tab's own short label (getPracticePanel's #practice-restore) -- distinct
+    // from `practice` above (which carries the 📚 emoji for the in-panel button) so the tab stays a
+    // plain word, and so it is never left as hard-coded English across a UI language change.
+    practiceTabLabel: { uk: 'Практика',      en: 'Practice',       fr: 'Pratique',       ru: 'Практика' },
     translating:    { uk: 'Переклад...',    en: 'Translating...', fr: 'Traduction...',  ru: 'Перевод...' },
     panelAsk:       { uk: '🤖 Пояснення слова', en: '🤖 Word explanation', fr: '🤖 Explication du mot', ru: '🤖 Объяснение слова' },
     panelGrammar:   { uk: '📝 Граматика',   en: '📝 Grammar',     fr: '📝 Grammaire',   ru: '📝 Грамматика' },
@@ -630,17 +1041,24 @@ const I18N = {
     statsNoHelp: { uk: 'Ще немає запитів допомоги', en: 'No help requests yet', fr: "Aucune demande d'aide", ru: 'Запросов помощи пока нет' },
     // Practice Studio UI strings
     practiceSource:     { uk: 'Джерело:', en: 'Source:', fr: 'Source:', ru: 'Источник:' },
-    practiceLevel:      { uk: 'Рівень:', en: 'Level:', fr: 'Niveau:', ru: 'Уровень:' },
-    practiceExercises:  { uk: 'Вправи:', en: 'Exercises:', fr: 'Exercices:', ru: 'Упражнения:' },
-    practicePrevious:   { uk: '← Попереднє', en: '← Previous', fr: '← Précédent', ru: '← Назад' },
-    practicePage:       { uk: 'Сторінка', en: 'Page', fr: 'Page', ru: 'Страница' },
-    practiceNext:       { uk: 'Наступне →', en: 'Next →', fr: 'Suivant →', ru: 'Дальше →' },
+    practiceFocus:      { uk: 'Слова:', en: 'Words:', fr: 'Mots :', ru: 'Слова:' },
     practiceRegenerate: { uk: 'Регенерувати', en: 'Regenerate', fr: 'Régénérer', ru: 'Перегенерировать' },
-    practiceCheck:      { uk: 'Перевірити AI', en: 'Check with AI', fr: "Vérifier avec l'IA", ru: 'Проверить с AI' },
-    practiceComingSoon: { uk: '(буде скоро)', en: '(coming soon)', fr: '(bientôt)', ru: '(скоро)' },
     practiceError:      { uk: 'Помилка практики', en: 'Practice Error', fr: 'Erreur de pratique', ru: 'Ошибка практики' },
     practiceUnknownError: { uk: 'Невідома помилка', en: 'Unknown error', fr: 'Erreur inconnue', ru: 'Неизвестная ошибка' },
-    hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' }
+    hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' },
+    // Redesigned Grammar/Practice UI strings (contextual Verbs/Adjectives panel + reading Practice).
+    grammarEmptyVerbs:      { uk: 'У цьому фрагменті дієслів не знайдено.', en: 'No verbs found in this selection.', fr: 'Aucun verbe trouvé dans cette sélection.', ru: 'В этом фрагменте глаголов не найдено.' },
+    grammarEmptyAdjectives: { uk: 'У цьому фрагменті прикметників не знайдено.', en: 'No adjectives found in this selection.', fr: 'Aucun adjectif trouvé dans cette sélection.', ru: 'В этом фрагменте прилагательных не найдено.' },
+    grammarWhy:              { uk: 'Чому', en: 'Why', fr: 'Pourquoi', ru: 'Почему' },
+    grammarAgreesWith:       { uk: 'Узгоджується з', en: 'Agrees with', fr: 'Accord avec', ru: 'Согласуется с' },
+    grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },
+    grammarUnsupportedLanguage: { uk: 'Граматичний розбір для цієї мови ще не підтримується.', en: 'Grammar analysis is not supported for this language yet.', fr: "L'analyse grammaticale n'est pas encore disponible pour cette langue.", ru: 'Грамматический разбор для этого языка пока не поддерживается.' },
+    aiTruncated:            { uk: 'Відповідь AI обірвалась через обмеження довжини. Виділіть менше тексту й спробуйте ще раз.', en: 'The AI reply was cut off. Select less text and try again.', fr: 'La réponse IA a été coupée. Sélectionnez moins de texte et réessayez.', ru: 'Ответ AI оборвался из-за ограничения длины. Выделите меньше текста и повторите.' },
+    grammarPartial:         { uk: 'Неповний розбір: відповідь AI обірвалась. Виділіть менше тексту для повного розбору.', en: 'Partial analysis: the AI reply was cut off. Select less text for a complete analysis.', fr: 'Analyse partielle : la réponse IA a été coupée. Sélectionnez moins de texte pour une analyse complète.', ru: 'Неполный разбор: ответ AI оборвался. Выделите меньше текста для полного разбора.' },
+    grammarTrimmed:         { uk: 'Проаналізовано перші {n} із {m} речень виділення.', en: 'Analysed the first {n} of {m} sentences of the selection.', fr: 'Les {n} premières phrases sur {m} de la sélection ont été analysées.', ru: 'Проанализированы первые {n} из {m} предложений выделения.' },
+    grammarBudgetLimited:   { uk: 'Показано перші {n} із {m} знайдених форм у цьому виділенні.', en: 'Showing the first {n} of {m} forms found in this selection.', fr: 'Affichage des {n} premières formes sur {m} trouvées dans cette sélection.', ru: 'Показаны первые {n} из {m} найденных форм в этом выделении.' },
+    grammarNoUsableForms:   { uk: 'Відповідь AI не містила придатних форм. Спробуйте ще раз.', en: 'The AI reply contained no usable forms. Please try again.', fr: 'La réponse IA ne contenait aucune forme exploitable. Réessayez.', ru: 'Ответ AI не содержал пригодных форм. Попробуйте ещё раз.' },
+    retry:                   { uk: 'Повторити', en: 'Retry', fr: 'Réessayer', ru: 'Повторить' },
 };
 
 // Additional interface locales extend the existing dictionary. Keys not yet
