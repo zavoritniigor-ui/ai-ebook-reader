@@ -1202,8 +1202,57 @@ Object.assign(I18N, {
         "ko": "AI API 키 (OpenAI / Groq / Gemini)",
         "hi": "AI API कुंजियाँ (OpenAI / Groq / Gemini)",
         "ga": "Eochracha API AI (OpenAI / Groq / Gemini)"
+    },
+    "practiceTab": {
+        "en": "Practice",
+        "uk": "Практика",
+        "fr": "Pratique",
+        "ru": "Практика",
+        "zh": "练习",
+        "ko": "연습",
+        "hi": "अभ्यास",
+        "ga": "Cleachtadh"
+    },
+    "tRestorePractice": {
+        "en": "Restore Practice workspace",
+        "uk": "Відновити робочу область Практики",
+        "fr": "Restaurer l'espace Pratique",
+        "ru": "Восстановить область Практики",
+        "zh": "恢复练习工作区",
+        "ko": "연습 작업 영역 복원",
+        "hi": "अभ्यास कार्यस्थान पुनर्स्थापित करें",
+        "ga": "Athchóirigh an spás oibre Cleachtais"
     }
 });
+
+function formatWordsSelected(count) {
+    const n = Math.max(0, Math.round(count));
+    const lang = (state.uiLang || 'uk').toLowerCase();
+    if (lang === 'uk') {
+        const mod10 = n % 10;
+        const mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return `${n} слово виділено`;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} слова виділено`;
+        return `${n} слів виділено`;
+    }
+    if (lang === 'ru') {
+        const mod10 = n % 10;
+        const mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return `${n} слово выделено`;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} слова выделено`;
+        return `${n} слов выделено`;
+    }
+    if (lang === 'fr') {
+        return n === 1 ? `1 mot sélectionné` : `${n} mots sélectionnés`;
+    }
+    if (lang === 'de') {
+        return n === 1 ? `1 Wort ausgewählt` : `${n} Wörter ausgewählt`;
+    }
+    if (lang === 'es') {
+        return n === 1 ? `1 palabra seleccionada` : `${n} palabras seleccionadas`;
+    }
+    return n === 1 ? `1 word selected` : `${n} words selected`;
+}
 
 function t(key) {
     const e = I18N[key];
@@ -1221,6 +1270,16 @@ function applyI18n() {
     updateDictationUI();
     els.askTab.setAttribute('aria-label', t('tAskPanel'));
     els.grammarTab.setAttribute('aria-label', t('tGrammarPanel'));
+    const practiceRestore = document.getElementById('practice-restore');
+    if (practiceRestore) {
+        const span = practiceRestore.querySelector('span');
+        if (span) span.textContent = t('practiceTab');
+        practiceRestore.title = t('tRestorePractice');
+        practiceRestore.setAttribute('aria-label', t('tRestorePractice'));
+    }
+    if (els.tooltip && els.tooltip.style.display === 'flex' && state.lastSelectionWordCount > 2) {
+        els.ttOriginal.textContent = formatWordsSelected(state.lastSelectionWordCount);
+    }
     if (typeof loadVoices === 'function') loadVoices();   // назви груп голосів
     if (typeof refreshReadingStats === 'function') refreshReadingStats();
 }

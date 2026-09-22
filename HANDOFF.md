@@ -18,42 +18,45 @@ part of normal task startup.
 
 ## Current handoff
 
-### PDF Central Workspace Layout & Sidebar Visual Depth (2026-09-22, branch `feature/pdf-workspace-layout`, base `grammar-redesign` @ `690bae8`)
+### PDF Central Workspace, Bilingual Selection & Quick Wheel (2026-09-22, branch `feature/pdf-workspace-layout`, base `grammar-redesign` @ `531a492`)
 
-Worktree `/home/igor/Projects/AI-Ebook-Reader-PDFLayout`, branch `feature/pdf-workspace-layout`. Commit: `88a33c4`.
-**Concurrency boundary strictly preserved:** Zero edits to `js/grammar-svo.js`, Grammar analysis, Practice logic, language segmentation, or AI prompt code. Claude's Grammar work remains untouched.
+Worktree `/home/igor/Projects/AI-Ebook-Reader-PDFLayout`, branch `feature/pdf-workspace-layout`.
+**Concurrency boundary strictly preserved:** Zero edits to `js/grammar-svo.js` or Claude's active linguistic/grammar analysis. DO NOT MERGE PR #119.
 
 Done:
-1. **Mathematical Central Workspace Bounds**:
-   - Implemented dynamic bounding in `js/pdf-continuous.js` via `getReaderWorkspaceRect()`:
-     `availableLeft = max(mainRect.left, nav.right, ask.right)`
-     `availableRight = min(mainRect.right, grammar.left, practice.left)`
-     `availableWidth = max(1, availableRight - availableLeft)`
-   - Dynamically positions and sizes `#reader-container` strictly between active side panels.
-   - Eliminates unused blank right-side strip: Added `.pdf-page-wrapper { margin-left: auto; margin-right: auto; }` and desktop `padding: 0` in `index.html`. Pages center with 0.5px subpixel precision across all panel states.
-2. **Dynamic Scale & Manual Zoom Invariance**:
-   - `pdfScaleForPage(natural)` computes dynamic scale when `state.pdfFit` is `'page'` or `'width'`/`'fit'`.
-   - When manual zoom is selected (`'free'`), scale strictly respects user-chosen `state.pdfScale` without shrinking when panels open.
-   - Preserves reading page and relative viewport scroll anchor across panel open/close transitions and window resizes without jumps.
-3. **Left Thumbnail Sidebar Visual Depth**:
-   - Added progressive elevation and refined contrast across Light, Dark, and Sepia themes for `#pdf-thumb-list`.
-   - High-contrast active thumbnail card border and badge highlight; smooth virtualized rendering and scroll preserved.
-4. **App-Shell Hashes & CI Registration**:
-   - Ran `python3 tools/version_app_shell.py` to update `sw.js` app-shell cache.
-   - Created comprehensive acceptance test `tests/pdf_workspace_browser.py` (12 automated checks covering States A through I + thumbnail visual depth) and registered in `.github/workflows/ci.yml`.
-
-Verification results:
-- `node --check js/*.js sw.js archive-guard.worker.js` -> PASS
-- `python3 tests/app_shell_versions.py` -> PASS
-- `python3 tests/ci_suite_coverage.py` -> PASS (36/36 suites)
-- `python3 tests/pdf_workspace_browser.py` -> PASS (12/12 states)
-- `python3 tests/pdf_continuous_browser.py` -> PASS (13/13 scenarios)
-- `python3 tests/pdf_word_click_browser.py` -> PASS (5/5 scenarios)
-- `python3 tests/pdf_page_identity_browser.py` -> PASS (synthetic + 657-page textbook)
+1. **Mathematical Central Workspace Bounds & Panel Overlay Fix**:
+   - `js/pdf-continuous.js` dynamic bounding via `getReaderWorkspaceRect()`, responsive centering without blank right strips.
+   - Side panels maintain strict `position: fixed` overlay behavior: prevented `#grammar-panel.practice-bookmark-dock` and `#practice-panel` from becoming in-flow flex items that steal 500px of layout width.
+   - Dynamic relayout triggers registered across all 9 panel/zoom/resize events via `registerPdfPanel()` and `updatePdfWorkspaceLayout({ immediate: true, force: true })`.
+2. **Left Thumbnail Sidebar Clean Dark Slate Look**:
+   - Styled `nav#sidebar` and `#pdf-thumb-list` with clean dark slate `#1a1f26` across Light, Dark, and Sepia themes.
+   - White PDF page thumbnails (`#ffffff`) with realistic drop-shadows (`box-shadow: 0 2px 8px rgba(0,0,0,0.4)`), `#58a6ff` active borders and badges.
+3. **Canonical Bilingual Selection & Column Isolation**:
+   - Implemented `resolveCanonicalPdfSelection(range, options)` in `js/selection.js`, producing structured `{ text, grammarText, sourceLanguage, targetLanguage, isCrossColumn, columns, studyColumnIndex, spans, range, rect, sourceType }`.
+   - When a drag begins and ends in the same visual column (`startCol === endCol`), foreign interleaved spans are excluded, `range._pdfPieces` isolates the visual column for highlighting without DOM mutation, and `cleanText`/`grammarText` isolate the single column.
+   - Verified across BOTH `'rows'` and `'columns'` content-stream orders in `tests/bilingual_selection_browser.py`: dragging across all 8 rows within the French column selects French only; dragging within the English column selects English only.
+   - Cross-column drags retain combined text for translation, while isolating the study language (`pageLang()`) into `canonical.grammarText`/`state.lastGrammarSourceText`.
+4. **Quick Wheel UI & Immediate Localization**:
+   - `formatWordsSelected(count)` in `js/core.js` with localized plural forms for Ukrainian, English, French, German, Spanish, and Russian.
+   - Quick Wheel tooltip displays compact localized count (e.g. "8 words selected") for selections $>2$ words or $>28$ characters, with full text in `title`.
+   - Controls and action buttons protected with `flex-shrink: 0` and `.tt-original` ellipsis, preventing controls from being pushed offscreen on desktop or 390px mobile.
+   - `applyI18n()` dynamically re-translates open Quick Wheel count and Practice restore tab immediately without page reload.
+5. **Practice Ready Indicator**:
+   - `syncPracticeRestore()` reflects `session.status` (`ready`, `loading`, `error`) onto collapsed Practice tab.
+   - Visual green accent and border on `ready`, cleared automatically on expanding or closing Practice.
+6. **App-Shell Hashes & CI Verification**:
+   - `tools/version_app_shell.py` updated hashes in `index.html` and `sw.js`.
+   - All tests passing 100%:
+     - `tests/bilingual_selection_browser.py` -> 100% PASS (all checks, both stream orders)
+     - `tests/practice_workspace_browser.py` -> 100% PASS (30/30 checks)
+     - `tests/pdf_workspace_browser.py` -> 100% PASS (12/12 states + visual depth)
+     - `tests/app_shell_versions.py` & `tests/ci_suite_coverage.py` -> 100% PASS
+     - Node syntax gate passes for all JS files.
 
 Next action:
-- Branch `feature/pdf-workspace-layout` is pushed to `origin/feature/pdf-workspace-layout`.
-- Ready to open PR into `grammar-redesign` (or integrate into `main` when `grammar-redesign` / PR #119 merges).
+- Commit changes on `feature/pdf-workspace-layout`.
+- Push to `origin/feature/pdf-workspace-layout`.
+- Report commit SHA and test results; DO NOT MERGE to `main` or PR #119.
 
 ### Bilingual multi-verb selection collapsed to one lemma ("voir" only) — root cause found and fixed (2026-09-21, branch `grammar-redesign`, PR #119 — NOT merged)
 

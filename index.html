@@ -223,24 +223,33 @@
         #pdf-sidebar { display: none; flex-direction: column; height: 100%; overflow: hidden; }
         body.pdf-mode #toc-list { display: none; }
         body.pdf-mode #pdf-sidebar { display: flex; }
-        #pdf-sidebar-tabs { display: flex; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        body.pdf-mode nav#sidebar {
+            background: #1a1f26;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        #pdf-sidebar-tabs {
+            display: flex;
+            background: #14171c;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+        }
         .pdf-sidebar-tab { flex: 1; padding: 10px 6px; background: none; border: none; border-bottom: 2px solid transparent;
-                          color: var(--text-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; letter-spacing: .02em; }
-        .pdf-sidebar-tab:hover:not(:disabled) { background: var(--hover-color); }
-        .pdf-sidebar-tab.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+                          color: #8b949e; font-size: 12.5px; font-weight: 600; cursor: pointer; letter-spacing: .02em; }
+        .pdf-sidebar-tab:hover:not(:disabled) { background: rgba(255, 255, 255, 0.05); color: #c9d1d9; }
+        .pdf-sidebar-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
         .pdf-sidebar-tab:disabled { opacity: .4; cursor: not-allowed; }
         .pdf-sidebar-list { list-style: none; margin: 0; padding: 10px; overflow-y: auto; flex: 1; }
 
-        /* Thumbnails sidebar visual depth — progressive darkening toward outer edges, theme-adaptive */
+        /* Thumbnails sidebar visual depth — clean dark slate across all themes with progressive gradient */
         #pdf-thumb-list {
             padding: 12px 10px 24px;
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0.025) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.035) 100%), var(--panel-bg);
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.15) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.20) 100%), #1a1f26;
         }
         [data-theme="dark"] #pdf-thumb-list {
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0.24) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.28) 100%), var(--panel-bg);
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.24) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.28) 100%), #1a1f26;
         }
         [data-theme="sepia"] #pdf-thumb-list {
-            background: linear-gradient(90deg, rgba(74, 54, 26, 0.05) 0%, transparent 18%, transparent 82%, rgba(74, 54, 26, 0.07) 100%), var(--panel-bg);
+            background: linear-gradient(90deg, rgba(74, 54, 26, 0.05) 0%, transparent 18%, transparent 82%, rgba(74, 54, 26, 0.07) 100%), #1a1f26;
         }
 
         .pdf-thumb-item {
@@ -250,38 +259,40 @@
             transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
         }
         .pdf-thumb-item:hover {
-            background: var(--hover-color);
+            background: rgba(255, 255, 255, 0.06);
         }
         .pdf-thumb-item.active {
-            border-color: var(--accent-color);
-            background: var(--hover-color);
+            border-color: #58a6ff;
+            background: rgba(56, 139, 253, 0.16);
+            box-shadow: 0 0 10px rgba(88, 166, 255, 0.25);
         }
         .pdf-thumb-item canvas, .pdf-thumb-item .pdf-thumb-placeholder {
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
-            background: var(--surface-2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.25);
+            background: #ffffff !important;
             display: block;
             max-width: 100%;
             border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             transition: box-shadow 0.15s ease;
         }
         [data-theme="dark"] .pdf-thumb-item canvas, [data-theme="dark"] .pdf-thumb-item .pdf-thumb-placeholder {
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
         }
         [data-theme="sepia"] .pdf-thumb-item canvas, [data-theme="sepia"] .pdf-thumb-item .pdf-thumb-placeholder {
-            box-shadow: 0 2px 8px rgba(74, 54, 26, 0.14);
-            border: 1px solid rgba(74, 54, 26, 0.10);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.10);
         }
         .pdf-thumb-item.active canvas, .pdf-thumb-item.active .pdf-thumb-placeholder {
-            box-shadow: 0 3px 12px rgba(var(--shadow-color), 0.22);
+            box-shadow: 0 3px 12px rgba(88, 166, 255, 0.35);
         }
         .pdf-thumb-item .pdf-thumb-num {
             font-size: 11.5px;
-            color: var(--text-muted);
+            color: #8b949e;
             transition: color 0.15s ease;
         }
         .pdf-thumb-item.active .pdf-thumb-num {
-            color: var(--accent-color);
+            color: #58a6ff;
             font-weight: 700;
         }
 
@@ -498,8 +509,8 @@
         }
         
         .tt-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; gap: 8px;}
-        .tt-original-wrapper { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1; }
-        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+        .tt-original-wrapper { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1; min-width: 0; }
+        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; flex-shrink: 1; }
         .tt-replay-btn {
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff;
             border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
@@ -507,8 +518,8 @@
         }
         .tt-replay-btn:hover { background: rgba(255,255,255,0.14); }
         /* Кнопка виділення речення — помітніша за динамік, щоб її не плутали з оформленням */
-        #tt-expand-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(16,163,127,0.16); border-color: transparent; color: #3ddba8; white-space: nowrap; }
-        #tt-svo-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(255,193,7,0.16); border-color: transparent; color: #ffc107; white-space: nowrap; }
+        #tt-expand-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(16,163,127,0.16); border-color: transparent; color: #3ddba8; white-space: nowrap; flex-shrink: 0; }
+        #tt-svo-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(255,193,7,0.16); border-color: transparent; color: #ffc107; white-space: nowrap; flex-shrink: 0; }
         #tt-expand-btn:hover { background: rgba(16,163,127,0.28); }
         #tt-svo-btn:hover { background: rgba(255,193,7,0.28); }
         /* Члени речення прямо в тексті: підмет / присудок / додаток */
@@ -530,10 +541,10 @@
         .tt-ai-label { display: block; font-size: 11px; color: #0dcaf0; letter-spacing: .3px; margin-bottom: 2px; }
         .tt-ai-text { display: block; font-size: 16px; font-weight: bold; color: #fff; line-height: 1.35; }
         
-        .tt-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .tt-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; flex-shrink: 0; }
         .tt-ai-btn, .tt-ask-btn {
             border: none; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
-            cursor: pointer; white-space: nowrap; flex: 1; transition: filter .15s, transform .1s;
+            cursor: pointer; white-space: nowrap; flex: 1; flex-shrink: 0; transition: filter .15s, transform .1s;
         }
         .tt-ai-btn { background: #10a37f; color: white; }
         .tt-ask-btn { background: #0dcaf0; color: #0b2226; }
@@ -1165,7 +1176,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=4ba70bf57f6e"></script>
+    <script src="js/core.js?v=8a1c612f2036"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1176,22 +1187,22 @@
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
     <script src="js/tts.js?v=d0219e4d74e8"></script>
-    <script src="js/selection.js?v=f5cb3d861696"></script>
+    <script src="js/selection.js?v=e32ed68eb98e"></script>
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=35e62f613b99"></script>
     <script src="js/pdf-zoom-pan.js?v=2c524012b044"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
-    <script src="js/translation.js?v=fc0468bc39e6"></script>
+    <script src="js/translation.js?v=225e94ed8ca1"></script>
     <script src="js/grammar-svo.js?v=20b4ef8f38d4"></script>
     <script src="js/ai-client.js?v=819c861727a2"></script>
     <script src="js/practice-session.js?v=2d160b51d668"></script>
-    <script src="js/practice-worksheet.js?v=4bd53811667e"></script>
+    <script src="js/practice-worksheet.js?v=56f5cd9a139a"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
     <script src="js/pdf-outline.js?v=54df75ee8ef2"></script>
     <script src="js/pdf-thumbnails.js?v=ca9551e0f416"></script>
-    <script src="js/pdf-continuous.js?v=431ba17e5f32"></script>
+    <script src="js/pdf-continuous.js?v=3131f4c5c09a"></script>
     <script src="js/pdf-render.js?v=f7f068dd2502"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>

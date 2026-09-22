@@ -413,6 +413,152 @@ function pdfRangeSpans(range) {
     if (!layer) return [];
     return pdfTextSpans(layer).filter(s => range.intersectsNode(s));
 }
+
+// Canonical PDF selection resolver: ensures geometry-based column isolation,
+// study-language priority for multi-column / bilingual PDFs, and structured result object.
+function resolveCanonicalPdfSelection(range, options = {}) {
+    if (!range) return null;
+    const rawSpans = pdfRangeSpans(range);
+    if (!rawSpans.length) {
+        const text = (range.toString() || '').trim();
+        const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
+        const fallback = {
+            text,
+            grammarText: text,
+            sourceLanguage: studyLang,
+            targetLanguage: state.targetLang || 'uk',
+            isCrossColumn: false,
+            columns: [],
+            studyColumnIndex: -1,
+            spans: [],
+            range,
+            rect: null,
+            sourceType: options.sourceType || 'phrase_translation'
+        };
+        state.canonicalSelection = fallback;
+        return fallback;
+    }
+
+    const layer = rawSpans[0].closest('.pdf-text-layer');
+    const layerWidth = (layer && layer.getBoundingClientRect().width) || 1;
+    const { rects, segColumn, spanSeg, columnCount } = pdfComputeColumns(rawSpans, layerWidth);
+
+    // Identify start and end spans
+    const startNode = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+    const startSpan = startNode ? (startNode.closest ? startNode.closest('span') : null) : null;
+    const endNode = range.endContainer.nodeType === Node.TEXT_NODE ? range.endContainer.parentElement : range.endContainer;
+    const endSpan = endNode ? (endNode.closest ? endNode.closest('span') : null) : null;
+
+    let startCol = -1;
+    let endCol = -1;
+    if (startSpan) {
+        const idx = rawSpans.indexOf(startSpan);
+        if (idx >= 0) startCol = segColumn[spanSeg[idx]];
+    }
+    if (endSpan) {
+        const idx = rawSpans.indexOf(endSpan);
+        if (idx >= 0) endCol = segColumn[spanSeg[idx]];
+    }
+
+    // Partition spans into column groups
+    const colGroups = Array.from({ length: columnCount }, () => ({ spans: [], rects: [] }));
+    rawSpans.forEach((s, i) => {
+        const c = segColumn[spanSeg[i]];
+        if (colGroups[c]) {
+            colGroups[c].spans.push(s);
+            colGroups[c].rects.push(rects[i]);
+        }
+    });
+
+    const partitionedColumns = colGroups.filter(g => g.spans.length).map((g, colIdx) => {
+        const order = g.spans.map((_, i) => i).sort((a, b) => {
+            const ra = g.rects[a], rb = g.rects[b];
+            if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+        const spans = order.map(i => g.spans[i]);
+        const text = pdfSpansToText(spans);
+        const lang = (typeof detectLang === 'function' ? String(detectLang(text) || '') : '').slice(0, 2).toLowerCase();
+        return { index: colIdx, spans, text, lang };
+    });
+
+    const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
+
+    // CASE A: The drag started and ended in the SAME column of a multi-column page.
+    // Interleaved DOM nodes belonging to foreign columns are excluded.
+    if (partitionedColumns.length > 1 && startCol >= 0 && endCol >= 0 && startCol === endCol) {
+        const matchedCol = partitionedColumns.find(c => c.index === startCol) || partitionedColumns[0];
+        const colSpans = matchedCol.spans;
+        const i1 = startSpan ? colSpans.indexOf(startSpan) : 0;
+        const i2 = endSpan ? colSpans.indexOf(endSpan) : colSpans.length - 1;
+        const fromIdx = Math.max(0, Math.min(i1 >= 0 ? i1 : 0, i2 >= 0 ? i2 : colSpans.length - 1));
+        const toIdx = Math.min(colSpans.length - 1, Math.max(i1 >= 0 ? i1 : 0, i2 >= 0 ? i2 : colSpans.length - 1));
+        const selectedSpans = colSpans.slice(fromIdx, toIdx + 1);
+
+        const pieces = [];
+        for (let i = 0; i < selectedSpans.length; i++) {
+            const s = selectedSpans[i];
+            const node = s.firstChild || s;
+            const isFirst = (i === 0);
+            const isLast = (i === selectedSpans.length - 1);
+            const pStart = (isFirst && node === range.startContainer) ? range.startOffset : 0;
+            const pEnd = (isLast && node === range.endContainer) ? range.endOffset : (node.nodeValue ? node.nodeValue.length : (s.textContent || '').length);
+            pieces.push({ node, start: pStart, end: pEnd, span: s });
+        }
+        range._pdfPieces = pieces;
+        const cleanText = pdfSpansToText(selectedSpans);
+        range.toString = () => cleanText;
+
+        let rect = null;
+        try { const b = range.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (e) {}
+
+        const canonical = {
+            text: cleanText,
+            grammarText: cleanText,
+            sourceLanguage: matchedCol.lang || studyLang,
+            targetLanguage: state.targetLang || 'uk',
+            isCrossColumn: false,
+            columns: [matchedCol],
+            studyColumnIndex: matchedCol.lang === studyLang ? 0 : -1,
+            spans: selectedSpans,
+            range,
+            rect,
+            sourceType: options.sourceType || 'phrase_translation'
+        };
+        state.canonicalSelection = canonical;
+        return canonical;
+    }
+
+    // CASE B: Ambiguous cross-column drag, or normal single-column layout.
+    const isCrossColumn = partitionedColumns.length > 1;
+    const fullText = pdfRangeText(range);
+    let studyCol = null;
+    let studyColIdx = -1;
+    if (isCrossColumn) {
+        studyColIdx = partitionedColumns.findIndex(c => c.lang === studyLang);
+        if (studyColIdx >= 0) studyCol = partitionedColumns[studyColIdx];
+    }
+
+    const grammarText = studyCol ? studyCol.text : fullText;
+    let rect = null;
+    try { const b = range.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (e) {}
+
+    const canonical = {
+        text: fullText,
+        grammarText,
+        sourceLanguage: (studyCol && studyCol.lang) || studyLang,
+        targetLanguage: state.targetLang || 'uk',
+        isCrossColumn,
+        columns: partitionedColumns,
+        studyColumnIndex: studyColIdx,
+        spans: rawSpans,
+        range,
+        rect,
+        sourceType: options.sourceType || 'phrase_translation'
+    };
+    state.canonicalSelection = canonical;
+    return canonical;
+}
 function sentenceRangeAt(clientX, clientY) {
     const caret = anchorCaret(clientX, clientY);
     if (!caret) return null;
@@ -856,36 +1002,21 @@ els.mainArea.addEventListener('pointerup', (e) => {
     // Протягування не відбулось (кінець там само, де початок) — лишаємо звичайному
     // обробнику кліку, щоб слово опрацювалось як тап зі словниковою статтею.
     if (!r) return;
-    // A plain Range.toString() over a PDF text layer has NO separator between items at
-    // all (see pdfRangeText) -- unlike reflowable formats, where the source markup's own
-    // whitespace text nodes are already part of the DOM the Range walks.
-    const text = (state.format === 'pdf' ? pdfRangeText(r) : r.toString()).trim();
-    if (!text) return;
-    // A rectangle deliberately dragged across a BILINGUAL page's original-language column
-    // AND its translation column (e.g. a French textbook's parallel English gloss) must
-    // still send only the STUDY language to Grammar -- the translation must never become
-    // "French" grammar material. Detected geometrically (the same column-clustering
-    // pdfVisualGroup already uses to keep a tap's OWN column isolated), not by scanning
-    // word-by-word for foreign vocabulary: a bilingual table's participle forms ("ayant
-    // vu", "étant parti"...) mostly carry no individual lexical signal of their own, so a
-    // purely lexical split would misjudge them; geometry never does. One-shot: read and
-    // cleared by handleWordOrSelection, so it can never leak into an unrelated later tap.
-    // A single column (the overwhelming majority of selections) leaves this null, i.e. no
-    // change from the plain `text` above -- this never affects a one-column selection, and
-    // it purposefully does not touch translation/tooltip display (see HANDOFF.md).
-    state.lastGrammarSourceText = null;
+    let text;
+    let canonical = null;
     if (state.format === 'pdf') {
         try {
-            const columns = pdfPartitionColumns(pdfRangeSpans(r));
-            if (columns.length > 1) {
-                const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
-                const byLang = columns.map(spans => pdfSpansToText(spans)).filter(Boolean)
-                    .map(colText => ({ text: colText, lang: (typeof detectLang === 'function' ? String(detectLang(colText) || '') : '').slice(0, 2).toLowerCase() }))
-                    .filter(c => c.lang === studyLang);
-                if (byLang.length === 1) state.lastGrammarSourceText = byLang[0].text;
-            }
-        } catch (err) { /* isolation is a best-effort refinement; the raw selection above always still works */ }
+            canonical = resolveCanonicalPdfSelection(r, { sourceType: 'phrase_translation' });
+        } catch (err) {}
+        text = canonical ? canonical.text : pdfRangeText(r).trim();
+        state.lastGrammarSourceText = (canonical && canonical.grammarText !== text) ? canonical.grammarText : null;
+    } else {
+        text = r.toString().trim();
+        state.lastGrammarSourceText = null;
+        state.canonicalSelection = null;
     }
+    if (!text) return;
+
     // Capture source occurrence IDs while the drag Range still references the
     // untouched reader text layer.
     const helpContext = recordHelpForSpan(r, 'phrase_translation');
@@ -894,12 +1025,15 @@ els.mainArea.addEventListener('pointerup', (e) => {
     state.lastTapPoint = { x: e.clientX, y: e.clientY };
     state.expandLevel = 0;
     state.lastSelectedRange = r.cloneRange();
+    if (r._pdfPieces) state.lastSelectedRange._pdfPieces = r._pdfPieces;
     // Протягування завершено — тепер можна перемалювати точно (у PDF обгорткою).
     showSelectionHighlight(r);
     state.lastWordNode = null; state.ctxSentence = text.slice(0, 400);
     state.lastSelectionText = text;
-    let rect = null;
-    try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
+    let rect = canonical?.rect || null;
+    if (!rect) {
+        try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
+    }
     handleWordOrSelection(text, e.clientX, e.clientY, rect, helpContext, 'phrase_translation');
 });
 

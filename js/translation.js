@@ -183,7 +183,15 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // Спочатку заповнюємо вміст, і ЛИШЕ ПОТІМ міряємо. Раніше розмір знімався, поки
     // у вікні ще стояло "Переклад...", тому довгий переклад речення розсовував вікно
     // вже після позиціонування — і воно виїжджало за край екрана.
-    els.ttOriginal.textContent = cleanText;
+    const words = cleanText.trim().split(/\s+/).filter(Boolean);
+    state.lastSelectionWordCount = words.length;
+    if (words.length > 2 || cleanText.length > 28) {
+        els.ttOriginal.textContent = typeof formatWordsSelected === 'function' ? formatWordsSelected(words.length) : `${words.length} words selected`;
+        els.ttOriginal.title = cleanText;
+    } else {
+        els.ttOriginal.textContent = cleanText;
+        els.ttOriginal.title = '';
+    }
     els.ttTranslation.textContent = t('translating');
     els.tooltip.style.visibility = 'hidden';
     els.tooltip.style.display = 'flex';

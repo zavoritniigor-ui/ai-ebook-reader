@@ -543,6 +543,21 @@ const pdfPanelObserver = new MutationObserver(() => updatePdfWorkspaceLayout());
     if (el) pdfPanelObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-mode'] });
 });
 
+function registerPdfPanel(el) {
+    if (!el) return;
+    if (typeof pdfPanelObserver !== 'undefined' && pdfPanelObserver) {
+        try {
+            pdfPanelObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-mode'] });
+        } catch (e) {}
+    }
+    el.addEventListener('transitionend', (e) => {
+        if (e.target === el && (e.propertyName === 'transform' || e.propertyName === 'width' || e.propertyName === 'visibility' || e.propertyName === 'opacity')) {
+            updatePdfWorkspaceLayout({ immediate: true, force: true });
+        }
+    });
+}
+window.registerPdfPanel = registerPdfPanel;
+
 function initPdfPanelListeners() {
     const nav = document.getElementById('sidebar') || document.querySelector('nav');
     if (nav) {
@@ -550,13 +565,7 @@ function initPdfPanelListeners() {
     }
     ['sidebar', 'grammar-panel', 'ask-panel', 'practice-panel'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('transitionend', (e) => {
-                if (e.target === el && (e.propertyName === 'transform' || e.propertyName === 'width' || e.propertyName === 'visibility')) {
-                    updatePdfWorkspaceLayout({ immediate: true, force: true });
-                }
-            });
-        }
+        if (el) registerPdfPanel(el);
     });
 }
 if (document.readyState === 'loading') {
@@ -569,3 +578,8 @@ window.addEventListener('resize', () => {
         updatePdfWorkspaceLayout();
     }
 }, { passive: true });
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        if (state.format === 'pdf') updatePdfWorkspaceLayout();
+    }, { passive: true });
+}

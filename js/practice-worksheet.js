@@ -71,6 +71,7 @@ function layoutPracticeWorkspace(dockDrawers = false) {
 
 function syncPracticeRestore(panel) {
     const restore = document.getElementById('practice-restore');
+    if (!restore) return;
     const grammar = document.getElementById('grammar-panel');
     const bookmarked = !panel.hidden && practiceWorkspaceMode === 'bookmark';
     grammar.classList.toggle('practice-bookmark-dock', bookmarked);
@@ -79,6 +80,12 @@ function syncPracticeRestore(panel) {
     restore.dataset.mode = practiceWorkspaceMode;
     restore.hidden = practiceWorkspaceMode === 'expanded' || panel.hidden;
 
+    // Practice Ready Indicator: reflect session status on collapsed tab
+    const session = typeof getCurrentPracticeSession === 'function' ? getCurrentPracticeSession() : null;
+    restore.classList.remove('ready', 'loading', 'error');
+    if (session && session.status && practiceWorkspaceMode !== 'expanded' && !panel.hidden) {
+        restore.classList.add(session.status);
+    }
 }
 
 function setPracticeWorkspaceMode(mode) {
@@ -89,9 +96,13 @@ function setPracticeWorkspaceMode(mode) {
     panel.inert = mode !== 'expanded';
     panel.setAttribute('aria-hidden', String(mode !== 'expanded'));
     const restore = document.getElementById('practice-restore');
+    if (mode === 'expanded' && restore) {
+        restore.classList.remove('ready', 'loading', 'error');
+    }
     syncPracticeRestore(panel);
     layoutPracticeWorkspace(mode === 'expanded');
-    if (mode !== 'expanded') restore.focus({ preventScroll: true });
+    if (typeof updatePdfWorkspaceLayout === 'function') updatePdfWorkspaceLayout({ immediate: true, force: true });
+    if (mode !== 'expanded') restore?.focus({ preventScroll: true });
     else panel.querySelector('#practice-collapse')?.focus({ preventScroll: true });
 }
 
@@ -139,15 +150,19 @@ function getPracticePanel() {
         } else {
             document.body.appendChild(panel);
         }
+        if (typeof registerPdfPanel === 'function') {
+            registerPdfPanel(panel);
+        }
     }
     if (!document.getElementById('practice-restore')) {
         const restore = document.createElement('button');
         restore.id = 'practice-restore';
         restore.className = 'side-panel practice-restore';
         restore.type = 'button';
-        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span>Practice</span>';
-        restore.title = 'Restore Practice workspace';
-        restore.setAttribute('aria-label', 'Restore Practice workspace');
+        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span data-i18n="practiceTab">' + (typeof t === 'function' ? t('practiceTab') : 'Practice') + '</span>';
+        restore.title = typeof t === 'function' ? t('tRestorePractice') : 'Restore Practice workspace';
+        restore.setAttribute('aria-label', typeof t === 'function' ? t('tRestorePractice') : 'Restore Practice workspace');
+        restore.setAttribute('data-i18n-title', 'tRestorePractice');
         restore.setAttribute('aria-controls', 'practice-panel');
         restore.hidden = true;
         restore.onclick = () => setPracticeWorkspaceMode('expanded');
@@ -190,6 +205,7 @@ function displayPracticeSession(session) {
     panel.setAttribute('aria-hidden', String(panel.inert));
     syncPracticeRestore(panel);
     layoutPracticeWorkspace(opening);
+    if (typeof updatePdfWorkspaceLayout === 'function') updatePdfWorkspaceLayout({ immediate: true, force: true });
 }
 
 // Show generating state
@@ -392,9 +408,14 @@ function closePractice() {
     if (panel) {
         panel.hidden = true;
     }
-    document.getElementById('practice-restore')?.setAttribute('hidden', '');
+    const restore = document.getElementById('practice-restore');
+    if (restore) {
+        restore.setAttribute('hidden', '');
+        restore.classList.remove('ready', 'loading', 'error');
+    }
     document.getElementById('grammar-panel').classList.remove('practice-bookmark-dock');
     closePracticeSession();
+    if (typeof updatePdfWorkspaceLayout === 'function') updatePdfWorkspaceLayout({ immediate: true, force: true });
 }
 
 // Retry current practice
@@ -503,10 +524,10 @@ const practiceStyles = `
 /* Reserve a slim outside rail and provide positioning context for bookmark tab. */
 #grammar-panel.practice-bookmark-dock {
     max-width: calc(100vw - 44px);
-    position: relative;
+    position: fixed !important;
 }
 #practice-restore[data-mode="bookmark"] {
-    position: absolute; height: auto; width: 44px; min-height: 100px; max-height: 120px;
+    position: absolute !important; height: auto; width: 44px; min-height: 100px; max-height: 120px;
     flex-direction: column; gap: 4px; padding: 8px 4px;
     background: var(--panel-bg);
     color: var(--text-color);
@@ -517,6 +538,26 @@ const practiceStyles = `
     font-size: 10px;
     font-weight: 600;
     justify-content: flex-start;
+}
+#practice-restore.ready {
+    background: rgba(25, 135, 84, 0.22) !important;
+    border-color: #198754 !important;
+    color: #2fb36d !important;
+}
+#practice-restore.ready svg {
+    stroke: #2fb36d !important;
+}
+#practice-restore[data-mode="bookmark"].ready {
+    border-left: 4px solid #198754 !important;
+    background: rgba(25, 135, 84, 0.22) !important;
+}
+#practice-restore.loading {
+    background: rgba(220, 53, 69, 0.18) !important;
+    border-color: #dc3545 !important;
+}
+#practice-restore.error {
+    background: rgba(220, 53, 69, 0.25) !important;
+    border-color: #dc3545 !important;
 }
 #practice-restore[data-mode="bookmark"] svg {
     width: 16px;
