@@ -30,6 +30,18 @@ ANALYSIS = json.dumps(dict(language='fr', items=[
          explanation="Infinitive given in parentheses: the verb to conjugate.", stemBreakdown=None, forms=None),
     dict(pos='adjective', lemma='pauvre', surface='pauvre', sentence=SENT, occurrence=1, agreesWith='femme',
          features=dict(gender='féminin', number='singulier'), explanation="Describes 'femme'.", stemBreakdown=None, forms=None)]), ensure_ascii=False)
+# The canned Practice reading for Adjectives mode must actually cover the requested lemma ('pauvre', the
+# one adjective ANALYSIS above ever detects) -- not just demonstrate an unrelated stock set -- now that
+# validatePracticeReading checks requested-lemma coverage (js/practice-session.js); the ORIGINAL sentence
+# is reused so the target's surface is a real occurrence in what was actually analysed.
+ADJECTIVES_FR_WITH_PAUVRE = PF.reading('Pauvre, petit, heureux et beau en contexte', 'adjectives',
+    PF.section('pauvre', 'examples',
+        # A fresh example sentence -- NOT the book's own exercise line (SENT, "Ils (plaindre) ..."):
+        # reusing that would be correctly dropped as an exercise artifact by practiceLooksLikeExercise,
+        # exactly like a real reply must never quote the book's exercise.
+        PF.item("Cette pauvre femme a perdu son emploi la semaine dernière.",
+                PF.tgt('pauvre', 'pauvre', "Describes 'femme': feminine singular.", gender='féminin', number='singulier'))),
+    *PF.ADJECTIVES_FR['sections'])
 
 
 def check(name, expression, timeout=0):
@@ -62,13 +74,13 @@ def boot(width, height, mobile=False):
     install_mocks()
 
 
-def install_mocks(verb=PF.VERBS_FR, adj=PF.ADJECTIVES_FR):
+def install_mocks(verb=PF.VERBS_FR, adj=ADJECTIVES_FR_WITH_PAUVRE):
     c.js("""(()=>{ window.__realCallAI = window.__realCallAI || callAI; aiAvailable=()=>true; showToast=()=>{}; window.__calls=[]; window.__analysis=%s; window.__verbReading=%s; window.__adjReading=%s;
         window.__delay=0;
         callAI=async (prompt, signal, task)=>{ __calls.push({task, prompt});
             if (task==='grammar_analysis') return __analysis;
             if (task==='grammar_paradigm') return JSON.stringify({forms:{}});
-            if (task==='practice_reading') { if (__delay) await new Promise(r=>setTimeout(r,__delay)); return /Words to demonstrate \\(adjectives\\)/.test(prompt) ? __adjReading : __verbReading; }
+            if (task==='practice_reading') { if (__delay) await new Promise(r=>setTimeout(r,__delay)); return /Targets to demonstrate \\(adjectives\\)/.test(prompt) ? __adjReading : __verbReading; }
             return 'ok'; };
         return true; })()""" % (json.dumps(ANALYSIS), json.dumps(PF.to_json(verb)), json.dumps(PF.to_json(adj))))
 
@@ -141,7 +153,7 @@ heads = c.js("[...document.querySelectorAll('#practice-panel .practice-section-t
 assert heads == ['parler', 'plaindre'], heads
 check("A: the sections are per practised word (a quiet heading each), then the connected paragraphs",
       "[...document.querySelectorAll('#practice-panel .practice-section')].map(s=>s.className.replace('practice-section ','')).join()==='practice-section-examples,practice-section-examples,practice-section-story'")
-assert 'in French (language code "fr")' in PROMPT and 'Words to demonstrate (verbs)' in PROMPT
+assert 'in French (language code "fr")' in PROMPT and 'Targets to demonstrate (verbs)' in PROMPT
 assert 'never in the explanation language' in PROMPT
 print("PASS A: the reading is requested in the STUDIED language (French), not the interface/explanation language", flush=True)
 
@@ -287,18 +299,18 @@ check("K: switching Grammar to Adjectifs leaves the open Verbs reading exactly a
 
 calls = open_practice('adjectives')
 gen = [x for x in calls if x['task'] == 'practice_reading']
-assert len(gen) == 1 and 'Words to demonstrate (adjectives)' in gen[0]['prompt']
+assert len(gen) == 1 and 'Targets to demonstrate (adjectives)' in gen[0]['prompt']
 AP = gen[0]['prompt']
 assert 'agreeing with DIFFERENT nouns' in AP and 'masculin singulier' in AP and 'féminin pluriel' in AP
 assert 'Présent' not in AP and 'Imparfait' not in AP and 'tenses' not in AP.split('Structure ("sections"):')[1].split('Absolutely forbidden')[0], 'an adjective session must not mention tenses'
 print("PASS F/K: the adjectives request demonstrates gender/number agreement with different nouns and mentions NO tenses", flush=True)
 sess = c.js("getCurrentPracticeSession()")
 assert sess['mode'] == 'adjectives' and sess['lemmas'] == ['pauvre']
-N_ADJ = sum(len(i['targets']) for sec in PF.ADJECTIVES_FR['sections'] for i in sec['items'])
+N_ADJ = sum(len(i['targets']) for sec in ADJECTIVES_FR_WITH_PAUVRE['sections'] for i in sec['items'])
 check("F: adjective targets are highlighted and clickable (%d), and there is not a single verb target" % N_ADJ,
       "document.querySelectorAll('#practice-panel .practice-target-adjective').length===%d && document.querySelectorAll('#practice-panel .practice-target-verb').length===0 && document.querySelectorAll('#practice-panel .practice-target').length===%d" % (N_ADJ, N_ADJ))
 check("F: adjective headings are per adjective (petit / heureux / beau)",
-      "[...document.querySelectorAll('#practice-panel .practice-section-title')].map(h=>h.textContent).join()==='petit,heureux,beau'")
+      "[...document.querySelectorAll('#practice-panel .practice-section-title')].map(h=>h.textContent).join()==='pauvre,petit,heureux,beau'")
 sent = "Elle habite dans une petite maison près de la mer."
 f = focus_after_real_click(sent, 'petite')
 assert f['pos'] == 'adjective' and f['sentence'] == sent and f['cards'] == 0 and 'maison' in f['why'], f
@@ -311,7 +323,7 @@ c.js("window.__n2=__calls.length")
 click('#practice-regenerate')
 c.wait("__calls.length>__n2 && getCurrentPracticeSession()?.status==='ready'", timeout=10)
 regen = [x for x in c.js("__calls.slice(__n2)") if x['task'] == 'practice_reading'][0]['prompt']
-assert 'Words to demonstrate (adjectives)' in regen and '"pauvre"' in regen, regen[:600]
+assert 'Targets to demonstrate (adjectives)' in regen and '"pauvre"' in regen, regen[:600]
 sess2 = c.js("getCurrentPracticeSession()")
 assert sess2['mode'] == 'adjectives' and sess2['lemmas'] == ['pauvre'] and sess2['id'] != sess['id']
 print("PASS K: Regenerate re-creates an ADJECTIVES reading for the same lemmas (mode and lemmas are kept on the session)", flush=True)
@@ -326,7 +338,7 @@ c.js("window.__n3=__calls.length")
 click('#practice-retry')
 c.wait("getCurrentPracticeSession()?.status==='ready'", timeout=10)
 rp = [x for x in c.js("__calls.slice(__n3)") if x['task'] == 'practice_reading'][0]['prompt']
-assert 'Words to demonstrate (adjectives)' in rp and c.js("getCurrentPracticeSession().mode") == 'adjectives' and c.js("getCurrentPracticeSession().lemmas") == ['pauvre']
+assert 'Targets to demonstrate (adjectives)' in rp and c.js("getCurrentPracticeSession().mode") == 'adjectives' and c.js("getCurrentPracticeSession().lemmas") == ['pauvre']
 print("PASS K: Retry after an error also keeps the adjectives mode and the lemmas", flush=True)
 c.js("callAI=__origCall")
 
@@ -377,10 +389,16 @@ for provider, key_field in [('gemini', 'apiKey'), ('groq', 'groqKey'), ('openai'
     check("provider %s: the same reading request is sent and the sectioned reply is parsed and accepted" % provider,
           "getCurrentPracticeSession()?.status==='ready' && getCurrentPracticeSession().reading.sections.length===3", timeout=10)
     body = json.dumps(c.js("__fetches[0].body"))
-    assert 'READING MATERIAL' in body and 'NOT a quiz' in body and 'Words to demonstrate (verbs)' in body, provider
+    assert 'READING MATERIAL' in body and 'NOT a quiz' in body and 'Targets to demonstrate (verbs)' in body, provider
     assert not re.search(r"expectedAnswer|Choose the correct|fill_form|multiple_choice", body, re.I), provider
     if provider == 'openai':
-        assert c.js("__fetches[0].body.max_output_tokens") >= 6000, 'a several-minutes reading needs a large output budget'
+        # The output budget is now SIZE-AWARE (js/practice-session.js practiceOutputBudget), scaled from
+        # the same allocation the prompt itself was built from, rather than one flat constant for every
+        # request -- so the request actually sent must match what that same formula computes for THIS
+        # exact lemma list, and it must still be a meaningfully large budget (never a token-starved sliver).
+        expected_tokens = c.js("practiceReadingBudget({lemmas:['parler','plaindre']}, ['parler','plaindre']).maxOutputTokens")
+        assert expected_tokens >= 4000, expected_tokens
+        assert c.js("__fetches[0].body.max_output_tokens") == expected_tokens, (c.js("__fetches[0].body.max_output_tokens"), expected_tokens)
 assert c.js("aiTaskTimeout('practice_reading')") >= 120000 and c.js("aiTaskTimeout('translation')") == 45000
 print("PASS L: Gemini, Groq and OpenAI all use the SAME single reading prompt and contract; OpenAI gets a large output budget and Practice a %ds timeout" % (c.js("aiTaskTimeout('practice_reading')") // 1000), flush=True)
 c.js("window.fetch=window.__realFetch; state.activeAiProvider='gemini'; state.apiKey=''; state.groqKey=''; state.openaiKey=''")

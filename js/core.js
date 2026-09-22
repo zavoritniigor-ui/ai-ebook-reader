@@ -888,6 +888,10 @@ const I18N = {
     btnAsk:         { uk: '🤖 Запитай AI',  en: '🤖 Ask AI',      fr: "🤖 Demander à l'IA", ru: '🤖 Спросить AI' },
     btnGrammar:     { uk: '✨ Граматика',   en: '✨ Grammar',     fr: '✨ Grammaire',   ru: '✨ Грамматика' },
     practice:       { uk: '📚 Практика',    en: '📚 Practice',    fr: '📚 Pratique',    ru: '📚 Практика' },
+    // The collapsed Practice tab's own short label (getPracticePanel's #practice-restore) -- distinct
+    // from `practice` above (which carries the 📚 emoji for the in-panel button) so the tab stays a
+    // plain word, and so it is never left as hard-coded English across a UI language change.
+    practiceTabLabel: { uk: 'Практика',      en: 'Practice',       fr: 'Pratique',       ru: 'Практика' },
     translating:    { uk: 'Переклад...',    en: 'Translating...', fr: 'Traduction...',  ru: 'Перевод...' },
     panelAsk:       { uk: '🤖 Пояснення слова', en: '🤖 Word explanation', fr: '🤖 Explication du mot', ru: '🤖 Объяснение слова' },
     panelGrammar:   { uk: '📝 Граматика',   en: '📝 Grammar',     fr: '📝 Grammaire',   ru: '📝 Грамматика' },
@@ -1275,12 +1279,9 @@ function applyI18n() {
     const practiceRestore = document.getElementById('practice-restore');
     if (practiceRestore) {
         const span = practiceRestore.querySelector('span');
-        if (span) span.textContent = t('practiceTab');
+        if (span) span.textContent = t('practiceTabLabel') || t('practiceTab');
         practiceRestore.title = t('tRestorePractice');
         practiceRestore.setAttribute('aria-label', t('tRestorePractice'));
-    }
-    if (els.tooltip && els.tooltip.style.display === 'flex' && (state.lastSelectionWordCount > 2 || (els.ttOriginal.title && els.ttOriginal.title.length > 24))) {
-        els.ttOriginal.textContent = formatWordsSelected(state.lastSelectionWordCount);
     }
     if (typeof loadVoices === 'function') loadVoices();   // назви груп голосів
     if (typeof refreshReadingStats === 'function') refreshReadingStats();

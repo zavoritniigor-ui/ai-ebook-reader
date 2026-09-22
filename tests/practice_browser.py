@@ -163,8 +163,10 @@ print("\n=== TEST 5: Section Count Bounds ===")
 
 c.js(r"""
 window.__tooMany = {
+    // MAX_SECTIONS is now PRACTICE_MAX_LEMMAS(20) + 4 (one "examples" section per requested lemma, up to
+    // the same ceiling as grammarItemBudget, plus a few "story" sections) -- 25 exceeds it, 13 no longer does.
     title: 'Too many', language: 'fr', mode: 'verbs',
-    sections: Array.from({length: 13}, (_, i) => ({heading: 'w' + i, kind: 'examples', items: [{text: 'Sentence number ' + i + ' with plenty of words so it is not trivially short by itself.', targets: []}]}))
+    sections: Array.from({length: 25}, (_, i) => ({heading: 'w' + i, kind: 'examples', items: [{text: 'Sentence number ' + i + ' with plenty of words so it is not trivially short by itself.', targets: []}]}))
 };
 try {
     validatePracticeReading(window.__tooMany);

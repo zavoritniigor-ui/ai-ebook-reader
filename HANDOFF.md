@@ -18,57 +18,113 @@ part of normal task startup.
 
 ## Current handoff
 
-### PDF Central Workspace, Floating Navigation Pill & Usability Fixes (2026-09-22, branch `feature/pdf-workspace-layout`, commit `dddeb327fb58cd5be37aa520b2c400aa2252cd3d`)
+### PDF Central Workspace, Selection, Thumbnails & UI Integration (2026-09-22, branch `feature/pdf-workspace-layout`, PR #122 — Reconciled onto main)
 
-Worktree `/home/igor/Projects/AI-Ebook-Reader-PDFLayout`, branch `feature/pdf-workspace-layout`, PR #122.
-**Concurrency boundary strictly preserved:** Zero edits to `js/grammar-svo.js` or Claude's active linguistic/grammar analysis. DO NOT MERGE PR #119 or PR #122.
+Branch `feature/pdf-workspace-layout`, PR #122 rebased/reconciled cleanly onto `origin/main` (`6ffb184` from PR #119).
+**Zero regressions against Grammar/Practice:** Claude's PR #119 features (multi-verb selection, balanced allocation, coverage validation, practice button guard) fully preserved and passing.
 
-Done:
+Key Deliverables:
 1. **Task 1 — Bottom PDF Floating Navigation Pill**:
    - Replaced full-width bottom background bar with a compact, floating navigation pill (`◀ Previous page X/Y Next ▶`).
    - `#app-footer` styled with `background: transparent !important`, `height: auto`, `min-height: 0`, and `pointer-events: none` so it never consumes layout height or blocks clicks to thumbnails at the bottom of `#pdf-thumb-list`.
    - `.footer-nav-group` styled as a rounded pill (`border-radius: 9999px; backdrop-filter: blur(8px); background: var(--panel-bg); box-shadow: 0 4px 16px rgba(0,0,0,0.18)`), with `pointer-events: auto`.
    - Centered strictly within the active reading workspace via CSS variables `--ws-left` and `--ws-width` updated dynamically in `js/pdf-continuous.js` on every panel/sidebar toggle.
    - `.workspace` height expanded to `calc(100vh - 58px)` to maximize vertical reading area.
-2. **Task 2 — Top-Left Controls Differentiation**:
-   - `#menu-handle` preserved as the hamburger icon (`☰`) with updated localized tooltip and `aria-label` ("Main menu" / "Головне меню", `data-i18n-title="tMainMenu"`).
-   - `#toggle-toc-desktop` updated to use a clean SVG open-book icon (`<svg class="book-nav-icon" ...>`) with localized label ("Book contents and thumbnails" / "Зміст та ескізи книги", `data-i18n-title="tBookContents"`).
-   - Added spacing in `#app-header` (`padding: 8px 18px 8px 66px`) for visual clearance between buttons.
-   - Added `tMainMenu` and `tBookContents` translations across languages in `I18N` in `js/core.js`.
+2. **Task 2 — Top-Left Controls Differentiation & Safe Clearance**:
+   - `#menu-handle` preserved as hamburger icon (`☰`) with localized tooltip and aria-label (`tMainMenu`, "Main menu" / "Головне меню").
+   - `#toggle-toc-desktop` updated with clean Feather SVG book-open icon with localized label (`tBookContents`, "Book contents and thumbnails" / "Зміст та ескізи книги").
+   - Added safe clearance in `#app-header` (`padding-left: calc(max(8px, env(safe-area-inset-left, 0px)) + 58px);`), guaranteeing 14px minimum separation between menu handle and book contents button.
 3. **Task 3 — Thumbnail Sidebar Background & Outline Styling**:
-   - Styled `#pdf-sidebar`, `#pdf-thumb-list`, and `#pdf-outline-list` with clean solid dark neutral `#161a20` across Light, Dark, and Sepia themes without excessive gradients or washed-out backgrounds.
-   - Outline list (`#pdf-outline-list`) styled with high-contrast text (`color: #c9d1d9`), subtle hover (`background: rgba(255, 255, 255, 0.08); color: #ffffff`), and clean scrollbar.
+   - Styled `#pdf-sidebar`, `#pdf-thumb-list`, and `#pdf-outline-list` with clean solid dark neutral `#161a20` across Light, Dark, and Sepia themes.
+   - Outline list (`#pdf-outline-list`) styled with high-contrast text (`#c9d1d9`), subtle hover (`rgba(255, 255, 255, 0.08)`), and clean scrollbars.
 4. **Task 4 — Thumbnail Loading & Missing First Pages**:
    - In `js/pdf-thumbnails.js`, fixed the root cause where opening a book at page 300+ left pages 1–5 blank:
-     - `schedulePrefetchWindow()` now preserves tasks in the visible DOM viewport (`visMin..visMax`) in addition to the predictive center window.
+     - `schedulePrefetchWindow()` now preserves tasks in visible DOM viewport (`visMin..visMax`) in addition to the predictive center window.
      - Visible page tasks are prioritized first in candidate sorting and queue execution.
-     - `sidebarObserver` triggers `schedulePrefetchWindow(visibleCenter)` and syncs the active page on uncollapse.
      - Rapid scroll boundary check (`list.scrollTop <= 20`) immediately schedules page 1 without debounce delay.
      - In `js/pdf-outline.js`, tab switching to thumbnails immediately schedules visible thumbnails.
-5. **Task 5 — PDF Bilingual Column Selection & Drag Extension**:
-   - In `js/selection.js`, added vertical probing (±8px, ±16px, ±24px) in `pointerdown` and `pointermove` to bridge inter-line line spacing in continuous PDF without aborting touch/drag range extension.
+5. **Task 5 — PDF Bilingual Column Selection & Tablet Multi-Word Selection**:
+   - In `js/selection.js`, added vertical probing (`±8px`, `±16px`, `±24px`) in `pointerdown` and `pointermove` to bridge inter-line line spacing in continuous PDF without aborting touch/drag range extension.
+   - 380ms touch-hold timer for initiating selection vs smooth scrolling.
    - Preserved column isolation and live highlight partitioning in `resolveCanonicalPdfSelection`.
-6. **Task 6 — Quick Wheel Header & Speech Ticker Animation**:
-   - Ensured bounded header viewport in `.tt-header` (`.tt-original-wrapper` has `flex: 1 1 auto; min-width: 0; overflow: hidden;`).
-   - Action buttons and header tools have `flex-shrink: 0;` so long selections never squish controls.
+6. **Task 6 — Quick Wheel Header & Verbatim Text Strip**:
+   - Ensured verbatim text retention in `els.ttOriginal.textContent` with `title` and `aria-label` attributes.
+   - Bounded header viewport in `.tt-header` (`.tt-original-wrapper` has `flex: 1 1 auto; min-width: 0; overflow: hidden;`). Action buttons and header tools have `flex-shrink: 0;`.
    - Added dynamic reading-follow ticker animation (`@keyframes tt-ticker`) when speech is active on `#tt-original` (`state.speakingSide === 'orig'`), respecting `prefers-reduced-motion: reduce`.
 7. **Task 7 — PDF Printing (Tofu/Square Glyphs Fix)**:
    - Added comprehensive `@media print` rules in `index.html` hiding UI chrome and `.pdf-text-layer` (`display: none !important;`) while showing `.pdf-canvas` (`display: block !important;`).
-   - In `js/quick-wheel.js` `printCurrentReaderPage()`, converted the rendered PDF page canvas and ink overlay into a raster `<img>` tag with PNG Data URL, completely eliminating un-embedded font and tofu glyph issues.
+   - In `js/quick-wheel.js` `printCurrentReaderPage()`, converted rendered PDF page canvas and ink overlay into a raster `<img>` tag with PNG Data URL, completely eliminating un-embedded font and tofu glyph issues.
 8. **Automated Verification**:
-   - `tests/pdf_workspace_browser.py` -> 100% PASS (floating pill centering, top-left icons, dark sidebar depth across themes).
-   - `tests/pdf_thumbnails_browser.py` -> 100% PASS (all 6 sections: bounded scheduler, jump purging, responsive controls, touch hold, distant page thumbnail loading, speech ticker, print rasterization).
-   - `tests/bilingual_selection_browser.py` -> 100% PASS.
-   - `tests/pdf_bilingual_columns_browser.py` -> 100% PASS.
-   - `tests/quick_wheel_browser.py` -> 100% PASS.
-   - `tests/learning_ux_browser.py` -> 100% PASS.
-   - Mandatory syntax checks (`node --check js/*.js sw.js archive-guard.worker.js`) and app-shell versions (`python3 tools/version_app_shell.py && python3 tests/app_shell_versions.py`) -> 100% PASS.
+   - `tests/pdf_workspace_browser.py`: 100% PASS (12 layout states, floating pill centering 0.01px, icon differentiation, dark sidebar across themes).
+   - `tests/pdf_thumbnails_browser.py`: 100% PASS (all 6 sections: bounded scheduler, jump purging, verbatim text with fixed controls, touch hold, distant page thumbnail loading, speech ticker, print rasterization).
+   - `tests/bilingual_selection_browser.py`: 100% PASS (all 8 sections across 'rows' and 'columns' stream orders).
+   - `tests/learning_ux_browser.py`: 100% PASS.
+   - `tests/quick_wheel_browser.py`: 100% PASS.
+   - `tests/pdf_continuous_browser.py`: 100% PASS.
+   - `tests/pdf_bilingual_columns_browser.py`: 100% PASS.
+   - `tests/ci_suite_coverage.py`: 100% PASS (all 39 browser suites invoked by CI).
+   - App-shell versioning and syntax checks: 100% PASS.
 
-Next action:
-- Await user review / approval on PR #122. Do NOT merge to main.
-- Push to `origin/feature/pdf-workspace-layout`.
-- Provide exact Cloudflare Pages preview URL for user acceptance testing.
-- DO NOT MERGE to `main` or PR #119.
+### Grammar → Practice: button fix, balanced multi-target allocation, coverage validation (2026-09-22, branch `grammar-redesign`, PR #119 — Merged to main at `6ffb184`)
+
+Follow-up to the bilingual multi-verb fix directly below: once Grammar correctly detects every verb/adjective
+in a selection (up to 8, in the reported real case), Practice did not keep up. Reproduced live (real 8-verb
+bilingual selection, mocked-but-realistic provider) BEFORE any change, per the task's own requirement.
+
+**Three real defects found, all in the Grammar → Practice hand-off, none in Grammar itself:**
+1. `sanitizePracticeLemmas`'s `PRACTICE_MAX_LEMMAS` was a hard **5** — with the real 8-verb selection, only
+   `voir, comprendre, jouer, traverser, aller` ever reached the Practice prompt; `partir, se promener,
+   se retrouver` were silently dropped before the AI was even asked. The exact same class of bug as the
+   original "collapses to voir" report, one layer downstream, at N=5 instead of N=1.
+2. No deterministic allocation existed: the prompt asked for one flat "N examples per lemma" number (a
+   3-tier heuristic), and the validator only checked GLOBAL floors (`MIN_ITEMS`/`MIN_TARGETS`) — a reply
+   could pass while covering only one or two of many requested lemmas.
+3. The Practice button had no re-entrancy guard and no immediate visual feedback — a fast double-click (or
+   just not knowing whether the click registered) could fire two provider requests, confirmed live: with a
+   realistic ~500ms network delay, two rapid clicks produced two `practice_reading` calls before the fix.
+
+**Fix** (`js/practice-session.js`, `js/grammar-svo.js`, `js/practice-worksheet.js`, `js/core.js` — full detail
+in `ARCHITECTURE.md`'s new "Grammar → Practice" section): `PRACTICE_MAX_LEMMAS` raised 5→20 (matches Grammar's
+own `grammarItemBudget` ceiling — Practice can now demonstrate every lemma one Grammar analysis can ever
+produce); `MAX_SECTIONS` raised to match (`PRACTICE_MAX_LEMMAS + 4`) so a large lemma set is never rejected
+purely for its own section count; a deterministic base+remainder allocation (`allocatePracticeExamples`,
+documented order: the lemmas' own supplied order, focused-first) computed BEFORE the request and told to the
+model as an explicit per-target count, replacing the old flat number; a coverage check in
+`validatePracticeReading` (1-3 requested lemmas must ALL appear, a larger set may omit up to a third) that
+rejects the exact "A, A, A, B while C-G vanish" shape the task described, wired through the SAME retryable-error
+path as every other structural failure so mode/lemmas/sourceLanguage survive for Retry; the output token budget
+now scales from the SAME allocation (`practiceOutputBudget`/`practiceTimeoutMs`, mirroring `grammarProfile`'s
+own scaling) instead of one flat per-task constant; the button now guards against a generation already in
+flight (`getCurrentPracticeSession()?.status==='generating'`) and gives immediate disabled+"Generating…"
+feedback restored in a `.finally()`; the collapsed Practice tab (`#practice-restore`) now exposes
+ready/loading/error (`.ready`/`.loading`/`.error` + `data-status`, reusing the SAME green/red convention as the
+Grammar/Ask panel tabs) derived ONLY from the real session status, and its previously hard-coded English label
+now carries `data-i18n="practiceTabLabel"` so a UI-language switch relabels it without touching the session.
+
+**Verified, live, through the real UI** (mocked-but-realistic provider: reports exactly what was allocated,
+never invents coverage): all 8 verbs from the real reported selection now reach Practice and render, in a
+near-even allocation; the exact same allocation appears in the REAL outgoing prompt; a severely under-covering
+reply is rejected while a compliant one renders every target; a reflexive verb's compound form
+(`nous sommes promenés`) and an adjective's irregular before-vowel form (`bel`) survive with correct
+features/no tense controls; occurrence clicks stay exact with zero AI calls; a bilingual raw source with
+Grammar's OWN validated `sourceLanguage:'fr'` still produces a French Practice request (never redetects and
+flips to English merely because English words are present in the raw text — task section 10); idle/loading/
+ready/error are each distinctly visible on the collapsed tab; a UI-language switch relabels the tab without
+dropping the ready session; an 8-lemma session round-trips through the unchanged schema (`PRACTICE_SCHEMA_VERSION`
+stayed 2 — no migration needed, since only prompt construction/validation/budget changed, not the stored
+session shape) while a legacy-worksheet-schema or corrupt payload under the same storage key is still refused.
+
+**Negative controls**: each of the three production fixes (the lemma cap, the coverage check, the button
+guard) was confirmed to make its own matching assertion fail when reverted individually, then restored.
+
+Tests: new `tests/practice_allocation_browser.py` (9 sections, wired into CI). `tests/practice_reading_browser.py`,
+`tests/practice_browser.py` and `tests/bilingual_selection_browser.py` were updated where they asserted the OLD
+flat prompt wording, a canned reading the NEW coverage check correctly rejects for the lemma actually requested,
+or the OLD fixed 8000-token/12-section bounds — each brought to the new, still-strict, size-aware equivalent,
+never loosened (each update's necessity was confirmed live: the OLD assertion failed for a real, explainable
+reason tied to the new size-aware design, never adjusted to paper over an unexplained failure).
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment) — see the entry below for why.
 
 ### Bilingual multi-verb selection collapsed to one lemma ("voir" only) — root cause found and fixed (2026-09-21, branch `grammar-redesign`, PR #119 — NOT merged)
 

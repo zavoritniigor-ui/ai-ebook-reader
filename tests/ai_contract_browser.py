@@ -651,8 +651,28 @@ c.wait("!!grammarContext.analysis && grammarContext.analysis.partial===true", ti
 check("9: a cut-off reply on the same tap shows the 2 complete items with a 'partial analysis' note (no error banner)",
       "grammarContext.analysis.items.length===2 && !!document.querySelector('#grammar-content .grammar-note') && !document.querySelector('#grammar-content span[style*=\"red\"]') && grammarContext.focused?.surface==='effectuer'")
 assert c.js("readerAiDiagnostics().filter(d=>d.task==='grammar_analysis').at(-1).reason") == 'partial'
-# Practice built from this analysis, then a highlighted form is clicked: exact occurrence, zero AI calls
-c.js("__stub.practicePlan.length=0; window.__n9=__stub.requests.length")
+# Practice built from this analysis, then a highlighted form is clicked: exact occurrence, zero AI calls.
+# The reply must cover BOTH lemmas actually detected on this tap (effectuer, préparer) -- not the generic
+# parler/plaindre fixture -- now that validatePracticeReading checks requested-lemma coverage.
+EFFECTUER_SENTS = [
+    'Elle doit effectuer ce contrôle de sécurité avec la plus grande attention possible aujourd’hui.',
+    'Nous allons effectuer cette tâche difficile demain matin, avant que les autres arrivent au chantier.',
+    'Il a fallu effectuer plusieurs essais avant que la machine fonctionne correctement sans problème.',
+    'Ils viennent d’effectuer une inspection complète de toute l’installation frigorifique du bâtiment.',
+    'Vous devrez effectuer ces réglages avec précaution, sinon le système risque de mal fonctionner.',
+]
+PREPARER_SENTS = [
+    'Il faut préparer le matériel avant de commencer le travail sur ce chantier important.',
+    'Ils vont préparer la salle pour la réunion de demain matin avec toute l’équipe technique.',
+    'Elle a préparé soigneusement chaque outil nécessaire pour effectuer cette réparation délicate.',
+    'Nous devons préparer ce diagnostic avant l’arrivée du client prévue en fin de journée.',
+    'On prépare toujours le poste de travail la veille, pour gagner du temps le lendemain matin.',
+]
+EP_READING = PF.to_json(PF.reading('Effectuer et préparer', 'verbs',
+    PF.section('effectuer', 'examples', *[PF.item(s, PF.tgt('effectuer', 'effectuer', 'x')) for s in EFFECTUER_SENTS]),
+    PF.section('préparer', 'examples', *[PF.item(s, PF.tgt('préparer', 'préparer', 'x')) for s in PREPARER_SENTS]),
+    PF.section('', 'story', PF.item('Le technicien a vérifié chaque étape avec soin, puis il a rangé ses outils avant de partir travailler ailleurs.'))))
+c.js("__stub.practicePlan.length=0; __stub.practicePlan.push(%s); window.__n9=__stub.requests.length" % json.dumps(dict(mode='raw', text=EP_READING), ensure_ascii=False))
 c.js("document.querySelector('.grammar-practice-btn').click()")
 c.wait("document.querySelectorAll('#practice-panel .practice-target').length>0", timeout=15)
 n1 = c.js("__stub.requests.length")

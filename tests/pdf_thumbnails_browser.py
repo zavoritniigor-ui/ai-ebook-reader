@@ -27,7 +27,7 @@ c.call('Runtime.enable')
 c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Network.setCacheDisabled', cacheDisabled=True)
 c.call('Emulation.setDeviceMetricsOverride', width=1200, height=900, deviceScaleFactor=1, mobile=False)
-c.call('Page.navigate', url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8766/index.html'))
+c.call('Page.navigate', url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html'))
 c.wait("document.readyState==='complete' && !document.body.inert")
 c.js("persistCriticalState = () => {}; localStorage.clear(); showUpdateBanner = () => {}; document.getElementById('sw-update-banner')?.remove()")
 c.call('Page.reload', ignoreCache=True)
@@ -102,14 +102,13 @@ print("PASS Fast scroll debouncing keeps queue bounded")
 print("\n=== 2. TESTING QUICK WHEEL RESPONSIVE LAYOUT & ACTION CONTROLS ===")
 # Test multi-word text selection formatting in tooltip
 test_cases = [
-    # (lang, word_count, sample_text, expected_label_prefix)
-    ('uk', 8, 'Слово перше друге третє четверте п’яте шосте сьоме', '8 слів виділено'),
-    ('uk', 2, 'Два слова', 'Два слова'),
-    ('en', 5, 'Five distinct words selected here', '5 words selected'),
-    ('fr', 4, 'Quatre mots sélectionnés ici', '4 mots sélectionnés'),
+    ('uk', 'Слово перше друге третє четверте п’яте шосте сьоме'),
+    ('uk', 'Два слова'),
+    ('en', 'Five distinct words selected here'),
+    ('fr', 'Quatre mots sélectionnés ici'),
 ]
 
-for lang, count, text, expected in test_cases:
+for lang, text in test_cases:
     c.js(f"""(() => {{
         state.uiLang = '{lang}';
         const r = {{ left: 300, right: 400, top: 200, bottom: 220, width: 100, height: 20 }};
@@ -120,6 +119,9 @@ for lang, count, text, expected in test_cases:
         const orig = document.getElementById('tt-original');
         const askBtn = document.getElementById('tt-ask-btn');
         const aiBtn = document.getElementById('tt-ai-btn');
+        const replayBtn = document.getElementById('tt-replay-btn');
+        const expandBtn = document.getElementById('tt-expand-btn');
+        const svoBtn = document.getElementById('tt-svo-btn');
         const actions = document.querySelector('.tt-actions');
         const origRow = document.querySelector('.tt-original-row');
         return {
@@ -127,17 +129,19 @@ for lang, count, text, expected in test_cases:
             title: orig.title,
             askVisible: askBtn.offsetWidth > 0 && askBtn.offsetHeight > 0,
             aiVisible: aiBtn.offsetWidth > 0 && aiBtn.offsetHeight > 0,
+            replayVisible: replayBtn.offsetWidth > 0 && replayBtn.offsetHeight > 0,
+            expandVisible: expandBtn.offsetWidth > 0 && expandBtn.offsetHeight > 0,
+            svoVisible: svoBtn.offsetWidth > 0 && svoBtn.offsetHeight > 0,
             actionsWidth: actions ? actions.offsetWidth : 0,
             origRowWidth: origRow ? origRow.offsetWidth : 0,
             askWidth: askBtn.offsetWidth,
             aiWidth: aiBtn.offsetWidth
         };
     })()""")
-    assert tt_data['text'] == expected, f"[{lang}] Expected tooltip original text '{expected}', got '{tt_data['text']}'"
+    assert tt_data['text'] == text, f"[{lang}] Expected tooltip to retain actual selected text '{text}', got '{tt_data['text']}'"
     assert tt_data['askVisible'] and tt_data['aiVisible'], f"[{lang}] Action buttons must be visible"
-    if count > 2:
-        assert tt_data['title'] == text, f"[{lang}] Title attribute must contain full selection text"
-    print(f"PASS [{lang}] Selection '{text[:25]}...' -> '{tt_data['text']}', action buttons visible ({tt_data['askWidth']}px, {tt_data['aiWidth']}px)")
+    assert tt_data['replayVisible'] and tt_data['expandVisible'] and tt_data['svoVisible'], f"[{lang}] Header tool controls must remain visible"
+    print(f"PASS [{lang}] Selection '{text[:25]}...' retained verbatim, fixed controls visible (ask={tt_data['askWidth']}px, ai={tt_data['aiWidth']}px)")
 
 # Responsive check at 390px and 320px
 for test_w in [390, 320]:

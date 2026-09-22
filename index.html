@@ -53,7 +53,7 @@
         header#app-header {
             position: fixed; top: 0; left: 0; width: 100%; min-height: 58px;
             background: var(--panel-bg); border-bottom: 1px solid var(--border-color);
-            padding: 8px 18px 8px 66px; z-index: 10000; box-shadow: 0 1px 0 rgba(var(--shadow-color),0.04), 0 6px 18px -12px rgba(var(--shadow-color),0.35);
+            padding: 8px 18px 8px calc(max(8px, env(safe-area-inset-left, 0px)) + 58px); z-index: 10000; box-shadow: 0 1px 0 rgba(var(--shadow-color),0.04), 0 6px 18px -12px rgba(var(--shadow-color),0.35);
             display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -820,7 +820,7 @@
             /* Меню на телефоні: рівна сітка замість хаотично відцентрованих рядків.
                Групи розділені тонкою лінією-заголовком замість вертикальної риски —
                на всю ширину вона читається краще, ніж бордер збоку. */
-            .header-controls { display: flex; flex-direction: column; gap: 0; background: var(--panel-bg); padding: 10px 16px 14px 62px; }
+            .header-controls { display: flex; flex-direction: column; gap: 0; background: var(--panel-bg); padding: 10px 16px 14px calc(max(8px, env(safe-area-inset-left, 0px)) + 58px); }
             .toolbar-group {
                 display: flex; flex-wrap: wrap; gap: 8px; width: 100%;
                 padding: 10px 0; border-right: none; border-bottom: 1px solid var(--border-color);
@@ -1277,7 +1277,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=de0d4bc6d5a0"></script>
+    <script src="js/core.js?v=cfd21bde22c4"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1293,11 +1293,11 @@
     <script src="js/navigation.js?v=35e62f613b99"></script>
     <script src="js/pdf-zoom-pan.js?v=2c524012b044"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
-    <script src="js/translation.js?v=a59c71bf5d32"></script>
-    <script src="js/grammar-svo.js?v=20b4ef8f38d4"></script>
+    <script src="js/translation.js?v=c1bdb63dbdb6"></script>
+    <script src="js/grammar-svo.js?v=c6ffee4ef022"></script>
     <script src="js/ai-client.js?v=819c861727a2"></script>
-    <script src="js/practice-session.js?v=2d160b51d668"></script>
-    <script src="js/practice-worksheet.js?v=56f5cd9a139a"></script>
+    <script src="js/practice-session.js?v=ca3e5f0617db"></script>
+    <script src="js/practice-worksheet.js?v=ee189acde093"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>

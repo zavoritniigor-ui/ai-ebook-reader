@@ -69,9 +69,20 @@ function layoutPracticeWorkspace(dockDrawers = false) {
     }
 }
 
+// Exposes the actual Practice session's status on the collapsed tab (bookmark/collapsed-bottom
+// restore button) as `.ready` / `.loading` / `.error` + `data-status`, reusing the SAME green/red
+// convention already used for the Grammar/Ask panel tabs (index.html's `.side-panel.ready .panel-tab`
+// / `.loading`) rather than inventing a second readiness state. This is deliberately the ONLY place
+// that derives it, from `getCurrentPracticeSession()` -- never a separate flag that could drift from
+// the session -- so a UI (this file's own default styling, or Gemini's own collapsed-tab component)
+// can style the tab purely from `#practice-restore[data-status]`/its classes.
+function practiceRestoreStatus() {
+    const session = getCurrentPracticeSession();
+    if (!session || !isValidPracticeSession(session)) return 'error';
+    return session.status === 'ready' ? 'ready' : session.status === 'generating' ? 'loading' : 'error';
+}
 function syncPracticeRestore(panel) {
     const restore = document.getElementById('practice-restore');
-    if (!restore) return;
     const grammar = document.getElementById('grammar-panel');
     const bookmarked = !panel.hidden && practiceWorkspaceMode === 'bookmark';
     grammar.classList.toggle('practice-bookmark-dock', bookmarked);
@@ -79,13 +90,11 @@ function syncPracticeRestore(panel) {
     if (restore.parentElement !== parent) parent.appendChild(restore);
     restore.dataset.mode = practiceWorkspaceMode;
     restore.hidden = practiceWorkspaceMode === 'expanded' || panel.hidden;
-
-    // Practice Ready Indicator: reflect session status on collapsed tab
-    const session = typeof getCurrentPracticeSession === 'function' ? getCurrentPracticeSession() : null;
-    restore.classList.remove('ready', 'loading', 'error');
-    if (session && session.status && practiceWorkspaceMode !== 'expanded' && !panel.hidden) {
-        restore.classList.add(session.status);
-    }
+    const status = practiceRestoreStatus();
+    restore.dataset.status = status;
+    restore.classList.toggle('ready', status === 'ready');
+    restore.classList.toggle('loading', status === 'loading');
+    restore.classList.toggle('error', status === 'error');
 }
 
 function setPracticeWorkspaceMode(mode) {
@@ -96,13 +105,9 @@ function setPracticeWorkspaceMode(mode) {
     panel.inert = mode !== 'expanded';
     panel.setAttribute('aria-hidden', String(mode !== 'expanded'));
     const restore = document.getElementById('practice-restore');
-    if (mode === 'expanded' && restore) {
-        restore.classList.remove('ready', 'loading', 'error');
-    }
     syncPracticeRestore(panel);
     layoutPracticeWorkspace(mode === 'expanded');
-    if (typeof updatePdfWorkspaceLayout === 'function') updatePdfWorkspaceLayout({ immediate: true, force: true });
-    if (mode !== 'expanded') restore?.focus({ preventScroll: true });
+    if (mode !== 'expanded') restore.focus({ preventScroll: true });
     else panel.querySelector('#practice-collapse')?.focus({ preventScroll: true });
 }
 
@@ -150,19 +155,15 @@ function getPracticePanel() {
         } else {
             document.body.appendChild(panel);
         }
-        if (typeof registerPdfPanel === 'function') {
-            registerPdfPanel(panel);
-        }
     }
     if (!document.getElementById('practice-restore')) {
         const restore = document.createElement('button');
         restore.id = 'practice-restore';
         restore.className = 'side-panel practice-restore';
         restore.type = 'button';
-        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span data-i18n="practiceTab">' + (typeof t === 'function' ? t('practiceTab') : 'Practice') + '</span>';
-        restore.title = typeof t === 'function' ? t('tRestorePractice') : 'Restore Practice workspace';
-        restore.setAttribute('aria-label', typeof t === 'function' ? t('tRestorePractice') : 'Restore Practice workspace');
-        restore.setAttribute('data-i18n-title', 'tRestorePractice');
+        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span data-i18n="practiceTabLabel">' + t('practiceTabLabel') + '</span>';
+        restore.title = 'Restore Practice workspace';
+        restore.setAttribute('aria-label', 'Restore Practice workspace');
         restore.setAttribute('aria-controls', 'practice-panel');
         restore.hidden = true;
         restore.onclick = () => setPracticeWorkspaceMode('expanded');
@@ -205,7 +206,6 @@ function displayPracticeSession(session) {
     panel.setAttribute('aria-hidden', String(panel.inert));
     syncPracticeRestore(panel);
     layoutPracticeWorkspace(opening);
-    if (typeof updatePdfWorkspaceLayout === 'function') updatePdfWorkspaceLayout({ immediate: true, force: true });
 }
 
 // Show generating state
@@ -408,14 +408,9 @@ function closePractice() {
     if (panel) {
         panel.hidden = true;
     }
-    const restore = document.getElementById('practice-restore');
-    if (restore) {
-        restore.setAttribute('hidden', '');
-        restore.classList.remove('ready', 'loading', 'error');
-    }
+    document.getElementById('practice-restore')?.setAttribute('hidden', '');
     document.getElementById('grammar-panel').classList.remove('practice-bookmark-dock');
     closePracticeSession();
-    if (typeof updatePdfWorkspaceLayout === 'function') updatePdfWorkspaceLayout({ immediate: true, force: true });
 }
 
 // Retry current practice
@@ -524,10 +519,10 @@ const practiceStyles = `
 /* Reserve a slim outside rail and provide positioning context for bookmark tab. */
 #grammar-panel.practice-bookmark-dock {
     max-width: calc(100vw - 44px);
-    position: fixed !important;
+    position: relative;
 }
 #practice-restore[data-mode="bookmark"] {
-    position: absolute !important; height: auto; width: 44px; min-height: 100px; max-height: 120px;
+    position: absolute; height: auto; width: 44px; min-height: 100px; max-height: 120px;
     flex-direction: column; gap: 4px; padding: 8px 4px;
     background: var(--panel-bg);
     color: var(--text-color);
@@ -538,26 +533,6 @@ const practiceStyles = `
     font-size: 10px;
     font-weight: 600;
     justify-content: flex-start;
-}
-#practice-restore.ready {
-    background: rgba(25, 135, 84, 0.22) !important;
-    border-color: #198754 !important;
-    color: #2fb36d !important;
-}
-#practice-restore.ready svg {
-    stroke: #2fb36d !important;
-}
-#practice-restore[data-mode="bookmark"].ready {
-    border-left: 4px solid #198754 !important;
-    background: rgba(25, 135, 84, 0.22) !important;
-}
-#practice-restore.loading {
-    background: rgba(220, 53, 69, 0.18) !important;
-    border-color: #dc3545 !important;
-}
-#practice-restore.error {
-    background: rgba(220, 53, 69, 0.25) !important;
-    border-color: #dc3545 !important;
 }
 #practice-restore[data-mode="bookmark"] svg {
     width: 16px;
@@ -576,6 +551,13 @@ const practiceStyles = `
     border-left-color: var(--accent-color);
 }
 #practice-restore:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
+/* Same green/red convention as the Grammar/Ask panel tabs (.side-panel.ready/.loading .panel-tab in
+   index.html) -- ready = a session is generated and waiting to be read; loading = generating; error =
+   the last attempt failed. A default so the state is visible even before any richer tab styling exists;
+   easy to override, since it is plain class + data-status, not inline style. */
+#practice-restore.ready { background: rgba(25, 135, 84, 0.14); border-color: rgba(25, 135, 84, 0.5); }
+#practice-restore.loading { background: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
+#practice-restore.error { background: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
 @media (prefers-reduced-motion: reduce) {
     #practice-panel { transition: none; }
 }
