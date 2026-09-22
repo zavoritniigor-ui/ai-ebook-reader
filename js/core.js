@@ -641,7 +641,7 @@ const state = {
     // раніше кожен холодний старт (у т.ч. після повернення з фону, коли Android
     // вивантажив сторінку) скидав їх до типових значень.
     pdfScale: readStoredNumber('reader_pdf_scale', 1, 0.25, 4),
-    pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width Tag verbs in ordinary prose, not only in conjugation exercises: infinitives after a preposition or another verb (à effectuer, pour établir, mettre en place → lemma "mettre"), past participles used as verbs (Établi un diagnostic, Appliquer les mesures), and headings written in CAPITALS (PRÉPARER LES TRAVAUX): copy the surface exactly as written, capitals included, and give the lemma in lower case. Never tag a word that is only a noun or a plain adjective.',
+    pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width',
     fontSize: readStoredNumber('reader_font_size', 18, 12, 40),
     epubZip: null, spine: [], txtLines: [],
     translateMode: readStored('reader_translate_mode') === '1', extractedTextForTTS: "", currentLangCode: 'en-US',

@@ -43,22 +43,106 @@ async function measurePdfPage(doc, pageNum) {
     return metadata[pageNum];
 }
 
-function pdfContainerAvailWidth() {
-    const pad = parseFloat(getComputedStyle(els.container).paddingLeft) || 0;
-    return Math.max(1, els.container.clientWidth - 2 * pad);
+// ===================== CENTRAL PDF WORKSPACE GEOMETRY =====================
+// Canonical measurement function for the visible central workspace between side surfaces:
+// availableLeft  = max(mainArea.left, visible nav.right, visible askPanel.right)
+// availableRight = min(mainArea.right, visible grammarPanel.left, visible practicePanel.left)
+// availableWidth = max(1, availableRight - availableLeft)
+// availableHeight = max(1, mainArea.bottom - mainArea.top)
+function getReaderWorkspaceRect() {
+    const mainEl = els.mainArea || document.getElementById('main-area');
+    const mainRect = mainEl ? mainEl.getBoundingClientRect() : {
+        left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight,
+        width: window.innerWidth, height: window.innerHeight
+    };
+
+    let availableLeft = mainRect.left;
+    let availableRight = mainRect.right;
+    const availableTop = mainRect.top;
+    const availableBottom = mainRect.bottom;
+
+    // 1. Left sidebar (nav#sidebar for thumbnails/contents, or #ask-panel)
+    const nav = document.getElementById('sidebar');
+    if (nav && !nav.classList.contains('collapsed')) {
+        const w = nav.offsetWidth || nav.getBoundingClientRect().width;
+        if (w > 0) {
+            availableLeft = Math.max(availableLeft, mainRect.left + w);
+        }
+    }
+    const ask = document.getElementById('ask-panel');
+    if (ask && ask.classList.contains('expanded')) {
+        const w = ask.offsetWidth || ask.getBoundingClientRect().width;
+        if (w > 0) {
+            availableLeft = Math.max(availableLeft, mainRect.left + w);
+        }
+    }
+
+    // 2. Right panels (#grammar-panel, #practice-panel)
+    const grammar = document.getElementById('grammar-panel');
+    if (grammar && grammar.classList.contains('expanded')) {
+        const w = grammar.offsetWidth || grammar.getBoundingClientRect().width;
+        if (w > 0) {
+            availableRight = Math.min(availableRight, mainRect.right - w);
+        }
+    }
+    const practice = document.getElementById('practice-panel');
+    if (practice && !practice.hidden && practice.style.display !== 'none' && !practice.inert &&
+        practice.dataset.mode !== 'collapsed-bottom' && practice.dataset.mode !== 'bookmark') {
+        const pr = practice.getBoundingClientRect();
+        if (pr.left < availableRight && pr.width > 0 && pr.right > mainRect.left) {
+            availableRight = Math.min(availableRight, pr.left);
+        }
+    }
+
+    const availableWidth = Math.max(1, availableRight - availableLeft);
+    const availableHeight = Math.max(1, availableBottom - availableTop);
+
+    return {
+        left: availableLeft,
+        right: availableRight,
+        top: availableTop,
+        bottom: availableBottom,
+        width: availableWidth,
+        height: availableHeight
+    };
 }
 
-// Scale for one page: same "fit width / fit page / free zoom" semantics as the
-// old single-page renderer, generalized so each page can (rarely) differ in
-// natural size — a uniform book computes the same scale for every page.
+function pdfContainerAvailDims() {
+    const ws = getReaderWorkspaceRect();
+    const padLeft = parseFloat(getComputedStyle(els.container).paddingLeft) || 0;
+    const padRight = parseFloat(getComputedStyle(els.container).paddingRight) || 0;
+    const padTop = parseFloat(getComputedStyle(els.container).paddingTop) || 0;
+    const padBottom = parseFloat(getComputedStyle(els.container).paddingBottom) || 0;
+    // Multi-page continuous PDF always has vertical scrollbar (or reserved scrollbar-gutter).
+    // Always reserve scrollbar width so placeholder estimate matches rendered page scale exactly.
+    const scrollbarW = (state.totalPages > 1 || (els.container && els.container.scrollHeight > els.container.clientHeight + 2)) ? 14 : 0;
+    const availW = Math.max(1, ws.width - padLeft - padRight - scrollbarW);
+    const availH = Math.max(1, ws.height - padTop - padBottom);
+    return { width: availW, height: availH };
+}
+
+function pdfContainerAvailWidth() {
+    return pdfContainerAvailDims().width;
+}
+
+// Scale for one page:
+// - Fit Width: uses real central workspace width.
+// - Fit Page: uses min(widthScale, heightScale) against central workspace dimensions.
+// - Manual zoom ('free'): preserves user's explicit scale factor across panel toggles and resizes.
 function pdfScaleForPage(natural) {
-    const avail = pdfContainerAvailWidth();
-    const fitScale = avail > 0 && natural.width > 0 ? avail / natural.width : 1;
+    if (!natural || !natural.width || !natural.height) return 1;
+    const dims = pdfContainerAvailDims();
+    const fitWidthScale = dims.width / natural.width;
+    const fitHeightScale = dims.height / natural.height;
+
     if (state.pdfFit === 'page') {
-        const pad = parseFloat(getComputedStyle(els.container).paddingTop) || 0;
-        return Math.min(1, (els.container.clientHeight - 2 * pad) / (natural.height * fitScale)) * fitScale;
+        return Math.min(fitWidthScale, fitHeightScale);
     }
-    return fitScale * state.pdfScale;
+    if (state.pdfFit === 'free') {
+        return state.pdfScale;
+    }
+    // 'width', 'fit', or default: fit to central workspace width
+    return fitWidthScale;
 }
 
 function pdfWrapperEstimate(doc) {
@@ -107,6 +191,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
         state.pdfLabelsFullyScanned = false;
     }
     state.currentIndex = startPage; pdfActivePage = startPage;
+    updatePdfWorkspaceLayout({ immediate: true, force: true });
 
     await measurePdfPage(doc, startPage);
     if (!isCurrent()) return;
@@ -381,46 +466,106 @@ function navigateToPdfPage(pageIndex, options = {}) {
     if (!options.skipHistory) scheduleBookmarkSave();
 }
 
-// ===================== SIDE PANEL GEOMETRY =====================
-// #reader-container does not shrink on its own when Grammar/Ask/nav open —
-// they are position:fixed/absolute overlays (see layoutPracticeWorkspace in
-// practice-worksheet.js for the same problem solved the same way for the
-// Practice panel), not flex siblings #main-area reflows around. Left
-// unhandled, PDF pages would render at full width and sit UNDERNEATH those
-// panels rather than beside them. Mirrors layoutPracticeWorkspace's exact
-// width math (nav/ask reserve space on the left, Grammar on the right) so
-// all three side surfaces agree on what counts as "available".
-function layoutPdfForPanels() {
-    if (state.format !== 'pdf') return;
-    const grammar = document.getElementById('grammar-panel');
-    const ask = document.getElementById('ask-panel');
-    const nav = document.querySelector('nav');
-    const grammarWidth = grammar?.classList.contains('expanded') ? grammar.offsetWidth : 0;
-    const askWidth = ask?.classList.contains('expanded') ? ask.offsetWidth : 0;
-    const navWidth = nav && !nav.classList.contains('collapsed') ? nav.offsetWidth : 0;
-    const leftReserve = Math.max(askWidth, navWidth);
-    const rightReserve = grammarWidth;
-    if (leftReserve || rightReserve) {
-        els.container.style.marginLeft = `${leftReserve}px`;
-        els.container.style.marginRight = `${rightReserve}px`;
-        els.container.style.width = `calc(100% - ${leftReserve + rightReserve}px)`;
+// ===================== CENTRAL PDF WORKSPACE SIZING & ALIGNMENT =====================
+let pdfWorkspaceAnchor = null;
+let pdfWorkspaceLayoutFrame = 0;
+
+function updatePdfWorkspaceLayout(options = {}) {
+    if (state.format !== 'pdf' || !els.container) return;
+    const immediate = options.immediate || false;
+
+    const applyLayout = () => {
+        if (state.format !== 'pdf' || !els.container) return;
+        const mainEl = els.mainArea || document.getElementById('main-area');
+        const mainRect = mainEl ? mainEl.getBoundingClientRect() : {
+            left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight,
+            width: window.innerWidth, height: window.innerHeight
+        };
+        const ws = getReaderWorkspaceRect();
+        const leftReserve = Math.max(0, Math.round(ws.left - mainRect.left));
+        const rightReserve = Math.max(0, Math.round(mainRect.right - ws.right));
+        const availWidth = Math.max(1, Math.round(ws.width));
+
+        const prevLeft = parseFloat(els.container.style.marginLeft) || 0;
+        const prevRight = parseFloat(els.container.style.marginRight) || 0;
+        const prevWidth = parseFloat(els.container.style.width) || 0;
+
+        const changed = Math.abs(prevLeft - leftReserve) >= 1 ||
+                        Math.abs(prevRight - rightReserve) >= 1 ||
+                        Math.abs(prevWidth - availWidth) >= 1;
+
+        if (changed || options.force) {
+            const anchor = pdfWorkspaceAnchor || (pdfContinuousReady && typeof pdfAnchor === 'function' ? pdfAnchor() : null);
+            pdfWorkspaceAnchor = null;
+
+            if (leftReserve > 0 || rightReserve > 0) {
+                els.container.style.marginLeft = `${leftReserve}px`;
+                els.container.style.marginRight = `${rightReserve}px`;
+                els.container.style.width = `calc(100% - ${leftReserve + rightReserve}px)`;
+            } else {
+                els.container.style.marginLeft = '';
+                els.container.style.marginRight = '';
+                els.container.style.width = '';
+            }
+
+            if (pdfContinuousReady && typeof relayoutContinuousPdfAtScale === 'function') {
+                relayoutContinuousPdfAtScale(anchor);
+            }
+        } else {
+            pdfWorkspaceAnchor = null;
+        }
+    };
+
+    if (immediate) {
+        if (pdfWorkspaceLayoutFrame) {
+            cancelAnimationFrame(pdfWorkspaceLayoutFrame);
+            pdfWorkspaceLayoutFrame = 0;
+        }
+        applyLayout();
     } else {
-        els.container.style.marginLeft = '';
-        els.container.style.marginRight = '';
-        els.container.style.width = '';
+        if (!pdfWorkspaceAnchor && pdfContinuousReady && typeof pdfAnchor === 'function') {
+            pdfWorkspaceAnchor = pdfAnchor();
+        }
+        if (!pdfWorkspaceLayoutFrame) {
+            pdfWorkspaceLayoutFrame = requestAnimationFrame(() => {
+                pdfWorkspaceLayoutFrame = 0;
+                applyLayout();
+            });
+        }
     }
-    // #reader-container's own size just changed — the existing
-    // containerResizeObserver (navigation.js) picks this up and calls
-    // relayoutContinuousPdfAtScale() to re-fit pages at the new width; no
-    // separate re-render trigger needed here.
 }
-const pdfPanelObserver = new MutationObserver(() => layoutPdfForPanels());
-['grammar-panel', 'ask-panel'].forEach(id => {
+
+const layoutPdfForPanels = updatePdfWorkspaceLayout;
+
+const pdfPanelObserver = new MutationObserver(() => updatePdfWorkspaceLayout());
+['grammar-panel', 'ask-panel', 'practice-panel'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) pdfPanelObserver.observe(el, { attributes: true, attributeFilter: ['class'] });
+    if (el) pdfPanelObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-mode'] });
 });
-document.addEventListener('DOMContentLoaded', () => {
-    const nav = document.querySelector('nav');
-    if (nav) pdfPanelObserver.observe(nav, { attributes: true, attributeFilter: ['class'] });
-});
-if (document.querySelector('nav')) pdfPanelObserver.observe(document.querySelector('nav'), { attributes: true, attributeFilter: ['class'] });
+
+function initPdfPanelListeners() {
+    const nav = document.getElementById('sidebar') || document.querySelector('nav');
+    if (nav) {
+        pdfPanelObserver.observe(nav, { attributes: true, attributeFilter: ['class', 'style'] });
+    }
+    ['sidebar', 'grammar-panel', 'ask-panel', 'practice-panel'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('transitionend', (e) => {
+                if (e.target === el && (e.propertyName === 'transform' || e.propertyName === 'width' || e.propertyName === 'visibility')) {
+                    updatePdfWorkspaceLayout({ immediate: true, force: true });
+                }
+            });
+        }
+    });
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPdfPanelListeners);
+} else {
+    initPdfPanelListeners();
+}
+window.addEventListener('resize', () => {
+    if (state.format === 'pdf') {
+        updatePdfWorkspaceLayout();
+    }
+}, { passive: true });

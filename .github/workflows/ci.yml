@@ -129,6 +129,9 @@ jobs:
           echo "Running pdf_continuous_browser.py..."
           python3 -u tests/pdf_continuous_browser.py
 
+          echo "Running pdf_workspace_browser.py..."
+          python3 -u tests/pdf_workspace_browser.py
+
           echo "Running pdf_word_click_browser.py..."
           python3 -u tests/pdf_word_click_browser.py
 

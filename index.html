@@ -231,16 +231,59 @@
         .pdf-sidebar-tab:disabled { opacity: .4; cursor: not-allowed; }
         .pdf-sidebar-list { list-style: none; margin: 0; padding: 10px; overflow-y: auto; flex: 1; }
 
-        /* Thumbnails */
-        .pdf-thumb-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; margin-bottom: 4px;
-                         border-radius: var(--radius-sm); cursor: pointer; border: 2px solid transparent; }
-        .pdf-thumb-item:hover { background: var(--hover-color); }
-        .pdf-thumb-item.active { border-color: var(--accent-color); background: var(--hover-color); }
-        .pdf-thumb-item canvas, .pdf-thumb-item .pdf-thumb-placeholder {
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2); background: var(--surface-2); display: block; max-width: 100%;
+        /* Thumbnails sidebar visual depth — progressive darkening toward outer edges, theme-adaptive */
+        #pdf-thumb-list {
+            padding: 12px 10px 24px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.025) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.035) 100%), var(--panel-bg);
         }
-        .pdf-thumb-item .pdf-thumb-num { font-size: 11.5px; color: var(--text-muted); }
-        .pdf-thumb-item.active .pdf-thumb-num { color: var(--accent-color); font-weight: 700; }
+        [data-theme="dark"] #pdf-thumb-list {
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.24) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.28) 100%), var(--panel-bg);
+        }
+        [data-theme="sepia"] #pdf-thumb-list {
+            background: linear-gradient(90deg, rgba(74, 54, 26, 0.05) 0%, transparent 18%, transparent 82%, rgba(74, 54, 26, 0.07) 100%), var(--panel-bg);
+        }
+
+        .pdf-thumb-item {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 10px 8px; margin-bottom: 8px; border-radius: var(--radius-md);
+            cursor: pointer; border: 2px solid transparent;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+        }
+        .pdf-thumb-item:hover {
+            background: var(--hover-color);
+        }
+        .pdf-thumb-item.active {
+            border-color: var(--accent-color);
+            background: var(--hover-color);
+        }
+        .pdf-thumb-item canvas, .pdf-thumb-item .pdf-thumb-placeholder {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
+            background: var(--surface-2);
+            display: block;
+            max-width: 100%;
+            border-radius: 4px;
+            transition: box-shadow 0.15s ease;
+        }
+        [data-theme="dark"] .pdf-thumb-item canvas, [data-theme="dark"] .pdf-thumb-item .pdf-thumb-placeholder {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        [data-theme="sepia"] .pdf-thumb-item canvas, [data-theme="sepia"] .pdf-thumb-item .pdf-thumb-placeholder {
+            box-shadow: 0 2px 8px rgba(74, 54, 26, 0.14);
+            border: 1px solid rgba(74, 54, 26, 0.10);
+        }
+        .pdf-thumb-item.active canvas, .pdf-thumb-item.active .pdf-thumb-placeholder {
+            box-shadow: 0 3px 12px rgba(var(--shadow-color), 0.22);
+        }
+        .pdf-thumb-item .pdf-thumb-num {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            transition: color 0.15s ease;
+        }
+        .pdf-thumb-item.active .pdf-thumb-num {
+            color: var(--accent-color);
+            font-weight: 700;
+        }
 
         /* Contents (outline) */
         .pdf-outline-item { padding: 7px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13.5px;
@@ -271,6 +314,7 @@
         }
         /* PDF — сторінка з фіксованою версткою, тож обмеження 900px і великі поля лише
            з'їдають екран. Для нього віддаємо всю ширину вікна. */
+        body.pdf-mode main { justify-content: flex-start; }
         body.pdf-mode #reader-container { max-width: none; padding: 0; }
         body.pdf-mode.pdf-pannable #reader-container { cursor: grab; }
         body.pdf-mode.pdf-dragging #reader-container { cursor: grabbing; }
@@ -310,7 +354,7 @@
         #reader-pages.no-anim { transition: none; }
 
         ::selection { background: rgba(16, 163, 127, 0.38); }
-        .pdf-page-wrapper { position: relative; display: flex; justify-content: center; margin-bottom: 20px; }
+        .pdf-page-wrapper { position: relative; display: flex; justify-content: center; margin-left: auto; margin-right: auto; margin-bottom: 20px; }
         .pdf-canvas { box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: block; }
         .pdf-text-layer { position: absolute; left: 0; top: 0; overflow: hidden; line-height: 1.0; transform-origin: 0 0; text-size-adjust: none; -webkit-text-size-adjust: none; }
         .pdf-text-layer[data-main-rotation="90"] { transform: rotate(90deg) translateY(-100%); }
@@ -364,7 +408,7 @@
            відступи потрібні для тексту, що переливається, але для сторінки PDF вони лише
            марнують простір. Нижче 641px (телефон) правило не діє — там усе як було. */
         @media (min-width: 641px) {
-            body.pdf-mode #reader-container { max-width: 100%; padding: 8px; }
+            body.pdf-mode #reader-container { max-width: 100%; padding: 0; }
             body.pdf-mode:not(.mode-translate-on) #reader-container { cursor: grab; }
         }
         /* Шар для письма поверх сторінки PDF — клас (не id): continuous scroll
@@ -1121,7 +1165,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=964583d9acd9"></script>
+    <script src="js/core.js?v=e4015a2e5f6f"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1135,7 +1179,7 @@
     <script src="js/selection.js?v=4e4ca9dc3c7c"></script>
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=35e62f613b99"></script>
-    <script src="js/pdf-zoom-pan.js?v=4c15a4acf89a"></script>
+    <script src="js/pdf-zoom-pan.js?v=2c524012b044"></script>
     <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
     <script src="js/translation.js?v=3a8c557ecf71"></script>
     <script src="js/grammar-svo.js?v=52b2ba973ee2"></script>
@@ -1147,7 +1191,7 @@
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
     <script src="js/pdf-outline.js?v=54df75ee8ef2"></script>
     <script src="js/pdf-thumbnails.js?v=ca9551e0f416"></script>
-    <script src="js/pdf-continuous.js?v=52e0ec07166e"></script>
+    <script src="js/pdf-continuous.js?v=431ba17e5f32"></script>
     <script src="js/pdf-render.js?v=f7f068dd2502"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>

@@ -83,7 +83,9 @@ const pdfPointers = new Map();
 let pdfGesture = null, pdfBlockClick = false, pdfFrame = 0, pdfInkSnapshot = null;
 els.container.addEventListener('scroll', () => {
     if (state.format !== 'pdf') return;
-    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
+    if ((isPanning || pdfPointers.size > 0) && typeof invalidatePendingPdfResizeAnchor === 'function') {
+        invalidatePendingPdfResizeAnchor();
+    }
     if (typeof updatePdfActivePageOnScroll === 'function') updatePdfActivePageOnScroll();
     if (els.tooltip.style.display === 'flex') invalidateSelection();
 }, { passive: true });
@@ -170,8 +172,9 @@ function persistPdfZoom() {
 function setPdfScale(scale) {
     cancelPdfInteraction();
     state.pdfFit = 'free';
-    applyPdfZoom(Math.max(.25, Math.min(4, scale)) / pdfBaseScale());
-    rerenderPdfAtCurrentZoom();
+    state.pdfScale = Math.max(.25, Math.min(4, scale));
+    persistPdfZoom();
+    relayoutContinuousPdfAtScale();
 }
 
 // After a zoom gesture settles: re-layout every wrapper at the new base
@@ -186,7 +189,7 @@ function setPdfScale(scale) {
 // container itself never resizes) omits it and gets the normal fresh read.
 function relayoutContinuousPdfAtScale(explicitAnchor) {
     if (!pdfContinuousReady) return;
-    const anchor = (explicitAnchor && explicitAnchor.page === pdfActivePage) ? explicitAnchor : pdfAnchor();
+    const anchor = explicitAnchor || pdfAnchor();
     let stackHeight = 0, stackWidth = 0;
     for (let n = 1; n <= state.totalPages; n++) {
         const w = pdfPageWrappers[n];
@@ -359,7 +362,18 @@ els.mainArea.addEventListener('click', e => {
 }, true);
 document.getElementById('pdf-fit').onchange = e => {
     cancelPdfInteraction();
+    const prevFit = state.pdfFit;
     state.pdfFit = e.target.value;
-    if (state.pdfFit === 'free') return;
+    if (state.pdfFit === 'free' && prevFit !== 'free') {
+        const meta = state.pdfPageMeta[pdfActivePage] || state.pdfPageMeta[1];
+        if (meta && typeof pdfContainerAvailDims === 'function') {
+            const dims = pdfContainerAvailDims();
+            const fitW = dims.width / meta.width;
+            const fitH = dims.height / meta.height;
+            state.pdfScale = (prevFit === 'page') ? Math.min(fitW, fitH) : fitW;
+        }
+        persistPdfZoom();
+        return;
+    }
     state.pdfScale = 1; persistPdfZoom(); relayoutContinuousPdfAtScale();
 };
