@@ -161,6 +161,58 @@ def bilingual_pdf_bytes():
     data += b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets[1:])
     return data + f'trailer << /Size {len(objs)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF'.encode()
 
+VERB_TABLE_ROWS = [
+    ('ayant vu', 'having seen'), ('ayant compris', 'having understood'), ('ayant joué', 'having played'), ('ayant traversé', 'having crossed'),
+    ('étant allé(e)(s)', 'having gone'), ('étant parti(e)(s)', 'having left'), ('nous étant promené(e)s', 'having walked'), ('nous étant retrouvé(e)s', 'having met'),
+]
+
+
+def verb_table_pdf_bytes(order='rows', rows=None):
+    """A bilingual grammar page like the real "Complete French All-in-One" p.338: an English explanation line, then a row-aligned
+    two-column table -- French forms on the left, their English translation on the right (a wide gutter between them) -- then
+    French example sentences with their English translations, two lines each.
+
+    `order` is the CONTENT-STREAM order, which is what the browser's text layer (and so a drag selection) follows:
+      'rows'    French cell, English cell, next row ...   (what the real page does: the two columns interleave row by row)
+      'columns' every French cell, then every English cell (the other common layout)
+    Text is WinAnsi-encoded so accents survive. Each cell is its own text item, as in a real PDF."""
+    rows = rows or VERB_TABLE_ROWS
+    objs = [b'<< /Type /Catalog /Pages 2 0 R >>', b'',
+            b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>']
+    def enc(text):
+        return text.encode('cp1252').replace(b'\\', b'\\\\').replace(b'(', b'\\(').replace(b')', b'\\)')
+    def cell(x, y, text):
+        return b'BT %d %d Td /F1 12 Tf (' % (x, y) + enc(text) + b') Tj ET'
+    left_x, right_x = 72, 330
+    y = 700
+    ops = [cell(left_x, y, 'When an action precedes another one, avoir and être in the participe présent can be combined.')]
+    y -= 40
+    fr_cells, en_cells = [], []
+    for fr, en in rows:
+        fr_cells.append(cell(left_x, y, fr)); en_cells.append(cell(right_x, y, en)); y -= 22
+    if order == 'rows':
+        for f, e in zip(fr_cells, en_cells): ops += [f, e]
+    else:
+        ops += fr_cells + en_cells
+    y -= 18
+    sentences = [('Ayant accepté la défaite, les joueurs', 'sont rentrés chez eux.', 'Having accepted the defeat, the players', 'went home.'),
+                 ('Étant partis très tôt, nous sommes', 'arrivés les premiers.', 'Having left very early, we were the first', 'to arrive.')]
+    for fr1, fr2, en1, en2 in sentences:
+        ops += [cell(left_x, y, fr1), cell(right_x, y, en1)]; y -= 16
+        ops += [cell(left_x + 12, y, fr2), cell(right_x + 12, y, en2)]; y -= 24
+    stream = b'\n'.join(ops)
+    objs.append(b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>')
+    objs.append(b'<< /Length %d >>\nstream\n' % len(stream) + stream + b'\nendstream')
+    objs[1] = b'<< /Type /Pages /Count 1 /Kids [4 0 R] >>'
+    data = b'%PDF-1.4\n'; offsets = [0]
+    for i, obj in enumerate(objs, 1):
+        offsets.append(len(data)); data += f'{i} 0 obj\n'.encode() + obj + b'\nendobj\n'
+    xref = len(data)
+    data += f'xref\n0 {len(objs)+1}\n0000000000 65535 f \n'.encode()
+    data += b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets[1:])
+    return data + f'trailer << /Size {len(objs)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF'.encode()
+
+
 def edge_words_pdf_bytes():
     """A single-page fixture with one word hard against the LEFT margin and one
     hard against the RIGHT margin on the same line, plus isolated words above/

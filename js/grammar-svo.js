@@ -1074,6 +1074,7 @@ function renderGrammarPanel() {
         const notes = [];
         if (analysis.notice.partial) notes.push(t('grammarPartial'));
         if (analysis.notice.trimmed) notes.push(t('grammarTrimmed').replace('{n}', analysis.notice.trimmed.n).replace('{m}', analysis.notice.trimmed.m));
+        if (analysis.notice.budgetLimited) notes.push(t('grammarBudgetLimited').replace('{n}', analysis.notice.budgetLimited.n).replace('{m}', analysis.notice.budgetLimited.m));
         for (const note of notes) { const p = document.createElement('p'); p.className = 'grammar-note'; p.textContent = note; content.appendChild(p); }
     }
     if (!items.length) {
@@ -1607,7 +1608,16 @@ async function runGrammarAnalysis(contextText, sentenceText) {
             return fail(t(analysis.error === 'truncated' ? 'aiTruncated' : 'aiInvalidResponse'), analysis.error);
         }
         if (analysis.suspect) return fail(t('grammarNoUsableForms'), 'no_valid_items');
-        analysis.notice = { partial: !!analysis.partial, trimmed: scope.trimmed && scope.sentencesTotal > scope.sentencesKept ? { n: scope.sentencesKept, m: scope.sentencesTotal } : null };
+        // A selection may legitimately contain more distinct verbs/adjectives than the budget (grammarItemBudget)
+        // allows through: the model was TOLD the limit and (when honest) simply stopped there, so this is not a
+        // validation failure -- but the learner should still be told the list is not everything that was found,
+        // not shown a silently-incomplete one. Deterministic per a given model reply (see ARCHITECTURE.md).
+        const overBudgetCount = analysis.rejected.filter(r => r.reason === 'over_budget').length;
+        const keptLemmaCount = new Set(analysis.items.map(i => i.pos + '|' + i.lemma.toLowerCase())).size;
+        analysis.notice = {
+            partial: !!analysis.partial, trimmed: scope.trimmed && scope.sentencesTotal > scope.sentencesKept ? { n: scope.sentencesKept, m: scope.sentencesTotal } : null,
+            budgetLimited: overBudgetCount ? { n: keptLemmaCount, m: keptLemmaCount + overBudgetCount } : null
+        };
         if (!analysis.partial) cacheGrammarAnalysis(key, analysis);      // a partial analysis is not cached: a retry deserves a fresh chance
         grammarContext.analysis = analysis;
         panel.classList.remove('loading'); panel.classList.add('ready');

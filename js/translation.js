@@ -131,6 +131,11 @@ window.addEventListener('resize', clearAlignmentFlash);
 
 async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpContext = null, helpSource = null) {
     const cleanText = text.trim(); if (!cleanText) return;
+    // A bilingual PDF drag's own study-language-only text (js/selection.js), if any — read and
+    // cleared HERE so it is consumed exactly once, regardless of which tooltip button (if any)
+    // the learner ends up pressing, and can never leak into a later, unrelated tap/selection.
+    const grammarSourceOverride = state.lastGrammarSourceText;
+    state.lastGrammarSourceText = null;
     clearAlignment();
     const isMultiWord = cleanText.split(/\s+/).length > 1;
     const lookupNode = state.lastSelectedRange?.startContainer || state.lastWordNode;
@@ -252,8 +257,12 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         // tapContextSentence, зібраний ще В МОМЕНТ ТАПУ (замкнення вище), а НЕ повторний
         // sentenceRangeAt(state.lastTapPoint) тут: до натискання кнопки сторінка могла
         // прокрутитись/перезумитись, і ті самі координати вказували б уже на інший текст.
-        state.lastGrammarSentence = (tapContextSentence && tapContextSentence !== cleanText) ? tapContextSentence : '';
-        startAiTask(cleanText, 'grammar');
+        // A bilingual selection's own isolated study-language text (if any) is what Grammar
+        // actually analyses; the tooltip/translation above always still shows the FULL raw
+        // selection (`cleanText`) unchanged — this override is Grammar-only.
+        const grammarText = (grammarSourceOverride && grammarSourceOverride !== cleanText) ? grammarSourceOverride : cleanText;
+        state.lastGrammarSentence = (tapContextSentence && tapContextSentence !== grammarText) ? tapContextSentence : '';
+        startAiTask(grammarText, 'grammar');
     };
     els.ttAskBtn.onclick = (e) => {
         e.stopPropagation();
