@@ -107,10 +107,7 @@ jobs:
           
           echo "Starting Headless Chrome ($CHROME_BIN)..."
           mkdir -p /tmp/pdf-ux-test-profile
-          # --disable-crash-reporter: on the runner, a renderer taking a non-fatal "dump without crashing" report
-          # blocked forever writing to the crashpad handler (renderer main thread in anon_pipe_write, crashpad
-          # firing at the stall) -- the intermittent pdf_ux hang. Crash dumps are useless here anyway.
-          $CHROME_BIN --headless --disable-crash-reporter --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
+          $CHROME_BIN --headless --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
           CHROME_PID=$!
           
           # Ensure cleanup of background processes when this step exits (success or failure)
