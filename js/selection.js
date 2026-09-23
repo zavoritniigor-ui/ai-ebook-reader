@@ -949,18 +949,24 @@ function cancelDragSelection() {
     clearTimeout(touchSelTimer); touchSelTimer = null;
     dragSel = null; dragMoved = false; state.dragRange = null;
     state.touchSelecting = false;
+    setTouchSelectionGuard(false);
     els.container.style.touchAction = '';
     if (hadDragHighlight && typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
 }
 document.addEventListener('pointercancel', cancelDragSelection);
 // touch-action is decided at touchstart, so switching the container to 'none' after the long-press is too
 // late: the first finger move scrolled the page, the browser fired pointercancel and the selection was dropped
-// mid-drag. Cancelling touchmove while a touch selection is live keeps the finger extending the selection.
-// Registered on document (explicitly non-passive): a blocking listener on #main-area/#reader-container is not
-// honoured for the PDF scroller in Chrome — the touch sequence was still dispatched uncancelable.
-document.addEventListener('touchmove', e => {
-    if (state.touchSelecting && e.cancelable && e.touches.length === 1 && els.mainArea.contains(e.target)) e.preventDefault();
-}, { passive: false });
+// mid-drag. While a touch selection is live, a blocking touchmove guard keeps the finger extending it. It lives
+// on document (a blocking listener on #main-area/#reader-container is not honoured for the PDF scroller) and
+// only for the selection's lifetime, so ordinary taps and scrolls are never dispatched as blocking.
+function guardTouchSelectionMove(e) {
+    if (!state.touchSelecting) { setTouchSelectionGuard(false); return; }   // ended elsewhere (pinch, new book)
+    if (e.cancelable && e.touches.length === 1 && els.mainArea.contains(e.target)) e.preventDefault();
+}
+function setTouchSelectionGuard(on) {
+    if (on) document.addEventListener('touchmove', guardTouchSelectionMove, { passive: false });
+    else document.removeEventListener('touchmove', guardTouchSelectionMove, { passive: false });
+}
 document.addEventListener('pointerup', e => {
     if (!els.mainArea.contains(e.target)) cancelDragSelection();
 });
@@ -999,6 +1005,7 @@ els.mainArea.addEventListener('pointerdown', (e) => {
             dragSel = w;
             dragMoved = true;                 // підсвітка з першого ж слова
             state.touchSelecting = true;      // свайпи гортання на час виділення вимкнені
+            setTouchSelectionGuard(true);
             state.suppressNextClick = true;
             // Забороняємо браузеру трактувати рух як прокрутку — інакше він
             // перехопить жест і виділення обірветься на першому ж русі пальця.
@@ -1100,6 +1107,7 @@ els.mainArea.addEventListener('pointerup', (e) => {
     if (state.touchSelecting) {
         touchStartTime = 0; // pointerup precedes touchend: do not turn the page after selection
         state.touchSelecting = false;
+        setTouchSelectionGuard(false);
         els.container.style.touchAction = (state.format === 'pdf') ? '' : 'pan-y';
     }
     window.getSelection()?.removeAllRanges();

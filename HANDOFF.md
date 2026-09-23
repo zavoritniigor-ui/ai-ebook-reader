@@ -18,6 +18,31 @@ part of normal task startup.
 
 ## Current handoff
 
+### PR #122 continuation by Claude (2026-09-23) — real-book acceptance fixes + CI stall diagnosis
+
+Picked up at `d294ae2` (= PR head = origin branch; already contained origin/main `ffba29d`). Its last three CI
+runs were **cancelled after up to 6h**: `pdf_ux_browser.py` hung after the landscape fit-page/fit-width switch.
+- `tests/browser_cdp.py`: every CDP reply is bounded (`READER_CDP_TIMEOUT`, default 180s), renderer crash / JS
+  dialog fail fast, a timeout reports recent page events and — with `READER_CDP_DEBUG_STACK=1` (set for
+  pdf_ux in CI) — the spinning JS stack. CI prints `chrome.log` on failure.
+- Finding: before the fixes below pdf_ux hung in 4/4 branch runs; after them it passed 8 of 9 CI executions
+  (incl. a one-off CI bisect: 6/6 fresh-Chrome runs green with and without the pill backdrop-filter, footer,
+  workspace observer or thumbnail sync). One residual stall (822c538) was native (stack probe: main thread
+  stuck OUTSIDE JS, crashpad fired 0.2s after the fit-width switch) and never reproduced locally (2-core pin,
+  20x throttle, --disable-gpu, 8x loop). If it recurs, the timeout message now says where it stopped.
+- Real-book acceptance (`~/Books/Complete French All-in-One .pdf`, 657 pp) with real controls/input found and
+  fixed: Practice expanded squeezed the book to ~0px (getReaderWorkspaceRect treated the overlay as a right
+  panel); `#grammar-panel.practice-bookmark-dock{position:relative}` made Grammar reserve 500px twice and
+  after closing; narrow-gutter table rows fused columns (pdfComputeColumns now splits at column edges
+  confirmed page-wide, cached per layer); touch long-press drag was cancelled by native scroll (document-level
+  non-passive touchmove guard, installed only while a touch selection is live so ordinary taps/scrolls stay
+  non-blocking); A+/A− drifted the reading anchor (pre-existing); pill peeked 6px in immersive.
+  Guarded by `tests/pdf_workspace_regressions_browser.py` (fails on 353b498, passes now).
+- Thumbnails on the 657-page book: first pages render at open, far jumps/rapid scroll settle ≤2.3s, ≤80
+  canvases — no change needed. Gemini's `pdf_workspace_browser.py` wrote to a hardcoded `/home/igor/.gemini/…`
+  path (CI PermissionError) — now a temp dir.
+- Next: exact-SHA green CI, squash-merge "(#122)", main CI, production check (see PR #122 for final SHAs).
+
 ### PDF Central Workspace, Selection, Thumbnails & UI Integration (2026-09-22, branch `feature/pdf-workspace-layout`, PR #122 — Reconciled onto main)
 
 Branch `feature/pdf-workspace-layout`, PR #122 rebased/reconciled cleanly onto `origin/main` (`ffba29d` containing PR #119 and PR #123).

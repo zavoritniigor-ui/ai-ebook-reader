@@ -122,23 +122,23 @@ res_null = c.js("""goToBookPage('nonexistent')""")
 assert res_null is not True, "Nonexistent book page should not resolve"
 print("PASS nonexistent book page returns falsy")
 
-# Test progress text format
+# Test progress text format (goToPhysicalPage settles asynchronously: wait for the final text, don't read it mid-flight)
 c.js("goToPhysicalPage(4, {instant:true})")
 check('Progress text for numbered page includes book label and physical total',
-      "els.progress.textContent === 'p. 2 (4/20)'")
+      "els.progress.textContent === 'p. 2 (4/20)'", timeout=5)
 
 c.js("goToPhysicalPage(5, {instant:true})")
 check('Progress text for unnumbered page displays — and physical total',
-      "els.progress.textContent === '— (5/20)'")
+      "els.progress.textContent === '— (5/20)'", timeout=5)
 
 # Test scrubber format
 c.js("goToPhysicalPage(4, {instant:true})")
 check('Scrubber preview for numbered page reflects book page',
-      "document.getElementById('pdf-page-preview').value === 'p. 2 (4)'")
+      "document.getElementById('pdf-page-preview').value === 'p. 2 (4)'", timeout=5)
 
 c.js("goToPhysicalPage(5, {instant:true})")
 check('Scrubber preview for unnumbered page reflects —',
-      "document.getElementById('pdf-page-preview').value === '— (5)'")
+      "document.getElementById('pdf-page-preview').value === '— (5)'", timeout=5)
 
 # ============================================================
 # PART 2: Real Document Acceptance Test (Complete French All-in-One)

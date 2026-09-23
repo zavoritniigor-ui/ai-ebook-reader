@@ -84,30 +84,6 @@ jobs:
               node --check "$js_file"
           done
 
-      - name: TEMPORARY bisect pdf_ux renderer stall (PR 122)
-        continue-on-error: true
-        shell: bash
-        run: |
-          set +e
-          python3 -m http.server 8766 --bind 127.0.0.1 > /tmp/bisect_http.log 2>&1 &
-          HP=$!
-          for v in V1 V2 V3 V4 V0 V0; do
-            prof=/tmp/bisect-profile-$v-$RANDOM; mkdir -p $prof
-            google-chrome --headless --remote-debugging-port=9230 --user-data-dir=$prof about:blank > /tmp/bisect_chrome_$v.log 2>&1 &
-            CP=$!
-            timeout 15 bash -c 'until curl -s http://127.0.0.1:9230/json > /dev/null; do sleep 0.5; done'
-            start=$(date +%s)
-            READER_UX_VARIANT=$v READER_CDP_PORT=9230 READER_CDP_TIMEOUT=90 READER_TEST_URL=http://127.0.0.1:8766/index.html \
-              timeout 400 python3 -u tests/_bisect_pdf_ux.py > /tmp/bisect_$v.log 2>&1; rc=$?
-            echo "BISECT $v rc=$rc secs=$(( $(date +%s) - start )) last: $(tail -n 1 /tmp/bisect_$v.log | cut -c1-160)"
-            [ $rc -ne 0 ] && tail -n 6 /tmp/bisect_$v.log | cut -c1-300 | sed 's/^/    /'
-            for d in $(find $prof -name '*.dmp' 2>/dev/null); do echo "  DUMP $d: $(strings -n 4 $d | grep -m3 -A1 -E '^ptype$' | tr '\n' ' ')"; done
-            kill $CP 2>/dev/null || true; wait $CP 2>/dev/null || true
-          done
-          kill $HP 2>/dev/null || true
-          pkill -f bisect-profile || true
-          exit 0
-
       - name: Run Tests (Server, Chrome, Python)
         shell: bash
         run: |
