@@ -46,7 +46,7 @@ async function measurePdfPage(doc, pageNum) {
 // ===================== CENTRAL PDF WORKSPACE GEOMETRY =====================
 // Canonical measurement function for the visible central workspace between side surfaces:
 // availableLeft  = max(mainArea.left, visible nav.right, visible askPanel.right)
-// availableRight = min(mainArea.right, visible grammarPanel.left, visible practicePanel.left)
+// availableRight = min(mainArea.right, visible grammarPanel.left)   (Practice overlays this gap; see below)
 // availableWidth = max(1, availableRight - availableLeft)
 // availableHeight = max(1, mainArea.bottom - mainArea.top)
 function getReaderWorkspaceRect() {
@@ -77,7 +77,7 @@ function getReaderWorkspaceRect() {
         }
     }
 
-    // 2. Right panels (#grammar-panel, #practice-panel)
+    // 2. Right panel (#grammar-panel)
     const grammar = document.getElementById('grammar-panel');
     if (grammar && grammar.classList.contains('expanded')) {
         const w = grammar.offsetWidth || grammar.getBoundingClientRect().width;
@@ -85,14 +85,11 @@ function getReaderWorkspaceRect() {
             availableRight = Math.min(availableRight, mainRect.right - w);
         }
     }
-    const practice = document.getElementById('practice-panel');
-    if (practice && !practice.hidden && practice.style.display !== 'none' && !practice.inert &&
-        practice.dataset.mode !== 'collapsed-bottom' && practice.dataset.mode !== 'bookmark') {
-        const pr = practice.getBoundingClientRect();
-        if (pr.left < availableRight && pr.width > 0 && pr.right > mainRect.left) {
-            availableRight = Math.min(availableRight, pr.left);
-        }
-    }
+    // #practice-panel is deliberately NOT a reserve: layoutPracticeWorkspace (practice-worksheet.js)
+    // always lays the expanded worksheet OVER this same central gap (start = max(nav, ask),
+    // end = innerWidth - Grammar), never beside it. Clamping to its left edge collapsed the book
+    // underneath to ~0px — a full relayout of every page at zero width plus a reading anchor taken
+    // from that collapsed stack — and its collapsed/bookmark tab must never reserve width either.
 
     const availableWidth = Math.max(1, availableRight - availableLeft);
     const availableHeight = Math.max(1, availableBottom - availableTop);

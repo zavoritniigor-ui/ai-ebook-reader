@@ -2,10 +2,13 @@
 import base64, json, os, socket, struct, time, urllib.request
 
 class CDP:
-    def __init__(self):
-        tabs = json.load(urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('READER_CDP_PORT', '9222') + '/json'))
+    def __init__(self, ws_url=None):
         from urllib.parse import urlparse
-        u = urlparse(next(t['webSocketDebuggerUrl'] for t in tabs if t['type'] == 'page'))
+        if not ws_url:
+            tabs = json.load(urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('READER_CDP_PORT', '9222') + '/json'))
+            ws_url = next(t['webSocketDebuggerUrl'] for t in tabs if t['type'] == 'page')
+        self.ws_url = ws_url
+        u = urlparse(ws_url)
         self.sock = socket.create_connection((u.hostname, u.port)); self.seq = 0
         key = base64.b64encode(os.urandom(16)).decode()
         self.sock.sendall(f'GET {u.path} HTTP/1.1\r\nHost: {u.netloc}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n'.encode())
@@ -13,6 +16,8 @@ class CDP:
         while not h.endswith(b'\r\n\r\n'): h += self.read(1)
         assert b'101 ' in h, h
         self.call('Inspector.enable')  # delivers Inspector.targetCrashed instead of a silent stall
+        if os.environ.get('READER_CDP_DEBUG_STACK') == '1':
+            self.call('Debugger.enable'); self.debugger_enabled = True
     def read(self, n):
         data = b''
         while len(data) < n:
@@ -53,6 +58,7 @@ class CDP:
     RESPONSE_TIMEOUT = float(os.environ.get('READER_CDP_TIMEOUT', '180'))
     FATAL_EVENTS = ('Inspector.targetCrashed', 'Inspector.detached', 'Page.javascriptDialogOpening')
     def _note_event(self, data):
+        if data.get('method', '').startswith('Debugger.script'): return
         recent = self.__dict__.setdefault('recent_events', [])
         method = data.get('method')
         params = data.get('params', {})
@@ -63,6 +69,23 @@ class CDP:
         recent.append(method); del recent[:-25]
         if data.get('method') in self.FATAL_EVENTS:
             raise ConnectionError(f'CDP {data["method"]}: {json.dumps(params)[:300]}')
+    def _stuck_stack(self):
+        """Report where an unresponsive page's JS is spinning. Only possible when the Debugger domain was
+        enabled BEFORE the stall (READER_CDP_DEBUG_STACK=1): a late Debugger.enable itself needs the stuck
+        main thread, whereas Debugger.pause on an already-enabled session interrupts running JS."""
+        if not self.__dict__.get('debugger_enabled'): return 'unavailable (set READER_CDP_DEBUG_STACK=1)'
+        try:
+            self.sock.settimeout(20)
+            self.seq += 1; self._send_frame(json.dumps(dict(id=self.seq, method='Debugger.pause', params={})).encode())
+            deadline = time.monotonic() + 20
+            while time.monotonic() < deadline:
+                data = json.loads(self._read_message())
+                if data.get('method') == 'Debugger.paused':
+                    frames = data['params'].get('callFrames', [])
+                    return [f"{f.get('functionName') or '<anon>'}@{f.get('url', '').rsplit('/', 1)[-1]}:{f['location']['lineNumber'] + 1}" for f in frames[:12]]
+            return 'no Debugger.paused (main thread stuck outside JS: layout/GPU/IPC)'
+        except Exception as e:
+            return f'no Debugger.paused within 20s ({e!r}): main thread stuck outside JS (layout/GPU/IPC)'
     def call(self, method, **params):
         self.seq += 1
         msg = json.dumps(dict(id=self.seq, method=method, params=params)).encode()
@@ -79,7 +102,8 @@ class CDP:
         except socket.timeout:
             detail = json.dumps(params)[:300]
             raise TimeoutError(f'No CDP reply to {method} {detail} within {self.RESPONSE_TIMEOUT:.0f}s; '
-                               f'recent events: {self.__dict__.get("recent_events", [])}') from None
+                               f'recent events: {self.__dict__.get("recent_events", [])}; '
+                               f'stuck JS stack: {self._stuck_stack()}') from None
         finally:
             if hasattr(sock, 'settimeout'): sock.settimeout(None)
     def touch_tap(self, x, y):

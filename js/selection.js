@@ -212,8 +212,9 @@ function isExerciseBlankContinuation(leftText, rightText) {
 // pdfPartitionColumns (УСІ колонки одразу — для виділення, що навмисно захоплює і
 // оригінал, і переклад): саме групування спільне, розрізняється лише те, що
 // повертається — одна колонка чи всі.
-function pdfComputeColumns(spans, layerWidth) {
-    const rects = spans.map(s => s.getBoundingClientRect());
+// Horizontal line bands -> per-line segments split at column gaps. `columnStarts` are x positions of column
+// edges confirmed elsewhere on the page (see pdfLayerColumnStarts).
+function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const bands = [];
     for (const i of rects.map((_, idx) => idx).sort((a, b) => rects[a].top - rects[b].top)) {
@@ -222,7 +223,7 @@ function pdfComputeColumns(spans, layerWidth) {
         if (band) band.indices.push(i);
         else bands.push({ top: r.top, height: r.height, indices: [i] });
     }
-    const segments = []; // { left, indices: [] }
+    const segments = []; // { left, right, indices: [], first }
     for (const band of bands) {
         const byLeft = band.indices.slice().sort((a, b) => rects[a].left - rects[b].left);
         let seg = null;
@@ -233,15 +234,48 @@ function pdfComputeColumns(spans, layerWidth) {
                 seg.indices.map(k => spans[k].textContent).join(' ').trim(),
                 spans[i].textContent.trim()
             );
-            if (seg && (gap <= columnGapThreshold || isExerciseGap)) {
+            // A narrower-than-threshold gap still separates columns when the span resumes exactly at a column
+            // edge other rows confirm -- e.g. the real "tu es  you are (familiar)  vous êtes  you are" row,
+            // whose long gloss narrows the gutter to ~2 line heights and used to fuse into the left column.
+            const atColumnEdge = seg && columnStarts.length && gap <= columnGapThreshold && gap >= r.height * 1.2 &&
+                columnStarts.some(x => Math.abs(r.left - x) <= Math.max(4, r.height * 0.5)) &&
+                !isExerciseBlankContinuation(seg.indices.map(k => spans[k].textContent).join(' ').trim(), spans[i].textContent.trim());
+            if (seg && !atColumnEdge && (gap <= columnGapThreshold || isExerciseGap)) {
                 seg.indices.push(i);
                 seg.right = Math.max(seg.right, r.right);
             } else {
-                seg = { left: r.left, right: r.right, indices: [i] };
+                seg = { left: r.left, right: r.right, indices: [i], first: !seg };
                 segments.push(seg);
             }
         }
     }
+    return segments;
+}
+// Column edges (x of a segment that is not the first one of its line) shared by at least two lines of the
+// WHOLE page -- a drag range alone often holds just one such line. Cached per text layer and width.
+const pdfColumnStartCache = new WeakMap();
+function pdfLayerColumnStarts(layer, layerWidth) {
+    if (!layer) return [];
+    const hit = pdfColumnStartCache.get(layer);
+    const all = pdfTextSpans(layer);
+    if (hit && hit.width === layerWidth && hit.count === all.length && hit.left === layer.getBoundingClientRect().left) return hit.starts;
+    const rects = all.map(s => s.getBoundingClientRect());
+    const inner = pdfLineSegments(all, rects, layerWidth, []).filter(s => !s.first).map(s => s.left).sort((a, b) => a - b);
+    const starts = [];
+    for (let k = 0; k < inner.length;) {
+        let j = k;
+        while (j + 1 < inner.length && inner[j + 1] - inner[k] <= 6) j++;
+        if (j > k) starts.push(inner[k]);
+        k = j + 1;
+    }
+    pdfColumnStartCache.set(layer, { width: layerWidth, count: all.length, left: layer.getBoundingClientRect().left, starts });
+    return starts;
+}
+function pdfComputeColumns(spans, layerWidth) {
+    const rects = spans.map(s => s.getBoundingClientRect());
+    const columnGapThreshold = Math.max(24, layerWidth * 0.08);
+    const layer = spans[0]?.closest?.('.pdf-text-layer');
+    const segments = pdfLineSegments(spans, rects, layerWidth, pdfLayerColumnStarts(layer, layerWidth));
     const segLeft = segments.map(s => s.left);
     const segsByLeft = segLeft.map((_, i) => i).sort((a, b) => segLeft[a] - segLeft[b]);
     const segColumn = new Array(segments.length).fill(0);
@@ -919,6 +953,14 @@ function cancelDragSelection() {
     if (hadDragHighlight && typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
 }
 document.addEventListener('pointercancel', cancelDragSelection);
+// touch-action is decided at touchstart, so switching the container to 'none' after the long-press is too
+// late: the first finger move scrolled the page, the browser fired pointercancel and the selection was dropped
+// mid-drag. Cancelling touchmove while a touch selection is live keeps the finger extending the selection.
+// Registered on document (explicitly non-passive): a blocking listener on #main-area/#reader-container is not
+// honoured for the PDF scroller in Chrome — the touch sequence was still dispatched uncancelable.
+document.addEventListener('touchmove', e => {
+    if (state.touchSelecting && e.cancelable && e.touches.length === 1 && els.mainArea.contains(e.target)) e.preventDefault();
+}, { passive: false });
 document.addEventListener('pointerup', e => {
     if (!els.mainArea.contains(e.target)) cancelDragSelection();
 });
