@@ -7,7 +7,7 @@ Verifies all 12 criteria from user specification:
 - Reading position preservation across panel transitions (I)
 - Left thumbnail sidebar visual depth and scrolling across themes (Task 2)
 """
-import base64, json, os, sys, time
+import base64, json, os, sys, tempfile, time
 from browser_cdp import CDP
 from pdf_audit_fixtures import pdf_document
 
@@ -403,7 +403,8 @@ print(f"PASS Top-left controls clearly differentiated: menu='{icons_data['menuTe
 # SCREENSHOT CAPTURES FOR ARTIFACTS & VERIFICATION
 # ------------------------------------------------------------
 def save_screenshot(filename):
-    out_dir = "/home/igor/.gemini/antigravity/brain/fd2f5b32-9c1c-4a57-8e27-021ffcb63ee0"
+    # Local artefacts only; never a developer-specific absolute path (CI runners cannot write there).
+    out_dir = os.environ.get('READER_SCREENSHOT_DIR') or os.path.join(tempfile.gettempdir(), 'pdf-workspace-screenshots')
     os.makedirs(out_dir, exist_ok=True)
     res = c.call('Page.captureScreenshot', format='png')
     if res and 'data' in res:
