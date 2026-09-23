@@ -120,7 +120,8 @@ jobs:
           echo "HTTP server is running."
           
           echo "Waiting for Chrome CDP (PID $CHROME_PID) on port 9222..."
-          timeout 15 bash -c 'until curl -s http://127.0.0.1:9222/json > /dev/null; do sleep 0.5; done'
+          # A cold headless Chrome on a busy runner can need well over 15s to open its DevTools port.
+          timeout 45 bash -c 'until curl -s http://127.0.0.1:9222/json > /dev/null; do sleep 0.5; done'
           echo "Chrome CDP is ready."
           
           # 4. Run tests
