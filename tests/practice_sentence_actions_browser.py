@@ -341,10 +341,13 @@ sess = generate_practice('verbs', ['voir'])
 check("9: at phone width the reading still fits (no horizontal scroll)", "document.getElementById('practice-panel').scrollWidth<=document.getElementById('practice-panel').clientWidth+2")
 btn_rect = c.js("(()=>{const b=document.querySelector('.practice-speak-btn'); b.scrollIntoView({block:'center'}); const r=b.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height}})()")
 assert btn_rect['w'] >= 28 and btn_rect['h'] >= 28, ('touch target too small', btn_rect)
-c.js("window.__tapSeen=[]; document.addEventListener('pointerdown', e => __tapSeen.push(e.pointerType), {capture: true, once: true}); 1")
+c.js("""window.__tapSeen=[]; for (const t of ['pointerdown','pointerup','pointercancel','click','contextmenu'])
+  document.addEventListener(t, e => __tapSeen.push([t, e.pointerType || '', (e.target.id || e.target.className || e.target.tagName || '').toString().slice(0, 40), Math.round(performance.now())]), {capture: true});
+  window.__grammarTransformAtTap = getComputedStyle(els.grammarPanel).transform; 1""")
 touch_tap(btn_rect['x'], btn_rect['y'])
 # Poll on the browser clock instead of one fixed 0.3s wall-clock sleep: on a loaded CI runner the tap can land
-# later without anything being wrong. A tap that never starts speech still fails below (with __tapSeen).
+# later without anything being wrong. A tap that never starts speech still fails below (with the pointer/click
+# events the page actually received, and the Grammar drawer's transform at tap time).
 for _ in range(30):
     if c.js("document.querySelector('.practice-speak-btn').classList.contains('speak-active')"): break
     c.js("new Promise(r => setTimeout(r, 100))")
@@ -353,7 +356,7 @@ if not c.js("document.querySelector('.practice-speak-btn').classList.contains('s
         return { at:[%f,%f], under: e?(e.tagName+'.'+e.className+' '+(e.textContent||'').slice(0,40)):null,
           btnRect: b.getBoundingClientRect().toJSON ? JSON.parse(JSON.stringify(b.getBoundingClientRect())) : null,
           grammarExpanded: els.grammarPanel.classList.contains('expanded'), practicePanelHidden: document.getElementById('practice-panel').hidden,
-          speakCalls: window.__ttsSpeakCalls.length, viewport:[innerWidth, innerHeight], pointerdownSeen: window.__tapSeen }; })()""" % (btn_rect['x'], btn_rect['y'], btn_rect['x'], btn_rect['y']))
+          speakCalls: window.__ttsSpeakCalls.length, viewport:[innerWidth, innerHeight], events: window.__tapSeen, grammarTransformAtTap: window.__grammarTransformAtTap }; })()""" % (btn_rect['x'], btn_rect['y'], btn_rect['x'], btn_rect['y']))
     raise AssertionError(('9: touch tap on the speaker button never started speech', diag))
 print("PASS 9: a real TOUCH tap on the speaker button actually starts speech", flush=True)
 translate_rect = c.js("(()=>{const b=document.querySelector('.practice-translate-btn'); const r=b.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
