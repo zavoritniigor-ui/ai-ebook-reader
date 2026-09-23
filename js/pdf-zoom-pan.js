@@ -40,12 +40,12 @@ els.mainArea.addEventListener('wheel', (e) => {
 
 let wheelZoomTimer, isPanning = false, panMoved = false, panStartX = 0, panStartY = 0, panScrollX = 0, panScrollY = 0;
 
-function rerenderPdfAtCurrentZoom() {
+function rerenderPdfAtCurrentZoom(anchor) {
     if (state.format !== 'pdf' || document.hidden) return;
     state.pdfScale = pdfBaseScale() * state.pdfZoom;
     state.pdfFit = 'free';
     persistPdfZoom();
-    relayoutContinuousPdfAtScale();
+    relayoutContinuousPdfAtScale(anchor);
 }
 
 els.mainArea.addEventListener('pointerdown', (e) => {
@@ -169,9 +169,13 @@ function persistPdfZoom() {
 }
 function setPdfScale(scale) {
     cancelPdfInteraction();
+    // Button zoom (A+/A-): take the page-relative reading anchor BEFORE the live transform. Re-reading it
+    // afterwards (relayout's default) measured the transformed stack and shifted the view by ~20% of a page
+    // per step, eventually onto the previous page.
+    const anchor = pdfContinuousReady ? pdfAnchor() : null;
     state.pdfFit = 'free';
     applyPdfZoom(Math.max(.25, Math.min(4, scale)) / pdfBaseScale());
-    rerenderPdfAtCurrentZoom();
+    rerenderPdfAtCurrentZoom(anchor);
 }
 
 // After a zoom gesture settles: re-layout every wrapper at the new base

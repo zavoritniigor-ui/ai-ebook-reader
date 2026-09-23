@@ -32,6 +32,20 @@ function stopTooltipSpeech() {
 function updateSpeakerIcons() {
     if (els.ttReplayBtn) els.ttReplayBtn.textContent = state.speakingSide === 'orig' ? '■' : '🔊';
     if (els.ttSpeakTranslation) els.ttSpeakTranslation.textContent = state.speakingSide === 'tr' ? '■' : '🔊';
+    const origEl = document.getElementById('tt-original');
+    if (origEl) {
+        if (state.speakingSide === 'orig' && origEl.parentElement) {
+            const containerW = origEl.parentElement.clientWidth;
+            if (origEl.scrollWidth > containerW + 2) {
+                origEl.style.setProperty('--ticker-container-w', `${containerW}px`);
+                origEl.classList.add('speaking-ticker');
+            } else {
+                origEl.classList.remove('speaking-ticker');
+            }
+        } else {
+            origEl.classList.remove('speaking-ticker');
+        }
+    }
 }
 // Кожна фраза має власний номер. Без нього onend від ПОПЕРЕДНЬОЇ, обірваної через
 // cancel(), приходив із запізненням, бачив ту саму сторону ('orig') і скидав щойно

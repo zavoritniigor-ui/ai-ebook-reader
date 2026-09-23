@@ -18,7 +18,87 @@ part of normal task startup.
 
 ## Current handoff
 
-### Practice: sentence-level translate + listen actions (2026-09-22, branch `practice-sentence-actions`, PR #120 — see status below)
+### PR #122 continuation by Claude (2026-09-23) — real-book acceptance fixes + CI stall diagnosis
+
+Picked up at `d294ae2` (= PR head = origin branch; already contained origin/main `ffba29d`). Its last three CI
+runs were **cancelled after up to 6h**: `pdf_ux_browser.py` hung after the landscape fit-page/fit-width switch.
+- `tests/browser_cdp.py`: every CDP reply is bounded (`READER_CDP_TIMEOUT`, default 180s), renderer crash / JS
+  dialog fail fast, a timeout reports recent page events and — opt-in `READER_CDP_DEBUG_STACK=1` (local
+  diagnosis only: with it pre-enabled in CI pdf_ux stalled 2/5, without it 0/6) — the spinning JS stack.
+  CI prints `chrome.log` on failure.
+- The 6h CI "hang" was a renderer CRASH (SIGTRAP) whose kernel core dump never finished (renderer kernel
+  stack: get_signal -> vfs_coredump -> anon_pipe_write into systemd-coredump), so Chrome never reported it.
+  Same-runner CI bisects: only disconnecting the panel MutationObserver avoided it. Cause: Gemini's
+  applyLayout() moved the container margins AND relaid the stack out immediately, then navigation.js's
+  ResizeObserver relaid it out again. Fix: geometry only, one debounced relayout (main's split); observer
+  watches class/hidden of sidebar/Grammar/Ask. Control on a Xeon 8370C (old code crashed 2/2): branch 4/4
+  and origin/main 4/4 clean. CI keeps core dumps off, Chrome logging on, uploads crash reports
+  (`chrome-crash-reports`) and prints process states / pipe owners (`tests/ci_chrome_stall_dump.sh`).
+- Found, not fixed (pre-existing on main): tts.js speakSegment recurses synchronously via utterance.onerror /
+  empty segments -> "Maximum call stack size exceeded" where speech errors immediately (CI, no voices).
+- practice_sentence_actions section 9 tapped while the full-width Grammar drawer was still sliding out
+  (events went to #grammar-content) -- test now waits for the drawer to be hidden.
+- Real-book acceptance (`~/Books/Complete French All-in-One .pdf`, 657 pp) with real controls/input found and
+  fixed: Practice expanded squeezed the book to ~0px (getReaderWorkspaceRect treated the overlay as a right
+  panel); `#grammar-panel.practice-bookmark-dock{position:relative}` made Grammar reserve 500px twice and
+  after closing; narrow-gutter table rows fused columns (pdfComputeColumns now splits at column edges
+  confirmed page-wide, cached per layer); touch long-press drag was cancelled by native scroll (document-level
+  non-passive touchmove guard, installed only while a touch selection is live so ordinary taps/scrolls stay
+  non-blocking); A+/A− drifted the reading anchor (pre-existing); pill peeked 6px in immersive.
+  Guarded by `tests/pdf_workspace_regressions_browser.py` (fails on 353b498, passes now).
+- Thumbnails on the 657-page book: first pages render at open, far jumps/rapid scroll settle ≤2.3s, ≤80
+  canvases — no change needed. Gemini's `pdf_workspace_browser.py` wrote to a hardcoded `/home/igor/.gemini/…`
+  path (CI PermissionError) — now a temp dir.
+- Next: exact-SHA green CI, squash-merge "(#122)", main CI, production check (see PR #122 for final SHAs).
+
+### PDF Central Workspace, Selection, Thumbnails & UI Integration (2026-09-22, branch `feature/pdf-workspace-layout`, PR #122 — Reconciled onto main)
+
+Branch `feature/pdf-workspace-layout`, PR #122 rebased/reconciled cleanly onto `origin/main` (`ffba29d` containing PR #119 and PR #123).
+**Zero regressions against Grammar/Practice:** Claude's PR #119 and PR #123 features (multi-verb selection, balanced allocation, coverage validation, sentence-level translate/listen actions) fully preserved and passing.
+
+Key Deliverables:
+1. **Task 1 — Bottom PDF Floating Navigation Pill**:
+   - Replaced full-width bottom background bar with a compact, floating navigation pill (`◀ Previous page X/Y Next ▶`).
+   - `#app-footer` styled with `background: transparent !important`, `height: auto`, `min-height: 0`, and `pointer-events: none` so it never consumes layout height or blocks clicks to thumbnails at the bottom of `#pdf-thumb-list`.
+   - `.footer-nav-group` styled as a rounded pill (`border-radius: 9999px; backdrop-filter: blur(8px); background: var(--panel-bg); box-shadow: 0 4px 16px rgba(0,0,0,0.18)`), with `pointer-events: auto`.
+   - Centered strictly within the active reading workspace via CSS variables `--ws-left` and `--ws-width` updated dynamically in `js/pdf-continuous.js` on every panel/sidebar toggle.
+   - `.workspace` height expanded to `calc(100vh - 58px)` to maximize vertical reading area.
+2. **Task 2 — Top-Left Controls Differentiation & Safe Clearance**:
+   - `#menu-handle` preserved as hamburger icon (`☰`) with localized tooltip and aria-label (`tMainMenu`, "Main menu" / "Головне меню").
+   - `#toggle-toc-desktop` updated with clean Feather SVG book-open icon with localized label (`tBookContents`, "Book contents and thumbnails" / "Зміст та ескізи книги").
+   - Added safe clearance in `#app-header` (`padding-left: calc(max(8px, env(safe-area-inset-left, 0px)) + 58px);`), guaranteeing 14px minimum separation between menu handle and book contents button.
+3. **Task 3 — Thumbnail Sidebar Background & Outline Styling**:
+   - Styled `#pdf-sidebar`, `#pdf-thumb-list`, and `#pdf-outline-list` with clean solid dark neutral `#161a20` across Light, Dark, and Sepia themes.
+   - Outline list (`#pdf-outline-list`) styled with high-contrast text (`#c9d1d9`), subtle hover (`rgba(255, 255, 255, 0.08)`), and clean scrollbars.
+4. **Task 4 — Thumbnail Loading & Missing First Pages**:
+   - In `js/pdf-thumbnails.js`, fixed the root cause where opening a book at page 300+ left pages 1–5 blank:
+     - `schedulePrefetchWindow()` now preserves tasks in visible DOM viewport (`visMin..visMax`) in addition to the predictive center window.
+     - Visible page tasks are prioritized first in candidate sorting and queue execution.
+     - Rapid scroll boundary check (`list.scrollTop <= 20`) immediately schedules page 1 without debounce delay.
+     - In `js/pdf-outline.js`, tab switching to thumbnails immediately schedules visible thumbnails.
+5. **Task 5 — PDF Bilingual Column Selection & Tablet Multi-Word Selection**:
+   - In `js/selection.js`, added vertical probing (`±8px`, `±16px`, `±24px`) in `pointerdown` and `pointermove` to bridge inter-line line spacing in continuous PDF without aborting touch/drag range extension.
+   - 380ms touch-hold timer for initiating selection vs smooth scrolling.
+   - Preserved column isolation and live highlight partitioning in `resolveCanonicalPdfSelection`.
+6. **Task 6 — Quick Wheel Header & Verbatim Text Strip**:
+   - Ensured verbatim text retention in `els.ttOriginal.textContent` with `title` and `aria-label` attributes.
+   - Bounded header viewport in `.tt-header` (`.tt-original-wrapper` has `flex: 1 1 auto; min-width: 0; overflow: hidden;`). Action buttons and header tools have `flex-shrink: 0;`.
+   - Added dynamic reading-follow ticker animation (`@keyframes tt-ticker`) when speech is active on `#tt-original` (`state.speakingSide === 'orig'`), respecting `prefers-reduced-motion: reduce`.
+7. **Task 7 — PDF Printing (Tofu/Square Glyphs Fix)**:
+   - Added comprehensive `@media print` rules in `index.html` hiding UI chrome and `.pdf-text-layer` (`display: none !important;`) while showing `.pdf-canvas` (`display: block !important;`).
+   - In `js/quick-wheel.js` `printCurrentReaderPage()`, converted rendered PDF page canvas and ink overlay into a raster `<img>` tag with PNG Data URL, completely eliminating un-embedded font and tofu glyph issues.
+8. **Automated Verification**:
+   - `tests/pdf_workspace_browser.py`: 100% PASS (12 layout states, floating pill centering 0.01px, icon differentiation, dark sidebar across themes).
+   - `tests/pdf_thumbnails_browser.py`: 100% PASS (all 6 sections: bounded scheduler, jump purging, verbatim text with fixed controls, touch hold, distant page thumbnail loading, speech ticker, print rasterization).
+   - `tests/bilingual_selection_browser.py`: 100% PASS (all 8 sections across 'rows' and 'columns' stream orders).
+   - `tests/learning_ux_browser.py`: 100% PASS.
+   - `tests/quick_wheel_browser.py`: 100% PASS.
+   - `tests/pdf_continuous_browser.py`: 100% PASS.
+   - `tests/pdf_bilingual_columns_browser.py`: 100% PASS.
+   - `tests/ci_suite_coverage.py`: 100% PASS (all browser suites invoked by CI).
+   - App-shell versioning and syntax checks: 100% PASS.
+
+### Practice: sentence-level translate + listen actions (2026-09-22, branch `practice-sentence-actions`, PR #123 — Merged to main at `ffba29d`)
 
 PR #119 (the whole `grammar-redesign` branch — Grammar redesign, real-model AI contract, bilingual
 multi-verb fix, and the Grammar → Practice hand-off fix directly below) was squash-merged to `main` at
@@ -65,7 +145,7 @@ class — both switched to the precise equivalent, never loosened.
 
 LIVE AI NOT TESTED against a real provider (no credential in this environment).
 
-### Grammar → Practice: button fix, balanced multi-target allocation, coverage validation (2026-09-22, branch `grammar-redesign`, PR #119 — NOT merged)
+### Grammar → Practice: button fix, balanced multi-target allocation, coverage validation (2026-09-22, branch `grammar-redesign`, PR #119 — Merged to main at `6ffb184`)
 
 Follow-up to the bilingual multi-verb fix directly below: once Grammar correctly detects every verb/adjective
 in a selection (up to 8, in the reported real case), Practice did not keep up. Reproduced live (real 8-verb

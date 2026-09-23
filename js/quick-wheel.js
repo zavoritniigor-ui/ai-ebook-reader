@@ -406,8 +406,6 @@ function printCurrentReaderPage() {
                 const canvas = doc.createElement('canvas');
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
-                canvas.style.cssText = 'display:block;width:100%;height:100%';
-                doc.body.append(canvas);
                 return page.render({ canvasContext: canvas.getContext('2d'), viewport, intent: 'print' }).promise.then(() => {
                     // Додаємо ink-шар поверх PDF, якщо є рукописні позначки
                     const inkCanvas = els.pages?.querySelector('#ink-layer');
@@ -420,6 +418,15 @@ function printCurrentReaderPage() {
                         ctx.drawImage(inkCanvas, 0, 0);
                         ctx.restore();
                     }
+                    // Tofu-free print: rasterize to img data URL
+                    const img = doc.createElement('img');
+                    img.style.cssText = 'display:block;width:100%;height:auto;max-width:100%;margin:0 auto;';
+                    return new Promise((resolve) => {
+                        img.onload = () => resolve();
+                        img.onerror = () => resolve();
+                        img.src = canvas.toDataURL('image/png');
+                        doc.body.append(img);
+                    });
                 });
             }).then(() => {
                 frame.contentWindow.print();

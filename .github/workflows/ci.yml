@@ -105,13 +105,20 @@ jobs:
               exit 1
           fi
           
+          echo "Runner CPU: $(lscpu | sed -n 's/^Model name: *//p') / $(nproc) cores"
           echo "Starting Headless Chrome ($CHROME_BIN)..."
+          # The runner pipes kernel core dumps to systemd-coredump; a crashed renderer then sat in the kernel's
+          # core-dump write indefinitely (kernel stack: vfs_coredump -> anon_pipe_write), so Chrome never
+          # reported the crash and the suite hung. No core dumps: a renderer crash surfaces immediately.
+          sudo -n sysctl -q -w kernel.core_pattern=core || true
+          ulimit -c 0
           mkdir -p /tmp/pdf-ux-test-profile
-          $CHROME_BIN --headless --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
+          $CHROME_BIN --headless --enable-logging=stderr --v=0 --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
           CHROME_PID=$!
           
           # Ensure cleanup of background processes when this step exits (success or failure)
-          trap "echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
+          # On failure, surface Chrome's own log (renderer crash / GPU hang reasons never reach the CDP client)
+          trap "status=\$?; if [ \$status -ne 0 ]; then echo '--- chrome.log (tail) ---'; grep -E 'FATAL|Check failed|NOTREACHED|DUMP_WITHOUT|:ERROR:' chrome.log | grep -v 'dbus\|gcm\|UPower' | tail -n 40; tail -n 30 chrome.log || true; bash tests/ci_chrome_stall_dump.sh || true; fi; echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
           
           # 3. Wait for services
           echo "Waiting for HTTP server (PID $SERVER_PID) to respond on port 8765..."
@@ -119,7 +126,8 @@ jobs:
           echo "HTTP server is running."
           
           echo "Waiting for Chrome CDP (PID $CHROME_PID) on port 9222..."
-          timeout 15 bash -c 'until curl -s http://127.0.0.1:9222/json > /dev/null; do sleep 0.5; done'
+          # A cold headless Chrome on a busy runner can need well over 15s to open its DevTools port.
+          timeout 45 bash -c 'until curl -s http://127.0.0.1:9222/json > /dev/null; do sleep 0.5; done'
           echo "Chrome CDP is ready."
           
           # 4. Run tests
@@ -128,6 +136,15 @@ jobs:
 
           echo "Running pdf_continuous_browser.py..."
           python3 -u tests/pdf_continuous_browser.py
+
+          echo "Running pdf_workspace_browser.py..."
+          python3 -u tests/pdf_workspace_browser.py
+
+          echo "Running pdf_thumbnails_browser.py..."
+          python3 -u tests/pdf_thumbnails_browser.py
+
+          echo "Running pdf_workspace_regressions_browser.py..."
+          python3 -u tests/pdf_workspace_regressions_browser.py
 
           echo "Running pdf_word_click_browser.py..."
           python3 -u tests/pdf_word_click_browser.py
@@ -204,3 +221,13 @@ jobs:
           python3 -u tests/pdf_hitbox_stateless_browser.py
 
           echo "All tests passed successfully!"
+
+      - name: Upload Chrome crash reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-crash-reports
+          path: |
+            ~/.config/google-chrome/Crash Reports
+            chrome.log
+          if-no-files-found: ignore

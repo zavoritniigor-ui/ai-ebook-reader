@@ -623,10 +623,11 @@ const practiceStyles = `
     cursor: pointer; box-shadow: 0 -2px 10px #0002;
 }
 #practice-restore { flex-direction: row; gap: 8px; font-weight: 600; }
-/* Reserve a slim outside rail and provide positioning context for bookmark tab. */
+/* Reserve a slim outside rail for the bookmark tab. Grammar stays position:fixed (.side-panel), which is
+   already the tab's positioning context: position:relative here dropped the drawer into .workspace's flex
+   flow, so #main-area lost the drawer's full width — even after Grammar was closed — leaving a blank strip. */
 #grammar-panel.practice-bookmark-dock {
     max-width: calc(100vw - 44px);
-    position: relative;
 }
 #practice-restore[data-mode="bookmark"] {
     position: absolute; height: auto; width: 44px; min-height: 100px; max-height: 120px;

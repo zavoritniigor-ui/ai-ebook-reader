@@ -33,16 +33,17 @@ Sections:
 """
 import base64, json, os, re, sys, time
 from browser_cdp import CDP, verb_table_pdf_bytes, VERB_TABLE_ROWS
+import practice_fixtures as PF
 
 URL = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html')
 c = CDP(); c.sock.settimeout(120)
-c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
+c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable'); c.call('Network.setCacheDisabled', cacheDisabled=True); c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Emulation.setDeviceMetricsOverride', width=1100, height=1200, deviceScaleFactor=1, mobile=False)
 c.call('Page.navigate', url=URL)
 c.wait("document.readyState==='complete' && !document.body.inert")
 c.js("localStorage.clear();showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove()")
-c.call('Page.reload')
-c.wait("document.readyState==='complete' && !document.body.inert && typeof runGrammarAnalysis==='function' && typeof pdfPartitionColumns==='function'")
+c.call('Page.reload', ignoreCache=True)
+c.wait("document.readyState==='complete' && !document.body.inert && typeof runGrammarAnalysis==='function' && typeof resolveCanonicalPdfSelection==='function'")
 
 FR = [fr for fr, _ in VERB_TABLE_ROWS]
 EN = [en for _, en in VERB_TABLE_ROWS]
@@ -240,16 +241,35 @@ for order in ('rows', 'columns'):
     assert gf1['lang'] == 'fr' and 'voir' in gf1['lemmas'], gf1
     assert not (set(gf1['lemmas']) & set(EN_LEMMAS)), ('an all-French selection must never pick up an English lemma', gf1)
     print("PASS 3 [%s]: a single French phrase alone ('%s') still resolves to French, never English" % (order, FR[0]), flush=True)
-    if order == 'columns':   # only here is "the whole right column, every row" a plain DOM-contiguous drag
-        close_ui()
-        raw_en = select_between(EN[0], EN[-1])
-        assert not NO_FUSION_RE.search(raw_en)
-        press_grammar()
-        ge = grammar_state()
-        assert ge['lang'] == 'en' and ge['requests'][-1]['lang'] == 'en', ge
-        assert ge['lemmas'] == EN_LEMMAS, ge
-        assert ge['cards'] == EN_LEMMAS and not (set(ge['cards']) & set(FR_LEMMAS)), ge['cards']
-        print("PASS 3 [%s]: the WHOLE English column alone (all 8 rows) still resolves to English and renders its own 8 verbs" % order, flush=True)
+    # Single column multi-row drags: with resolveCanonicalPdfSelection, even when the DOM
+    # is interleaved in 'rows' order, dragging within the French column stays French only,
+    # and dragging within the English column stays English only.
+    close_ui()
+    raw_fr_all = select_between(FR[0], FR[-1])
+    assert not NO_FUSION_RE.search(raw_fr_all), raw_fr_all
+    for fr in FR:
+        assert fr in raw_fr_all, (fr, 'missing from all-French selection', raw_fr_all)
+    for en in EN:
+        assert en not in raw_fr_all, (en, 'English leaked into all-French selection', raw_fr_all)
+    press_grammar()
+    gf_all = grammar_state()
+    assert gf_all['lang'] == 'fr' and gf_all['requests'][-1]['lang'] == 'fr', gf_all
+    assert gf_all['lemmas'] == FR_LEMMAS, gf_all
+    print("PASS 3 [%s]: the WHOLE French column alone (all 8 rows) resolves to French only and renders all 8 French verbs" % order, flush=True)
+
+    close_ui()
+    raw_en_all = select_between(EN[0], EN[-1])
+    assert not NO_FUSION_RE.search(raw_en_all), raw_en_all
+    for en in EN:
+        assert en in raw_en_all, (en, 'missing from all-English selection', raw_en_all)
+    for fr in FR:
+        assert fr not in raw_en_all, (fr, 'French leaked into all-English selection', raw_en_all)
+    press_grammar()
+    ge_all = grammar_state()
+    assert ge_all['lang'] == 'en' and ge_all['requests'][-1]['lang'] == 'en', ge_all
+    assert ge_all['lemmas'] == EN_LEMMAS, ge_all
+    assert ge_all['cards'] == EN_LEMMAS and not (set(ge_all['cards']) & set(FR_LEMMAS)), ge_all['cards']
+    print("PASS 3 [%s]: the WHOLE English column alone (all 8 rows) resolves to English only and renders all 8 English verbs" % order, flush=True)
 
 # =====================================================================================================================
 print("\n=== SECTION 4: single-word tap is completely unaffected (ONE focused occurrence) ===")

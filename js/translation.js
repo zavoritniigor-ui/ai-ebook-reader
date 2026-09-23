@@ -184,6 +184,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // у вікні ще стояло "Переклад...", тому довгий переклад речення розсовував вікно
     // вже після позиціонування — і воно виїжджало за край екрана.
     els.ttOriginal.textContent = cleanText;
+    els.ttOriginal.title = cleanText;
+    els.ttOriginal.setAttribute('aria-label', cleanText);
     els.ttTranslation.textContent = t('translating');
     els.tooltip.style.visibility = 'hidden';
     els.tooltip.style.display = 'flex';

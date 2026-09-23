@@ -641,7 +641,7 @@ const state = {
     // раніше кожен холодний старт (у т.ч. після повернення з фону, коли Android
     // вивантажив сторінку) скидав їх до типових значень.
     pdfScale: readStoredNumber('reader_pdf_scale', 1, 0.25, 4),
-    pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width Tag verbs in ordinary prose, not only in conjugation exercises: infinitives after a preposition or another verb (à effectuer, pour établir, mettre en place → lemma "mettre"), past participles used as verbs (Établi un diagnostic, Appliquer les mesures), and headings written in CAPITALS (PRÉPARER LES TRAVAUX): copy the surface exactly as written, capitals included, and give the lemma in lower case. Never tag a word that is only a noun or a plain adjective.',
+    pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width',
     fontSize: readStoredNumber('reader_font_size', 18, 12, 40),
     epubZip: null, spine: [], txtLines: [],
     translateMode: readStored('reader_translate_mode') === '1', extractedTextForTTS: "", currentLangCode: 'en-US',
@@ -920,8 +920,10 @@ const I18N = {
     page:           { uk: 'стор.',          en: 'p.',             fr: 'p.',             ru: 'стр.' },
     // Підказки (title)
     tMenu:          { uk: 'Показати / сховати меню', en: 'Show / hide menu', fr: 'Afficher / masquer le menu', ru: 'Показать / скрыть меню' },
+    tMainMenu:      { uk: 'Головне меню',   en: 'Main menu',      fr: 'Menu principal', ru: 'Главное меню' },
     tocIcon:        { uk: '☰', en: '☰', fr: '☰', ru: '☰' },
     tToc:           { uk: 'Зміст',          en: 'Contents',       fr: 'Sommaire',       ru: 'Содержание' },
+    tBookContents:  { uk: 'Зміст та ескізи книги', en: 'Book contents and thumbnails', fr: "Sommaire et miniatures du livre", ru: 'Содержание и эскизы книги' },
     tAiKey:         { uk: 'Ключ AI (Gemini / Groq)', en: 'AI key (Gemini / Groq)', fr: 'Clé IA (Gemini / Groq)', ru: 'Ключ AI (Gemini / Groq)' },
     tExitApp:       { uk: 'Вийти із застосунку',    en: 'Exit app',        fr: "Quitter l'application", ru: 'Выйти из приложения' },
     exitFallback:   { uk: 'Дані збережено. Застосунок можна закрити системною кнопкою або жестом.',
@@ -1210,8 +1212,57 @@ Object.assign(I18N, {
         "ko": "AI API 키 (OpenAI / Groq / Gemini)",
         "hi": "AI API कुंजियाँ (OpenAI / Groq / Gemini)",
         "ga": "Eochracha API AI (OpenAI / Groq / Gemini)"
+    },
+    "practiceTab": {
+        "en": "Practice",
+        "uk": "Практика",
+        "fr": "Pratique",
+        "ru": "Практика",
+        "zh": "练习",
+        "ko": "연습",
+        "hi": "अभ्यास",
+        "ga": "Cleachtadh"
+    },
+    "tRestorePractice": {
+        "en": "Restore Practice workspace",
+        "uk": "Відновити робочу область Практики",
+        "fr": "Restaurer l'espace Pratique",
+        "ru": "Восстановить область Практики",
+        "zh": "恢复练习工作区",
+        "ko": "연습 작업 영역 복원",
+        "hi": "अभ्यास कार्यस्थान पुनर्स्थापित करें",
+        "ga": "Athchóirigh an spás oibre Cleachtais"
     }
 });
+
+function formatWordsSelected(count) {
+    const n = Math.max(0, Math.round(count));
+    const lang = (state.uiLang || 'uk').toLowerCase();
+    if (lang === 'uk') {
+        const mod10 = n % 10;
+        const mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return `${n} слово виділено`;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} слова виділено`;
+        return `${n} слів виділено`;
+    }
+    if (lang === 'ru') {
+        const mod10 = n % 10;
+        const mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return `${n} слово выделено`;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} слова выделено`;
+        return `${n} слов выделено`;
+    }
+    if (lang === 'fr') {
+        return n === 1 ? `1 mot sélectionné` : `${n} mots sélectionnés`;
+    }
+    if (lang === 'de') {
+        return n === 1 ? `1 Wort ausgewählt` : `${n} Wörter ausgewählt`;
+    }
+    if (lang === 'es') {
+        return n === 1 ? `1 palabra seleccionada` : `${n} palabras seleccionadas`;
+    }
+    return n === 1 ? `1 word selected` : `${n} words selected`;
+}
 
 function t(key) {
     const e = I18N[key];
@@ -1229,6 +1280,13 @@ function applyI18n() {
     updateDictationUI();
     els.askTab.setAttribute('aria-label', t('tAskPanel'));
     els.grammarTab.setAttribute('aria-label', t('tGrammarPanel'));
+    const practiceRestore = document.getElementById('practice-restore');
+    if (practiceRestore) {
+        const span = practiceRestore.querySelector('span');
+        if (span) span.textContent = t('practiceTabLabel') || t('practiceTab');
+        practiceRestore.title = t('tRestorePractice');
+        practiceRestore.setAttribute('aria-label', t('tRestorePractice'));
+    }
     if (typeof loadVoices === 'function') loadVoices();   // назви груп голосів
     if (typeof refreshReadingStats === 'function') refreshReadingStats();
 }

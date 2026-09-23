@@ -212,8 +212,9 @@ function isExerciseBlankContinuation(leftText, rightText) {
 // pdfPartitionColumns (УСІ колонки одразу — для виділення, що навмисно захоплює і
 // оригінал, і переклад): саме групування спільне, розрізняється лише те, що
 // повертається — одна колонка чи всі.
-function pdfComputeColumns(spans, layerWidth) {
-    const rects = spans.map(s => s.getBoundingClientRect());
+// Horizontal line bands -> per-line segments split at column gaps. `columnStarts` are x positions of column
+// edges confirmed elsewhere on the page (see pdfLayerColumnStarts).
+function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const bands = [];
     for (const i of rects.map((_, idx) => idx).sort((a, b) => rects[a].top - rects[b].top)) {
@@ -222,7 +223,7 @@ function pdfComputeColumns(spans, layerWidth) {
         if (band) band.indices.push(i);
         else bands.push({ top: r.top, height: r.height, indices: [i] });
     }
-    const segments = []; // { left, indices: [] }
+    const segments = []; // { left, right, indices: [], first }
     for (const band of bands) {
         const byLeft = band.indices.slice().sort((a, b) => rects[a].left - rects[b].left);
         let seg = null;
@@ -233,15 +234,48 @@ function pdfComputeColumns(spans, layerWidth) {
                 seg.indices.map(k => spans[k].textContent).join(' ').trim(),
                 spans[i].textContent.trim()
             );
-            if (seg && (gap <= columnGapThreshold || isExerciseGap)) {
+            // A narrower-than-threshold gap still separates columns when the span resumes exactly at a column
+            // edge other rows confirm -- e.g. the real "tu es  you are (familiar)  vous êtes  you are" row,
+            // whose long gloss narrows the gutter to ~2 line heights and used to fuse into the left column.
+            const atColumnEdge = seg && columnStarts.length && gap <= columnGapThreshold && gap >= r.height * 1.2 &&
+                columnStarts.some(x => Math.abs(r.left - x) <= Math.max(4, r.height * 0.5)) &&
+                !isExerciseBlankContinuation(seg.indices.map(k => spans[k].textContent).join(' ').trim(), spans[i].textContent.trim());
+            if (seg && !atColumnEdge && (gap <= columnGapThreshold || isExerciseGap)) {
                 seg.indices.push(i);
                 seg.right = Math.max(seg.right, r.right);
             } else {
-                seg = { left: r.left, right: r.right, indices: [i] };
+                seg = { left: r.left, right: r.right, indices: [i], first: !seg };
                 segments.push(seg);
             }
         }
     }
+    return segments;
+}
+// Column edges (x of a segment that is not the first one of its line) shared by at least two lines of the
+// WHOLE page -- a drag range alone often holds just one such line. Cached per text layer and width.
+const pdfColumnStartCache = new WeakMap();
+function pdfLayerColumnStarts(layer, layerWidth) {
+    if (!layer) return [];
+    const hit = pdfColumnStartCache.get(layer);
+    const all = pdfTextSpans(layer);
+    if (hit && hit.width === layerWidth && hit.count === all.length && hit.left === layer.getBoundingClientRect().left) return hit.starts;
+    const rects = all.map(s => s.getBoundingClientRect());
+    const inner = pdfLineSegments(all, rects, layerWidth, []).filter(s => !s.first).map(s => s.left).sort((a, b) => a - b);
+    const starts = [];
+    for (let k = 0; k < inner.length;) {
+        let j = k;
+        while (j + 1 < inner.length && inner[j + 1] - inner[k] <= 6) j++;
+        if (j > k) starts.push(inner[k]);
+        k = j + 1;
+    }
+    pdfColumnStartCache.set(layer, { width: layerWidth, count: all.length, left: layer.getBoundingClientRect().left, starts });
+    return starts;
+}
+function pdfComputeColumns(spans, layerWidth) {
+    const rects = spans.map(s => s.getBoundingClientRect());
+    const columnGapThreshold = Math.max(24, layerWidth * 0.08);
+    const layer = spans[0]?.closest?.('.pdf-text-layer');
+    const segments = pdfLineSegments(spans, rects, layerWidth, pdfLayerColumnStarts(layer, layerWidth));
     const segLeft = segments.map(s => s.left);
     const segsByLeft = segLeft.map((_, i) => i).sort((a, b) => segLeft[a] - segLeft[b]);
     const segColumn = new Array(segments.length).fill(0);
@@ -412,6 +446,163 @@ function pdfRangeSpans(range) {
     const layer = startEl && startEl.closest && startEl.closest('.pdf-text-layer');
     if (!layer) return [];
     return pdfTextSpans(layer).filter(s => range.intersectsNode(s));
+}
+
+// Canonical PDF selection resolver: ensures geometry-based column isolation,
+// study-language priority for multi-column / bilingual PDFs, and structured result object.
+function resolveCanonicalPdfSelection(range, options = {}) {
+    if (!range) return null;
+    const rawSpans = pdfRangeSpans(range);
+    if (!rawSpans.length) {
+        const text = (range.toString() || '').trim();
+        const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
+        const fallback = {
+            text,
+            grammarText: text,
+            sourceLanguage: studyLang,
+            targetLanguage: state.targetLang || 'uk',
+            isCrossColumn: false,
+            columns: [],
+            studyColumnIndex: -1,
+            spans: [],
+            range,
+            rect: null,
+            sourceType: options.sourceType || 'phrase_translation'
+        };
+        state.canonicalSelection = fallback;
+        return fallback;
+    }
+
+    const layer = rawSpans[0].closest('.pdf-text-layer');
+    const layerWidth = (layer && layer.getBoundingClientRect().width) || 1;
+    const { rects, segColumn, spanSeg, columnCount } = pdfComputeColumns(rawSpans, layerWidth);
+
+    // Identify start and end spans
+    const startNode = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+    const startSpan = startNode ? (startNode.closest ? startNode.closest('span') : null) : null;
+    const endNode = range.endContainer.nodeType === Node.TEXT_NODE ? range.endContainer.parentElement : range.endContainer;
+    const endSpan = endNode ? (endNode.closest ? endNode.closest('span') : null) : null;
+
+    let startCol = -1;
+    let endCol = -1;
+    if (startSpan) {
+        const idx = rawSpans.indexOf(startSpan);
+        if (idx >= 0) startCol = segColumn[spanSeg[idx]];
+    }
+    if (endSpan) {
+        const idx = rawSpans.indexOf(endSpan);
+        if (idx >= 0) endCol = segColumn[spanSeg[idx]];
+    }
+
+    // Partition spans into column groups
+    const colGroups = Array.from({ length: columnCount }, () => ({ spans: [], rects: [] }));
+    rawSpans.forEach((s, i) => {
+        const c = segColumn[spanSeg[i]];
+        if (colGroups[c]) {
+            colGroups[c].spans.push(s);
+            colGroups[c].rects.push(rects[i]);
+        }
+    });
+
+    const partitionedColumns = colGroups.filter(g => g.spans.length).map((g, colIdx) => {
+        const order = g.spans.map((_, i) => i).sort((a, b) => {
+            const ra = g.rects[a], rb = g.rects[b];
+            if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+        const spans = order.map(i => g.spans[i]);
+        const text = pdfSpansToText(spans);
+        const lang = (typeof detectLang === 'function' ? String(detectLang(text) || '') : '').slice(0, 2).toLowerCase();
+        return { index: colIdx, spans, text, lang };
+    });
+
+    const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
+
+    // CASE A: The drag started and ended in the SAME column of a multi-column page.
+    // Interleaved DOM nodes belonging to foreign columns are excluded.
+    if (partitionedColumns.length > 1 && startCol >= 0 && endCol >= 0 && startCol === endCol) {
+        const matchedCol = partitionedColumns.find(c => c.index === startCol) || partitionedColumns[0];
+        const colSpans = matchedCol.spans;
+        const i1 = startSpan ? colSpans.indexOf(startSpan) : 0;
+        const i2 = endSpan ? colSpans.indexOf(endSpan) : colSpans.length - 1;
+        const fromIdx = Math.max(0, Math.min(i1 >= 0 ? i1 : 0, i2 >= 0 ? i2 : colSpans.length - 1));
+        const toIdx = Math.min(colSpans.length - 1, Math.max(i1 >= 0 ? i1 : 0, i2 >= 0 ? i2 : colSpans.length - 1));
+        const selectedSpans = colSpans.slice(fromIdx, toIdx + 1);
+
+        const pieces = [];
+        for (let i = 0; i < selectedSpans.length; i++) {
+            const s = selectedSpans[i];
+            const walker = document.createTreeWalker(s, NodeFilter.SHOW_TEXT);
+            let n;
+            let foundText = false;
+            while ((n = walker.nextNode())) {
+                foundText = true;
+                const isStartNode = (n === range.startContainer);
+                const isEndNode = (n === range.endContainer);
+                const pStart = (i === 0 && isStartNode) ? range.startOffset : 0;
+                const pEnd = (i === selectedSpans.length - 1 && isEndNode) ? range.endOffset : n.nodeValue.length;
+                if (pEnd > pStart) {
+                    pieces.push({ node: n, start: pStart, end: pEnd, span: s });
+                }
+            }
+            if (!foundText && s.textContent) {
+                const node = s.firstChild || s;
+                pieces.push({ node, start: 0, end: (s.textContent || '').length, span: s });
+            }
+        }
+        range._pdfPieces = pieces;
+        const cleanText = pdfSpansToText(selectedSpans);
+        range.toString = () => cleanText;
+
+        let rect = null;
+        try { const b = range.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (e) {}
+
+        const canonical = {
+            text: cleanText,
+            grammarText: cleanText,
+            sourceLanguage: matchedCol.lang || studyLang,
+            targetLanguage: state.targetLang || 'uk',
+            isCrossColumn: false,
+            columns: [matchedCol],
+            studyColumnIndex: matchedCol.lang === studyLang ? 0 : -1,
+            spans: selectedSpans,
+            range,
+            rect,
+            sourceType: options.sourceType || 'phrase_translation'
+        };
+        state.canonicalSelection = canonical;
+        return canonical;
+    }
+
+    // CASE B: Ambiguous cross-column drag, or normal single-column layout.
+    const isCrossColumn = partitionedColumns.length > 1;
+    const fullText = pdfRangeText(range);
+    let studyCol = null;
+    let studyColIdx = -1;
+    if (isCrossColumn) {
+        studyColIdx = partitionedColumns.findIndex(c => c.lang === studyLang);
+        if (studyColIdx >= 0) studyCol = partitionedColumns[studyColIdx];
+    }
+
+    const grammarText = studyCol ? studyCol.text : fullText;
+    let rect = null;
+    try { const b = range.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (e) {}
+
+    const canonical = {
+        text: fullText,
+        grammarText,
+        sourceLanguage: (studyCol && studyCol.lang) || studyLang,
+        targetLanguage: state.targetLang || 'uk',
+        isCrossColumn,
+        columns: partitionedColumns,
+        studyColumnIndex: studyColIdx,
+        spans: rawSpans,
+        range,
+        rect,
+        sourceType: options.sourceType || 'phrase_translation'
+    };
+    state.canonicalSelection = canonical;
+    return canonical;
 }
 function sentenceRangeAt(clientX, clientY) {
     const caret = anchorCaret(clientX, clientY);
@@ -758,10 +949,24 @@ function cancelDragSelection() {
     clearTimeout(touchSelTimer); touchSelTimer = null;
     dragSel = null; dragMoved = false; state.dragRange = null;
     state.touchSelecting = false;
+    setTouchSelectionGuard(false);
     els.container.style.touchAction = '';
     if (hadDragHighlight && typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
 }
 document.addEventListener('pointercancel', cancelDragSelection);
+// touch-action is decided at touchstart, so switching the container to 'none' after the long-press is too
+// late: the first finger move scrolled the page, the browser fired pointercancel and the selection was dropped
+// mid-drag. While a touch selection is live, a blocking touchmove guard keeps the finger extending it. It lives
+// on document (a blocking listener on #main-area/#reader-container is not honoured for the PDF scroller) and
+// only for the selection's lifetime, so ordinary taps and scrolls are never dispatched as blocking.
+function guardTouchSelectionMove(e) {
+    if (!state.touchSelecting) { setTouchSelectionGuard(false); return; }   // ended elsewhere (pinch, new book)
+    if (e.cancelable && e.touches.length === 1 && els.mainArea.contains(e.target)) e.preventDefault();
+}
+function setTouchSelectionGuard(on) {
+    if (on) document.addEventListener('touchmove', guardTouchSelectionMove, { passive: false });
+    else document.removeEventListener('touchmove', guardTouchSelectionMove, { passive: false });
+}
 document.addEventListener('pointerup', e => {
     if (!els.mainArea.contains(e.target)) cancelDragSelection();
 });
@@ -773,7 +978,6 @@ let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 els.mainArea.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
     if (state.format === 'pdf' && !els.container.contains(e.target)) return;
-    if (state.inkMode || (state.format === 'pdf' && e.pointerType === 'touch')) return;      // PDF touch belongs to zoom/pan
     if (state.inkMode) return;
     if (!state.translateMode) return;
     if (e.button !== 0) return;
@@ -789,28 +993,60 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         clearTimeout(touchSelTimer);
         const px = e.clientX, py = e.clientY;
         touchSelTimer = setTimeout(() => {
-            if (state.format === 'pdf' && pdfPointers.size > 1) return;
-            const w = wordBoundsAt(px, py);
+            if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) return;
+            let w = wordBoundsAt(px, py);
+            if (!w && state.format === 'pdf') {
+                for (const dy of [-8, 8, -16, 16]) {
+                    w = wordBoundsAt(px, py + dy);
+                    if (w) break;
+                }
+            }
             if (!w) return;
             dragSel = w;
             dragMoved = true;                 // підсвітка з першого ж слова
             state.touchSelecting = true;      // свайпи гортання на час виділення вимкнені
+            setTouchSelectionGuard(true);
             state.suppressNextClick = true;
             // Забороняємо браузеру трактувати рух як прокрутку — інакше він
             // перехопить жест і виділення обірветься на першому ж русі пальця.
             els.container.style.touchAction = 'none';
             if (navigator.vibrate) navigator.vibrate(12);
             const r = rangeBetweenWords(w, w);
-            if (r && typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
+            if (r) {
                 state.dragRange = r;
-                try { CSS.highlights.set(SEL_HL_NAME, new Highlight(r)); } catch (err) {}
+                if (typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
+                    try {
+                        if (state.format === 'pdf') {
+                            resolveCanonicalPdfSelection(r, { isDragging: true });
+                            if (r._pdfPieces && r._pdfPieces.length) {
+                                const pieceRanges = r._pdfPieces.map(p => {
+                                    const pr = document.createRange();
+                                    pr.setStart(p.node, p.start);
+                                    pr.setEnd(p.node, p.end);
+                                    return pr;
+                                });
+                                CSS.highlights.set(SEL_HL_NAME, new Highlight(...pieceRanges));
+                            } else {
+                                CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                            }
+                        } else {
+                            CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                        }
+                    } catch (err) {}
+                }
             }
         }, 380);
         return;
     }
 
     // Миша й перо: виділення починається одразу, поріг руху нижче.
-    const w = wordBoundsAt(e.clientX, e.clientY);
+    let w = wordBoundsAt(e.clientX, e.clientY);
+    if (!w && state.format === 'pdf') {
+        for (const dy of [-6, 6, -12, 12]) {
+            w = wordBoundsAt(e.clientX, e.clientY + dy);
+            if (w) break;
+        }
+    }
     if (!w) return;
     dragSel = w;
     e.preventDefault();               // глушимо системне виділення разом з його стрибками
@@ -829,7 +1065,13 @@ els.mainArea.addEventListener('pointermove', (e) => {
         if (Math.abs(e.clientX - dragStartX) < 6 && Math.abs(e.clientY - dragStartY) < 6) return;
         dragMoved = true;
     }
-    const w = wordBoundsAt(e.clientX, e.clientY);
+    let w = wordBoundsAt(e.clientX, e.clientY);
+    if (!w && state.format === 'pdf' && dragSel) {
+        for (const dy of [-8, 8, -16, 16, -24, 24]) {
+            w = wordBoundsAt(e.clientX, e.clientY + dy);
+            if (w) break;
+        }
+    }
     if (!w) return;
     const r = rangeBetweenWords(dragSel, w);
     if (!r) return;
@@ -838,8 +1080,26 @@ els.mainArea.addEventListener('pointermove', (e) => {
     // змінює DOM, розрізає текстові вузли — і вузол, з якого почалось виділення,
     // ставав недійсним. Саме через це виділення мишею й перестало працювати.
     if (typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
-        try { CSS.highlights.set(SEL_HL_NAME, new Highlight(r)); } catch (err) {}
+        try {
+            if (state.format === 'pdf') {
+                resolveCanonicalPdfSelection(r, { isDragging: true });
+                if (r._pdfPieces && r._pdfPieces.length) {
+                    const pieceRanges = r._pdfPieces.map(p => {
+                        const pr = document.createRange();
+                        pr.setStart(p.node, p.start);
+                        pr.setEnd(p.node, p.end);
+                        return pr;
+                    });
+                    CSS.highlights.set(SEL_HL_NAME, new Highlight(...pieceRanges));
+                } else {
+                    CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                }
+            } else {
+                CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+            }
+        } catch (err) {}
     }
+    window.getSelection()?.removeAllRanges();
 });
 
 els.mainArea.addEventListener('pointerup', (e) => {
@@ -847,8 +1107,10 @@ els.mainArea.addEventListener('pointerup', (e) => {
     if (state.touchSelecting) {
         touchStartTime = 0; // pointerup precedes touchend: do not turn the page after selection
         state.touchSelecting = false;
+        setTouchSelectionGuard(false);
         els.container.style.touchAction = (state.format === 'pdf') ? '' : 'pan-y';
     }
+    window.getSelection()?.removeAllRanges();
     if (!dragSel) return;
     const start = dragSel; dragSel = null;
     const r = state.dragRange;
@@ -856,36 +1118,21 @@ els.mainArea.addEventListener('pointerup', (e) => {
     // Протягування не відбулось (кінець там само, де початок) — лишаємо звичайному
     // обробнику кліку, щоб слово опрацювалось як тап зі словниковою статтею.
     if (!r) return;
-    // A plain Range.toString() over a PDF text layer has NO separator between items at
-    // all (see pdfRangeText) -- unlike reflowable formats, where the source markup's own
-    // whitespace text nodes are already part of the DOM the Range walks.
-    const text = (state.format === 'pdf' ? pdfRangeText(r) : r.toString()).trim();
-    if (!text) return;
-    // A rectangle deliberately dragged across a BILINGUAL page's original-language column
-    // AND its translation column (e.g. a French textbook's parallel English gloss) must
-    // still send only the STUDY language to Grammar -- the translation must never become
-    // "French" grammar material. Detected geometrically (the same column-clustering
-    // pdfVisualGroup already uses to keep a tap's OWN column isolated), not by scanning
-    // word-by-word for foreign vocabulary: a bilingual table's participle forms ("ayant
-    // vu", "étant parti"...) mostly carry no individual lexical signal of their own, so a
-    // purely lexical split would misjudge them; geometry never does. One-shot: read and
-    // cleared by handleWordOrSelection, so it can never leak into an unrelated later tap.
-    // A single column (the overwhelming majority of selections) leaves this null, i.e. no
-    // change from the plain `text` above -- this never affects a one-column selection, and
-    // it purposefully does not touch translation/tooltip display (see HANDOFF.md).
-    state.lastGrammarSourceText = null;
+    let text;
+    let canonical = null;
     if (state.format === 'pdf') {
         try {
-            const columns = pdfPartitionColumns(pdfRangeSpans(r));
-            if (columns.length > 1) {
-                const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
-                const byLang = columns.map(spans => pdfSpansToText(spans)).filter(Boolean)
-                    .map(colText => ({ text: colText, lang: (typeof detectLang === 'function' ? String(detectLang(colText) || '') : '').slice(0, 2).toLowerCase() }))
-                    .filter(c => c.lang === studyLang);
-                if (byLang.length === 1) state.lastGrammarSourceText = byLang[0].text;
-            }
-        } catch (err) { /* isolation is a best-effort refinement; the raw selection above always still works */ }
+            canonical = resolveCanonicalPdfSelection(r, { sourceType: 'phrase_translation' });
+        } catch (err) {}
+        text = canonical ? canonical.text : pdfRangeText(r).trim();
+        state.lastGrammarSourceText = (canonical && canonical.grammarText !== text) ? canonical.grammarText : null;
+    } else {
+        text = r.toString().trim();
+        state.lastGrammarSourceText = null;
+        state.canonicalSelection = null;
     }
+    if (!text) return;
+
     // Capture source occurrence IDs while the drag Range still references the
     // untouched reader text layer.
     const helpContext = recordHelpForSpan(r, 'phrase_translation');
@@ -894,12 +1141,15 @@ els.mainArea.addEventListener('pointerup', (e) => {
     state.lastTapPoint = { x: e.clientX, y: e.clientY };
     state.expandLevel = 0;
     state.lastSelectedRange = r.cloneRange();
+    if (r._pdfPieces) state.lastSelectedRange._pdfPieces = r._pdfPieces;
     // Протягування завершено — тепер можна перемалювати точно (у PDF обгорткою).
     showSelectionHighlight(r);
     state.lastWordNode = null; state.ctxSentence = text.slice(0, 400);
     state.lastSelectionText = text;
-    let rect = null;
-    try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
+    let rect = canonical?.rect || null;
+    if (!rect) {
+        try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
+    }
     handleWordOrSelection(text, e.clientX, e.clientY, rect, helpContext, 'phrase_translation');
 });
 
