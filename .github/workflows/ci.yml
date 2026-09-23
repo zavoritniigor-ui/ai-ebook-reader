@@ -113,12 +113,12 @@ jobs:
           sudo -n sysctl -q -w kernel.core_pattern=core || true
           ulimit -c 0
           mkdir -p /tmp/pdf-ux-test-profile
-          $CHROME_BIN --headless --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
+          $CHROME_BIN --headless --enable-logging=stderr --v=0 --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
           CHROME_PID=$!
           
           # Ensure cleanup of background processes when this step exits (success or failure)
           # On failure, surface Chrome's own log (renderer crash / GPU hang reasons never reach the CDP client)
-          trap "status=\$?; if [ \$status -ne 0 ]; then echo '--- chrome.log (tail) ---'; tail -n 80 chrome.log || true; bash tests/ci_chrome_stall_dump.sh || true; fi; echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
+          trap "status=\$?; if [ \$status -ne 0 ]; then echo '--- chrome.log (tail) ---'; grep -E 'FATAL|Check failed|NOTREACHED|DUMP_WITHOUT|:ERROR:' chrome.log | grep -v 'dbus\|gcm\|UPower' | tail -n 40; tail -n 30 chrome.log || true; bash tests/ci_chrome_stall_dump.sh || true; fi; echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
           
           # 3. Wait for services
           echo "Waiting for HTTP server (PID $SERVER_PID) to respond on port 8765..."
@@ -232,12 +232,13 @@ jobs:
           HP=$!
           for v in V0 V5 V6 V7 V8 V3 V0 V5 V6 V7 V8; do
             prof=/tmp/bisect-profile-$v-$RANDOM; mkdir -p $prof
-            google-chrome --headless --remote-debugging-port=9230 --user-data-dir=$prof about:blank > /tmp/bisect_chrome_$v.log 2>&1 &
+            google-chrome --headless --enable-logging=stderr --v=0 --remote-debugging-port=9230 --user-data-dir=$prof about:blank > /tmp/bisect_chrome_$v.log 2>&1 &
             CP=$!
             timeout 45 bash -c 'until curl -s http://127.0.0.1:9230/json > /dev/null; do sleep 0.5; done'
             READER_UX_VARIANT=$v READER_CDP_PORT=9230 READER_CDP_TIMEOUT=60 READER_TEST_URL=http://127.0.0.1:8766/index.html \
               timeout 300 python3 -u tests/_bisect_pdf_ux.py > /tmp/bisect_$v.log 2>&1; rc=$?
             echo "BISECT $v rc=$rc last: $(tail -n 1 /tmp/bisect_$v.log | cut -c1-140)"
+            [ $rc -ne 0 ] && grep -E 'FATAL|Check failed|NOTREACHED|Received signal|#[0-9]+ 0x' /tmp/bisect_chrome_$v.log | head -n 25 | cut -c1-240 | sed 's/^/    /'
             kill $CP 2>/dev/null; wait $CP 2>/dev/null
           done
           kill $HP 2>/dev/null
