@@ -230,7 +230,7 @@ jobs:
           sudo -n sysctl -q -w kernel.core_pattern=core; ulimit -c 0
           python3 -m http.server 8766 --bind 127.0.0.1 > /tmp/bisect_http.log 2>&1 &
           HP=$!
-          for v in V0 V1 V2 V3 V4 V0 V1 V2 V3 V4; do
+          for v in V0 V5 V6 V7 V8 V3 V0 V5 V6 V7 V8; do
             prof=/tmp/bisect-profile-$v-$RANDOM; mkdir -p $prof
             google-chrome --headless --remote-debugging-port=9230 --user-data-dir=$prof about:blank > /tmp/bisect_chrome_$v.log 2>&1 &
             CP=$!

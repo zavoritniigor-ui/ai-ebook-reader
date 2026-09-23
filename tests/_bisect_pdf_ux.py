@@ -10,6 +10,11 @@ VARIANTS = {
     'V2': "addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='footer#app-footer{display:none!important}';document.head.append(s)})",
     'V3': "addEventListener('load',()=>{window.updatePdfWorkspaceLayout=()=>{}; try{pdfPanelObserver.disconnect()}catch(e){}})",
     'V4': "addEventListener('load',()=>{window.syncActiveThumbnail=()=>{}; window.schedulePrefetchWindow=()=>{}})",
+    # split of V3 (which fixed the crash): forced relayouts / CSS vars / observer / resize listeners
+    'V5': "addEventListener('load',()=>{const o=window.updatePdfWorkspaceLayout; window.updatePdfWorkspaceLayout=(opt={})=>o({...opt, force:false})})",
+    'V6': "(()=>{const sp=CSSStyleDeclaration.prototype.setProperty; CSSStyleDeclaration.prototype.setProperty=function(n,...a){ if(String(n).startsWith('--ws-')) return; return sp.call(this,n,...a) }})()",
+    'V7': "addEventListener('load',()=>{try{pdfPanelObserver.disconnect()}catch(e){}})",
+    'V8': "(()=>{const add=EventTarget.prototype.addEventListener; EventTarget.prototype.addEventListener=function(t,f,o){ if((this===window||this===window.visualViewport) && t==='resize' && String(f).includes('updatePdfWorkspaceLayout')) return; return add.call(this,t,f,o) }})()",
 }
 src = VARIANTS[os.environ.get('READER_UX_VARIANT', 'V0')]
 orig_init = browser_cdp.CDP.__init__
