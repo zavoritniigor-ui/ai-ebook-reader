@@ -26,16 +26,18 @@ runs were **cancelled after up to 6h**: `pdf_ux_browser.py` hung after the lands
   dialog fail fast, a timeout reports recent page events and — opt-in `READER_CDP_DEBUG_STACK=1` (local
   diagnosis only: with it pre-enabled in CI pdf_ux stalled 2/5, without it 0/6) — the spinning JS stack.
   CI prints `chrome.log` on failure.
-- The 6h CI "hang" was a renderer CRASH (SIGTRAP) whose kernel core dump never finished (stuck renderer:
-  get_signal -> vfs_coredump -> anon_pipe_write into systemd-coredump), so Chrome never reported it. It is
-  deterministic on some runner CPUs (Xeon Platinum 8370C / 8573C) and absent on others -- hence "random".
-  CI bisect on a crashing runner: only disconnecting `pdfPanelObserver` avoided it (2/2; forced relayouts,
-  --ws-* CSS vars, resize listeners, pill blur, footer, thumbnails all still crashed; also on AMD EPYC
-  7763, so not CPU-specific). Removing the observer's synchronous pdfAnchor() alone did NOT help. Fix under
-  test: applyLayout() only sets geometry and leaves the relayout to navigation.js's containerResizeObserver
-  (main's design) instead of an extra immediate relayout per panel toggle; the observer watches only
-  class/hidden on sidebar/Grammar/Ask. CI keeps core dumps off, uploads crash reports
-  (`chrome-crash-reports` artifact) and logs the runner CPU.
+- The 6h CI "hang" was a renderer CRASH (SIGTRAP) whose kernel core dump never finished (renderer kernel
+  stack: get_signal -> vfs_coredump -> anon_pipe_write into systemd-coredump), so Chrome never reported it.
+  Same-runner CI bisects: only disconnecting the panel MutationObserver avoided it. Cause: Gemini's
+  applyLayout() moved the container margins AND relaid the stack out immediately, then navigation.js's
+  ResizeObserver relaid it out again. Fix: geometry only, one debounced relayout (main's split); observer
+  watches class/hidden of sidebar/Grammar/Ask. Control on a Xeon 8370C (old code crashed 2/2): branch 4/4
+  and origin/main 4/4 clean. CI keeps core dumps off, Chrome logging on, uploads crash reports
+  (`chrome-crash-reports`) and prints process states / pipe owners (`tests/ci_chrome_stall_dump.sh`).
+- Found, not fixed (pre-existing on main): tts.js speakSegment recurses synchronously via utterance.onerror /
+  empty segments -> "Maximum call stack size exceeded" where speech errors immediately (CI, no voices).
+- practice_sentence_actions section 9 tapped while the full-width Grammar drawer was still sliding out
+  (events went to #grammar-content) -- test now waits for the drawer to be hidden.
 - Real-book acceptance (`~/Books/Complete French All-in-One .pdf`, 657 pp) with real controls/input found and
   fixed: Practice expanded squeezed the book to ~0px (getReaderWorkspaceRect treated the overlay as a right
   panel); `#grammar-panel.practice-bookmark-dock{position:relative}` made Grammar reserve 500px twice and
