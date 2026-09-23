@@ -344,6 +344,9 @@ assert btn_rect['w'] >= 28 and btn_rect['h'] >= 28, ('touch target too small', b
 c.js("""window.__tapSeen=[]; for (const t of ['pointerdown','pointerup','pointercancel','click','contextmenu'])
   document.addEventListener(t, e => __tapSeen.push([t, e.pointerType || '', (e.target.id || e.target.className || e.target.tagName || '').toString().slice(0, 40), Math.round(performance.now())]), {capture: true});
   window.__grammarTransformAtTap = getComputedStyle(els.grammarPanel).transform; 1""")
+# The Grammar drawer slides out over 0.4s and at phone width it covers the whole screen: a tap sent before it
+# has finished hiding lands on Grammar, not on the speaker (seen in CI: the tap's events went to #grammar-content).
+c.wait("getComputedStyle(els.grammarPanel).visibility === 'hidden' && document.elementFromPoint(%f, %f)?.closest('.practice-speak-btn') !== null" % (btn_rect['x'], btn_rect['y']), timeout=5)
 touch_tap(btn_rect['x'], btn_rect['y'])
 # Poll on the browser clock instead of one fixed 0.3s wall-clock sleep: on a loaded CI runner the tap can land
 # later without anything being wrong. A tap that never starts speech still fails below (with the pointer/click

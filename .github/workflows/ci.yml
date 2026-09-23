@@ -84,6 +84,34 @@ jobs:
               node --check "$js_file"
           done
 
+      - name: TEMPORARY same-runner control - branch vs origin/main pdf_ux (PR 122)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          sudo -n sysctl -q -w kernel.core_pattern=core; ulimit -c 0
+          git fetch -q origin main && git worktree add -q /tmp/mainwt origin/main
+          python3 -m http.server 8766 --bind 127.0.0.1 > /tmp/bisect_http.log 2>&1 &
+          H1=$!
+          (cd /tmp/mainwt && python3 -m http.server 8767 --bind 127.0.0.1 > /tmp/bisect_http_main.log 2>&1) &
+          H2=$!
+          sleep 1
+          for v in V0 MAIN V7 V0 MAIN V0 MAIN V7 V0 MAIN; do
+            prof=/tmp/bisect-profile-$v-$RANDOM; mkdir -p $prof
+            google-chrome --headless --remote-debugging-port=9230 --user-data-dir=$prof about:blank > /tmp/bisect_chrome_$v.log 2>&1 &
+            CP=$!
+            timeout 45 bash -c 'until curl -s http://127.0.0.1:9230/json > /dev/null; do sleep 0.5; done'
+            if [ $v = MAIN ]; then
+              READER_CDP_PORT=9230 READER_TEST_URL=http://127.0.0.1:8767/index.html timeout 180 python3 -u /tmp/mainwt/tests/pdf_ux_browser.py > /tmp/bisect_$v.log 2>&1; rc=$?
+            else
+              READER_UX_VARIANT=$v READER_CDP_PORT=9230 READER_CDP_TIMEOUT=60 READER_TEST_URL=http://127.0.0.1:8766/index.html timeout 180 python3 -u tests/_bisect_pdf_ux.py > /tmp/bisect_$v.log 2>&1; rc=$?
+            fi
+            echo "CONTROL $v rc=$rc last: $(tail -n 1 /tmp/bisect_$v.log | cut -c1-120)"
+            kill $CP 2>/dev/null; wait $CP 2>/dev/null
+          done
+          kill $H1 $H2 2>/dev/null
+          exit 0
+
       - name: Run Tests (Server, Chrome, Python)
         shell: bash
         run: |
@@ -221,28 +249,6 @@ jobs:
           python3 -u tests/pdf_hitbox_stateless_browser.py
 
           echo "All tests passed successfully!"
-
-      - name: TEMPORARY bisect the renderer crash on this runner (PR 122)
-        if: failure()
-        shell: bash
-        run: |
-          set +e
-          sudo -n sysctl -q -w kernel.core_pattern=core; ulimit -c 0
-          python3 -m http.server 8766 --bind 127.0.0.1 > /tmp/bisect_http.log 2>&1 &
-          HP=$!
-          for v in V0 V5 V6 V7 V8 V3 V0 V5 V6 V7 V8; do
-            prof=/tmp/bisect-profile-$v-$RANDOM; mkdir -p $prof
-            google-chrome --headless --enable-logging=stderr --v=0 --remote-debugging-port=9230 --user-data-dir=$prof about:blank > /tmp/bisect_chrome_$v.log 2>&1 &
-            CP=$!
-            timeout 45 bash -c 'until curl -s http://127.0.0.1:9230/json > /dev/null; do sleep 0.5; done'
-            READER_UX_VARIANT=$v READER_CDP_PORT=9230 READER_CDP_TIMEOUT=60 READER_TEST_URL=http://127.0.0.1:8766/index.html \
-              timeout 300 python3 -u tests/_bisect_pdf_ux.py > /tmp/bisect_$v.log 2>&1; rc=$?
-            echo "BISECT $v rc=$rc last: $(tail -n 1 /tmp/bisect_$v.log | cut -c1-140)"
-            [ $rc -ne 0 ] && grep -E 'FATAL|Check failed|NOTREACHED|Received signal|#[0-9]+ 0x' /tmp/bisect_chrome_$v.log | head -n 25 | cut -c1-240 | sed 's/^/    /'
-            kill $CP 2>/dev/null; wait $CP 2>/dev/null
-          done
-          kill $HP 2>/dev/null
-          exit 0
 
       - name: Upload Chrome crash reports
         if: failure()
