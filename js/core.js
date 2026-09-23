@@ -1045,6 +1045,10 @@ const I18N = {
     practiceSource:     { uk: 'Джерело:', en: 'Source:', fr: 'Source:', ru: 'Источник:' },
     practiceFocus:      { uk: 'Слова:', en: 'Words:', fr: 'Mots :', ru: 'Слова:' },
     practiceRegenerate: { uk: 'Регенерувати', en: 'Regenerate', fr: 'Régénérer', ru: 'Перегенерировать' },
+    // Sentence-level learning actions in Practice (js/practice-worksheet.js buildPracticeSentenceRow):
+    // small, secondary [listen]/[translate] buttons on every generated sentence/paragraph.
+    practiceSpeakSentence:     { uk: 'Прослухати речення', en: 'Listen to sentence', fr: 'Écouter la phrase', ru: 'Прослушать предложение' },
+    practiceTranslateSentence: { uk: 'Перекласти речення', en: 'Translate sentence', fr: 'Traduire la phrase', ru: 'Перевести предложение' },
     practiceError:      { uk: 'Помилка практики', en: 'Practice Error', fr: 'Erreur de pratique', ru: 'Ошибка практики' },
     practiceUnknownError: { uk: 'Невідома помилка', en: 'Unknown error', fr: 'Erreur inconnue', ru: 'Неизвестная ошибка' },
     hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' },

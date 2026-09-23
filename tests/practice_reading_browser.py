@@ -140,8 +140,10 @@ assert len(gen) == 1, [x['task'] for x in calls]
 PROMPT = gen[0]['prompt']
 
 # A. complete natural sentences and connected paragraphs, in quantity
-sentences = c.js("[...document.querySelectorAll('#practice-panel .practice-sentence')].map(p=>p.textContent)")
-paras = c.js("[...document.querySelectorAll('#practice-panel .practice-paragraph')].map(p=>p.textContent)")
+# .practice-sentence-text (not the row itself) -- the row also holds the new sentence-level
+# [listen]/[translate] actions (task: sentence-level learning actions), which must not count as reading text.
+sentences = c.js("[...document.querySelectorAll('#practice-panel .practice-sentence .practice-sentence-text')].map(p=>p.textContent)")
+paras = c.js("[...document.querySelectorAll('#practice-panel .practice-paragraph .practice-sentence-text')].map(p=>p.textContent)")
 assert len(sentences) >= 14 and len(paras) >= 2, (len(sentences), len(paras))
 assert all(re.search(r"[.!?]$", s.strip()) and len(s.split()) >= 5 and s.strip()[0].isupper() for s in sentences), [s for s in sentences if not re.search(r"[.!?]$", s.strip())]
 assert sum(len(x) for x in sentences + paras) > 1000, sum(len(x) for x in sentences + paras)
@@ -206,8 +208,8 @@ check("D: no input, textarea, select, contenteditable, form or radio/checkbox an
       "document.querySelectorAll('#practice-panel input, #practice-panel textarea, #practice-panel select, #practice-panel form, #practice-panel [contenteditable], #practice-panel [role=radio], #practice-panel [role=checkbox], #practice-panel [role=textbox]').length===0")
 check("D: no answer / check / submit / score / grade / correct / quiz / exercise element (class, id or role)",
       "document.querySelectorAll('#practice-panel [class*=answer i], #practice-panel [id*=answer i], #practice-panel [class*=check i], #practice-panel [id*=check i], #practice-panel [class*=submit i], #practice-panel [class*=score i], #practice-panel [class*=grade i], #practice-panel [class*=correct i], #practice-panel [class*=quiz i], #practice-panel [class*=exercise i], #practice-panel [class*=feedback i]').length===0")
-check("D: every button is a target form, a workspace control, or Retry/Regenerate -- nothing to submit",
-      "[...document.querySelectorAll('#practice-panel button')].every(b=>b.classList.contains('practice-target')||['practice-close','practice-collapse','practice-bookmark','practice-retry','practice-regenerate'].includes(b.id))")
+check("D: every button is a target form, a sentence-level listen/translate action, a workspace control, or Retry/Regenerate -- nothing to submit",
+      "[...document.querySelectorAll('#practice-panel button')].every(b=>b.classList.contains('practice-target')||b.classList.contains('practice-action-btn')||['practice-close','practice-collapse','practice-bookmark','practice-retry','practice-regenerate'].includes(b.id))")
 assert not re.search(r"(?i)\b(choose|complete|fill in|check|submit|score|correct answer|choisissez|complétez|vérifier|виберіть|заповніть|перевір|выберите)\b", text), text[:400]
 print("PASS D: no quiz instruction text (choose / complete / fill in / check / submit / score) anywhere in the panel", flush=True)
 if os.environ.get('PRACTICE_SHOT_DIR'):   # optional: keep a screenshot for manual review
@@ -247,7 +249,7 @@ SENT_PARLE = 'Elle parle vite, mais son frère parle encore plus vite.'
 
 def focus_after_real_click(sentence, surface, nth=0):
     """Real mouse click on the nth highlighted `surface` inside the Practice sentence `sentence`."""
-    idx = c.js("""(()=>{const ps=[...document.querySelectorAll('#practice-panel .practice-sentence, #practice-panel .practice-paragraph')]; const p=ps.find(x=>x.textContent===%s) || ps.find(x=>x.textContent.includes(%s)); if(!p) return null;
+    idx = c.js("""(()=>{const ps=[...document.querySelectorAll('#practice-panel .practice-sentence, #practice-panel .practice-paragraph')]; const p=ps.find(x=>x.querySelector('.practice-sentence-text').textContent===%s) || ps.find(x=>x.querySelector('.practice-sentence-text').textContent.includes(%s)); if(!p) return null;
         const bs=[...p.querySelectorAll('.practice-target')].filter(b=>b.textContent===%s); return bs.length? [ps.indexOf(p), bs.length] : null})()""" % (json.dumps(sentence, ensure_ascii=False), json.dumps(sentence, ensure_ascii=False), json.dumps(surface, ensure_ascii=False)))
     assert idx, (sentence, surface)
     pos = c.js("""(()=>{const ps=[...document.querySelectorAll('#practice-panel .practice-sentence, #practice-panel .practice-paragraph')]; const b=[...ps[%d].querySelectorAll('.practice-target')].filter(b=>b.textContent===%s)[%d]; b.scrollIntoView({block:'center'});

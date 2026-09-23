@@ -787,7 +787,7 @@ c.js("displayPracticeSession(getCurrentPracticeSession())")
 check("Practice is a READING surface: highlighted, clickable targets and NO quiz controls",
       """(()=>{const p=document.getElementById('practice-panel');
         return p.querySelectorAll('button.practice-target').length===4 && !p.querySelector('input,textarea,select') &&
-          [...p.querySelectorAll('button')].every(b=>b.classList.contains('practice-target')||['practice-close','practice-collapse','practice-bookmark','practice-retry','practice-regenerate'].includes(b.id))})()""")
+          [...p.querySelectorAll('button')].every(b=>b.classList.contains('practice-target')||b.classList.contains('practice-action-btn')||['practice-close','practice-collapse','practice-bookmark','practice-retry','practice-regenerate'].includes(b.id))})()""")
 check("targets are placed on the WHOLE word: 'est' is highlighted in 'est calme', never inside 'reste'",
       """(()=>{const b=[...document.querySelectorAll('#practice-panel .practice-target')].find(x=>x.dataset.lemma==='être');
         return b.textContent==='est' && b.previousSibling.textContent.endsWith('Le jardin ') && document.querySelector('#practice-panel .practice-paragraph').textContent.includes('Il reste à')})()""")
