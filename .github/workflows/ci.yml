@@ -111,7 +111,8 @@ jobs:
           CHROME_PID=$!
           
           # Ensure cleanup of background processes when this step exits (success or failure)
-          trap "echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
+          # On failure, surface Chrome's own log (renderer crash / GPU hang reasons never reach the CDP client)
+          trap "status=\$?; if [ \$status -ne 0 ]; then echo '--- chrome.log (tail) ---'; tail -n 80 chrome.log || true; fi; echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
           
           # 3. Wait for services
           echo "Waiting for HTTP server (PID $SERVER_PID) to respond on port 8765..."

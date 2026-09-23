@@ -12,6 +12,7 @@ class CDP:
         h = b''
         while not h.endswith(b'\r\n\r\n'): h += self.read(1)
         assert b'101 ' in h, h
+        self.call('Inspector.enable')  # delivers Inspector.targetCrashed instead of a silent stall
     def read(self, n):
         data = b''
         while len(data) < n:
@@ -45,15 +46,42 @@ class CDP:
             if opcode == 0xA: continue                                       # pong, ignore
             payload += chunk
             if fin: return payload
+    # A renderer that crashes, opens a blocking JS dialog, or wedges on a GPU/IPC
+    # call never answers a pending Runtime.evaluate. Without a bound the suite then
+    # sits until GitHub's 6-hour job limit and reports nothing useful; fail fast and
+    # say what the page was last doing instead.
+    RESPONSE_TIMEOUT = float(os.environ.get('READER_CDP_TIMEOUT', '180'))
+    FATAL_EVENTS = ('Inspector.targetCrashed', 'Inspector.detached', 'Page.javascriptDialogOpening')
+    def _note_event(self, data):
+        recent = self.__dict__.setdefault('recent_events', [])
+        method = data.get('method')
+        params = data.get('params', {})
+        if method == 'Runtime.consoleAPICalled':
+            method += ' ' + ' '.join(str(a.get('value', a.get('description', '')))[:160] for a in params.get('args', []))
+        elif method == 'Runtime.exceptionThrown':
+            method += ' ' + str(params.get('exceptionDetails', {}).get('exception', {}).get('description', ''))[:300]
+        recent.append(method); del recent[:-25]
+        if data.get('method') in self.FATAL_EVENTS:
+            raise ConnectionError(f'CDP {data["method"]}: {json.dumps(params)[:300]}')
     def call(self, method, **params):
         self.seq += 1
         msg = json.dumps(dict(id=self.seq, method=method, params=params)).encode()
         self._send_frame(msg)
-        while True:
-            data = json.loads(self._read_message())
-            if data.get('id') == self.seq:
-                if 'error' in data: raise RuntimeError(data['error'])
-                return data.get('result',{})
+        sock = self.__dict__.get('sock')
+        if hasattr(sock, 'settimeout'): sock.settimeout(self.RESPONSE_TIMEOUT)
+        try:
+            while True:
+                data = json.loads(self._read_message())
+                if data.get('id') == self.seq:
+                    if 'error' in data: raise RuntimeError(data['error'])
+                    return data.get('result',{})
+                if 'method' in data: self._note_event(data)
+        except socket.timeout:
+            detail = json.dumps(params)[:300]
+            raise TimeoutError(f'No CDP reply to {method} {detail} within {self.RESPONSE_TIMEOUT:.0f}s; '
+                               f'recent events: {self.__dict__.get("recent_events", [])}') from None
+        finally:
+            if hasattr(sock, 'settimeout'): sock.settimeout(None)
     def touch_tap(self, x, y):
         # Queue both ends before waiting for CDP acknowledgements. A descheduled
         # client between two call()s must not turn a tap into a 380ms long press.
