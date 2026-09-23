@@ -30,9 +30,11 @@ runs were **cancelled after up to 6h**: `pdf_ux_browser.py` hung after the lands
   get_signal -> vfs_coredump -> anon_pipe_write into systemd-coredump), so Chrome never reported it. It is
   deterministic on some runner CPUs (Xeon Platinum 8370C / 8573C) and absent on others -- hence "random".
   CI bisect on a crashing runner: only disconnecting `pdfPanelObserver` avoided it (2/2; forced relayouts,
-  --ws-* CSS vars, resize listeners, pill blur, footer, thumbnails all still crashed). Fix: the observer
-  callback no longer does a synchronous pdfAnchor() layout read and watches only class/hidden on
-  sidebar/Grammar/Ask (not inline style, not Practice). CI keeps core dumps off, uploads crash reports
+  --ws-* CSS vars, resize listeners, pill blur, footer, thumbnails all still crashed; also on AMD EPYC
+  7763, so not CPU-specific). Removing the observer's synchronous pdfAnchor() alone did NOT help. Fix under
+  test: applyLayout() only sets geometry and leaves the relayout to navigation.js's containerResizeObserver
+  (main's design) instead of an extra immediate relayout per panel toggle; the observer watches only
+  class/hidden on sidebar/Grammar/Ask. CI keeps core dumps off, uploads crash reports
   (`chrome-crash-reports` artifact) and logs the runner CPU.
 - Real-book acceptance (`~/Books/Complete French All-in-One .pdf`, 657 pp) with real controls/input found and
   fixed: Practice expanded squeezed the book to ~0px (getReaderWorkspaceRect treated the overlay as a right

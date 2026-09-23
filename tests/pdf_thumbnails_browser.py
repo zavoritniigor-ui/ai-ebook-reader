@@ -59,6 +59,10 @@ upload_pdf(doc_bytes)
 # Open sidebar so thumbnail processing is active
 c.js("els.sidebar.classList.remove('collapsed')")
 settle(200)
+# Opening the sidebar narrows #reader-container; navigation.js re-lays the stack out ~250ms later (debounced
+# ResizeObserver), which re-syncs the active thumbnail to the reader's page. Let that land first.
+c.wait("resizeTimer === null && pdfInFlightRenders === 0", timeout=10)
+settle(150)
 
 # Check queue instrumentation
 q_state = c.js("window.__pdfThumbQueueState ? window.__pdfThumbQueueState() : null")

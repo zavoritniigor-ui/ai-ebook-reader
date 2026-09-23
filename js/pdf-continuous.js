@@ -473,8 +473,6 @@ function updatePdfWorkspaceLayout(options = {}) {
             lastPdfWorkspaceLeftReserve = leftReserve;
             lastPdfWorkspaceRightReserve = rightReserve;
 
-            const anchor = pdfContinuousReady && typeof pdfAnchor === 'function' ? pdfAnchor() : null;
-
             if (leftReserve > 0 || rightReserve > 0) {
                 els.container.style.marginLeft = `${leftReserve}px`;
                 els.container.style.marginRight = `${rightReserve}px`;
@@ -485,11 +483,11 @@ function updatePdfWorkspaceLayout(options = {}) {
                 els.container.style.width = '';
             }
 
-            // Only trigger immediate continuous stack relayout if not mid-gesture (pinch/zoom)
-            // and active tracking is not suppressed. During pinch or scroll, let gesture end or ResizeObserver handle it.
-            if (pdfContinuousReady && state.pdfZoom === 1 && !pdfSuppressActiveTracking && typeof relayoutContinuousPdfAtScale === 'function') {
-                relayoutContinuousPdfAtScale(anchor);
-            }
+            // Geometry only. Moving the margins resizes #reader-container, and navigation.js's
+            // containerResizeObserver re-lays the continuous stack out ONCE (debounced), with the reading
+            // anchor measured at the pre-resize size -- the same split main has always used. Relaying out here
+            // as well meant two back-to-back relayouts per panel toggle, each cancelling/restarting the page
+            // renders; CI bisects pinned the renderer crash on this observer path.
         }
     };
 
