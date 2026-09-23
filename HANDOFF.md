@@ -26,11 +26,11 @@ runs were **cancelled after up to 6h**: `pdf_ux_browser.py` hung after the lands
   dialog fail fast, a timeout reports recent page events and — opt-in `READER_CDP_DEBUG_STACK=1` (local
   diagnosis only: with it pre-enabled in CI pdf_ux stalled 2/5, without it 0/6) — the spinning JS stack.
   CI prints `chrome.log` on failure.
-- Finding: before the fixes below pdf_ux hung in 4/4 branch runs; after them it passed 8 of 9 CI executions
-  (incl. a one-off CI bisect: 6/6 fresh-Chrome runs green with and without the pill backdrop-filter, footer,
-  workspace observer or thumbnail sync). One residual stall (822c538) was native (stack probe: main thread
-  stuck OUTSIDE JS, crashpad fired 0.2s after the fit-width switch) and never reproduced locally (2-core pin,
-  20x throttle, --disable-gpu, 8x loop). If it recurs, the timeout message now says where it stopped.
+- Root cause of the intermittent pdf_ux stall (CI only): at the fit-width switch the renderer takes a non-fatal
+  "dump without crashing" report and blocks forever writing to crashpad (process dump: renderer main thread
+  `wchan=anon_pipe_write`, crashpad fires at the stall). CI now launches Chrome with `--disable-crash-reporter`;
+  on failure CI prints chrome.log, crash-dump process types and per-process wait channels
+  (`tests/ci_chrome_stall_dump.sh`). Which Chrome-internal check fires is still unknown.
 - Real-book acceptance (`~/Books/Complete French All-in-One .pdf`, 657 pp) with real controls/input found and
   fixed: Practice expanded squeezed the book to ~0px (getReaderWorkspaceRect treated the overlay as a right
   panel); `#grammar-panel.practice-bookmark-dock{position:relative}` made Grammar reserve 500px twice and
