@@ -444,7 +444,6 @@ function navigateToPdfPage(pageIndex, options = {}) {
 }
 
 // ===================== CENTRAL PDF WORKSPACE SIZING & ALIGNMENT =====================
-let pdfWorkspaceAnchor = null;
 let pdfWorkspaceLayoutFrame = 0;
 let lastPdfWorkspaceLeftReserve = null;
 let lastPdfWorkspaceRightReserve = null;
@@ -474,8 +473,7 @@ function updatePdfWorkspaceLayout(options = {}) {
             lastPdfWorkspaceLeftReserve = leftReserve;
             lastPdfWorkspaceRightReserve = rightReserve;
 
-            const anchor = pdfWorkspaceAnchor || (pdfContinuousReady && typeof pdfAnchor === 'function' ? pdfAnchor() : null);
-            pdfWorkspaceAnchor = null;
+            const anchor = pdfContinuousReady && typeof pdfAnchor === 'function' ? pdfAnchor() : null;
 
             if (leftReserve > 0 || rightReserve > 0) {
                 els.container.style.marginLeft = `${leftReserve}px`;
@@ -492,8 +490,6 @@ function updatePdfWorkspaceLayout(options = {}) {
             if (pdfContinuousReady && state.pdfZoom === 1 && !pdfSuppressActiveTracking && typeof relayoutContinuousPdfAtScale === 'function') {
                 relayoutContinuousPdfAtScale(anchor);
             }
-        } else {
-            pdfWorkspaceAnchor = null;
         }
     };
 
@@ -504,9 +500,10 @@ function updatePdfWorkspaceLayout(options = {}) {
         }
         applyLayout();
     } else {
-        if (!pdfWorkspaceAnchor && pdfContinuousReady && typeof pdfAnchor === 'function') {
-            pdfWorkspaceAnchor = pdfAnchor();
-        }
+        // No layout read here: this runs inside MutationObserver callbacks, and the side panels are fixed
+        // overlays, so #reader-container cannot change size before applyLayout() itself moves its margins --
+        // applyLayout() takes the reading anchor at exactly that point. (A synchronous pdfAnchor() in the
+        // observer callback, on every panel attribute write, crashed CI's software-raster renderer.)
         if (!pdfWorkspaceLayoutFrame) {
             pdfWorkspaceLayoutFrame = requestAnimationFrame(() => {
                 pdfWorkspaceLayoutFrame = 0;
@@ -518,17 +515,21 @@ function updatePdfWorkspaceLayout(options = {}) {
 
 const layoutPdfForPanels = updatePdfWorkspaceLayout;
 
+// Only opening/closing a drawer changes the free workspace: watch class/hidden, not inline style (which
+// these panels rewrite constantly while positioning themselves). #practice-panel is not a reserve at all
+// (it overlays the book -- see getReaderWorkspaceRect), so it is not observed.
+const PDF_PANEL_ATTRIBUTES = { attributes: true, attributeFilter: ['class', 'hidden'] };
 const pdfPanelObserver = new MutationObserver(() => updatePdfWorkspaceLayout());
-['sidebar', 'grammar-panel', 'ask-panel', 'practice-panel'].forEach(id => {
+['sidebar', 'grammar-panel', 'ask-panel'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) pdfPanelObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-mode'] });
+    if (el) pdfPanelObserver.observe(el, PDF_PANEL_ATTRIBUTES);
 });
 
 function registerPdfPanel(el) {
     if (!el) return;
     if (typeof pdfPanelObserver !== 'undefined' && pdfPanelObserver) {
         try {
-            pdfPanelObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-mode'] });
+            pdfPanelObserver.observe(el, PDF_PANEL_ATTRIBUTES);
         } catch (e) {}
     }
     el.addEventListener('transitionend', (e) => {
@@ -542,9 +543,9 @@ window.registerPdfPanel = registerPdfPanel;
 function initPdfPanelListeners() {
     const nav = document.getElementById('sidebar') || document.querySelector('nav');
     if (nav) {
-        pdfPanelObserver.observe(nav, { attributes: true, attributeFilter: ['class', 'style'] });
+        pdfPanelObserver.observe(nav, PDF_PANEL_ATTRIBUTES);
     }
-    ['sidebar', 'grammar-panel', 'ask-panel', 'practice-panel'].forEach(id => {
+    ['sidebar', 'grammar-panel', 'ask-panel'].forEach(id => {
         const el = document.getElementById(id);
         if (el) registerPdfPanel(el);
     });

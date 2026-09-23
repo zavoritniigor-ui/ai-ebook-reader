@@ -26,10 +26,14 @@ runs were **cancelled after up to 6h**: `pdf_ux_browser.py` hung after the lands
   dialog fail fast, a timeout reports recent page events and — opt-in `READER_CDP_DEBUG_STACK=1` (local
   diagnosis only: with it pre-enabled in CI pdf_ux stalled 2/5, without it 0/6) — the spinning JS stack.
   CI prints `chrome.log` on failure.
-- Intermittent CI-only pdf_ux "hang" = a renderer CRASH at the fit-width switch whose kernel core dump never
-  finished (stuck renderer kernel stack: get_signal -> vfs_coredump -> elf_core_dump -> anon_pipe_write into
-  systemd-coredump), so Chrome never reported it. CI now disables core dumps (crash surfaces as
-  Inspector.targetCrashed) and uploads `~/.config/google-chrome/Crash Reports` as artifact `chrome-crash-reports`.
+- The 6h CI "hang" was a renderer CRASH (SIGTRAP) whose kernel core dump never finished (stuck renderer:
+  get_signal -> vfs_coredump -> anon_pipe_write into systemd-coredump), so Chrome never reported it. It is
+  deterministic on some runner CPUs (Xeon Platinum 8370C / 8573C) and absent on others -- hence "random".
+  CI bisect on a crashing runner: only disconnecting `pdfPanelObserver` avoided it (2/2; forced relayouts,
+  --ws-* CSS vars, resize listeners, pill blur, footer, thumbnails all still crashed). Fix: the observer
+  callback no longer does a synchronous pdfAnchor() layout read and watches only class/hidden on
+  sidebar/Grammar/Ask (not inline style, not Practice). CI keeps core dumps off, uploads crash reports
+  (`chrome-crash-reports` artifact) and logs the runner CPU.
 - Real-book acceptance (`~/Books/Complete French All-in-One .pdf`, 657 pp) with real controls/input found and
   fixed: Practice expanded squeezed the book to ~0px (getReaderWorkspaceRect treated the overlay as a right
   panel); `#grammar-panel.practice-bookmark-dock{position:relative}` made Grammar reserve 500px twice and
