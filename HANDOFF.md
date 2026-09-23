@@ -18,6 +18,53 @@ part of normal task startup.
 
 ## Current handoff
 
+### Practice: sentence-level translate + listen actions (2026-09-22, branch `practice-sentence-actions`, PR #120 — see status below)
+
+PR #119 (the whole `grammar-redesign` branch — Grammar redesign, real-model AI contract, bilingual
+multi-verb fix, and the Grammar → Practice hand-off fix directly below) was squash-merged to `main` at
+commit `6ffb18421128d7f15ff736f90c057a251ac6c57b`, verified deployed to production (content-hash asset
+match against the live `sw.js`). A manual production acceptance pass then found Practice missing a
+capability the reader offers everywhere else: translating or listening to ONE specific generated
+sentence (only the whole reader selection/tooltip had these, never an individual Practice sentence).
+
+**Fix** (`js/practice-worksheet.js`, `js/tts.js` — full detail in `ARCHITECTURE.md`'s new "Practice:
+sentence-level translate + listen" section), reusing existing infrastructure throughout:
+- Every generated row (`buildPracticeSentenceRow`, replacing the old bare `renderParagraphWithTargets`
+  call) gets a small, visually secondary `[listen][translate]` action pair and a collapsible translation
+  slot. The row is now a `<div>` (was `<p>`) purely so it can validly hold that slot; the highlighted,
+  clickable target rendering itself (`renderParagraphWithTargets`) is completely unchanged.
+- Translation (`fetchPracticeTranslation`) calls the SAME `aiTranslateText`/`machineTranslate` engine the
+  reader's own translation tooltip uses, with the reading's own validated language as source (never
+  re-detected) and `state.targetLang` as target — never a second translation engine. Cached per
+  (source, target, sentence) for the page's life; a repeated click just toggles visibility.
+- TTS (`togglePracticeSpeak`) calls the SAME `speakInLang` the tooltip's translation speaker uses.
+  `bindUtterance`/`speakText`/`speakInLang` gained one small, backward-compatible optional `onEnd`
+  callback (existing callers unaffected) so Practice — a third consumer beyond the tooltip's 'orig'/'tr'
+  sides — can track which of potentially many sentences is playing without a second TTS implementation or
+  polling; switching sentences or pressing the same one again correctly stops/transfers playback via the
+  existing `speakInLang` cancel-first behaviour and `stopTooltipSpeech()`.
+
+**Verified**: new `tests/practice_sentence_actions_browser.py` (9 sections) — every row gets working
+actions; translation is exact-sentence, correct-language, Grammar-free, non-regenerating, and cached;
+repeated clicks toggle without re-fetching; TTS start/stop/switch/natural-completion all correct with zero
+overlapping speech; a highlighted target click after a translation is expanded still focuses Grammar with
+zero AI calls; the balanced allocation from the multi-target work is unaffected across verbs, adjectives, a
+reflexive verb and properly accented French; a real touch tap on a phone-width viewport works. The `onEnd`
+hook was confirmed load-bearing (reverted individually, its own check failed, restored byte-identical) —
+this negative control needed `Network.setCacheDisabled` in the test (added), since a first attempt without
+it silently re-tested stale cached JS and passed for the wrong reason; a subsequent full regression battery
+was re-run once on a brand-new Chrome profile (zero prior cache of any kind) to confirm nothing else in this
+session's long-lived scratch browser had been silently stale either — all suites passed clean.
+
+Files changed: `js/practice-worksheet.js`, `js/tts.js`, `js/core.js` (2 new i18n keys), `.github/workflows/ci.yml`,
+`ARCHITECTURE.md`, `HANDOFF.md`, `index.html`/`sw.js` (regenerated hashes), new
+`tests/practice_sentence_actions_browser.py`; `tests/practice_reading_browser.py`,
+`grammar_redesign_browser.py`, `grammar_french_browser.py` updated where they read a row's raw `textContent`
+(now also containing the new buttons' glyphs) or whitelisted only `.practice-target` as an allowed button
+class — both switched to the precise equivalent, never loosened.
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment).
+
 ### Grammar → Practice: button fix, balanced multi-target allocation, coverage validation (2026-09-22, branch `grammar-redesign`, PR #119 — NOT merged)
 
 Follow-up to the bilingual multi-verb fix directly below: once Grammar correctly detects every verb/adjective

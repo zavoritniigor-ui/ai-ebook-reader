@@ -65,7 +65,11 @@ function setUtteranceVoice(u, lang, voice) {
     if (voice) { u.voice = voice; u.lang = voice.lang; }
     else u.lang = lang;
 }
-function bindUtterance(u, side, fullText, offset) {
+// onEnd (optional): an extra completion hook alongside the built-in cleanup below — added for
+// Practice's own per-sentence speaker buttons (js/practice-worksheet.js togglePracticeSpeak), so a
+// THIRD consumer (beyond the tooltip's 'orig'/'tr' sides) can reset its own UI on natural completion
+// without a second TTS implementation or polling; existing callers omit it and are unaffected.
+function bindUtterance(u, side, fullText, offset, onEnd) {
     if (!side) return;
     const myId = ++utterSeq;
     state.speakingId = myId;
@@ -84,16 +88,17 @@ function bindUtterance(u, side, fullText, offset) {
         state.speakingSide = null;
         state.speakResume = null;                // дочитали до кінця
         updateSpeakerIcons();
+        if (onEnd) onEnd();
     };
 }
-function speakText(text, side, offset) {
+function speakText(text, side, offset, onEnd) {
     state.ttsGen++;    // наш cancel не має рухати чергу читання вголос
     const gen = state.ttsGen;
     ttsSynth.cancel();
     const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
     const { lang, voice } = voiceForText(text);
     setUtteranceVoice(u, lang, voice); u.rate = 0.95;
-    bindUtterance(u, side, text, offset);
+    bindUtterance(u, side, text, offset, onEnd);
     // Затримка перед speak() — див. TTS_CANCEL_SPEAK_DELAY_MS вище. Перевірка gen
     // після паузи: якщо за цей час фразу вже скасували (ще один tap, stopTooltipSpeech)
     // — не запускаємо озвучення, яке вже нікому не потрібне.
@@ -102,7 +107,7 @@ function speakText(text, side, offset) {
 // Озвучення ЗАДАНОЮ мовою — для перекладу, бо його мову ми знаємо точно й вона не
 // залежить від мови книги (автовизначення тут дало б хибний голос).
 const LANG_TAGS = Object.fromEntries(Object.entries(LANGUAGE_CONFIG).map(([code, config]) => [code, config.locale]));
-function speakInLang(text, langCode, side, offset) {
+function speakInLang(text, langCode, side, offset, onEnd) {
     if (!text) return;
     state.ttsGen++;
     const gen = state.ttsGen;
@@ -111,7 +116,7 @@ function speakInLang(text, langCode, side, offset) {
     const voice = voices.find(v => v.voiceURI === state.selectedVoiceURIByLang[langCode]) || pickBestVoice(langCode, voices);
     setUtteranceVoice(u, LANG_TAGS[langCode] || langCode, voice);
     u.rate = 0.95;
-    bindUtterance(u, side, text, offset);
+    bindUtterance(u, side, text, offset, onEnd);
     setTimeout(() => { if (gen === state.ttsGen) ttsSynth.speak(u); }, TTS_CANCEL_SPEAK_DELAY_MS);
 }
 

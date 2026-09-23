@@ -326,8 +326,10 @@ check("target forms are highlighted as clickable buttons — one per real occurr
       "document.querySelectorAll('.practice-target').length===3")
 check("NO traditional quiz/answer-input UI exists anywhere in this Practice panel",
       "document.querySelectorAll('.answer-input, .answer-check-btn, .hint-reveal-btn, .exercise-hints, .practice-pagination').length===0")
+# .practice-sentence-text (not the row itself, now a <div> that also holds the new sentence-level
+# [listen]/[translate] actions), so their button glyphs are never counted as reading text.
 check("the reading is substantial, not two trivial disconnected lines",
-      "[...document.querySelectorAll('.practice-reading p')].map(p => p.textContent).join(' ').length > 400")
+      "[...document.querySelectorAll('.practice-reading .practice-sentence-text')].map(p => p.textContent).join(' ').length > 400")
 
 
 # ---------------------------------------------------------------------------
