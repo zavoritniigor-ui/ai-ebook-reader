@@ -107,42 +107,22 @@ function getReaderWorkspaceRect() {
     };
 }
 
-function pdfContainerAvailDims() {
-    const ws = getReaderWorkspaceRect();
-    const padLeft = parseFloat(getComputedStyle(els.container).paddingLeft) || 0;
-    const padRight = parseFloat(getComputedStyle(els.container).paddingRight) || 0;
-    const padTop = parseFloat(getComputedStyle(els.container).paddingTop) || 0;
-    const padBottom = parseFloat(getComputedStyle(els.container).paddingBottom) || 0;
-    // Multi-page continuous PDF always has vertical scrollbar (or reserved scrollbar-gutter).
-    // Always reserve scrollbar width so placeholder estimate matches rendered page scale exactly.
-    const scrollbarW = (state.totalPages > 1 || (els.container && els.container.scrollHeight > els.container.clientHeight + 2)) ? 14 : 0;
-    const availW = Math.max(1, ws.width - padLeft - padRight - scrollbarW);
-    const availH = Math.max(1, ws.height - padTop - padBottom);
-    return { width: availW, height: availH };
-}
-
 function pdfContainerAvailWidth() {
-    return pdfContainerAvailDims().width;
+    const pad = parseFloat(getComputedStyle(els.container).paddingLeft) || 0;
+    return Math.max(1, els.container.clientWidth - 2 * pad);
 }
 
-// Scale for one page:
-// - Fit Width: uses real central workspace width.
-// - Fit Page: uses min(widthScale, heightScale) against central workspace dimensions.
-// - Manual zoom ('free'): preserves user's explicit scale factor across panel toggles and resizes.
+// Scale for one page: same "fit width / fit page / free zoom" semantics as continuous PDF,
+// adapting dynamically to the central workspace width.
 function pdfScaleForPage(natural) {
     if (!natural || !natural.width || !natural.height) return 1;
-    const dims = pdfContainerAvailDims();
-    const fitWidthScale = dims.width / natural.width;
-    const fitHeightScale = dims.height / natural.height;
-
+    const avail = pdfContainerAvailWidth();
+    const fitScale = avail > 0 && natural.width > 0 ? avail / natural.width : 1;
     if (state.pdfFit === 'page') {
-        return Math.min(fitWidthScale, fitHeightScale);
+        const pad = parseFloat(getComputedStyle(els.container).paddingTop) || 0;
+        return Math.min(1, (els.container.clientHeight - 2 * pad) / (natural.height * fitScale)) * fitScale;
     }
-    if (state.pdfFit === 'free') {
-        return state.pdfScale;
-    }
-    // 'width', 'fit', or default: fit to central workspace width
-    return fitWidthScale;
+    return fitScale * state.pdfScale;
 }
 
 function pdfWrapperEstimate(doc) {
@@ -469,6 +449,8 @@ function navigateToPdfPage(pageIndex, options = {}) {
 // ===================== CENTRAL PDF WORKSPACE SIZING & ALIGNMENT =====================
 let pdfWorkspaceAnchor = null;
 let pdfWorkspaceLayoutFrame = 0;
+let lastPdfWorkspaceLeftReserve = null;
+let lastPdfWorkspaceRightReserve = null;
 
 function updatePdfWorkspaceLayout(options = {}) {
     if (state.format !== 'pdf' || !els.container) return;
@@ -486,17 +468,15 @@ function updatePdfWorkspaceLayout(options = {}) {
         document.documentElement.style.setProperty('--ws-width', `${Math.round(ws.width)}px`);
         const leftReserve = Math.max(0, Math.round(ws.left - mainRect.left));
         const rightReserve = Math.max(0, Math.round(mainRect.right - ws.right));
-        const availWidth = Math.max(1, Math.round(ws.width));
 
-        const prevLeft = parseFloat(els.container.style.marginLeft) || 0;
-        const prevRight = parseFloat(els.container.style.marginRight) || 0;
-        const prevWidth = parseFloat(els.container.style.width) || 0;
-
-        const changed = Math.abs(prevLeft - leftReserve) >= 1 ||
-                        Math.abs(prevRight - rightReserve) >= 1 ||
-                        Math.abs(prevWidth - availWidth) >= 1;
+        const changed = (lastPdfWorkspaceLeftReserve === null) ||
+                        (Math.abs(lastPdfWorkspaceLeftReserve - leftReserve) >= 1) ||
+                        (Math.abs(lastPdfWorkspaceRightReserve - rightReserve) >= 1);
 
         if (changed || options.force) {
+            lastPdfWorkspaceLeftReserve = leftReserve;
+            lastPdfWorkspaceRightReserve = rightReserve;
+
             const anchor = pdfWorkspaceAnchor || (pdfContinuousReady && typeof pdfAnchor === 'function' ? pdfAnchor() : null);
             pdfWorkspaceAnchor = null;
 
@@ -510,7 +490,9 @@ function updatePdfWorkspaceLayout(options = {}) {
                 els.container.style.width = '';
             }
 
-            if (pdfContinuousReady && typeof relayoutContinuousPdfAtScale === 'function') {
+            // Only trigger immediate continuous stack relayout if not mid-gesture (pinch/zoom)
+            // and active tracking is not suppressed. During pinch or scroll, let gesture end or ResizeObserver handle it.
+            if (pdfContinuousReady && state.pdfZoom === 1 && !pdfSuppressActiveTracking && typeof relayoutContinuousPdfAtScale === 'function') {
                 relayoutContinuousPdfAtScale(anchor);
             }
         } else {
