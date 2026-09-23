@@ -298,16 +298,123 @@ function renderPracticeReading(reading) {
             block.appendChild(h);
         }
         for (let idx = section.start; idx < section.end; idx++) {
-            const p = document.createElement('p');
-            p.className = section.kind === 'story' ? 'practice-paragraph' : 'practice-sentence';
-            p.dataset.paragraph = String(idx);
-            renderParagraphWithTargets(p, reading.paragraphs[idx], targetsByParagraph.get(idx) || [], reading.language);
-            block.appendChild(p);
+            block.appendChild(buildPracticeSentenceRow(idx, reading.paragraphs[idx], targetsByParagraph.get(idx) || [], reading.language, section.kind));
         }
         wrap.appendChild(block);
     });
 
     return wrap;
+}
+
+// One reading row: the sentence/paragraph text with its clickable highlighted targets (unchanged —
+// renderParagraphWithTargets below is untouched and still focuses the exact Grammar occurrence with
+// zero extra AI calls, independent of anything below), plus a small, visually secondary [listen]
+// [translate] action pair and a collapsible translation slot directly under it. These reuse the
+// EXISTING TTS system (speakInLang, js/tts.js) and the EXISTING translation engine (aiTranslateText /
+// machineTranslate, js/ai-client.js) exactly as the reader's own translation tooltip does — never a
+// second implementation of either, and neither action calls Grammar or regenerates the session.
+function buildPracticeSentenceRow(idx, text, targets, langCode, kind) {
+    const row = document.createElement('div');
+    row.className = kind === 'story' ? 'practice-paragraph' : 'practice-sentence';
+    row.dataset.paragraph = String(idx);
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'practice-sentence-text';
+    renderParagraphWithTargets(textSpan, text, targets, langCode);
+    row.appendChild(textSpan);
+
+    const actions = document.createElement('span');
+    actions.className = 'practice-sentence-actions';
+
+    const speakBtn = document.createElement('button');
+    speakBtn.type = 'button';
+    speakBtn.className = 'practice-action-btn practice-speak-btn';
+    speakBtn.textContent = '🔊';
+    speakBtn.title = t('practiceSpeakSentence');
+    speakBtn.setAttribute('aria-label', t('practiceSpeakSentence'));
+    speakBtn.onclick = (e) => { e.stopPropagation(); togglePracticeSpeak(text, langCode, speakBtn); };
+    actions.appendChild(speakBtn);
+
+    const translateBtn = document.createElement('button');
+    translateBtn.type = 'button';
+    translateBtn.className = 'practice-action-btn practice-translate-btn';
+    translateBtn.textContent = '🌐';
+    translateBtn.title = t('practiceTranslateSentence');
+    translateBtn.setAttribute('aria-label', t('practiceTranslateSentence'));
+    actions.appendChild(translateBtn);
+    row.appendChild(actions);
+
+    const translationEl = document.createElement('div');
+    translationEl.className = 'practice-sentence-translation';
+    translationEl.hidden = true;
+    row.appendChild(translationEl);
+
+    // First press fetches and shows the translation; every later press just hides/reopens the SAME
+    // result (no re-fetch, no regenerating the Practice session, no Grammar call) — see
+    // fetchPracticeTranslation's own cache below.
+    let requested = false;
+    translateBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (requested) {
+            translationEl.hidden = !translationEl.hidden;
+            translateBtn.classList.toggle('active', !translationEl.hidden);
+            return;
+        }
+        requested = true;
+        translationEl.hidden = false;
+        translationEl.textContent = t('translating');
+        translateBtn.classList.add('active');
+        fetchPracticeTranslation(text, langCode).then(result => {
+            translationEl.textContent = result || t('error');
+        });
+    };
+
+    return row;
+}
+
+// ---- sentence-level TTS -------------------------------------------------------------------------
+// Reuses speakInLang (js/tts.js) exactly as the translation tooltip's own translation speaker does —
+// same voice selection, same cancel-then-speak race handling, same 'speakingSide' bookkeeping — just
+// with a THIRD side value ('practice') and a completion hook instead of the tooltip's own icons.
+// Exactly one Practice speaker button is ever marked "playing": starting a different one resets the
+// previous, pressing the SAME one again stops it (mirrors the tooltip's own toggle idiom via the
+// existing stopTooltipSpeech, which is a generic "stop whatever is speaking" primitive despite its
+// name), and natural completion resets it via the onEnd hook. No overlapping speech is possible: every
+// speakInLang call cancels the shared synthesizer first, exactly as it already does for every caller.
+let practiceSpeakingBtn = null;
+function resetPracticeSpeakBtn() {
+    if (practiceSpeakingBtn) { practiceSpeakingBtn.textContent = '🔊'; practiceSpeakingBtn.classList.remove('speak-active'); }
+    practiceSpeakingBtn = null;
+}
+function togglePracticeSpeak(text, langCode, btn) {
+    if (practiceSpeakingBtn === btn) { stopTooltipSpeech(); resetPracticeSpeakBtn(); return; }
+    resetPracticeSpeakBtn();
+    practiceSpeakingBtn = btn;
+    btn.textContent = '■'; btn.classList.add('speak-active');
+    speakInLang(text, langCode, 'practice', 0, () => { if (practiceSpeakingBtn === btn) resetPracticeSpeakBtn(); });
+}
+
+// ---- sentence-level translation ------------------------------------------------------------------
+// The SAME two-step engine the translation tooltip uses (aiTranslateText first, machineTranslate as
+// its own existing fallback -- js/ai-client.js), called with the exact Practice sentence as input and
+// its own text as context (task: "translate exactly that sentence"). Source language is the READING'S
+// OWN validated language (never re-detected -- the language-isolation contract from the bilingual
+// selection fix applies here too); target language is the reader's existing state.targetLang, per the
+// same rule the tooltip itself follows. Cached (source+target+text) for the life of the page: a
+// Practice-scoped plain-text cache, kept separate from the tooltip's own HTML-annotated cache (which
+// carries markup like the ⚡/⌂ provenance notes) rather than fragile reverse-parsing it.
+const practiceTranslationCache = new Map();
+async function fetchPracticeTranslation(text, srcLang) {
+    const targetLang = state.targetLang;
+    const key = srcLang + '>' + targetLang + '|' + text;
+    if (practiceTranslationCache.has(key)) return practiceTranslationCache.get(key);
+    let result = null;
+    try { result = await aiTranslateText(text, srcLang, undefined, targetLang, text, false); } catch (e) {}
+    if (!result) {
+        try { const m = await machineTranslate(text, srcLang, true, undefined, targetLang); result = m && m.plain; } catch (e) {}
+    }
+    if (result) practiceTranslationCache.set(key, result);
+    return result;
 }
 
 // Places each target at its OWN occurrence in the paragraph — the offsets validated when the
@@ -639,6 +746,22 @@ const practiceStyles = `
     padding: 12px 14px;
 }
 
+/* Now a <div> (was <p>), since it can hold a per-sentence translation block below the text without
+   invalid block-inside-inline markup; unchanged class name, so pre-existing selectors elsewhere are
+   unaffected. display:flex/wrap lets the [listen][translate] actions sit at the end of the same
+   visual line as the sentence text, wrapping onto their own line only when the text is long. */
+.practice-paragraph, .practice-sentence {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 8px;
+    row-gap: 2px;
+}
+.practice-sentence-text {
+    flex: 1 1 auto;
+    min-width: 55%;
+}
+
 .practice-paragraph {
     font-size: 15px;
     line-height: 1.7;
@@ -686,6 +809,60 @@ const practiceStyles = `
 
 .practice-target-adjective {
     border-bottom-color: #0d6efd;
+}
+
+/* Sentence-level learning actions: compact and visually secondary (task requirement) — muted until
+   hovered/focused, never a full toolbar. flex:0 0 auto keeps them from stretching or wrapping apart
+   from each other; the row above wraps them as a UNIT onto their own line for a long sentence. */
+.practice-sentence-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 1px;
+    opacity: .5;
+}
+.practice-sentence-actions:hover, .practice-sentence-actions:focus-within {
+    opacity: 1;
+}
+.practice-action-btn {
+    background: none;
+    border: none;
+    padding: 3px 5px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    min-width: 26px;
+    min-height: 22px;
+}
+.practice-action-btn:hover, .practice-action-btn:focus-visible {
+    background: var(--surface-2);
+    color: var(--text-color);
+    outline: none;
+}
+.practice-action-btn.speak-active, .practice-action-btn.active {
+    color: #10a37f;
+}
+.practice-sentence-translation {
+    flex: 1 0 100%;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    padding: 2px 0 2px 8px;
+    margin-top: -1px;
+    border-left: 2px solid var(--border-color);
+}
+.practice-sentence-translation[hidden] {
+    display: none;
+}
+/* Comfortable touch targets without enlarging the icons themselves (still "compact"). */
+@media (max-width: 480px) {
+    .practice-action-btn {
+        min-width: 34px;
+        min-height: 32px;
+        font-size: 15px;
+    }
 }
 
 .practice-actions {

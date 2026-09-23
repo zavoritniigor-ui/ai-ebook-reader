@@ -243,6 +243,7 @@ extraction — both are **settled**, not open questions:
 | `tests/pdf_bilingual_columns_browser.py` | `selection.js`'s `pdfVisualGroup()` fix for a REAL text-based bilingual-textbook PDF (user-reported and reproduced from a screenshot): a sentence in a row-aligned two-column layout (original left, its own-language translation right) with an inline bold marker word mid-sentence ("Premièrement,"/"First," — real "Firstly/Secondly/..." bilingual-book style) — selecting grabbed text from BOTH columns at once, and some words on the tapped column were read/detected with the OTHER column's language. Uses `bilingual_pdf_bytes()` (an actual Helvetica→Helvetica-Bold font change with runs shown continuously, no repositioning between them, so fragment gaps come out realistically small within a line and large across the true column gutter — not hand-picked offsets that could pass for the wrong reason) to assert a tap on either side of the bold-marker line reconstructs its OWN complete sentence with zero words dropped and zero bleed from the other column, and that each column's whole `pdfVisualGroup` contains only its own language. Also fill-in-the-blank exercise lines with the real page-221 geometry (complete sentence, not `Ils (plaindre) 4.`) plus negative controls that must stay separate columns: `(m.)` vocabulary rows, English glosses, a wrapped numbered list, two-column exercises. |
 | `tests/bilingual_selection_browser.py` | A real drag across a bilingual verb table (both PDF content-stream orders): the fused-text bug reproduced and fixed end to end (request -> validation -> rendering, all 8 French verbs, never English), an all-English or all-French selection still resolves as itself, single-word tap unaffected (one focused occurrence), a sentence/paragraph with several verbs (unfocused, several items), a selection over the item budget (deterministic, bounded, a visible note), focusing an already-analysed card/Practice target (zero AI calls), and the translation popup's own (documented, unfixed) behaviour for the same drag. |
 | `tests/practice_allocation_browser.py` | Grammar → Practice: the button (one/many verbs, one/many adjectives, immediate "Generating…" feedback, a fast double-click firing exactly one provider request), deterministic balanced allocation (the task's own 30-examples/7-targets worked example, several other target-count tiers, and the REAL 8-verb bilingual selection's own outgoing prompt), coverage validation (a compliant reply renders every target; a reply covering only 2 of 7 requested lemmas is rejected, never silently accepted), a reflexive verb's compound form and an adjective's irregular before-vowel form surviving the allocation refactor with correct features/no tense controls, occurrence clicks staying exact and AI-call-free, Practice following Grammar's own validated source language rather than re-detecting a bilingual raw text, the collapsed Practice tab's ready/loading/error state and localized label, and a larger (8-lemma) session round-tripping through the same schema while a legacy/corrupt payload under the same storage key is still refused. |
+| `tests/practice_sentence_actions_browser.py` | Sentence-level translate/listen actions in Practice: every generated row gets working `[listen][translate]`; translation fetches the exact sentence with the reading's own source language and the reader's target language, calls only the translation engine (never Grammar), never regenerates the session; a repeated click is cached and only toggles visibility; TTS start/stop toggles correctly (mocked `speechSynthesis`, real utterance objects kept so `onend` can be fired manually to prove the new completion hook), no overlapping speech when switching between two sentences' speakers, natural completion resets the icon on its own; a highlighted target click still focuses Grammar with zero AI calls even with a translation expanded; the balanced allocation from `practice_allocation_browser.py` is unaffected across verbs, adjectives, a reflexive verb (se promener/se retrouver) and properly accented French; and a real touch tap on a phone-width viewport reaches and works both actions. |
 | `tests/pdf_hitbox_stateless_browser.py` | `selection.js`'s `selectWordAtPoint()` fix for a state-dependent PDF hitbox bug (user-reported): blank space near a word was correctly inert BEFORE that word was ever tapped, but after tapping it once (and even after closing its popup) the SAME blank spot — and a wide radius around it, since `pdfNearestSpan()` has no maximum search distance by design — reopened its translation popup, because the "already-highlighted word tapped again" fast path returned `.word-visited` matches with no distance check at all, unlike a fresh word (which always goes through `isPointInRects()`). Confirmed the asymmetry directly via `caretRangeAt()` before vs. after selecting the same word at the same blank point, and confirmed the fix by reverting it locally and re-running (one check fails without it). Uses `edge_words_pdf_bytes()` (one word hard against each page margin, one isolated lower on the page) and real touch dispatch (exercising the actual mobile tap path, including the popup's own document-level close listener) to check blank-space taps at several margins (5/10/20/40/300px) on left-edge, right-edge, and multiply-selected words, plus a direct `selectWordAtPoint()` call for the touchstart/pointerdown-level hit-test itself. |
 | `tests/browser_cdp.py` | Not a test suite itself — the shared minimal CDP client (`CDP`) and synthetic-PDF fixtures (`pdf_bytes`, `bilingual_pdf_bytes`, `edge_words_pdf_bytes`) other suites import. Its WebSocket frame reader was rewritten during Step 6 to reassemble fragmented frames (see below); a genuine bug, not the same thing as the CI-only Chrome-startup flake below. |
 
@@ -473,6 +474,58 @@ never fires two provider requests. `tests/practice_reading_browser.py`, `practic
 `bilingual_selection_browser.py` were updated where they asserted the OLD flat prompt wording, a fixed
 lemma-to-reading mapping the new coverage check correctly rejects, or the OLD fixed 8000-token/12-section
 bounds — each updated to the new, still-strict, size-aware equivalent, never loosened.
+
+## Practice: sentence-level translate + listen
+
+A manual production acceptance found Practice missing two per-sentence actions the reader already offers
+everywhere else: translating one specific sentence, and hearing it read aloud (the learner could only
+translate/listen to a word or a whole selection via the tooltip, never one generated Practice sentence on
+its own). Fixed in `js/practice-worksheet.js` (`buildPracticeSentenceRow`, replacing the old bare
+`renderParagraphWithTargets` call) by **reusing the existing engines**, never a second implementation:
+
+- **Rendering**: every generated row (an "examples" sentence or a "story" paragraph — both, uniformly) is
+  now a `<div class="practice-sentence"|"practice-paragraph">` (was a `<p>`, changed only so it can validly
+  hold a translation block below the text) containing the sentence text (`renderParagraphWithTargets`,
+  **completely unchanged** — same highlighted, clickable targets, same `focusGrammarItem` click path, zero
+  extra Grammar AI calls whether or not a translation is expanded), a small `.practice-sentence-actions`
+  pair of buttons (🔊 listen, 🌐 translate — `.practice-action-btn`, muted until hovered/focused per the
+  "compact and secondary, never a toolbar" requirement), and a collapsible `.practice-sentence-translation`
+  slot.
+- **Translation** (`fetchPracticeTranslation`): the SAME two-step engine the reader's own translation
+  tooltip already uses — `aiTranslateText` (js/ai-client.js) first, `machineTranslate` as its own existing
+  fallback — called with the exact sentence as input and as its own context. Source language is the
+  READING'S OWN validated `language` (never re-detected, consistent with the language-isolation contract
+  from the bilingual-selection fix above); target language is the reader's existing `state.targetLang`,
+  the same rule the tooltip itself follows. A Practice-scoped `Map` caches by (source, target, text) for
+  the page's lifetime — kept separate from the tooltip's own `state.translationCache` (which carries
+  HTML-annotated provenance notes like the ⚡/⌂ markers) rather than fragile reverse-parsing it; a second
+  click just toggles the already-fetched result's visibility (no re-fetch), never regenerates the Practice
+  session, never calls Grammar.
+- **TTS** (`togglePracticeSpeak`): the SAME `speakInLang` (js/tts.js) the tooltip's own translation
+  speaker uses — same voice selection, same cancel-then-speak race handling. `bindUtterance`/`speakText`/
+  `speakInLang` all gained one small, fully backward-compatible optional trailing `onEnd` callback (existing
+  callers omit it, unaffected) so Practice's per-sentence buttons — a THIRD consumer beyond the tooltip's
+  'orig'/'tr' sides, using a third `side` value `'practice'` — can track their own "is this one playing"
+  state without a second TTS implementation or polling. Exactly one Practice speaker ever shows "playing":
+  starting a different one resets the previous (`speakInLang` cancels the shared synthesizer first, exactly
+  as it already does for every caller — no overlapping speech is possible), pressing the SAME one again
+  stops it via the existing `stopTooltipSpeech()` (a generic "stop whatever is speaking" primitive despite
+  its name), and natural completion resets it through the new `onEnd` hook.
+
+**Verified**: `tests/practice_sentence_actions_browser.py` (new, 9 sections) — every generated row gets
+working actions; translation fetches the exact sentence with the correct source/target language, calls only
+the translation engine (never Grammar), never regenerates the session; a repeated click is cached and only
+toggles visibility; TTS start/stop toggles correctly with no overlapping speech; switching between two
+sentences' speakers correctly transfers playback; natural completion resets the icon via the new hook; a
+highlighted target click still focuses Grammar with zero AI calls even with a translation expanded; the
+balanced allocation from the multi-target work above is unaffected across verbs, adjectives, a reflexive
+verb and accented French; and a real touch tap on a phone-width viewport reaches and works both actions.
+Each production fix (the `onEnd` hook in particular) was confirmed to make its own matching check fail when
+reverted, then restored. `tests/practice_reading_browser.py` and `grammar_redesign_browser.py`/
+`grammar_french_browser.py` were updated where they read a row's `textContent` directly (now also containing
+the new action buttons' glyphs) or whitelisted `.practice-target` as the only allowed button class — both
+switched to read `.practice-sentence-text` / allow `.practice-action-btn` too, never loosening what they
+actually guard against (still zero exercise/answer/check controls).
 
 ## The live-model AI contract (Grammar + Practice)
 
