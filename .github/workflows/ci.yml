@@ -112,7 +112,7 @@ jobs:
           
           # Ensure cleanup of background processes when this step exits (success or failure)
           # On failure, surface Chrome's own log (renderer crash / GPU hang reasons never reach the CDP client)
-          trap "status=\$?; if [ \$status -ne 0 ]; then echo '--- chrome.log (tail) ---'; tail -n 80 chrome.log || true; fi; echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
+          trap "status=\$?; if [ \$status -ne 0 ]; then echo '--- chrome.log (tail) ---'; tail -n 80 chrome.log || true; for d in \$(find /tmp/pdf-ux-test-profile -name '*.dmp' 2>/dev/null); do echo \"crash dump \$d: \$(strings -n 3 \$d | grep -m1 -A1 -x ptype | tr '\\n' ' ')\"; done; fi; echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
           
           # 3. Wait for services
           echo "Waiting for HTTP server (PID $SERVER_PID) to respond on port 8765..."
