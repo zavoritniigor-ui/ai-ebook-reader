@@ -23,8 +23,9 @@ part of normal task startup.
 Picked up at `d294ae2` (= PR head = origin branch; already contained origin/main `ffba29d`). Its last three CI
 runs were **cancelled after up to 6h**: `pdf_ux_browser.py` hung after the landscape fit-page/fit-width switch.
 - `tests/browser_cdp.py`: every CDP reply is bounded (`READER_CDP_TIMEOUT`, default 180s), renderer crash / JS
-  dialog fail fast, a timeout reports recent page events and — with `READER_CDP_DEBUG_STACK=1` (set for
-  pdf_ux in CI) — the spinning JS stack. CI prints `chrome.log` on failure.
+  dialog fail fast, a timeout reports recent page events and — opt-in `READER_CDP_DEBUG_STACK=1` (local
+  diagnosis only: with it pre-enabled in CI pdf_ux stalled 2/5, without it 0/6) — the spinning JS stack.
+  CI prints `chrome.log` on failure.
 - Finding: before the fixes below pdf_ux hung in 4/4 branch runs; after them it passed 8 of 9 CI executions
   (incl. a one-off CI bisect: 6/6 fresh-Chrome runs green with and without the pill backdrop-filter, footer,
   workspace observer or thumbnail sync). One residual stall (822c538) was native (stack probe: main thread

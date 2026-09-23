@@ -125,10 +125,7 @@ jobs:
           
           # 4. Run tests
           echo "Running pdf_ux_browser.py..."
-          # Pre-enable the debugger so a stalled renderer reports its spinning JS stack (tests/browser_cdp.py)
-          export READER_CDP_DEBUG_STACK=1
           python3 -u tests/pdf_ux_browser.py
-          unset READER_CDP_DEBUG_STACK
 
           echo "Running pdf_continuous_browser.py..."
           python3 -u tests/pdf_continuous_browser.py
