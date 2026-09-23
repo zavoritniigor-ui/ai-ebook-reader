@@ -343,7 +343,14 @@ btn_rect = c.js("(()=>{const b=document.querySelector('.practice-speak-btn'); b.
 assert btn_rect['w'] >= 28 and btn_rect['h'] >= 28, ('touch target too small', btn_rect)
 touch_tap(btn_rect['x'], btn_rect['y'])
 time.sleep(0.3)
-check("9: a real TOUCH tap on the speaker button actually starts speech", "document.querySelector('.practice-speak-btn').classList.contains('speak-active')")
+if not c.js("document.querySelector('.practice-speak-btn').classList.contains('speak-active')"):
+    diag = c.js("""(()=>{const b=document.querySelector('.practice-speak-btn'); const e=document.elementFromPoint(%f,%f);
+        return { at:[%f,%f], under: e?(e.tagName+'.'+e.className+' '+(e.textContent||'').slice(0,40)):null,
+          btnRect: b.getBoundingClientRect().toJSON ? JSON.parse(JSON.stringify(b.getBoundingClientRect())) : null,
+          grammarExpanded: els.grammarPanel.classList.contains('expanded'), practicePanelHidden: document.getElementById('practice-panel').hidden,
+          speakCalls: window.__ttsSpeakCalls.length, viewport:[innerWidth, innerHeight] }; })()""" % (btn_rect['x'], btn_rect['y'], btn_rect['x'], btn_rect['y']))
+    raise AssertionError(('9: touch tap on the speaker button never started speech', diag))
+print("PASS 9: a real TOUCH tap on the speaker button actually starts speech", flush=True)
 translate_rect = c.js("(()=>{const b=document.querySelector('.practice-translate-btn'); const r=b.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
 touch_tap(translate_rect['x'], translate_rect['y'])
 c.wait("document.querySelector('.practice-sentence-translation').textContent!==t('translating') && document.querySelector('.practice-sentence-translation').textContent.length>0", timeout=8)
