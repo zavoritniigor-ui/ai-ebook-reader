@@ -108,12 +108,22 @@ els.tooltip.addEventListener('pointerleave', () => {
 document.body.appendChild(els.tooltip);
 function positionTooltip(clientX, clientY, anchorRect) {
     const vv = window.visualViewport;
-    const ws = (typeof getReaderWorkspaceRect === 'function' && state.format === 'pdf') ? getReaderWorkspaceRect() : null;
-    const left = ws ? ws.left : (vv?.offsetLeft || 0);
-    const top = ws ? ws.top : (vv?.offsetTop || 0);
-    const width = ws ? ws.width : (vv?.width || innerWidth);
-    const height = ws ? ws.height : (vv?.height || innerHeight);
+    const viewWidth = vv?.width || innerWidth;
+    const viewHeight = vv?.height || innerHeight;
+    const viewLeft = vv?.offsetLeft || 0;
+    const viewTop = vv?.offsetTop || 0;
     const margin = 10, gap = 12;
+
+    let left = viewLeft, top = viewTop, width = viewWidth, height = viewHeight;
+    if (typeof getReaderWorkspaceRect === 'function' && state.format === 'pdf' && viewWidth > 600) {
+        const ws = getReaderWorkspaceRect();
+        if (ws && ws.width >= 320) {
+            left = ws.left;
+            top = ws.top;
+            width = ws.width;
+            height = ws.height;
+        }
+    }
     els.tooltip.style.maxWidth = `${Math.max(0, Math.min(560, width - 2*margin))}px`;
     els.tooltip.style.maxHeight = `${Math.max(0, Math.min(height - 2*margin, width <= 600 ? height*.7 : height))}px`;
     els.tooltip.style.height = '';
