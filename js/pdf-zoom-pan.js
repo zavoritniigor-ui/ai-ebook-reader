@@ -327,8 +327,6 @@ document.addEventListener('pointerdown', e => {
         inkDrawing = false; inkCurrent = null; regionStart = null; regionBox.style.display = 'none';
         els.pages.style.willChange = 'transform';
         e.preventDefault(); e.stopPropagation();
-    } else if (!state.inkMode && !document.body.classList.contains('region-mode')) {
-        els.container.setPointerCapture(e.pointerId);
     }
 }, true);
 document.addEventListener('pointermove', e => {

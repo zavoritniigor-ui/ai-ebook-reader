@@ -252,16 +252,10 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     els.ttAiBtn.onclick = (e) => {
         e.stopPropagation();
         cancelTooltipHide();
-        els.tooltip.style.display = 'none';
+        state.tooltipPersistent = true;
         if (helpContext) recordHelpForSpan(helpContext, 'grammar');
-        // Передаємо речення, у якому стоїть слово: без контексту неможливо визначити,
-        // яка саме це форма (час, особа), а саме це й потрібно для навчання. Контекст —
-        // tapContextSentence, зібраний ще В МОМЕНТ ТАПУ (замкнення вище), а НЕ повторний
-        // sentenceRangeAt(state.lastTapPoint) тут: до натискання кнопки сторінка могла
-        // прокрутитись/перезумитись, і ті самі координати вказували б уже на інший текст.
-        // A bilingual selection's own isolated study-language text (if any) is what Grammar
-        // actually analyses; the tooltip/translation above always still shows the FULL raw
-        // selection (`cleanText`) unchanged — this override is Grammar-only.
+        els.grammarPanel.classList.add('expanded');
+        els.askPanel.classList.remove('expanded');
         const grammarText = (grammarSourceOverride && grammarSourceOverride !== cleanText) ? grammarSourceOverride : cleanText;
         state.lastGrammarSentence = (tapContextSentence && tapContextSentence !== grammarText) ? tapContextSentence : '';
         startAiTask(grammarText, 'grammar');

@@ -149,6 +149,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     const isCurrent = () => generation === pdfContinuousGeneration && epoch === readerEpoch.book && state.pdfDoc === doc && state.format === 'pdf';
     pdfContinuousReady = false;
     pdfSuppressActiveTracking = false;
+    state.activeSelectionAnchor = null;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     clearTimeout(bookmarkSaveTimer);
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
@@ -501,7 +502,7 @@ function updatePdfWorkspaceLayout(options = {}) {
             // containerResizeObserver re-lays the continuous stack out ONCE (debounced), with the reading
             // anchor measured at the pre-resize size -- the same split main has always used. Relaying out here
             // as well meant two back-to-back relayouts per panel toggle, each cancelling/restarting the page
-            // renders; CI bisects pinned the renderer crash on this observer path.
+            if (typeof repositionTooltip === 'function') repositionTooltip();
         }
     };
 

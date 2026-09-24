@@ -60,6 +60,7 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 document.addEventListener('pointerdown', (e) => {
+    if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.target.closest('#menu-handle, #quick-menu-dock')) return;
     let closedPopup = false;
     if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
@@ -107,8 +108,11 @@ els.tooltip.addEventListener('pointerleave', () => {
 document.body.appendChild(els.tooltip);
 function positionTooltip(clientX, clientY, anchorRect) {
     const vv = window.visualViewport;
-    const left = vv?.offsetLeft || 0, top = vv?.offsetTop || 0;
-    const width = vv?.width || innerWidth, height = vv?.height || innerHeight;
+    const ws = (typeof getReaderWorkspaceRect === 'function' && state.format === 'pdf') ? getReaderWorkspaceRect() : null;
+    const left = ws ? ws.left : (vv?.offsetLeft || 0);
+    const top = ws ? ws.top : (vv?.offsetTop || 0);
+    const width = ws ? ws.width : (vv?.width || innerWidth);
+    const height = ws ? ws.height : (vv?.height || innerHeight);
     const margin = 10, gap = 12;
     els.tooltip.style.maxWidth = `${Math.max(0, Math.min(560, width - 2*margin))}px`;
     els.tooltip.style.maxHeight = `${Math.max(0, Math.min(height - 2*margin, width <= 600 ? height*.7 : height))}px`;
@@ -135,6 +139,17 @@ function repositionTooltip() {
 }
 window.visualViewport?.addEventListener('resize', repositionTooltip);
 window.visualViewport?.addEventListener('scroll', repositionTooltip);
+
+if (els.ttCloseBtn) {
+    els.ttCloseBtn.onclick = (e) => {
+        e.stopPropagation();
+        cancelTooltipHide();
+        els.tooltip.style.display = 'none';
+        state.tooltipPersistent = false;
+        stopTooltipSpeech();
+        clearSelectionHighlight();
+    };
+}
 
 let keySettingsProvider;
 function updateProviderRadios() {

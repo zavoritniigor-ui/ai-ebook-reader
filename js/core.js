@@ -695,6 +695,7 @@ const els = {
     ttReplayBtn: document.getElementById('tt-replay-btn'), ttExpandBtn: document.getElementById('tt-expand-btn'), ttTranslation: document.getElementById('tt-translation'),
     ttSpeakTranslation: document.getElementById('tt-speak-translation'), ttSvoBtn: document.getElementById('tt-svo-btn'),
     ttAiBtn: document.getElementById('tt-ai-btn'), ttAskBtn: document.getElementById('tt-ask-btn'),
+    ttCloseBtn: document.getElementById('tt-close-btn'),
     mainArea: document.getElementById('main-area'), translateBtn: document.getElementById('btn-translate-mode'),
     sidebar: document.getElementById('sidebar'), voiceSelect: document.getElementById('voice-select'),
     ttsBtn: document.getElementById('btn-tts'), ttsStopBtn: document.getElementById('btn-tts-stop'), grammarPanel: document.getElementById('grammar-panel'),

@@ -176,6 +176,7 @@ jobs:
           python3 -u tests/grammar_language_isolation_browser.py
           python3 -u tests/grammar_redesign_browser.py
           python3 -u tests/grammar_french_browser.py
+          python3 -u tests/grammar_selection_preserve_browser.py
           python3 -u tests/ai_contract_browser.py
 
           python3 -u tests/quick_wheel_browser.py

@@ -46,7 +46,7 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; touch-action: manipulation; }
-        body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+        body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         button, select, input { font-family: inherit; }
         :focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; }
 
@@ -403,6 +403,7 @@
         .pdf-text-layer span {
             color: transparent; position: absolute; white-space: pre; pointer-events: none; transform-origin: 0% 0%;
             --scale-x: 1; --rotate: 0deg;
+            text-size-adjust: none; -webkit-text-size-adjust: none;
             font-size: calc(var(--total-scale-factor, 1) * var(--min-font-size, 1) * var(--font-height, 0px));
             transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(calc(1 / var(--min-font-size, 1)));
         }
@@ -914,9 +915,8 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
         #sw-update-banner button { height: 30px; padding: 0 14px; font-size: 12.5px; }
-        /* Native one-finger scrolling works in both axes; browser pinch zoom is
-           excluded because the PDF gesture handler owns two-finger scaling. */
-        body.pdf-mode #reader-container { touch-action: pan-x pan-y !important; overflow-anchor: none; scrollbar-gutter: stable; overflow: auto; }
+        body.pdf-mode #reader-container { touch-action: pan-x pan-y; overflow-anchor: none; scrollbar-gutter: stable; overflow: auto; }
+        body.touch-selecting #reader-container { touch-action: none !important; }
         body.pdf-mode #reader-pages { position: relative; height: auto; min-height: 100%; }
         /* .pdf-page-wrapper keeps its base (non-pdf) rule here — position:relative,
            margin-bottom gap — so multiple pages stack in normal document flow.
@@ -1135,6 +1135,7 @@
                             <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig">🔊</button>
                             <button class="tt-replay-btn" id="tt-expand-btn" data-i18n-title="tExpand" data-i18n="btnSentence">речення ⤢</button>
                             <button class="tt-replay-btn" id="tt-svo-btn" data-i18n-title="tSvo">S-V-O</button>
+                            <button class="tt-replay-btn" id="tt-close-btn" data-i18n-title="tClose" aria-label="Close">✕</button>
                         </div>
                     </div>
                     <div class="tt-actions">
@@ -1277,7 +1278,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=986e59d36f87"></script>
+    <script src="js/core.js?v=9b3a7936a1f7"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1288,13 +1289,13 @@
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
     <script src="js/tts.js?v=ca072c9ff47e"></script>
-    <script src="js/selection.js?v=1bd8a35d54ce"></script>
+    <script src="js/selection.js?v=13ecd7f5796d"></script>
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
-    <script src="js/pdf-zoom-pan.js?v=f9563a8c892f"></script>
-    <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
-    <script src="js/translation.js?v=c1bdb63dbdb6"></script>
-    <script src="js/grammar-svo.js?v=c6ffee4ef022"></script>
+    <script src="js/pdf-zoom-pan.js?v=b240b7e4b2c2"></script>
+    <script src="js/ui-tooltip.js?v=2d260186aacc"></script>
+    <script src="js/translation.js?v=1cbf1c4225df"></script>
+    <script src="js/grammar-svo.js?v=13b5ebbe63e4"></script>
     <script src="js/ai-client.js?v=819c861727a2"></script>
     <script src="js/practice-session.js?v=ca3e5f0617db"></script>
     <script src="js/practice-worksheet.js?v=5c8bdbf4b362"></script>
@@ -1303,8 +1304,8 @@
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
     <script src="js/pdf-outline.js?v=d6a27e5aaf93"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
-    <script src="js/pdf-continuous.js?v=b4a01558ea17"></script>
-    <script src="js/pdf-render.js?v=f7f068dd2502"></script>
+    <script src="js/pdf-continuous.js?v=5f000f35984b"></script>
+    <script src="js/pdf-render.js?v=7bc44e26dd09"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/quick-wheel.js?v=19327a0ecc88"></script>
