@@ -26,6 +26,10 @@ def check(name, expression, timeout=0):
     assert result is True, (name, result)
     print('PASS', name)
 
+def settle(s=0.9):
+    pause(s)
+    c.wait('pdfInFlightRenders===0', timeout=15)
+
 def boot(width, height, mobile):
     c.call('Emulation.setDeviceMetricsOverride', width=width, height=height, deviceScaleFactor=1, mobile=mobile)
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
@@ -74,7 +78,7 @@ def learning_on():
     c.js("aiAvailable = () => true; callAI = async () => { return JSON.stringify({ items: [{ surface: 'suis', lemma: 'être', pos: 'verb', tense: 'présent', person: '1s', features: ['présent', '1s'], explanation: 'Test explanation', forms: [] }] }) }; window.fetch = async () => { throw new Error('offline') }")
     if not c.js('state.translateMode'):
         c.js('els.translateBtn.click()')
-        pause(.4)
+        settle(0.6)
 
 CELL = """((text) => { const s = [...document.querySelectorAll('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span')].find(x => x.textContent.trim() === text);
   const b = s.getBoundingClientRect(); return {x: b.left + 4, y: b.top + b.height / 2}; })"""

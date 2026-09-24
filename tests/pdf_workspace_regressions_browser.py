@@ -29,6 +29,10 @@ def check(name, expression, timeout=0):
     assert result is True, (name, result)
     print('PASS', name)
 
+def settle(s=0.9):
+    pause(s)
+    c.wait('pdfInFlightRenders===0', timeout=15)
+
 def boot(width, height, mobile):
     c.call('Emulation.setDeviceMetricsOverride', width=width, height=height, deviceScaleFactor=1, mobile=mobile)
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
@@ -77,7 +81,7 @@ def learning_on():
     c.js("callAI = async () => { throw new Error('stubbed') }; window.fetch = async () => { throw new Error('offline') }")
     if not c.js('state.translateMode'):
         c.js('els.translateBtn.click()')
-        pause(.4)
+        settle(0.6)
 
 # ---------------------------------------------------------------- A: narrow-gutter row, mouse
 boot(1000, 900, False)
@@ -125,7 +129,6 @@ boot(1440, 900, False)
 upload(pdf_document([{'text': f'Workspace page {n} text for layout checks', 'size': (600, 800)} for n in range(1, 13)]))
 c.js("navigateToPdfPage(6, {instant: true})"); pause(1)
 GEOM = "(() => { const c = els.container.getBoundingClientRect(), m = els.mainArea.getBoundingClientRect(), g = document.getElementById('grammar-panel'); return {l: c.left, r: c.right, mainR: m.right, gOpen: g.classList.contains('expanded'), gL: g.getBoundingClientRect().left}; })()"
-def settle(): pause(.9); c.wait('pdfInFlightRenders===0', timeout=15)
 def grammar(open_):
     if c.js("document.getElementById('grammar-panel').classList.contains('expanded')") != open_: c.js("document.getElementById('grammar-tab').click()")
     settle()
