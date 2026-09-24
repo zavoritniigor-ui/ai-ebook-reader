@@ -123,6 +123,9 @@ check('B1 long-press starts a touch selection', """(() => {
         touchSelecting: state.touchSelecting,
         touchSelTimer: typeof touchSelTimer !== 'undefined' ? !!touchSelTimer : 'undefined',
         translateMode: state.translateMode,
+        pdReject: window.__pdReject || 'never_reached',
+        timerFired: window.__timerFired || false,
+        timerReject: window.__timerReject || 'never_ran',
         elAtA: document.elementFromPoint(""" + str(a['x']) + """, """ + str(a['y']) + """)?.outerHTML?.slice(0, 100),
         point: """ + str(a) + """
     };

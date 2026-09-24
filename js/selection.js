@@ -1140,15 +1140,16 @@ let dragSel = null;   // { node, start, end } — слово, з якого по
 let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 
 els.mainArea.addEventListener('pointerdown', (e) => {
-    if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
-    if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
-    if (state.format === 'pdf' && !els.container.contains(e.target)) return;
-    if (state.inkMode) return;
-    if (!state.translateMode) return;
-    if (e.button !== 0) return;
+    if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) { window.__pdReject = 'touchJustCommitted'; return; }
+    if (e.pointerType === 'touch' && !e.isPrimary) { window.__pdReject = 'notPrimary'; cancelDragSelection(); return; }
+    if (state.format === 'pdf' && !els.container.contains(e.target)) { window.__pdReject = 'notInContainer:' + (e.target?.tagName || 'null'); return; }
+    if (state.inkMode) { window.__pdReject = 'inkMode'; return; }
+    if (!state.translateMode) { window.__pdReject = 'notTranslateMode'; return; }
+    if (e.button !== 0) { window.__pdReject = 'buttonNotZero:' + e.button; return; }
     if (e.target.closest('#word-tooltip') || e.target.closest('.side-panel') ||
-        e.target.closest('#tts-controls') || e.target.closest('nav') || e.target.closest('header')) return;
+        e.target.closest('#tts-controls') || e.target.closest('nav') || e.target.closest('header')) { window.__pdReject = 'targetClosest'; return; }
 
+    window.__pdReject = 'accepted:' + e.pointerType;
     cancelDragSelection();
     dragStartX = e.clientX; dragStartY = e.clientY; dragMoved = false;
 
@@ -1158,7 +1159,8 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         clearTimeout(touchSelTimer);
         const px = e.clientX, py = e.clientY;
         touchSelTimer = setTimeout(() => {
-            if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) return;
+            window.__timerFired = true;
+            if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) { window.__timerReject = 'pointers'; return; }
             let w = wordBoundsAt(px, py);
             if (!w && state.format === 'pdf') {
                 for (const dy of [-8, 8, -16, 16, -24, 24]) {
@@ -1172,7 +1174,8 @@ els.mainArea.addEventListener('pointerdown', (e) => {
                     }
                 }
             }
-            if (!w) return;
+            if (!w) { window.__timerReject = 'noWord'; return; }
+            window.__timerReject = 'accepted';
             dragSel = w;
             dragMoved = true;                 // підсвітка з першого ж слова
             state.touchSelecting = true;      // свайпи гортання на час виділення вимкнені
