@@ -668,10 +668,6 @@
            (іде запит) або зелений (відповідь готова), і нічого більше. */
         .side-panel.loading .panel-tab { background: rgba(220, 53, 69, 0.14); }
         .side-panel.ready .panel-tab { background: rgba(25, 135, 84, 0.14); }
-        /* Друга лінія захисту (не лише статичне розведення вище): поки будь-яка бічна
-           панель розгорнута на весь екран, сам скрубер під час гортання сторінок не
-           потрібен і лише плутається під пальцем — тимчасово ховаємо його. */
-        body:has(.side-panel.expanded) #pdf-scrubber { opacity: 0; pointer-events: none; }
         
         /* Вміст панелей */
         .panel-header {
@@ -928,7 +924,7 @@
         #ink-tools { max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; }
         #ink-width { width: 94px; touch-action: auto; }
         #ink-tools label { color: white; display: flex; align-items: center; gap: 5px; font-size: 12px; }
-        #pdf-scrubber { transition: right 0.3s, opacity 0.3s;  display: none; position: absolute; right: 4px; top: 20%; z-index: 9000;
+        #pdf-scrubber { transition: right 0.3s, opacity 0.3s; display: none; position: absolute; right: calc(var(--ws-right, 0px) + 4px); top: 50%; transform: translateY(-50%); z-index: 9000;
             background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 22px;
             padding: 6px 0; width: 46px; text-align: center; opacity: .65; }
         body.pdf-mode #pdf-scrubber.available { display: block; }
@@ -1164,15 +1160,17 @@
                 <button id="btn-lang-level" class="panel-action-btn" data-i18n="btnLangLevel">📘 Мовний розбір</button>
                 <button id="btn-explain" class="panel-action-btn" data-i18n="btnExplain">📖 Пояснення</button>
             </div>
-            <div class="chat-input-area">
-                <select id="mic-lang" style="height:44px; max-width:76px;">
-                    <option value="uk-UA">UK</option><option value="en-US">EN</option><option value="fr-FR">FR</option><option value="ru-RU">RU</option>
-                    <option value="zh-CN">中文</option><option value="ko-KR">KO</option><option value="hi-IN">HI</option><option value="ga-IE">GA</option>
-                </select>
-                <button class="mic-btn" id="mic-btn" aria-label="Почати диктовку" aria-pressed="false">🎤</button>
-                <input type="text" id="ask-input" data-i18n-ph="ask">
-                <button id="ask-send-btn" class="btn-primary" style="width:44px; height:44px; padding:0; border-radius:50%; font-size:16px;">➤</button>
-            </div>
+            <form id="ask-chat-form" role="search" autocomplete="off" onsubmit="event.preventDefault(); els.askSendBtn.click();" style="display:contents;">
+                <div class="chat-input-area">
+                    <select id="mic-lang" style="height:44px; max-width:76px;">
+                        <option value="uk-UA">UK</option><option value="en-US">EN</option><option value="fr-FR">FR</option><option value="ru-RU">RU</option>
+                        <option value="zh-CN">中文</option><option value="ko-KR">KO</option><option value="hi-IN">HI</option><option value="ga-IE">GA</option>
+                    </select>
+                    <button type="button" class="mic-btn" id="mic-btn" aria-label="Почати диктовку" aria-pressed="false">🎤</button>
+                    <input type="search" id="ask-input" name="conversational_query" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" enterkeyhint="send" data-i18n-ph="ask">
+                    <button type="submit" id="ask-send-btn" class="btn-primary" style="width:44px; height:44px; padding:0; border-radius:50%; font-size:16px;">➤</button>
+                </div>
+            </form>
             <div id="dictation-status" class="dictation-status" role="status" aria-live="polite"></div>
         </div>
 
@@ -1250,31 +1248,33 @@
     <div id="settings-modal" onclick="if (event.target === this) closeKeySettings()">
         <div class="modal-content">
             <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" onclick="closeKeySettings()" data-i18n="close" data-i18n-title="tClose">✕</button>
-            <h3 id="gemini-key-label" data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
-            <input type="password" id="api-key-input" placeholder="AIza..." aria-labelledby="gemini-key-label" autocomplete="off" spellcheck="false">
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="key-link">aistudio.google.com/apikey</a>
+            <form id="api-keys-form" autocomplete="off" onsubmit="event.preventDefault(); saveApiKey();">
+                <h3 id="gemini-key-label" data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
+                <input type="password" id="api-key-input" name="gemini_api_key" placeholder="AIza..." aria-labelledby="gemini-key-label" autocomplete="new-password" spellcheck="false">
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="key-link">aistudio.google.com/apikey</a>
 
-            <h3 id="groq-key-label" style="margin-top:18px;" data-i18n="groqKeyTitle">⚡ Ключ Groq</h3>
-            <input type="password" id="groq-key-input" placeholder="gsk_..." aria-labelledby="groq-key-label" autocomplete="off" spellcheck="false">
-            <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="key-link">console.groq.com/keys</a>
-            <h3 id="openai-key-label" style="margin-top:18px;" data-i18n="openaiKeyTitle">🔑 OpenAI API</h3>
-            <input type="password" id="openai-key-input" placeholder="sk-..." aria-labelledby="openai-key-label" autocomplete="off" spellcheck="false">
-            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="key-link">platform.openai.com/api-keys</a>
-            <fieldset class="ai-provider-selector">
-                <legend data-i18n="aiProviderLabel">Активний AI</legend>
-                <div class="ai-provider-options">
-                    <label><input type="radio" name="ai-provider" value="openai"><span>OpenAI</span></label>
-                    <label><input type="radio" name="ai-provider" value="groq"><span>Groq</span></label>
-                    <label><input type="radio" name="ai-provider" value="gemini"><span>Gemini</span></label>
+                <h3 id="groq-key-label" style="margin-top:18px;" data-i18n="groqKeyTitle">⚡ Ключ Groq</h3>
+                <input type="password" id="groq-key-input" name="groq_api_key" placeholder="gsk_..." aria-labelledby="groq-key-label" autocomplete="new-password" spellcheck="false">
+                <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="key-link">console.groq.com/keys</a>
+                <h3 id="openai-key-label" style="margin-top:18px;" data-i18n="openaiKeyTitle">🔑 OpenAI API</h3>
+                <input type="password" id="openai-key-input" name="openai_api_key" placeholder="sk-..." aria-labelledby="openai-key-label" autocomplete="new-password" spellcheck="false">
+                <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="key-link">platform.openai.com/api-keys</a>
+                <fieldset class="ai-provider-selector">
+                    <legend data-i18n="aiProviderLabel">Активний AI</legend>
+                    <div class="ai-provider-options">
+                        <label><input type="radio" name="ai-provider" value="openai"><span>OpenAI</span></label>
+                        <label><input type="radio" name="ai-provider" value="groq"><span>Groq</span></label>
+                        <label><input type="radio" name="ai-provider" value="gemini"><span>Gemini</span></label>
+                    </div>
+                </fieldset>
+                <p id="ai-provider-error" role="alert" hidden></p>
+                <div class="key-hint" data-i18n="keyNote"></div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-ghost" onclick="closeKeySettings()" data-i18n="cancel">Скасувати</button>
+                    <button type="submit" class="btn-primary" data-i18n="save">Зберегти</button>
                 </div>
-            </fieldset>
-            <p id="ai-provider-error" role="alert" hidden></p>
-            <div class="key-hint" data-i18n="keyNote"></div>
-
-            <div class="modal-footer">
-                <button class="btn-ghost" onclick="closeKeySettings()" data-i18n="cancel">Скасувати</button>
-                <button class="btn-primary" onclick="saveApiKey()" data-i18n="save">Зберегти</button>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -1288,14 +1288,14 @@
         // вище вже завантажений і виконаний, тож тут виклик безпечний.
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
-    <script src="js/tts.js?v=ca072c9ff47e"></script>
+    <script src="js/tts.js?v=0cbe11b1e558"></script>
     <script src="js/selection.js?v=13ecd7f5796d"></script>
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=b240b7e4b2c2"></script>
     <script src="js/ui-tooltip.js?v=2d260186aacc"></script>
     <script src="js/translation.js?v=1cbf1c4225df"></script>
-    <script src="js/grammar-svo.js?v=13b5ebbe63e4"></script>
+    <script src="js/grammar-svo.js?v=20035a756c2f"></script>
     <script src="js/ai-client.js?v=819c861727a2"></script>
     <script src="js/practice-session.js?v=ca3e5f0617db"></script>
     <script src="js/practice-worksheet.js?v=5c8bdbf4b362"></script>
@@ -1304,11 +1304,11 @@
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
     <script src="js/pdf-outline.js?v=d6a27e5aaf93"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
-    <script src="js/pdf-continuous.js?v=5f000f35984b"></script>
+    <script src="js/pdf-continuous.js?v=ee42c36e7287"></script>
     <script src="js/pdf-render.js?v=7bc44e26dd09"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=19327a0ecc88"></script>
+    <script src="js/quick-wheel.js?v=99032979293a"></script>
     <script src="js/main.js?v=fd7d286bd077"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>

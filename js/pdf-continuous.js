@@ -479,6 +479,7 @@ function updatePdfWorkspaceLayout(options = {}) {
         document.documentElement.style.setProperty('--ws-width', `${Math.round(ws.width)}px`);
         const leftReserve = Math.max(0, Math.round(ws.left - mainRect.left));
         const rightReserve = Math.max(0, Math.round(mainRect.right - ws.right));
+        document.documentElement.style.setProperty('--ws-right', `${rightReserve}px`);
 
         const changed = (lastPdfWorkspaceLeftReserve === null) ||
                         (Math.abs(lastPdfWorkspaceLeftReserve - leftReserve) >= 1) ||

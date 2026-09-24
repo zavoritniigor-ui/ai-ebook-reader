@@ -1007,6 +1007,7 @@ document.getElementById('btn-lang-level').onclick = () => {
     const frag = context.lastAskContext || context.lastGrammarSentence;
     if (!frag) { showToast(t('selectFirst')); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
+    if (els.askInput) els.askInput.value = '';
     startAiTask(frag, 'level');
     els.askPanel.classList.add('expanded');
 };
@@ -1024,6 +1025,7 @@ document.getElementById('btn-explain').onclick = () => {
     const frag = context.lastAskContext || context.lastGrammarSentence;
     if (!frag) { showToast(t('selectFirst')); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
+    if (els.askInput) els.askInput.value = '';
     startAiTask(frag, 'ask');
     els.askPanel.classList.add('expanded');
 };
