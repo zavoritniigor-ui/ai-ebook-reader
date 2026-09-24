@@ -29,6 +29,7 @@ def boot(width, height, mobile):
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
     c.call('Page.navigate', url=URL)
     c.wait("document.readyState==='complete' && !document.body.inert && typeof navigateToPdfPage==='function'", timeout=30)
+    c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
     c.js("localStorage.clear(); state.pdfScale = 1; state.pdfZoom = 1; showUpdateBanner=()=>{}; document.getElementById('sw-update-banner')?.remove(); window.__errors=[]; addEventListener('error', e => __errors.push(e.message))")
 
 def upload_pdf(data):

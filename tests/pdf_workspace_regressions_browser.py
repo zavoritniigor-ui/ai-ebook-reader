@@ -38,6 +38,7 @@ def boot(width, height, mobile):
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
     c.call('Page.navigate', url=URL)
     c.wait("document.readyState==='complete' && !document.body.inert && typeof navigateToPdfPage==='function'", timeout=30)
+    c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
     c.js("localStorage.clear(); state.pdfScale = 1; state.pdfZoom = 1; showUpdateBanner=()=>{}; document.getElementById('sw-update-banner')?.remove(); window.__errors=[]; addEventListener('error', e => __errors.push(e.message))")
 
 def upload(data):
@@ -111,6 +112,7 @@ upload(paradigm_pdf())
 learning_on()
 a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
 scroll_before = c.js('els.container.scrollTop')
+c.call('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
 pause(.55)
 check('B1 long-press starts a touch selection', 'state.touchSelecting === true', timeout=3)
