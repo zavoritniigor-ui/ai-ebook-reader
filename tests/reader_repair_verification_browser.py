@@ -25,6 +25,8 @@ def check(name, expression, timeout=0):
     print('PASS', name)
 
 def boot(width, height, mobile):
+    try: c.call('Emulation.clearDeviceMetricsOverride')
+    except Exception: pass
     c.call('Emulation.setDeviceMetricsOverride', width=width, height=height, deviceScaleFactor=1, mobile=mobile)
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
     c.call('Page.navigate', url=URL)

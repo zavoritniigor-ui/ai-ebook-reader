@@ -31,6 +31,8 @@ def settle(s=0.9):
     c.wait('pdfInFlightRenders===0', timeout=15)
 
 def boot(width, height, mobile):
+    try: c.call('Emulation.clearDeviceMetricsOverride')
+    except Exception: pass
     c.call('Emulation.setDeviceMetricsOverride', width=width, height=height, deviceScaleFactor=1, mobile=mobile)
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
     c.call('Page.navigate', url=URL)

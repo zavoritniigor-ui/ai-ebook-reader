@@ -34,6 +34,8 @@ def settle(s=0.9):
     c.wait('pdfInFlightRenders===0', timeout=15)
 
 def boot(width, height, mobile):
+    try: c.call('Emulation.clearDeviceMetricsOverride')
+    except Exception: pass
     c.call('Emulation.setDeviceMetricsOverride', width=width, height=height, deviceScaleFactor=1, mobile=mobile)
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
     c.call('Page.navigate', url=URL)
@@ -107,7 +109,7 @@ check('A3 the selection is the French cells only', "(() => { const t = state.can
 
 # ---------------------------------------------------------------- B: touch long-press drag
 c.js("try { CSS.highlights.delete(SEL_HL_NAME) } catch (e) {}; state.canonicalSelection = null; els.tooltip.style.display = 'none'")
-boot(1000, 900, True)
+boot(1100, 900, True)
 upload(paradigm_pdf())
 learning_on()
 a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
@@ -115,7 +117,16 @@ scroll_before = c.js('els.container.scrollTop')
 c.call('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
 pause(.55)
-check('B1 long-press starts a touch selection', 'state.touchSelecting === true', timeout=5)
+check('B1 long-press starts a touch selection', """(() => {
+    if (state.touchSelecting === true) return true;
+    return {
+        touchSelecting: state.touchSelecting,
+        touchSelTimer: typeof touchSelTimer !== 'undefined' ? !!touchSelTimer : 'undefined',
+        translateMode: state.translateMode,
+        elAtA: document.elementFromPoint(""" + str(a['x']) + """, """ + str(a['y']) + """)?.outerHTML?.slice(0, 100),
+        point: """ + str(a) + """
+    };
+})()""", timeout=5)
 for i in range(1, 11):
     c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=[dict(x=a['x'] + (b['x'] + 20 - a['x']) * i / 10, y=a['y'] + (b['y'] - a['y']) * i / 10, id=1)])
     pause(.03)
