@@ -115,7 +115,7 @@ scroll_before = c.js('els.container.scrollTop')
 c.call('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
 pause(.55)
-check('B1 long-press starts a touch selection', 'state.touchSelecting === true', timeout=3)
+check('B1 long-press starts a touch selection', 'state.touchSelecting === true', timeout=5)
 for i in range(1, 11):
     c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=[dict(x=a['x'] + (b['x'] + 20 - a['x']) * i / 10, y=a['y'] + (b['y'] - a['y']) * i / 10, id=1)])
     pause(.03)

@@ -23,8 +23,22 @@ function caretRangeAt(clientX, clientY) {
         if (pos) { range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); range.collapse(true); }
     }
     // During transformed PDF hit-testing Chrome may return the layer element,
-    // not a text offset. Recover the nearest glyph within that PDF item only.
-    if (range && range.startContainer.nodeType === Node.ELEMENT_NODE) {
+    // page wrapper, or canvas instead of a text offset. Recover the nearest glyph.
+    if ((!range || range.startContainer.nodeType === Node.ELEMENT_NODE) && state.format === 'pdf') {
+        const el = (range && range.startContainer.nodeType === Node.ELEMENT_NODE) ? range.startContainer : document.elementFromPoint(clientX, clientY);
+        let layer = el?.closest?.('.pdf-text-layer');
+        if (!layer) {
+            const pageEl = el?.closest?.('.pdf-page-wrapper') ||
+                           document.elementFromPoint(clientX, clientY)?.closest('.pdf-page-wrapper') ||
+                           pdfPageWrappers?.[pdfActivePage] || document.querySelector('.pdf-page-wrapper');
+            if (pageEl) layer = pageEl.querySelector('.pdf-text-layer');
+        }
+        const span = layer && pdfNearestSpan(layer, clientX, clientY);
+        if (span) {
+            const caret = pdfCaretInSpan(span, clientX, clientY);
+            if (caret) return caret;
+        }
+    } else if (range && range.startContainer.nodeType === Node.ELEMENT_NODE) {
         const layer = range.startContainer.closest('.pdf-text-layer');
         const span = layer && pdfNearestSpan(layer, clientX, clientY);
         if (span) return pdfCaretInSpan(span, clientX, clientY) || range;
@@ -1074,7 +1088,14 @@ function wordBoundsAt(clientX, clientY) {
     const rTest = document.createRange();
     rTest.setStart(wBounds.node, wBounds.start);
     rTest.setEnd(wBounds.endNode || wBounds.node, wBounds.end);
-    if (!isPointInRects(clientX, clientY, rTest.getClientRects(), state.format === 'pdf' ? 10 : 2)) return null;
+    if (!isPointInRects(clientX, clientY, rTest.getClientRects(), state.format === 'pdf' ? 10 : 2)) {
+        if (state.format === 'pdf' && node.parentElement) {
+            const parentRect = node.parentElement.getBoundingClientRect();
+            if (!isPointInRects(clientX, clientY, [parentRect], 14)) return null;
+        } else {
+            return null;
+        }
+    }
     return wBounds;
 }
 
@@ -1140,9 +1161,15 @@ els.mainArea.addEventListener('pointerdown', (e) => {
             if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) return;
             let w = wordBoundsAt(px, py);
             if (!w && state.format === 'pdf') {
-                for (const dy of [-8, 8, -16, 16]) {
+                for (const dy of [-8, 8, -16, 16, -24, 24]) {
                     w = wordBoundsAt(px, py + dy);
                     if (w) break;
+                }
+                if (!w) {
+                    for (const dx of [-8, 8, -16, 16]) {
+                        w = wordBoundsAt(px + dx, py);
+                        if (w) break;
+                    }
                 }
             }
             if (!w) return;
