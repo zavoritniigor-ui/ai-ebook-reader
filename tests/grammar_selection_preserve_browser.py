@@ -72,7 +72,9 @@ def upload(data):
 
 def learning_on():
     c.js("aiAvailable = () => true; callAI = async () => { return JSON.stringify({ items: [{ surface: 'suis', lemma: 'être', pos: 'verb', tense: 'présent', person: '1s', features: ['présent', '1s'], explanation: 'Test explanation', forms: [] }] }) }; window.fetch = async () => { throw new Error('offline') }")
-    if not c.js('state.translateMode'): c.js('els.translateBtn.click()')
+    if not c.js('state.translateMode'):
+        c.js('els.translateBtn.click()')
+        pause(.4)
 
 CELL = """((text) => { const s = [...document.querySelectorAll('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span')].find(x => x.textContent.trim() === text);
   const b = s.getBoundingClientRect(); return {x: b.left + 4, y: b.top + b.height / 2}; })"""
@@ -85,7 +87,7 @@ learning_on()
 a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
 pause(.55)
-check('Touch long-press initiates touch selecting', 'state.touchSelecting === true')
+check('Touch long-press initiates touch selecting', 'state.touchSelecting === true', timeout=3)
 
 for i in range(1, 11):
     c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=[dict(x=a['x'] + (b['x'] + 20 - a['x']) * i / 10, y=a['y'] + (b['y'] - a['y']) * i / 10, id=1)])

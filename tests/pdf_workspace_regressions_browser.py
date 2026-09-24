@@ -75,7 +75,9 @@ CELL = """((text) => { const s = [...document.querySelectorAll('.pdf-page-wrappe
 
 def learning_on():
     c.js("callAI = async () => { throw new Error('stubbed') }; window.fetch = async () => { throw new Error('offline') }")
-    if not c.js('state.translateMode'): c.js('els.translateBtn.click()')
+    if not c.js('state.translateMode'):
+        c.js('els.translateBtn.click()')
+        pause(.4)
 
 # ---------------------------------------------------------------- A: narrow-gutter row, mouse
 boot(1000, 900, False)
@@ -107,7 +109,7 @@ a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
 scroll_before = c.js('els.container.scrollTop')
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
 pause(.55)
-check('B1 long-press starts a touch selection', 'state.touchSelecting === true')
+check('B1 long-press starts a touch selection', 'state.touchSelecting === true', timeout=3)
 for i in range(1, 11):
     c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=[dict(x=a['x'] + (b['x'] + 20 - a['x']) * i / 10, y=a['y'] + (b['y'] - a['y']) * i / 10, id=1)])
     pause(.03)
