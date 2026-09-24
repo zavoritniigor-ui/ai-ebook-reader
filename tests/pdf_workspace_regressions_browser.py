@@ -117,8 +117,16 @@ learning_on()
 a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
 scroll_before = c.js('els.container.scrollTop')
 c.call('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
+c.js("""window.__touchLog=[]; for (const t of ['pointerdown','pointerup','pointercancel','touchstart','touchend','touchcancel','contextmenu','selectstart'])
+  document.addEventListener(t, e => __touchLog.push([t, e.pointerType || '', (e.target.className || e.target.tagName || '').toString().slice(0, 30), Math.round(performance.now()), e.cancelable]), {capture: true}); 1""")
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
 pause(.55)
+if not c.js('state.touchSelecting === true'):
+    pause(1)
+    print('B1 DIAG', c.js("""({events: __touchLog, touchSelecting: state.touchSelecting, timer: touchSelTimer !== null, dragSel: !!dragSel,
+      translateMode: state.translateMode, justCommitted: state.touchJustCommitted || null, now: Math.round(performance.now()),
+      word: !!wordBoundsAt(%f, %f), under: (e => e && (e.className || e.tagName))(document.elementFromPoint(%f, %f)),
+      touchPoints: navigator.maxTouchPoints, pointers: typeof pdfPointers !== 'undefined' ? pdfPointers.size : null})""" % (a['x'], a['y'], a['x'], a['y'])))
 check('B1 long-press starts a touch selection', 'state.touchSelecting === true', timeout=3)
 for i in range(1, 11):
     c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=[dict(x=a['x'] + (b['x'] + 20 - a['x']) * i / 10, y=a['y'] + (b['y'] - a['y']) * i / 10, id=1)])
