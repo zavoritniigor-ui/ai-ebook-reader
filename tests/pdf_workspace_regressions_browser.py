@@ -34,15 +34,10 @@ def settle(s=0.9):
     c.wait('pdfInFlightRenders===0', timeout=15)
 
 def boot(width, height, mobile):
-    try: c.call('Emulation.clearDeviceMetricsOverride')
-    except Exception: pass
     c.call('Emulation.setDeviceMetricsOverride', width=width, height=height, deviceScaleFactor=1, mobile=mobile)
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
-    c.call('Page.navigate', url='about:blank')
-    c.wait("location.href==='about:blank'", timeout=10)
     c.call('Page.navigate', url=URL)
-    c.wait("location.protocol==='http:' && document.readyState==='complete' && !document.body.inert && typeof navigateToPdfPage==='function'", timeout=30)
-    c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
+    c.wait("document.readyState==='complete' && !document.body.inert && typeof navigateToPdfPage==='function'", timeout=30)
     c.js("localStorage.clear(); state.pdfScale = 1; state.pdfZoom = 1; showUpdateBanner=()=>{}; document.getElementById('sw-update-banner')?.remove(); window.__errors=[]; addEventListener('error', e => __errors.push(e.message))")
 
 def upload(data):
@@ -111,12 +106,11 @@ check('A3 the selection is the French cells only', "(() => { const t = state.can
 
 # ---------------------------------------------------------------- B: touch long-press drag
 c.js("try { CSS.highlights.delete(SEL_HL_NAME) } catch (e) {}; state.canonicalSelection = null; els.tooltip.style.display = 'none'")
-boot(1100, 900, True)
+boot(1000, 900, True)
 upload(paradigm_pdf())
 learning_on()
 a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
 scroll_before = c.js('els.container.scrollTop')
-c.call('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
 c.js("""window.__touchLog=[]; for (const t of ['pointerdown','pointerup','pointercancel','touchstart','touchend','touchcancel','contextmenu','selectstart'])
   document.addEventListener(t, e => __touchLog.push([t, e.pointerType || '', (e.target.className || e.target.tagName || '').toString().slice(0, 30), Math.round(performance.now()), e.cancelable]), {capture: true}); 1""")
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
