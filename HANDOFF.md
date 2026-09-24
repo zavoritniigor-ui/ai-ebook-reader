@@ -1,3 +1,23 @@
+## ACTIVE: post-merge reader UX/tablet repair (2026-09-23)
+
+- Worktree: `/tmp/reader-ux-tablet-repair`; branch `feature/reader-ux-tablet-repair`.
+- Verified starting origin/main and local HEAD: `5f2513766d4bcc6809c4fee8f780f52a6f9a16d9`.
+- Mandatory manual acceptance BEFORE merge: physical tablet pinch and sentence selection.
+- **P1-1 (Physical tablet pinch-zoom position loss) — COMPLETE**:
+  - Root causes identified & resolved:
+    1. Page lookup used untransformed offsetTop against transformed scroll position; replaced with rendered-rect lookup (`getPdfPageAtClientY`).
+    2. Gesture anchor used entire-stack fractions instead of physical-page/page-local point + viewport focal point; replaced with `pdfDocumentAnchor` / `restorePdfDocumentAnchor`.
+    3. Active tracking was re-enabled before clearing transform; suppressed through commit.
+    4. Canvas retention during distant jumps fixed by preserving re-rendered pages in `pdfRenderedPages` so eviction safely cleans old page wrappers.
+    5. ResizeObserver in `js/navigation.js` was firing on scrollbar appearance (height-only changes), scheduling a delayed relayout with a null anchor that reset `scrollLeft` to 0. Added width-change-only filter for continuous PDF fit-width/free modes, timer cancellation in `invalidatePendingPdfResizeAnchor`, and relayout guards.
+  - Automated verification:
+    - `tests/pdf_pinch_anchor_browser.py`: 100% PASS across 4 panel configurations (sidebar open/closed, grammar open/closed), pages 10, 200, 410, fractions 0.15/0.5/0.85, and ratios 1.5x/0.67x/1.4x/0.71x. Sub-pixel precision (`dx`, `dy` < 1px) and strictly bounded canvas count (10).
+    - `tests/pdf_workspace_regressions_browser.py`: 100% PASS (all sections A1-E1).
+    - `tests/pdf_continuous_browser.py`: 100% PASS (all 13 sections).
+    - `tests/app_shell_versions.py` and `tests/ci_suite_coverage.py`: 100% PASS.
+    - All JS syntax checks clean.
+- Next: P1-2 (Physical tablet range/sentence selection) — multi-word drag retention, non-blocking touchmove guard, column-isolated bilingual selection.
+
 # AI Ebook Reader — Agent Handoff
 
 This file is the shared handoff state between Claude Code and Codex. The 19-step

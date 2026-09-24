@@ -256,14 +256,18 @@ function handlePdfIntersection(entries) {
 
 function getPdfPageAtViewportCenter(containerH) {
     if (!pdfPageWrappers || pdfPageWrappers.length <= 1) return pdfActivePage;
-    const center = els.container.scrollTop + (containerH ?? els.container.clientHeight) / 2;
+    const center = els.container.getBoundingClientRect().top + (containerH ?? els.container.clientHeight) / 2;
+    return getPdfPageAtClientY(center);
+}
+
+// Client geometry includes the live stack transform; offsetTop does not.
+function getPdfPageAtClientY(center) {
     let low = 1, high = state.totalPages;
     while (low <= high) {
         const mid = (low + high) >> 1;
         const w = pdfPageWrappers[mid];
         if (!w) break;
-        const top = w.offsetTop;
-        const bottom = top + w.offsetHeight;
+        const { top, bottom } = w.getBoundingClientRect();
         if (center < top) {
             high = mid - 1;
         } else if (center > bottom) {
@@ -306,7 +310,7 @@ function cancelContinuousPdfRenders() {
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
 }
 
-function updatePdfRenderWindow(activePage) {
+function updatePdfRenderWindow(activePage, rerenderWanted = false) {
     if (!pdfContinuousReady || state.format !== 'pdf' || !state.pdfDoc) return new Map();
     const doc = state.pdfDoc, epoch = readerEpoch.book, generation = pdfContinuousGeneration;
     const lo = Math.max(1, activePage - PDF_RENDER_BUFFER);
@@ -323,7 +327,17 @@ function updatePdfRenderWindow(activePage) {
     // height, so scroll position never jumps). This also covers pages that
     // are STILL mid-render (not yet in pdfRenderedPages) but no longer
     // wanted — pdfRenderedPages alone only tracks completed ones.
-    pdfPagesWithActiveRenderTask().forEach(n => { if (!wanted.has(n)) cancelPdfPageRenderTask(n); });
+    pdfPagesWithActiveRenderTask().forEach(n => {
+        if (!wanted.has(n)) {
+            cancelPdfPageRenderTask(n);
+            const w = pdfPageWrappers[n];
+            if (w && !pdfRenderedPages.has(n) && w.children.length > 0) {
+                w.replaceChildren();
+                w.classList.add('pdf-placeholder');
+                delete w.dataset.rendered;
+            }
+        }
+    });
     pdfRenderedPages.forEach(n => {
         if (wanted.has(n)) return;
         pdfPageTokens[n]++;
@@ -341,7 +355,7 @@ function updatePdfRenderWindow(activePage) {
 
     const pending = new Map(); // pageNum -> Promise<boolean>, for callers that need to await a specific page
     wanted.forEach(n => {
-        if (pdfRenderedPages.has(n)) { pending.set(n, Promise.resolve(true)); return; }
+        if (!rerenderWanted && pdfRenderedPages.has(n)) { pending.set(n, Promise.resolve(true)); return; }
         const w = pdfPageWrappers[n];
         if (!w) return;
         // A still-wanted page can ALSO have a stale in-flight render — e.g.
