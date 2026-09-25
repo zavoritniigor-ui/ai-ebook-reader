@@ -201,7 +201,7 @@
             min-width: 0; text-overflow: ellipsis;
         }
 
-        .workspace { margin-top: 58px; height: calc(100vh - 58px); display: flex; flex: 1; overflow: hidden; position: relative; transition: margin-top 0.3s, height 0.3s; }
+        .workspace { margin-top: var(--app-header-h, 58px); height: calc(100vh - var(--app-header-h, 58px)); display: flex; flex: 1; overflow: hidden; position: relative; transition: margin-top 0.3s, height 0.3s; }
 
         body.immersive-mode header#app-header { transform: translateY(-100%); }
         body.immersive-mode footer#app-footer { transform: translateY(calc(100% + 24px)); } /* clears the 14px floating offset too */
@@ -607,7 +607,7 @@
             cursor: pointer; white-space: nowrap; flex: 1 1 50%; min-width: 0; text-align: center;
             transition: filter .15s, transform .1s; flex-shrink: 0;
         }
-        .tt-ai-btn { background: #10a37f; color: white; }
+        .tt-ai-btn { background: #0b7a5e; color: white; }   /* white on #0b7a5e = 5.3:1 (AA); #10a37f was 3.2:1 */
         .tt-ask-btn { background: #0dcaf0; color: #0b2226; }
         .tt-ai-btn:hover, .tt-ask-btn:hover { filter: brightness(1.08); }
         .tt-ai-btn:active, .tt-ask-btn:active { transform: scale(0.98); }
@@ -1107,8 +1107,8 @@
             <ul id="toc-list"><li style="color: gray; padding: 20px;" data-i18n="noBook">Книгу не завантажено</li></ul>
             <div id="pdf-sidebar">
                 <div id="pdf-sidebar-tabs">
-                    <button type="button" id="pdf-tab-thumbs" class="pdf-sidebar-tab active" data-mode="thumbnails">Thumbnails</button>
-                    <button type="button" id="pdf-tab-outline" class="pdf-sidebar-tab" data-mode="outline" disabled>Contents</button>
+                    <button type="button" id="pdf-tab-thumbs" class="pdf-sidebar-tab active" data-mode="thumbnails" data-i18n="pdfTabThumbs">Ескізи</button>
+                    <button type="button" id="pdf-tab-outline" class="pdf-sidebar-tab" data-mode="outline" data-i18n="pdfTabContents" disabled>Зміст</button>
                 </div>
                 <ul id="pdf-thumb-list" class="pdf-sidebar-list"></ul>
                 <ul id="pdf-outline-list" class="pdf-sidebar-list" hidden></ul>
@@ -1278,7 +1278,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=9b3a7936a1f7"></script>
+    <script src="js/core.js?v=713c7c062ace"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1293,22 +1293,22 @@
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=b240b7e4b2c2"></script>
-    <script src="js/ui-tooltip.js?v=9cf2f8bc902f"></script>
+    <script src="js/ui-tooltip.js?v=80e860bb85c9"></script>
     <script src="js/translation.js?v=b1aa6529b730"></script>
-    <script src="js/grammar-svo.js?v=99a3dce645f4"></script>
+    <script src="js/grammar-svo.js?v=3f8b0d75a466"></script>
     <script src="js/ai-client.js?v=819c861727a2"></script>
     <script src="js/practice-session.js?v=ca3e5f0617db"></script>
     <script src="js/practice-worksheet.js?v=9b3d4f232932"></script>
     <script src="js/dictation.js?v=cd46e7d595c8"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
     <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
-    <script src="js/pdf-outline.js?v=d6a27e5aaf93"></script>
+    <script src="js/pdf-outline.js?v=97d934db97c6"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
     <script src="js/pdf-continuous.js?v=ee42c36e7287"></script>
     <script src="js/pdf-render.js?v=7bc44e26dd09"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=99032979293a"></script>
+    <script src="js/quick-wheel.js?v=633836f1a648"></script>
     <script src="js/main.js?v=fd7d286bd077"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>

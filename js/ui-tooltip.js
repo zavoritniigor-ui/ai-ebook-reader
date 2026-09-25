@@ -81,6 +81,16 @@ document.addEventListener('pointerdown', (e) => {
     }
 });
 
+// The header wraps to two toolbar rows on narrower desktop/tablet widths (~97px), but .workspace used a fixed
+// 58px offset, so the header covered the top of the book and the sidebar's Thumbnails/Contents tabs. Keep the
+// workspace offset equal to the header's real height (phones keep their own collapsible-menu offset).
+const appHeaderEl = document.getElementById('app-header');
+if (appHeaderEl && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+        document.documentElement.style.setProperty('--app-header-h', `${Math.ceil(appHeaderEl.getBoundingClientRect().height)}px`);
+    }).observe(appHeaderEl);
+}
+
 // Повноекранний режим на телефоні/планшеті: після відкриття книги ховаємо header —
 // футер на мобільному вже прихований за замовчуванням через CSS.
 function enterMobileFullScreenIfNeeded() {
@@ -149,6 +159,16 @@ function repositionTooltip() {
 }
 window.visualViewport?.addEventListener('resize', repositionTooltip);
 window.visualViewport?.addEventListener('scroll', repositionTooltip);
+
+// The text the learner currently has in front of them in the popup: the whole selection for a multi-word
+// selection (verbatim, however long), or the sentence around a single tapped word. Level / Explain use it, so the
+// Quick Wheel acts on the live selection instead of on whatever an earlier AI action analysed.
+function currentReaderSelectionText() {
+    if (!els.tooltip || els.tooltip.style.display === 'none') return '';
+    const shown = (state.lastSelectionText || els.ttOriginal?.textContent || '').trim();
+    if (!shown) return '';
+    return /\s/.test(shown) ? shown : ((state.ctxSentence || '').trim() || shown);
+}
 
 // Dismiss the reader's translation popup and its selection -- the popup's own close button, and anything that
 // takes over the reading area (the Practice worksheet overlays the text the popup refers to).

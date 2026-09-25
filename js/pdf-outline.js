@@ -321,16 +321,144 @@ async function loadPdfOutline(doc) {
     const isCurrent = () => state.format === 'pdf' && state.pdfDoc === doc;
     if (!isCurrent()) return;
     state.pdfOutline = null;
+    state.pdfOutlineNative = false;
+    state.pdfOutlineGenerated = false;
+    pdfHeadingScanGeneration++;   // a new document cancels any heading pass still running for the old one
     document.getElementById('pdf-tab-outline').disabled = true;
     try {
         const raw = await doc.getOutline();
-        if (!isCurrent() || !raw || !raw.length) return;
+        if (!isCurrent()) return;
+        if (!raw || !raw.length) {
+            // No bookmarks in the file (e.g. the real "Complete French All-in-One"): Contents would stay disabled
+            // forever. Build one from the book's own headings in the background instead.
+            schedulePdfHeadingScan(doc);
+            return;
+        }
         const outline = await resolveOutlineDestinations(doc, raw);
         if (!isCurrent()) return;
         state.pdfOutline = outline;
+        state.pdfOutlineNative = true;
         document.getElementById('pdf-tab-outline').disabled = false;
         renderPdfOutline();
     } catch (e) { /* outline is optional */ }
+}
+
+// ===================== GENERATED CONTENTS (PDF WITHOUT AN OUTLINE) =====================
+// Lines set clearly larger than the book's body text are its chapter / section headings. A throttled background
+// pass (same courtesy as the printed-label scan: it waits while pages render, during pinch/resize/scrubbing) reads
+// each page's text once and rebuilds Contents every PDF_HEADING_BATCH pages, so it fills in progressively.
+const PDF_HEADING_BATCH = 40;
+let pdfHeadingScanGeneration = 0;
+let pdfHeadingScanTimer = null;
+
+function schedulePdfHeadingScan(doc) {
+    const gen = ++pdfHeadingScanGeneration;
+    clearTimeout(pdfHeadingScanTimer);
+    pdfHeadingScanTimer = setTimeout(() => {
+        pdfHeadingScanTimer = null;
+        if (state.format === 'pdf' && state.pdfDoc === doc && gen === pdfHeadingScanGeneration) startPdfHeadingScan(doc, gen);
+    }, 3000);
+}
+
+// One page's text lines with their font size and vertical position (0 = top of page).
+function pdfPageTextLines(items, vp) {
+    const bottom = vp?.viewBox?.[1] || 0;
+    const height = vp?.viewBox ? vp.viewBox[3] - bottom : (vp?.height || 792);
+    const lines = [];
+    for (const item of items) {
+        const str = (item.str || '').trim();
+        if (!str) continue;
+        const t = item.transform || [1, 0, 0, 1, 0, 0];
+        const size = Math.hypot(t[2], t[3]) || item.height || 0;
+        if (!size) continue;
+        const y = t[5];
+        let line = lines.find(l => Math.abs(l.y - y) <= size * 0.5 && Math.abs(l.size - size) <= size * 0.15);
+        if (!line) { line = { y, size, parts: [] }; lines.push(line); }
+        line.parts.push({ x: t[4], str });
+    }
+    return lines.map(l => ({
+        text: l.parts.sort((a, b) => a.x - b.x).map(p => p.str).join(' ').replace(/\s+/g, ' ')
+            .replace(/\s+([,.;:!?)\]])/g, '$1').replace(/(^|\s)-\s+(?=\p{L})/gu, '$1-').trim(),
+        size: l.size,
+        yFraction: Math.min(1, Math.max(0, 1 - (l.y - bottom) / height))
+    }));
+}
+
+function buildGeneratedPdfContents(pages) {
+    // Body size: the most common text size, weighted by characters.
+    const weight = new Map();
+    for (const lines of pages.values()) for (const l of lines) {
+        const k = Math.round(l.size * 2) / 2;
+        weight.set(k, (weight.get(k) || 0) + l.text.length);
+    }
+    let body = 0, best = -1;
+    for (const [k, w] of weight) if (w > best) { best = w; body = k; }
+    if (!body) return null;
+    // Running heads repeat on many pages; they are not headings.
+    const seen = new Map();
+    for (const lines of pages.values()) for (const l of new Set(lines.map(x => x.text.toLowerCase()))) seen.set(l, (seen.get(l) || 0) + 1);
+    const candidates = [];
+    for (const [page, lines] of [...pages.entries()].sort((a, b) => a[0] - b[0])) {
+        const heads = lines.filter(l => l.size >= body * 1.35 && l.yFraction > 0.04 && l.yFraction < 0.96 &&
+            l.text.length >= 3 && l.text.length <= 100 && (l.text.match(/\p{L}/gu) || []).length >= 3 &&
+            (seen.get(l.text.toLowerCase()) || 0) <= 3 &&
+            !/(?:^|\s)(?:\p{L}\s){3}/u.test(l.text))            // letter-spaced display type ("M A K E S")
+            .sort((a, b) => a.yFraction - b.yFraction);
+        // A title set over two lines (same size, consecutive) is one heading.
+        const merged = [];
+        for (const h of heads) {
+            const prev = merged[merged.length - 1];
+            if (prev && Math.abs(prev.size - h.size) <= h.size * 0.1 && h.yFraction - prev.lastY < (h.size * 2) / 800 &&
+                prev.text.length + h.text.length <= 100 && !/^\d/.test(h.text)) {
+                prev.text += ' ' + h.text; prev.lastY = h.yFraction;
+            } else merged.push({ ...h, lastY: h.yFraction });
+        }
+        // Real content pages carry a few headings; the book's own contents / an index page lists dozens.
+        if (merged.length > 6) continue;
+        for (const h of merged) candidates.push({ page, title: h.text, level: h.size >= body * 2 ? 1 : 2, yFraction: h.yFraction });
+    }
+    if (candidates.length < 3 || candidates.length > 600) return null;
+    const outline = [];
+    let chapter = null;
+    for (const c of candidates) {
+        const entry = { title: c.title, pageIndex: c.page, yFraction: c.yFraction, items: [] };
+        if (c.level === 1 || !chapter) { outline.push(entry); if (c.level === 1) chapter = entry; }
+        else chapter.items.push(entry);
+    }
+    return outline;
+}
+
+async function startPdfHeadingScan(doc, gen) {
+    const isCurrent = () => state.format === 'pdf' && state.pdfDoc === doc && gen === pdfHeadingScanGeneration && !state.pdfOutlineNative;
+    const pages = new Map();
+    const publish = () => {
+        const outline = buildGeneratedPdfContents(pages);
+        if (!outline || !isCurrent()) return;
+        state.pdfOutline = outline;
+        state.pdfOutlineGenerated = true;
+        document.getElementById('pdf-tab-outline').disabled = false;
+        renderPdfOutline();
+    };
+    for (let p = 1; p <= doc.numPages; p++) {
+        if (!isCurrent()) return;
+        while ((typeof pdfInFlightRenders !== 'undefined' && pdfInFlightRenders > 0) ||
+               (typeof resizeTimer !== 'undefined' && resizeTimer !== null) ||
+               (typeof pdfPointers !== 'undefined' && pdfPointers.size > 0) ||
+               (typeof scrubDragging !== 'undefined' && scrubDragging)) {
+            await new Promise(r => setTimeout(r, 150));
+            if (!isCurrent()) return;
+        }
+        try {
+            const page = await doc.getPage(p);
+            if (!isCurrent()) return;
+            const tc = await page.getTextContent();
+            if (!isCurrent()) return;
+            pages.set(p, pdfPageTextLines(tc.items, page.getViewport({ scale: 1 })));
+        } catch (e) { /* one unreadable page must not stop the rest */ }
+        if (p % PDF_HEADING_BATCH === 0) publish();
+        await new Promise(r => setTimeout(r, 60));
+    }
+    publish();
 }
 
 // Resolves each outline entry's destination (explicit array, or a named

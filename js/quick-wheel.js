@@ -67,6 +67,7 @@ const quickMenu = (() => {
     let frame = 0, frameTime = 0, reveal = 0, revealTarget = 0;
     let pointer = null, lastY = 0, lastMove = 0, startY = 0, dragged = false;
     let suppressClickUntil = 0, radius = 220, arcOffset = -100, slots = 5;
+    let wheelSelectionText = '';
     const step = .30, pixelsPerAction = 66;
     const dock = document.getElementById('quick-menu-dock');
     let previousFocus = null, navigationState = '';
@@ -96,6 +97,7 @@ const quickMenu = (() => {
     // Capture learning context before action dispatch (uses global getQuickWheelLearningContext)
     function captureLearningContext() {
         return {
+            selectionText: wheelSelectionText,
             lastGrammarSentence: state.lastGrammarSentence,
             lastAskContext: state.lastAskContext,
             lastReaderHelpContext: typeof lastReaderHelpContext !== 'undefined' ? lastReaderHelpContext : null,
@@ -214,6 +216,8 @@ const quickMenu = (() => {
         els.sidebar.classList.add('collapsed');
         closeReadingStats();
         closeFooterMenu();
+        // Opening the wheel hides the popup: remember what it showed first, so Level / Explain act on it.
+        wheelSelectionText = typeof currentReaderSelectionText === 'function' ? currentReaderSelectionText() : '';
         els.tooltip.style.display = 'none';
         backdrop.hidden = false;
 
