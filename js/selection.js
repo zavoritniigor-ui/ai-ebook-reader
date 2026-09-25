@@ -1101,6 +1101,10 @@ function wordBoundsAt(clientX, clientY) {
 
 let lastDragClientX = 0, lastDragClientY = 0;
 let pdfSelectionTouch = null;
+// A stylus selects on the mouse path (immediately, no long-press), but browsers give pen drags the same
+// touch-action panning as fingers (and on Android also dispatch them as touch events): without a guard the
+// first pen move over the PDF became a native scroll, fired pointercancel and dropped the selection.
+let penSelectionActive = false;
 
 function cancelDragSelection() {
     const hadDragHighlight = !!state.dragRange;
@@ -1108,6 +1112,7 @@ function cancelDragSelection() {
     dragSel = null; dragMoved = false; state.dragRange = null;
     state.touchSelecting = false;
     pdfSelectionTouch = null;
+    penSelectionActive = false;
     document.body.classList.remove('touch-selecting');
     els.container.style.touchAction = '';
     if (hadDragHighlight && typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
@@ -1123,6 +1128,10 @@ document.addEventListener('touchstart', e => {
     pdfSelectionTouch = { id: t.identifier, x: t.clientX, y: t.clientY, blocked: false, scrolling: false };
 }, { passive: true });
 function guardTouchSelectionMove(e) {
+    if (penSelectionActive && e.touches.length === 1) {
+        if (e.cancelable) e.preventDefault();   // the pen's own touch stream: keep it a selection drag
+        return;
+    }
     const gesture = pdfSelectionTouch;
     if (!gesture) {
         if (state.touchSelecting && e.cancelable && e.touches.length === 1 && els.mainArea.contains(e.target)) e.preventDefault();
@@ -1252,6 +1261,7 @@ els.mainArea.addEventListener('pointerdown', (e) => {
     }
     if (!w) return;
     dragSel = w;
+    penSelectionActive = e.pointerType === 'pen';
     e.preventDefault();               // глушимо системне виділення разом з його стрибками
 });
 
@@ -1313,6 +1323,7 @@ function updateDragSelection(e) {
 
 function commitDragSelection(clientX, clientY) {
     clearTimeout(touchSelTimer); touchSelTimer = null;
+    penSelectionActive = false;
     if (state.touchSelecting) {
         touchStartTime = 0; // pointerup precedes touchend: do not turn the page after selection
         state.touchSelecting = false;

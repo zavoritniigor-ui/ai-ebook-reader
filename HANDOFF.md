@@ -5,9 +5,19 @@
 - Reproduced on unchanged main by adding 4/8/12/16px pre-hold jitter to real CDP touch input: native `pointercancel` at 152ms clears timer/anchor before 380ms activation. Previous test held perfectly still.
 - `js/selection.js`: register non-passive touchmove before gesture; protect pending jitter; use touch coordinates for active range extension; retain native ordinary swipes, pan a gesture that transitions from prevented jitter into scrolling; touchcancel cleanup; suppress native context menu during owned gesture. Desktop range algorithm and PDF column partitioning unchanged.
 - Local gates PASS: expanded `pdf_workspace_regressions_browser.py` (including second-finger takeover and pre-activation cancellation), `pdf_ux_browser.py`, `learning_ux_browser.py`, `pdf_continuous_browser.py`, `bilingual_selection_browser.py`, `pdf_bilingual_columns_browser.py`, `grammar_selection_preserve_browser.py`; all JS syntax, app-shell versions, CI suite coverage, diff whitespace. Final focused log: `/tmp/tablet-touch-final-focused.log`.
-- This commit contains the completed repair and generated asset hashes. PR/push/CI/deployment pending at commit time; rediscover GitHub state before resuming.
+- Repair committed and pushed as `aa825196d9fef6727ab5f6e33eefe929b856c69f`; PR #126 (`https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/126`), head verified exact. CI run `36181047568` in progress; syntax/setup green. Production not updated yet. This checkpoint update is local/uncommitted documentation only.
 - Pre-existing local pinch-suite failure: after 36 successful pinches, first sidebar-open pinch reports dx=230 (page 10, fraction .15, ratio 1.5). IDENTICAL result on untouched main served from `/tmp/reader-touch-main-control` port 8766; log `/tmp/tablet-pinch-main-control.log`. Isolated fresh-tab sidebar case passes all four ratios on repair branch. Chrome 153.0.8010.36. Do not blame/rework selection for this baseline failure. No pinch code/test modified.
-- Exact next action: push this dedicated branch, create its single PR, inspect exact-SHA CI, review and deliver through normal PR workflow; verify deployed assets and focused production tests. Physical tablet verification REQUIRED; no physical success claimed.
+- **Pen/stylus (2026-09-25, Claude):** the user's physical input is a PEN. Pen does NOT use the touch path: it
+  selects on the mouse branch (immediate drag, no long-press), and Astra's scroll guard only engaged for a touch
+  long-press. On a real tablet Chrome pans pen drags over the PDF container like fingers (touch-action pan) ->
+  pointercancel -> selection dropped. Fix (js/selection.js, `penSelectionActive`): while a pen selection is live
+  its single-touch touchmove is cancelled; reset on commit/cancel. Ink mode unaffected (pen draws). ui-tooltip's
+  documented "stylus may use native selection" decision left unchanged.
+  Tests: `pdf_workspace_regressions_browser.py` section J with real CDP pointerType "pen" events: multi-word,
+  complete sentence, reverse, retained after pointerup, pointercancel, small jitter = tap, ink mode, and the
+  touchmove guard (J8a fails on aa82519, passes now; J8b finger scroll still native). CDP cannot emulate a stylus
+  that pans, so physical stylus verification: REQUIRED — NOT YET VERIFIED.
+- Exact next action: monitor exact-SHA CI run 36181047568, review PR #126 and deliver through normal PR workflow; verify main CI, deployed assets and focused production tests. Physical tablet verification REQUIRED; no physical success claimed.
 
 ## DONE: PR #124 reader UX/tablet repair — merged (2026-09-24, Claude)
 

@@ -321,4 +321,82 @@ check('I1 Quick Wheel "Level" analyses the selection the learner just made (not 
       "(() => { const t = __aiTasks.at(-1); return (t && t.mode === 'level' && t.text === %s) || __aiTasks; })()" % json.dumps(selected, ensure_ascii=False))
 
 check('no page errors', "__errors.length === 0 || __errors")
+# ---------------------------------------------------------------- J: stylus (pointerType "pen") selection
+# The user's tablet input is a pen. A pen selects on the mouse path (no long-press); real CDP pen pointer events
+# here. What CDP cannot emulate is a stylus that pans the page -- J8 checks that guard at the event level.
+boot(1000, 900, False)
+upload(pdf_bytes())
+learning_on()
+WORD = """((word) => { for (const s of document.querySelectorAll('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span')) {
+  const n = [...s.childNodes].find(x => x.nodeType === 3 && x.nodeValue.includes(word)); if (!n) continue;
+  const i = n.nodeValue.indexOf(word); const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + word.length);
+  const b = r.getBoundingClientRect(); return {x: b.left + Math.min(4, b.width / 3), y: b.top + b.height / 2, r: b.right - 2}; } return null; })"""
+def pen(kind, x, y, buttons=1):
+    c.call('Input.dispatchMouseEvent', type=kind, x=x, y=y, button='left' if kind != 'mouseMoved' else 'none' if not buttons else 'left',
+           buttons=buttons, clickCount=1, pointerType='pen')
+def pen_drag(a, b, steps=10, release=True):
+    pen('mouseMoved', a['x'], a['y'], buttons=0); pen('mousePressed', a['x'], a['y'])
+    for i in range(1, steps + 1):
+        pen('mouseMoved', a['x'] + (b['x'] - a['x']) * i / steps, a['y'] + (b['y'] - a['y']) * i / steps); pause(.02)
+    if release: pen('mouseReleased', b['x'], b['y']); pause(.6)
+def reset_sel():
+    c.js("try { els.ttCloseBtn?.click() } catch (e) {}; try { CSS.highlights.delete(SEL_HL_NAME) } catch (e) {}; state.lastSelectionText = null; state.canonicalSelection = null; state.touchJustCommitted = 0; els.tooltip.style.display = 'none'")
+    pause(.3)
+c.js("window.__penDowns = 0; document.addEventListener('pointerdown', e => { if (e.pointerType === 'pen') __penDowns++; }, true); 1")
+
+a = c.js(WORD + "('Hello')"); b = c.js(WORD + "('PDF')"); b['x'] = b['r']
+pen_drag(a, b)
+check('J1 pen drag selects several words (real pointerType "pen" events)', "(__penDowns > 0 && state.lastSelectionText === 'Hello world. PDF') || [__penDowns, state.lastSelectionText]")
+reset_sel()
+a = c.js(WORD + "('Reading')"); b = c.js(WORD + "('illustration.')"); b['x'] = b['r']
+pen_drag(a, b)
+check('J2 pen drag selects a complete sentence', "state.lastSelectionText === 'Reading text beside an illustration.' || state.lastSelectionText")
+pause(.8)
+check('J4 the pen selection is retained after pointerup (green highlight + popup with the full text)',
+      """(() => { const hl = [...document.querySelectorAll('.sel-word')].map(e => e.textContent).join(' ').replace(/\\s+/g, ' ').trim();
+        return (hl === 'Reading text beside an illustration.' && getComputedStyle(els.tooltip).display !== 'none' && els.ttOriginal.textContent === 'Reading text beside an illustration.') || [hl, els.ttOriginal.textContent]; })()""")
+reset_sel()
+pen_drag({'x': b['x'], 'y': b['y']}, c.js(WORD + "('Reading')"))
+check('J3 reverse pen drag (end of sentence back to its start) selects the same sentence', "state.lastSelectionText === 'Reading text beside an illustration.' || state.lastSelectionText")
+reset_sel()
+
+a = c.js(WORD + "('Reading')"); b = c.js(WORD + "('beside')")
+pen_drag(a, b, release=False)
+check('J5a a pen selection is live mid-drag', "!!state.dragRange && (CSS.highlights.get(SEL_HL_NAME)?.size || 0) > 0")
+c.js("document.dispatchEvent(new PointerEvent('pointercancel', {pointerType: 'pen', bubbles: true}))")
+pen('mouseReleased', b['x'], b['y']); pause(.5)
+check('J5b pointercancel ends the pen selection cleanly (no stale highlight, nothing committed)',
+      "(!state.dragRange && !state.lastSelectionText && !(CSS.highlights.get(SEL_HL_NAME)?.size)) || [state.lastSelectionText, CSS.highlights.get(SEL_HL_NAME)?.size]")
+reset_sel()
+
+w = c.js(WORD + "('Hello')")
+pen('mouseMoved', w['x'], w['y'], buttons=0); pen('mousePressed', w['x'], w['y'])
+pen('mouseMoved', w['x'] + 2, w['y'] + 1); pen('mouseMoved', w['x'] + 3, w['y'] - 1)
+pen('mouseReleased', w['x'] + 3, w['y'] - 1); pause(.8)
+check('J6 small pen jitter on a word is a tap (one word looked up), not a range selection',
+      "(!state.lastSelectionText && els.ttOriginal.textContent.trim() === 'Hello') || [state.lastSelectionText, els.ttOriginal.textContent]")
+reset_sel()
+
+w = c.js(WORD + "('Reading')")
+pen('mousePressed', w['x'], w['y'])
+check('J8a while a pen selection is active its own touchmove cannot become a native scroll', """(() => {
+  const t = new Touch({identifier: 9, target: els.container, clientX: 300, clientY: 300});
+  const ev = new TouchEvent('touchmove', {cancelable: true, bubbles: true, touches: [t], targetTouches: [t], changedTouches: [t]});
+  els.container.dispatchEvent(ev); return ev.defaultPrevented; })()""")
+pen('mouseReleased', w['x'], w['y']); pause(.6)
+reset_sel()
+check('J8b after the pen is lifted a finger touchmove still scrolls natively (not prevented)', """(() => {
+  const t = new Touch({identifier: 10, target: els.container, clientX: 300, clientY: 300});
+  const ev = new TouchEvent('touchmove', {cancelable: true, bubbles: true, touches: [t], targetTouches: [t], changedTouches: [t]});
+  els.container.dispatchEvent(ev); return ev.defaultPrevented === false; })()""")
+
+c.js("document.getElementById('btn-ink').click()"); pause(.4)
+strokes0 = c.js("(() => { let n = 0; for (const k in state.ink) n += state.ink[k].length; return n; })()")
+a = c.js(WORD + "('Reading')"); b = c.js(WORD + "('beside')")
+pen_drag(a, b)
+check('J7 in ink mode the pen draws and never starts a text selection',
+      "(state.inkMode && !state.lastSelectionText && !(CSS.highlights.get(SEL_HL_NAME)?.size) && (() => { let n = 0; for (const k in state.ink) n += state.ink[k].length; return n; })() > %d) || [state.inkMode, state.lastSelectionText, state.ink]" % strokes0)
+c.js("document.getElementById('btn-ink').click()"); pause(.3)
+
+check('no page errors (pen)', "__errors.length === 0 || __errors")
 print('ALL PDF WORKSPACE REGRESSION CHECKS PASSED')
