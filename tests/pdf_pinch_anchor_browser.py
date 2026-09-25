@@ -1,13 +1,21 @@
 """Physical page/focal anchor at gesture release; CDP is not tablet acceptance."""
 import base64
+import json
 import os
+import urllib.request
 from browser_cdp import CDP
 from pdf_audit_fixtures import pdf_document
 
 class StrictCDP(CDP):
     FATAL_EVENTS = CDP.FATAL_EVENTS + ('Runtime.exceptionThrown',)
 
-c = StrictCDP()
+# ~48 emulated two-finger pinches leave Chrome's touch routing for THAT tab unable to deliver any later
+# touch (even after navigating away; a new tab is unaffected) -- which silently broke every touch test that
+# ran after this suite on the shared CI browser. Pinch in a private tab and close it at the end.
+_port = os.environ.get('READER_CDP_PORT', '9222')
+_req = urllib.request.Request(f'http://127.0.0.1:{_port}/json/new?about:blank', method='PUT')
+_tab = json.load(urllib.request.urlopen(_req))
+c = StrictCDP(ws_url=_tab['webSocketDebuggerUrl'])
 c.call('Page.enable')
 c.call('Runtime.enable')
 c.call('Network.setBypassServiceWorker', bypass=True)
@@ -66,3 +74,4 @@ for sidebar, grammar in ((False, False), (True, False), (False, True), (True, Tr
                 assert result['zoom'] == 1 and result['canvases'] <= 16, result
                 print('PASS focal anchor', page, fraction, ratio, result, flush=True)
 c.sock.close()
+urllib.request.urlopen(f"http://127.0.0.1:{_port}/json/close/{_tab['id']}").read()
