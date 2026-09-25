@@ -110,7 +110,7 @@ els.tooltip.addEventListener('pointerenter', cancelTooltipHide);
 els.tooltip.addEventListener('pointerdown', cancelTooltipHide);
 els.tooltip.addEventListener('pointerleave', () => {
     // Для речення вікно не закриваємо — воно має лишатись, поки читаєш оригінал.
-    if (!state.tooltipPersistent) scheduleTooltipHide(1200);
+    if (!state.tooltipPersistent && !state.tooltipLoading) scheduleTooltipHide(1200);
 });
 
 // Розміщення вікна перекладу. Викликається двічі: одразу і ще раз після приходу

@@ -1,3 +1,20 @@
+## PR (stacked on #127 -> #126): translation popup auto-close timer (2026-09-25, Claude)
+
+- Branch `fix/translation-popup-timer` on top of `fix/pinch-release-flash` (#127) on top of #126 — merge #126, #127 first.
+- Bug: `handleWordOrSelection` (js/translation.js) started the single-word 1800 ms auto-close when the popup OPENED,
+  while "translating…" was showing — an AI answer slower than 1.8 s arrived in an already-closed popup. Also
+  `pointerleave` (js/ui-tooltip.js) restarted a 1.2 s hide while loading, and failed lookups auto-closed.
+- Fix: no countdown while loading (`state.tooltipLoading`); the existing 1800 ms countdown starts only when a
+  translation is actually rendered, only for the current lookup, only if the popup is still open. A failed
+  lookup keeps its error until dismissed. Multi-word/sentence popups unchanged (persistent). Durations unchanged.
+  Existing `lookupToken` + task cancellation already stop stale answers; verified.
+- Tests: new `tests/translation_popup_timer_browser.py` (in CI) with controllable mocked lookups: immediate, 1 s,
+  3 s (required: countdown starts at ~T=3 s), 6 s, failure, re-request after failure, close while loading, newer
+  word while loading, late old answer, sentence stays open. Fails on the previous head at the 3 s case.
+  Neighbouring suites pass: learning_ux, pdf_word_click, language_context, local_translator_warmup,
+  grammar_selection_preserve, pdf_workspace_regressions.
+- No Retry button exists in the translation popup; re-tapping the word is the retry path and gets a fresh countdown.
+
 ## PR (stacked on #126): tablet pinch-release white flash (2026-09-25, Claude)
 
 - Branch `fix/pinch-release-flash`, based on `fix/tablet-touch-range-selection` (PR #126, NOT yet merged — merge
