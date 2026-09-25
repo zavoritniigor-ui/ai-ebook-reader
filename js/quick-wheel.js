@@ -67,6 +67,7 @@ const quickMenu = (() => {
     let frame = 0, frameTime = 0, reveal = 0, revealTarget = 0;
     let pointer = null, lastY = 0, lastMove = 0, startY = 0, dragged = false;
     let suppressClickUntil = 0, radius = 220, arcOffset = -100, slots = 5;
+    let wheelSelectionText = '';
     const step = .30, pixelsPerAction = 66;
     const dock = document.getElementById('quick-menu-dock');
     let previousFocus = null, navigationState = '';
@@ -96,6 +97,7 @@ const quickMenu = (() => {
     // Capture learning context before action dispatch (uses global getQuickWheelLearningContext)
     function captureLearningContext() {
         return {
+            selectionText: wheelSelectionText,
             lastGrammarSentence: state.lastGrammarSentence,
             lastAskContext: state.lastAskContext,
             lastReaderHelpContext: typeof lastReaderHelpContext !== 'undefined' ? lastReaderHelpContext : null,
@@ -214,6 +216,8 @@ const quickMenu = (() => {
         els.sidebar.classList.add('collapsed');
         closeReadingStats();
         closeFooterMenu();
+        // Opening the wheel hides the popup: remember what it showed first, so Level / Explain act on it.
+        wheelSelectionText = typeof currentReaderSelectionText === 'function' ? currentReaderSelectionText() : '';
         els.tooltip.style.display = 'none';
         backdrop.hidden = false;
 
@@ -388,49 +392,79 @@ function printCurrentReaderPage() {
     try {
         if (!state.format) throw new Error('No book loaded');
         const frame = document.createElement('iframe');
-        frame.style.cssText = 'position:fixed;left:-10000px;width:1px;height:1px;border:0';
+        frame.style.cssText = 'position:fixed;left:-10000px;top:-10000px;width:1px;height:1px;border:0;opacity:0;';
         frame.title = t('printPage');
         document.body.append(frame);
         const doc = frame.contentDocument;
         doc.open();
-        doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
+        doc.write('<!doctype html><html><head><meta charset="utf-8"><style>@page{size:auto;margin:0mm;}html,body{margin:0;padding:0;background:#fff;}img{display:block;width:100%;height:auto;max-width:100%;margin:0 auto;page-break-inside:avoid;}</style></head><body></body></html>');
         doc.close();
+
+        const triggerPrint = () => {
+            const cleanup = () => { try { frame.remove(); } catch (e) {} };
+            frame.contentWindow.addEventListener('afterprint', cleanup, { once: true });
+            setTimeout(cleanup, 60000);
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+        };
 
         if (state.format === 'pdf' && state.pdfDoc) {
             // PDF: render only current page з рукописними позначками (ink)
-            const pageNum = state.currentIndex;
-            state.pdfDoc.getPage(pageNum).then(page => {
+            const pageNum = state.currentIndex || 1;
+            state.pdfDoc.getPage(pageNum).then(async page => {
                 const natural = page.getViewport({ scale: 1 });
                 const scale = Math.min(3, Math.sqrt(8000000 / (natural.width * natural.height)));
                 const viewport = page.getViewport({ scale });
-                const canvas = doc.createElement('canvas');
+                // ОБОВ'ЯЗКОВО: canvas створюється в ГОЛОВНОМУ document, а не в iframe (doc),
+                // тому що шрифти PDF.js завантажуються в document.fonts головного вікна.
+                // Створення canvas у документі iframe спричиняє відсутність шрифтів і рендер "тофу" (квадратів).
+                const canvas = document.createElement('canvas');
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
-                return page.render({ canvasContext: canvas.getContext('2d'), viewport, intent: 'print' }).promise.then(() => {
-                    // Додаємо ink-шар поверх PDF, якщо є рукописні позначки
-                    const inkCanvas = els.pages?.querySelector('#ink-layer');
-                    if (inkCanvas && state.ink[String(pageNum)] && state.ink[String(pageNum)].length > 0) {
-                        const ctx = canvas.getContext('2d');
-                        // Масштабуємо ink-шар до размірів PDF canvas
-                        const inkScale = canvas.width / inkCanvas.width;
-                        ctx.save();
-                        ctx.scale(inkScale, inkScale);
-                        ctx.drawImage(inkCanvas, 0, 0);
-                        ctx.restore();
-                    }
-                    // Tofu-free print: rasterize to img data URL
-                    const img = doc.createElement('img');
-                    img.style.cssText = 'display:block;width:100%;height:auto;max-width:100%;margin:0 auto;';
-                    return new Promise((resolve) => {
-                        img.onload = () => resolve();
-                        img.onerror = () => resolve();
-                        img.src = canvas.toDataURL('image/png');
-                        doc.body.append(img);
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport, intent: 'print' }).promise;
+
+                // Додаємо ink-шар поверх PDF, якщо є рукописні позначки
+                const key = typeof inkPageKey === 'function' ? inkPageKey(pageNum) : String(pageNum);
+                const strokes = state.ink && state.ink[key];
+                if (strokes && strokes.length > 0) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.save();
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    strokes.forEach(st => {
+                        if (!st.p || st.p.length < 1) return;
+                        ctx.strokeStyle = st.c || '#000';
+                        ctx.lineWidth = (st.w || 0.005) * canvas.width;
+                        ctx.beginPath();
+                        st.p.forEach((pt, i) => {
+                            const x = pt[0] * canvas.width, y = pt[1] * canvas.height;
+                            i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+                        });
+                        if (st.p.length === 1) {
+                            ctx.fillStyle = st.c || '#000';
+                            ctx.arc(st.p[0][0] * canvas.width, st.p[0][1] * canvas.height, ctx.lineWidth / 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else {
+                            ctx.stroke();
+                        }
                     });
+                    ctx.restore();
+                }
+
+                // Tofu-free print: rasterize to img data URL inside host document, then append to iframe
+                const img = doc.createElement('img');
+                img.style.cssText = 'display:block;width:100%;height:auto;max-width:100%;margin:0 auto;';
+                await new Promise((resolve) => {
+                    img.onload = () => resolve();
+                    img.onerror = () => resolve();
+                    img.src = canvas.toDataURL('image/png');
+                    doc.body.append(img);
                 });
+                if (img.decode) {
+                    await img.decode().catch(() => {});
+                }
             }).then(() => {
-                frame.contentWindow.print();
-                setTimeout(() => frame.remove(), 1000);
+                triggerPrint();
             }).catch(err => {
                 showToast(t('printError'));
                 frame.remove();
@@ -452,14 +486,22 @@ function printCurrentReaderPage() {
                     content += textNode.data;
                 }
             }
-            // НЕ використовуємо els.pages.textContent як fallback — воно б надрукувало всю книгу
-            // Якщо стовпчик пустий, друкуємо пусту сторінку (це коректна поведінка)
             container.textContent = content.trim();
             doc.body.append(container);
-            frame.contentWindow.print();
-            setTimeout(() => frame.remove(), 1000);
+            triggerPrint();
         }
     } catch (err) {
         showToast(t('printError'));
     }
 }
+
+document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea') return;
+        if (state.format) {
+            e.preventDefault();
+            printCurrentReaderPage();
+        }
+    }
+});

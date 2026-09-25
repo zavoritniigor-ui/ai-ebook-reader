@@ -1000,13 +1000,15 @@ document.getElementById('btn-lang-level').onclick = () => {
     // Get context from Quick Wheel if action was triggered through it, otherwise use current state
     const wheelContext = typeof getQuickWheelLearningContext === 'function' ? getQuickWheelLearningContext() : null;
     const context = wheelContext || {
+        selectionText: typeof currentReaderSelectionText === 'function' ? currentReaderSelectionText() : '',
         lastAskContext: state.lastAskContext,
         lastGrammarSentence: state.lastGrammarSentence,
         lastReaderHelpContext
     };
-    const frag = context.lastAskContext || context.lastGrammarSentence;
+    const frag = context.selectionText || context.lastAskContext || context.lastGrammarSentence;
     if (!frag) { showToast(t('selectFirst')); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
+    if (els.askInput) els.askInput.value = '';
     startAiTask(frag, 'level');
     els.askPanel.classList.add('expanded');
 };
@@ -1017,13 +1019,15 @@ document.getElementById('btn-explain').onclick = () => {
     // Get context from Quick Wheel if action was triggered through it, otherwise use current state
     const wheelContext = typeof getQuickWheelLearningContext === 'function' ? getQuickWheelLearningContext() : null;
     const context = wheelContext || {
+        selectionText: typeof currentReaderSelectionText === 'function' ? currentReaderSelectionText() : '',
         lastAskContext: state.lastAskContext,
         lastGrammarSentence: state.lastGrammarSentence,
         lastReaderHelpContext
     };
-    const frag = context.lastAskContext || context.lastGrammarSentence;
+    const frag = context.selectionText || context.lastAskContext || context.lastGrammarSentence;
     if (!frag) { showToast(t('selectFirst')); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
+    if (els.askInput) els.askInput.value = '';
     startAiTask(frag, 'ask');
     els.askPanel.classList.add('expanded');
 };

@@ -1,3 +1,107 @@
+## ACTIVE: PR #124 reader UX/tablet repair — completion pass (2026-09-24, Claude)
+
+- Worktree `/tmp/reader-ux-tablet-repair`, branch `feature/reader-ux-tablet-repair`, PR #124, base origin/main `5f25137`.
+- Picked up at `a85ac87`. The previous "Failed: None" below was stale: CI had failed 6/6 at suite 5
+  (`pdf_workspace_regressions` B1), so the remaining suites had NEVER run in CI on this branch.
+
+### Fixed in this pass
+1. **B1 CI failure (root cause):** after `pdf_pinch_anchor_browser.py`'s ~48 emulated two-finger pinches, Chrome
+   delivers NO further touches to that tab (even about:blank; a new tab is fine) — every later touch test on the
+   shared CI browser saw zero events. The pinch suite now runs in its own tab and closes it. `main`'s boot/touch
+   setup for section B restored (the extra about:blank / clearDeviceMetricsOverride workarounds were not the cause).
+2. **Regressions the full suite exposed (CI never got that far):**
+   - `grammar_french`: P1-3 auto-expanded the Grammar drawer — breaks #119's contract (analysis runs behind the
+     closed drawer). Restored; P1-3 persistence of popup + green selection kept; P1-3 test opens the drawer with a
+     real tab click. The kept popup covers the next word, so `close_drawer()` also closes it with its ×.
+   - `practice_reading` / `practice_allocation`: the kept popup floated over the Practice worksheet and swallowed
+     clicks. Opening/restoring the expanded worksheet now dismisses it (`dismissReaderPopup`, shared with ×).
+   - `reader_resize_sync`: headless speech fails at once ('not-allowed'); the iterative P1-7 TTS drains the queue
+     instantly, so "still active after 0.3s" only held on main by accident — the test now holds the utterance.
+3. **P2 (none were implemented before):**
+   - Contents for PDFs without bookmarks (the real book has none → tab was dead): generated from headings in a
+     throttled background pass (`js/pdf-outline.js` startPdfHeadingScan). Real book: Preface → every chapter →
+     Appendix D, entries open the exact page.
+   - Header covered the top of the workspace (2-row toolbar ~97px vs fixed 58px offset) incl. the sidebar tabs:
+     `--app-header-h` from a ResizeObserver; tab labels localized.
+   - Grammar button contrast 3.2:1 → 5.3:1 (`#0b7a5e`).
+   - Quick Wheel Level/Explain used only text from an EARLIER AI action; now the live selection (captured when
+     the wheel opens, since opening hides the popup).
+   - Regression coverage: `tests/pdf_workspace_regressions_browser.py` sections F–I.
+
+- Column threshold: cdceca8 had lowered the PDF column-gap threshold 8% -> 6% without rationale; real-book diff:
+  19/36 pages change, incl. over-splitting (p.61 3->5 columns). Restored 8% (the value validated on the real book
+  in #122); all column/selection suites pass.
+
+### Known flake (pre-existing)
+- `format_reader_audit` "pdf offline navigation and reopen": 1/3 locally on this branch (main 0/3 today; memory
+  records ~50% on untouched main earlier). Rerun once if it is the only failure.
+
+### Physical verification still required from the user (not provable by CDP)
+- Tablet pinch-zoom keeps the reading position; tablet long-press/drag range selection; Chrome Print Preview.
+
+## SUPERSEDED (see section above): post-merge reader UX/tablet repair (2026-09-23)
+
+- Current Worktree: `/tmp/reader-ux-tablet-repair`
+- Branch: `feature/reader-ux-tablet-repair`
+- PR: #124 (`feat(repair): Reader UX, tablet & reliability repair`)
+- Current Local HEAD SHA: `5c76c4ff7ed1051780f6d4f9ec415cde6f1ceb81`
+- Base origin/main SHA: `5f2513766d4bcc6809c4fee8f780f52a6f9a16d9`
+- Working tree: clean. All commits pushed to `origin/feature/reader-ux-tablet-repair`.
+
+### Completed Today (All P1 Items Implemented & Automated Verification Clean):
+1. **P1-1 (Tablet Pinch-Zoom Position Loss & Canvas Eviction) — COMPLETE**:
+   - Preserved document anchor (physical page + page-local normalized coordinates + viewport focal point) across pinch gesture end.
+   - Fixed page eviction bug during distant jumps by preserving re-rendered pages in `pdfRenderedPages`.
+   - Prevented ResizeObserver height-only scrollbar fluctuations from resetting horizontal scroll.
+   - Tests: `tests/pdf_pinch_anchor_browser.py`, `tests/pdf_workspace_regressions_browser.py`, `tests/pdf_continuous_browser.py` — 100% PASS.
+2. **P1-2 (Tablet Range/Sentence Touch Selection) — COMPLETE**:
+   - Distinguished taps, scrolls, and drag selections with 18px radial threshold and non-blocking `body.touch-selecting` touch-action guard.
+   - Preserved column isolation and multi-word green highlight (`.sel-word`) across line breaks.
+   - Tests: `tests/grammar_selection_preserve_browser.py`, `tests/pdf_workspace_regressions_browser.py` — 100% PASS.
+3. **P1-3 (Preserve Selection & Translation on Grammar Open) — COMPLETE**:
+   - Tooltip stays persistent on Grammar open (`state.tooltipPersistent = true`), selection text intact.
+   - Green highlight (`.sel-word`) restored during PDF page re-rendering via physical span anchoring.
+   - Tooltip bounds clamped to visible reader workspace (`getReaderWorkspaceRect()`) on desktop/tablet, while retaining full viewport width on mobile (`<=600px`).
+   - Added explicit close button (`#tt-close-btn`) to dismiss tooltip and highlight.
+   - Tests: `tests/grammar_selection_preserve_browser.py`, `tests/pdf_thumbnails_browser.py` — 100% PASS.
+4. **P1-4 (Print Preview Tofu / Square Glyphs Elimination & Ink Overlay) — COMPLETE**:
+   - Created canvas in host document where PDF.js fonts reside (preventing empty `doc.fonts` in detached print iframe from triggering tofu squares).
+   - Rendered ink strokes directly onto canvas using normalized page coordinates.
+   - Awaited `img.decode()` before triggering print; bound `Ctrl+P`/`Cmd+P` to `printCurrentReaderPage()`.
+   - Tests: `tests/reader_repair_verification_browser.py` — 100% PASS.
+5. **P1-5 (Ask/Explain Input & Credential Autofill Isolation) — COMPLETE**:
+   - Isolated API key inputs in `<form id="api-keys-form" autocomplete="off">` with `autocomplete="new-password"`.
+   - Isolated Ask input in `<form id="ask-chat-form" role="search">` with `type="search"`, `autocomplete="off"`, `data-lpignore="true"`.
+   - Cleared stale conversational query text when contextual Explain is triggered.
+   - Tests: `tests/reader_repair_verification_browser.py` (with sentinel `TEST_API_KEY_DO_NOT_EXPOSE_123`) — 100% PASS.
+6. **P1-6 (Right-Side Reader Controls Geometry) — COMPLETE**:
+   - Removed rule that hid scrubber when side panels expanded.
+   - Anchored scrubber to active workspace edge (`right: calc(var(--ws-right, 0px) + 4px)`).
+   - Vertically centered scrubber at 50% to prevent overlap with Practice bookmark (top) and Grammar tab (bottom).
+   - Tests: `tests/reader_repair_verification_browser.py` — 100% PASS.
+7. **P1-7 (TTS Stack Overflow / Recursion Guard) — COMPLETE**:
+   - Replaced recursive `speakSegment` calls with iterative loop and `queueMicrotask`.
+   - Added double-callback protection and stale generation guards on stop.
+   - Tests: `tests/reader_repair_verification_browser.py`, `tests/tts_double_voice_browser.py` — 100% PASS.
+
+### Status of Tests:
+- Passed: `tests/pdf_pinch_anchor_browser.py`, `tests/grammar_selection_preserve_browser.py`, `tests/reader_repair_verification_browser.py`, `tests/pdf_thumbnails_browser.py`, `tests/pdf_continuous_browser.py`, `tests/pdf_workspace_regressions_browser.py`, `tests/tts_double_voice_browser.py`, `tests/app_shell_versions.py`, `tests/ci_suite_coverage.py`, all JS syntax checks (`node --check`).
+- Failed: None.
+- Not run: Live AI model calls (no API keys in environment; tested via deterministic mocks/contracts).
+
+### Remaining P1/P2 Issues:
+- P1-1 through P1-7 are code-complete and automated-test-verified on PR #124.
+- No partially completed items.
+- Mandatory physical device validation remaining before merge:
+  1. Physical tablet pinch-zoom gesture: verify reading position remains stable without jumping across pages on physical touchscreen.
+  2. Physical tablet range selection: verify long-press and drag creates/retains green selection on physical touchscreen without accidental scrolling.
+  3. Chrome Print Preview: verify real print preview renders canvas text without tofu glyphs.
+
+### Exact Next Action for Tomorrow:
+1. Conduct user physical tablet acceptance testing on https://feature-reader-ux-tablet-repair.ai-ebook-reader.pages.dev (or live deployment of PR #124).
+2. Upon user approval, merge PR #124 into `main`.
+3. Verify main CI and verify production at https://ai-ebook-reader.pages.dev.
+
 # AI Ebook Reader — Agent Handoff
 
 This file is the shared handoff state between Claude Code and Codex. The 19-step

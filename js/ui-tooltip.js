@@ -60,6 +60,7 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 document.addEventListener('pointerdown', (e) => {
+    if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.target.closest('#menu-handle, #quick-menu-dock')) return;
     let closedPopup = false;
     if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
@@ -79,6 +80,16 @@ document.addEventListener('pointerdown', (e) => {
         setTimeout(() => state.tooltipJustClosed = false, 100);
     }
 });
+
+// The header wraps to two toolbar rows on narrower desktop/tablet widths (~97px), but .workspace used a fixed
+// 58px offset, so the header covered the top of the book and the sidebar's Thumbnails/Contents tabs. Keep the
+// workspace offset equal to the header's real height (phones keep their own collapsible-menu offset).
+const appHeaderEl = document.getElementById('app-header');
+if (appHeaderEl && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+        document.documentElement.style.setProperty('--app-header-h', `${Math.ceil(appHeaderEl.getBoundingClientRect().height)}px`);
+    }).observe(appHeaderEl);
+}
 
 // Повноекранний режим на телефоні/планшеті: після відкриття книги ховаємо header —
 // футер на мобільному вже прихований за замовчуванням через CSS.
@@ -107,9 +118,22 @@ els.tooltip.addEventListener('pointerleave', () => {
 document.body.appendChild(els.tooltip);
 function positionTooltip(clientX, clientY, anchorRect) {
     const vv = window.visualViewport;
-    const left = vv?.offsetLeft || 0, top = vv?.offsetTop || 0;
-    const width = vv?.width || innerWidth, height = vv?.height || innerHeight;
+    const viewWidth = vv?.width || innerWidth;
+    const viewHeight = vv?.height || innerHeight;
+    const viewLeft = vv?.offsetLeft || 0;
+    const viewTop = vv?.offsetTop || 0;
     const margin = 10, gap = 12;
+
+    let left = viewLeft, top = viewTop, width = viewWidth, height = viewHeight;
+    if (typeof getReaderWorkspaceRect === 'function' && state.format === 'pdf' && viewWidth > 600) {
+        const ws = getReaderWorkspaceRect();
+        if (ws && ws.width >= 320) {
+            left = ws.left;
+            top = ws.top;
+            width = ws.width;
+            height = ws.height;
+        }
+    }
     els.tooltip.style.maxWidth = `${Math.max(0, Math.min(560, width - 2*margin))}px`;
     els.tooltip.style.maxHeight = `${Math.max(0, Math.min(height - 2*margin, width <= 600 ? height*.7 : height))}px`;
     els.tooltip.style.height = '';
@@ -135,6 +159,32 @@ function repositionTooltip() {
 }
 window.visualViewport?.addEventListener('resize', repositionTooltip);
 window.visualViewport?.addEventListener('scroll', repositionTooltip);
+
+// The text the learner currently has in front of them in the popup: the whole selection for a multi-word
+// selection (verbatim, however long), or the sentence around a single tapped word. Level / Explain use it, so the
+// Quick Wheel acts on the live selection instead of on whatever an earlier AI action analysed.
+function currentReaderSelectionText() {
+    if (!els.tooltip || els.tooltip.style.display === 'none') return '';
+    const shown = (state.lastSelectionText || els.ttOriginal?.textContent || '').trim();
+    if (!shown) return '';
+    return /\s/.test(shown) ? shown : ((state.ctxSentence || '').trim() || shown);
+}
+
+// Dismiss the reader's translation popup and its selection -- the popup's own close button, and anything that
+// takes over the reading area (the Practice worksheet overlays the text the popup refers to).
+function dismissReaderPopup() {
+    cancelTooltipHide();
+    els.tooltip.style.display = 'none';
+    state.tooltipPersistent = false;
+    stopTooltipSpeech();
+    clearSelectionHighlight();
+}
+if (els.ttCloseBtn) {
+    els.ttCloseBtn.onclick = (e) => {
+        e.stopPropagation();
+        dismissReaderPopup();
+    };
+}
 
 let keySettingsProvider;
 function updateProviderRadios() {

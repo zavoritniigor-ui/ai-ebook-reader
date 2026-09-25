@@ -97,13 +97,18 @@ function bindUtterance(u, side, fullText, offset, onEnd) {
         if (state.speakingId !== myId) return;
         if (typeof e.charIndex === 'number') state.speakPos = e.charIndex;
     };
-    u.onend = u.onerror = () => {
+    let completed = false;
+    const handleEnd = () => {
+        if (completed) return;
+        completed = true;
         if (state.speakingId !== myId) return;   // це відгомін старої фрази
         state.speakingSide = null;
         state.speakResume = null;                // дочитали до кінця
         updateSpeakerIcons();
         if (onEnd) onEnd();
     };
+    u.onend = handleEnd;
+    u.onerror = handleEnd;
 }
 function speakText(text, side, offset, onEnd) {
     state.ttsGen++;    // наш cancel не має рухати чергу читання вголос
@@ -286,31 +291,67 @@ function speakCurrentSentence() {
     // викликів), тому крок стрілками назад-вперед лишає той самий голос, а кожен
     // мовний відрізок усередині речення чергується у своєму власному пулі голосів.
     const sentenceIndex = state.ttsIndex;
-    let segIdx = 0;
-    const speakSegment = () => {
-        if (gen !== state.ttsGen) return;           // фразу обірвали ззовні — не рухаємось
-        if (segIdx >= segments.length) {
-            if (!isSpeakingGlobal || state.ttsPaused) return;
-            state.ttsIndex++; speakCurrentSentence();
+
+    const advanceSentence = () => {
+        if (gen !== state.ttsGen || !isSpeakingGlobal || state.ttsPaused) return;
+        state.ttsIndex++;
+        if (state.ttsIndex >= state.ttsQueue.length) {
+            stopGlobalTTS();
             return;
         }
-        const seg = segments[segIdx++];
-        const text = seg.text.trim();
-        if (!text) { speakSegment(); return; }
-        const utterance = new SpeechSynthesisUtterance(text);
-        const { lang, voice } = voiceForLangCode(seg.lang);
-        let chosen = voice;
-        if (state.altVoices) {
-            const pair = pickVoicePair(seg.lang);
-            if (pair) chosen = pair[sentenceIndex % 2];
-        }
-        setUtteranceVoice(utterance, lang, chosen);
-        utterance.rate = 0.95;
-        utterance.onend = speakSegment;
-        utterance.onerror = speakSegment;
-        ttsSynth.speak(utterance);
+        // Microtask queueing ensures call stack stays flat even across many fast/empty sentences
+        queueMicrotask(() => {
+            if (gen === state.ttsGen && isSpeakingGlobal && !state.ttsPaused) {
+                speakCurrentSentence();
+            }
+        });
     };
-    speakSegment();
+
+    let segIdx = 0;
+    const playNextSegment = () => {
+        while (segIdx < segments.length) {
+            if (gen !== state.ttsGen || !isSpeakingGlobal || state.ttsPaused) return;
+            const seg = segments[segIdx++];
+            const text = seg.text ? seg.text.trim() : '';
+            if (!text) continue; // Loop iteratively instead of recursing on empty segments
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            const { lang, voice } = voiceForLangCode(seg.lang);
+            let chosen = voice;
+            if (state.altVoices) {
+                const pair = pickVoicePair(seg.lang);
+                if (pair) chosen = pair[sentenceIndex % 2];
+            }
+            setUtteranceVoice(utterance, lang, chosen);
+            utterance.rate = 0.95;
+
+            let handled = false;
+            const onSegmentDone = () => {
+                if (handled) return;
+                handled = true;
+                if (gen !== state.ttsGen || !isSpeakingGlobal || state.ttsPaused) return;
+                // Schedule continuation asynchronously to guard against synchronous onerror loops
+                queueMicrotask(() => {
+                    if (gen === state.ttsGen && isSpeakingGlobal && !state.ttsPaused) {
+                        playNextSegment();
+                    }
+                });
+            };
+
+            utterance.onend = onSegmentDone;
+            utterance.onerror = onSegmentDone;
+            try {
+                ttsSynth.speak(utterance);
+            } catch (err) {
+                onSegmentDone();
+            }
+            return;
+        }
+
+        advanceSentence();
+    };
+
+    playNextSegment();
 }
 // Крок по реченнях. Під час читання — переходить і читає далі з нового речення.
 // На паузі — лише переносить підсвітку (і гортає сторінку, якщо треба), не озвучуючи.

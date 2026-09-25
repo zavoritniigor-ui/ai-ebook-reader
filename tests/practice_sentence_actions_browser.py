@@ -346,7 +346,18 @@ c.js("""window.__tapSeen=[]; for (const t of ['pointerdown','pointerup','pointer
   window.__grammarTransformAtTap = getComputedStyle(els.grammarPanel).transform; 1""")
 # The Grammar drawer slides out over 0.4s and at phone width it covers the whole screen: a tap sent before it
 # has finished hiding lands on Grammar, not on the speaker (seen in CI: the tap's events went to #grammar-content).
-c.wait("getComputedStyle(els.grammarPanel).visibility === 'hidden' && document.elementFromPoint(%f, %f)?.closest('.practice-speak-btn') !== null" % (btn_rect['x'], btn_rect['y']), timeout=5)
+# Re-measure every poll: after the viewport switch .workspace animates its offset to the phone header, so a
+# position taken before that settles is stale; tap only once the button is stable and nothing covers it.
+_prev = None
+for _ in range(50):
+    _pos = c.js("""(()=>{const b=document.querySelector('.practice-speak-btn'); const r=b.getBoundingClientRect(); const x=r.left+r.width/2, y=r.top+r.height/2;
+        const hit=document.elementFromPoint(x, y); return {x, y, clear: getComputedStyle(els.grammarPanel).visibility === 'hidden' && !!hit && !!hit.closest('.practice-speak-btn')};})()""")
+    if _pos['clear'] and _prev and abs(_pos['x'] - _prev['x']) < 0.5 and abs(_pos['y'] - _prev['y']) < 0.5:
+        break
+    _prev = _pos
+    c.js("new Promise(r => setTimeout(r, 100))")
+assert _pos['clear'], ('speaker button never became tappable', _pos)
+btn_rect['x'], btn_rect['y'] = _pos['x'], _pos['y']
 touch_tap(btn_rect['x'], btn_rect['y'])
 # Poll on the browser clock instead of one fixed 0.3s wall-clock sleep: on a loaded CI runner the tap can land
 # later without anything being wrong. A tap that never starts speech still fails below (with the pointer/click

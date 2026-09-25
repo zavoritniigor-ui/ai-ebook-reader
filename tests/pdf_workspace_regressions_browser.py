@@ -10,7 +10,7 @@ through the real controls and real input events:
   D  the A+ zoom button keeps the reading position (anchor captured before the live transform)
   E  in immersive mode the floating navigation pill is entirely off-screen
 """
-import base64, os, time
+import base64, json, os, time
 from browser_cdp import CDP, pdf_bytes
 from pdf_audit_fixtures import pdf_document
 
@@ -29,12 +29,16 @@ def check(name, expression, timeout=0):
     assert result is True, (name, result)
     print('PASS', name)
 
+def settle(s=0.9):
+    pause(s)
+    c.wait('pdfInFlightRenders===0', timeout=15)
+
 def boot(width, height, mobile):
     c.call('Emulation.setDeviceMetricsOverride', width=width, height=height, deviceScaleFactor=1, mobile=mobile)
     c.call('Emulation.setTouchEmulationEnabled', enabled=mobile, maxTouchPoints=5 if mobile else 1)
     c.call('Page.navigate', url=URL)
     c.wait("document.readyState==='complete' && !document.body.inert && typeof navigateToPdfPage==='function'", timeout=30)
-    c.js("localStorage.clear(); showUpdateBanner=()=>{}; document.getElementById('sw-update-banner')?.remove(); window.__errors=[]; addEventListener('error', e => __errors.push(e.message))")
+    c.js("localStorage.clear(); state.pdfScale = 1; state.pdfZoom = 1; showUpdateBanner=()=>{}; document.getElementById('sw-update-banner')?.remove(); window.__errors=[]; addEventListener('error', e => __errors.push(e.message))")
 
 def upload(data):
     b64 = base64.b64encode(data).decode()
@@ -75,7 +79,9 @@ CELL = """((text) => { const s = [...document.querySelectorAll('.pdf-page-wrappe
 
 def learning_on():
     c.js("callAI = async () => { throw new Error('stubbed') }; window.fetch = async () => { throw new Error('offline') }")
-    if not c.js('state.translateMode'): c.js('els.translateBtn.click()')
+    if not c.js('state.translateMode'):
+        c.js('els.translateBtn.click()')
+        settle(0.6)
 
 # ---------------------------------------------------------------- A: narrow-gutter row, mouse
 boot(1000, 900, False)
@@ -105,9 +111,17 @@ upload(paradigm_pdf())
 learning_on()
 a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
 scroll_before = c.js('els.container.scrollTop')
+c.js("""window.__touchLog=[]; for (const t of ['pointerdown','pointerup','pointercancel','touchstart','touchend','touchcancel','contextmenu','selectstart'])
+  document.addEventListener(t, e => __touchLog.push([t, e.pointerType || '', (e.target.className || e.target.tagName || '').toString().slice(0, 30), Math.round(performance.now()), e.cancelable]), {capture: true}); 1""")
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
 pause(.55)
-check('B1 long-press starts a touch selection', 'state.touchSelecting === true')
+if not c.js('state.touchSelecting === true'):
+    pause(1)
+    print('B1 DIAG', c.js("""({events: __touchLog, touchSelecting: state.touchSelecting, timer: touchSelTimer !== null, dragSel: !!dragSel,
+      translateMode: state.translateMode, justCommitted: state.touchJustCommitted || null, now: Math.round(performance.now()),
+      word: !!wordBoundsAt(%f, %f), under: (e => e && (e.className || e.tagName))(document.elementFromPoint(%f, %f)),
+      touchPoints: navigator.maxTouchPoints, pointers: typeof pdfPointers !== 'undefined' ? pdfPointers.size : null})""" % (a['x'], a['y'], a['x'], a['y'])))
+check('B1 long-press starts a touch selection', 'state.touchSelecting === true', timeout=3)
 for i in range(1, 11):
     c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=[dict(x=a['x'] + (b['x'] + 20 - a['x']) * i / 10, y=a['y'] + (b['y'] - a['y']) * i / 10, id=1)])
     pause(.03)
@@ -123,7 +137,6 @@ boot(1440, 900, False)
 upload(pdf_document([{'text': f'Workspace page {n} text for layout checks', 'size': (600, 800)} for n in range(1, 13)]))
 c.js("navigateToPdfPage(6, {instant: true})"); pause(1)
 GEOM = "(() => { const c = els.container.getBoundingClientRect(), m = els.mainArea.getBoundingClientRect(), g = document.getElementById('grammar-panel'); return {l: c.left, r: c.right, mainR: m.right, gOpen: g.classList.contains('expanded'), gL: g.getBoundingClientRect().left}; })()"
-def settle(): pause(.9); c.wait('pdfInFlightRenders===0', timeout=15)
 def grammar(open_):
     if c.js("document.getElementById('grammar-panel').classList.contains('expanded')") != open_: c.js("document.getElementById('grammar-tab').click()")
     settle()
@@ -147,5 +160,87 @@ for _ in range(2):
 check('D1 the A+ button keeps the reading position', "(() => { const a = pdfAnchor(); return (a.page === __anchor.page && Math.abs(a.y - __anchor.y) < 0.02 && state.pdfScale > 1.4) || [__anchor, a, state.pdfScale]; })()")
 c.js("document.body.classList.add('immersive-mode')"); pause(.6)
 check('E1 immersive mode hides the whole navigation pill', "document.querySelector('.footer-nav-group').getBoundingClientRect().top >= innerHeight")
+
+# ---------------------------------------------------------------- F: Grammar button contrast (P2)
+check('F1 the popup Grammar button text meets WCAG AA contrast (>= 4.5:1)', """(() => {
+  const lum = c => { const [r, g, b] = c.match(/[\\d.]+/g).map(Number).slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const cs = getComputedStyle(els.ttAiBtn); const f = lum(cs.color), b = lum(cs.backgroundColor);
+  const ratio = (Math.max(f, b) + 0.05) / (Math.min(f, b) + 0.05); return ratio >= 4.5 || ratio; })()""")
+
+# ---------------------------------------------------------------- G: header offset + sidebar tabs (P2)
+boot(1100, 900, False)
+upload(pdf_document([{'text': f'Header page {n}', 'size': (600, 800)} for n in range(1, 4)]))
+c.js("document.body.classList.remove('immersive-mode')")
+c.js("document.getElementById('toggle-toc-desktop').click()"); pause(.8)
+check('G1 the workspace starts below the (wrapped) app header, not under it', """(() => {
+  const h = document.getElementById('app-header').getBoundingClientRect(), w = document.querySelector('.workspace').getBoundingClientRect();
+  return (h.height > 60 && Math.abs(w.top - h.bottom) <= 2) || {header: [h.top, h.bottom], workspace: w.top}; })()""", timeout=3)
+check('G2 the sidebar Thumbnails/Contents tabs are visible and localized', """(() => {
+  const tabs = document.getElementById('pdf-sidebar-tabs').getBoundingClientRect(), h = document.getElementById('app-header').getBoundingClientRect();
+  const labels = [...document.querySelectorAll('.pdf-sidebar-tab')].map(b => b.textContent.trim());
+  return (tabs.top >= h.bottom - 1 && tabs.height > 20 && labels.join('|') === [t('pdfTabThumbs'), t('pdfTabContents')].join('|') && !labels.includes('Thumbnails')) || {tabsTop: tabs.top, headerBottom: h.bottom, labels}; })()""")
+
+# ---------------------------------------------------------------- H: generated Contents for a PDF without an outline (P2)
+def headings_pdf():
+    """Nine pages, no /Outlines: chapter titles at 26pt on pages 1/4/7, section titles at 17pt, body at 11pt."""
+    def enc(t): return t.encode('cp1252').replace(b'\\', b'\\\\').replace(b'(', b'\\(').replace(b')', b'\\)')
+    objs = [b'<< /Type /Catalog /Pages 2 0 R >>', b'', b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>']
+    kids = []
+    for p in range(1, 10):
+        ops = []
+        y = 720
+        if p in (1, 4, 7):
+            ops.append(b'BT 60 %d Td /F1 26 Tf (' % y + enc('Chapter %d Journey %d' % ((p + 2) // 3, p)) + b') Tj ET'); y -= 50
+        if p in (2, 5, 8):
+            ops.append(b'BT 60 %d Td /F1 17 Tf (' % y + enc('Section on page %d' % p) + b') Tj ET'); y -= 36
+        for i in range(14):
+            ops.append(b'BT 60 %d Td /F1 11 Tf (' % y + enc('Body line %d of page %d with ordinary reading text.' % (i, p)) + b') Tj ET'); y -= 18
+        stream = b'\n'.join(ops)
+        page_id = len(objs) + 1; kids.append(b'%d 0 R' % page_id)
+        objs.append(b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Resources << /Font << /F1 3 0 R >> >> /Contents %d 0 R >>' % (page_id + 1))
+        objs.append(b'<< /Length %d >>\nstream\n' % len(stream) + stream + b'\nendstream')
+    objs[1] = b'<< /Type /Pages /Count 9 /Kids [' + b' '.join(kids) + b'] >>'
+    data = b'%PDF-1.4\n'; offsets = []
+    for i, obj in enumerate(objs, 1):
+        offsets.append(len(data)); data += f'{i} 0 obj\n'.encode() + obj + b'\nendobj\n'
+    xref = len(data)
+    data += f'xref\n0 {len(objs) + 1}\n0000000000 65535 f \n'.encode() + b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets)
+    return data + f'trailer << /Size {len(objs) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF'.encode()
+
+boot(1440, 900, False)
+upload(headings_pdf())
+check('H1 a PDF without bookmarks still gets a Contents list built from its headings', """(() => {
+  const o = state.pdfOutline || []; const top = o.map(i => [i.pageIndex, i.title]), nested = o.flatMap(i => i.items.map(s => [s.pageIndex, s.title]));
+  return (state.pdfOutlineGenerated === true && !document.getElementById('pdf-tab-outline').disabled &&
+          JSON.stringify(top) === JSON.stringify([[1, 'Chapter 1 Journey 1'], [4, 'Chapter 2 Journey 4'], [7, 'Chapter 3 Journey 7']]) &&
+          JSON.stringify(nested) === JSON.stringify([[2, 'Section on page 2'], [5, 'Section on page 5'], [8, 'Section on page 8']])) || {top, nested}; })()""", timeout=25)
+c.js("document.getElementById('toggle-toc-desktop').click()"); pause(.6)
+c.js("document.getElementById('pdf-tab-outline').click()"); pause(.4)
+c.js("[...document.querySelectorAll('#pdf-outline-list .pdf-outline-item')].find(r => r.textContent === 'Section on page 5').click()"); pause(1.2)
+check('H2 clicking a generated entry opens its page', 'pdfActivePage === 5 || pdfActivePage')
+
+# ---------------------------------------------------------------- I: Quick Wheel acts on the live selection (P2)
+boot(1000, 900, False)
+upload(paradigm_pdf())
+learning_on()
+c.js("window.__aiTasks = []; startAiTask = (text, mode) => { __aiTasks.push({mode, text}); }; 1")
+a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
+c.call('Input.dispatchMouseEvent', type='mouseMoved', x=a['x'], y=a['y'])
+c.call('Input.dispatchMouseEvent', type='mousePressed', x=a['x'], y=a['y'], button='left', clickCount=1)
+for i in range(1, 11):
+    c.call('Input.dispatchMouseEvent', type='mouseMoved', x=a['x'] + (b['x'] + 20 - a['x']) * i / 10, y=a['y'] + (b['y'] - a['y']) * i / 10, button='left', buttons=1)
+    pause(.02)
+c.call('Input.dispatchMouseEvent', type='mouseReleased', x=b['x'] + 20, y=b['y'], button='left', clickCount=1)
+pause(.6)
+selected = c.js("state.lastSelectionText")
+assert selected and 'je suis' in selected and 'il est' in selected, selected
+launcher = c.js("(() => { const r = document.getElementById('qm-launcher').getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2}; })()")
+for kind in ('mousePressed', 'mouseReleased'):
+    c.call('Input.dispatchMouseEvent', type=kind, x=launcher['x'], y=launcher['y'], button='left', clickCount=1)
+pause(.6)
+c.js("document.querySelector('.qm-item[data-action=\"btn-lang-level\"]').click()"); pause(.4)
+check('I1 Quick Wheel "Level" analyses the selection the learner just made (not an earlier text, not nothing)',
+      "(() => { const t = __aiTasks.at(-1); return (t && t.mode === 'level' && t.text === %s) || __aiTasks; })()" % json.dumps(selected, ensure_ascii=False))
+
 check('no page errors', "__errors.length === 0 || __errors")
 print('ALL PDF WORKSPACE REGRESSION CHECKS PASSED')

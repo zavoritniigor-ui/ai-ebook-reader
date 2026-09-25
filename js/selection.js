@@ -23,8 +23,22 @@ function caretRangeAt(clientX, clientY) {
         if (pos) { range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); range.collapse(true); }
     }
     // During transformed PDF hit-testing Chrome may return the layer element,
-    // not a text offset. Recover the nearest glyph within that PDF item only.
-    if (range && range.startContainer.nodeType === Node.ELEMENT_NODE) {
+    // page wrapper, or canvas instead of a text offset. Recover the nearest glyph.
+    if ((!range || range.startContainer.nodeType === Node.ELEMENT_NODE) && state.format === 'pdf') {
+        const el = (range && range.startContainer.nodeType === Node.ELEMENT_NODE) ? range.startContainer : document.elementFromPoint(clientX, clientY);
+        let layer = el?.closest?.('.pdf-text-layer');
+        if (!layer) {
+            const pageEl = el?.closest?.('.pdf-page-wrapper') ||
+                           document.elementFromPoint(clientX, clientY)?.closest('.pdf-page-wrapper') ||
+                           pdfPageWrappers?.[pdfActivePage] || document.querySelector('.pdf-page-wrapper');
+            if (pageEl) layer = pageEl.querySelector('.pdf-text-layer');
+        }
+        const span = layer && pdfNearestSpan(layer, clientX, clientY);
+        if (span) {
+            const caret = pdfCaretInSpan(span, clientX, clientY);
+            if (caret) return caret;
+        }
+    } else if (range && range.startContainer.nodeType === Node.ELEMENT_NODE) {
         const layer = range.startContainer.closest('.pdf-text-layer');
         const span = layer && pdfNearestSpan(layer, clientX, clientY);
         if (span) return pdfCaretInSpan(span, clientX, clientY) || range;
@@ -685,8 +699,140 @@ function unwrapSpans(spans) {
         parent.normalize();
     });
 }
+function capturePdfSelectionAnchor(range) {
+    if (!range || state.format !== 'pdf') return null;
+    const startNode = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+    const wrapper = startNode?.closest ? startNode.closest('.pdf-page-wrapper') : null;
+    if (!wrapper) return null;
+    const pageNum = Number(wrapper.dataset.page);
+    const layer = wrapper.querySelector('.pdf-text-layer');
+    if (!layer) return null;
+    const allSpans = pdfTextSpans(layer);
+    const text = state.lastSelectionText || (range.toString ? range.toString().trim() : '');
+
+    if (range._pdfPieces && range._pdfPieces.length > 0) {
+        const pieces = [];
+        for (const p of range._pdfPieces) {
+            const spanIdx = p.span ? allSpans.indexOf(p.span) : -1;
+            if (spanIdx >= 0) {
+                pieces.push({ spanIndex: spanIdx, start: p.start, end: p.end });
+            }
+        }
+        if (pieces.length > 0) {
+            return { pageNum, pieces, text };
+        }
+    }
+
+    const endNode = range.endContainer.nodeType === Node.TEXT_NODE ? range.endContainer.parentElement : range.endContainer;
+    const startSpan = startNode?.closest ? startNode.closest('span') : null;
+    const endSpan = endNode?.closest ? endNode.closest('span') : null;
+    const startSpanIndex = startSpan ? allSpans.indexOf(startSpan) : -1;
+    const endSpanIndex = endSpan ? allSpans.indexOf(endSpan) : -1;
+
+    if (startSpanIndex >= 0 && endSpanIndex >= 0) {
+        return {
+            pageNum,
+            startSpanIndex,
+            startOffset: range.startOffset,
+            endSpanIndex,
+            endOffset: range.endOffset,
+            text
+        };
+    }
+    return { pageNum, text };
+}
+
+function restorePdfSelection(pageNum, wrapperEl) {
+    const anchor = state.activeSelectionAnchor;
+    if (!anchor || anchor.pageNum !== pageNum) return;
+    if (!state.tooltipPersistent && els.tooltip.style.display === 'none') {
+        state.activeSelectionAnchor = null;
+        return;
+    }
+    const layer = wrapperEl.querySelector('.pdf-text-layer');
+    if (!layer) return;
+    const allSpans = pdfTextSpans(layer);
+    if (!allSpans.length) return;
+
+    let newRange = null;
+    let targetSpans = [];
+
+    if (anchor.pieces && anchor.pieces.length > 0) {
+        const reconstructedPieces = [];
+        for (const p of anchor.pieces) {
+            const s = allSpans[p.spanIndex];
+            if (!s) continue;
+            targetSpans.push(s);
+            const walker = document.createTreeWalker(s, NodeFilter.SHOW_TEXT);
+            const node = walker.nextNode() || s.firstChild || s;
+            const textLen = (node.nodeValue || s.textContent || '').length;
+            reconstructedPieces.push({
+                node,
+                start: Math.min(p.start, textLen),
+                end: Math.min(p.end, textLen),
+                span: s
+            });
+        }
+        if (reconstructedPieces.length > 0) {
+            newRange = document.createRange();
+            newRange._pdfPieces = reconstructedPieces;
+            const first = reconstructedPieces[0], last = reconstructedPieces.at(-1);
+            newRange.setStart(first.node, first.start);
+            newRange.setEnd(last.node, last.end);
+            newRange.toString = () => anchor.text;
+        }
+    } else if (anchor.startSpanIndex >= 0 && anchor.endSpanIndex >= 0) {
+        const sSpan = allSpans[anchor.startSpanIndex];
+        const eSpan = allSpans[anchor.endSpanIndex];
+        if (sSpan && eSpan) {
+            const sNode = sSpan.firstChild || sSpan;
+            const eNode = eSpan.firstChild || eSpan;
+            newRange = document.createRange();
+            newRange.setStart(sNode, Math.min(anchor.startOffset, (sNode.nodeValue || '').length));
+            newRange.setEnd(eNode, Math.min(anchor.endOffset, (eNode.nodeValue || '').length));
+            newRange.toString = () => anchor.text;
+            targetSpans = allSpans.slice(anchor.startSpanIndex, anchor.endSpanIndex + 1);
+        }
+    }
+
+    if (!newRange && anchor.text) {
+        const matchingSpans = allSpans.filter(s => s.textContent.trim() && anchor.text.includes(s.textContent.trim()));
+        if (matchingSpans.length > 0) {
+            const pieces = matchingSpans.map(s => ({
+                node: s.firstChild || s,
+                start: 0,
+                end: (s.textContent || '').length,
+                span: s
+            }));
+            newRange = document.createRange();
+            newRange._pdfPieces = pieces;
+            newRange.setStart(pieces[0].node, pieces[0].start);
+            newRange.setEnd(pieces.at(-1).node, pieces.at(-1).end);
+            newRange.toString = () => anchor.text;
+            targetSpans = matchingSpans;
+        }
+    }
+
+    if (newRange) {
+        state.lastSelectedRange = newRange;
+        if (state.canonicalSelection) {
+            state.canonicalSelection.range = newRange;
+            state.canonicalSelection.spans = targetSpans;
+        }
+        unwrapSpans(state.selSpans);
+        state.selSpans = wrapRangeInSpans(newRange, 'sel-word');
+    }
+}
+
 function showSelectionHighlight(range) {
+    let anchor = null;
+    if (state.format === 'pdf') {
+        anchor = capturePdfSelectionAnchor(range);
+    }
+    const savedCanonical = state.canonicalSelection;
     clearSelectionHighlight();
+    if (savedCanonical) state.canonicalSelection = savedCanonical;
+    if (anchor) state.activeSelectionAnchor = anchor;
     if (state.format === 'pdf') {
         state.selSpans = wrapRangeInSpans(range, 'sel-word');
         return;
@@ -704,6 +850,8 @@ function clearSelectionHighlight() {
     state.selSpans = [];
     clearSvoHighlights();
     state.lastSelectionText = null;
+    state.activeSelectionAnchor = null;
+    state.canonicalSelection = null;
 }
 // Від КЛІКНУТОГО СЛОВА до кінця речення (до крапки) — саме те, що робить
 // кнопка виділення у вікні перекладу.
@@ -940,9 +1088,18 @@ function wordBoundsAt(clientX, clientY) {
     const rTest = document.createRange();
     rTest.setStart(wBounds.node, wBounds.start);
     rTest.setEnd(wBounds.endNode || wBounds.node, wBounds.end);
-    if (!isPointInRects(clientX, clientY, rTest.getClientRects(), state.format === 'pdf' ? 10 : 2)) return null;
+    if (!isPointInRects(clientX, clientY, rTest.getClientRects(), state.format === 'pdf' ? 10 : 2)) {
+        if (state.format === 'pdf' && node.parentElement) {
+            const parentRect = node.parentElement.getBoundingClientRect();
+            if (!isPointInRects(clientX, clientY, [parentRect], 14)) return null;
+        } else {
+            return null;
+        }
+    }
     return wBounds;
 }
+
+let lastDragClientX = 0, lastDragClientY = 0;
 
 function cancelDragSelection() {
     const hadDragHighlight = !!state.dragRange;
@@ -950,6 +1107,7 @@ function cancelDragSelection() {
     dragSel = null; dragMoved = false; state.dragRange = null;
     state.touchSelecting = false;
     setTouchSelectionGuard(false);
+    document.body.classList.remove('touch-selecting');
     els.container.style.touchAction = '';
     if (hadDragHighlight && typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
 }
@@ -968,7 +1126,13 @@ function setTouchSelectionGuard(on) {
     else document.removeEventListener('touchmove', guardTouchSelectionMove, { passive: false });
 }
 document.addEventListener('pointerup', e => {
-    if (!els.mainArea.contains(e.target)) cancelDragSelection();
+    if (state.touchSelecting || dragSel) {
+        const cx = e.clientX || lastDragClientX || dragStartX;
+        const cy = e.clientY || lastDragClientY || dragStartY;
+        commitDragSelection(cx, cy);
+    } else if (!els.mainArea.contains(e.target)) {
+        cancelDragSelection();
+    }
 });
 window.addEventListener('blur', cancelDragSelection);
 
@@ -976,6 +1140,7 @@ let dragSel = null;   // { node, start, end } — слово, з якого по
 let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 
 els.mainArea.addEventListener('pointerdown', (e) => {
+    if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
     if (state.format === 'pdf' && !els.container.contains(e.target)) return;
     if (state.inkMode) return;
@@ -996,15 +1161,22 @@ els.mainArea.addEventListener('pointerdown', (e) => {
             if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) return;
             let w = wordBoundsAt(px, py);
             if (!w && state.format === 'pdf') {
-                for (const dy of [-8, 8, -16, 16]) {
+                for (const dy of [-8, 8, -16, 16, -24, 24]) {
                     w = wordBoundsAt(px, py + dy);
                     if (w) break;
+                }
+                if (!w) {
+                    for (const dx of [-8, 8, -16, 16]) {
+                        w = wordBoundsAt(px + dx, py);
+                        if (w) break;
+                    }
                 }
             }
             if (!w) return;
             dragSel = w;
             dragMoved = true;                 // підсвітка з першого ж слова
             state.touchSelecting = true;      // свайпи гортання на час виділення вимкнені
+            document.body.classList.add('touch-selecting');
             setTouchSelectionGuard(true);
             state.suppressNextClick = true;
             // Забороняємо браузеру трактувати рух як прокрутку — інакше він
@@ -1054,11 +1226,13 @@ els.mainArea.addEventListener('pointerdown', (e) => {
 
 els.mainArea.addEventListener('pointermove', (e) => {
     // Палець зрушив раніше, ніж спрацювало утримання — це гортання, не виділення.
-    if (touchSelTimer && !dragSel &&
-        (Math.abs(e.clientX - dragStartX) > 10 || Math.abs(e.clientY - dragStartY) > 10)) {
+    // Використовуємо радіальний поріг (18px) для ємнісних тачскринів планшетів.
+    if (touchSelTimer && !dragSel && Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > 18) {
         clearTimeout(touchSelTimer); touchSelTimer = null;
     }
+    if (state.touchSelecting && e.cancelable) e.preventDefault();
     if (!dragSel) return;
+    lastDragClientX = e.clientX; lastDragClientY = e.clientY;
     // Поріг руху: тремтіння пера чи миші під час звичайного тапу не має вважатись
     // протягуванням — інакше слово підсвічувалось зеленим (виділення) замість сірого.
     if (!dragMoved) {
@@ -1102,12 +1276,13 @@ els.mainArea.addEventListener('pointermove', (e) => {
     window.getSelection()?.removeAllRanges();
 });
 
-els.mainArea.addEventListener('pointerup', (e) => {
+function commitDragSelection(clientX, clientY) {
     clearTimeout(touchSelTimer); touchSelTimer = null;
     if (state.touchSelecting) {
         touchStartTime = 0; // pointerup precedes touchend: do not turn the page after selection
         state.touchSelecting = false;
         setTouchSelectionGuard(false);
+        document.body.classList.remove('touch-selecting');
         els.container.style.touchAction = (state.format === 'pdf') ? '' : 'pan-y';
     }
     window.getSelection()?.removeAllRanges();
@@ -1138,7 +1313,7 @@ els.mainArea.addEventListener('pointerup', (e) => {
     const helpContext = recordHelpForSpan(r, 'phrase_translation');
     state.suppressNextClick = true;   // інакше слідом спрацює ще й тап по слову
     // Одне слово — звичайний шлях (зі словниковою статтею); кілька — як фрагмент.
-    state.lastTapPoint = { x: e.clientX, y: e.clientY };
+    state.lastTapPoint = { x: clientX, y: clientY };
     state.expandLevel = 0;
     state.lastSelectedRange = r.cloneRange();
     if (r._pdfPieces) state.lastSelectedRange._pdfPieces = r._pdfPieces;
@@ -1150,8 +1325,19 @@ els.mainArea.addEventListener('pointerup', (e) => {
     if (!rect) {
         try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
     }
-    handleWordOrSelection(text, e.clientX, e.clientY, rect, helpContext, 'phrase_translation');
-});
+    state.touchJustCommitted = Date.now();
+    handleWordOrSelection(text, clientX, clientY, rect, helpContext, 'phrase_translation');
+}
+
+els.mainArea.addEventListener('touchend', (e) => {
+    if (state.touchSelecting) {
+        if (e.cancelable) e.preventDefault();
+        if (dragSel && state.dragRange) {
+            const touch = e.changedTouches?.[0];
+            commitDragSelection(touch ? touch.clientX : (lastDragClientX || dragStartX), touch ? touch.clientY : (lastDragClientY || dragStartY));
+        }
+    }
+}, { passive: false });
 
 // Діапазон від слова A до слова B у правильному порядку, з межами по словах.
 function rangeBetweenWords(a, b) {

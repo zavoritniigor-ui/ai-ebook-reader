@@ -149,6 +149,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     const isCurrent = () => generation === pdfContinuousGeneration && epoch === readerEpoch.book && state.pdfDoc === doc && state.format === 'pdf';
     pdfContinuousReady = false;
     pdfSuppressActiveTracking = false;
+    state.activeSelectionAnchor = null;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     clearTimeout(bookmarkSaveTimer);
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
@@ -256,14 +257,18 @@ function handlePdfIntersection(entries) {
 
 function getPdfPageAtViewportCenter(containerH) {
     if (!pdfPageWrappers || pdfPageWrappers.length <= 1) return pdfActivePage;
-    const center = els.container.scrollTop + (containerH ?? els.container.clientHeight) / 2;
+    const center = els.container.getBoundingClientRect().top + (containerH ?? els.container.clientHeight) / 2;
+    return getPdfPageAtClientY(center);
+}
+
+// Client geometry includes the live stack transform; offsetTop does not.
+function getPdfPageAtClientY(center) {
     let low = 1, high = state.totalPages;
     while (low <= high) {
         const mid = (low + high) >> 1;
         const w = pdfPageWrappers[mid];
         if (!w) break;
-        const top = w.offsetTop;
-        const bottom = top + w.offsetHeight;
+        const { top, bottom } = w.getBoundingClientRect();
         if (center < top) {
             high = mid - 1;
         } else if (center > bottom) {
@@ -306,7 +311,7 @@ function cancelContinuousPdfRenders() {
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
 }
 
-function updatePdfRenderWindow(activePage) {
+function updatePdfRenderWindow(activePage, rerenderWanted = false) {
     if (!pdfContinuousReady || state.format !== 'pdf' || !state.pdfDoc) return new Map();
     const doc = state.pdfDoc, epoch = readerEpoch.book, generation = pdfContinuousGeneration;
     const lo = Math.max(1, activePage - PDF_RENDER_BUFFER);
@@ -323,7 +328,17 @@ function updatePdfRenderWindow(activePage) {
     // height, so scroll position never jumps). This also covers pages that
     // are STILL mid-render (not yet in pdfRenderedPages) but no longer
     // wanted — pdfRenderedPages alone only tracks completed ones.
-    pdfPagesWithActiveRenderTask().forEach(n => { if (!wanted.has(n)) cancelPdfPageRenderTask(n); });
+    pdfPagesWithActiveRenderTask().forEach(n => {
+        if (!wanted.has(n)) {
+            cancelPdfPageRenderTask(n);
+            const w = pdfPageWrappers[n];
+            if (w && !pdfRenderedPages.has(n) && w.children.length > 0) {
+                w.replaceChildren();
+                w.classList.add('pdf-placeholder');
+                delete w.dataset.rendered;
+            }
+        }
+    });
     pdfRenderedPages.forEach(n => {
         if (wanted.has(n)) return;
         pdfPageTokens[n]++;
@@ -341,7 +356,7 @@ function updatePdfRenderWindow(activePage) {
 
     const pending = new Map(); // pageNum -> Promise<boolean>, for callers that need to await a specific page
     wanted.forEach(n => {
-        if (pdfRenderedPages.has(n)) { pending.set(n, Promise.resolve(true)); return; }
+        if (!rerenderWanted && pdfRenderedPages.has(n)) { pending.set(n, Promise.resolve(true)); return; }
         const w = pdfPageWrappers[n];
         if (!w) return;
         // A still-wanted page can ALSO have a stale in-flight render — e.g.
@@ -464,6 +479,7 @@ function updatePdfWorkspaceLayout(options = {}) {
         document.documentElement.style.setProperty('--ws-width', `${Math.round(ws.width)}px`);
         const leftReserve = Math.max(0, Math.round(ws.left - mainRect.left));
         const rightReserve = Math.max(0, Math.round(mainRect.right - ws.right));
+        document.documentElement.style.setProperty('--ws-right', `${rightReserve}px`);
 
         const changed = (lastPdfWorkspaceLeftReserve === null) ||
                         (Math.abs(lastPdfWorkspaceLeftReserve - leftReserve) >= 1) ||
@@ -487,7 +503,7 @@ function updatePdfWorkspaceLayout(options = {}) {
             // containerResizeObserver re-lays the continuous stack out ONCE (debounced), with the reading
             // anchor measured at the pre-resize size -- the same split main has always used. Relaying out here
             // as well meant two back-to-back relayouts per panel toggle, each cancelling/restarting the page
-            // renders; CI bisects pinned the renderer crash on this observer path.
+            if (typeof repositionTooltip === 'function') repositionTooltip();
         }
     };
 
