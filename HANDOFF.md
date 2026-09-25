@@ -1,4 +1,41 @@
-## ACTIVE: post-merge reader UX/tablet repair (2026-09-23)
+## ACTIVE: PR #124 reader UX/tablet repair — completion pass (2026-09-24, Claude)
+
+- Worktree `/tmp/reader-ux-tablet-repair`, branch `feature/reader-ux-tablet-repair`, PR #124, base origin/main `5f25137`.
+- Picked up at `a85ac87`. The previous "Failed: None" below was stale: CI had failed 6/6 at suite 5
+  (`pdf_workspace_regressions` B1), so the remaining suites had NEVER run in CI on this branch.
+
+### Fixed in this pass
+1. **B1 CI failure (root cause):** after `pdf_pinch_anchor_browser.py`'s ~48 emulated two-finger pinches, Chrome
+   delivers NO further touches to that tab (even about:blank; a new tab is fine) — every later touch test on the
+   shared CI browser saw zero events. The pinch suite now runs in its own tab and closes it. `main`'s boot/touch
+   setup for section B restored (the extra about:blank / clearDeviceMetricsOverride workarounds were not the cause).
+2. **Regressions the full suite exposed (CI never got that far):**
+   - `grammar_french`: P1-3 auto-expanded the Grammar drawer — breaks #119's contract (analysis runs behind the
+     closed drawer). Restored; P1-3 persistence of popup + green selection kept; P1-3 test opens the drawer with a
+     real tab click. The kept popup covers the next word, so `close_drawer()` also closes it with its ×.
+   - `practice_reading` / `practice_allocation`: the kept popup floated over the Practice worksheet and swallowed
+     clicks. Opening/restoring the expanded worksheet now dismisses it (`dismissReaderPopup`, shared with ×).
+   - `reader_resize_sync`: headless speech fails at once ('not-allowed'); the iterative P1-7 TTS drains the queue
+     instantly, so "still active after 0.3s" only held on main by accident — the test now holds the utterance.
+3. **P2 (none were implemented before):**
+   - Contents for PDFs without bookmarks (the real book has none → tab was dead): generated from headings in a
+     throttled background pass (`js/pdf-outline.js` startPdfHeadingScan). Real book: Preface → every chapter →
+     Appendix D, entries open the exact page.
+   - Header covered the top of the workspace (2-row toolbar ~97px vs fixed 58px offset) incl. the sidebar tabs:
+     `--app-header-h` from a ResizeObserver; tab labels localized.
+   - Grammar button contrast 3.2:1 → 5.3:1 (`#0b7a5e`).
+   - Quick Wheel Level/Explain used only text from an EARLIER AI action; now the live selection (captured when
+     the wheel opens, since opening hides the popup).
+   - Regression coverage: `tests/pdf_workspace_regressions_browser.py` sections F–I.
+
+### Known flake (pre-existing)
+- `format_reader_audit` "pdf offline navigation and reopen": 1/3 locally on this branch (main 0/3 today; memory
+  records ~50% on untouched main earlier). Rerun once if it is the only failure.
+
+### Physical verification still required from the user (not provable by CDP)
+- Tablet pinch-zoom keeps the reading position; tablet long-press/drag range selection; Chrome Print Preview.
+
+## SUPERSEDED (see section above): post-merge reader UX/tablet repair (2026-09-23)
 
 - Current Worktree: `/tmp/reader-ux-tablet-repair`
 - Branch: `feature/reader-ux-tablet-repair`
