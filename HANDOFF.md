@@ -1,7 +1,17 @@
-## ACTIVE: PR #124 reader UX/tablet repair — completion pass (2026-09-24, Claude)
+## DONE: PR #124 reader UX/tablet repair — merged (2026-09-24, Claude)
+
+- **Merged:** PR #124 squash-merged as `e2e9919` on main (feature head `2bd7376`, feature CI run 36083076997 green).
+- **Post-merge:** main CI run 36084120803 green (test + Cloudflare Pages). Production https://ai-ebook-reader.pages.dev
+  serves the merged assets (script versions match main) and `tests/pdf_workspace_regressions_browser.py` passes 18/18
+  against production.
+- **Remaining — user physical verification only:** tablet pinch-zoom keeps the reading position; tablet long-press /
+  drag range selection; Chrome Print Preview without tofu glyphs. No engineering work open.
+- Details of the completion pass below.
+
+### Completion pass details
 
 - Worktree `/tmp/reader-ux-tablet-repair`, branch `feature/reader-ux-tablet-repair`, PR #124, base origin/main `5f25137`.
-- Picked up at `a85ac87`. The previous "Failed: None" below was stale: CI had failed 6/6 at suite 5
+- Branch `feature/reader-ux-tablet-repair` (merged). Picked up at `a85ac87`. The previous "Failed: None" below was stale: CI had failed 6/6 at suite 5
   (`pdf_workspace_regressions` B1), so the remaining suites had NEVER run in CI on this branch.
 
 ### Fixed in this pass
