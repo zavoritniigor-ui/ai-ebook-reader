@@ -252,10 +252,11 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     els.ttAiBtn.onclick = (e) => {
         e.stopPropagation();
         cancelTooltipHide();
+        // Keep the popup (source + translation) and the green selection while Grammar works (P1-3); the
+        // drawer itself still opens only when the learner opens it (#119 contract: analysis runs behind the
+        // closed drawer, the tab turns ready).
         state.tooltipPersistent = true;
         if (helpContext) recordHelpForSpan(helpContext, 'grammar');
-        els.grammarPanel.classList.add('expanded');
-        els.askPanel.classList.remove('expanded');
         const grammarText = (grammarSourceOverride && grammarSourceOverride !== cleanText) ? grammarSourceOverride : cleanText;
         state.lastGrammarSentence = (tapContextSentence && tapContextSentence !== grammarText) ? tapContextSentence : '';
         startAiTask(grammarText, 'grammar');

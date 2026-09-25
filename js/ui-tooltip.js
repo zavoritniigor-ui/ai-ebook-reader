@@ -150,14 +150,19 @@ function repositionTooltip() {
 window.visualViewport?.addEventListener('resize', repositionTooltip);
 window.visualViewport?.addEventListener('scroll', repositionTooltip);
 
+// Dismiss the reader's translation popup and its selection -- the popup's own close button, and anything that
+// takes over the reading area (the Practice worksheet overlays the text the popup refers to).
+function dismissReaderPopup() {
+    cancelTooltipHide();
+    els.tooltip.style.display = 'none';
+    state.tooltipPersistent = false;
+    stopTooltipSpeech();
+    clearSelectionHighlight();
+}
 if (els.ttCloseBtn) {
     els.ttCloseBtn.onclick = (e) => {
         e.stopPropagation();
-        cancelTooltipHide();
-        els.tooltip.style.display = 'none';
-        state.tooltipPersistent = false;
-        stopTooltipSpeech();
-        clearSelectionHighlight();
+        dismissReaderPopup();
     };
 }
 

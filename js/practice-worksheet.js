@@ -105,6 +105,7 @@ function setPracticeWorkspaceMode(mode) {
     panel.inert = mode !== 'expanded';
     panel.setAttribute('aria-hidden', String(mode !== 'expanded'));
     const restore = document.getElementById('practice-restore');
+    if (mode === 'expanded' && typeof dismissReaderPopup === 'function') dismissReaderPopup();
     syncPracticeRestore(panel);
     layoutPracticeWorkspace(mode === 'expanded');
     if (mode !== 'expanded') restore.focus({ preventScroll: true });
@@ -201,6 +202,8 @@ function displayPracticeSession(session) {
     panel.hidden = false;
     mountPracticeWorkspaceControls(panel);
     if (opening) practiceWorkspaceMode = 'expanded';
+    // The expanded worksheet covers the reader text: a popup kept open for Grammar (P1-3) must not float over it.
+    if (practiceWorkspaceMode === 'expanded' && typeof dismissReaderPopup === 'function') dismissReaderPopup();
     panel.dataset.mode = practiceWorkspaceMode;
     panel.inert = practiceWorkspaceMode !== 'expanded';
     panel.setAttribute('aria-hidden', String(panel.inert));

@@ -111,8 +111,17 @@ check('Selection tooltip is visible after touch drag commit',
       "getComputedStyle(els.tooltip).display !== 'none'")
 
 print("\n=== STEP 2: Preserve Selection & Translation Context on Grammar Open (P1-3) ===")
-# Click the Grammar button on the tooltip
+# Press Grammar in the popup: the analysis runs behind the closed drawer (#119 contract) ...
 c.js("els.ttAiBtn.click()")
+pause(.8)
+check('Grammar analysis runs with the drawer still closed', "!els.grammarPanel.classList.contains('expanded')")
+check('Popup and green highlight survive pressing Grammar',
+      "getComputedStyle(els.tooltip).display !== 'none' && document.querySelectorAll('.sel-word').length >= 3")
+# ... then the learner opens the drawer with a real click on its tab.
+tab = c.js("(() => { const r = document.getElementById('grammar-tab').getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2}; })()")
+c.call('Input.dispatchMouseEvent', type='mouseMoved', x=tab['x'], y=tab['y'])
+c.call('Input.dispatchMouseEvent', type='mousePressed', x=tab['x'], y=tab['y'], button='left', clickCount=1)
+c.call('Input.dispatchMouseEvent', type='mouseReleased', x=tab['x'], y=tab['y'], button='left', clickCount=1)
 pause(.8)
 
 check('Grammar panel is expanded', "els.grammarPanel.classList.contains('expanded')")

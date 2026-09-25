@@ -1556,6 +1556,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     }
 
     const task = beginAsyncTask('grammar');
+    panel.classList.remove('expanded'); // Залишаємо панель згорнутою, як і раніше
     panel.classList.remove('ready'); panel.classList.add('loading');
     content.innerHTML = '';
     const spinner = document.createElement('div');

@@ -511,8 +511,11 @@ c.js("switchGrammarMode('verbs')")
 
 
 def close_drawer():
-    """The learner closes the Grammar drawer before reading on (an open drawer covers the right of the page)."""
+    """The learner closes the Grammar drawer before reading on (an open drawer covers the right of the page), and
+    dismisses the translation popup that pressing Grammar now keeps open (P1-3) with its close button -- otherwise
+    it would cover the next word."""
     c.js("els.grammarPanel.classList.remove('expanded')")
+    c.js("if (getComputedStyle(els.tooltip).display !== 'none') els.ttCloseBtn.click()")
     time.sleep(0.6)   # the drawer slides out; a click during the transition would still land on it
 
 
