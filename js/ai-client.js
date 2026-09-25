@@ -452,8 +452,10 @@ async function aiTranslateText(text, srcCode, signal, targetLang = state.targetL
         ? `\nРечення, у якому воно вжите: "${contextSentence}"` : '';
     let prompt = isWord
         ? `Слово "${text}".${ctx}
-Переклади ${langName} саме те значення, у якому слово вжите В ЦЬОМУ РЕЧЕННІ. Якщо це форма дієслова — дай дієслово у відповідній формі, а не однокорінний іменник. Якщо слово багатозначне — обери значення за контекстом.
-У відповіді — лише переклад (1–4 слова), без лапок, пояснень і варіантів.`
+Дай переклад ${langName} САМЕ ЦЬОГО СЛОВА — не фрази й не речення навколо нього. Речення потрібне лише для того, щоб обрати правильне значення багатозначного слова (bank — банк чи берег) і правильну форму: якщо це форма дієслова — перекладай дієслово, а не однокорінний іменник; зберігай час/особу чи рід/число, де це природно.
+Не замінюй слово перекладом словосполучення, у якому воно стоїть: для "run" у "run the company" пряме значення — "керувати", а не "керувати компанією".
+Якщо в цьому реченні слово є частиною звороту, ідіоми чи фразового дієслова і його значення тут справді інше або ширше, ніж пряме, коротко поясни це в полі "context" (мовою перекладу, напр. «у цьому контексті: керувати компанією» або «у "take care": піклуватися»). Якщо пряме значення вже все пояснює — "context": null. Власні назви не перекладай, якщо в мові перекладу немає усталеної форми.
+Відповідь — ЛИШЕ JSON: {"direct":"переклад слова (1–3 слова)","context":null або "коротке уточнення"}`
         : `Переклади ${langName} цей фрагмент: "${text}"
 Зроби природний, зв'язний переклад із правильним порядком слів, а не дослівний підрядник. Нічого не додавай і нічого не пропускай. У відповіді — лише переклад, без лапок і пояснень.`;
     if (withAlignment) prompt = prompt.replace('У відповіді — лише переклад, без лапок і пояснень.', '') + `
@@ -469,8 +471,37 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
                 return { translation: data.translation, alignment: validateAlignment(text, data.translation, data.alignment) };
             } catch (e) { return null; }
         }
+        if (isWord) return parseSingleWordTranslation(out);
         return (out || '').trim().replace(/^["«»]|["«»]$/g, '') || null;
     } catch (e) { return null; }
+}
+
+// Single word: {"direct", "context"}. The direct translation of the selected word is what the popup shows first;
+// the contextual note only when it adds something (a construction/idiom meaning), never a repeat of "direct".
+// A reply that is not the JSON contract (older/looser models) is still shown, as the whole translation.
+function parseSingleWordTranslation(out) {
+    const raw = (out || '').trim();
+    if (!raw) return null;
+    const unquote = s => String(s || '').trim().replace(/^["«»“”']+|["«»“”']+$/g, '').trim();
+    let data = null;
+    try { data = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/gi, '').replace(/^json\s*/i, '')); } catch (e) {
+        const m = raw.match(/\{[\s\S]*\}/);
+        if (m) { try { data = JSON.parse(m[0]); } catch (e2) { data = null; } }
+    }
+    if (!data || typeof data !== 'object' || typeof data.direct !== 'string') {
+        // Almost-JSON (e.g. unescaped quotes inside "context"): still take the fields rather than show raw JSON.
+        const d = raw.match(/"direct"\s*:\s*"([^"]*)"/), cx = raw.match(/"context"\s*:\s*(?:null|"([\s\S]*?)"\s*\}?\s*(?:```)?\s*$)/);
+        if (d) data = { direct: d[1], context: cx && cx[1] ? cx[1] : null };
+        else return unquote(raw.replace(/^```(?:json)?\s*|\s*```$/gi, '')) || null;
+    }
+    const direct = unquote(data.direct);
+    if (!direct) return null;
+    let note = typeof data.context === 'string' ? unquote(data.context) : '';
+    const norm = s => s.toLowerCase().replace(/[\s.,;:!?()«»"'“”-]+/g, ' ').trim();
+    // Redundant when it only repeats the direct translation (with or without a "in this context:" lead-in).
+    const noteCore = note.includes(':') ? note.slice(note.lastIndexOf(':') + 1) : note;
+    if (!note || /^null$/i.test(note) || norm(note) === norm(direct) || norm(noteCore) === norm(direct)) note = '';
+    return { translation: direct, contextNote: note || null };
 }
 
 function sanitizeAI(text) {

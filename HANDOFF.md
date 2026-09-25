@@ -1,3 +1,18 @@
+## PR (stacked on #128 -> #127 -> #126): single-word AI translation, literal first (2026-09-25, Claude)
+
+Branch `fix/single-word-literal-translation`. Merge order: #126 -> #127 -> #128 -> this PR.
+- Cause: the single-word AI prompt asked for "the meaning in THIS sentence (1-4 words)", so models returned the
+  translation of the surrounding construction ("run" -> "керувати компанією") instead of the word.
+- `js/ai-client.js` `aiTranslateText`: single-word prompt now asks for the translation of the word itself (the sentence
+  only picks the sense/form) and returns JSON `{"direct","context"}`; `parseSingleWordTranslation` parses it (fenced /
+  almost-JSON / plain-text replies tolerated) and drops a context note that just repeats the direct translation.
+  Multi-word (alignment) prompt unchanged.
+- `js/translation.js`: the direct translation is primary; the note renders after it as `.tt-context` (smaller, grey,
+  in parentheses) only when present. Dictionary extras / non-AI path unchanged.
+- Test: `tests/single_word_translation_browser.py` (mocked `callAI`, no real provider). Neighbouring suites pass locally.
+- Not verifiable automatically: real-model output quality on real books -- check a few words (e.g. a phrasal verb,
+  a polysemous noun) with the user's actual AI key.
+
 ## PR (stacked on #127 -> #126): translation popup auto-close timer (2026-09-25, Claude)
 
 - Branch `fix/translation-popup-timer` on top of `fix/pinch-release-flash` (#127) on top of #126 — merge #126, #127 first.

@@ -149,6 +149,7 @@ jobs:
 
           echo "Running translation_popup_timer_browser.py..."
           python3 -u tests/translation_popup_timer_browser.py
+          python3 -u tests/single_word_translation_browser.py
 
           echo "Running pdf_word_click_browser.py..."
           python3 -u tests/pdf_word_click_browser.py

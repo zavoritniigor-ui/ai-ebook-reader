@@ -305,7 +305,9 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         if (myLookup !== state.lookupToken || !task.current()) return;
         if (ai) {
             alignmentResult = typeof ai === 'object' ? ai : null;
-            html = escapeHtml(alignmentResult ? ai.translation : ai) + ' <span class="tt-note">⚡</span>';
+            html = escapeHtml(alignmentResult ? ai.translation : ai) +
+                (alignmentResult?.contextNote ? ` <span class="tt-context">(${escapeHtml(alignmentResult.contextNote)})</span>` : '') +
+                ' <span class="tt-note">⚡</span>';
             els.ttTranslation.innerHTML = html;
             // Для окремого слова додаємо словникові значення: вони не дублюють
             // переклад, а показують інші можливі значення.
