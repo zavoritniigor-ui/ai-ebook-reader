@@ -216,6 +216,7 @@ jobs:
 
           echo "Running tts_lang_voice_mismatch_browser.py..."
           python3 -u tests/tts_lang_voice_mismatch_browser.py
+          python3 -u tests/tts_first_tap_browser.py
 
           echo "Running pdf_sentence_reselect_browser.py..."
           python3 -u tests/pdf_sentence_reselect_browser.py

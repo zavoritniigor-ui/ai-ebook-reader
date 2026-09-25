@@ -25,7 +25,7 @@ function stopTooltipSpeech() {
     }
     state.speakingId = -1;      // знецінюємо поточну фразу, щоб її onend нічого не скинув
     state.ttsGen++;             // і щоб вона не зрушила чергу читання вголос
-    ttsSynth.cancel();
+    cancelSpeech();
     state.speakingSide = null;
     updateSpeakerIcons();
 }
@@ -61,6 +61,70 @@ let utterSeq = 0;
 // js/main.js) — саме ці місця, а НЕ ланцюжок speakSegment→onend→speakSegment у
 // speakCurrentSentence(), бо там speak() нового відрізка йде без жодного cancel().
 const TTS_CANCEL_SPEAK_DELAY_MS = 80;
+// Idle synthesizer: speak NOW, inside the tap. Every tap used to send one or two cancel() (= Android
+// TextToSpeech.stop()) and then speak() from an 80 ms timer, even when nothing was playing: the first
+// request after load could be dropped (silent first tap) and a stop() still being processed by the engine
+// could cut the head of the new audio (clipped first syllable). Only a busy synthesizer is cancelled, and
+// only then does the next speak() wait out the rest of TTS_CANCEL_SPEAK_DELAY_MS.
+let lastSpeechCancelAt = -Infinity;
+// Lifecycle trace for on-device diagnosis (`ttsTrace` in the console): did the engine start, end, fail?
+// With Web Speech the audio never reaches the page, so this is what distinguishes "engine dropped the
+// request" (no start) from "platform output lost the audio" (start + end, nothing heard).
+const ttsTrace = [];
+function traceTts(event, text) {
+    ttsTrace.push({ t: Math.round(performance.now()), event, text: text ? String(text).slice(0, 40) : '' });
+    if (ttsTrace.length > 60) ttsTrace.shift();
+}
+function cancelSpeech(force) {
+    if (!ttsSynth || !(force || ttsSynth.speaking || ttsSynth.pending || ttsSynth.paused)) return false;
+    ttsSynth.cancel();
+    lastSpeechCancelAt = performance.now();
+    traceTts('cancel');
+    return true;
+}
+// An utterance the engine never starts (dropped first request) or that fails with a transient audio error
+// is spoken once more -- the "second tap" the reader otherwise had to do by hand. Other errors are logged,
+// never swallowed.
+const TTS_START_TIMEOUT_MS = 2500;
+const TTS_RETRYABLE_ERRORS = new Set(['audio-busy', 'audio-hardware', 'synthesis-failed', 'synthesis-unavailable']);
+function startUtterance(u, gen, mayRetry = true) {
+    const wait = lastSpeechCancelAt + TTS_CANCEL_SPEAK_DELAY_MS - performance.now();
+    if (wait > 0) setTimeout(() => { if (gen === state.ttsGen) speakWithRecovery(u, gen, mayRetry); }, wait);
+    else speakWithRecovery(u, gen, mayRetry);
+}
+function speakWithRecovery(u, gen, mayRetry) {
+    const onEnd = u.onend, onError = u.onerror;
+    let started = false, settled = false, watchdog = 0;
+    const retry = (why) => {
+        settled = true; clearTimeout(watchdog);
+        traceTts('retry:' + why, u.text);
+        const again = new SpeechSynthesisUtterance(u.text);
+        if (u.voice) again.voice = u.voice;
+        again.lang = u.lang; again.rate = u.rate;
+        again.onboundary = u.onboundary; again.onend = onEnd; again.onerror = onError;
+        cancelSpeech(true);   // the dropped request may still sit in the engine's queue
+        startUtterance(again, gen, false);
+    };
+    u.onstart = () => { started = true; clearTimeout(watchdog); traceTts('start', u.text); };
+    u.onend = (e) => {
+        if (settled) return;
+        settled = true; clearTimeout(watchdog); traceTts('end', u.text);
+        if (onEnd) onEnd.call(u, e);
+    };
+    u.onerror = (e) => {
+        if (settled) return;
+        const error = e && e.error;
+        if (mayRetry && !started && gen === state.ttsGen && TTS_RETRYABLE_ERRORS.has(error)) { retry(error); return; }
+        settled = true; clearTimeout(watchdog); traceTts('error:' + error, u.text);
+        if (error !== 'interrupted' && error !== 'canceled') console.warn('[tts] speech failed:', error, u.text.slice(0, 60));
+        if (onError) onError.call(u, e);
+    };
+    if (mayRetry) watchdog = setTimeout(() => {
+        if (!settled && !started && gen === state.ttsGen && !ttsSynth.speaking) retry('no-start');
+    }, TTS_START_TIMEOUT_MS);
+    traceTts('speak', u.text);
+    try { ttsSynth.speak(u); } catch (err) { u.onerror({ error: 'synthesis-failed' }); }
+}
 // Узгоджує utterance.lang із САМИМ ГОЛОСОМ, а не з нашою власною канонічною назвою
 // мови ('fr-FR'/'uk-UA' тощо): якщо голос уже вибрано, синтезатор орієнтується САМЕ
 // на utterance.voice, а utterance.lang, що йому суперечить (ми ставимо канонічне
@@ -113,15 +177,14 @@ function bindUtterance(u, side, fullText, offset, onEnd) {
 function speakText(text, side, offset, onEnd) {
     state.ttsGen++;    // наш cancel не має рухати чергу читання вголос
     const gen = state.ttsGen;
-    ttsSynth.cancel();
+    cancelSpeech();
     const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
     const { lang, voice } = voiceForText(text);
     setUtteranceVoice(u, lang, voice); u.rate = 0.95;
     bindUtterance(u, side, text, offset, onEnd);
-    // Затримка перед speak() — див. TTS_CANCEL_SPEAK_DELAY_MS вище. Перевірка gen
-    // після паузи: якщо за цей час фразу вже скасували (ще один tap, stopTooltipSpeech)
-    // — не запускаємо озвучення, яке вже нікому не потрібне.
-    setTimeout(() => { if (gen === state.ttsGen) ttsSynth.speak(u); }, TTS_CANCEL_SPEAK_DELAY_MS);
+    // Одразу, якщо синтезатор вільний; після справжнього cancel() — лише залишок TTS_CANCEL_SPEAK_DELAY_MS.
+    // Перевірка gen: якщо за цей час фразу вже скасували (ще один tap, stopTooltipSpeech) — не озвучуємо.
+    startUtterance(u, gen);
 }
 // Озвучення ЗАДАНОЮ мовою — для перекладу, бо його мову ми знаємо точно й вона не
 // залежить від мови книги (автовизначення тут дало б хибний голос).
@@ -130,13 +193,13 @@ function speakInLang(text, langCode, side, offset, onEnd) {
     if (!text) return;
     state.ttsGen++;
     const gen = state.ttsGen;
-    ttsSynth.cancel();
+    cancelSpeech();
     const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
     const voice = voices.find(v => v.voiceURI === state.selectedVoiceURIByLang[langCode]) || pickBestVoice(langCode, voices);
     setUtteranceVoice(u, LANG_TAGS[langCode] || langCode, voice);
     u.rate = 0.95;
     bindUtterance(u, side, text, offset, onEnd);
-    setTimeout(() => { if (gen === state.ttsGen) ttsSynth.speak(u); }, TTS_CANCEL_SPEAK_DELAY_MS);
+    startUtterance(u, gen);
 }
 
 // ========== ЯКА СТОРОНА ОЗВУЧУЄТЬСЯ (оригінал чи переклад) ==========
@@ -246,7 +309,7 @@ function updateTtsButtons() {
 function stopGlobalTTS() {
     state.ttsGen++;
     isSpeakingGlobal = false; state.ttsPaused = false;
-    ttsSynth.cancel();
+    cancelSpeech();
     clearTtsHighlight();
     state.ttsQueue = []; state.ttsIndex = 0;
     updateTtsButtons();
@@ -258,7 +321,7 @@ function pauseTTS() {
     // мовлення повністю (cancel), запам'ятовуючи індекс поточного речення, і при
     // продовженні просто починаємо те саме речення заново.
     state.ttsPaused = true;
-    ttsSynth.cancel();
+    cancelSpeech();
     updateTtsButtons();
 }
 function resumeTTS() {
@@ -340,11 +403,7 @@ function speakCurrentSentence() {
 
             utterance.onend = onSegmentDone;
             utterance.onerror = onSegmentDone;
-            try {
-                ttsSynth.speak(utterance);
-            } catch (err) {
-                onSegmentDone();
-            }
+            startUtterance(utterance, gen);
             return;
         }
 
@@ -369,7 +428,7 @@ function stepSentence(delta) {
     if (!state.ttsPaused) {
         state.ttsGen++;             // поточну фразу обриваємо свідомо
         const gen = state.ttsGen;
-        ttsSynth.cancel();
+        cancelSpeech();
         // Затримка перед новим speakCurrentSentence() — див. TTS_CANCEL_SPEAK_DELAY_MS.
         setTimeout(() => { if (gen === state.ttsGen) speakCurrentSentence(); }, TTS_CANCEL_SPEAK_DELAY_MS);
     }

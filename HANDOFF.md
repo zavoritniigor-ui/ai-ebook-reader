@@ -1,3 +1,19 @@
+## PR (stacked on #129 -> #128 -> #127 -> #126): TTS first-tap silence / clipped start (2026-09-25, Claude)
+
+Branch `fix/tts-first-tap`. Only engine: Web Speech `speechSynthesis` (words, sentences, popup speakers, Practice,
+read-aloud all share js/tts.js). Trace showed every tap sent pointerdown cancel() + speakText cancel() and then
+speak() from an 80 ms timer even with nothing playing (Android: TextToSpeech.stop() right before the first speak).
+- `cancelSpeech()` cancels only a busy synth (speaking/pending/paused); `startUtterance()` speaks at once inside the
+  gesture when idle, waits only the rest of TTS_CANCEL_SPEAK_DELAY_MS after a real cancel; one automatic retry when the
+  engine never starts (2.5 s) or reports audio-busy/audio-hardware/synthesis-failed; other errors console.warn'd.
+- `ttsTrace` (console) = last 60 speak/cancel/start/end/error/retry events, for on-device diagnosis.
+- Web Speech never hands the audio to the page: "generated vs played" can't be captured in-app. On the tablet: if
+  `ttsTrace` shows start+end for a silent/clipped first tap, the loss is in the platform output path (e.g. Bluetooth
+  or speaker waking from standby), not the app.
+- Tests: new `tests/tts_first_tap_browser.py` (fails on the old code); `tts_double_voice` + `practice_sentence_actions`
+  mocks now track `speaking` like the real API (contract: idle -> no cancel, speak now).
+- PHYSICAL TABLET VERIFICATION REQUIRED — NOT YET VERIFIED.
+
 ## PR (stacked on #128 -> #127 -> #126): single-word AI translation, literal first (2026-09-25, Claude)
 
 Branch `fix/single-word-literal-translation`. Merge order: #126 -> #127 -> #128 -> this PR.

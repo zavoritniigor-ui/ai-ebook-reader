@@ -43,8 +43,9 @@ Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
         { voiceURI: 'fr-fr', name: 'French', lang: 'fr-FR', localService: true },
         { voiceURI: 'en-us', name: 'English', lang: 'en-US', localService: true }
     ],
-    cancel() { window.__ttsCancelCalls++; },
-    speak(u) { window.__ttsSpeakCalls.push(u); },
+    speaking: false, pending: false, paused: false,   // tracked like the real API: only a busy synth is cancelled
+    cancel() { window.__ttsCancelCalls++; this.speaking = false; },
+    speak(u) { window.__ttsSpeakCalls.push(u); this.speaking = true; },
     onvoiceschanged: null
 } });
 window.SpeechSynthesisUtterance = class {
