@@ -28,6 +28,10 @@
      the wheel opens, since opening hides the popup).
    - Regression coverage: `tests/pdf_workspace_regressions_browser.py` sections F–I.
 
+- Column threshold: cdceca8 had lowered the PDF column-gap threshold 8% -> 6% without rationale; real-book diff:
+  19/36 pages change, incl. over-splitting (p.61 3->5 columns). Restored 8% (the value validated on the real book
+  in #122); all column/selection suites pass.
+
 ### Known flake (pre-existing)
 - `format_reader_audit` "pdf offline navigation and reopen": 1/3 locally on this branch (main 0/3 today; memory
   records ~50% on untouched main earlier). Rerun once if it is the only failure.

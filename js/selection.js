@@ -229,7 +229,7 @@ function isExerciseBlankContinuation(leftText, rightText) {
 // Horizontal line bands -> per-line segments split at column gaps. `columnStarts` are x positions of column
 // edges confirmed elsewhere on the page (see pdfLayerColumnStarts).
 function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
-    const columnGapThreshold = Math.max(20, layerWidth * 0.06);
+    const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const bands = [];
     for (const i of rects.map((_, idx) => idx).sort((a, b) => rects[a].top - rects[b].top)) {
         const r = rects[i];
@@ -287,7 +287,7 @@ function pdfLayerColumnStarts(layer, layerWidth) {
 }
 function pdfComputeColumns(spans, layerWidth) {
     const rects = spans.map(s => s.getBoundingClientRect());
-    const columnGapThreshold = Math.max(20, layerWidth * 0.06);
+    const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const layer = spans[0]?.closest?.('.pdf-text-layer');
     const segments = pdfLineSegments(spans, rects, layerWidth, pdfLayerColumnStarts(layer, layerWidth));
     const segLeft = segments.map(s => s.left);
