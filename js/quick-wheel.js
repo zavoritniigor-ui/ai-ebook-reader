@@ -413,6 +413,12 @@ function printCurrentReaderPage() {
             const pageNum = state.currentIndex || 1;
             state.pdfDoc.getPage(pageNum).then(async page => {
                 const natural = page.getViewport({ scale: 1 });
+                // One PDF page = one printed page, in the page's own size and orientation (as PDF.js's print service
+                // does); the browser scales it to the paper chosen in Print Preview. With size:auto + width:100%, a
+                // page proportionally taller than the paper (6x9 in, A5) spilled its bottom onto a second sheet.
+                const pageStyle = doc.createElement('style');
+                pageStyle.textContent = `@page{size:${natural.width}pt ${natural.height}pt;margin:0}html,body{width:100%;height:100%;overflow:hidden}`;
+                doc.head.append(pageStyle);
                 const scale = Math.min(3, Math.sqrt(8000000 / (natural.width * natural.height)));
                 const viewport = page.getViewport({ scale });
                 // ОБОВ'ЯЗКОВО: canvas створюється в ГОЛОВНОМУ document, а не в iframe (doc),
@@ -453,7 +459,7 @@ function printCurrentReaderPage() {
 
                 // Tofu-free print: rasterize to img data URL inside host document, then append to iframe
                 const img = doc.createElement('img');
-                img.style.cssText = 'display:block;width:100%;height:auto;max-width:100%;margin:0 auto;';
+                img.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain;';
                 await new Promise((resolve) => {
                     img.onload = () => resolve();
                     img.onerror = () => resolve();

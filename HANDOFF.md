@@ -1,3 +1,16 @@
+## PR (stacked on #131 -> ... -> #126): PDF print — tall pages split over two sheets (2026-09-25, Claude)
+
+Branch `fix/pdf-print-page-fit`. Print = `printCurrentReaderPage` (js/quick-wheel.js; Quick Wheel 🖨, Ctrl/⌘+P):
+renders physical page `state.currentIndex` fresh via pdfDoc.getPage (intent 'print', <=3x / 8 MP, ~216 dpi for
+Letter), draws ink with the on-screen geometry, embeds a PNG in a hidden iframe, prints, removes it on afterprint.
+Page identity, labels, zoom, virtualization, ink, repeat/switch/error were all verified correct.
+Defect fixed: print doc used `@page{size:auto}` + img width:100%/height:auto, so pages taller (proportionally) than
+the paper (6x9 in, A5) printed on 2 sheets. Now `@page{size:<w>pt <h>pt;margin:0}` + image contained in one page box.
+Test: tests/pdf_print_browser.py (marker-encoded fixtures; captured print doc laid out by Chrome printToPDF on
+A4/Letter and rasterized back). NOT changed, for the user to decide: page-range printing (only the current page is
+in the print document); Chrome's own menu Print prints the whole virtualized viewer (unrendered pages blank).
+PHYSICAL PRINTER / NATIVE PRINT PREVIEW VERIFICATION REQUIRED — NOT YET VERIFIED.
+
 ## PR (stacked on #130 -> ... -> #126): Ask AI dictation "one" -> "one one" on tablet (2026-09-25, Claude)
 
 Branch `fix/ask-dictation-duplicates`. Web Speech SpeechRecognition in js/dictation.js; same code on every device.
