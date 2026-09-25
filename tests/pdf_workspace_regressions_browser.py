@@ -114,7 +114,12 @@ scroll_before = c.js('els.container.scrollTop')
 c.js("""window.__touchLog=[]; for (const t of ['pointerdown','pointerup','pointercancel','touchstart','touchend','touchcancel','contextmenu','selectstart'])
   document.addEventListener(t, e => __touchLog.push([t, e.pointerType || '', (e.target.className || e.target.tagName || '').toString().slice(0, 30), Math.round(performance.now()), e.cancelable]), {capture: true}); 1""")
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
-pause(.55)
+# Real fingers move during the hold: stay inside the reader's 18px jitter budget,
+# but cross Chrome's native scroll slop before the long-press timer expires.
+for offset in (4, 8, 12, 16):
+    c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=[dict(x=a['x'], y=a['y'] + offset, id=1)])
+    pause(.04)
+pause(.4)
 if not c.js('state.touchSelecting === true'):
     pause(1)
     print('B1 DIAG', c.js("""({events: __touchLog, touchSelecting: state.touchSelecting, timer: touchSelTimer !== null, dragSel: !!dragSel,
@@ -131,6 +136,79 @@ c.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
 pause(.6)
 check('B3 touch selection covers the dragged French cells only and opens the popup',
       "(() => { const t = state.canonicalSelection?.text || ''; return (t.includes('je suis') && t.includes('il est') && !/vous|you are/.test(t) && getComputedStyle(els.tooltip).display !== 'none') || t; })()")
+
+# Touch lifecycle checks use the same real PDF text layer, with fresh gestures after
+# each terminal event. No direct calls to selection functions or fabricated ranges.
+def touch(kind, point=None):
+    c.call('Input.dispatchTouchEvent', type=kind, touchPoints=[] if point is None else [dict(x=point['x'], y=point['y'], id=1)])
+
+def fresh_touch_page():
+    boot(1000, 900, True)
+    upload(paradigm_pdf())
+    learning_on()
+
+fresh_touch_page()
+a = c.js(CELL + "('il est')"); b = c.js(CELL + "('je suis')")
+# Touch input must extend the range without depending on a parallel pointermove
+# stream. Physical browsers may coalesce these streams differently from CDP.
+c.js("document.addEventListener('pointermove', e => { if(e.pointerType === 'touch') e.stopImmediatePropagation(); }, true)")
+scroll_before = c.js('els.container.scrollTop')
+touch('touchStart', a); pause(.45)
+for i in range(1, 11):
+    touch('touchMove', dict(x=b['x'] + 20, y=a['y'] + (b['y'] - a['y']) * i / 10)); pause(.03)
+touch('touchEnd'); pause(.3)
+check('B4 reverse touch-only drag retains the original anchor and column',
+      "(() => {const t=state.canonicalSelection?.text || ''; return t.includes('je suis') && t.includes('il est') && !t.includes('you are') && !state.touchSelecting;})()")
+check('B5 reverse selection does not scroll', f' Math.abs(els.container.scrollTop - {scroll_before}) < 1')
+
+fresh_touch_page()
+# Select a full sentence by actual glyph coordinates, ending at its last word.
+points = c.js("""(() => {
+ const s=[...document.querySelectorAll('.pdf-text-layer span')].find(s=>s.textContent.includes('The verb etre'));
+ const n=s.firstChild; const point=(start,end)=>{const r=document.createRange(); r.setStart(n,start); r.setEnd(n,end); const b=r.getBoundingClientRect();return {x:b.left+b.width/2,y:b.top+b.height/2};};
+ return [point(0,3),point(n.length-10,n.length-1)];})()""")
+touch('touchStart', points[0]); pause(.45)
+for i in range(1, 13):
+    touch('touchMove', dict(x=points[0]['x']+(points[1]['x']-points[0]['x'])*i/12, y=points[0]['y'])); pause(.02)
+touch('touchEnd'); pause(.3)
+check('B6 sentence remains selected on release', "state.lastSelectionText.startsWith('The verb etre (to be) is irregular') && !!state.lastSelectedRange && !state.touchSelecting")
+
+for cancel_type in ('touchcancel', 'pointercancel'):
+    fresh_touch_page()
+    a = c.js(CELL + "('je suis')")
+    touch('touchStart', a); pause(.45)
+    check('hold active before ' + cancel_type, 'state.touchSelecting === true')
+    # Isolate each cancellation event; CDP touchCancel normally emits both.
+    c.js("document.dispatchEvent(new Event(%s, {bubbles:true}))" % json.dumps(cancel_type))
+    check('B7 ' + cancel_type + ' clears active drag and scroll locks',
+          "!state.touchSelecting && !state.dragRange && !dragSel && !touchSelTimer && !document.body.classList.contains('touch-selecting') && els.container.style.touchAction === ''")
+    touch('touchCancel')
+
+fresh_touch_page()
+a = c.js(CELL + "('je suis')")
+touch('touchStart', a); pause(.45)
+c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1), dict(x=a['x']+90, y=a['y']+50, id=2)])
+check('B7 second finger cancels selection and releases its locks for pinch',
+      "!state.touchSelecting && !state.dragRange && !dragSel && !touchSelTimer && !document.body.classList.contains('touch-selecting')")
+touch('touchCancel')
+
+fresh_touch_page()
+a = c.js(CELL + "('je suis')")
+touch('touchStart', a); pause(.05); touch('touchCancel'); pause(.45)
+check('B7 cancellation before hold cannot activate a stale timer', '!state.touchSelecting && !dragSel && !touchSelTimer')
+
+for jitter in (False, True):
+    fresh_touch_page()
+    a = c.js(CELL + "('je suis')")
+    start = c.js('els.container.scrollTop')
+    touch('touchStart', a)
+    if jitter:
+        touch('touchMove', dict(x=a['x'], y=a['y']-8)); pause(.04)
+    for offset in (30, 60, 90, 120):
+        touch('touchMove', dict(x=a['x'], y=a['y']-offset)); pause(.03)
+    touch('touchEnd'); pause(.5)
+    check('B8 one-finger scrolling works' + (' after jitter' if jitter else ' natively'),
+          f'els.container.scrollTop > {start} + 30 && !state.touchSelecting && !dragSel && !touchSelTimer')
 
 # ---------------------------------------------------------------- C/D/E: workspace, zoom, immersive
 boot(1440, 900, False)
