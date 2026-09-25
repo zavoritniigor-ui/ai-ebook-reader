@@ -1,3 +1,17 @@
+## PR (stacked on #130 -> ... -> #126): Ask AI dictation "one" -> "one one" on tablet (2026-09-25, Claude)
+
+Branch `fix/ask-dictation-duplicates`. Web Speech SpeechRecognition in js/dictation.js; same code on every device.
+Interim text is status-only; finals are committed per result index per session; one live recognizer (generation
+guard); no listener accumulation (onclick properties, one MutationObserver). Root cause (engine-side, modelled):
+Android's recognizer is single-utterance and Chrome's emulated continuous mode re-emits a final at the next index,
+which the per-index commit appended twice. Fix: Android/iOS/iPadOS sessions use continuous=false (one utterance ->
+one final result); the existing onend restart loop continues dictation. Desktop unchanged (continuous=true).
+No text-based dedup. `sttTrace` (console) = last 80 toggle/start/result/commit/stop/abort/end/error events.
+Test: tests/ask_dictation_browser.py (old code reproduces "one one" under the same engine model).
+PHYSICAL TABLET DICTATION VERIFICATION REQUIRED — NOT YET VERIFIED. If it still duplicates, read `sttTrace`:
+two `result` entries at different indices = engine duplicate; two `commit` for one index = app bug; two sessions
+live = lifecycle bug; two `toggle` per tap = activation bug.
+
 ## PR (stacked on #129 -> #128 -> #127 -> #126): TTS first-tap silence / clipped start (2026-09-25, Claude)
 
 Branch `fix/tts-first-tap`. Only engine: Web Speech `speechSynthesis` (words, sentences, popup speakers, Practice,

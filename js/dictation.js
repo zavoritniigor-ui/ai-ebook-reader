@@ -18,6 +18,21 @@ const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRec
 const micSecureOk = window.isSecureContext !== false;
 const dictation = { wanted: false, finishing: false, timer: null, finishTimer: null, emptyEnds: 0, generation: 0 };
 const dictationStatus = document.getElementById('dictation-status');
+// Android (and iOS/iPadOS) recognizers are single-utterance engines; their emulated `continuous` mode re-emits a
+// final result at the NEXT result index (results[0] "one" final, then results[1] "one" final), which the per-index
+// commit below appended twice ("one" -> "one one"). There each session asks for ONE utterance -- so one utterance
+// yields one final result -- and the restart loop in onend keeps dictation going. Desktop keeps continuous mode.
+const dictationSingleUtterance = /Android|iPad|iPhone|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// Lifecycle trace for on-device diagnosis (`sttTrace` in the console): tells apart a duplicate emitted by the
+// browser (two results/indices), one result committed twice by the app, two live sessions, or one tap starting
+// twice. Holds recognized text only while the page is open; never keys or prompts.
+const sttTrace = [];
+let sttSessionSeq = 0;
+function traceStt(event, data) {
+    sttTrace.push(Object.assign({ t: Math.round(performance.now()), event }, data || {}));
+    if (sttTrace.length > 80) sttTrace.shift();
+}
 function updateDictationUI(interim = '') {
     els.micBtn.classList.toggle('recording', dictation.wanted);
     els.micBtn.textContent = dictation.wanted ? '■' : '🎤';
@@ -33,6 +48,7 @@ function stopDictation(finish = false) {
     if (finish && recognition) {
         dictation.finishing = true;
         try {
+            traceStt('stop');
             recognition.stop(); // Let the engine finalize the last spoken fragment.
             if (recognition) dictation.finishTimer = setTimeout(() => stopDictation(), 2000);
             updateDictationUI(); return;
@@ -41,17 +57,20 @@ function stopDictation(finish = false) {
     dictation.finishing = false; dictation.generation++;
     clearTimeout(dictation.timer); dictation.timer = null;
     const old = recognition; recognition = null;
-    if (old) { try { old.abort(); } catch (e) {} }
+    if (old) { traceStt('abort'); try { old.abort(); } catch (e) {} }
     updateDictationUI();
 }
 function startDictationSession() {
     if (!dictation.wanted || document.hidden || !SpeechRecognitionCtor || !micSecureOk) return;
     const generation = ++dictation.generation;
     const session = new SpeechRecognitionCtor(); recognition = session;
+    const id = ++sttSessionSeq;
     const current = () => generation === dictation.generation && recognition === session && (dictation.wanted || dictation.finishing) && !document.hidden;
-    session.lang = els.micLang.value; session.continuous = true; session.interimResults = true;
+    session.lang = els.micLang.value; session.continuous = !dictationSingleUtterance; session.interimResults = true;
     const committed = new Set(); let hadFinal = false;
     session.onresult = e => {
+        traceStt('result', { session: id, stale: !current(), resultIndex: e.resultIndex,
+            results: Array.from(e.results, (r, i) => ({ i, final: r.isFinal, text: r[0]?.transcript })) });
         if (!current()) return;
         let interim = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -60,6 +79,7 @@ function startDictationSession() {
             if (result.isFinal) {
                 if (committed.has(i)) continue;
                 committed.add(i); hadFinal = true; dictation.emptyEnds = 0;
+                traceStt('commit', { session: id, i, text });
                 // Always use the live value, including any edits since the last event.
                 const value = els.askInput.value;
                 els.askInput.value = value + (value && !/\s$/.test(value) ? ' ' : '') + text;
@@ -69,6 +89,7 @@ function startDictationSession() {
         updateDictationUI(interim);
     };
     session.onerror = e => {
+        traceStt('error', { session: id, error: e.error, stale: !current() });
         if (!current()) return;
         if (e.error === 'no-speech') return; // Normal silence; onend owns the bounded restart.
         const messages = { 'not-allowed': t('micDenied'), 'service-not-allowed': t('micDenied'),
@@ -77,6 +98,7 @@ function startDictationSession() {
         if (e.error !== 'aborted') showToast(messages[e.error] || t('dictationStopped'));
     };
     session.onend = () => {
+        traceStt('end', { session: id, stale: !current() });
         if (!current()) return;
         recognition = null;
         if (!dictation.wanted) { dictation.finishing = false; clearTimeout(dictation.finishTimer); updateDictationUI(); return; }
@@ -86,10 +108,11 @@ function startDictationSession() {
         const delay = Math.min(3000, 600 * 2 ** dictation.emptyEnds);
         dictation.timer = setTimeout(() => { dictation.timer = null; startDictationSession(); }, delay);
     };
-    try { session.start(); updateDictationUI(); }
+    try { session.start(); traceStt('start', { session: id, continuous: session.continuous, lang: session.lang }); updateDictationUI(); }
     catch (e) { stopDictation(); showToast(t('dictationStopped')); }
 }
-function toggleDictation() {
+function toggleDictation(e) {
+    traceStt('toggle', { via: e ? e.type + (e.pointerType ? ':' + e.pointerType : '') : 'call', wanted: dictation.wanted, finishing: dictation.finishing });
     if (dictation.wanted) { stopDictation(true); return; }
     if (!SpeechRecognitionCtor || !micSecureOk || document.hidden) return;
     if (dictation.finishing) stopDictation();
