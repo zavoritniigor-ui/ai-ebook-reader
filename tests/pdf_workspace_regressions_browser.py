@@ -399,4 +399,60 @@ check('J7 in ink mode the pen draws and never starts a text selection',
 c.js("document.getElementById('btn-ink').click()"); pause(.3)
 
 check('no page errors (pen)', "__errors.length === 0 || __errors")
+# ---------------------------------------------------------------- K: pinch release keeps the page visible (no white flash)
+# On release the live stack transform is dropped and every wrapper is resized to the committed scale; the page's
+# current render used to keep its old CSS size until the sharp re-render swapped in -- the page snapped back to
+# its pre-zoom size inside a white wrapper (tablet "white flash"). Renders are slowed here like on a tablet.
+boot(1180, 820, True)
+upload(pdf_bytes())
+c.js("navigateToPdfPage(40, {instant: true})"); pause(1.2); c.wait('pdfInFlightRenders===0', timeout=15)
+c.js("window.__realRender = renderPdfPageInto; renderPdfPageInto = async (...a) => { await new Promise(r => setTimeout(r, 700)); return __realRender(...a); }; 1")
+def pinch(ratio, x=590, y=420, d=80):
+    pts = lambda dist: [dict(id=1, x=x - dist, y=y, radiusX=5, radiusY=5, force=1), dict(id=2, x=x + dist, y=y, radiusX=5, radiusY=5, force=1)]
+    c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=pts(d))
+    for i in range(1, 8):
+        c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=pts(d * (1 + (ratio - 1) * i / 7)))
+        c.js('new Promise(r => requestAnimationFrame(r))')
+    c.js(f"window.__pinchPt = pdfZoomAnchor({x}, {y}); window.__pageBefore = pdfActivePage; window.__scaleBefore = state.pdfScale; window.__oldCanvas = pdfPageWrappers[pdfActivePage].querySelector('canvas.pdf-canvas'); window.__oldImg = (() => {{ const r = pdfPageWrappers[pdfActivePage].getBoundingClientRect(); return {{w: r.width, left: r.left, top: r.top}}; }})(); 1")
+    c.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+VISIBLE = """(() => { const w = pdfPageWrappers[pdfActivePage], cv = w.querySelector('canvas.pdf-canvas'); if (!cv) return 'no canvas';
+  const wr = w.getBoundingClientRect(), cr = cv.getBoundingClientRect(); const v = els.container.getBoundingClientRect();
+  let cov = 0; for (const x of document.querySelectorAll('canvas.pdf-canvas')) { const r = x.getBoundingClientRect();
+    cov += Math.max(0, Math.min(r.right, v.right) - Math.max(r.left, v.left)) * Math.max(0, Math.min(r.bottom, v.bottom) - Math.max(r.top, v.top)); }
+  return {sameCanvas: cv === __oldCanvas, fills: Math.abs(cr.width - wr.width) < 1 && Math.abs(cr.height - wr.height) < 1, coverage: +(cov / (v.width * v.height)).toFixed(3)}; })()"""
+pinch(1.8)
+first = c.js('new Promise(r => requestAnimationFrame(() => r(' + VISIBLE + ')))')
+check('K1 first frame after pinch release: the page still fills its (zoomed) slot and the viewport -- no blank area',
+      "(r => (r.fills && r.coverage > 0.98) || r)(" + json.dumps(first) + ")")
+check('K2 the previous render stays on screen until the sharp replacement is ready', "(() => { const r = " + VISIBLE + "; return (r.sameCanvas && r.fills) || r; })()")
+c.wait("pdfInFlightRenders === 0 && pdfPageWrappers[pdfActivePage].querySelector('canvas.pdf-canvas') !== __oldCanvas", timeout=15); pause(.3)
+check('K2b then it is replaced by a render drawn at the new scale (no stretch left behind)',
+      "(() => { const cv = pdfPageWrappers[pdfActivePage].querySelector('canvas.pdf-canvas'); return (!cv.dataset.drawnWidth && ![...pdfPageWrappers[pdfActivePage].children].some(e => e.style.transform)) || cv.dataset.drawnWidth; })()")
+check('K3 the committed scale is the pinched one', "Math.abs(state.pdfScale / __scaleBefore - 1.8) < 0.05 || [state.pdfScale, __scaleBefore]")
+check('K4 the point under the fingers is still under the fingers (focal anchor kept)',
+      "(() => { const r = els.pages.getBoundingClientRect(); const dx = r.left + __pinchPt.x * r.width - __pinchPt.clientX, dy = r.top + __pinchPt.y * r.height - __pinchPt.clientY; return (Math.abs(dx) < 3 && Math.abs(dy) < 3) || [dx, dy]; })()")
+check('K5 no page jump', 'pdfActivePage === __pageBefore || [pdfActivePage, __pageBefore]')
+for i, ratio in enumerate((1 / 1.6, 1.5, 1 / 1.4)):
+    pinch(ratio)
+    r = c.js('new Promise(r => requestAnimationFrame(() => r(' + VISIBLE + ')))')
+    assert r['fills'] and r['coverage'] > 0.98, ('cycle', i, r)
+    c.wait('pdfInFlightRenders === 0', timeout=15); pause(.3)
+check('K6 repeated zoom-in/out cycles: never a blank frame, one canvas and one text layer per page, still on the same page',
+      "([...document.querySelectorAll('.pdf-page-wrapper')].every(w => w.querySelectorAll('canvas.pdf-canvas').length <= 1 && w.querySelectorAll('.pdf-text-layer').length <= 1) && pdfActivePage === __pageBefore) || pdfActivePage")
+c.js("renderPdfPageInto = __realRender; 1")
+c.js("els.container.scrollTop += pdfPageWrappers[pdfActivePage].offsetHeight * 2.2"); pause(1.2)
+check('K7 continuous scrolling still advances pages after pinching', 'pdfActivePage >= __pageBefore + 2 || [pdfActivePage, __pageBefore]', timeout=4)
+c.wait('pdfInFlightRenders === 0', timeout=15)
+boot(1000, 900, False)
+upload(pdf_bytes())
+learning_on()
+c.js("setPdfScale(1.5)"); pause(1); c.wait('pdfInFlightRenders === 0', timeout=15)
+# Bring the sentence into view at the new zoom, as the reader would before selecting it.
+c.js("""(() => { const s = [...document.querySelectorAll('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span')].find(x => x.textContent.includes('Reading'));
+  const r = s.getBoundingClientRect(), v = els.container.getBoundingClientRect(); els.container.scrollLeft += r.left - v.left - 40; els.container.scrollTop += r.top - v.top - 200; })()"""); pause(.5)
+a = c.js(WORD + "('Reading')"); b = c.js(WORD + "('illustration.')"); b['x'] = b['r']
+assert b['x'] < 990 and a['x'] > 0, (a, b)
+pen_drag(a, b)
+check('K8 pen selection still works on a re-rendered, zoomed page', "state.lastSelectionText === 'Reading text beside an illustration.' || state.lastSelectionText")
+
 print('ALL PDF WORKSPACE REGRESSION CHECKS PASSED')

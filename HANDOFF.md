@@ -1,3 +1,23 @@
+## PR (stacked on #126): tablet pinch-release white flash (2026-09-25, Claude)
+
+- Branch `fix/pinch-release-flash`, based on `fix/tablet-touch-range-selection` (PR #126, NOT yet merged — merge
+  #126 first, then this PR retargets to main automatically / rebase onto main).
+- Root cause (measured, not assumed): live pinch = one CSS `scale()` on `#reader-pages`; release ->
+  `relayoutContinuousPdfAtScale` resizes every page wrapper to the committed scale and drops that transform, but each
+  page's current render (canvas + text/link/ink layers) keeps the fixed CSS pixel size it was drawn at until its
+  re-render swaps in. The visible page snapped back to its PRE-zoom size inside an enlarged white wrapper for the
+  whole re-render (~0.2 s here, longer at tablet DPR). Nothing was cleared/removed; renders already swap atomically.
+- Fix: `stretchStalePdfPageContent()` (js/pdf-zoom-pan.js), called from the relayout loop for rendered wrappers:
+  stretch the stale canvas to the wrapper and scale the overlay layers (origin 0 0) by the same factor until the
+  sharp render replaces them. No extra renders, no extra canvases.
+- Evidence (renders slowed 700 ms like a tablet): viewer pixels changed between the last gesture frame and the first
+  frame after release — baseline 30% (zoom in) / 19.7% (zoom out); fixed 0% / 1.1%. Same canvas stays, stretched,
+  until the swap ~0.9 s later.
+- Tests: `pdf_workspace_regressions_browser.py` section K (K1/K2 fail on the baseline): no blank frame, old render
+  kept until replaced, final scale, focal anchor < 3 px, no page jump, 3 zoom cycles, continuous scroll after,
+  pen selection on a zoomed page. `pdf_pinch_anchor_browser`, `pdf_ux`, `pdf_continuous` pass.
+- Physical tablet verification: REQUIRED — NOT YET VERIFIED.
+
 ## ACTIVE: physical tablet multi-word selection repair (2026-09-25)
 
 - User physically confirmed current production cannot reliably long-press/drag multiple words or sentences. This supersedes the old "no engineering work open" conclusion below.
