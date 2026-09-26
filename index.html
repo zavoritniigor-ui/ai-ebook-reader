@@ -947,6 +947,11 @@
         .dictation-status { padding: 0 16px 8px; font-size: 13px; color: var(--text-muted); min-height: 24px; }
         .dictation-status:empty { display: none; }
         #ask-input { min-width: 0; }
+        .ask-attachment { display: flex; align-items: center; gap: 8px; margin: 0 16px 6px; padding: 6px 8px; border: 1px solid var(--border-color, #ccc); border-radius: 10px; font-size: 13px; }
+        .ask-attachment[hidden] { display: none; }
+        .ask-attachment img { width: 48px; height: 48px; object-fit: contain; background: #fff; border-radius: 6px; flex: none; }
+        .ask-attachment span { flex: 1; min-width: 0; }
+        .ask-attachment button { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
         .alignment-word { cursor: pointer; text-decoration: underline dotted rgba(255,255,255,.4); text-underline-offset: 4px; }
         .alignment-word:focus-visible { outline: 2px solid #b8c9ff; outline-offset: 2px; }
         .alignment-word.alignment-active { background: #516786; border-radius: 3px; }
@@ -1161,6 +1166,11 @@
                 <button id="btn-lang-level" class="panel-action-btn" data-i18n="btnLangLevel">📘 Мовний розбір</button>
                 <button id="btn-explain" class="panel-action-btn" data-i18n="btnExplain">📖 Пояснення</button>
             </div>
+            <div id="ask-attachment" class="ask-attachment" hidden>
+                <img id="ask-attachment-img" alt="">
+                <span id="ask-attachment-label"></span>
+                <button type="button" id="ask-attachment-remove" aria-label="Remove image">✕</button>
+            </div>
             <form id="ask-chat-form" role="search" autocomplete="off" onsubmit="event.preventDefault(); els.askSendBtn.click();" style="display:contents;">
                 <div class="chat-input-area">
                     <select id="mic-lang" style="height:44px; max-width:76px;">
@@ -1297,12 +1307,12 @@
     <script src="js/ui-tooltip.js?v=784171a5a724"></script>
     <script src="js/translation.js?v=c5b1ef982d4f"></script>
     <script src="js/grammar-svo.js?v=3f8b0d75a466"></script>
-    <script src="js/ai-client.js?v=d112eac9d270"></script>
+    <script src="js/ai-client.js?v=dbdff37a51aa"></script>
     <script src="js/practice-session.js?v=ca3e5f0617db"></script>
     <script src="js/practice-worksheet.js?v=9b3d4f232932"></script>
     <script src="js/dictation.js?v=2251308802f9"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
-    <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
+    <script src="js/pdf-crop.js?v=68110ae78d3f"></script>
     <script src="js/pdf-outline.js?v=97d934db97c6"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
     <script src="js/pdf-continuous.js?v=ee42c36e7287"></script>
@@ -1310,7 +1320,7 @@
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/quick-wheel.js?v=3176ba147224"></script>
-    <script src="js/main.js?v=8da5db7ebf03"></script>
+    <script src="js/main.js?v=7c3d5edab80c"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
 </html>

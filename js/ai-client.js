@@ -365,7 +365,7 @@ async function callGroq(prompt, dataUrl, key, signal, task, options = {}) {
 }
 // options (all optional): { maxOutputTokens, timeoutMs, meta } — meta is filled with { provider, model, finish, usage, elapsedMs, rawChars }.
 function callAI(prompt, signal, task = 'default', onDelta, options) { return requestAI(prompt, null, signal, task, onDelta, options); }
-function callAIVision(prompt, dataUrl, signal) { return requestAI(prompt, dataUrl, signal, 'vision'); }
+function callAIVision(prompt, dataUrl, signal, options) { return requestAI(prompt, dataUrl, signal, 'vision', undefined, options); }
 async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
     const provider = state.activeAiProvider, key = aiProviderKey(provider);
@@ -376,7 +376,9 @@ async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, opt
     aiRequests.add(controller);
     const position = () => JSON.stringify([readerEpoch.book, state.currentIndex, state.pageInChapter]);
     const startedAt = position();
-    const current = () => !controller.signal.aborted && provider === state.activeAiProvider && key === aiProviderKey(provider) && startedAt === position();
+    // options.anyPosition: the answer is about data captured with the request (a page crop), not about the page the
+    // reader is on now -- scrolling meanwhile must not discard it.
+    const current = () => !controller.signal.aborted && provider === state.activeAiProvider && key === aiProviderKey(provider) && (options.anyPosition || startedAt === position());
     const meta = options.meta || (options.meta = {});
     meta.provider = provider; meta.task = task;
     meta.maxOutputTokens = options.maxOutputTokens || (provider === 'openai' ? (OPENAI_TASK_PROFILES[task] || OPENAI_TASK_PROFILES.default).max_output_tokens : null);

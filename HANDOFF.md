@@ -1,3 +1,18 @@
+## PR (stacked on #132 -> ... -> #126): PDF crop "Send to AI" answer invisible + Share messages (2026-09-26, Claude)
+
+Branch `fix/crop-ask-ai-attachment`. Crop dialog (js/pdf-crop.js) is a showModal() <dialog>. "Send to AI" used to
+fire a fixed exercise-check vision request and close the dialog only on SUCCESS: spinner and every error went into
+the Ask panel behind the modal (invisible); requestAI also dropped the answer if the page changed meanwhile.
+Now: Send to AI -> dialog closes, crop attached to Ask AI (#ask-attachment chip, ✕, focused input); Send -> question
++ image (empty question = the old exercise check); answer/errors/Retry in the visible panel; callAIVision passes
+{anyPosition:true}. Attachment: one at a time, replaced by a new crop, removed by ✕ / closing Ask AI, consumed on
+success, kept on error; send is idempotent while in flight (➤ submit + form onsubmit double-click; Enter).
+No key: dialog stays with the crop + message (unchanged). All 3 providers already send images correctly.
+Share: navigator.share called synchronously in the tap (was already correct); fallback now names the reason
+(not https / no Web Share / files unsupported), refused share shows its error, cancel is silent.
+Tests: tests/pdf_crop_ai_share_browser.py; tests/pdf_ux_browser.py updated to the attach-then-Send contract.
+REAL MULTIMODAL PROVIDER: NOT VERIFIED. PHYSICAL ANDROID SHARE SHEET (Gemini/ChatGPT/Claude as targets): NOT VERIFIED.
+
 ## PR (stacked on #131 -> ... -> #126): PDF print — tall pages split over two sheets (2026-09-25, Claude)
 
 Branch `fix/pdf-print-page-fit`. Print = `printCurrentReaderPage` (js/quick-wheel.js; Quick Wheel 🖨, Ctrl/⌘+P):

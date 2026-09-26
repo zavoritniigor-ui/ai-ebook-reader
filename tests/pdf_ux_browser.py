@@ -159,34 +159,10 @@ check('crop Copy PNG',"__copied.types.includes('image/png')")
 # Before AI test: preserve cropData, mock aiAvailable() to return true
 c.js("window.__savedCropData=cropData;window.__realAiAvailable=aiAvailable;aiAvailable=()=>true")
 c.js("document.getElementById('crop-ai').click()")
-# Wait for async checkExerciseImage to complete, close dialog, and update DOM
-# Poll for expected state instead of fixed sleep
-result=c.js('''(()=>{
-  const checks={
-    vision: __vision,
-    hasData: typeof __visionData,
-    startsWith: __visionData?.startsWith("data:image/jpeg;"),
-    dialogOpen: cropDialog.open,
-    blobNull: cropBlob===null
-  };
-  return checks;
-})()''')
-deadline=time.monotonic()+2
-while result['vision']!=1 or not result['startsWith'] or result['dialogOpen'] or not result['blobNull']:
-    if time.monotonic()>deadline: break
-    pause(.1)
-    result=c.js('''(()=>{
-  const checks={
-    vision: __vision,
-    hasData: typeof __visionData,
-    startsWith: __visionData?.startsWith("data:image/jpeg;"),
-    dialogOpen: cropDialog.open,
-    blobNull: cropBlob===null
-  };
-  return checks;
-})()''')
-print(f"AI check results: {result}")
-check('AI only after explicit action','__vision===1 && __visionData.startsWith("data:image/jpeg;") && !cropDialog.open && cropBlob===null')
+# Send to AI attaches the crop to Ask AI (the modal dialog closes); nothing is sent until the reader presses Send.
+check('Send to AI attaches the crop without an AI request', "__vision===0 && !cropDialog.open && cropBlob===null && !document.getElementById('ask-attachment').hidden", timeout=2)
+c.js("els.askSendBtn.click()")
+check('AI only after explicit action','__vision===1 && __visionData.startsWith("data:image/jpeg;")', timeout=2)
 # Restore original aiAvailable and verify guard works with no AI config
 c.js("aiAvailable=window.__realAiAvailable;delete window.__realAiAvailable;__vision=0;window.__visionData=null")
 # Re-open crop dialog for second test using saved cropData

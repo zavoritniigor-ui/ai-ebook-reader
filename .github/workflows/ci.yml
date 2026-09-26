@@ -158,6 +158,7 @@ jobs:
           python3 -u tests/pdf_page_identity_browser.py
 
           python3 -u tests/pdf_print_browser.py
+          python3 -u tests/pdf_crop_ai_share_browser.py
 
           echo "Running learning_ux_browser.py..."
           python3 -u tests/learning_ux_browser.py
