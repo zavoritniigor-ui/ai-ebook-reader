@@ -1,3 +1,16 @@
+## PR: A3 / audit §12-2 — cancelled AI request no longer leaves Ask/crop "generating" (2026-09-26, Claude)
+
+Branch `fix/ai-cancel-state` from main `cbceaaa`. Scope: only this defect (Astra audit A3; A10/P1-3/A11 untouched).
+- Cause: `startAiTask` and the crop's `checkExerciseImage` returned silently when `task.current()` was false, so a
+  request cancelled by the app going to the background (`cancelAsyncTasks`), the book changing, or the page changing
+  under it left the spinner (and, for crop, the red `loading` state) forever. #133 had made the crop path silent too.
+- Ownership (js/grammar-svo.js `settleCancelledAskRequest`): a cancelled request may leave the loading state only
+  while no NEWER 'ask' request holds the task slot, and may show "Request cancelled" + Retry only while the panel
+  still shows its own view (`data-ask-request` id; the streaming updater keeps it). Page-change AbortErrors show the
+  cancelled state instead of a red error. Crop: attachment kept, `sending` reset only when no newer request owns
+  the panel; Retry marks it sending so it sends once.
+- Test: tests/ai_cancel_state_browser.py (fails on cbceaaa).
+
 ## PR (stacked on #132 -> ... -> #126): PDF crop "Send to AI" answer invisible + Share messages (2026-09-26, Claude)
 
 Branch `fix/crop-ask-ai-attachment`. Crop dialog (js/pdf-crop.js) is a showModal() <dialog>. "Send to AI" used to
