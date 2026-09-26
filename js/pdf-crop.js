@@ -224,11 +224,17 @@ function cropPdfRegion(rect, pageWrapper) {
 
 async function checkExerciseImage(dataUrl, question = '') {
     const task = beginAsyncTask('ask');
+    const requestId = ++askRequestSeq;   // panel ownership, see settleCancelledAskRequest (js/grammar-svo.js)
+    // Retry resends the same question with the same image, once: the attachment counts as sending again.
+    const retry = () => {
+        if (askAttachment && askAttachment.dataUrl === dataUrl) askAttachment.sending = true;
+        checkExerciseImage(dataUrl, question);
+    };
     cancelAsyncTasks(['panelTranslate']);
     els.askPanel.classList.remove('loading', 'ready');
     const langName = LANG_NAMES[state.targetLang] || 'українською';
     els.askPanel.classList.add('expanded', 'loading');
-    els.askContent.innerHTML = `<div style="text-align:center;margin-top:40px;"><div class="spinner-large"></div><p class="tt-note">${t(question ? 'generating' : 'checking')}</p>${question ? `<p><b>${escapeHtml(question)}</b></p>` : ''}</div>`;
+    els.askContent.replaceChildren(askRequestView(requestId, `<div style="text-align:center;margin-top:40px;"><div class="spinner-large"></div><p class="tt-note">${t(question ? 'generating' : 'checking')}</p>${question ? `<p><b>${escapeHtml(question)}</b></p>` : ''}</div>`));
     // Запит навмисно короткий: кожен зайвий рядок інструкції — це витрачені токени,
     // а їхній ліміт тут головне обмеження.
     const prompt = question
@@ -238,20 +244,25 @@ async function checkExerciseImage(dataUrl, question = '') {
 Наприкінці: <b>підсумок</b> N/M. Нерозбірливе познач як «?». Без вступу й без повторення завдання.`;
     try {
         const out = await callAIVision(prompt, dataUrl, task.signal, { anyPosition: true });
-        if (!task.current()) return;
+        if (!task.current()) { settleCancelledCrop(); return; }
         els.askPanel.classList.remove('loading'); els.askPanel.classList.add('ready');
         els.askContent.innerHTML = safeHtml(out, true);
         if (askAttachment && askAttachment.dataUrl === dataUrl) clearAskAttachment();   // answered: not re-sent later
     } catch (err) {
-        if (!task.current()) return;
+        if (isAskAbort(err, task)) { settleCancelledCrop(); return; }
         els.askPanel.classList.remove('loading');
         if (askAttachment && askAttachment.dataUrl === dataUrl) askAttachment.sending = false;
         // The attachment stays; Retry resends the same question with the same image.
-        const retry = document.createElement('button');
-        retry.textContent = t('retry');
-        retry.style.cssText = 'margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;';
-        retry.onclick = () => checkExerciseImage(dataUrl, question);
+        const button = document.createElement('button');
+        button.textContent = t('retry');
+        button.style.cssText = 'margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;';
+        button.onclick = retry;
         els.askContent.innerHTML = `<div><span style="color:red">${escapeHtml(err.message || t('error'))}</span><br/></div>`;
-        els.askContent.firstChild.append(retry);
+        els.askContent.firstChild.append(button);
+    }
+    // Cancelled: leave "generating" (unless a newer Ask request owns the panel); the crop stays attached and can
+    // be sent again -- by Retry or by Send.
+    function settleCancelledCrop() {
+        if (settleCancelledAskRequest(task, requestId, retry) && askAttachment && askAttachment.dataUrl === dataUrl) askAttachment.sending = false;
     }
 }

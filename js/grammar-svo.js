@@ -74,7 +74,48 @@ els.askTab.onclick = () => { els.askPanel.classList.toggle('expanded'); els.gram
 
 // INCREMENTAL STREAMING CALLBACK FOR ASK AI AND LANGUAGE LEVEL
 // Accumulates streamed deltas and safely updates DOM incrementally
-function createStreamingUpdater(content, task, panel, mode) {
+// ========== ЗАПИТ "ЗАПИТАЙ AI" СКАСОВАНО (A3) ==========
+// A request that ends cancelled -- aborted when the app goes to the background, superseded by a newer request,
+// its book or page changed under it -- used to return silently and leave the panel "generating" forever.
+// Ownership decides who may touch the panel: every Ask request (startAiTask, the crop's checkExerciseImage) holds
+// the single 'ask' task slot and marks its own view with its request id. A cancelled request may leave the loading
+// state only while no NEWER Ask request holds the slot, and may show "cancelled" + Retry only while the panel still
+// shows its own view -- so a newer loading state, answer, error, crop request or the book-change hint is never
+// overwritten.
+Object.assign(I18N, {
+    aiRequestCancelled: { uk: 'Запит скасовано.', en: 'Request cancelled.', fr: 'Demande annulée.', ru: 'Запрос отменён.' },
+});
+let askRequestSeq = 0;
+function isAskAbort(err, task) { return !task.current() || (err && err.name === 'AbortError'); }
+function askRequestView(requestId, html) {
+    const view = document.createElement('div');
+    view.dataset.askRequest = String(requestId);
+    view.innerHTML = html;
+    return view;
+}
+// Returns false when a newer Ask request owns the panel (nothing was touched).
+function settleCancelledAskRequest(task, requestId, retry) {
+    const owner = asyncTasks.get('ask');
+    if (owner && owner !== task) return false;
+    els.askPanel.classList.remove('loading');
+    const view = els.askContent.querySelector(`[data-ask-request="${requestId}"]`);
+    if (view) {
+        const note = document.createElement('p');
+        note.className = 'tt-note ask-cancelled';
+        note.textContent = t('aiRequestCancelled');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'ask-retry-btn';
+        button.textContent = t('retry');
+        button.style.cssText = 'margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;';
+        button.onclick = retry;
+        els.askContent.replaceChildren(askRequestView(requestId, ''));
+        els.askContent.firstChild.append(note, button);
+    }
+    return true;
+}
+
+function createStreamingUpdater(content, task, panel, mode, requestId) {
     let lastRenderTime = 0;
     const RENDER_THROTTLE_MS = 100; // Update UI max every 100ms to avoid jank
 
@@ -91,7 +132,7 @@ function createStreamingUpdater(content, task, panel, mode) {
         try {
             // Incrementally render accumulated text with safeHtml
             // This is safe: each update passes through the allowlist sanitizer
-            content.innerHTML = safeHtml(accumulated, true);
+            content.replaceChildren(askRequestView(requestId, safeHtml(accumulated, true)));   // keeps this request's ownership mark
         } catch (_) {
             // Malformed intermediate HTML: skip this render, next delta will retry
         }
@@ -111,6 +152,8 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     if (mode === 'grammar') return runGrammarAnalysis(contextText, state.lastGrammarSentence || contextText);
 
     const task = beginAsyncTask('ask');
+    const requestId = ++askRequestSeq;
+    const retry = () => startAiTask(contextText, mode, userPrompt);
     cancelAsyncTasks(['panelTranslate']);
     const panel = els.askPanel;
     const content = els.askContent;
@@ -119,7 +162,7 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     if (mode === 'ask' || mode === 'level') state.lastAskContext = contextText;
 
     panel.classList.remove('ready'); panel.classList.add('loading'); // Вмикаємо червоний неон
-    content.innerHTML = `<div style="text-align:center;margin-top:50px;"><div class="spinner-large"></div><p style="margin-top:20px;color:gray;">${t('generating')}<br><b style="color:var(--text-color);">${escapeHtml(contextText.length>40?contextText.substring(0,40)+'...':contextText)}</b></p></div>`;
+    content.replaceChildren(askRequestView(requestId, `<div style="text-align:center;margin-top:50px;"><div class="spinner-large"></div><p style="margin-top:20px;color:gray;">${t('generating')}<br><b style="color:var(--text-color);">${escapeHtml(contextText.length>40?contextText.substring(0,40)+'...':contextText)}</b></p></div>`));
 
     const langName = LANG_NAMES[state.targetLang] || 'українською';
     const prompt = mode === 'level'
@@ -129,27 +172,18 @@ async function startAiTask(contextText, mode, userPrompt = "") {
 
     // For streaming tasks (ask, language_level on OpenAI), provide incremental callback
     const isStreaming = (state.activeAiProvider === 'openai') && (mode === 'ask' || mode === 'level');
-    const onDelta = isStreaming ? createStreamingUpdater(content, task, panel, mode) : undefined;
+    const onDelta = isStreaming ? createStreamingUpdater(content, task, panel, mode, requestId) : undefined;
 
     try {
         const text = await callAI(prompt, task.signal, taskType, onDelta);
-        if (!task.current()) {
-            // Запит був скасований — не показуємо його, просто мовчки виходимо
-            // щоб не перезаписати новіший запит, який вже своєю відповіддю оновив панель
-            panel.classList.remove('loading');
-            return;
-        }
+        if (!task.current()) { settleCancelledAskRequest(task, requestId, retry); return; }   // see A3 above
         panel.classList.remove('loading'); panel.classList.add('ready'); // Вмикаємо зелений неон!
         // Final render with safeHtml (even if streaming already updated incrementally,
         // this ensures the final state is properly sanitized)
         content.innerHTML = safeHtml(text, true);
     } catch (err) {
-        if (!task.current()) {
-            // Помилка на скасованому запиті — не показуємо її, просто мовчки виходимо
-            // щоб не перезаписати новіший запит, який вже своєю відповіддю оновив панель
-            panel.classList.remove('loading');
-            return;
-        }
+        // Cancelled (incl. the page/book changing under the request): not a server error -- see A3 above.
+        if (isAskAbort(err, task)) { settleCancelledAskRequest(task, requestId, retry); return; }
         // Реальна помилка на активному запиті
         panel.classList.remove('loading');
         let msg = err.message;
