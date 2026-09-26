@@ -147,11 +147,18 @@ jobs:
           echo "Running pdf_workspace_regressions_browser.py..."
           python3 -u tests/pdf_workspace_regressions_browser.py
 
+          echo "Running translation_popup_timer_browser.py..."
+          python3 -u tests/translation_popup_timer_browser.py
+          python3 -u tests/single_word_translation_browser.py
+
           echo "Running pdf_word_click_browser.py..."
           python3 -u tests/pdf_word_click_browser.py
 
           echo "Running pdf_page_identity_browser.py..."
           python3 -u tests/pdf_page_identity_browser.py
+
+          python3 -u tests/pdf_print_browser.py
+          python3 -u tests/pdf_crop_ai_share_browser.py
 
           echo "Running learning_ux_browser.py..."
           python3 -u tests/learning_ux_browser.py
@@ -203,6 +210,7 @@ jobs:
 
           echo "Running ask_ai_language_browser.py..."
           python3 -u tests/ask_ai_language_browser.py
+          python3 -u tests/ask_dictation_browser.py
 
           echo "Running local_translator_warmup_browser.py..."
           python3 -u tests/local_translator_warmup_browser.py
@@ -212,6 +220,7 @@ jobs:
 
           echo "Running tts_lang_voice_mismatch_browser.py..."
           python3 -u tests/tts_lang_voice_mismatch_browser.py
+          python3 -u tests/tts_first_tap_browser.py
 
           echo "Running pdf_sentence_reselect_browser.py..."
           python3 -u tests/pdf_sentence_reselect_browser.py

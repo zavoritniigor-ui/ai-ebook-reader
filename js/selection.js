@@ -1100,31 +1100,71 @@ function wordBoundsAt(clientX, clientY) {
 }
 
 let lastDragClientX = 0, lastDragClientY = 0;
+let pdfSelectionTouch = null;
+// A stylus selects on the mouse path (immediately, no long-press), but browsers give pen drags the same
+// touch-action panning as fingers (and on Android also dispatch them as touch events): without a guard the
+// first pen move over the PDF became a native scroll, fired pointercancel and dropped the selection.
+let penSelectionActive = false;
 
 function cancelDragSelection() {
     const hadDragHighlight = !!state.dragRange;
     clearTimeout(touchSelTimer); touchSelTimer = null;
     dragSel = null; dragMoved = false; state.dragRange = null;
     state.touchSelecting = false;
-    setTouchSelectionGuard(false);
+    pdfSelectionTouch = null;
+    penSelectionActive = false;
     document.body.classList.remove('touch-selecting');
     els.container.style.touchAction = '';
     if (hadDragHighlight && typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
 }
 document.addEventListener('pointercancel', cancelDragSelection);
-// touch-action is decided at touchstart, so switching the container to 'none' after the long-press is too
-// late: the first finger move scrolled the page, the browser fired pointercancel and the selection was dropped
-// mid-drag. While a touch selection is live, a blocking touchmove guard keeps the finger extending it. It lives
-// on document (a blocking listener on #main-area/#reader-container is not honoured for the PDF scroller) and
-// only for the selection's lifetime, so ordinary taps and scrolls are never dispatched as blocking.
+// Register before touchstart: adding a blocking listener after the hold is too late on
+// real touchscreens. Small pre-hold moves must not hand the gesture to native scrolling.
+// Touch coordinates remain authoritative even on browsers that coalesce pointer moves.
+document.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { cancelDragSelection(); return; }
+    if (state.format !== 'pdf' || !touchSelTimer || !els.container.contains(e.target)) return;
+    const t = e.touches[0];
+    pdfSelectionTouch = { id: t.identifier, x: t.clientX, y: t.clientY, blocked: false, scrolling: false };
+}, { passive: true });
 function guardTouchSelectionMove(e) {
-    if (!state.touchSelecting) { setTouchSelectionGuard(false); return; }   // ended elsewhere (pinch, new book)
-    if (e.cancelable && e.touches.length === 1 && els.mainArea.contains(e.target)) e.preventDefault();
+    if (penSelectionActive && e.touches.length === 1) {
+        if (e.cancelable) e.preventDefault();   // the pen's own touch stream: keep it a selection drag
+        return;
+    }
+    const gesture = pdfSelectionTouch;
+    if (!gesture) {
+        if (state.touchSelecting && e.cancelable && e.touches.length === 1 && els.mainArea.contains(e.target)) e.preventDefault();
+        return;
+    }
+    if (e.touches.length !== 1) { cancelDragSelection(); return; }
+    const t = Array.from(e.touches).find(t => t.identifier === gesture.id);
+    if (!t) return;
+    const dx = t.clientX - gesture.x, dy = t.clientY - gesture.y;
+    gesture.x = t.clientX; gesture.y = t.clientY;
+    if (!state.touchSelecting && !gesture.scrolling && Math.hypot(t.clientX - dragStartX, t.clientY - dragStartY) > 18) {
+        clearTimeout(touchSelTimer); touchSelTimer = null;
+        if (!gesture.blocked) { pdfSelectionTouch = null; return; } // ordinary swipe: native scrolling
+        // A cancelled jitter move can suppress native scrolling for the entire touch on
+        // some engines. Finish only that gesture as a pan; the next swipe stays native.
+        gesture.scrolling = true;
+    }
+    if (!e.cancelable) { cancelDragSelection(); return; }
+    e.preventDefault();
+    gesture.blocked = true;
+    if (gesture.scrolling) {
+        els.container.scrollLeft -= dx;
+        els.container.scrollTop -= dy;
+        state.suppressNextClick = true;
+    } else if (state.touchSelecting) {
+        updateDragSelection(t);
+    }
 }
-function setTouchSelectionGuard(on) {
-    if (on) document.addEventListener('touchmove', guardTouchSelectionMove, { passive: false });
-    else document.removeEventListener('touchmove', guardTouchSelectionMove, { passive: false });
-}
+document.addEventListener('touchmove', guardTouchSelectionMove, { passive: false });
+document.addEventListener('touchcancel', cancelDragSelection);
+els.mainArea.addEventListener('contextmenu', e => {
+    if (state.touchSelecting || pdfSelectionTouch) e.preventDefault();
+});
 document.addEventListener('pointerup', e => {
     if (state.touchSelecting || dragSel) {
         const cx = e.clientX || lastDragClientX || dragStartX;
@@ -1158,6 +1198,7 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         clearTimeout(touchSelTimer);
         const px = e.clientX, py = e.clientY;
         touchSelTimer = setTimeout(() => {
+            touchSelTimer = null;
             if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) return;
             let w = wordBoundsAt(px, py);
             if (!w && state.format === 'pdf') {
@@ -1177,7 +1218,6 @@ els.mainArea.addEventListener('pointerdown', (e) => {
             dragMoved = true;                 // підсвітка з першого ж слова
             state.touchSelecting = true;      // свайпи гортання на час виділення вимкнені
             document.body.classList.add('touch-selecting');
-            setTouchSelectionGuard(true);
             state.suppressNextClick = true;
             // Забороняємо браузеру трактувати рух як прокрутку — інакше він
             // перехопить жест і виділення обірветься на першому ж русі пальця.
@@ -1221,10 +1261,15 @@ els.mainArea.addEventListener('pointerdown', (e) => {
     }
     if (!w) return;
     dragSel = w;
+    penSelectionActive = e.pointerType === 'pen';
     e.preventDefault();               // глушимо системне виділення разом з його стрибками
 });
 
-els.mainArea.addEventListener('pointermove', (e) => {
+els.mainArea.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch' && pdfSelectionTouch) return;
+    updateDragSelection(e);
+});
+function updateDragSelection(e) {
     // Палець зрушив раніше, ніж спрацювало утримання — це гортання, не виділення.
     // Використовуємо радіальний поріг (18px) для ємнісних тачскринів планшетів.
     if (touchSelTimer && !dragSel && Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > 18) {
@@ -1274,14 +1319,14 @@ els.mainArea.addEventListener('pointermove', (e) => {
         } catch (err) {}
     }
     window.getSelection()?.removeAllRanges();
-});
+}
 
 function commitDragSelection(clientX, clientY) {
     clearTimeout(touchSelTimer); touchSelTimer = null;
+    penSelectionActive = false;
     if (state.touchSelecting) {
         touchStartTime = 0; // pointerup precedes touchend: do not turn the page after selection
         state.touchSelecting = false;
-        setTouchSelectionGuard(false);
         document.body.classList.remove('touch-selecting');
         els.container.style.touchAction = (state.format === 'pdf') ? '' : 'pan-y';
     }
@@ -1329,7 +1374,11 @@ function commitDragSelection(clientX, clientY) {
     handleWordOrSelection(text, clientX, clientY, rect, helpContext, 'phrase_translation');
 }
 
-els.mainArea.addEventListener('touchend', (e) => {
+document.addEventListener('touchend', (e) => {
+    const gesture = pdfSelectionTouch;
+    pdfSelectionTouch = null;
+    clearTimeout(touchSelTimer); touchSelTimer = null;
+    if (gesture?.blocked && e.cancelable) e.preventDefault();
     if (state.touchSelecting) {
         if (e.cancelable) e.preventDefault();
         if (dragSel && state.dragRange) {

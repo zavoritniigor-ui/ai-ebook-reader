@@ -199,6 +199,29 @@ function setPdfScale(scale) {
 // explicitAnchor preserves a pre-captured page-local point. Gestures also
 // supply clientX/clientY for their focal point; button zoom and resize restore
 // to the viewport center. A fresh capture is safe only before layout changes.
+// Pinch release (and any other relayout) resizes every page wrapper to the new scale and drops the live stack
+// transform, but a page's current render keeps the fixed CSS size it was drawn at until its re-render swaps in.
+// Visible pages therefore snapped back to their pre-zoom size inside an enlarged white wrapper -- the "white
+// flash" on tablets, where the sharp re-render takes a moment. Stretch that stale render to the wrapper instead
+// (the same look as the gesture's last frame); renderPdfPageIntoImpl replaces these elements when it is ready.
+function stretchStalePdfPageContent(w, width, height) {
+    const canvas = w.querySelector(':scope > canvas.pdf-canvas');
+    if (!canvas) return;
+    if (!canvas.dataset.drawnWidth) {
+        canvas.dataset.drawnWidth = parseFloat(canvas.style.width) || canvas.getBoundingClientRect().width;
+        canvas.dataset.drawnHeight = parseFloat(canvas.style.height) || canvas.getBoundingClientRect().height;
+    }
+    const drawnW = parseFloat(canvas.dataset.drawnWidth);
+    if (!drawnW) return;
+    const k = width / drawnW;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    for (const layer of w.querySelectorAll(':scope > .pdf-text-layer, :scope > .pdf-link-layer, :scope > .ink-layer')) {
+        layer.style.transformOrigin = '0 0';
+        layer.style.transform = Math.abs(k - 1) < 1e-4 ? '' : `scale(${k})`;
+    }
+}
+
 function relayoutContinuousPdfAtScale(explicitAnchor) {
     if (!pdfContinuousReady) return;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
@@ -213,6 +236,7 @@ function relayoutContinuousPdfAtScale(explicitAnchor) {
         w.style.width = `${meta.width * scale}px`;
         w.style.height = `${meta.height * scale}px`;
         w.dataset.scale = state.pdfScale; // multiplier, not the absolute scale — see pdf-render.js
+        if (w.dataset.rendered) stretchStalePdfPageContent(w, meta.width * scale, meta.height * scale);
         stackHeight += meta.height * scale + 20;
         stackWidth = Math.max(stackWidth, meta.width * scale);
     }

@@ -114,7 +114,12 @@ scroll_before = c.js('els.container.scrollTop')
 c.js("""window.__touchLog=[]; for (const t of ['pointerdown','pointerup','pointercancel','touchstart','touchend','touchcancel','contextmenu','selectstart'])
   document.addEventListener(t, e => __touchLog.push([t, e.pointerType || '', (e.target.className || e.target.tagName || '').toString().slice(0, 30), Math.round(performance.now()), e.cancelable]), {capture: true}); 1""")
 c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1)])
-pause(.55)
+# Real fingers move during the hold: stay inside the reader's 18px jitter budget,
+# but cross Chrome's native scroll slop before the long-press timer expires.
+for offset in (4, 8, 12, 16):
+    c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=[dict(x=a['x'], y=a['y'] + offset, id=1)])
+    pause(.04)
+pause(.4)
 if not c.js('state.touchSelecting === true'):
     pause(1)
     print('B1 DIAG', c.js("""({events: __touchLog, touchSelecting: state.touchSelecting, timer: touchSelTimer !== null, dragSel: !!dragSel,
@@ -131,6 +136,79 @@ c.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
 pause(.6)
 check('B3 touch selection covers the dragged French cells only and opens the popup',
       "(() => { const t = state.canonicalSelection?.text || ''; return (t.includes('je suis') && t.includes('il est') && !/vous|you are/.test(t) && getComputedStyle(els.tooltip).display !== 'none') || t; })()")
+
+# Touch lifecycle checks use the same real PDF text layer, with fresh gestures after
+# each terminal event. No direct calls to selection functions or fabricated ranges.
+def touch(kind, point=None):
+    c.call('Input.dispatchTouchEvent', type=kind, touchPoints=[] if point is None else [dict(x=point['x'], y=point['y'], id=1)])
+
+def fresh_touch_page():
+    boot(1000, 900, True)
+    upload(paradigm_pdf())
+    learning_on()
+
+fresh_touch_page()
+a = c.js(CELL + "('il est')"); b = c.js(CELL + "('je suis')")
+# Touch input must extend the range without depending on a parallel pointermove
+# stream. Physical browsers may coalesce these streams differently from CDP.
+c.js("document.addEventListener('pointermove', e => { if(e.pointerType === 'touch') e.stopImmediatePropagation(); }, true)")
+scroll_before = c.js('els.container.scrollTop')
+touch('touchStart', a); pause(.45)
+for i in range(1, 11):
+    touch('touchMove', dict(x=b['x'] + 20, y=a['y'] + (b['y'] - a['y']) * i / 10)); pause(.03)
+touch('touchEnd'); pause(.3)
+check('B4 reverse touch-only drag retains the original anchor and column',
+      "(() => {const t=state.canonicalSelection?.text || ''; return t.includes('je suis') && t.includes('il est') && !t.includes('you are') && !state.touchSelecting;})()")
+check('B5 reverse selection does not scroll', f' Math.abs(els.container.scrollTop - {scroll_before}) < 1')
+
+fresh_touch_page()
+# Select a full sentence by actual glyph coordinates, ending at its last word.
+points = c.js("""(() => {
+ const s=[...document.querySelectorAll('.pdf-text-layer span')].find(s=>s.textContent.includes('The verb etre'));
+ const n=s.firstChild; const point=(start,end)=>{const r=document.createRange(); r.setStart(n,start); r.setEnd(n,end); const b=r.getBoundingClientRect();return {x:b.left+b.width/2,y:b.top+b.height/2};};
+ return [point(0,3),point(n.length-10,n.length-1)];})()""")
+touch('touchStart', points[0]); pause(.45)
+for i in range(1, 13):
+    touch('touchMove', dict(x=points[0]['x']+(points[1]['x']-points[0]['x'])*i/12, y=points[0]['y'])); pause(.02)
+touch('touchEnd'); pause(.3)
+check('B6 sentence remains selected on release', "state.lastSelectionText.startsWith('The verb etre (to be) is irregular') && !!state.lastSelectedRange && !state.touchSelecting")
+
+for cancel_type in ('touchcancel', 'pointercancel'):
+    fresh_touch_page()
+    a = c.js(CELL + "('je suis')")
+    touch('touchStart', a); pause(.45)
+    check('hold active before ' + cancel_type, 'state.touchSelecting === true')
+    # Isolate each cancellation event; CDP touchCancel normally emits both.
+    c.js("document.dispatchEvent(new Event(%s, {bubbles:true}))" % json.dumps(cancel_type))
+    check('B7 ' + cancel_type + ' clears active drag and scroll locks',
+          "!state.touchSelecting && !state.dragRange && !dragSel && !touchSelTimer && !document.body.classList.contains('touch-selecting') && els.container.style.touchAction === ''")
+    touch('touchCancel')
+
+fresh_touch_page()
+a = c.js(CELL + "('je suis')")
+touch('touchStart', a); pause(.45)
+c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[dict(x=a['x'], y=a['y'], id=1), dict(x=a['x']+90, y=a['y']+50, id=2)])
+check('B7 second finger cancels selection and releases its locks for pinch',
+      "!state.touchSelecting && !state.dragRange && !dragSel && !touchSelTimer && !document.body.classList.contains('touch-selecting')")
+touch('touchCancel')
+
+fresh_touch_page()
+a = c.js(CELL + "('je suis')")
+touch('touchStart', a); pause(.05); touch('touchCancel'); pause(.45)
+check('B7 cancellation before hold cannot activate a stale timer', '!state.touchSelecting && !dragSel && !touchSelTimer')
+
+for jitter in (False, True):
+    fresh_touch_page()
+    a = c.js(CELL + "('je suis')")
+    start = c.js('els.container.scrollTop')
+    touch('touchStart', a)
+    if jitter:
+        touch('touchMove', dict(x=a['x'], y=a['y']-8)); pause(.04)
+    for offset in (30, 60, 90, 120):
+        touch('touchMove', dict(x=a['x'], y=a['y']-offset)); pause(.03)
+    touch('touchEnd'); pause(.5)
+    check('B8 one-finger scrolling works' + (' after jitter' if jitter else ' natively'),
+          f'els.container.scrollTop > {start} + 30 && !state.touchSelecting && !dragSel && !touchSelTimer')
 
 # ---------------------------------------------------------------- C/D/E: workspace, zoom, immersive
 boot(1440, 900, False)
@@ -243,4 +321,138 @@ check('I1 Quick Wheel "Level" analyses the selection the learner just made (not 
       "(() => { const t = __aiTasks.at(-1); return (t && t.mode === 'level' && t.text === %s) || __aiTasks; })()" % json.dumps(selected, ensure_ascii=False))
 
 check('no page errors', "__errors.length === 0 || __errors")
+# ---------------------------------------------------------------- J: stylus (pointerType "pen") selection
+# The user's tablet input is a pen. A pen selects on the mouse path (no long-press); real CDP pen pointer events
+# here. What CDP cannot emulate is a stylus that pans the page -- J8 checks that guard at the event level.
+boot(1000, 900, False)
+upload(pdf_bytes())
+learning_on()
+WORD = """((word) => { for (const s of document.querySelectorAll('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span')) {
+  const n = [...s.childNodes].find(x => x.nodeType === 3 && x.nodeValue.includes(word)); if (!n) continue;
+  const i = n.nodeValue.indexOf(word); const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + word.length);
+  const b = r.getBoundingClientRect(); return {x: b.left + Math.min(4, b.width / 3), y: b.top + b.height / 2, r: b.right - 2}; } return null; })"""
+def pen(kind, x, y, buttons=1):
+    c.call('Input.dispatchMouseEvent', type=kind, x=x, y=y, button='left' if kind != 'mouseMoved' else 'none' if not buttons else 'left',
+           buttons=buttons, clickCount=1, pointerType='pen')
+def pen_drag(a, b, steps=10, release=True):
+    pen('mouseMoved', a['x'], a['y'], buttons=0); pen('mousePressed', a['x'], a['y'])
+    for i in range(1, steps + 1):
+        pen('mouseMoved', a['x'] + (b['x'] - a['x']) * i / steps, a['y'] + (b['y'] - a['y']) * i / steps); pause(.02)
+    if release: pen('mouseReleased', b['x'], b['y']); pause(.6)
+def reset_sel():
+    c.js("try { els.ttCloseBtn?.click() } catch (e) {}; try { CSS.highlights.delete(SEL_HL_NAME) } catch (e) {}; state.lastSelectionText = null; state.canonicalSelection = null; state.touchJustCommitted = 0; els.tooltip.style.display = 'none'")
+    pause(.3)
+c.js("window.__penDowns = 0; document.addEventListener('pointerdown', e => { if (e.pointerType === 'pen') __penDowns++; }, true); 1")
+
+a = c.js(WORD + "('Hello')"); b = c.js(WORD + "('PDF')"); b['x'] = b['r']
+pen_drag(a, b)
+check('J1 pen drag selects several words (real pointerType "pen" events)', "(__penDowns > 0 && state.lastSelectionText === 'Hello world. PDF') || [__penDowns, state.lastSelectionText]")
+reset_sel()
+a = c.js(WORD + "('Reading')"); b = c.js(WORD + "('illustration.')"); b['x'] = b['r']
+pen_drag(a, b)
+check('J2 pen drag selects a complete sentence', "state.lastSelectionText === 'Reading text beside an illustration.' || state.lastSelectionText")
+pause(.8)
+check('J4 the pen selection is retained after pointerup (green highlight + popup with the full text)',
+      """(() => { const hl = [...document.querySelectorAll('.sel-word')].map(e => e.textContent).join(' ').replace(/\\s+/g, ' ').trim();
+        return (hl === 'Reading text beside an illustration.' && getComputedStyle(els.tooltip).display !== 'none' && els.ttOriginal.textContent === 'Reading text beside an illustration.') || [hl, els.ttOriginal.textContent]; })()""")
+reset_sel()
+pen_drag({'x': b['x'], 'y': b['y']}, c.js(WORD + "('Reading')"))
+check('J3 reverse pen drag (end of sentence back to its start) selects the same sentence', "state.lastSelectionText === 'Reading text beside an illustration.' || state.lastSelectionText")
+reset_sel()
+
+a = c.js(WORD + "('Reading')"); b = c.js(WORD + "('beside')")
+pen_drag(a, b, release=False)
+check('J5a a pen selection is live mid-drag', "!!state.dragRange && (CSS.highlights.get(SEL_HL_NAME)?.size || 0) > 0")
+c.js("document.dispatchEvent(new PointerEvent('pointercancel', {pointerType: 'pen', bubbles: true}))")
+pen('mouseReleased', b['x'], b['y']); pause(.5)
+check('J5b pointercancel ends the pen selection cleanly (no stale highlight, nothing committed)',
+      "(!state.dragRange && !state.lastSelectionText && !(CSS.highlights.get(SEL_HL_NAME)?.size)) || [state.lastSelectionText, CSS.highlights.get(SEL_HL_NAME)?.size]")
+reset_sel()
+
+w = c.js(WORD + "('Hello')")
+pen('mouseMoved', w['x'], w['y'], buttons=0); pen('mousePressed', w['x'], w['y'])
+pen('mouseMoved', w['x'] + 2, w['y'] + 1); pen('mouseMoved', w['x'] + 3, w['y'] - 1)
+pen('mouseReleased', w['x'] + 3, w['y'] - 1); pause(.8)
+check('J6 small pen jitter on a word is a tap (one word looked up), not a range selection',
+      "(!state.lastSelectionText && els.ttOriginal.textContent.trim() === 'Hello') || [state.lastSelectionText, els.ttOriginal.textContent]")
+reset_sel()
+
+w = c.js(WORD + "('Reading')")
+pen('mousePressed', w['x'], w['y'])
+check('J8a while a pen selection is active its own touchmove cannot become a native scroll', """(() => {
+  const t = new Touch({identifier: 9, target: els.container, clientX: 300, clientY: 300});
+  const ev = new TouchEvent('touchmove', {cancelable: true, bubbles: true, touches: [t], targetTouches: [t], changedTouches: [t]});
+  els.container.dispatchEvent(ev); return ev.defaultPrevented; })()""")
+pen('mouseReleased', w['x'], w['y']); pause(.6)
+reset_sel()
+check('J8b after the pen is lifted a finger touchmove still scrolls natively (not prevented)', """(() => {
+  const t = new Touch({identifier: 10, target: els.container, clientX: 300, clientY: 300});
+  const ev = new TouchEvent('touchmove', {cancelable: true, bubbles: true, touches: [t], targetTouches: [t], changedTouches: [t]});
+  els.container.dispatchEvent(ev); return ev.defaultPrevented === false; })()""")
+
+c.js("document.getElementById('btn-ink').click()"); pause(.4)
+strokes0 = c.js("(() => { let n = 0; for (const k in state.ink) n += state.ink[k].length; return n; })()")
+a = c.js(WORD + "('Reading')"); b = c.js(WORD + "('beside')")
+pen_drag(a, b)
+check('J7 in ink mode the pen draws and never starts a text selection',
+      "(state.inkMode && !state.lastSelectionText && !(CSS.highlights.get(SEL_HL_NAME)?.size) && (() => { let n = 0; for (const k in state.ink) n += state.ink[k].length; return n; })() > %d) || [state.inkMode, state.lastSelectionText, state.ink]" % strokes0)
+c.js("document.getElementById('btn-ink').click()"); pause(.3)
+
+check('no page errors (pen)', "__errors.length === 0 || __errors")
+# ---------------------------------------------------------------- K: pinch release keeps the page visible (no white flash)
+# On release the live stack transform is dropped and every wrapper is resized to the committed scale; the page's
+# current render used to keep its old CSS size until the sharp re-render swapped in -- the page snapped back to
+# its pre-zoom size inside a white wrapper (tablet "white flash"). Renders are slowed here like on a tablet.
+boot(1180, 820, True)
+upload(pdf_bytes())
+c.js("navigateToPdfPage(40, {instant: true})"); pause(1.2); c.wait('pdfInFlightRenders===0', timeout=15)
+c.js("window.__realRender = renderPdfPageInto; renderPdfPageInto = async (...a) => { await new Promise(r => setTimeout(r, 700)); return __realRender(...a); }; 1")
+def pinch(ratio, x=590, y=420, d=80):
+    pts = lambda dist: [dict(id=1, x=x - dist, y=y, radiusX=5, radiusY=5, force=1), dict(id=2, x=x + dist, y=y, radiusX=5, radiusY=5, force=1)]
+    c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=pts(d))
+    for i in range(1, 8):
+        c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=pts(d * (1 + (ratio - 1) * i / 7)))
+        c.js('new Promise(r => requestAnimationFrame(r))')
+    c.js(f"window.__pinchPt = pdfZoomAnchor({x}, {y}); window.__pageBefore = pdfActivePage; window.__scaleBefore = state.pdfScale; window.__oldCanvas = pdfPageWrappers[pdfActivePage].querySelector('canvas.pdf-canvas'); window.__oldImg = (() => {{ const r = pdfPageWrappers[pdfActivePage].getBoundingClientRect(); return {{w: r.width, left: r.left, top: r.top}}; }})(); 1")
+    c.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+VISIBLE = """(() => { const w = pdfPageWrappers[pdfActivePage], cv = w.querySelector('canvas.pdf-canvas'); if (!cv) return 'no canvas';
+  const wr = w.getBoundingClientRect(), cr = cv.getBoundingClientRect(); const v = els.container.getBoundingClientRect();
+  let cov = 0; for (const x of document.querySelectorAll('canvas.pdf-canvas')) { const r = x.getBoundingClientRect();
+    cov += Math.max(0, Math.min(r.right, v.right) - Math.max(r.left, v.left)) * Math.max(0, Math.min(r.bottom, v.bottom) - Math.max(r.top, v.top)); }
+  return {sameCanvas: cv === __oldCanvas, fills: Math.abs(cr.width - wr.width) < 1 && Math.abs(cr.height - wr.height) < 1, coverage: +(cov / (v.width * v.height)).toFixed(3)}; })()"""
+pinch(1.8)
+first = c.js('new Promise(r => requestAnimationFrame(() => r(' + VISIBLE + ')))')
+check('K1 first frame after pinch release: the page still fills its (zoomed) slot and the viewport -- no blank area',
+      "(r => (r.fills && r.coverage > 0.98) || r)(" + json.dumps(first) + ")")
+check('K2 the previous render stays on screen until the sharp replacement is ready', "(() => { const r = " + VISIBLE + "; return (r.sameCanvas && r.fills) || r; })()")
+c.wait("pdfInFlightRenders === 0 && pdfPageWrappers[pdfActivePage].querySelector('canvas.pdf-canvas') !== __oldCanvas", timeout=15); pause(.3)
+check('K2b then it is replaced by a render drawn at the new scale (no stretch left behind)',
+      "(() => { const cv = pdfPageWrappers[pdfActivePage].querySelector('canvas.pdf-canvas'); return (!cv.dataset.drawnWidth && ![...pdfPageWrappers[pdfActivePage].children].some(e => e.style.transform)) || cv.dataset.drawnWidth; })()")
+check('K3 the committed scale is the pinched one', "Math.abs(state.pdfScale / __scaleBefore - 1.8) < 0.05 || [state.pdfScale, __scaleBefore]")
+check('K4 the point under the fingers is still under the fingers (focal anchor kept)',
+      "(() => { const r = els.pages.getBoundingClientRect(); const dx = r.left + __pinchPt.x * r.width - __pinchPt.clientX, dy = r.top + __pinchPt.y * r.height - __pinchPt.clientY; return (Math.abs(dx) < 3 && Math.abs(dy) < 3) || [dx, dy]; })()")
+check('K5 no page jump', 'pdfActivePage === __pageBefore || [pdfActivePage, __pageBefore]')
+for i, ratio in enumerate((1 / 1.6, 1.5, 1 / 1.4)):
+    pinch(ratio)
+    r = c.js('new Promise(r => requestAnimationFrame(() => r(' + VISIBLE + ')))')
+    assert r['fills'] and r['coverage'] > 0.98, ('cycle', i, r)
+    c.wait('pdfInFlightRenders === 0', timeout=15); pause(.3)
+check('K6 repeated zoom-in/out cycles: never a blank frame, one canvas and one text layer per page, still on the same page',
+      "([...document.querySelectorAll('.pdf-page-wrapper')].every(w => w.querySelectorAll('canvas.pdf-canvas').length <= 1 && w.querySelectorAll('.pdf-text-layer').length <= 1) && pdfActivePage === __pageBefore) || pdfActivePage")
+c.js("renderPdfPageInto = __realRender; 1")
+c.js("els.container.scrollTop += pdfPageWrappers[pdfActivePage].offsetHeight * 2.2"); pause(1.2)
+check('K7 continuous scrolling still advances pages after pinching', 'pdfActivePage >= __pageBefore + 2 || [pdfActivePage, __pageBefore]', timeout=4)
+c.wait('pdfInFlightRenders === 0', timeout=15)
+boot(1000, 900, False)
+upload(pdf_bytes())
+learning_on()
+c.js("setPdfScale(1.5)"); pause(1); c.wait('pdfInFlightRenders === 0', timeout=15)
+# Bring the sentence into view at the new zoom, as the reader would before selecting it.
+c.js("""(() => { const s = [...document.querySelectorAll('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span')].find(x => x.textContent.includes('Reading'));
+  const r = s.getBoundingClientRect(), v = els.container.getBoundingClientRect(); els.container.scrollLeft += r.left - v.left - 40; els.container.scrollTop += r.top - v.top - 200; })()"""); pause(.5)
+a = c.js(WORD + "('Reading')"); b = c.js(WORD + "('illustration.')"); b['x'] = b['r']
+assert b['x'] < 990 and a['x'] > 0, (a, b)
+pen_drag(a, b)
+check('K8 pen selection still works on a re-rendered, zoomed page', "state.lastSelectionText === 'Reading text beside an illustration.' || state.lastSelectionText")
+
 print('ALL PDF WORKSPACE REGRESSION CHECKS PASSED')

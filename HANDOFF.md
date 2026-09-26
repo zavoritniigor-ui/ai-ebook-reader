@@ -1,3 +1,134 @@
+## PR (stacked on #132 -> ... -> #126): PDF crop "Send to AI" answer invisible + Share messages (2026-09-26, Claude)
+
+Branch `fix/crop-ask-ai-attachment`. Crop dialog (js/pdf-crop.js) is a showModal() <dialog>. "Send to AI" used to
+fire a fixed exercise-check vision request and close the dialog only on SUCCESS: spinner and every error went into
+the Ask panel behind the modal (invisible); requestAI also dropped the answer if the page changed meanwhile.
+Now: Send to AI -> dialog closes, crop attached to Ask AI (#ask-attachment chip, ✕, focused input); Send -> question
++ image (empty question = the old exercise check); answer/errors/Retry in the visible panel; callAIVision passes
+{anyPosition:true}. Attachment: one at a time, replaced by a new crop, removed by ✕ / closing Ask AI, consumed on
+success, kept on error; send is idempotent while in flight (➤ submit + form onsubmit double-click; Enter).
+No key: dialog stays with the crop + message (unchanged). All 3 providers already send images correctly.
+Share: navigator.share called synchronously in the tap (was already correct); fallback now names the reason
+(not https / no Web Share / files unsupported), refused share shows its error, cancel is silent.
+Tests: tests/pdf_crop_ai_share_browser.py; tests/pdf_ux_browser.py updated to the attach-then-Send contract.
+REAL MULTIMODAL PROVIDER: NOT VERIFIED. PHYSICAL ANDROID SHARE SHEET (Gemini/ChatGPT/Claude as targets): NOT VERIFIED.
+
+## PR (stacked on #131 -> ... -> #126): PDF print — tall pages split over two sheets (2026-09-25, Claude)
+
+Branch `fix/pdf-print-page-fit`. Print = `printCurrentReaderPage` (js/quick-wheel.js; Quick Wheel 🖨, Ctrl/⌘+P):
+renders physical page `state.currentIndex` fresh via pdfDoc.getPage (intent 'print', <=3x / 8 MP, ~216 dpi for
+Letter), draws ink with the on-screen geometry, embeds a PNG in a hidden iframe, prints, removes it on afterprint.
+Page identity, labels, zoom, virtualization, ink, repeat/switch/error were all verified correct.
+Defect fixed: print doc used `@page{size:auto}` + img width:100%/height:auto, so pages taller (proportionally) than
+the paper (6x9 in, A5) printed on 2 sheets. Now `@page{size:<w>pt <h>pt;margin:0}` + image contained in one page box.
+Test: tests/pdf_print_browser.py (marker-encoded fixtures; captured print doc laid out by Chrome printToPDF on
+A4/Letter and rasterized back). NOT changed, for the user to decide: page-range printing (only the current page is
+in the print document); Chrome's own menu Print prints the whole virtualized viewer (unrendered pages blank).
+PHYSICAL PRINTER / NATIVE PRINT PREVIEW VERIFICATION REQUIRED — NOT YET VERIFIED.
+
+## PR (stacked on #130 -> ... -> #126): Ask AI dictation "one" -> "one one" on tablet (2026-09-25, Claude)
+
+Branch `fix/ask-dictation-duplicates`. Web Speech SpeechRecognition in js/dictation.js; same code on every device.
+Interim text is status-only; finals are committed per result index per session; one live recognizer (generation
+guard); no listener accumulation (onclick properties, one MutationObserver). Root cause (engine-side, modelled):
+Android's recognizer is single-utterance and Chrome's emulated continuous mode re-emits a final at the next index,
+which the per-index commit appended twice. Fix: Android/iOS/iPadOS sessions use continuous=false (one utterance ->
+one final result); the existing onend restart loop continues dictation. Desktop unchanged (continuous=true).
+No text-based dedup. `sttTrace` (console) = last 80 toggle/start/result/commit/stop/abort/end/error events.
+Test: tests/ask_dictation_browser.py (old code reproduces "one one" under the same engine model).
+PHYSICAL TABLET DICTATION VERIFICATION REQUIRED — NOT YET VERIFIED. If it still duplicates, read `sttTrace`:
+two `result` entries at different indices = engine duplicate; two `commit` for one index = app bug; two sessions
+live = lifecycle bug; two `toggle` per tap = activation bug.
+
+## PR (stacked on #129 -> #128 -> #127 -> #126): TTS first-tap silence / clipped start (2026-09-25, Claude)
+
+Branch `fix/tts-first-tap`. Only engine: Web Speech `speechSynthesis` (words, sentences, popup speakers, Practice,
+read-aloud all share js/tts.js). Trace showed every tap sent pointerdown cancel() + speakText cancel() and then
+speak() from an 80 ms timer even with nothing playing (Android: TextToSpeech.stop() right before the first speak).
+- `cancelSpeech()` cancels only a busy synth (speaking/pending/paused); `startUtterance()` speaks at once inside the
+  gesture when idle, waits only the rest of TTS_CANCEL_SPEAK_DELAY_MS after a real cancel; one automatic retry when the
+  engine never starts (2.5 s) or reports audio-busy/audio-hardware/synthesis-failed; other errors console.warn'd.
+- `ttsTrace` (console) = last 60 speak/cancel/start/end/error/retry events, for on-device diagnosis.
+- Web Speech never hands the audio to the page: "generated vs played" can't be captured in-app. On the tablet: if
+  `ttsTrace` shows start+end for a silent/clipped first tap, the loss is in the platform output path (e.g. Bluetooth
+  or speaker waking from standby), not the app.
+- Tests: new `tests/tts_first_tap_browser.py` (fails on the old code); `tts_double_voice` + `practice_sentence_actions`
+  mocks now track `speaking` like the real API (contract: idle -> no cancel, speak now).
+- PHYSICAL TABLET VERIFICATION REQUIRED — NOT YET VERIFIED.
+
+## PR (stacked on #128 -> #127 -> #126): single-word AI translation, literal first (2026-09-25, Claude)
+
+Branch `fix/single-word-literal-translation`. Merge order: #126 -> #127 -> #128 -> this PR.
+- Cause: the single-word AI prompt asked for "the meaning in THIS sentence (1-4 words)", so models returned the
+  translation of the surrounding construction ("run" -> "керувати компанією") instead of the word.
+- `js/ai-client.js` `aiTranslateText`: single-word prompt now asks for the translation of the word itself (the sentence
+  only picks the sense/form) and returns JSON `{"direct","context"}`; `parseSingleWordTranslation` parses it (fenced /
+  almost-JSON / plain-text replies tolerated) and drops a context note that just repeats the direct translation.
+  Multi-word (alignment) prompt unchanged.
+- `js/translation.js`: the direct translation is primary; the note renders after it as `.tt-context` (smaller, grey,
+  in parentheses) only when present. Dictionary extras / non-AI path unchanged.
+- Test: `tests/single_word_translation_browser.py` (mocked `callAI`, no real provider). Neighbouring suites pass locally.
+- Not verifiable automatically: real-model output quality on real books -- check a few words (e.g. a phrasal verb,
+  a polysemous noun) with the user's actual AI key.
+
+## PR (stacked on #127 -> #126): translation popup auto-close timer (2026-09-25, Claude)
+
+- Branch `fix/translation-popup-timer` on top of `fix/pinch-release-flash` (#127) on top of #126 — merge #126, #127 first.
+- Bug: `handleWordOrSelection` (js/translation.js) started the single-word 1800 ms auto-close when the popup OPENED,
+  while "translating…" was showing — an AI answer slower than 1.8 s arrived in an already-closed popup. Also
+  `pointerleave` (js/ui-tooltip.js) restarted a 1.2 s hide while loading, and failed lookups auto-closed.
+- Fix: no countdown while loading (`state.tooltipLoading`); the existing 1800 ms countdown starts only when a
+  translation is actually rendered, only for the current lookup, only if the popup is still open. A failed
+  lookup keeps its error until dismissed. Multi-word/sentence popups unchanged (persistent). Durations unchanged.
+  Existing `lookupToken` + task cancellation already stop stale answers; verified.
+- Tests: new `tests/translation_popup_timer_browser.py` (in CI) with controllable mocked lookups: immediate, 1 s,
+  3 s (required: countdown starts at ~T=3 s), 6 s, failure, re-request after failure, close while loading, newer
+  word while loading, late old answer, sentence stays open. Fails on the previous head at the 3 s case.
+  Neighbouring suites pass: learning_ux, pdf_word_click, language_context, local_translator_warmup,
+  grammar_selection_preserve, pdf_workspace_regressions.
+- No Retry button exists in the translation popup; re-tapping the word is the retry path and gets a fresh countdown.
+
+## PR (stacked on #126): tablet pinch-release white flash (2026-09-25, Claude)
+
+- Branch `fix/pinch-release-flash`, based on `fix/tablet-touch-range-selection` (PR #126, NOT yet merged — merge
+  #126 first, then this PR retargets to main automatically / rebase onto main).
+- Root cause (measured, not assumed): live pinch = one CSS `scale()` on `#reader-pages`; release ->
+  `relayoutContinuousPdfAtScale` resizes every page wrapper to the committed scale and drops that transform, but each
+  page's current render (canvas + text/link/ink layers) keeps the fixed CSS pixel size it was drawn at until its
+  re-render swaps in. The visible page snapped back to its PRE-zoom size inside an enlarged white wrapper for the
+  whole re-render (~0.2 s here, longer at tablet DPR). Nothing was cleared/removed; renders already swap atomically.
+- Fix: `stretchStalePdfPageContent()` (js/pdf-zoom-pan.js), called from the relayout loop for rendered wrappers:
+  stretch the stale canvas to the wrapper and scale the overlay layers (origin 0 0) by the same factor until the
+  sharp render replaces them. No extra renders, no extra canvases.
+- Evidence (renders slowed 700 ms like a tablet): viewer pixels changed between the last gesture frame and the first
+  frame after release — baseline 30% (zoom in) / 19.7% (zoom out); fixed 0% / 1.1%. Same canvas stays, stretched,
+  until the swap ~0.9 s later.
+- Tests: `pdf_workspace_regressions_browser.py` section K (K1/K2 fail on the baseline): no blank frame, old render
+  kept until replaced, final scale, focal anchor < 3 px, no page jump, 3 zoom cycles, continuous scroll after,
+  pen selection on a zoomed page. `pdf_pinch_anchor_browser`, `pdf_ux`, `pdf_continuous` pass.
+- Physical tablet verification: REQUIRED — NOT YET VERIFIED.
+
+## ACTIVE: physical tablet multi-word selection repair (2026-09-25)
+
+- User physically confirmed current production cannot reliably long-press/drag multiple words or sentences. This supersedes the old "no engineering work open" conclusion below.
+- Dedicated worktree `/tmp/reader-touch-range`, branch `fix/tablet-touch-range-selection`, base current main `aaf252ba5900e8918d770582d5499b0be00df0e3`. Old #122 worktree and all other worktrees preserved; no conflicting modifications found.
+- Reproduced on unchanged main by adding 4/8/12/16px pre-hold jitter to real CDP touch input: native `pointercancel` at 152ms clears timer/anchor before 380ms activation. Previous test held perfectly still.
+- `js/selection.js`: register non-passive touchmove before gesture; protect pending jitter; use touch coordinates for active range extension; retain native ordinary swipes, pan a gesture that transitions from prevented jitter into scrolling; touchcancel cleanup; suppress native context menu during owned gesture. Desktop range algorithm and PDF column partitioning unchanged.
+- Local gates PASS: expanded `pdf_workspace_regressions_browser.py` (including second-finger takeover and pre-activation cancellation), `pdf_ux_browser.py`, `learning_ux_browser.py`, `pdf_continuous_browser.py`, `bilingual_selection_browser.py`, `pdf_bilingual_columns_browser.py`, `grammar_selection_preserve_browser.py`; all JS syntax, app-shell versions, CI suite coverage, diff whitespace. Final focused log: `/tmp/tablet-touch-final-focused.log`.
+- Repair committed and pushed as `aa825196d9fef6727ab5f6e33eefe929b856c69f`; PR #126 (`https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/126`), head verified exact. CI run `36181047568` in progress; syntax/setup green. Production not updated yet. This checkpoint update is local/uncommitted documentation only.
+- Pre-existing local pinch-suite failure: after 36 successful pinches, first sidebar-open pinch reports dx=230 (page 10, fraction .15, ratio 1.5). IDENTICAL result on untouched main served from `/tmp/reader-touch-main-control` port 8766; log `/tmp/tablet-pinch-main-control.log`. Isolated fresh-tab sidebar case passes all four ratios on repair branch. Chrome 153.0.8010.36. Do not blame/rework selection for this baseline failure. No pinch code/test modified.
+- **Pen/stylus (2026-09-25, Claude):** the user's physical input is a PEN. Pen does NOT use the touch path: it
+  selects on the mouse branch (immediate drag, no long-press), and Astra's scroll guard only engaged for a touch
+  long-press. On a real tablet Chrome pans pen drags over the PDF container like fingers (touch-action pan) ->
+  pointercancel -> selection dropped. Fix (js/selection.js, `penSelectionActive`): while a pen selection is live
+  its single-touch touchmove is cancelled; reset on commit/cancel. Ink mode unaffected (pen draws). ui-tooltip's
+  documented "stylus may use native selection" decision left unchanged.
+  Tests: `pdf_workspace_regressions_browser.py` section J with real CDP pointerType "pen" events: multi-word,
+  complete sentence, reverse, retained after pointerup, pointercancel, small jitter = tap, ink mode, and the
+  touchmove guard (J8a fails on aa82519, passes now; J8b finger scroll still native). CDP cannot emulate a stylus
+  that pans, so physical stylus verification: REQUIRED — NOT YET VERIFIED.
+- Exact next action: monitor exact-SHA CI run 36181047568, review PR #126 and deliver through normal PR workflow; verify main CI, deployed assets and focused production tests. Physical tablet verification REQUIRED; no physical success claimed.
+
 ## DONE: PR #124 reader UX/tablet repair — merged (2026-09-24, Claude)
 
 - **Merged:** PR #124 squash-merged as `e2e9919` on main (feature head `2bd7376`, feature CI run 36083076997 green).

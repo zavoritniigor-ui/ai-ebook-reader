@@ -69,6 +69,15 @@ regionOverlay.addEventListener('pointerup', async (e) => {
 
 regionOverlay.addEventListener('pointercancel', () => { regionStart = null; regionBox.style.display = 'none'; });
 const cropDialog = document.getElementById('crop-dialog');
+Object.assign(I18N, {
+    cropAttached: { uk: 'Фрагмент сторінки додано. Поставте запитання й натисніть ➤', en: 'Page crop attached. Ask your question and press ➤', fr: 'Extrait de page joint. Posez votre question et appuyez sur ➤', ru: 'Фрагмент страницы добавлен. Задайте вопрос и нажмите ➤' },
+    cropRemove: { uk: 'Прибрати зображення', en: 'Remove image', fr: "Retirer l'image", ru: 'Убрать изображение' },
+    cropAskPlaceholder: { uk: 'Запитання про зображення (порожнє — перевірити вправу)', en: 'Question about the image (empty = check the exercise)', fr: "Question sur l'image (vide = vérifier l'exercice)", ru: 'Вопрос об изображении (пусто — проверить упражнение)' },
+    shareNeedsHttps: { uk: 'Поділитися можна лише на сторінці https://. Скористайтеся Save PNG.', en: 'Sharing needs the https:// page. Use Save PNG.', fr: 'Le partage nécessite la page https://. Utilisez Save PNG.', ru: 'Поделиться можно только на странице https://. Используйте Save PNG.' },
+    shareUnsupported: { uk: 'Цей браузер не має системного меню «Поділитися». Скористайтеся Save PNG або Copy image.', en: 'This browser has no system Share menu. Use Save PNG or Copy image.', fr: "Ce navigateur n'a pas de menu Partager. Utilisez Save PNG ou Copy image.", ru: 'В этом браузере нет системного меню «Поделиться». Используйте Save PNG или Copy image.' },
+    shareFilesUnsupported: { uk: 'Цей браузер не може поділитися зображенням. Скористайтеся Save PNG або Copy image.', en: 'This browser cannot share images. Use Save PNG or Copy image.', fr: "Ce navigateur ne peut pas partager d'images. Utilisez Save PNG ou Copy image.", ru: 'Этот браузер не может поделиться изображением. Используйте Save PNG или Copy image.' },
+    shareFailed: { uk: 'Не вдалося поділитися', en: 'Sharing failed', fr: 'Échec du partage', ru: 'Не удалось поделиться' },
+});
 let cropData = null, cropBlob = null;
 function closeCropPreview() {
     cropDialog.close(); cropData = null; cropBlob = null;
@@ -95,12 +104,16 @@ document.getElementById('crop-save').onclick = () => {
 document.getElementById('crop-share').onclick = async () => {
     if (!cropBlob) return;
     const files = [cropFile()];
-    try {
-        if (!navigator.canShare?.({ files })) throw new Error('Share image недоступний. Скористайтеся Save PNG.');
-        await navigator.share({ files });
-    } catch (e) {
-        if (e.name !== 'AbortError') document.getElementById('crop-status').textContent = e.message;
-    }
+    const status = document.getElementById('crop-status');
+    status.textContent = '';
+    // The OS share sheet lists the apps that accept images (including AI apps, if installed); the page never
+    // chooses or enumerates them. share() runs synchronously inside the click: the File is built from a Blob made
+    // when the preview opened, so the tap's user activation is still valid.
+    const reason = !window.isSecureContext ? 'shareNeedsHttps' : !navigator.share ? 'shareUnsupported'
+        : !navigator.canShare?.({ files }) ? 'shareFilesUnsupported' : null;
+    if (reason) { status.textContent = t(reason); return; }
+    try { await navigator.share({ files }); }
+    catch (e) { if (e.name !== 'AbortError') status.textContent = `${t('shareFailed')} (${e.name}: ${e.message})`; }
 };
 document.getElementById('crop-copy').onclick = async () => {
     if (!cropBlob) return;
@@ -112,21 +125,63 @@ document.getElementById('crop-copy').onclick = async () => {
 };
 document.getElementById('crop-ai').onclick = () => {
     if (!cropData || document.hidden) return;
-    if (!aiAvailable()) {
-        document.getElementById('crop-status').textContent = t('needKey');
-        return;
-    }
+    // No key: say so here and keep the dialog (and the crop) instead of attaching something that cannot be sent.
+    if (!aiAvailable()) { document.getElementById('crop-status').textContent = t('needKey'); return; }
     const preview = document.getElementById('crop-preview');
     if (!preview.complete || !preview.naturalWidth) return;
     const canvas = document.createElement('canvas');
     const k = Math.min(1, 1000 / Math.max(preview.naturalWidth, preview.naturalHeight));
     canvas.width = Math.round(preview.naturalWidth*k); canvas.height = Math.round(preview.naturalHeight*k);
     canvas.getContext('2d').drawImage(preview, 0, 0, canvas.width, canvas.height);
+    // Attach, don't ask yet: the crop dialog is modal, so anything shown in Ask AI while it stays open (spinner,
+    // errors) was invisible behind it. Close it, show the crop in Ask AI and let the reader ask their question.
     const data = canvas.toDataURL('image/jpeg', .85);
-    // Передаємо true щоб закрити preview при УСПІХУ, але logic всередині checkExerciseImage
-    // зберігатиме preview ВІДКРИТИМ при помилці для повтору
-    checkExerciseImage(data);
+    closeCropPreview();
+    attachToAsk(data);
 };
+
+// ========== КРОП ЯК ВКЛАДЕННЯ ДО "ЗАПИТАЙ AI" ==========
+// One attachment at a time: a new crop replaces it, ✕ or closing Ask AI removes it, a successful answer consumes
+// it (it is never sent again with a later question); on an error it stays for a retry.
+let askAttachment = null;
+function renderAskAttachment() {
+    const box = document.getElementById('ask-attachment');
+    box.hidden = !askAttachment;
+    document.getElementById('ask-attachment-img').src = askAttachment ? askAttachment.dataUrl : '';
+    document.getElementById('ask-attachment-label').textContent = askAttachment ? t('cropAttached') : '';
+    document.getElementById('ask-attachment-remove').setAttribute('aria-label', t('cropRemove'));
+    els.askInput.placeholder = askAttachment ? t('cropAskPlaceholder') : t('ask');
+}
+function attachToAsk(dataUrl) {
+    askAttachment = { dataUrl };
+    renderAskAttachment();
+    els.askPanel.classList.add('expanded');
+    // A collapsed panel turns visible only once its slide-in (visibility transition) starts, a few frames later;
+    // until then the input cannot take focus. Try each frame until it does (bounded).
+    let frames = 0;
+    const focusInput = () => {
+        els.askInput.focus();
+        if (document.activeElement !== els.askInput && askAttachment && ++frames < 30) requestAnimationFrame(focusInput);
+    };
+    focusInput();
+}
+function clearAskAttachment() { if (!askAttachment) return; askAttachment = null; renderAskAttachment(); }
+document.getElementById('ask-attachment-remove').onclick = () => { clearAskAttachment(); els.askInput.focus(); };
+new MutationObserver(() => { if (!els.askPanel.classList.contains('expanded')) clearAskAttachment(); })
+    .observe(els.askPanel, { attributes: true, attributeFilter: ['class'] });
+// Send in Ask AI while a crop is attached: the question and the image go together. No question = the existing
+// exercise check.
+// Idempotent while its request runs: ➤ is a submit button whose form submit clicks ➤ again, and Enter both
+// clicks it and submits -- the text-only path is protected by its emptied input, but an empty question is
+// valid here (= exercise check), so the second activation would send a second vision request.
+function sendAskAttachment(question) {
+    if (!askAttachment || askAttachment.sending) return;
+    if (!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; }
+    stopDictation();
+    els.askInput.value = '';
+    askAttachment.sending = true;
+    checkExerciseImage(askAttachment.dataUrl, question);
+}
 
 // Вирізає ділянку з полотна сторінки PDF у власній роздільності полотна,
 // а не екрана — тому дрібний рукописний текст лишається читабельним.
@@ -167,39 +222,36 @@ function cropPdfRegion(rect, pageWrapper) {
     return out.toDataURL('image/png');
 }
 
-async function checkExerciseImage(dataUrl) {
+async function checkExerciseImage(dataUrl, question = '') {
     const task = beginAsyncTask('ask');
     cancelAsyncTasks(['panelTranslate']);
     els.askPanel.classList.remove('loading', 'ready');
     const langName = LANG_NAMES[state.targetLang] || 'українською';
-    els.askPanel.classList.add('expanded');
-    els.askContent.innerHTML = `<div style="text-align:center;margin-top:40px;"><div class="spinner-large"></div><p class="tt-note">${t('checking')}</p></div>`;
+    els.askPanel.classList.add('expanded', 'loading');
+    els.askContent.innerHTML = `<div style="text-align:center;margin-top:40px;"><div class="spinner-large"></div><p class="tt-note">${t(question ? 'generating' : 'checking')}</p>${question ? `<p><b>${escapeHtml(question)}</b></p>` : ''}</div>`;
     // Запит навмисно короткий: кожен зайвий рядок інструкції — це витрачені токени,
     // а їхній ліміт тут головне обмеження.
-    const prompt = `Вправа з підручника, відповіді вписані учнем. Відповідай ${langName}, HTML без markdown.
+    const prompt = question
+        ? `${question}\n\nЗображення — фрагмент сторінки книги, яку читає користувач. Відповідай ${langName}, HTML без markdown, стисло.`
+        : `Вправа з підручника, відповіді вписані учнем. Відповідай ${langName}, HTML без markdown.
 Для кожної відповіді один рядок: відповідь — ✅ або ❌ — правильний варіант і правило (3–5 слів).
 Наприкінці: <b>підсумок</b> N/M. Нерозбірливе познач як «?». Без вступу й без повторення завдання.`;
     try {
-        const out = await callAIVision(prompt, dataUrl, task.signal);
-        if (!task.current()) {
-            els.askPanel.classList.remove('loading');
-            els.askContent.innerHTML = `<span class="tt-note">Запит скасовано</span>`;
-            return;
-        }
+        const out = await callAIVision(prompt, dataUrl, task.signal, { anyPosition: true });
+        if (!task.current()) return;
         els.askPanel.classList.remove('loading'); els.askPanel.classList.add('ready');
         els.askContent.innerHTML = safeHtml(out, true);
-        // Закриваємо crop preview ЛИШЕ після успішного запиту
-        closeCropPreview();
+        if (askAttachment && askAttachment.dataUrl === dataUrl) clearAskAttachment();   // answered: not re-sent later
     } catch (err) {
-        if (!task.current()) {
-            els.askPanel.classList.remove('loading');
-            els.askContent.innerHTML = `<span class="tt-note">Запит скасовано</span>`;
-            return;
-        }
+        if (!task.current()) return;
         els.askPanel.classList.remove('loading');
-        // На помилці: зберігаємо crop preview ВІДКРИТИМ для повтору
-        window.lastCropRetryData = dataUrl;
-        const retryBtn = `<button style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;" onclick="checkExerciseImage(window.lastCropRetryData)">${t('retry')}</button>`;
-        els.askContent.innerHTML = `<div><span style="color:red">${escapeHtml(err.message || t('error'))}</span><br/>${retryBtn}</div>`;
+        if (askAttachment && askAttachment.dataUrl === dataUrl) askAttachment.sending = false;
+        // The attachment stays; Retry resends the same question with the same image.
+        const retry = document.createElement('button');
+        retry.textContent = t('retry');
+        retry.style.cssText = 'margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;';
+        retry.onclick = () => checkExerciseImage(dataUrl, question);
+        els.askContent.innerHTML = `<div><span style="color:red">${escapeHtml(err.message || t('error'))}</span><br/></div>`;
+        els.askContent.firstChild.append(retry);
     }
 }

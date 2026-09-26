@@ -617,6 +617,7 @@
         .tt-sense { margin: 3px 0; line-height: 1.4; }
         .tt-pos { color: #3ddba8; font-style: italic; margin-right: 5px; }
         .tt-note { font-weight: normal; font-size: 12.5px; color: #9aa1ab; }
+        .tt-context { font-weight: normal; font-size: 13px; color: #9aa1ab; }   /* single word: contextual meaning, secondary to the direct translation */
         .tt-translation-row { display: flex; align-items: stretch; gap: 10px; margin-top: 4px; min-height: 0; }
         .tt-translation-row .tt-translation { flex: 1; }
         #tt-speak-translation { align-self: flex-start; margin-top: 2px; }
@@ -946,6 +947,11 @@
         .dictation-status { padding: 0 16px 8px; font-size: 13px; color: var(--text-muted); min-height: 24px; }
         .dictation-status:empty { display: none; }
         #ask-input { min-width: 0; }
+        .ask-attachment { display: flex; align-items: center; gap: 8px; margin: 0 16px 6px; padding: 6px 8px; border: 1px solid var(--border-color, #ccc); border-radius: 10px; font-size: 13px; }
+        .ask-attachment[hidden] { display: none; }
+        .ask-attachment img { width: 48px; height: 48px; object-fit: contain; background: #fff; border-radius: 6px; flex: none; }
+        .ask-attachment span { flex: 1; min-width: 0; }
+        .ask-attachment button { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
         .alignment-word { cursor: pointer; text-decoration: underline dotted rgba(255,255,255,.4); text-underline-offset: 4px; }
         .alignment-word:focus-visible { outline: 2px solid #b8c9ff; outline-offset: 2px; }
         .alignment-word.alignment-active { background: #516786; border-radius: 3px; }
@@ -1160,6 +1166,11 @@
                 <button id="btn-lang-level" class="panel-action-btn" data-i18n="btnLangLevel">📘 Мовний розбір</button>
                 <button id="btn-explain" class="panel-action-btn" data-i18n="btnExplain">📖 Пояснення</button>
             </div>
+            <div id="ask-attachment" class="ask-attachment" hidden>
+                <img id="ask-attachment-img" alt="">
+                <span id="ask-attachment-label"></span>
+                <button type="button" id="ask-attachment-remove" aria-label="Remove image">✕</button>
+            </div>
             <form id="ask-chat-form" role="search" autocomplete="off" onsubmit="event.preventDefault(); els.askSendBtn.click();" style="display:contents;">
                 <div class="chat-input-area">
                     <select id="mic-lang" style="height:44px; max-width:76px;">
@@ -1288,28 +1299,28 @@
         // вище вже завантажений і виконаний, тож тут виклик безпечний.
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
-    <script src="js/tts.js?v=0cbe11b1e558"></script>
-    <script src="js/selection.js?v=2ad97fa40144"></script>
+    <script src="js/tts.js?v=a17baf6e57dd"></script>
+    <script src="js/selection.js?v=d6ecc9f25df0"></script>
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
-    <script src="js/pdf-zoom-pan.js?v=b240b7e4b2c2"></script>
-    <script src="js/ui-tooltip.js?v=80e860bb85c9"></script>
-    <script src="js/translation.js?v=b1aa6529b730"></script>
+    <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
+    <script src="js/ui-tooltip.js?v=784171a5a724"></script>
+    <script src="js/translation.js?v=c5b1ef982d4f"></script>
     <script src="js/grammar-svo.js?v=3f8b0d75a466"></script>
-    <script src="js/ai-client.js?v=819c861727a2"></script>
+    <script src="js/ai-client.js?v=dbdff37a51aa"></script>
     <script src="js/practice-session.js?v=ca3e5f0617db"></script>
     <script src="js/practice-worksheet.js?v=9b3d4f232932"></script>
-    <script src="js/dictation.js?v=cd46e7d595c8"></script>
+    <script src="js/dictation.js?v=2251308802f9"></script>
     <script src="js/pdf-ink.js?v=9c7619668e39"></script>
-    <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
+    <script src="js/pdf-crop.js?v=68110ae78d3f"></script>
     <script src="js/pdf-outline.js?v=97d934db97c6"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
     <script src="js/pdf-continuous.js?v=ee42c36e7287"></script>
     <script src="js/pdf-render.js?v=7bc44e26dd09"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=633836f1a648"></script>
-    <script src="js/main.js?v=fd7d286bd077"></script>
+    <script src="js/quick-wheel.js?v=3176ba147224"></script>
+    <script src="js/main.js?v=7c3d5edab80c"></script>
     <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
 </body>
 </html>

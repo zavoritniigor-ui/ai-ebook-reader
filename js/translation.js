@@ -192,7 +192,10 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     positionTooltip(clientX, clientY, anchorRect);
     els.tooltip.style.visibility = 'visible';
     state.tooltipAnchor = { clientX, clientY, anchorRect };
-    if (isMultiWord) cancelTooltipHide(); else scheduleTooltipHide();
+    // No auto-close countdown while the translation is loading: AI/network latency must not eat the reader's time.
+    // Single words start the usual countdown only once a translation is actually on screen (below).
+    cancelTooltipHide();
+    state.tooltipLoading = true;
 
     // Динамік оригіналу: озвучує оригінал і робить його активною стороною.
     // Динамік оригіналу — перемикач: клац читає, повторний клац зупиняє, наступний
@@ -288,6 +291,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     const myLookup = ++state.lookupToken;   // щоб пізня відповідь не перебила новий тап
 
     let alignmentResult = null;
+    let translated = true;   // false only when no translation arrived (the error text is shown instead)
     if (state.translationCache[cacheKey]) {
         const cached = state.translationCache[cacheKey];
         els.ttTranslation.innerHTML = typeof cached === 'string' ? cached : cached.html;
@@ -301,7 +305,9 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         if (myLookup !== state.lookupToken || !task.current()) return;
         if (ai) {
             alignmentResult = typeof ai === 'object' ? ai : null;
-            html = escapeHtml(alignmentResult ? ai.translation : ai) + ' <span class="tt-note">⚡</span>';
+            html = escapeHtml(alignmentResult ? ai.translation : ai) +
+                (alignmentResult?.contextNote ? ` <span class="tt-context">(${escapeHtml(alignmentResult.contextNote)})</span>` : '') +
+                ' <span class="tt-note">⚡</span>';
             els.ttTranslation.innerHTML = html;
             // Для окремого слова додаємо словникові значення: вони не дублюють
             // переклад, а показують інші можливі значення.
@@ -320,6 +326,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             } catch (e) {
                 if (myLookup !== state.lookupToken || !task.current()) return;
                 els.ttTranslation.textContent = e.message || t('error');
+                translated = false;
             }
         }
         if (!task.current()) return;
@@ -336,9 +343,12 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // фактичними розмірами, інакше довгий текст виштовхував би вікно за край.
     const a = state.tooltipAnchor;
     if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
-    // Для одного слова відлік починаємо заново від моменту, коли переклад справді
-    // з'явився на екрані. Для речення таймера немає взагалі — вікно лишається відкритим.
-    if (!isMultiWord) scheduleTooltipHide();
+    // Для одного слова відлік починається лише тоді, коли переклад справді з'явився на екрані
+    // (не від відкриття вікна). Для речення таймера немає взагалі — вікно лишається відкритим.
+    // A failed lookup keeps its error visible until dismissed; a popup the reader already closed gets no timer.
+    if (myLookup !== state.lookupToken) return;
+    state.tooltipLoading = false;
+    if (!isMultiWord && translated && els.tooltip.style.display !== 'none') scheduleTooltipHide();
 
 
 }
