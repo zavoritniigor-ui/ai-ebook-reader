@@ -1,3 +1,14 @@
+## PR: A10 — one reader font-size range for A-/A+ and restore (2026-09-26, Claude)
+
+Branch `fix/font-size-range` from main `4d7dee7`. Scope: Astra audit A10 only.
+- Cause: A+ added 2 px with no upper bound (58 px observed); A- floored at 12; startup read the saved size with
+  `readStoredNumber(.., 18, 12, 40)`, which REJECTS out-of-range values -> default 18 after a reload.
+- Now: `READER_FONT_MIN/MAX/STEP/DEFAULT` (12/40/2/18) + `clampReaderFontSize()` in js/core.js are the only range;
+  startup clamps the saved value (58 -> 40, 8 -> 12; unreadable -> 18). js/main.js `setReaderFontSize()` backs A-/A+;
+  `updateFontSizeControls()` disables A+ at 40 / A- at 12 in text formats only (PDF mode keeps them for page zoom),
+  kept in sync by a body-class observer (pdf-mode switches with the format).
+- Test: tests/reader_font_size_browser.py (reproduces 58 px on the old code).
+
 ## DONE: A3 / audit §12-2 — cancelled AI request no longer leaves Ask/crop "generating" (2026-09-26, Claude)
 
 **Merged:** PR #134 squash-merged as main `1b07097`; main CI `test` green; Cloudflare production deployed and

@@ -171,6 +171,7 @@ jobs:
 
           echo "Running reader_resize_sync_browser.py..."
           python3 -u tests/reader_resize_sync_browser.py
+          python3 -u tests/reader_font_size_browser.py
 
           echo "Running pwa_start_url_browser.py..."
           python3 -u tests/pwa_start_url_browser.py
