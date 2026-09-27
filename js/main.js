@@ -185,8 +185,29 @@ els.upload.addEventListener('change', async (e) => {
     await openBookFile(file);
 });
 
-document.getElementById('zoom-in').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); } else { state.fontSize += 2; writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; repaginateBook(); } };
-document.getElementById('zoom-out').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom - 0.25); } else { state.fontSize = Math.max(12, state.fontSize - 2); writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; repaginateBook(); } };
+// Text formats: A-/A+ step the reader font within READER_FONT_MIN..READER_FONT_MAX (js/core.js) and are disabled at
+// the limit. In PDF mode the same buttons zoom the page (setPdfScale has its own range), so they stay enabled there;
+// the body's pdf-mode class switches with the format, so the observer below keeps the disabled state right.
+const zoomInBtn = document.getElementById('zoom-in'), zoomOutBtn = document.getElementById('zoom-out');
+function updateFontSizeControls() {
+    const text = !document.body.classList.contains('pdf-mode');
+    zoomInBtn.disabled = text && state.fontSize >= READER_FONT_MAX;
+    zoomOutBtn.disabled = text && state.fontSize <= READER_FONT_MIN;
+}
+function setReaderFontSize(size) {
+    const next = clampReaderFontSize(size);
+    if (next !== state.fontSize) {
+        state.fontSize = next;
+        writeStored('reader_font_size', state.fontSize);
+        els.pages.style.fontSize = `${state.fontSize}px`;
+        repaginateBook();
+    }
+    updateFontSizeControls();
+}
+zoomInBtn.onclick = () => { if (state.format === 'pdf') setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); else setReaderFontSize(state.fontSize + READER_FONT_STEP); };
+zoomOutBtn.onclick = () => { if (state.format === 'pdf') setPdfScale(pdfBaseScale()*state.pdfZoom - 0.25); else setReaderFontSize(state.fontSize - READER_FONT_STEP); };
+new MutationObserver(updateFontSizeControls).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+updateFontSizeControls();
 document.getElementById('theme-select').onchange = (e) => {
     document.body.setAttribute('data-theme', e.target.value);
     writeStored('reader_theme', e.target.value);

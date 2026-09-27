@@ -182,6 +182,13 @@ function aiText(value) {
 
 // Захисне зчитування невеликого числа з localStorage: пошкоджене чи чуже значення
 // не повинне ламати запуск — просто повертаємось до типового.
+// Reader font size for text formats, in px: ONE range for A-/A+ (js/main.js) and for restoring the saved
+// preference. An out-of-range saved value (older builds let A+ grow without limit) is clamped to the nearest
+// limit, not thrown away for the default.
+const READER_FONT_MIN = 12, READER_FONT_MAX = 40, READER_FONT_STEP = 2, READER_FONT_DEFAULT = 18;
+function clampReaderFontSize(n) {
+    return Number.isFinite(n) ? Math.min(READER_FONT_MAX, Math.max(READER_FONT_MIN, n)) : READER_FONT_DEFAULT;
+}
 function readStoredNumber(key, fallback, min, max) {
     const n = parseFloat(readStored(key));
     return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
@@ -642,7 +649,7 @@ const state = {
     // вивантажив сторінку) скидав їх до типових значень.
     pdfScale: readStoredNumber('reader_pdf_scale', 1, 0.25, 4),
     pdfFit: ['width', 'page', 'free'].includes(readStored('reader_pdf_fit')) ? readStored('reader_pdf_fit') : 'width',
-    fontSize: readStoredNumber('reader_font_size', 18, 12, 40),
+    fontSize: clampReaderFontSize(parseFloat(readStored('reader_font_size'))),
     epubZip: null, spine: [], txtLines: [],
     translateMode: readStored('reader_translate_mode') === '1', extractedTextForTTS: "", currentLangCode: 'en-US',
     selectedVoiceURIByLang: (() => {
