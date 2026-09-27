@@ -96,4 +96,8 @@ z = c.js('pdfBaseScale() * state.pdfZoom'); click('#zoom-in')
 check('PDF mode: A+ still zooms the PDF and leaves the text font alone', f"pdfBaseScale() * state.pdfZoom > {z} + 0.2 && state.fontSize === 40", timeout=3)
 open_file(TXT.encode(), 'font.txt', 'text/plain', "state.format === 'txt'")
 check('back to a text book: the limit state is restored (A+ disabled at 40)', "document.getElementById('zoom-in').disabled && state.fontSize === 40")
+# CI runs every suite in ONE browser profile, and the page's pagehide handler saves the live size on the way out, so
+# leave the reader at its default size: later suites (e.g. practice_reading's touch taps) expect it.
+load('')
+check('cleanup: the next suite finds the default size', STATE + "(READER_FONT_DEFAULT) && !localStorage.getItem('reader_font_size')")
 print('ALL READER FONT SIZE CHECKS PASSED')
