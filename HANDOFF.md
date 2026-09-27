@@ -1,4 +1,8 @@
-## PR: A10 — one reader font-size range for A-/A+ and restore (2026-09-26, Claude)
+## DONE: A10 — one reader font-size range for A-/A+ and restore (2026-09-26, Claude)
+
+**Merged:** PR #136 squash-merged as main `ae3d6e0`; main CI `test` green; Cloudflare production deployed and
+verified (https://ai-ebook-reader.pages.dev: HTTP 200, index.html, sw.js `ai-reader-shell-c036c6028d49` and all 25
+scripts byte-identical to main). Not started (await approval): P1-3, A11 and the other audit items.
 
 Branch `fix/font-size-range` from main `4d7dee7`. Scope: Astra audit A10 only.
 - Cause: A+ added 2 px with no upper bound (58 px observed); A- floored at 12; startup read the saved size with
