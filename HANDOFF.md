@@ -1,4 +1,9 @@
-## PR: A3 / audit §12-2 — cancelled AI request no longer leaves Ask/crop "generating" (2026-09-26, Claude)
+## DONE: A3 / audit §12-2 — cancelled AI request no longer leaves Ask/crop "generating" (2026-09-26, Claude)
+
+**Merged:** PR #134 squash-merged as main `1b07097`; main CI `test` green; Cloudflare production deployed and
+verified (https://ai-ebook-reader.pages.dev: HTTP 200, index.html, sw.js `ai-reader-shell-6088fbadb95b` and all 25
+scripts byte-identical to main). Remaining audit items (A10, P1-3, A11, ...) are NOT started and await approval;
+the original audit is in the user's Downloads (`AI-Reader-Audit-2026-09-13.md`), not in this repo.
 
 Branch `fix/ai-cancel-state` from main `cbceaaa`. Scope: only this defect (Astra audit A3; A10/P1-3/A11 untouched).
 - Cause: `startAiTask` and the crop's `checkExerciseImage` returned silently when `task.current()` was false, so a
