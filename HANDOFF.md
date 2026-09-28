@@ -1,4 +1,9 @@
-## PR: P1-3 — Explain/Level keep the reader's work when AI is not configured (2026-09-27, Claude)
+## DONE: P1-3 — Explain/Level keep the reader's work when AI is not configured (2026-09-27, Claude)
+
+**Merged:** PR #138 squash-merged as main `5d3ca30`; main CI `test` green; Cloudflare production deployed and
+verified (https://ai-ebook-reader.pages.dev: HTTP 200, index.html, sw.js `ai-reader-shell-0bbdbd00a863` and all 25
+scripts byte-identical to main). Also adjusted: pdf_workspace_regressions I1 and reader_repair_verification
+("Explain clears a stale query") now run with AI configured. NOT started (awaits approval): A11 and the rest.
 
 Branch `fix/ai-key-preserve-input` from main `a3514a2`. Scope: Astra audit P1-3 only (A11 etc. untouched).
 Checkpoint: A10 (#136) and its handoff (#137) are merged; main `a3514a2`, CI + production verified after restart.
