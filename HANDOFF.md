@@ -1,3 +1,14 @@
+## PR: P1-3 — Explain/Level keep the reader's work when AI is not configured (2026-09-27, Claude)
+
+Branch `fix/ai-key-preserve-input` from main `a3514a2`. Scope: Astra audit P1-3 only (A11 etc. untouched).
+Checkpoint: A10 (#136) and its handoff (#137) are merged; main `a3514a2`, CI + production verified after restart.
+- Cause: `btn-explain` / `btn-lang-level` handlers (js/grammar-svo.js) called `recordHelpForSpan(.., 'ask_ai')` and
+  cleared `els.askInput` BEFORE `startAiTask()` checked `aiAvailable()`; without a key the typed Ask question was
+  erased and a phantom "help requested" entry was recorded (reading statistics), every click.
+- Fix: in both handlers, after the existing "select first" check, `if (!aiAvailable())` shows the existing needKey
+  toast, keeps the Ask panel open and returns -- nothing recorded or cleared. Configured paths unchanged.
+- Test: tests/ai_key_preserve_browser.py (fails on a3514a2: input "" + help ["ask_ai"]).
+
 ## DONE: A10 — one reader font-size range for A-/A+ and restore (2026-09-26, Claude)
 
 **Merged:** PR #136 squash-merged as main `ae3d6e0`; main CI `test` green; Cloudflare production deployed and

@@ -1041,6 +1041,9 @@ document.getElementById('btn-lang-level').onclick = () => {
     };
     const frag = context.selectionText || context.lastAskContext || context.lastGrammarSentence;
     if (!frag) { showToast(t('selectFirst')); return; }
+    // No AI configured: say so and change nothing -- the reader's typed Ask question stays in the field and no
+    // "help requested" is recorded for a request that never happened (audit P1-3). The panel still opens.
+    if (!aiAvailable()) { showToast(t('needKey')); els.askPanel.classList.add('expanded'); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
     if (els.askInput) els.askInput.value = '';
     startAiTask(frag, 'level');
@@ -1060,6 +1063,9 @@ document.getElementById('btn-explain').onclick = () => {
     };
     const frag = context.selectionText || context.lastAskContext || context.lastGrammarSentence;
     if (!frag) { showToast(t('selectFirst')); return; }
+    // No AI configured: say so and change nothing -- the reader's typed Ask question stays in the field and no
+    // "help requested" is recorded for a request that never happened (audit P1-3). The panel still opens.
+    if (!aiAvailable()) { showToast(t('needKey')); els.askPanel.classList.add('expanded'); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
     if (els.askInput) els.askInput.value = '';
     startAiTask(frag, 'ask');
