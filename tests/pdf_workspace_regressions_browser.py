@@ -301,7 +301,9 @@ check('H2 clicking a generated entry opens its page', 'pdfActivePage === 5 || pd
 boot(1000, 900, False)
 upload(paradigm_pdf())
 learning_on()
-c.js("window.__aiTasks = []; startAiTask = (text, mode) => { __aiTasks.push({mode, text}); }; 1")
+# AI configured: Explain/Level check the key themselves before touching anything (audit P1-3), and this check is
+# about WHICH text they hand to startAiTask.
+c.js("window.__aiTasks = []; aiAvailable = () => true; startAiTask = (text, mode) => { __aiTasks.push({mode, text}); }; 1")
 a = c.js(CELL + "('je suis')"); b = c.js(CELL + "('il est')")
 c.call('Input.dispatchMouseEvent', type='mouseMoved', x=a['x'], y=a['y'])
 c.call('Input.dispatchMouseEvent', type='mousePressed', x=a['x'], y=a['y'], button='left', clickCount=1)

@@ -195,14 +195,19 @@ leak_check = c.js(f"""(() => {{
 assert leak_check is True, "Sentinel leaked into Ask DOM"
 print('PASS P1-5: Sentinel API key NEVER leaks into Ask input value, placeholder, or DOM')
 
-# 3. Verify stale query text clearing on contextual Explain
+# 3. Verify stale query text clearing on contextual Explain -- when Explain actually runs, i.e. with AI configured.
+# (Without AI, Explain must keep the typed question: audit P1-3, tests/ai_key_preserve_browser.py.) startAiTask is
+# stubbed so no request goes out; both stubs are restored afterwards.
 c.js("""(() => {
+    window.__realAiAvailable = aiAvailable; window.__realStartAiTask = startAiTask;
+    aiAvailable = () => true; startAiTask = () => {};
     const input = document.getElementById('ask-input');
     input.value = 'stale previous user query';
     state.lastAskContext = 'Bonjour';
     document.getElementById('btn-explain').click();
 })()""")
 check('P1-5: Triggering contextual Explain resets stale conversational query input', "document.getElementById('ask-input').value === ''")
+c.js("aiAvailable = window.__realAiAvailable; startAiTask = window.__realStartAiTask; 1")
 
 
 print("\n=== STEP 3: P1-6 Right-Side Reader Controls Geometry ===")
