@@ -1,3 +1,17 @@
+## PR: A11 — Send while dictating keeps the last spoken words (2026-09-28, Claude)
+
+Branch `fix/dictation-send-finalize` from main `6081045`. Scope: Astra audit A11 only.
+- Cause: both Send paths (js/main.js askSendBtn -> text Ask; js/pdf-crop.js `sendAskAttachment` -> crop) read the
+  field and called `stopDictation()` WITHOUT finish = `recognition.abort()`: the words still being spoken (interim,
+  shown only in #dictation-status) were discarded and any later final result ignored (generation guard).
+- Fix (js/dictation.js): per-session `pendingInterim`; `finishDictationThen(fn)` finishes like the Stop button
+  (stop -> engine finalizes -> onend; bounded by the existing 2 s finish timeout), commits words never finalized as
+  heard, then runs `fn` once; repeat activations while waiting are ignored. js/main.js: Send uses it only when
+  dictation is live AND AI is available; otherwise Send is unchanged (no-key: toast, dictation keeps listening).
+- Tests: tests/dictation_send_browser.py (fails on 6081045: sent "Explain this" / crop "Check" without the last
+  words); tests/ask_dictation_browser.py case 10 updated to the A11 contract (was asserting the dropped interim).
+- Physical: real-microphone Send-while-speaking on the tablet (Android Chrome) still to verify (`sttTrace`).
+
 ## DONE: P1-3 — Explain/Level keep the reader's work when AI is not configured (2026-09-27, Claude)
 
 **Merged:** PR #138 squash-merged as main `5d3ca30`; main CI `test` green; Cloudflare production deployed and

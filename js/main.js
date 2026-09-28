@@ -104,7 +104,13 @@ els.translateBtn.onclick = () => {
 // завжди звіряється з реально відмальованою геометрією, а не з "плоскою" розкладкою.
 
 els.micBtn.onclick = toggleDictation;
-els.askSendBtn.onclick = () => { const q = els.askInput.value.trim(); if (askAttachment) { sendAskAttachment(q); return; } if(q) { if(!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; } stopDictation(); els.askInput.value = ""; startAiTask(state.lastAskContext || q, 'ask', q); } };
+// Send while dictating: finish recognition first -- the last spoken words are still interim and would be dropped
+// (audit A11) -- then send exactly what is in the field. Without dictation, or without AI, Send is unchanged.
+function sendAskFromField() { const q = els.askInput.value.trim(); if (askAttachment) { sendAskAttachment(q); return; } if(q) { if(!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; } stopDictation(); els.askInput.value = ""; startAiTask(state.lastAskContext || q, 'ask', q); } }
+els.askSendBtn.onclick = () => {
+    if (dictationBusy() && aiAvailable() && !(askAttachment && askAttachment.sending)) { finishDictationThen(sendAskFromField); return; }
+    sendAskFromField();
+};
 els.askInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') els.askSendBtn.click(); });
 
 // ПАРСЕРИ ФОРМАТІВ

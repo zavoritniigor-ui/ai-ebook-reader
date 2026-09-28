@@ -174,8 +174,10 @@ reset(); open_ask(); tap('#mic-btn', True); say_final('what does it mean')
 wait_listening(); c.js("window.__sendSession = recognition; recognition.interim('in this'); 1")
 tap('#ask-send-btn', True)
 c.js("__sendSession.final('in this'); 1"); pause(.3)
-check('10 Send sends exactly the visible text, once; the pending interim is not sent or appended',
-      "JSON.stringify(__sent) === JSON.stringify(['what does it mean']) && els.askInput.value === '' && !dictation.wanted && %s.length === 0" % live())
+# Since A11 Send first finishes recognition, so the words still being spoken ('in this', finalized by the engine
+# while Send waits) are part of the question -- sent once, never duplicated (tests/dictation_send_browser.py).
+check('10 Send while listening: finishes recognition, then sends the full question exactly once (A11)',
+      "JSON.stringify(__sent) === JSON.stringify(['what does it mean in this']) && els.askInput.value === '' && !dictation.wanted && %s.length === 0" % live())
 
 # 11 + 13: close Ask while listening; late events from the old session change nothing
 reset(); open_ask(); tap('#mic-btn', True); wait_listening()

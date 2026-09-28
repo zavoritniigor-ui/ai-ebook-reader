@@ -16,7 +16,8 @@
 let recognition;
 const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
 const micSecureOk = window.isSecureContext !== false;
-const dictation = { wanted: false, finishing: false, timer: null, finishTimer: null, emptyEnds: 0, generation: 0 };
+const dictation = { wanted: false, finishing: false, timer: null, finishTimer: null, emptyEnds: 0, generation: 0,
+    pendingInterim: '', afterFinish: null };
 const dictationStatus = document.getElementById('dictation-status');
 // Android (and iOS/iPadOS) recognizers are single-utterance engines; their emulated `continuous` mode re-emits a
 // final result at the NEXT result index (results[0] "one" final, then results[1] "one" final), which the per-index
@@ -58,13 +59,39 @@ function stopDictation(finish = false) {
     clearTimeout(dictation.timer); dictation.timer = null;
     const old = recognition; recognition = null;
     if (old) { traceStt('abort'); try { old.abort(); } catch (e) {} }
+    settleDictationFinish();
     updateDictationUI();
+}
+// Send while dictating (audit A11): the words being spoken are still INTERIM -- shown in the status, not yet in the
+// field -- and abort() throws them away. Finish recognition the way the Stop button does (stop -> the engine
+// finalizes the pending words -> end, bounded by the finish timeout above), THEN run `then` once. Words the engine
+// never finalized in time are committed as heard; anything arriving later is stale (generation) and ignored.
+function dictationBusy() { return !!recognition && (dictation.wanted || dictation.finishing); }
+function finishDictationThen(then) {
+    if (dictation.afterFinish) return;               // a send is already waiting for this finish: one send only
+    dictation.afterFinish = then;
+    traceStt('finish-then-send');
+    if (dictation.wanted) stopDictation(true);
+    if (!dictation.finishing) settleDictationFinish();   // nothing left to finish (no live session)
+}
+function settleDictationFinish() {
+    const then = dictation.afterFinish, heard = dictation.pendingInterim;
+    dictation.afterFinish = null; dictation.pendingInterim = '';
+    if (!then) return;
+    if (heard) {
+        traceStt('commit-pending', { text: heard });
+        const value = els.askInput.value;
+        els.askInput.value = value + (value && !/\s$/.test(value) ? ' ' : '') + heard;
+        els.askInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    then();
 }
 function startDictationSession() {
     if (!dictation.wanted || document.hidden || !SpeechRecognitionCtor || !micSecureOk) return;
     const generation = ++dictation.generation;
     const session = new SpeechRecognitionCtor(); recognition = session;
     const id = ++sttSessionSeq;
+    dictation.pendingInterim = '';
     const current = () => generation === dictation.generation && recognition === session && (dictation.wanted || dictation.finishing) && !document.hidden;
     session.lang = els.micLang.value; session.continuous = !dictationSingleUtterance; session.interimResults = true;
     const committed = new Set(); let hadFinal = false;
@@ -86,6 +113,7 @@ function startDictationSession() {
                 els.askInput.dispatchEvent(new Event('input', { bubbles: true }));
             } else interim += (interim ? ' ' : '') + text;
         }
+        dictation.pendingInterim = interim;
         updateDictationUI(interim);
     };
     session.onerror = e => {
@@ -101,7 +129,7 @@ function startDictationSession() {
         traceStt('end', { session: id, stale: !current() });
         if (!current()) return;
         recognition = null;
-        if (!dictation.wanted) { dictation.finishing = false; clearTimeout(dictation.finishTimer); updateDictationUI(); return; }
+        if (!dictation.wanted) { dictation.finishing = false; clearTimeout(dictation.finishTimer); settleDictationFinish(); updateDictationUI(); return; }
         dictation.emptyEnds = hadFinal ? 0 : dictation.emptyEnds + 1;
         // Broken engines must not produce an endless permission/start loop.
         if (dictation.emptyEnds > 3) { stopDictation(); showToast(t('dictationStopped')); return; }
