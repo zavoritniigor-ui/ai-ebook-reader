@@ -1,4 +1,12 @@
-## PR: A11 — Send while dictating keeps the last spoken words (2026-09-28, Claude)
+## A11 — CLOSED / MERGED / PRODUCTION VERIFIED: Send while dictating keeps the last spoken words (2026-09-28, Claude)
+
+**Merged:** PR #140 squash-merged as main `8ab9bcd` (PR CI needed one retry: attempt 1 failed only on the known
+`format_reader_audit` PDF-reopen flake; attempt 2 green). Main CI `test` green (attempt 1); Cloudflare production
+deployed and verified (https://ai-ebook-reader.pages.dev: HTTP 200, index.html, sw.js `ai-reader-shell-b7aa8c6a5982`
+and all 25 scripts byte-identical to main; live dictation.js has `finishDictationThen`).
+**Manual acceptance still open (not blocking):** Android Chrome -- start dictation, speak a question, press Send
+before recognition finishes, check the last spoken words appear exactly once (`sttTrace` shows
+`finish-then-send` / `commit-pending`). Next audit item: NOT started, awaits approval.
 
 Branch `fix/dictation-send-finalize` from main `6081045`. Scope: Astra audit A11 only.
 - Cause: both Send paths (js/main.js askSendBtn -> text Ask; js/pdf-crop.js `sendAskAttachment` -> crop) read the
