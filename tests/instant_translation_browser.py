@@ -45,7 +45,8 @@ window.fetch = (url, opts) => {
   return realFetch(url, opts);
 };
 window.__persist = {asked: 0, grant: false};
-if (navigator.storage) navigator.storage.persist = async () => { __persist.asked++; return __persist.grant; };
+if (navigator.storage) { navigator.storage.persist = async () => { __persist.asked++; __persist.granted = __persist.grant; return __persist.grant; };
+  navigator.storage.persisted = async () => !!__persist.granted; }   // the real value depends on the browser profile
 ''')
 
 
@@ -272,9 +273,18 @@ print('PASS 27 eviction: 60 records written with a 10-entry limit -> %d kept; ne
 reset(); c.js("window.__realTcOpen = tcOpen; tcOpen = async () => null; 1"); tap('prendre', 'fr1')
 check('28 IndexedDB unavailable: translation still works (local, then AI)', "els.ttTranslation.textContent.includes('прийняти рішення')", timeout=3)
 c.js("tcOpen = __realTcOpen; 1")
-st = c.js("(async () => { const s = await translationCacheStats(); return {persisted: s.persisted, asked: __persist.asked, flag: localStorage.getItem('reader_storage_persist_asked'), quota: s.quota, usage: s.usage}; })()")
-assert st['asked'] <= 1 and st['flag'] == '1' and st['persisted'] is not True, ('29 persist denied', st)
-print('PASS 29 storage.persist denied: asked once (%d), not persisted, translation unaffected; quota=%s usage=%s' % (st['asked'], st['quota'], st['usage']))
+st = c.js("""(async () => { localStorage.removeItem('reader_storage_persist_asked'); tcPersistRequested = false;
+  __persist.asked = 0; __persist.grant = false; __persist.granted = false;
+  await tcStore({book: 'bPersist', src: 'fr', tgt: 'uk', word: 'un', ctxHash: 'h1', translation: 'один', note: null, provider: 'openai', rank: 4});
+  await new Promise(r => setTimeout(r, 100)); const firstAsk = __persist.asked;
+  tcPersistRequested = false;   // even a fresh page (module state reset) must not ask again: the stored flag decides
+  await tcStore({book: 'bPersist', src: 'fr', tgt: 'uk', word: 'deux', ctxHash: 'h2', translation: 'два', note: null, provider: 'openai', rank: 4});
+  await new Promise(r => setTimeout(r, 100)); const s = await translationCacheStats();
+  return {firstAsk, asked: __persist.asked, persisted: s.persisted, flag: localStorage.getItem('reader_storage_persist_asked'), quota: s.quota, usage: s.usage}; })()""")
+assert st['firstAsk'] == 1 and st['asked'] == 1 and st['persisted'] is False and st['flag'] == '1', ('29 persist denied', st)
+reset(); tap('prendre', 'fr1')
+check('29 ... translation works normally with persistence denied', "els.ttTranslation.textContent.includes('прийняти рішення')", timeout=3)
+print('PASS 29 storage.persist denied: asked exactly once, never again (%d), not persisted; quota=%s usage=%s' % (st['asked'], st['quota'], st['usage']))
 reset(); c.js("delete window.Translator; localTranslatorReady.clear(); 1"); tap('run', 'en1')
 check('30 no on-device Translator API at all: AI translation still works', f"{MAIN} === 'керувати'", timeout=3)
 
