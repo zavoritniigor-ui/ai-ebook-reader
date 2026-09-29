@@ -1245,6 +1245,34 @@ Object.assign(I18N, {
     }
 });
 
+// Accessible names for icon-only controls (applied through data-i18n-aria) and the AI status
+// announcements, in every supported UI language.
+Object.assign(I18N, {
+    tAiSettings:   { uk: 'Налаштування AI', en: 'AI settings', fr: 'Paramètres IA', ru: 'Настройки AI', zh: 'AI 设置', ko: 'AI 설정', hi: 'AI सेटिंग्स', ga: 'Socruithe AI' },
+    tSend:         { uk: 'Надіслати', en: 'Send', fr: 'Envoyer', ru: 'Отправить', zh: '发送', ko: '보내기', hi: 'भेजें', ga: 'Seol' },
+    tMicLang:      { uk: 'Мова диктовки', en: 'Dictation language', fr: 'Langue de la dictée', ru: 'Язык диктовки', zh: '听写语言', ko: '받아쓰기 언어', hi: 'डिक्टेशन की भाषा', ga: 'Teanga an deachtaithe' },
+    tRemoveImage:  { uk: 'Прибрати зображення', en: 'Remove image', fr: "Retirer l'image", ru: 'Убрать изображение', zh: '移除图片', ko: '이미지 제거', hi: 'छवि हटाएँ', ga: 'Bain an íomhá' },
+    tPdfFit:       { uk: 'Масштаб PDF', en: 'PDF zoom', fr: 'Zoom du PDF', ru: 'Масштаб PDF', zh: 'PDF 缩放', ko: 'PDF 확대/축소', hi: 'PDF ज़ूम', ga: 'Zúmáil PDF' },
+    tPdfPage:      { uk: 'Сторінка PDF', en: 'PDF page', fr: 'Page du PDF', ru: 'Страница PDF', zh: 'PDF 页面', ko: 'PDF 페이지', hi: 'PDF पृष्ठ', ga: 'Leathanach PDF' },
+    tGoToPage:     { uk: 'Сторінка {n}', en: 'Page {n}', fr: 'Page {n}', ru: 'Страница {n}', zh: '第 {n} 页', ko: '{n}쪽', hi: 'पृष्ठ {n}', ga: 'Leathanach {n}' },
+    tInkPen:       { uk: 'Ручка', en: 'Pen', fr: 'Stylo', ru: 'Ручка', zh: '笔', ko: '펜', hi: 'पेन', ga: 'Peann' },
+    tInkEraser:    { uk: 'Гумка', en: 'Eraser', fr: 'Gomme', ru: 'Ластик', zh: '橡皮擦', ko: '지우개', hi: 'रबड़', ga: 'Scriosán' },
+    tInkUndo:      { uk: 'Скасувати штрих', en: 'Undo stroke', fr: 'Annuler le trait', ru: 'Отменить штрих', zh: '撤销笔画', ko: '획 실행 취소', hi: 'स्ट्रोक पूर्ववत करें', ga: 'Cealaigh an stríoc' },
+    tInkClear:     { uk: 'Очистити сторінку', en: 'Clear page', fr: 'Effacer la page', ru: 'Очистить страницу', zh: '清除本页', ko: '페이지 지우기', hi: 'पृष्ठ साफ़ करें', ga: 'Glan an leathanach' },
+    tInkWidth:     { uk: 'Товщина пера', en: 'Pen width', fr: 'Épaisseur du stylo', ru: 'Толщина пера', zh: '笔宽', ko: '펜 굵기', hi: 'पेन की मोटाई', ga: 'Leithead an phinn' },
+    tInkBlue:      { uk: 'Синій колір', en: 'Blue ink', fr: 'Encre bleue', ru: 'Синий цвет', zh: '蓝色', ko: '파란색', hi: 'नीला रंग', ga: 'Dúch gorm' },
+    tInkRed:       { uk: 'Червоний колір', en: 'Red ink', fr: 'Encre rouge', ru: 'Красный цвет', zh: '红色', ko: '빨간색', hi: 'लाल रंग', ga: 'Dúch dearg' },
+    tInkGreen:     { uk: 'Зелений колір', en: 'Green ink', fr: 'Encre verte', ru: 'Зелёный цвет', zh: '绿色', ko: '초록색', hi: 'हरा रंग', ga: 'Dúch glas' },
+    tInkBlack:     { uk: 'Чорний колір', en: 'Black ink', fr: 'Encre noire', ru: 'Чёрный цвет', zh: '黑色', ko: '검은색', hi: 'काला रंग', ga: 'Dúch dubh' },
+    aiStatusAskStart:     { uk: 'AI-помічник готує відповідь…', en: 'AI assistant is preparing an answer…', fr: "L'assistant IA prépare une réponse…", ru: 'AI-помощник готовит ответ…', zh: 'AI 助手正在准备回答…', ko: 'AI 도우미가 답변을 준비하고 있습니다…', hi: 'AI सहायक उत्तर तैयार कर रहा है…', ga: 'Tá an cúntóir AI ag ullmhú freagra…' },
+    aiStatusAskReady:     { uk: 'Відповідь AI-помічника готова.', en: 'AI assistant answer is ready.', fr: "La réponse de l'assistant IA est prête.", ru: 'Ответ AI-помощника готов.', zh: 'AI 助手的回答已就绪。', ko: 'AI 도우미의 답변이 준비되었습니다.', hi: 'AI सहायक का उत्तर तैयार है।', ga: 'Tá freagra an chúntóra AI réidh.' },
+    aiStatusAskError:     { uk: 'Запит до AI-помічника не вдався.', en: 'AI assistant request failed.', fr: "La demande à l'assistant IA a échoué.", ru: 'Запрос к AI-помощнику не удался.', zh: 'AI 助手请求失败。', ko: 'AI 도우미 요청에 실패했습니다.', hi: 'AI सहायक अनुरोध विफल रहा।', ga: 'Theip ar an iarratas chuig an gcúntóir AI.' },
+    aiStatusGrammarStart: { uk: 'Триває граматичний розбір…', en: 'Grammar analysis in progress…', fr: 'Analyse grammaticale en cours…', ru: 'Идёт грамматический разбор…', zh: '正在进行语法分析…', ko: '문법 분석 중…', hi: 'व्याकरण विश्लेषण जारी है…', ga: 'Anailís ghramadaí ar siúl…' },
+    aiStatusGrammarReady: { uk: 'Граматичний розбір готовий.', en: 'Grammar analysis is ready.', fr: "L'analyse grammaticale est prête.", ru: 'Грамматический разбор готов.', zh: '语法分析已完成。', ko: '문법 분석이 준비되었습니다.', hi: 'व्याकरण विश्लेषण तैयार है।', ga: 'Tá an anailís ghramadaí réidh.' },
+    aiStatusGrammarError: { uk: 'Граматичний розбір не вдався.', en: 'Grammar analysis failed.', fr: "L'analyse grammaticale a échoué.", ru: 'Грамматический разбор не удался.', zh: '语法分析失败。', ko: '문법 분석에 실패했습니다.', hi: 'व्याकरण विश्लेषण विफल रहा।', ga: 'Theip ar an anailís ghramadaí.' },
+    aiStatusCancelled:    { uk: 'Запит до AI скасовано.', en: 'AI request cancelled.', fr: 'Demande IA annulée.', ru: 'Запрос к AI отменён.', zh: 'AI 请求已取消。', ko: 'AI 요청이 취소되었습니다.', hi: 'AI अनुरोध रद्द किया गया।', ga: 'Cealaíodh an t-iarratas AI.' }
+});
+
 function formatWordsSelected(count) {
     const n = Math.max(0, Math.round(count));
     const lang = (state.uiLang || 'uk').toLowerCase();
@@ -1278,10 +1306,15 @@ function t(key) {
     const e = I18N[key];
     return e ? (e[state.uiLang] || e.en || e.uk) : key;
 }
+function a11yLabel(key) {
+    return t(key).replace(/^[^\p{L}\p{N}]+/u, '').trim() || t(key);
+}
 function applyI18n() {
     document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
     document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
     document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+    // Accessible names for icon-only controls: the localized action, without a leading emoji/symbol.
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', a11yLabel(el.dataset.i18nAria)); });
     // Написи, що залежать від стану
     updateAltVoicesBtn();
     updateTtsButtons();
@@ -1299,6 +1332,7 @@ function applyI18n() {
     }
     if (typeof loadVoices === 'function') loadVoices();   // назви груп голосів
     if (typeof refreshReadingStats === 'function') refreshReadingStats();
+    if (typeof refreshPdfThumbnailNames === 'function') refreshPdfThumbnailNames();
 }
 
 

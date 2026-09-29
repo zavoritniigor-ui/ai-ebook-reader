@@ -48,13 +48,21 @@ function setupPdfThumbnailSidebar(doc) {
         const li = document.createElement('li');
         li.className = 'pdf-thumb-item';
         li.dataset.page = n;
+        // A native button carries keyboard focus, Enter/Space and the page name; the handler stays on the
+        // <li> (the button's click bubbles to it), and lazily rendered canvases replace the placeholder
+        // INSIDE the button, so a focused entry keeps focus while thumbnails render or are recycled.
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pdf-thumb-btn';
         const ph = document.createElement('div');
         ph.className = 'pdf-thumb-placeholder';
         ph.style.width = `${thumbW}px`; ph.style.height = `${thumbH}px`;
         const label = document.createElement('div');
         label.className = 'pdf-thumb-num';
         label.textContent = pdfDisplayLabel(n);
-        li.append(ph, label);
+        button.setAttribute('aria-label', t('tGoToPage').replace('{n}', label.textContent));
+        button.append(ph, label);
+        li.append(button);
         li.onclick = () => navigateToPdfPage(n, { instant: true });
         pdfThumbItems[n] = li;
         frag.appendChild(li);
@@ -177,7 +185,7 @@ function schedulePrefetchWindow(centerPage) {
             pdfThumbCache.delete(p);
             pdfThumbCache.set(p, cachedCanvas);
             const ph = li.querySelector('.pdf-thumb-placeholder');
-            if (ph) ph.replaceWith(cachedCanvas); else li.prepend(cachedCanvas);
+            if (ph) ph.replaceWith(cachedCanvas); else (li.querySelector('.pdf-thumb-btn') || li).prepend(cachedCanvas);
             delete li.dataset.thumbQueued;
             continue;
         }
@@ -277,7 +285,7 @@ async function runPdfThumbQueue(doc) {
                 pdfThumbCache.set(pageNum, c);
 
                 const ph = li.querySelector('.pdf-thumb-placeholder');
-                if (ph) ph.replaceWith(c); else li.prepend(c);
+                if (ph) ph.replaceWith(c); else (li.querySelector('.pdf-thumb-btn') || li).prepend(c);
             } catch (e) {
                 /* one failed thumbnail must not stop the rest */
             } finally {
@@ -293,7 +301,12 @@ async function runPdfThumbQueue(doc) {
 function syncActiveThumbnail(pageNum) {
     if (!pageNum || !pdfThumbItems) return;
     pdfThumbActiveCenter = pageNum;
-    pdfThumbItems.forEach((li, n) => { if (li) li.classList.toggle('active', n === pageNum); });
+    pdfThumbItems.forEach((li, n) => {
+        if (!li) return;
+        li.classList.toggle('active', n === pageNum);
+        const button = li.firstElementChild;
+        if (button) { if (n === pageNum) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); }
+    });
     const active = pdfThumbItems[pageNum];
     if (active) {
         pdfThumbProgrammaticScroll = true;
@@ -310,6 +323,11 @@ function updatePdfThumbnailLabel(pageNum) {
     if (label && typeof pdfDisplayLabel === 'function') {
         label.textContent = pdfDisplayLabel(pageNum);
     }
+    li.querySelector('.pdf-thumb-btn')?.setAttribute('aria-label', t('tGoToPage').replace('{n}', label ? label.textContent : String(pageNum)));
+}
+// Interface language changed: re-name every entry (called from applyI18n).
+function refreshPdfThumbnailNames() {
+    (pdfThumbItems || []).forEach((li, n) => { if (li) updatePdfThumbnailLabel(n); });
 }
 
 if (typeof els !== 'undefined' && els.sidebar) {

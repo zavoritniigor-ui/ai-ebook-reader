@@ -44,47 +44,67 @@ async function measurePdfPage(doc, pageNum) {
 }
 
 // ===================== CENTRAL PDF WORKSPACE GEOMETRY =====================
-// Canonical measurement function for the visible central workspace between side surfaces:
-// availableLeft  = max(mainArea.left, visible nav.right, visible askPanel.right)
-// availableRight = min(mainArea.right, visible grammarPanel.left)   (Practice overlays this gap; see below)
-// availableWidth = max(1, availableRight - availableLeft)
-// availableHeight = max(1, mainArea.bottom - mainArea.top)
-function getReaderWorkspaceRect() {
+// One shared presentation policy for the side surfaces (nav#sidebar, #ask-panel, #grammar-panel):
+// an open surface is DOCKED (the book is laid out beside it) only while the book keeps at least
+// READER_MIN_DOCKED_WIDTH px next to every docked surface and the viewport is not a short landscape
+// phone; otherwise it is an OVERLAY over a book that keeps its own geometry. The CSS breakpoints
+// (full-screen phone panel, 62vw tablet sheet, 500px desktop panel) only decide how a panel LOOKS;
+// reserving its width regardless shrank an 800px portrait tablet to 360px and a phone to 0px -- a
+// full relayout of every page behind a panel that covers the book anyway. Decided from the remaining
+// readable width, not from device names, so a wide split view stays available where it fits.
+const READER_MIN_DOCKED_WIDTH = 400;   // a docked panel must leave at least a phone-width book column
+const READER_MIN_DOCKED_HEIGHT = 480;  // short landscape phones (e.g. 844x390): overlay, never a split
+const READER_SIDE_SURFACES = [
+    { id: 'sidebar', side: 'left', open: el => !el.classList.contains('collapsed') },
+    { id: 'ask-panel', side: 'left', open: el => el.classList.contains('expanded') },
+    { id: 'grammar-panel', side: 'right', open: el => el.classList.contains('expanded') }
+];
+
+function readerMainRect() {
     const mainEl = els.mainArea || document.getElementById('main-area');
-    const mainRect = mainEl ? mainEl.getBoundingClientRect() : {
+    return mainEl ? mainEl.getBoundingClientRect() : {
         left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight,
         width: window.innerWidth, height: window.innerHeight
     };
+}
 
-    let availableLeft = mainRect.left;
-    let availableRight = mainRect.right;
+// Left/right reserves of the DOCKED surfaces plus every open surface's presentation. With
+// includeOverlays the overlays are subtracted too: the part of the book still visible, which is what
+// popup placement needs (a popup must not open underneath a panel), as opposed to its layout width.
+function readerPanelLayout(mainRect = readerMainRect(), includeOverlays = false) {
+    let left = 0, right = 0, visibleLeft = 0, visibleRight = 0;
+    const presentation = {};
+    const tallEnough = (window.innerHeight || 0) >= READER_MIN_DOCKED_HEIGHT;
+    for (const surface of READER_SIDE_SURFACES) {
+        const el = document.getElementById(surface.id);
+        if (!el || !surface.open(el)) continue;
+        const w = el.offsetWidth || el.getBoundingClientRect().width;
+        if (!(w > 0)) continue;
+        if (surface.side === 'left') visibleLeft = Math.max(visibleLeft, w); else visibleRight = Math.max(visibleRight, w);
+        const nextLeft = surface.side === 'left' ? Math.max(left, w) : left;
+        const nextRight = surface.side === 'right' ? Math.max(right, w) : right;
+        if (tallEnough && mainRect.width - nextLeft - nextRight >= READER_MIN_DOCKED_WIDTH) {
+            left = nextLeft; right = nextRight; presentation[surface.id] = 'dock';
+        } else {
+            presentation[surface.id] = 'overlay';
+        }
+    }
+    return includeOverlays ? { left: visibleLeft, right: visibleRight, presentation } : { left, right, presentation };
+}
+
+// Canonical measurement function for the central PDF workspace between the DOCKED side surfaces:
+// availableLeft  = mainArea.left + docked left reserve (nav / Ask)
+// availableRight = mainArea.right - docked right reserve (Grammar)   (Practice overlays this gap; see below)
+// availableWidth = max(1, availableRight - availableLeft)
+// availableHeight = max(1, mainArea.bottom - mainArea.top)
+// options.visible: subtract overlay panels as well (the uncovered part of the book).
+function getReaderWorkspaceRect(options = {}) {
+    const mainRect = readerMainRect();
+    const reserve = readerPanelLayout(mainRect, !!options.visible);
+    const availableLeft = mainRect.left + reserve.left;
+    const availableRight = mainRect.right - reserve.right;
     const availableTop = mainRect.top;
     const availableBottom = mainRect.bottom;
-
-    // 1. Left sidebar (nav#sidebar for thumbnails/contents, or #ask-panel)
-    const nav = document.getElementById('sidebar');
-    if (nav && !nav.classList.contains('collapsed')) {
-        const w = nav.offsetWidth || nav.getBoundingClientRect().width;
-        if (w > 0) {
-            availableLeft = Math.max(availableLeft, mainRect.left + w);
-        }
-    }
-    const ask = document.getElementById('ask-panel');
-    if (ask && ask.classList.contains('expanded')) {
-        const w = ask.offsetWidth || ask.getBoundingClientRect().width;
-        if (w > 0) {
-            availableLeft = Math.max(availableLeft, mainRect.left + w);
-        }
-    }
-
-    // 2. Right panel (#grammar-panel)
-    const grammar = document.getElementById('grammar-panel');
-    if (grammar && grammar.classList.contains('expanded')) {
-        const w = grammar.offsetWidth || grammar.getBoundingClientRect().width;
-        if (w > 0) {
-            availableRight = Math.min(availableRight, mainRect.right - w);
-        }
-    }
     // #practice-panel is deliberately NOT a reserve: layoutPracticeWorkspace (practice-worksheet.js)
     // always lays the expanded worksheet OVER this same central gap (start = max(nav, ask),
     // end = innerWidth - Grammar), never beside it. Clamping to its left edge collapsed the book
@@ -469,17 +489,27 @@ function updatePdfWorkspaceLayout(options = {}) {
 
     const applyLayout = () => {
         if (state.format !== 'pdf' || !els.container) return;
-        const mainEl = els.mainArea || document.getElementById('main-area');
-        const mainRect = mainEl ? mainEl.getBoundingClientRect() : {
-            left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight,
-            width: window.innerWidth, height: window.innerHeight
-        };
+        const mainRect = readerMainRect();
         const ws = getReaderWorkspaceRect();
-        document.documentElement.style.setProperty('--ws-left', `${Math.round(ws.left)}px`);
-        document.documentElement.style.setProperty('--ws-width', `${Math.round(ws.width)}px`);
+        // Expose the decision (styling hooks, tests); not an observed attribute, so no feedback loop.
+        const { presentation } = readerPanelLayout(mainRect);
+        READER_SIDE_SURFACES.forEach(({ id }) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (presentation[id]) el.dataset.presentation = presentation[id];
+            else delete el.dataset.presentation;
+        });
+        // Floating reader chrome follows the UNCOVERED book, so an overlay panel does not hide it -- unless the
+        // overlay leaves too little (phone full-screen panel). The page pill needs ~320px; the 46px scrubber
+        // only needs room for itself, and must never end up underneath an open Grammar panel.
+        const visible = getReaderWorkspaceRect({ visible: true });
+        const pill = visible.width >= 320 ? visible : ws;
+        const rail = visible.width >= 60 ? visible : ws;
+        document.documentElement.style.setProperty('--ws-left', `${Math.round(pill.left)}px`);
+        document.documentElement.style.setProperty('--ws-width', `${Math.round(pill.width)}px`);
+        document.documentElement.style.setProperty('--ws-right', `${Math.max(0, Math.round(mainRect.right - rail.right))}px`);
         const leftReserve = Math.max(0, Math.round(ws.left - mainRect.left));
         const rightReserve = Math.max(0, Math.round(mainRect.right - ws.right));
-        document.documentElement.style.setProperty('--ws-right', `${rightReserve}px`);
 
         const changed = (lastPdfWorkspaceLeftReserve === null) ||
                         (Math.abs(lastPdfWorkspaceLeftReserve - leftReserve) >= 1) ||

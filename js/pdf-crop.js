@@ -251,6 +251,7 @@ async function checkExerciseImage(dataUrl, question = '') {
     } catch (err) {
         if (isAskAbort(err, task)) { settleCancelledCrop(); return; }
         els.askPanel.classList.remove('loading');
+        announceAiFailure(els.askPanel, err.message || t('error'));
         if (askAttachment && askAttachment.dataUrl === dataUrl) askAttachment.sending = false;
         // The attachment stays; Retry resends the same question with the same image.
         const button = document.createElement('button');

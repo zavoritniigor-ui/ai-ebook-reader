@@ -126,7 +126,7 @@ function positionTooltip(clientX, clientY, anchorRect) {
 
     let left = viewLeft, top = viewTop, width = viewWidth, height = viewHeight;
     if (typeof getReaderWorkspaceRect === 'function' && state.format === 'pdf' && viewWidth > 600) {
-        const ws = getReaderWorkspaceRect();
+        const ws = getReaderWorkspaceRect({ visible: true });   // the uncovered book, overlay panels included
         if (ws && ws.width >= 320) {
             left = ws.left;
             top = ws.top;
@@ -196,6 +196,17 @@ function providerSettingsError(provider) {
     const error = document.getElementById('ai-provider-error');
     error.textContent = missingAiKey(provider); error.hidden = false;
 }
+// Settings is a modal dialog (role/aria-modal in index.html): focus moves inside, Tab/Shift+Tab wrap
+// within it, everything else on the page is inert while it is open, Escape closes it, and focus returns
+// to the control that opened it. `style.display === 'flex'` stays the open signal other modules read
+// (Back-button overlay stack, Quick Wheel).
+let keySettingsReturnFocus = null, keySettingsInerted = [];
+function keySettingsModal() { return document.getElementById('settings-modal'); }
+function keySettingsIsOpen() { return keySettingsModal().style.display === 'flex'; }
+function keySettingsFocusables() {
+    return [...keySettingsModal().querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])')]
+        .filter(el => !el.disabled && el.getClientRects().length && !(el.type === 'radio' && !el.checked && document.querySelector(`input[name="${el.name}"]:checked`)));
+}
 function openKeySettings() {
     Object.entries(AI_PROVIDERS).forEach(([provider, config]) => {
         document.getElementById(config.input).value = aiProviderKey(provider) || '';
@@ -203,13 +214,45 @@ function openKeySettings() {
     keySettingsProvider = state.activeAiProvider;
     updateProviderRadios();
     document.getElementById('ai-provider-error').hidden = true;
-    document.getElementById('settings-modal').style.display = 'flex';
+    const modal = keySettingsModal();
+    if (!keySettingsIsOpen()) {
+        keySettingsReturnFocus = document.activeElement;
+        // Live regions stay outside the inert set so AI status can still be announced.
+        keySettingsInerted = [...document.body.children].filter(el => el !== modal && !el.inert &&
+            !['SCRIPT', 'STYLE', 'LINK', 'TEMPLATE'].includes(el.tagName) && !el.matches('[aria-live], [role="status"], [role="alert"]'));
+        keySettingsInerted.forEach(el => { el.inert = true; });
+    }
+    modal.style.display = 'flex';
+    const activeInput = document.getElementById((AI_PROVIDERS[state.activeAiProvider] || {}).input);
+    (activeInput && activeInput.getClientRects().length ? activeInput : keySettingsFocusables()[0])?.focus();
 }
 function closeKeySettings() {
-    document.getElementById('settings-modal').style.display = 'none';
+    const wasOpen = keySettingsIsOpen();
+    keySettingsModal().style.display = 'none';
     // Preserve password masking while editing; remove key values from closed UI.
     Object.values(AI_PROVIDERS).forEach(config => { document.getElementById(config.input).value = ''; });
+    if (!wasOpen) return;
+    keySettingsInerted.forEach(el => { el.inert = false; });
+    keySettingsInerted = [];
+    const back = keySettingsReturnFocus;
+    keySettingsReturnFocus = null;
+    const target = back && back.isConnected && back !== document.body && back.getClientRects().length ? back : document.getElementById('btn-ai-settings');
+    // A control inside the collapsed immersive header is not visible; focusing it would scroll nothing and
+    // leave the user nowhere, so only restore to something that is still rendered.
+    if (target && target.getClientRects().length) target.focus({ preventScroll: true });
 }
+document.addEventListener('keydown', e => {
+    if (!keySettingsIsOpen()) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeKeySettings(); return; }
+    if (e.key !== 'Tab') return;
+    const items = keySettingsFocusables();
+    if (!items.length) { e.preventDefault(); return; }
+    const first = items[0], last = items[items.length - 1];
+    const inside = keySettingsModal().contains(document.activeElement);
+    if (!inside) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}, true);
 document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {
     radio.addEventListener('change', () => {
         if (!document.getElementById(AI_PROVIDERS[radio.value].input).value.trim()) {

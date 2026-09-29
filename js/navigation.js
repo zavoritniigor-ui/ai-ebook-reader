@@ -329,6 +329,17 @@ containerResizeObserver.observe(els.container);
 // Будує список змісту (розділ/сторінка/блок) для бічної панелі — спільний хелпер
 // для всіх трьох завантажувачів форматів (js/formats.js), не специфічний для
 // жодного з них, тому лишається тут разом з рештою навігації.
+// Кожен пункт — справжня <button> усередині <li>: фокус із клавіатури, Enter/Space і нормальна
+// назва для зчитувача екрана. Обробник лишається на <li> (клік по кнопці спливає до нього), тож
+// дотик/миша поводяться як раніше.
 function buildToc(count, prefix, callback) {
-    els.toc.innerHTML = ""; for (let i = 0; i < count; i++) { const li = document.createElement("li"); li.textContent = `${prefix} ${i + 1}`; li.onclick = () => callback(i); els.toc.appendChild(li); }
+    els.toc.innerHTML = "";
+    for (let i = 0; i < count; i++) {
+        const li = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button"; button.className = "toc-entry"; button.textContent = `${prefix} ${i + 1}`;
+        li.appendChild(button);
+        li.onclick = () => callback(i);
+        els.toc.appendChild(li);
+    }
 }

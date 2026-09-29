@@ -1,3 +1,15 @@
+## IN REVIEW (not merged, not deployed): audit 2026-09-29 Phase 1 -- P2-1..P2-5, P2-7 (2026-09-29, Claude)
+
+Branch `fix/audit-phase1-p2` (worktree `/home/igor/Projects/AI-Ebook-Reader-Phase1`) from main `83fc8d6`.
+Scope: /tmp/reader-general-audit/AUDIT-2026-09-29.md P2-1 panel geometry, P2-2 settings dialog, P2-3 keyboard
+Contents/thumbnails/outline, P2-4 accessible names + AI status announcements, P2-5 selected Grammar contrast,
+P2-7 Quick Wheel clipping. NOT in scope (untouched): P2-6 EPUB nav titles, P2-8 Ask Send visibility, Grammar
+foreground/background, PR #142. New suite: tests/audit_phase1_browser.py (added to CI).
+Next action: owner review/approval; then PR -> CI -> merge -> production verification (none done yet).
+Known follow-ups: launcher/Grammar-tab/scrubber vertical overlap at some heights is pre-existing (76vh placement
+contract, quick_wheel_browser); full-screen phone AI panels are not modal (background not inert); .grammar-ending
+green text (#10a37f) is below 4.5:1 but was not in the confirmed P2-5 scope.
+
 ## A11 — CLOSED / MERGED / PRODUCTION VERIFIED: Send while dictating keeps the last spoken words (2026-09-28, Claude)
 
 **Merged:** PR #140 squash-merged as main `8ab9bcd` (PR CI needed one retry: attempt 1 failed only on the known

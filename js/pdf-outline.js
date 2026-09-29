@@ -494,7 +494,10 @@ function buildOutlineLevel(items) {
     ul.className = 'pdf-outline-children';
     items.forEach(item => {
         const li = document.createElement('li');
-        const row = document.createElement('div');
+        // A navigable entry is a native button (keyboard focus, Enter/Space, its title as the name); an
+        // entry without a resolvable destination stays a plain, non-interactive label.
+        const row = document.createElement(item.pageIndex ? 'button' : 'div');
+        if (item.pageIndex) row.type = 'button';
         row.className = 'pdf-outline-item' + (item.pageIndex ? '' : ' disabled');
         row.textContent = item.title;
         if (item.pageIndex) {

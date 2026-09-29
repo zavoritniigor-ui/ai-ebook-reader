@@ -115,6 +115,64 @@ function settleCancelledAskRequest(task, requestId, retry) {
     return true;
 }
 
+// ===== AI STATUS ANNOUNCEMENTS (assistive technology) =====
+// One short message per request boundary through the page-level #ai-status / #ai-alert live regions --
+// never the streamed tokens: the answer containers are only marked aria-busy while a request runs.
+// The panels' existing loading/ready classes stay the single source of truth for "started" and "ready";
+// a failure is reported where it is decided (announceAiFailure), and a request that ends with neither
+// (superseded, cancelled, target language changed) is announced as cancelled. Announcing does not change
+// what any request does or whether a panel opens.
+const AI_STATUS_KIND = { 'ask-panel': 'Ask', 'grammar-panel': 'Grammar' };
+const aiStatusState = new Map();       // panel id -> { loading, ready } as last observed
+const aiStatusFailed = new Set();      // panel ids whose current request already announced a failure
+let aiStatusTimer = 0;
+function announceAiStatus(text, urgent = false) {
+    const region = document.getElementById(urgent ? 'ai-alert' : 'ai-status');
+    const other = document.getElementById(urgent ? 'ai-status' : 'ai-alert');
+    if (!region) return;
+    clearTimeout(aiStatusTimer);
+    region.textContent = '';
+    if (other) other.textContent = '';
+    // Set after a short gap so an identical consecutive message is announced again.
+    aiStatusTimer = setTimeout(() => { region.textContent = text; }, 60);
+}
+function announceAiFailure(panel, detail) {
+    const kind = AI_STATUS_KIND[panel.id];
+    if (!kind) return;
+    aiStatusFailed.add(panel.id);
+    const brief = String(detail || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    announceAiStatus([t(`aiStatus${kind}Error`), brief].filter(Boolean).join(' '), true);
+}
+function observeAiStatus(panel) {
+    if (!panel) return;
+    const content = panel.querySelector('.panel-content');
+    aiStatusState.set(panel.id, { loading: panel.classList.contains('loading'), ready: panel.classList.contains('ready') });
+    new MutationObserver(() => {
+        const kind = AI_STATUS_KIND[panel.id];
+        const prev = aiStatusState.get(panel.id);
+        const now = { loading: panel.classList.contains('loading'), ready: panel.classList.contains('ready') };
+        aiStatusState.set(panel.id, now);
+        if (now.loading === prev.loading && now.ready === prev.ready) return;
+        if (!prev.loading && now.loading) {
+            aiStatusFailed.delete(panel.id);
+            content?.setAttribute('aria-busy', 'true');
+            announceAiStatus(t(`aiStatus${kind}Start`));
+            return;
+        }
+        if (prev.loading && !now.loading) {
+            content?.setAttribute('aria-busy', 'false');
+            if (now.ready) announceAiStatus(t(`aiStatus${kind}Ready`));
+            else if (!aiStatusFailed.has(panel.id)) announceAiStatus(t('aiStatusCancelled'));
+            return;
+        }
+        // A result that appears without a request round-trip (e.g. a cached Grammar analysis) behind a
+        // closed drawer: say it is ready. An open panel already shows it, so stay quiet there.
+        if (!prev.ready && now.ready && !panel.classList.contains('expanded')) announceAiStatus(t(`aiStatus${kind}Ready`));
+    }).observe(panel, { attributes: true, attributeFilter: ['class'] });
+}
+observeAiStatus(els.askPanel);
+observeAiStatus(els.grammarPanel);
+
 function createStreamingUpdater(content, task, panel, mode, requestId) {
     let lastRenderTime = 0;
     const RENDER_THROTTLE_MS = 100; // Update UI max every 100ms to avoid jank
@@ -189,6 +247,7 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         let msg = err.message;
         // "Failed to fetch" — збій на рівні браузера: запит навіть не пішов до сервера.
         if (err instanceof TypeError && /fetch/i.test(err.message)) msg = t('errNoConnection');
+        announceAiFailure(panel, msg);
         // Зберігаємо контекст для повтору у глобальній змінній
         window.lastAiRetryContext = { contextText, mode, userPrompt };
         const retryBtn = `<button style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;" onclick="(ctx => startAiTask(ctx.contextText, ctx.mode, ctx.userPrompt))(window.lastAiRetryContext)">${t('retry')}</button>`;
@@ -1503,6 +1562,7 @@ function appendAiDebug(parent) {
     parent.appendChild(details);
 }
 function showGrammarError(message, retry) {
+    announceAiFailure(els.grammarPanel, message);
     const content = els.grammarContent;
     content.innerHTML = '';
     const wrap = document.createElement('div');
