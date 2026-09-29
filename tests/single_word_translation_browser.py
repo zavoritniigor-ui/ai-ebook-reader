@@ -35,6 +35,7 @@ c.js(r"""(() => {
   window.__prompts = []; window.__reply = () => '';
   callAI = async (prompt, signal, task) => { __prompts.push({task, prompt}); return __reply(prompt); };
   machineTranslate = async () => ({html: '', extras: ''});
+  translateLocallyIfReady = async () => null;   // on-device translator: out of scope here (see instant_translation_browser.py)
   return true; })()""" % json.dumps(TEXT))
 
 WORD = r"""((w, nth) => { const walker = document.createTreeWalker(__p, NodeFilter.SHOW_TEXT); let n, hits = nth || 0;
@@ -44,7 +45,9 @@ WORD = r"""((w, nth) => { const walker = document.createTreeWalker(__p, NodeFilt
 
 
 def reset():
-    c.js("els.ttCloseBtn?.click(); els.tooltip.style.display = 'none'; state.translationCache = {}; __prompts = []; state.tooltipJustClosed = false; state.touchJustCommitted = 0; 1")
+    # Both cache layers: this session's memory and the persistent book cache (a repeat would otherwise be served
+    # from IndexedDB with zero AI calls -- tests/instant_translation_browser.py covers that).
+    c.js("els.ttCloseBtn?.click(); els.tooltip.style.display = 'none'; state.translationCache = {}; __prompts = []; state.tooltipJustClosed = false; state.touchJustCommitted = 0; clearAllTranslationCaches()")
     pause(.3)
 
 
