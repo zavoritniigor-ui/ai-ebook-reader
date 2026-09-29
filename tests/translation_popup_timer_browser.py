@@ -35,6 +35,9 @@ c.js(r"""(() => {
   window.__pending = []; window.__fail = false;
   aiTranslateText = (text, src, signal) => new Promise((resolve, reject) => __pending.push({text, resolve, reject}));
   machineTranslate = async () => { if (__fail) throw new Error('translation failed'); return {html: '', extras: ''}; };
+  // The on-device translator (word tap L1) is out of scope here -- and headless Chrome may really download a
+  // language pack mid-run. tests/instant_translation_browser.py covers it with a deterministic mock.
+  translateLocallyIfReady = async () => null;
   state.translationCache = {};
   // When did the popup open / close? (performance.now of the transition)
   window.__openedAt = null; window.__closedAt = null;
@@ -50,7 +53,9 @@ WORD = r"""((w, nth) => { const walker = document.createTreeWalker(__p, NodeFilt
 
 
 def reset():
-    c.js("""(() => { els.ttCloseBtn?.click(); els.tooltip.style.display = 'none'; __pending = []; __fail = false; state.translationCache = {};
+    # Both cache layers (memory + the persistent book cache): every case must reach its controlled AI answer.
+    c.js("""(async () => { els.ttCloseBtn?.click(); els.tooltip.style.display = 'none'; __pending = []; __fail = false; state.translationCache = {};
+      await clearAllTranslationCaches();
       __openedAt = null; __closedAt = null; state.touchJustCommitted = 0; state.tooltipJustClosed = false; return true; })()""")
     pause(.3)
     c.js("__openedAt = null; __closedAt = null; 1")

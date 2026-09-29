@@ -1,3 +1,21 @@
+## BRANCH (not merged): instant multi-source word translation + persistent book cache (2026-09-29, Claude)
+
+Branch `feature/instant-multisource-translation` from main `83fc8d6` (worktree ~/Projects/AI-Ebook-Reader-Instant).
+- Root cause of the "Translating..." wait: `handleWordOrSelection` awaited the AI answer BEFORE anything else; local
+  and machine translation ran only after (or instead of) it; the only cache was in memory.
+- Providers actually present: Groq (api.groq.com, openai/gpt-oss-120b), OpenAI, Gemini. NO xAI Grok.
+- Now (single word; phrases keep their path): `translateWordMultiSource` in js/translation.js runs L0a memory ->
+  L0b/L0c IndexedDB (js/translation-cache.js, bounded 150 ms wait) -> in parallel L1 on-device translator (only if
+  usable now; a pack download never blocks a tap), network machine translation (+ dictionary extras), Groq (fast,
+  if its key is saved) and OpenAI (refinement, if its key is saved; else the active Gemini; else the active
+  provider as before). Rank-based rendering into the SAME line (never last-response-wins); lookupToken + lookup
+  task guard every render; first result starts the timer and is spoken once; exact-context cache hit = zero
+  network calls; offline/total-failure messages localized (no raw "Failed to fetch").
+- `requestAI`/`aiTranslateText` accept `options.provider` (that provider's own saved key); no keys are persisted.
+- Tests: tests/instant_translation_browser.py (62 checks); single_word_translation / translation_popup_timer now
+  clear both caches and stub the on-device translator; migration_audit script order includes the new module.
+- Physical tablet checks pending (Android Chrome Translator API availability is unverified).
+
 ## A11 — CLOSED / MERGED / PRODUCTION VERIFIED: Send while dictating keeps the last spoken words (2026-09-28, Claude)
 
 **Merged:** PR #140 squash-merged as main `8ab9bcd` (PR CI needed one retry: attempt 1 failed only on the known

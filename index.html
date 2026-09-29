@@ -617,6 +617,13 @@
         .tt-sense { margin: 3px 0; line-height: 1.4; }
         .tt-pos { color: #3ddba8; font-style: italic; margin-right: 5px; }
         .tt-note { font-weight: normal; font-size: 12.5px; color: #9aa1ab; }
+        /* Word tap: the translation line keeps its height while the first result is on its way (no jump), and a faint
+           dot says "a better translation may follow" while AI refinement is still running -- never a loading state. */
+        #tt-translation.tt-awaiting { min-height: 1.35em; }
+        #tt-translation.tt-refining::after { content: ''; display: inline-block; width: 5px; height: 5px; margin-left: 6px;
+            border-radius: 50%; background: currentColor; opacity: .3; vertical-align: middle; animation: ttRefine 1.2s ease-in-out infinite; }
+        @keyframes ttRefine { 50% { opacity: .08; } }
+        @media (prefers-reduced-motion: reduce) { #tt-translation.tt-refining::after { animation: none; } }
         .tt-context { font-weight: normal; font-size: 13px; color: #9aa1ab; }   /* single word: contextual meaning, secondary to the direct translation */
         .tt-translation-row { display: flex; align-items: stretch; gap: 10px; margin-top: 4px; min-height: 0; }
         .tt-translation-row .tt-translation { flex: 1; }
@@ -1305,9 +1312,10 @@
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=784171a5a724"></script>
-    <script src="js/translation.js?v=c5b1ef982d4f"></script>
+    <script src="js/translation-cache.js?v=bfe74f1355ef"></script>
+    <script src="js/translation.js?v=2afd9ec314c9"></script>
     <script src="js/grammar-svo.js?v=d97b7bfee927"></script>
-    <script src="js/ai-client.js?v=dbdff37a51aa"></script>
+    <script src="js/ai-client.js?v=2f924789fc10"></script>
     <script src="js/practice-session.js?v=ca3e5f0617db"></script>
     <script src="js/practice-worksheet.js?v=9b3d4f232932"></script>
     <script src="js/dictation.js?v=ea152b0a6fed"></script>
