@@ -33,8 +33,12 @@ function inkStrokes(pageNum) {
     if (!state.ink[key]) state.ink[key] = [];
     return state.ink[key];
 }
-// Історія операцій для Undo/Redo: кожна операція — draw, erase або clear, ключ per-сторінка
-let inkHistory = {}, inkRedoStack = {};
+// Історія операцій для Undo/Redo: кожна операція — draw, erase або clear, ключ per-сторінка.
+// Ownership boundary: history, active page and canvas handlers belong to ONE document — the one
+// whose ink loadInk() last loaded (inkOwner). Page keys alone repeat across books ("3" in A is
+// "3" in B), so loadInk() starts a fresh history and every op/canvas/save is checked against
+// inkOwner: a stale op from book A can never mutate or persist into book B.
+let inkHistory = {}, inkRedoStack = {}, inkOwner = null;
 function inkHistoryKey(pageNum) { return 'history_' + inkPageKey(pageNum); }
 function getInkHistory(pageNum) {
     const key = inkHistoryKey(pageNum);
@@ -47,11 +51,14 @@ function getInkRedoStack(pageNum) {
     return inkRedoStack[key];
 }
 function saveInk() {
-    if (!state.bookKey) return;
+    if (!state.bookKey || inkOwner !== state.bookKey) return; // in-memory ink is not this book's
     try { writeStored('ink_' + state.bookKey, JSON.stringify(state.ink)); } catch (e) {}
 }
 function loadInk() {
     state.ink = {};
+    inkOwner = state.bookKey || null;
+    inkHistory = {}; inkRedoStack = {}; inkActivePage = 0;
+    inkDrawing = false; inkCurrent = null; inkPointerId = null;
     if (!state.bookKey) return;
     try {
         let raw = readStored('ink_' + state.bookKey);
@@ -125,8 +132,9 @@ function distanceToSegment(pt, p1, p2) {
 function bindInkCanvas(cv, pageNum) {
     if (!cv || cv.dataset.bound) return;
     cv.dataset.bound = '1';
+    const owner = inkOwner; // a canvas left over from a previous book must never draw into this one
     cv.addEventListener('pointerdown', (e) => {
-        if (!state.inkMode || inkDrawing || pdfPointers.size > 1) return;
+        if (owner !== inkOwner || !state.inkMode || inkDrawing || pdfPointers.size > 1) return;
         inkActivePage = pageNum;
         inkPointerId = e.pointerId;
         e.preventDefault();
@@ -138,17 +146,17 @@ function bindInkCanvas(cv, pageNum) {
         getInkRedoStack(pageNum).length = 0;
     });
     cv.addEventListener('pointermove', (e) => {
-        if (!state.inkMode || !inkDrawing || inkPointerId !== e.pointerId || pdfPointers.size > 1) return;
+        if (owner !== inkOwner || !state.inkMode || !inkDrawing || inkPointerId !== e.pointerId || pdfPointers.size > 1) return;
         const pt = inkPoint(e, cv);
         if (state.inkErase) { inkEraseAt(pt, cv, pageNum); return; }
         inkCurrent.p.push(pt);
         redrawInk(cv, pageNum);
     });
     const finishStroke = (e) => {
-        if (e.pointerId !== inkPointerId) return;
+        if (owner !== inkOwner || e.pointerId !== inkPointerId) return;
         if (!inkDrawing) return;
         if (inkCurrent && inkCurrent.p.length > 0) {
-            getInkHistory(pageNum).push({ type: 'draw', stroke: { ...inkCurrent } });
+            getInkHistory(pageNum).push({ type: 'draw', stroke: inkCurrent, owner });
             const hist = getInkHistory(pageNum);
             if (hist.length > 50) hist.shift();
         }
@@ -175,7 +183,7 @@ function inkEraseAt(pt, cv, pageNum) {
         if (erased) {
             const erasedStroke = list.splice(i, 1)[0];
             redrawInk(cv, pageNum); saveInk();
-            getInkHistory(pageNum).push({ type: 'erase', stroke: erasedStroke, index: i });
+            getInkHistory(pageNum).push({ type: 'erase', stroke: erasedStroke, index: i, owner: inkOwner });
             const hist = getInkHistory(pageNum);
             if (hist.length > 50) hist.shift();
             getInkRedoStack(pageNum).length = 0;
@@ -207,10 +215,16 @@ document.getElementById('ink-undo').onclick = () => {
     const hist = getInkHistory(pageNum);
     if (hist.length === 0) return;
     const op = hist.pop();
+    if (op.owner !== inkOwner || inkOwner !== state.bookKey) return; // never replay another book's op
     const list = inkStrokes(pageNum);
 
     if (op.type === 'draw') {
-        list.splice(list.indexOf(op.stroke), 1);
+        // By identity, else by content (a pinch rollback restores a structuredClone of the page's strokes).
+        // Not found: never splice(-1) — that would delete an unrelated stroke.
+        let at = list.indexOf(op.stroke);
+        if (at < 0) { const sig = JSON.stringify(op.stroke); at = list.findIndex(st => JSON.stringify(st) === sig); }
+        if (at < 0) return;
+        list.splice(at, 1);
         getInkRedoStack(pageNum).push({ type: 'draw', stroke: op.stroke });
     } else if (op.type === 'erase') {
         list.splice(op.index, 0, op.stroke);
@@ -228,7 +242,7 @@ document.getElementById('ink-clear').onclick = () => {
     if (!confirm(t('clearPageAsk'))) return;
     const pageNum = activeInkPage();
     const clearedStrokes = inkStrokes(pageNum);
-    getInkHistory(pageNum).push({ type: 'clear', strokes: clearedStrokes.slice() });
+    getInkHistory(pageNum).push({ type: 'clear', strokes: clearedStrokes.slice(), owner: inkOwner });
     const hist = getInkHistory(pageNum);
     if (hist.length > 50) hist.shift();
     state.ink[inkPageKey(pageNum)] = [];

@@ -159,6 +159,7 @@ jobs:
 
           python3 -u tests/pdf_print_browser.py
           python3 -u tests/pdf_crop_ai_share_browser.py
+          python3 -u tests/pdf_ink_ownership_browser.py
           python3 -u tests/ai_cancel_state_browser.py
           python3 -u tests/ai_key_preserve_browser.py
           python3 -u tests/ai_key_replacement_browser.py
@@ -184,6 +185,7 @@ jobs:
           python3 -u tests/practice_reading_browser.py
           python3 -u tests/practice_allocation_browser.py
           python3 -u tests/practice_sentence_actions_browser.py
+          python3 -u tests/practice_save_failure_browser.py
           python3 -u tests/grammar_language_isolation_browser.py
           python3 -u tests/grammar_redesign_browser.py
           python3 -u tests/grammar_french_browser.py

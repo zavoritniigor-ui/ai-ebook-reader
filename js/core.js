@@ -1061,6 +1061,9 @@ const I18N = {
     practiceTranslateSentence: { uk: 'Перекласти речення', en: 'Translate sentence', fr: 'Traduire la phrase', ru: 'Перевести предложение' },
     practiceError:      { uk: 'Помилка практики', en: 'Practice Error', fr: 'Erreur de pratique', ru: 'Ошибка практики' },
     practiceUnknownError: { uk: 'Невідома помилка', en: 'Unknown error', fr: 'Erreur inconnue', ru: 'Неизвестная ошибка' },
+    // Shown (once per failure episode) when Practice could not be written to storage -- js/practice-session.js.
+    practiceSaveFailed: { uk: 'Практику не вдалося зберегти на пристрої — після перезавантаження її буде втрачено. Звільніть місце й повторіть.', en: 'Practice could not be saved on this device — it will be lost on reload. Free up space and retry.', fr: 'La pratique n’a pas pu être enregistrée sur cet appareil — elle sera perdue au rechargement. Libérez de l’espace et réessayez.', ru: 'Практику не удалось сохранить на устройстве — после перезагрузки она будет потеряна. Освободите место и повторите.' },
+    practiceSaveRetry:  { uk: 'Зберегти ще раз', en: 'Retry save', fr: 'Réessayer l’enregistrement', ru: 'Сохранить ещё раз' },
     hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' },
     // Redesigned Grammar/Practice UI strings (contextual Verbs/Adjectives panel + reading Practice).
     grammarEmptyVerbs:      { uk: 'У цьому фрагменті дієслів не знайдено.', en: 'No verbs found in this selection.', fr: 'Aucun verbe trouvé dans cette sélection.', ru: 'В этом фрагменте глаголов не найдено.' },
