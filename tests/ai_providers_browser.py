@@ -110,7 +110,10 @@ c.js('openKeySettings()')
 for provider in ['openai', 'gemini', 'groq']:
     check(provider+' key field visible', f"(()=>{{const el=document.getElementById(AI_PROVIDERS['{provider}'].input);el.scrollIntoView();const r=el.getBoundingClientRect();return el.checkVisibility() && r.width>0 && r.height>0 && r.top>=0 && r.bottom<=innerHeight}})()")
 select('openai')
-check('empty OpenAI cannot be selected', "document.querySelector('input[name=\"ai-provider\"]:checked').value==='gemini' && !document.getElementById('ai-provider-error').hidden && document.getElementById('ai-provider-error').textContent===missingAiKey('openai') && state.activeAiProvider==='gemini'")
+# Picking the provider BEFORE pasting its key is the usual order: the radio is a draft with a hint, never refused.
+check('empty OpenAI is a draft choice with an add-key hint', "document.querySelector('input[name=\"ai-provider\"]:checked').value==='openai' && !document.getElementById('ai-provider-error').hidden && document.getElementById('ai-provider-error').textContent===missingAiKey('openai') && state.activeAiProvider==='gemini'")
+save()
+check('Save cannot make a keyless provider active', "state.activeAiProvider==='gemini' && readStored('reader_active_ai_provider')==='gemini' && document.getElementById('settings-modal').style.display==='flex' && document.getElementById('ai-provider-error').textContent===missingAiKey('openai')")
 # Real text insertion into the masked field; other keys share the same save flow.
 c.js("document.getElementById('openai-key-input').focus()")
 c.call('Input.insertText',text='sk-proj-test-only-not-a-real-key')
@@ -185,11 +188,13 @@ c.js("__mode='abortable';__pending=[];window.__keyRequest=callAI('Old key').then
 check('replacing active key aborts old request', '(async()=>await __keyRequest && aiRequests.size===0)()')
 c.js("openKeySettings();document.getElementById('groq-key-input').value=__keys.groq;saveApiKey()")
 secure()
-c.js("openKeySettings();document.getElementById('openai-key-input').value='';document.getElementById('api-key-input').value='';saveApiKey();openKeySettings()")
+# Keys are deleted only through the explicit Remove action (a cleared field keeps the saved key).
+c.js("openKeySettings();document.getElementById('openai-key-input-remove').click();document.getElementById('api-key-input-remove').click();saveApiKey();openKeySettings()")
 for provider in ['openai','gemini']:
-    select(provider)
-    check('missing '+provider+' rejected without silent switch',f"state.activeAiProvider==='groq' && document.querySelector('input[name=\"ai-provider\"]:checked').value==='groq' && document.getElementById('ai-provider-error').textContent===missingAiKey('{provider}')")
-c.js("document.getElementById('groq-key-input').value='';saveApiKey();__calls=[]")
+    select(provider);save()
+    check('missing '+provider+' rejected without silent switch',f"state.activeAiProvider==='groq' && readStored('reader_active_ai_provider')==='groq' && document.getElementById('settings-modal').style.display==='flex' && document.getElementById('ai-provider-error').textContent===missingAiKey('{provider}')")
+select('groq')
+c.js("document.getElementById('groq-key-input-remove').click();saveApiKey();__calls=[]")
 check('deleting active key disables AI without fallback', "(async()=>{try{await callAI('x');return false}catch(e){return state.activeAiProvider==='groq'&&!aiAvailable()&&__calls.length===0&&e.message===missingAiKey('groq')}})()")
 secure()
 c.call('Page.reload');c.wait("document.readyState==='complete' && !document.body.inert")
