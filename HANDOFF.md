@@ -1,3 +1,23 @@
+## AI key replacement — CLOSED / MERGED / PRODUCTION VERIFIED (2026-10-01, Claude)
+
+**Merged:** PR #144 squash-merged as main `6e5f1fd` (PR CI green on head `36a3314`; main CI green). Cloudflare
+production deployed and verified (https://ai-ebook-reader.pages.dev serves index.html / sw.js / ui-tooltip.js
+`?v=afded3706fe4`); tests/ai_key_replacement_browser.py run AGAINST PRODUCTION with fake keys: all checks pass,
+incl. service-worker-controlled reload and a Cache Storage leak scan.
+**Still open (not blocking):** user's own final check with a REAL key (replace -> Save -> Ask at once -> reload ->
+Ask -> replace -> Grammar/Practice). Phase 3B NOT started. Phase A PR #143 (ink ownership + Practice save
+recovery) is a separate DRAFT awaiting independent review -- not merged.
+
+- Cause: the key dialog's provider radio REFUSED a provider whose field was empty, so "pick provider -> paste key ->
+  Save" stored the key but kept the OLD provider active (no/invalid key): AI kept failing until reload-ish luck.
+- Fix (js/ui-tooltip.js): radio = draft choice + add-key hint; Save activates it only with a key (no silent
+  switch). Fields show the real saved key (password); a CLEARED field keeps the key; deletion only via the new
+  per-provider "Remove key" (pending until Save). Trim; reject non-printable-ASCII / masked dots / inner spaces.
+  Save refuses unless the dialog was filled from state. 401/403 in Ask/Grammar/Practice show "Update AI key";
+  Retry re-reads the key. New strings in all 8 languages (js/core.js).
+- Tests: new tests/ai_key_replacement_browser.py (fails on 83fc8d6 at T1); tests/ai_providers_browser.py updated
+  to the draft-radio / explicit-Remove contract (its old asserts encoded the bug).
+
 ## A11 — CLOSED / MERGED / PRODUCTION VERIFIED: Send while dictating keeps the last spoken words (2026-09-28, Claude)
 
 **Merged:** PR #140 squash-merged as main `8ab9bcd` (PR CI needed one retry: attempt 1 failed only on the known
