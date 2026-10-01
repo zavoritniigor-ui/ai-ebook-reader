@@ -193,6 +193,7 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         window.lastAiRetryContext = { contextText, mode, userPrompt };
         const retryBtn = `<button style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;" onclick="(ctx => startAiTask(ctx.contextText, ctx.mode, ctx.userPrompt))(window.lastAiRetryContext)">${t('retry')}</button>`;
         content.innerHTML = `<div><span style="color:red">${escapeHtml(msg)}</span><br/>${retryBtn}</div>`;
+        if (isAiAuthError(err)) content.firstElementChild.append(' ', aiUpdateKeyButton());
     }
 }
 
@@ -1502,7 +1503,7 @@ function appendAiDebug(parent) {
     details.append(summary, copy, pre);
     parent.appendChild(details);
 }
-function showGrammarError(message, retry) {
+function showGrammarError(message, retry, err) {
     const content = els.grammarContent;
     content.innerHTML = '';
     const wrap = document.createElement('div');
@@ -1515,6 +1516,7 @@ function showGrammarError(message, retry) {
         retryBtn.onclick = retry;
         wrap.append(document.createElement('br'), retryBtn);
     }
+    if (isAiAuthError(err)) wrap.append(' ', aiUpdateKeyButton());
     appendAiDebug(wrap);
     content.appendChild(wrap);
 }
@@ -1685,6 +1687,6 @@ async function runGrammarAnalysis(contextText, sentenceText) {
         let msg = err.message;
         if (err instanceof TypeError && /fetch/i.test(err.message)) msg = t('errNoConnection');
         window.lastAiRetryContext = { contextText, mode: 'grammar', userPrompt: '' };
-        showGrammarError(msg, retry);
+        showGrammarError(msg, retry, err);
     }
 }

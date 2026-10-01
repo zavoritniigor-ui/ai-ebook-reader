@@ -532,6 +532,7 @@ function displayPracticeError(panel, session) {
     document.getElementById('practice-close').onclick = closePractice;
     mountPracticeWorkspaceControls(panel);
     document.getElementById('practice-close-error').onclick = closePractice;
+    if (isAiAuthError(error)) panel.querySelector('.practice-error .practice-actions').prepend(aiUpdateKeyButton());
 }
 
 // Close practice panel

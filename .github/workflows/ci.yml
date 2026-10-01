@@ -162,6 +162,7 @@ jobs:
           python3 -u tests/pdf_ink_ownership_browser.py
           python3 -u tests/ai_cancel_state_browser.py
           python3 -u tests/ai_key_preserve_browser.py
+          python3 -u tests/ai_key_replacement_browser.py
 
           echo "Running learning_ux_browser.py..."
           python3 -u tests/learning_ux_browser.py

@@ -559,6 +559,7 @@ async function generatePracticeReading(context) {
         session.lastError = {
             message: err.message,
             code: err.name || 'GenerationError',
+            status: err.status, // 401/403 -> the error panel offers "Update AI key"
             timestamp: Date.now()
         };
         session.updatedAt = Date.now();
