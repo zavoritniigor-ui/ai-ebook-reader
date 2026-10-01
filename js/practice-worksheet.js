@@ -275,6 +275,28 @@ function displayPracticeReady(panel, session) {
     mountPracticeWorkspaceControls(panel);
     retryBtn.onclick = retryPractice;
     regenBtn.onclick = regeneratePractice;
+    syncPracticeSaveWarning();
+}
+
+// Persistent "not saved" banner under the Practice header (outside the scroll area, so it stays in view)
+// while the shown session's last save failed; its button retries the save. Removed as soon as a save
+// succeeds. Called from js/practice-session.js whenever the save state changes.
+function syncPracticeSaveWarning() {
+    const panel = document.getElementById('practice-panel');
+    if (!panel) return;
+    let banner = panel.querySelector('#practice-save-warning');
+    const session = getCurrentPracticeSession();
+    if (!isPracticeSessionUnsaved(session) || session.status !== 'ready') { banner?.remove(); return; }
+    if (banner) return;
+    banner = document.createElement('div');
+    banner.id = 'practice-save-warning';
+    banner.setAttribute('role', 'alert');
+    const text = document.createElement('span'); text.textContent = t('practiceSaveFailed');
+    const retry = document.createElement('button');
+    retry.type = 'button'; retry.className = 'btn-secondary'; retry.textContent = t('practiceSaveRetry');
+    retry.onclick = () => { retryPracticeSave(); };
+    banner.append(text, retry);
+    panel.querySelector('.practice-header')?.after(banner);
 }
 
 // Renders the whole reading: for each section a quiet heading, then either its example sentences (one
@@ -593,6 +615,12 @@ const practiceStyles = `
     transition: transform 180ms ease, opacity 180ms ease, visibility 180ms;
 }
 #practice-panel[hidden], #practice-restore[hidden] { display: none; }
+#practice-save-warning {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin: 0 12px 8px; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid #d97706; background: rgba(217, 119, 6, .12); color: inherit; font-size: 13px;
+}
+#practice-save-warning span { flex: 1 1 200px; }
 #practice-panel:not([hidden])[data-mode="collapsed-bottom"] {
     transform: translateY(35%); opacity: 0; visibility: hidden; pointer-events: none;
 }
