@@ -1,3 +1,18 @@
+## Phase A (work preservation) — MERGED / PRODUCTION VERIFIED; physical checks pending (2026-10-02, Claude)
+
+**Merged:** PR #143 squash-merged as main `a0947f4` (PR head `ee9b150` = Phase A `f4c3587` + merge of main
+`43d2eec`; conflicts were only generated ?v=/CACHE_NAME, regenerated). PR CI and main CI (run 36943106527) green.
+Production https://ai-ebook-reader.pages.dev: HTTP 200, all 25 script versions = main, sw `ai-reader-shell-ab3bd54eeaeb`;
+pdf_ink_ownership (29), practice_save_failure (19) and ai_key_replacement (43) suites pass AGAINST PRODUCTION.
+**Open before Phase 3B (NOT started):** physical-device checks -- (A) PDF ink A draw/clear/Undo -> B draw/Undo -> A:
+no cross-document ink; (B) Practice save failure -> banner -> Retry save -> reload restores last saved session.
+- P0 (js/pdf-ink.js): undo history was page-keyed and survived loadInk(), so A's ops replayed on B and saveInk()
+  persisted them as ink_B; draw-undo spliced index -1. Now loadInk() sets inkOwner = bookKey and resets history;
+  ops/canvases carry their owner; saveInk refuses foreign ink; Undo never splices -1.
+- P1 (js/practice-session.js, practice-worksheet.js, pwa-lifecycle.js): failed save was console-only and
+  Regenerate/Retry deleted the old stored session. Now: unsaved session kept in memory, toast once + banner with
+  Retry save, old session kept, persistCriticalState() retries. 24h retention unchanged.
+
 ## AI key replacement — CLOSED / MERGED / PRODUCTION VERIFIED (2026-10-01, Claude)
 
 **Merged:** PR #144 squash-merged as main `6e5f1fd` (PR CI green on head `36a3314`; main CI green). Cloudflare
