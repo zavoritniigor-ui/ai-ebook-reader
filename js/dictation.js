@@ -133,7 +133,15 @@ function startDictationSession() {
         dictation.emptyEnds = hadFinal ? 0 : dictation.emptyEnds + 1;
         // Broken engines must not produce an endless permission/start loop.
         if (dictation.emptyEnds > 3) { stopDictation(); showToast(t('dictationStopped')); return; }
-        const delay = Math.min(3000, 600 * 2 ** dictation.emptyEnds);
+        // A session that ended WITH a final result is an ORDINARY utterance boundary: every session is
+        // single-utterance on Android/iOS (dictationSingleUtterance above), so this restart happens after
+        // EVERY spoken clause during normal continuous dictation, not just on a broken engine. Restarting
+        // at once -- instead of making the speaker wait out the same backoff a silent/broken engine needs --
+        // avoids losing the next words to an artificial gap where nothing is listening; a real multi-clause
+        // sentence has pauses well under the old flat 600ms, which is exactly what this used to eat. The
+        // escalating backoff (previously applied even here, at emptyEnds already reset to 0) still protects
+        // a genuinely empty/failing engine, now counted from its OWN first empty ending.
+        const delay = dictation.emptyEnds === 0 ? 0 : Math.min(3000, 600 * 2 ** (dictation.emptyEnds - 1));
         dictation.timer = setTimeout(() => { dictation.timer = null; startDictationSession(); }, delay);
     };
     try { session.start(); traceStt('start', { session: id, continuous: session.continuous, lang: session.lang }); updateDictationUI(); }
