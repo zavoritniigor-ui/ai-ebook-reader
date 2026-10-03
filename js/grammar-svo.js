@@ -159,7 +159,11 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     const content = els.askContent;
 
     panel.classList.remove('expanded'); // Залишаємо панель згорнутою!
-    if (mode === 'ask' || mode === 'level') state.lastAskContext = contextText;
+    // state.lastAskContext is set by the SELECTION-driven callers themselves (ttAskBtn,
+    // btn-explain, btn-lang-level), never unconditionally here: this function also runs for a
+    // typed/dictated question with no selection, and remembering THAT as "context" is exactly
+    // the stale-context leak a later unrelated question must not inherit (sendAskFromField
+    // consumes state.lastAskContext once and clears it).
 
     panel.classList.remove('ready'); panel.classList.add('loading'); // Вмикаємо червоний неон
     content.replaceChildren(askRequestView(requestId, `<div style="text-align:center;margin-top:50px;"><div class="spinner-large"></div><p style="margin-top:20px;color:gray;">${t('generating')}<br><b style="color:var(--text-color);">${escapeHtml(contextText.length>40?contextText.substring(0,40)+'...':contextText)}</b></p></div>`));
@@ -978,8 +982,24 @@ function buildAskPrompt(term, sentence, userPrompt, langName) {
     const para = state.lastAskParagraph && state.lastAskParagraph !== sentence
         ? `\nАбзац навколо: "${state.lastAskParagraph}".` : '';
     const ctx = sentence ? `\nРечення з тексту: "${sentence}".` : '';
-    const q = userPrompt ? `\nЗапитання користувача: "${userPrompt}".` : '';
-    return `Поясни вираз "${term}" читачеві книги.${ctx}${para}${q}
+
+    // Користувач ввів/наговорив своє запитання (typed/dictated question): ЦЕ і є головний
+    // запит, а не "поясни вираз" — "Переклади це французькою" має перекласти, не отримати
+    // розбір жанру. Фрагмент (якщо є) — лише матеріал для відповіді, не окрема вимога.
+    if (userPrompt && term) {
+        return `Читач книги виділив фрагмент тексту і ставить щодо нього запитання.
+Фрагмент з книги (матеріал для відповіді, не окреме завдання): "${term}".${ctx}${para}
+Запитання читача: "${userPrompt}"
+Виконай САМЕ це запитання читача, використовуючи наведений фрагмент як матеріал/контекст. Відповідай ВИКЛЮЧНО ${langName}, у форматі HTML (без markdown, без \`\`\`). Не нав'язуй жодної фіксованої структури відповіді, якої читач сам не просив.`;
+    }
+    // Запитання без виділеного фрагмента: звичайне вільне запитання, без "поясни вираз".
+    if (userPrompt) {
+        return `Читач книги ставить запитання: "${userPrompt}"
+Відповідай ВИКЛЮЧНО ${langName}, у форматі HTML (без markdown, без \`\`\`). Стисло й по суті, без зайвої структури, якої читач не просив.`;
+    }
+
+    // Лише виділений фрагмент, без запитання: попереднє незмінне пояснення вислову.
+    return `Поясни вираз "${term}" читачеві книги.${ctx}${para}
 Відповідай ВИКЛЮЧНО ${langName}, у форматі HTML (без markdown, без \`\`\`). Усі заголовки та текст також переклади ${langName}. Стисло — до 5 коротких пунктів. Виділяй ключове тегом <b>.
 
 СПОЧАТКУ сам визнач за контекстом, ЯКОГО РОДУ цей текст і що саме перед тобою — навіть якщо вирвано лише два-три слова. Почни відповідь одним рядком: <b>Контекст:</b> (переклади слово "Контекст" на ${langName}) і тип (художній текст / науковий чи технічний / історичний / юридичний чи офіційний / побутовий / граматична конструкція).
@@ -1047,6 +1067,8 @@ document.getElementById('btn-lang-level').onclick = () => {
     if (!aiAvailable()) { showToast(t('needKey')); els.askPanel.classList.add('expanded'); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
     if (els.askInput) els.askInput.value = '';
+    // An explicit selection action: this IS the new context a typed follow-up question may use.
+    state.lastAskContext = frag;
     startAiTask(frag, 'level');
     els.askPanel.classList.add('expanded');
 };
@@ -1069,6 +1091,8 @@ document.getElementById('btn-explain').onclick = () => {
     if (!aiAvailable()) { showToast(t('needKey')); els.askPanel.classList.add('expanded'); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
     if (els.askInput) els.askInput.value = '';
+    // An explicit selection action: this IS the new context a typed follow-up question may use.
+    state.lastAskContext = frag;
     startAiTask(frag, 'ask');
     els.askPanel.classList.add('expanded');
 };
