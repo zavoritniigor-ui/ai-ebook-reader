@@ -19,7 +19,7 @@ c = CDP()
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable')
 c.call('Network.setCacheDisabled', cacheDisabled=True); c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
-window.__rec = []; window.__log = []; window.__errors = []; window.__androidRepeat = false;
+window.__rec = []; window.__log = []; window.__errors = []; window.__androidRepeat = false; window.__times = [];
 addEventListener('error', e => __errors.push(e.message));
 addEventListener('unhandledrejection', e => __errors.push(String(e.reason)));
 window.SpeechRecognition = class {
@@ -27,13 +27,14 @@ window.SpeechRecognition = class {
   start() {
     if (this.state !== 'new') throw new DOMException('recognition has already started', 'InvalidStateError');
     this.state = 'live'; __log.push('start ' + this.id + (this.continuous ? ' continuous' : ' single'));
+    __times.push({id: this.id, event: 'start', t: performance.now()});
   }
   stop() { if (this.state !== 'live') return; this.state = 'stopping'; __log.push('stop ' + this.id); setTimeout(() => this._end(), 10); }
   abort() {
     if (this.state === 'ended') return; __log.push('abort ' + this.id); this.state = 'ended';
     setTimeout(() => { this.onerror && this.onerror({error: 'aborted'}); this.onend && this.onend(); }, 0);
   }
-  _end() { if (this.state === 'ended') return; this.state = 'ended'; __log.push('end ' + this.id); this.onend && this.onend(); }
+  _end() { if (this.state === 'ended') return; this.state = 'ended'; __log.push('end ' + this.id); __times.push({id: this.id, event: 'end', t: performance.now()}); this.onend && this.onend(); }
   _emit(resultIndex) {
     const results = this.results.map(r => { const alt = [{transcript: r.text}]; alt.isFinal = r.final; return alt; });
     this.onresult && this.onresult({resultIndex, results});
@@ -208,17 +209,60 @@ reset(); open_ask(); tap('#mic-btn', True); wait_listening()
 c.js("recognition.error('not-allowed'); window.__n = __rec.length; 1"); pause(1)
 check('12 permission denied: stopped, message shown, no restart', "!dictation.wanted && __rec.length === __n && __log.some(l => l.startsWith('toast ')) && els.micBtn.getAttribute('aria-pressed') === 'false'")
 reset(); tap('#mic-btn', True); wait_listening()
-c.js("recognition.error('no-speech'); window.__n = __rec.length; 1"); pause(1.6)  # empty session: bounded back-off (1.2 s)
+c.js("recognition.error('no-speech'); window.__n = __rec.length; 1"); pause(1.6)  # empty session: bounded back-off (0.6 s, its first)
 check('12 no speech: one bounded restart, still one live recognizer', "dictation.wanted && __rec.length === __n + 1 && %s.length === 1" % live())
 c.js("recognition.error('aborted'); 1"); pause(.3)
 check('12 aborted by the engine: stops quietly (no error toast)', "!dictation.wanted && !__log.some(l => l.startsWith('toast '))")
-reset(); tap('#mic-btn', True); wait_listening(); c.js("window.__n = __rec.length; recognition._end(); 1"); pause(1.6)  # empty session: bounded back-off (1.2 s)
+reset(); tap('#mic-btn', True); wait_listening(); c.js("window.__n = __rec.length; recognition._end(); 1"); pause(1.6)  # empty session: bounded back-off (0.6 s, its first)
 check('12 unexpected onend: exactly one new session', "dictation.wanted && __rec.length === __n + 1 && %s.length === 1" % live())
 tap('#mic-btn', True); pause(.3)
 check('12 user stops: recognizer finished, mic idle', "!dictation.wanted && !dictation.finishing && %s.length === 0 && els.micBtn.textContent === '🎤'" % live())
 check('sttTrace records the lifecycle (toggle/start/result/commit/end)',
       "['toggle', 'start', 'result', 'commit', 'end'].every(k => sttTrace.some(e => e.event === k))")
 check('no application errors (tablet)', "__errors.length === 0 || JSON.stringify(__errors)")
+
+# 16: restart after a SUCCESSFUL utterance must be immediate, not throttled like a broken/silent engine.
+# Every tablet session is single-utterance, so this restart happens after EVERY spoken clause during
+# ordinary continuous dictation -- the old flat ~600ms gap here (applied even though emptyEnds had just
+# been reset to 0) is exactly what could eat the next clause of a real sentence (reported: "captures only
+# the beginning of a sentence"). 150ms is comfortably under that old gap and comfortably over realistic
+# restart overhead.
+reset(); open_ask(); tap('#mic-btn', True); wait_listening()
+say_final('one')
+pause(.15)
+check('16 restart after a successful utterance happens almost at once (no ~600ms silent gap)', "%s.length === 1" % live())
+
+# 16b: the escalating backoff still protects a genuinely EMPTY/broken engine -- the fix only removes the
+# delay for a session that actually heard something, not the broken-engine safeguard itself.
+reset(); open_ask(); tap('#mic-btn', True); wait_listening()
+c.js("recognition._end(); 1")   # ends with NO final result at all
+pause(.15)
+check('16b an EMPTY ending (nothing recognized) still backs off, unlike a successful one', "%s.length === 0" % live())
+c.wait("%s.length === 1" % live(), timeout=2)
+print('PASS 16b ... and still restarts within the bounded backoff (broken-engine protection intact)', flush=True)
+
+# 17: a real sentence delivered as several short-gapped utterances -- exactly how Android's single-
+# utterance engine actually produces continuous speech -- must arrive COMPLETE. Reproduces the user's own
+# reported Ukrainian phrases and failure mode ("captures only the beginning of a sentence").
+reset(); open_ask(); tap('#mic-btn', True)
+PHRASE = ['Пошукай в інтернеті,', 'яка сьогодні погода', 'в Монреалі.']
+for part in PHRASE:
+    say_final(part)
+    pause(.15)   # a short natural breath -- under the old backoff, realistic for continuous speech
+check('17 a full sentence spoken across several short-gapped utterances arrives complete (reported phrase)',
+      "els.askInput.value === %s" % json.dumps(' '.join(PHRASE)))
+
+reset(); open_ask(); tap('#mic-btn', True)
+say_final('Скільки буде два плюс два?'); pause(.1)
+check('17b the other reported Ukrainian question is captured exactly', "els.askInput.value === 'Скільки буде два плюс два?'")
+
+# 18: legitimate Ukrainian repetitions must survive -- no blanket text-based de-duplication.
+reset(); open_ask(); tap('#mic-btn', True)
+say_final('дуже дуже добре'); pause(.1)
+check('18 "дуже дуже добре" in one utterance stays exactly', "els.askInput.value === 'дуже дуже добре'")
+say_final('ні'); say_final('ні'); say_final('зачекай'); pause(.1)
+check('18 "ні" "ні" "зачекай" as separate utterances all stay (no text-based dedup)',
+      "els.askInput.value === 'дуже дуже добре ні ні зачекай'")
 
 # ===================== DESKTOP (mouse) =====================
 load(DESKTOP_UA, False)
@@ -229,6 +273,14 @@ c.js("recognition.interim('open'); recognition.final('open'); recognition.interi
 check('15 desktop: two finals in one continuous session -> "open the book"', "els.askInput.value === 'open the book' && __rec.length === 1")
 c.js("recognition.final('very'); recognition.final('very'); recognition.final('good'); 1"); pause(.1)
 check('15 desktop: legitimate repeated finals stay', "els.askInput.value === 'open the book very very good'")
+
+# 19: an engine resending an ALREADY-final index (a revision, not part of the Web Speech contract this
+# app relies on, but defended against anyway) must not be committed twice. Continuous mode keeps one
+# session alive across multiple results, so the index genuinely stays addressable for a resend.
+c.js("recognition.results[0].text = 'revised'; recognition._emit(0); 1"); pause(.05)
+check('19 a resend of an ALREADY-final index is not committed again',
+      "els.askInput.value === 'open the book very very good'")
+
 tap('#mic-btn', False); pause(.3)
 check('15 desktop: click stops dictation', "!dictation.wanted && %s.length === 0" % live())
 check('no application errors (desktop)', "__errors.length === 0 || JSON.stringify(__errors)")
