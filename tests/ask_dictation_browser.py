@@ -1,13 +1,5 @@
-"""Ask AI dictation (speech-to-text): one utterance must land in the Ask input once.
-
-Android's (and iOS's) recognizer is a single-utterance engine. Chrome's emulated `continuous` mode there re-emits
-a final result at the NEXT result index (results[0] "one" final, then results[1] "one" final), and the per-index
-commit appended both ("one" -> "one one"). On those platforms each session now asks for one utterance
-(continuous=false) and the existing restart loop keeps dictation going; desktop keeps continuous mode.
-No text-based de-duplication: legitimate repetitions ("very very good", "no no wait") stay.
-
-SpeechRecognition is a deterministic engine model (result list with interim/final entries, resultIndex,
-async end/abort, the emulated-continuous repeat quirk switchable per run). No microphone, no AI provider.
+"""Deterministic Android-like speech events, plus touch/desktop and Send regressions.
+These tests do not substitute for physical Android microphone acceptance.
 """
 import json, os
 from browser_cdp import CDP
@@ -19,14 +11,15 @@ c = CDP()
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable')
 c.call('Network.setCacheDisabled', cacheDisabled=True); c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
-window.__rec = []; window.__log = []; window.__errors = []; window.__androidRepeat = false; window.__times = [];
+window.__rec = []; window.__log = []; window.__errors = []; window.__times = [];
 addEventListener('error', e => __errors.push(e.message));
 addEventListener('unhandledrejection', e => __errors.push(String(e.reason)));
 window.SpeechRecognition = class {
   constructor() { this.results = []; this.id = __rec.length; this.state = 'new'; __rec.push(this); }
   start() {
     if (this.state !== 'new') throw new DOMException('recognition has already started', 'InvalidStateError');
-    this.state = 'live'; __log.push('start ' + this.id + (this.continuous ? ' continuous' : ' single'));
+    if (__rec.some(r => r !== this && (r.state === 'live' || r.state === 'stopping'))) throw new Error('overlapping recognizers');
+    this.state = 'live'; this.onstart?.(); __log.push('start ' + this.id + (this.continuous ? ' continuous' : ' single'));
     __times.push({id: this.id, event: 'start', t: performance.now()});
   }
   stop() { if (this.state !== 'live') return; this.state = 'stopping'; __log.push('stop ' + this.id); setTimeout(() => this._end(), 10); }
@@ -48,9 +41,7 @@ window.SpeechRecognition = class {
     const last = this.results.at(-1);
     if (last && !last.final) { last.text = text; last.final = true; } else this.results.push({text, final: true});
     this._emit(this.results.length - 1);
-    // Android's emulated continuous mode: the same final result again, at the next index.
-    if (this.continuous && __androidRepeat) { this.results.push({text, final: true}); this._emit(this.results.length - 1); }
-    if (!this.continuous) setTimeout(() => this._end(), 5);   // a single-utterance session ends after its result
+
   }
   error(error) { if (this.state === 'ended') return; this.onerror && this.onerror({error}); this.state = 'ended'; this.onend && this.onend(); }
 };
@@ -103,7 +94,7 @@ def wait_listening(): c.wait("dictation.wanted && recognition && recognition.sta
 
 
 def say_final(text):
-    """One utterance: the current live session produces its final result (and, single-utterance, ends)."""
+    """Deliver a final slot; engine endings are explicit in restart tests."""
     wait_listening(); c.js("recognition.final(%s); 1" % json.dumps(text)); pause(.05)
 
 
@@ -122,21 +113,20 @@ def reset():
 
 # ===================== TABLET (Android Chrome, touch) =====================
 load(ANDROID_UA, True)
-c.js("__androidRepeat = true; 1")   # the engine quirk is ON for every tablet case below
 open_ask()
 
 # 14 + 1: one touch tap -> one start; one word said once -> once
 tap('#mic-btn', True); wait_listening()
 check('14 tablet: one touch tap on the mic starts exactly one recognition session',
       "__rec.length === 1 && %s.length === 1 && sttTrace.filter(e => e.event === 'toggle').length === 1 && sttTrace.find(e => e.event === 'toggle').via.startsWith('click')" % live())
-check('tablet sessions ask for one utterance (the emulated continuous mode is what repeats results)', "recognition.continuous === false")
+check('tablet requests continuous recognition with interim results', "recognition.continuous && recognition.interimResults")
 say_final('one'); pause(.1)
 check('1 one word said once -> "one" (not "one one")', "els.askInput.value === 'one'")
 
 # 2: interim "one" -> final "one"
 reset(); open_ask(); tap('#mic-btn', True); wait_listening()
 c.js("recognition.interim('one'); 1")
-check('2 interim is shown as status only, not typed into the input', "els.askInput.value === '' && dictationStatus.textContent === 'one'")
+check('2 interim is visible in the input and status', "els.askInput.value === 'one' && dictationStatus.textContent === 'one'")
 c.js("recognition.final('one'); 1"); pause(.1)
 check('2 interim "one" -> final "one" gives "one"', "els.askInput.value === 'one'")
 
@@ -145,19 +135,19 @@ reset(); open_ask(); tap('#mic-btn', True); wait_listening()
 c.js("['o', 'on', 'one'].forEach(t => recognition.interim(t)); recognition.final('one'); 1"); pause(.1)
 check('3 interim o / on / one -> final one gives "one"', "els.askInput.value === 'one'")
 
-# 4: separate legitimate finals (two utterances -> two sessions on the tablet)
+# 4: separate legitimate finals within one continuous session
 reset(); open_ask(); tap('#mic-btn', True)
 say_final('open'); say_final('the book'); pause(.1)
 check('4 two utterances "open" + "the book" -> "open the book"', "els.askInput.value === 'open the book'")
 wait_listening()
-check('4 ... one live recognizer at a time across the automatic restart', "%s.length === 1 && __rec.filter(r => r.state === 'new').length === 0" % live())
+check('4 ... one live recognizer across successive finals', "%s.length === 1 && __rec.filter(r => r.state === 'new').length === 0" % live())
 
 # 5: legitimate repetitions stay (one utterance, and repeated separate utterances)
 reset(); open_ask(); tap('#mic-btn', True)
 say_final('very very good'); pause(.1)
 check('5 "very very good" in one utterance stays exactly', "els.askInput.value === 'very very good'")
 say_final('no'); say_final('no'); say_final('wait'); pause(.1)
-check('5 "no" "no" "wait" said as separate utterances all stay (no text-based dedup)', "els.askInput.value === 'very very good no no wait'")
+check('5 "no" "no" "wait" in separate slots of one session stay', "els.askInput.value === 'very very good no no wait'")
 
 # 8 + 9: manual text + dictation, then manual edit stays stable
 reset(); open_ask()
@@ -221,16 +211,12 @@ check('sttTrace records the lifecycle (toggle/start/result/commit/end)',
       "['toggle', 'start', 'result', 'commit', 'end'].every(k => sttTrace.some(e => e.event === k))")
 check('no application errors (tablet)', "__errors.length === 0 || JSON.stringify(__errors)")
 
-# 16: restart after a SUCCESSFUL utterance must be immediate, not throttled like a broken/silent engine.
-# Every tablet session is single-utterance, so this restart happens after EVERY spoken clause during
-# ordinary continuous dictation -- the old flat ~600ms gap here (applied even though emptyEnds had just
-# been reset to 0) is exactly what could eat the next clause of a real sentence (reported: "captures only
-# the beginning of a sentence"). 150ms is comfortably under that old gap and comfortably over realistic
-# restart overhead.
+# 16: a genuine successful engine ending restarts immediately, without the old 600ms gap.
 reset(); open_ask(); tap('#mic-btn', True); wait_listening()
 say_final('one')
+c.js("window.__ended = recognition; window.__count = __rec.length; recognition._end(); 1")
 pause(.15)
-check('16 restart after a successful utterance happens almost at once (no ~600ms silent gap)', "%s.length === 1" % live())
+check('16 restart after a successful utterance happens almost at once (no ~600ms silent gap)', "%s.length === 1 && recognition !== __ended && __rec.length === __count + 1" % live())
 
 # 16b: the escalating backoff still protects a genuinely EMPTY/broken engine -- the fix only removes the
 # delay for a session that actually heard something, not the broken-engine safeguard itself.
@@ -241,13 +227,12 @@ check('16b an EMPTY ending (nothing recognized) still backs off, unlike a succes
 c.wait("%s.length === 1" % live(), timeout=2)
 print('PASS 16b ... and still restarts within the bounded backoff (broken-engine protection intact)', flush=True)
 
-# 17: a real sentence delivered as several short-gapped utterances -- exactly how Android's single-
-# utterance engine actually produces continuous speech -- must arrive COMPLETE. Reproduces the user's own
-# reported Ukrainian phrases and failure mode ("captures only the beginning of a sentence").
+# 17: deterministic forced endings between short clauses preserve the complete sentence.
 reset(); open_ask(); tap('#mic-btn', True)
 PHRASE = ['Пошукай в інтернеті,', 'яка сьогодні погода', 'в Монреалі.']
 for part in PHRASE:
     say_final(part)
+    c.js("recognition._end(); 1")
     pause(.15)   # a short natural breath -- under the old backoff, realistic for continuous speech
 check('17 a full sentence spoken across several short-gapped utterances arrives complete (reported phrase)',
       "els.askInput.value === %s" % json.dumps(' '.join(PHRASE)))
@@ -261,8 +246,85 @@ reset(); open_ask(); tap('#mic-btn', True)
 say_final('дуже дуже добре'); pause(.1)
 check('18 "дуже дуже добре" in one utterance stays exactly', "els.askInput.value === 'дуже дуже добре'")
 say_final('ні'); say_final('ні'); say_final('зачекай'); pause(.1)
-check('18 "ні" "ні" "зачекай" as separate utterances all stay (no text-based dedup)',
+check('18 "ні" "ні" "зачекай" in separate slots of one session stay',
       "els.askInput.value === 'дуже дуже добре ні ні зачекай'")
+
+# A/J: later resultIndex retains earlier slots; full snapshots never append old finals again.
+reset(); open_ask(); tap('#mic-btn', True)
+c.js("recognition.final('Привіт'); recognition.interim('як справи'); recognition._emit(1); 1")
+check('A/J cumulative snapshot at resultIndex 1 retains final slot 0 exactly once',
+      "els.askInput.value === 'Привіт як справи'")
+c.js("recognition.final('як справи'); recognition._emit(0); recognition._emit(1); recognition._emit(0); 1")
+check('C repeated final callbacks are idempotent', "els.askInput.value === 'Привіт як справи'")
+
+reset(); tap('#mic-btn', True)
+c.js("recognition.interim('сьогодні пог'); recognition.final('сьогодні погода'); 1")
+check('B finalization replaces interim instead of appending it', "els.askInput.value === 'сьогодні погода'")
+c.js("recognition.interim('незавершено'); recognition.results.pop(); recognition._emit(recognition.results.length); 1")
+check('withdrawn interim slot disappears without removing finals', "els.askInput.value === 'сьогодні погода'")
+
+# D/E/F/G: real ends, overlapping restart requests, replay, and stale result/end/error/start.
+for replay in (False, True):
+    reset(); tap('#mic-btn', True)
+    c.js("recognition.final('Я хочу запитати'); recognition.interim('discard unfinished'); window.__old = recognition; window.__n = __rec.length; recognition._end(); __old.onend(); startDictationSession(); startDictationSession(); 1")
+    pause(.15); wait_listening()
+    check('G repeated end/start requests start one new session after end',
+          "__rec.length === __n + 1 && recognition !== __old && %s.length === 1" % live())
+    c.js("__old.final('stale'); __old.onend(); __old.onerror({error:'network'}); __old.onstart(); 1")
+    say_final('запитати про погоду' if replay else 'про погоду')
+    check(('E boundary replay removed' if replay else 'D finals survive restart') + '; F old callbacks ignored',
+          "els.askInput.value === 'Я хочу запитати про погоду' && dictation.wanted && __rec.length === __n + 1")
+
+# Exact normalized suffix/prefix match, longest overlap, preserving repeats elsewhere.
+reset(); tap('#mic-btn', True)
+say_final('Сьогодні я хочу дізнатися'); c.js('recognition._end(); 1'); pause(.15)
+say_final('ХОЧУ дізнатися, яка погода дуже дуже гарна')
+check('longest normalized boundary overlap only; legitimate repetition stays',
+      "els.askInput.value === 'Сьогодні я хочу дізнатися яка погода дуже дуже гарна'")
+
+# I/H: complete 25-word question remains visible, survives Stop, and reaches Send once.
+reset(); tap('#mic-btn', True)
+LONG_PARTS = ['Поясни будь ласка чому сьогодні над містом зібралися темні хмари',
+              'хмари та чи варто нам брати парасолю коли ми підемо',
+              'після обіду гуляти великим міським парком разом із дітьми']
+say_final(LONG_PARTS[0]); c.js('recognition._end(); 1'); pause(.15)
+c.js("recognition.interim(%s); 1" % json.dumps(LONG_PARTS[1]))
+check('earlier words remain visible during later interim', "els.askInput.value.startsWith(%s)" % json.dumps(LONG_PARTS[0]))
+say_final(LONG_PARTS[1]); say_final(LONG_PARTS[2])
+LONG_QUESTION = LONG_PARTS[0] + ' ' + LONG_PARTS[1].split(' ', 1)[1] + ' ' + LONG_PARTS[2]
+check('I complete long question, exactly once before Stop', "els.askInput.value === %s" % json.dumps(LONG_QUESTION))
+c.js('window.__n = __rec.length; toggleDictation(); 1'); pause(.3)
+check('H manual Stop keeps the whole question and never restarts',
+      "!dictation.wanted && !dictation.finishing && __rec.length === __n && els.askInput.value === %s" % json.dumps(LONG_QUESTION))
+c.js('els.askSendBtn.click(); 1'); pause(.2)
+check('I Send uses exactly the accumulated long question once', "JSON.stringify(__sent) === JSON.stringify([%s])" % json.dumps(LONG_QUESTION))
+
+# Send in the restart gap cancels the scheduled start and consumes the accumulated question.
+reset(); tap('#mic-btn', True)
+c.js("recognition.final('Готове запитання'); recognition._end(); window.__n = __rec.length; els.askSendBtn.click(); 1")
+pause(.2)
+check('Send during RESTART_PENDING sends once and cancels the next engine',
+      "__rec.length === __n && !dictation.wanted && dictation.timer === null && JSON.stringify(__sent) === JSON.stringify(['Готове запитання'])")
+
+# Manual Stop preserves the visible interim even when the engine ends without finalizing it.
+reset(); tap('#mic-btn', True)
+c.js("recognition.final('Збережи'); recognition.interim('останні слова'); toggleDictation(); 1"); pause(.2)
+check('manual Stop keeps visible unfinished words without restarting',
+      "!dictation.wanted && !dictation.finishing && els.askInput.value === 'Збережи останні слова'")
+
+# A slow abort must finish before rapid reactivation can start another microphone.
+reset(); tap('#mic-btn', True)
+c.js("window.__old = recognition; __old.abort = function(){ this.state='stopping'; setTimeout(() => this._end(), 150); }; window.__n = __rec.length; stopDictation(); toggleDictation(); startDictationSession(); 1")
+check('STOPPING guard waits for asynchronous abort end', "__rec.length === __n && dictation.phase === 'STOPPING'")
+pause(.25)
+check('queued mic start after abort end has no overlapping engine', "__rec.length === __n + 1 && %s.length === 1" % live())
+
+# Replay-only engines are bounded even though they keep emitting finals.
+reset(); tap('#mic-btn', True); say_final('повтор'); c.js('recognition._end(); 1'); pause(.15)
+for delay in (.7, 1.3, 2.5, .15):
+    wait_listening(); c.js("recognition.final('повтор'); recognition._end(); 1"); pause(delay)
+check('replayed finals cannot drive an endless restart/beep loop',
+      "!dictation.wanted && dictation.timer === null && els.askInput.value === 'повтор'")
 
 # ===================== DESKTOP (mouse) =====================
 load(DESKTOP_UA, False)
@@ -274,10 +336,8 @@ check('15 desktop: two finals in one continuous session -> "open the book"', "el
 c.js("recognition.final('very'); recognition.final('very'); recognition.final('good'); 1"); pause(.1)
 check('15 desktop: legitimate repeated finals stay', "els.askInput.value === 'open the book very very good'")
 
-# 19: an engine resending an ALREADY-final index (a revision, not part of the Web Speech contract this
-# app relies on, but defended against anyway) must not be committed twice. Continuous mode keeps one
-# session alive across multiple results, so the index genuinely stays addressable for a resend.
-c.js("recognition.results[0].text = 'revised'; recognition._emit(0); 1"); pause(.05)
+# 19: replaying an already-final slot in repeated complete snapshots is idempotent.
+c.js("recognition._emit(0); recognition._emit(0); 1"); pause(.05)
 check('19 a resend of an ALREADY-final index is not committed again',
       "els.askInput.value === 'open the book very very good'")
 

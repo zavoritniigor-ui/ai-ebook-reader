@@ -1,3 +1,61 @@
+## Android physical acceptance correction — LOCAL ONLY / DELIVERY BLOCKED (2026-10-04)
+
+User reported failed physical Android acceptance and requested PR #147 remain unmerged.
+GitHub rediscovery contradicts that premise: PR #147 was already merged on
+2026-10-03 at 00:50:12 UTC, head `91871a00cb4802fb0522f313041d672e02489405`,
+merge `949d8b2674481e983ec0d63a795db57fc9053a48`. PR #148 is also on main,
+currently `aea79774fa24203dec0f69efa61ffa91be487a37`. Do not treat either prior
+handoff's physical-acceptance claims as evidence that the tablet failure is fixed.
+
+Branch: `fix/ask-ai-voice-conversation`, worktree
+`/home/igor/Projects/AI-Ebook-Reader-AskVoice`. Main was integrated locally as
+`cc5bf1f`; its only conflict was the generated service-worker hash, resolved with
+main's exact file and checked against main. No remote branches or PRs were changed.
+The correction in this accompanying commit is prepared and locally validated.
+
+Implemented in `js/dictation.js`: committedText, sessionFinalText and
+sessionInterimText; indexed result snapshots retaining slots before resultIndex;
+visible interim replacement; continuous=true and interimResults=true on Android;
+bounded 32-token normalized suffix/prefix overlap only across automatic restart;
+generation checks plus IDLE/STARTING/LISTENING/RESTART_PENDING/STOPPING guards;
+wait for old engine onend before replacement, including asynchronous abort;
+only finalized speech survives unexpected restart; explicit Stop/Send preserves
+visible pending speech with the existing 2-second finalization timeout. Productive
+restarts remain immediate. Empty/replay-only cycles back off and stop after four
+endings. Normal result callbacks never call stop or abort.
+
+Changed files: js/dictation.js, tests/ask_dictation_browser.py,
+tests/dictation_send_browser.py, tests/learning_ux_browser.py, ARCHITECTURE.md,
+generated index.html/sw.js, HANDOFF.md. No unrelated code changes.
+App shell: `ai-reader-shell-dad753c0ab78`; dictation resource: `ba6104eb279e`.
+
+Validation: ask_dictation (including A-J, interim withdrawal, delayed abort,
+replay-only loop bounds, Stop with pending speech, Send during restart),
+dictation_send, ask_prompt, ask_ai_language, full learning_ux and pdf_ux,
+ai_key_preserve, ai_cancel_state, pdf_crop_ai_share, ai_contract and ai_providers
+all passed. Full JS syntax, changed Python compilation, app-shell versions,
+CI suite coverage and diff whitespace checks passed. Browser and AI speech/network
+inputs are synthetic; no physical microphone acceptance is claimed.
+
+Test diagnostics: old visible-interim expectations were updated to the requested
+field model; ask_ai_language uses READER_TTS_URL (not READER_TEST_URL), corrected
+in the runner; crop/share failed its >1000-byte PNG fixture assumption in a reused
+profile (actual 822 bytes, correct name/type/activation), then passed unchanged
+in a fresh profile. No crop assertion or application code was weakened.
+Logs: `/tmp/android-*.log`. Prepared source/test worktree:
+`/tmp/reader-android-acceptance` (detached at main; equivalent uncommitted draft).
+
+CURRENT GATE: publication authorization / PR topology, then exact-SHA PR CI.
+EXACT BLOCKER: a merged PR cannot receive a new unmerged review head; user forbids
+a new PR. An asynchronous question asks whether a follow-up PR is authorized.
+No answer yet. Do not infer approval or push to main. No push or new PR/CI run yet.
+Next: rediscover git/GitHub state, obtain the user's delivery decision, then run
+mandatory pre-push gates on the existing feature branch, push that branch only,
+create a follow-up PR only if authorized, verify its exact head and CI to completion.
+Keep the resulting PR unmerged until the user passes the physical Android gate.
+Production unchanged this session; no branch cleanup. Any residual OS/browser
+start beep and real microphone event behavior remain unverified on physical Android.
+
 ## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
 
 **Not yet merged.** Branch `fix/dictation-android-reliability` from main `949d8b2` (includes PR #147's Ask AI
