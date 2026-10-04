@@ -1,3 +1,47 @@
+## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
+
+**Not yet merged.** Branch `fix/dictation-android-reliability` from main `949d8b2` (includes PR #147's Ask AI
+question-priority fix, unrelated and untouched here).
+
+**User report:** voice dictation on an Android tablet captures only the beginning of a sentence, sometimes
+duplicates words, then stops/beeps. ("Пошукай в інтернеті, яка сьогодні погода в Монреалі." recognized with
+wrong individual words -- that part is the platform's own STT accuracy, out of this app's control and not
+investigated further; "captures only the beginning" and "stops" are this app's own event-handling, and were.)
+
+**Root cause** (`js/dictation.js`'s `onend` restart handler): every session on Android/iOS is single-utterance
+(`dictationSingleUtterance`, PR #131), so a fresh session restarts after EVERY spoken clause during ordinary
+continuous dictation -- not just when something is broken. The restart delay formula
+`Math.min(3000, 600 * 2 ** emptyEnds)` applied its full exponential-backoff ladder even when the ending session
+had just SUCCEEDED (`hadFinal` true, `emptyEnds` reset to 0): `2 ** 0 === 1`, so the "no backoff" case still
+computed a flat 600ms silent gap before the next session started listening. A real sentence's natural
+pause-between-clauses is routinely shorter than that, so the app was not listening right when the speaker
+continued -- a plausible, confirmable explanation for "only the beginning" arriving, and (via cascading empty
+endings once the mic falls behind the speaker) for dictation eventually self-stopping.
+
+**Fix:** restart at once (0ms) when the ending session produced a final result; the escalating backoff
+(600/1200/2400ms) now only applies to a session's OWN first, second, third genuinely empty ending -- the
+"broken/silent engine must not loop forever" protection this delay existed for is unchanged.
+
+**Not fixed, explicitly out of scope:** individual mis-recognized words (STT model accuracy) and any native
+Android start/stop beep tone -- both outside the web app's control; separating these from this app's own bug
+was done per the task's own instruction, not skipped by oversight.
+
+**Tests:** `tests/ask_dictation_browser.py` extended -- timing instrumentation added to the deterministic
+SpeechRecognition mock; new checks 16/16b (restart after a successful utterance is near-immediate; an empty
+ending still backs off -- confirmed 16 fails on the pre-fix code via a local git-stash negative control, real
+measured gap matched the old formula), 17/17b (the two reported Ukrainian phrases, delivered as realistic
+short-gapped multi-utterance sequences, arrive complete), 18 (legitimate Ukrainian repetitions `дуже дуже
+добре` / `ні ні зачекай` survive -- no blanket dedup), 19 (an already-committed result index resent by the
+engine is not double-committed, tested on the continuous desktop session where the index stays addressable).
+All 39 checks pass; `dictation_send_browser.py` (PR #140, Send-while-dictating) and `ask_prompt_browser.py`
+(PR #147) re-run unmodified -- no regression. `learning_ux`, `migration_audit`, `ai_providers`,
+`practice_browser`, `app_shell_versions`, `ci_suite_coverage` also re-run clean.
+
+**MANUAL ANDROID MICROPHONE VALIDATION: PENDING** -- the deterministic mock proves the application's own
+restart-latency defect and its fix; it cannot prove real Android microphone/OS speech-service behavior
+(duplicate words from genuine audio overlap at a session boundary, or the platform's own recognition
+accuracy). Physical device testing is still required before claiming the field problem itself is resolved.
+
 ## Phase A (work preservation) — MERGED / PRODUCTION VERIFIED; physical checks pending (2026-10-02, Claude)
 
 **Merged:** PR #143 squash-merged as main `a0947f4` (PR head `ee9b150` = Phase A `f4c3587` + merge of main
