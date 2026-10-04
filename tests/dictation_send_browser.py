@@ -1,6 +1,6 @@
 """Astra audit A11: Send while dictation is still running must not drop the last spoken words.
 
-The words being spoken live as INTERIM results (shown in the dictation status, not yet in the field). Send used to
+The words being spoken live as INTERIM results (shown in the input and dictation status). Send used to
 read the field and call stopDictation() without finishing -- recognition.abort() -- which discards that pending
 speech; a final result arriving afterwards is ignored. Now Send first finishes recognition (stop -> the engine
 finalizes the pending words -> end, bounded by the existing finish timeout), then sends exactly what is in the field.
@@ -94,7 +94,7 @@ check('2 completed dictation -> Send: sends the dictated text', SENT + "('open t
 
 # 3. Send while dictation is still running: the last words are only interim at that moment
 reset(); mic_on(); c.js("recognition.final('Explain this'); recognition.interim('last words'); 1")
-check('3 setup: last words are pending (status only, not yet in the field)', "els.askInput.value === 'Explain this' && dictationStatus.textContent === 'last words'")
+check('3 setup: last words are visible but still pending', "els.askInput.value === 'Explain this last words' && dictationStatus.textContent === 'last words'")
 send()
 check('3 Send while dictating: the last spoken words are sent too', SENT + "('Explain this last words')", timeout=4)
 check('3 ... dictation is stopped afterwards and the field is cleared', "!dictation.wanted && !dictation.finishing && recognition === null && els.askInput.value === ''")
@@ -136,7 +136,7 @@ check('8 crop Send while dictating: one vision request whose question has the la
 # No AI key: Send is refused as before and dictation keeps running (nothing finished, nothing lost)
 reset(); c.js("aiAvailable = () => false; 1"); mic_on(); c.js("recognition.final('Keep me'); recognition.interim('and me'); 1"); send(); pause(.4)
 check('no key: Send shows the key message and dictation keeps listening (nothing stopped or lost)',
-      "__toasts.includes(t('needKey')) && __sent.length === 0 && dictation.wanted && recognition.state === 'live' && els.askInput.value === 'Keep me'")
+      "__toasts.includes(t('needKey')) && __sent.length === 0 && dictation.wanted && recognition.state === 'live' && els.askInput.value === 'Keep me and me'")
 c.js("aiAvailable = () => true; 1")
 
 check('no application errors', "__errors.length === 0 || JSON.stringify(__errors)")
