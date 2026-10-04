@@ -1,3 +1,25 @@
+## Android follow-up publication — Draft only (2026-10-04)
+
+The user explicitly authorized a NEW Draft follow-up PR because #147 was already
+merged before physical tablet acceptance. This supersedes the publication blocker
+in the historical preparation entry below. Do not mark ready, merge, or enable
+auto-merge, even when CI is green. Physical Android validation remains REQUIRED.
+
+Active branch: `fix/ask-ai-voice-android-restart`.
+Worktree: `/tmp/reader-android-followup`.
+Base: current origin/main `aea79774fa24203dec0f69efa61ffa91be487a37`.
+Source fix: `f53e02b7f0efa5b57d61e28170efea2feb5ef7d7`, preserved on the old branch.
+Cherry-picked fix: `2df29ae`; implementation and test files are byte-identical to
+that validated source fix. The old branch and unrelated worktrees are untouched.
+
+Authorized delivery: push ONLY this new feature branch, create one Draft PR to
+main titled "fix(dictation): preserve Android speech across recognition restarts",
+verify GitHub head equals local HEAD, and monitor that exact SHA's CI to green.
+At this documentation commit, publication/remote CI is pending. Locate the PR and
+current CI status by this exact branch; do not reuse #147's historical green run.
+Stop after Draft PR CI is green, with physical acceptance still required.
+Production must remain unchanged. Keep the feature branch for tablet retesting.
+
 ## Android physical acceptance correction — LOCAL ONLY / DELIVERY BLOCKED (2026-10-04)
 
 User reported failed physical Android acceptance and requested PR #147 remain unmerged.
