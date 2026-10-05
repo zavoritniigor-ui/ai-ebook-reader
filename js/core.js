@@ -1061,6 +1061,9 @@ const I18N = {
     practiceTranslateSentence: { uk: 'Перекласти речення', en: 'Translate sentence', fr: 'Traduire la phrase', ru: 'Перевести предложение' },
     practiceError:      { uk: 'Помилка практики', en: 'Practice Error', fr: 'Erreur de pratique', ru: 'Ошибка практики' },
     practiceUnknownError: { uk: 'Невідома помилка', en: 'Unknown error', fr: 'Erreur inconnue', ru: 'Неизвестная ошибка' },
+    // Shown (once per failure episode) when Practice could not be written to storage -- js/practice-session.js.
+    practiceSaveFailed: { uk: 'Практику не вдалося зберегти на пристрої — після перезавантаження її буде втрачено. Звільніть місце й повторіть.', en: 'Practice could not be saved on this device — it will be lost on reload. Free up space and retry.', fr: 'La pratique n’a pas pu être enregistrée sur cet appareil — elle sera perdue au rechargement. Libérez de l’espace et réessayez.', ru: 'Практику не удалось сохранить на устройстве — после перезагрузки она будет потеряна. Освободите место и повторите.' },
+    practiceSaveRetry:  { uk: 'Зберегти ще раз', en: 'Retry save', fr: 'Réessayer l’enregistrement', ru: 'Сохранить ещё раз' },
     hint:               { uk: 'Підказка', en: 'Hint', fr: 'Indice', ru: 'Подсказка' },
     // Redesigned Grammar/Practice UI strings (contextual Verbs/Adjectives panel + reading Practice).
     grammarEmptyVerbs:      { uk: 'У цьому фрагменті дієслів не знайдено.', en: 'No verbs found in this selection.', fr: 'Aucun verbe trouvé dans cette sélection.', ru: 'В этом фрагменте глаголов не найдено.' },
@@ -1212,6 +1215,56 @@ Object.assign(I18N, {
         "ko": "키를 저장하고 모든 AI 요청에 사용할 제공업체를 선택하세요. 자동 전환되지 않습니다.",
         "hi": "कुंजियाँ सहेजें और सभी AI अनुरोधों के लिए प्रदाता चुनें। प्रदाता अपने आप नहीं बदलता।",
         "ga": "Sábháil do chuid eochracha agus roghnaigh soláthraí do gach iarratas AI. Ní athraítear soláthraí go huathoibríoch."
+    },
+    "aiUpdateKey": {
+        "en": "Update AI key",
+        "uk": "Оновити ключ AI",
+        "fr": "Mettre à jour la clé IA",
+        "ru": "Обновить ключ AI",
+        "zh": "更新 AI 密钥",
+        "ko": "AI 키 업데이트",
+        "hi": "AI कुंजी अपडेट करें",
+        "ga": "Nuashonraigh an eochair AI"
+    },
+    "aiRemoveKey": {
+        "en": "Remove key",
+        "uk": "Видалити ключ",
+        "fr": "Supprimer la clé",
+        "ru": "Удалить ключ",
+        "zh": "删除密钥",
+        "ko": "키 삭제",
+        "hi": "कुंजी हटाएँ",
+        "ga": "Bain an eochair"
+    },
+    "aiKeyRemovePending": {
+        "en": "The key will be removed when you press Save.",
+        "uk": "Ключ буде видалено після натискання «Зберегти».",
+        "fr": "La clé sera supprimée quand vous appuierez sur Enregistrer.",
+        "ru": "Ключ будет удалён после нажатия «Сохранить».",
+        "zh": "按“保存”后将删除此密钥。",
+        "ko": "저장을 누르면 키가 삭제됩니다.",
+        "hi": "सहेजें दबाने पर कुंजी हटा दी जाएगी।",
+        "ga": "Bainfear an eochair nuair a bhrúnn tú Sábháil."
+    },
+    "aiKeySavedHint": {
+        "en": "Key saved — type a new key to replace it.",
+        "uk": "Ключ збережено — введіть новий, щоб замінити.",
+        "fr": "Clé enregistrée — saisissez une nouvelle clé pour la remplacer.",
+        "ru": "Ключ сохранён — введите новый, чтобы заменить.",
+        "zh": "密钥已保存——输入新密钥即可替换。",
+        "ko": "키가 저장되었습니다 — 바꾸려면 새 키를 입력하세요.",
+        "hi": "कुंजी सहेजी गई — बदलने के लिए नई कुंजी लिखें।",
+        "ga": "Eochair sábháilte — clóscríobh eochair nua chun í a athsholáthar."
+    },
+    "aiKeyInvalid": {
+        "en": "{provider}: the key contains invalid characters (spaces inside, dots or symbols such as •). Paste the full key again.",
+        "uk": "{provider}: ключ містить недопустимі символи (пробіли, крапки чи символи на кшталт •). Вставте повний ключ ще раз.",
+        "fr": "{provider} : la clé contient des caractères invalides (espaces, points ou symboles comme •). Collez à nouveau la clé complète.",
+        "ru": "{provider}: ключ содержит недопустимые символы (пробелы, точки или символы вроде •). Вставьте полный ключ ещё раз.",
+        "zh": "{provider}：密钥包含无效字符（空格、圆点或 • 等符号）。请重新粘贴完整密钥。",
+        "ko": "{provider}: 키에 잘못된 문자(공백, 점 또는 • 같은 기호)가 있습니다. 전체 키를 다시 붙여넣으세요.",
+        "hi": "{provider}: कुंजी में अमान्य वर्ण हैं (रिक्त स्थान, बिंदु या • जैसे चिह्न)। पूरी कुंजी फिर से चिपकाएँ।",
+        "ga": "{provider}: tá carachtair neamhbhailí san eochair (spásanna, poncanna nó siombailí cosúil le •). Greamaigh an eochair iomlán arís."
     },
     "tAiKey": {
         "en": "AI API keys (OpenAI / Groq / Gemini)",

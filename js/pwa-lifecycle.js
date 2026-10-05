@@ -67,6 +67,7 @@ function persistCriticalState() {
             persistPdfZoom(); saveInk();
         }
         saveBookmark();
+        if (typeof retryPracticeSave === 'function') retryPracticeSave(); // last chance for a Practice save that failed earlier
         writeStored('reader_theme', document.body.getAttribute('data-theme') || 'light');
         writeStored('reader_font_size', state.fontSize);
         writeStored('reader_pdf_scale', state.pdfScale);

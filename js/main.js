@@ -106,7 +106,20 @@ els.translateBtn.onclick = () => {
 els.micBtn.onclick = toggleDictation;
 // Send while dictating: finish recognition first -- the last spoken words are still interim and would be dropped
 // (audit A11) -- then send exactly what is in the field. Without dictation, or without AI, Send is unchanged.
-function sendAskFromField() { const q = els.askInput.value.trim(); if (askAttachment) { sendAskAttachment(q); return; } if(q) { if(!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; } stopDictation(); els.askInput.value = ""; startAiTask(state.lastAskContext || q, 'ask', q); } }
+function sendAskFromField() {
+    const q = els.askInput.value.trim();
+    if (askAttachment) { sendAskAttachment(q); return; }
+    if (!q) return;
+    if (!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; }
+    stopDictation();
+    els.askInput.value = "";
+    // One-shot: a context set by an earlier explicit selection (ttAskBtn/btn-explain/btn-lang-level)
+    // is used for THIS question only, then cleared -- an unrelated LATER question must never inherit
+    // a stale passage (startAiTask itself no longer re-remembers it; see the note there).
+    const context = state.lastAskContext;
+    state.lastAskContext = '';
+    startAiTask(context, 'ask', q);
+}
 els.askSendBtn.onclick = () => {
     if (dictationBusy() && aiAvailable() && !(askAttachment && askAttachment.sending)) { finishDictationThen(sendAskFromField); return; }
     sendAskFromField();

@@ -278,6 +278,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         state.lastAskParagraph = tapContextParagraph;
         // Пріоритет — мовний розбір: саме він потрібен найчастіше. Енциклопедичне
         // пояснення лишається окремою кнопкою в самій панелі, за запитом.
+        // An explicit selection action: this IS the new context a typed follow-up question may use.
+        state.lastAskContext = cleanText;
         startAiTask(cleanText, 'level');
     };
 

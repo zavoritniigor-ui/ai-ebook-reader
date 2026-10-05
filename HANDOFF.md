@@ -15,6 +15,84 @@ Branch `feature/instant-multisource-translation` from main `83fc8d6` (worktree ~
 - Tests: tests/instant_translation_browser.py (62 checks); single_word_translation / translation_popup_timer now
   clear both caches and stub the on-device translator; migration_audit script order includes the new module.
 - Physical tablet checks pending (Android Chrome Translator API availability is unverified).
+## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
+
+**Not yet merged.** Branch `fix/dictation-android-reliability` from main `949d8b2` (includes PR #147's Ask AI
+question-priority fix, unrelated and untouched here).
+
+**User report:** voice dictation on an Android tablet captures only the beginning of a sentence, sometimes
+duplicates words, then stops/beeps. ("Пошукай в інтернеті, яка сьогодні погода в Монреалі." recognized with
+wrong individual words -- that part is the platform's own STT accuracy, out of this app's control and not
+investigated further; "captures only the beginning" and "stops" are this app's own event-handling, and were.)
+
+**Root cause** (`js/dictation.js`'s `onend` restart handler): every session on Android/iOS is single-utterance
+(`dictationSingleUtterance`, PR #131), so a fresh session restarts after EVERY spoken clause during ordinary
+continuous dictation -- not just when something is broken. The restart delay formula
+`Math.min(3000, 600 * 2 ** emptyEnds)` applied its full exponential-backoff ladder even when the ending session
+had just SUCCEEDED (`hadFinal` true, `emptyEnds` reset to 0): `2 ** 0 === 1`, so the "no backoff" case still
+computed a flat 600ms silent gap before the next session started listening. A real sentence's natural
+pause-between-clauses is routinely shorter than that, so the app was not listening right when the speaker
+continued -- a plausible, confirmable explanation for "only the beginning" arriving, and (via cascading empty
+endings once the mic falls behind the speaker) for dictation eventually self-stopping.
+
+**Fix:** restart at once (0ms) when the ending session produced a final result; the escalating backoff
+(600/1200/2400ms) now only applies to a session's OWN first, second, third genuinely empty ending -- the
+"broken/silent engine must not loop forever" protection this delay existed for is unchanged.
+
+**Not fixed, explicitly out of scope:** individual mis-recognized words (STT model accuracy) and any native
+Android start/stop beep tone -- both outside the web app's control; separating these from this app's own bug
+was done per the task's own instruction, not skipped by oversight.
+
+**Tests:** `tests/ask_dictation_browser.py` extended -- timing instrumentation added to the deterministic
+SpeechRecognition mock; new checks 16/16b (restart after a successful utterance is near-immediate; an empty
+ending still backs off -- confirmed 16 fails on the pre-fix code via a local git-stash negative control, real
+measured gap matched the old formula), 17/17b (the two reported Ukrainian phrases, delivered as realistic
+short-gapped multi-utterance sequences, arrive complete), 18 (legitimate Ukrainian repetitions `дуже дуже
+добре` / `ні ні зачекай` survive -- no blanket dedup), 19 (an already-committed result index resent by the
+engine is not double-committed, tested on the continuous desktop session where the index stays addressable).
+All 39 checks pass; `dictation_send_browser.py` (PR #140, Send-while-dictating) and `ask_prompt_browser.py`
+(PR #147) re-run unmodified -- no regression. `learning_ux`, `migration_audit`, `ai_providers`,
+`practice_browser`, `app_shell_versions`, `ci_suite_coverage` also re-run clean.
+
+**MANUAL ANDROID MICROPHONE VALIDATION: PENDING** -- the deterministic mock proves the application's own
+restart-latency defect and its fix; it cannot prove real Android microphone/OS speech-service behavior
+(duplicate words from genuine audio overlap at a session boundary, or the platform's own recognition
+accuracy). Physical device testing is still required before claiming the field problem itself is resolved.
+
+## Phase A (work preservation) — MERGED / PRODUCTION VERIFIED; physical checks pending (2026-10-02, Claude)
+
+**Merged:** PR #143 squash-merged as main `a0947f4` (PR head `ee9b150` = Phase A `f4c3587` + merge of main
+`43d2eec`; conflicts were only generated ?v=/CACHE_NAME, regenerated). PR CI and main CI (run 36943106527) green.
+Production https://ai-ebook-reader.pages.dev: HTTP 200, all 25 script versions = main, sw `ai-reader-shell-ab3bd54eeaeb`;
+pdf_ink_ownership (29), practice_save_failure (19) and ai_key_replacement (43) suites pass AGAINST PRODUCTION.
+**Open before Phase 3B (NOT started):** physical-device checks -- (A) PDF ink A draw/clear/Undo -> B draw/Undo -> A:
+no cross-document ink; (B) Practice save failure -> banner -> Retry save -> reload restores last saved session.
+- P0 (js/pdf-ink.js): undo history was page-keyed and survived loadInk(), so A's ops replayed on B and saveInk()
+  persisted them as ink_B; draw-undo spliced index -1. Now loadInk() sets inkOwner = bookKey and resets history;
+  ops/canvases carry their owner; saveInk refuses foreign ink; Undo never splices -1.
+- P1 (js/practice-session.js, practice-worksheet.js, pwa-lifecycle.js): failed save was console-only and
+  Regenerate/Retry deleted the old stored session. Now: unsaved session kept in memory, toast once + banner with
+  Retry save, old session kept, persistCriticalState() retries. 24h retention unchanged.
+
+## AI key replacement — CLOSED / MERGED / PRODUCTION VERIFIED (2026-10-01, Claude)
+
+**Merged:** PR #144 squash-merged as main `6e5f1fd` (PR CI green on head `36a3314`; main CI green). Cloudflare
+production deployed and verified (https://ai-ebook-reader.pages.dev serves index.html / sw.js / ui-tooltip.js
+`?v=afded3706fe4`); tests/ai_key_replacement_browser.py run AGAINST PRODUCTION with fake keys: all checks pass,
+incl. service-worker-controlled reload and a Cache Storage leak scan.
+**Still open (not blocking):** user's own final check with a REAL key (replace -> Save -> Ask at once -> reload ->
+Ask -> replace -> Grammar/Practice). Phase 3B NOT started. Phase A PR #143 (ink ownership + Practice save
+recovery) is a separate DRAFT awaiting independent review -- not merged.
+
+- Cause: the key dialog's provider radio REFUSED a provider whose field was empty, so "pick provider -> paste key ->
+  Save" stored the key but kept the OLD provider active (no/invalid key): AI kept failing until reload-ish luck.
+- Fix (js/ui-tooltip.js): radio = draft choice + add-key hint; Save activates it only with a key (no silent
+  switch). Fields show the real saved key (password); a CLEARED field keeps the key; deletion only via the new
+  per-provider "Remove key" (pending until Save). Trim; reject non-printable-ASCII / masked dots / inner spaces.
+  Save refuses unless the dialog was filled from state. 401/403 in Ask/Grammar/Practice show "Update AI key";
+  Retry re-reads the key. New strings in all 8 languages (js/core.js).
+- Tests: new tests/ai_key_replacement_browser.py (fails on 83fc8d6 at T1); tests/ai_providers_browser.py updated
+  to the draft-radio / explicit-Remove contract (its old asserts encoded the bug).
 
 ## A11 — CLOSED / MERGED / PRODUCTION VERIFIED: Send while dictating keeps the last spoken words (2026-09-28, Claude)
 

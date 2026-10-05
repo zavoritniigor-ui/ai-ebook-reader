@@ -872,6 +872,8 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         #settings-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index:30000; justify-content:center; align-items:center; }
+        #settings-modal .key-remove { display: block; margin: 6px 0 0; padding: 4px 10px; font-size: 13px; }
+        #settings-modal .key-remove[hidden] { display: none; }
         .modal-content {
             position: relative; background: var(--panel-bg); padding: 28px; border-radius: var(--radius-lg);
             width: 90%; max-width: 460px; max-height: 86vh; overflow-y: auto;
@@ -1296,7 +1298,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=7c79b241ddf0"></script>
+    <script src="js/core.js?v=7b24e77b4063"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1311,15 +1313,15 @@
     <script src="js/learning-stats.js?v=38a697ac8915"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
-    <script src="js/ui-tooltip.js?v=784171a5a724"></script>
+    <script src="js/ui-tooltip.js?v=afded3706fe4"></script>
     <script src="js/translation-cache.js?v=bfe74f1355ef"></script>
-    <script src="js/translation.js?v=2afd9ec314c9"></script>
-    <script src="js/grammar-svo.js?v=d97b7bfee927"></script>
-    <script src="js/ai-client.js?v=2f924789fc10"></script>
-    <script src="js/practice-session.js?v=ca3e5f0617db"></script>
-    <script src="js/practice-worksheet.js?v=9b3d4f232932"></script>
-    <script src="js/dictation.js?v=ea152b0a6fed"></script>
-    <script src="js/pdf-ink.js?v=9c7619668e39"></script>
+    <script src="js/translation.js?v=0d4431fe2471"></script>
+    <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
+    <script src="js/ai-client.js?v=dbdff37a51aa"></script>
+    <script src="js/practice-session.js?v=4a936b0b2205"></script>
+    <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
+    <script src="js/dictation.js?v=6cf6ee491dd8"></script>
+    <script src="js/pdf-ink.js?v=9ed1750d501f"></script>
     <script src="js/pdf-crop.js?v=80bab2793f94"></script>
     <script src="js/pdf-outline.js?v=97d934db97c6"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
@@ -1328,7 +1330,7 @@
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/quick-wheel.js?v=3176ba147224"></script>
-    <script src="js/main.js?v=ddf38de9c9db"></script>
-    <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
+    <script src="js/main.js?v=d8eabe80cbc4"></script>
+    <script src="js/pwa-lifecycle.js?v=dfdd779052a2"></script>
 </body>
 </html>

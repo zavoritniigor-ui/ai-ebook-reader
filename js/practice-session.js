@@ -355,8 +355,33 @@ function isValidPracticeSession(session) {
     return session.status === 'generating' || session.status === 'error';
 }
 
-// Save session to localStorage
+// The ready session whose last save FAILED (quota, storage blocked, private mode). It stays in memory
+// (here, even if the panel is closed) so the learner keeps reading it and a save can be retried during
+// this page's lifetime; it only clears once that session (or a newer ready one) actually reaches
+// storage. The notice is shown once per failure episode, not on every failed retry.
+let practiceUnsavedSession = null, practiceSaveFailureNotified = false;
+function isPracticeSessionUnsaved(session) {
+    return !!session && !!practiceUnsavedSession && session.id === practiceUnsavedSession.id;
+}
+function setPracticeSaveFailed(session, failed) {
+    if (failed) {
+        practiceUnsavedSession = session;
+        if (!practiceSaveFailureNotified) {
+            practiceSaveFailureNotified = true;
+            if (typeof showToast === 'function') showToast(t('practiceSaveFailed'));
+        }
+    } else if (practiceUnsavedSession) {
+        practiceUnsavedSession = null;
+        practiceSaveFailureNotified = false;
+    } else return;
+    if (typeof syncPracticeSaveWarning === 'function') syncPracticeSaveWarning();
+}
+
+// Save session to localStorage. Returns true only if the session AND (for a ready session) the
+// "latest" pointer that restores it on reload were both written; a ready session that is not fully
+// persisted is marked unsaved and the learner is told -- never a silent console-only warning.
 function persistPracticeSession(session) {
+    let ok = true;
     try {
         localStorage.setItem(
             PRACTICE_SESSION_PREFIX + session.id,
@@ -367,8 +392,17 @@ function persistPracticeSession(session) {
             localStorage.setItem(PRACTICE_SESSION_LATEST_KEY, session.id);
         }
     } catch (e) {
+        ok = false;
         console.warn('Failed to persist practice session:', e.message);
     }
+    if (session.status === 'ready') setPracticeSaveFailed(session, !ok);
+    return ok;
+}
+
+// Retry saving the unsaved session after a failed save (the warning's button, and every point where
+// the app persists critical state before it may be unloaded). True when nothing is left unsaved.
+function retryPracticeSave() {
+    return practiceUnsavedSession ? persistPracticeSession(practiceUnsavedSession) : true;
 }
 
 // Load session from localStorage. A payload from another schema (the retired exercise worksheet, an
@@ -525,6 +559,7 @@ async function generatePracticeReading(context) {
         session.lastError = {
             message: err.message,
             code: err.name || 'GenerationError',
+            status: err.status, // 401/403 -> the error panel offers "Update AI key"
             timestamp: Date.now()
         };
         session.updatedAt = Date.now();
@@ -662,7 +697,8 @@ async function retryPracticeGeneration() {
 
     try {
         const newSession = await generatePracticeReading(context);
-        if (newSession) {
+        // The old session is the only copy in storage until the new one is actually saved.
+        if (newSession && !isPracticeSessionUnsaved(newSession)) {
             deletePracticeSession(oldSessionId);
         }
         return newSession;
@@ -679,7 +715,7 @@ async function regeneratePracticeReading(context) {
 
     try {
         const newSession = await generatePracticeReading(context);
-        if (newSession && oldSessionId) {
+        if (newSession && oldSessionId && !isPracticeSessionUnsaved(newSession)) {
             deletePracticeSession(oldSessionId);
         }
         return newSession;
