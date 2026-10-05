@@ -1,20 +1,29 @@
-## BRANCH (not merged): instant multi-source word translation + persistent book cache (2026-09-29, Claude)
+## BRANCH (Draft PR #142, not merged): instant multi-source word translation + persistent book cache (2026-10-05, Antigravity)
 
-Branch `feature/instant-multisource-translation` from main `83fc8d6` (worktree ~/Projects/AI-Ebook-Reader-Instant).
+Branch `feature/instant-multisource-translation` rebased/merged with current `origin/main` (`aea79774fa24203dec0f69efa61ffa91be487a37`) in worktree `~/Projects/AI-Ebook-Reader-Instant`.
 - Root cause of the "Translating..." wait: `handleWordOrSelection` awaited the AI answer BEFORE anything else; local
   and machine translation ran only after (or instead of) it; the only cache was in memory.
 - Providers actually present: Groq (api.groq.com, openai/gpt-oss-120b), OpenAI, Gemini. NO xAI Grok.
-- Now (single word; phrases keep their path): `translateWordMultiSource` in js/translation.js runs L0a memory ->
-  L0b/L0c IndexedDB (js/translation-cache.js, bounded 150 ms wait) -> in parallel L1 on-device translator (only if
-  usable now; a pack download never blocks a tap), network machine translation (+ dictionary extras), Groq (fast,
+- Now (single word & multi-word phrase): `translateWordMultiSource` in `js/translation.js` runs L0a memory ->
+  L0b/L0c IndexedDB (`js/translation-cache.js`, bounded 150 ms wait) -> in parallel L1 on-device translator (only if
+  usable now; a pack download never blocks a tap or runs unexpectedly), network machine translation (+ dictionary extras), Groq (fast,
   if its key is saved) and OpenAI (refinement, if its key is saved; else the active Gemini; else the active
-  provider as before). Rank-based rendering into the SAME line (never last-response-wins); lookupToken + lookup
-  task guard every render; first result starts the timer and is spoken once; exact-context cache hit = zero
-  network calls; offline/total-failure messages localized (no raw "Failed to fetch").
+  provider as before). For multi-word phrases, non-blocking local/machine translation renders first before delayed AI refinement.
+- Rank-based rendering into the SAME line (never last-response-wins); lookupToken + lookup task guard every render;
+  first result starts the timer and is spoken once; exact-context cache hit = zero network calls;
+  offline/total-failure messages localized (no raw "Failed to fetch").
 - `requestAI`/`aiTranslateText` accept `options.provider` (that provider's own saved key); no keys are persisted.
-- Tests: tests/instant_translation_browser.py (62 checks); single_word_translation / translation_popup_timer now
-  clear both caches and stub the on-device translator; migration_audit script order includes the new module.
-- Physical tablet checks pending (Android Chrome Translator API availability is unverified).
+- Tests passing 100%:
+  - `tests/instant_translation_browser.py` (all 31 checks PASS)
+  - `tests/single_word_translation_browser.py` (ALL PASS)
+  - `tests/translation_popup_timer_browser.py` (ALL PASS)
+  - `tests/learning_ux_browser.py` (ALL PASS)
+  - `tests/ai_providers_browser.py` (ALL PASS)
+  - `tests/migration_audit_browser.py` (ALL PASS)
+  - `tests/app_shell_versions.py` & `tests/ci_suite_coverage.py` (PASS)
+- App shell re-versioned with `tools/version_app_shell.py`; all JS files pass `node --check`.
+- Physical tablet/phone checks pending (Android Chrome Translator API availability and on-device performance to be confirmed by user). Do NOT merge until physical validation is done.
+
 ## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
 
 **Not yet merged.** Branch `fix/dictation-android-reliability` from main `949d8b2` (includes PR #147's Ask AI

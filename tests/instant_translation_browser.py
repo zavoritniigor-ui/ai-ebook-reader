@@ -68,6 +68,10 @@ def load():
         ['chat', 'dort', {groq: ['кіт', null], openai: ['кіт', null]}],
         ['chat', 'long', {groq: ['розмова', null], openai: ['розмова', null]}]];
       const reply = (provider, prompt) => {
+        const frag = (prompt.match(/цей фрагмент: "([^"]+)"/) || [])[1];
+        if (frag) {
+          return JSON.stringify({translation: 'кіт спить', alignment: []});
+        }
         const word = (prompt.match(/Слово "([^"]+)"/) || [])[1] || '', sentence = (prompt.match(/вжите: "([^"]*)"/) || [])[1] || '';
         const row = table.find(r => r[0] === word.toLowerCase() && sentence.includes(r[1]));
         const [direct, note] = row ? row[2][provider === 'groq' ? 'groq' : 'openai'] : [word + '-' + provider, null];
@@ -107,7 +111,7 @@ def reset(*, clear_db=True, memory=True):
       {"await clearAllTranslationCaches();" if clear_db else ""} __ai.calls.length = 0; __tr.calls = 0; __gt.calls = 0; __spoken.length = 0;
       __ai.groq = {{delay: 300, fail: false}}; __ai.openai = {{delay: 900, fail: false}}; __ai.gemini = {{delay: 500, fail: false}};
       __tr.availability = 'available'; __tr.delay = 10; __gt.on = false; localTranslatorReady.clear(); localTranslators.clear(); __online = true; state.tooltipJustClosed = false; state.touchJustCommitted = 0;
-      state.groqKey = 'test-groq-key'; state.openaiKey = 'test-openai-key'; return 1; }})()""")
+      state.groqKey = 'test-groq-key'; state.openaiKey = 'test-openai-key'; state.activeAiProvider = 'openai'; state.apiKey = ''; return 1; }})()""")
     pause(.15)
 
 
@@ -292,7 +296,27 @@ check('30 no on-device Translator API at all: AI translation still works', f"{MA
 reset(); c.js("state.groqKey = ''; state.openaiKey = ''; state.activeAiProvider = 'gemini'; state.apiKey = 'test-gemini-key'; __tr.availability = 'unavailable'; 1")
 tap('dort', 'fr3')
 check('an active Gemini is the one AI stage when no Groq/OpenAI keys are saved', "__ai.calls.length === 1 && __ai.calls[0].provider === 'gemini'", timeout=2)
-c.js("state.activeAiProvider = 'openai'; state.apiKey = ''; 1")
+# ---- phrase selection: fast local/machine translation before delayed AI ---------------------------------------
+reset()
+c.js(r"""(() => {
+  const p = document.createElement('p'); p.id = 's-phrase'; p.textContent = 'Le chat dort sur le canapé.';
+  p.style.cssText = 'margin:14px 40px;font-size:22px;line-height:1.6';
+  els.pages.appendChild(p);
+  __tr.availability = 'available'; __tr.dict['fr>uk']['le chat dort'] = 'кіт спить';
+  __ai.openai.delay = 800;
+  return 1;
+})()""")
+c.js("""(() => {
+  const el = document.getElementById('s-phrase');
+  const r = document.createRange();
+  r.setStart(el.firstChild, 0);
+  r.setEnd(el.firstChild, 12);
+  const b = r.getBoundingClientRect();
+  state.lastSelectedRange = r;
+  handleWordOrSelection('Le chat dort', b.left + b.width / 2, b.top + b.height / 2, b);
+})()""")
+check('31 phrase: fast local translation renders first before delayed AI', f"{MAIN} === 'кіт спить'", timeout=1)
+check('31 ... then AI refines phrase translation', "els.ttTranslation.textContent.includes('⚡')", timeout=3)
 
 check('no API key reached the persistent cache', """(async () => { const db = await tcOpen(); return await new Promise(res => { const out = [];
   const r = db.transaction('entries').objectStore('entries').openCursor(); r.onsuccess = () => { const cur = r.result; if (!cur) return res(!out.some(v => /test-(groq|openai|gemini)-key/.test(v))); out.push(JSON.stringify(cur.value)); cur.continue(); }; }); })()""")

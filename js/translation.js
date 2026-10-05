@@ -307,10 +307,31 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         els.ttTranslation.innerHTML = typeof cached === 'string' ? cached : cached.html;
         alignmentResult = typeof cached === 'object' ? cached : null;
     } else {
-        // Groq відповідає настільки швидко, що змагатися з машинним перекладом
-        // немає сенсу: онлайн усе перекладає AI — і слова, і речення. Машинний
-        // лишається виключно як запасний варіант, коли немає мережі або ключа.
         let html = null;
+        let fastRendered = false;
+        if (aiAvailable() && navigator.onLine) {
+            (async () => {
+                try {
+                    const local = await translateLocallyIfReady(cleanText, srcCode, targetLang);
+                    if (local && myLookup === state.lookupToken && task.current() && !html) {
+                        fastRendered = true;
+                        els.ttTranslation.innerHTML = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
+                        const a = state.tooltipAnchor;
+                        if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+                        return;
+                    }
+                } catch (e) {}
+                try {
+                    const m = await machineTranslate(cleanText, srcCode, true, task.signal, targetLang, { skipLocal: true });
+                    if (m && m.html && myLookup === state.lookupToken && task.current() && !html) {
+                        fastRendered = true;
+                        els.ttTranslation.innerHTML = m.html;
+                        const a = state.tooltipAnchor;
+                        if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+                    }
+                } catch (e) {}
+            })();
+        }
         const ai = await aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000);
         if (myLookup !== state.lookupToken || !task.current()) return;
         if (ai) {
@@ -319,16 +340,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 (alignmentResult?.contextNote ? ` <span class="tt-context">(${escapeHtml(alignmentResult.contextNote)})</span>` : '') +
                 ' <span class="tt-note">⚡</span>';
             els.ttTranslation.innerHTML = html;
-            // Для окремого слова додаємо словникові значення: вони не дублюють
-            // переклад, а показують інші можливі значення.
-            if (!isMultiWord) {
-                try {
-                    const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
-                    if (myLookup !== state.lookupToken || !task.current()) return;
-                    if (m.extras) html += m.extras;
-                } catch (e) {}
-            }
-        } else {
+        } else if (!fastRendered) {
             try {
                 const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
                 if (myLookup !== state.lookupToken || !task.current()) return;
@@ -585,7 +597,7 @@ async function translateLocallyIfReady(text, src, tgt) {
         let tr = localTranslatorReady.get(key);
         if (!tr) {
             const availability = await Translator.availability({ sourceLanguage: src, targetLanguage: tgt });
-            if (availability !== 'available') { warmLocalTranslator(src, tgt); return null; }
+            if (availability !== 'available') return null;
             tr = await getLocalTranslator(src, tgt);
             if (!tr) return null;
         }
