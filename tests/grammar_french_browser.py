@@ -444,7 +444,7 @@ check("Verbs mode shows the French mode labels and the French tense controls",
          document.querySelectorAll('#grammar-controls-bar button').length===GRAMMAR_LANG_CONFIG.fr.verb.tenses.length""")
 
 # --- Verbs <-> Adjectives switching with NO extra AI call
-before = c.js("__calls.length")
+before_grammar = grammar_calls()
 c.js("document.getElementById('grammar-mode-adjectives').click()")
 check("Adjectives mode: verb-only tense controls disappear",
       "document.querySelectorAll('#grammar-controls-bar button').length===0 && document.getElementById('grammar-mode-adjectives').classList.contains('active') && !document.getElementById('grammar-mode-verbs').classList.contains('active')")
@@ -470,7 +470,7 @@ check("Verb detail: badges, no stem/ending for the compound form, agreement targ
         return d.dataset.pos==='verb' && d.querySelectorAll('.grammar-badge').length===6 && !d.querySelector('.grammar-focus-pattern') &&
           d.querySelector('.grammar-focus-agrees')?.textContent.includes('Elle') && d.querySelector('.grammar-context-target')?.textContent==='a mangé' &&
           d.querySelector('.grammar-focus-why')?.textContent.includes('Passé composé')})()""")
-assert c.js("__calls.length") == before, 'mode switching / focusing an analysed occurrence must not call the AI'
+assert grammar_calls() == before_grammar, 'mode switching / focusing an analysed occurrence must not call the AI'
 print('PASS Verbs <-> Adjectives switching and clicking analysed occurrences made ZERO extra AI calls')
 
 # --- re-tap the same word: served from cache, no AI call
