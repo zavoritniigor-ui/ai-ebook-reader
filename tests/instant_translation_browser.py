@@ -297,6 +297,7 @@ reset(); c.js("state.groqKey = ''; state.openaiKey = ''; state.activeAiProvider 
 tap('dort', 'fr3')
 check('an active Gemini is the one AI stage when no Groq/OpenAI keys are saved', "__ai.calls.length === 1 && __ai.calls[0].provider === 'gemini'", timeout=2)
 # ---- phrase selection: fast local/machine translation before delayed AI ---------------------------------------
+load()   # test 30 deleted window.Translator; reload restores the pre-loaded mocks
 reset()
 c.js(r"""(() => {
   const p = document.createElement('p'); p.id = 's-phrase'; p.textContent = 'Le chat dort sur le canapé.';
@@ -315,8 +316,33 @@ c.js("""(() => {
   state.lastSelectedRange = r;
   handleWordOrSelection('Le chat dort', b.left + b.width / 2, b.top + b.height / 2, b);
 })()""")
-check('31 phrase: fast local translation renders first before delayed AI', f"{MAIN} === 'кіт спить'", timeout=1)
+check('31 phrase: fast local translation renders first before delayed AI', f"{MAIN} === 'кіт спить' && __tr.calls >= 1 && !els.ttTranslation.textContent.includes('⚡')", timeout=1)
 check('31 ... then AI refines phrase translation', "els.ttTranslation.textContent.includes('⚡')", timeout=3)
+
+
+def select_phrase():
+    c.js("""(() => {
+      const el = document.getElementById('s-phrase');
+      const r = document.createRange(); r.setStart(el.firstChild, 0); r.setEnd(el.firstChild, 12);
+      const b = r.getBoundingClientRect(); state.lastSelectedRange = r;
+      __seq.length = 0; window.__t0 = performance.now();
+      handleWordOrSelection('Le chat dort', b.left + b.width / 2, b.top + b.height / 2, b);
+      return 1; })()""")
+
+# ---- phrase selection: AI failure, stale answer, offline --------------------------------------------------------
+reset(); c.js("__tr.availability = 'available'; __ai.openai.fail = true; __ai.openai.delay = 300; 1"); select_phrase()
+check('32 phrase: local translation shown first', f"{MAIN} === 'кіт спить'", timeout=1)
+pause(1.0)
+check('32 ... AI fails: the local phrase translation stays (no error replaces it)', f"{MAIN} === 'кіт спить' && !els.ttTranslation.textContent.includes('⚡')")
+
+reset(); c.js("__ai.openai.delay = 1200; 1"); select_phrase()
+check('33 phrase: local translation shown while the AI is still pending', f"{MAIN} === 'кіт спить'", timeout=1)
+tap('dort', 'fr3'); pause(1.6)
+check('33 ... a late phrase AI answer cannot overwrite the newer word translation', "!els.ttTranslation.textContent.includes('кіт спить')")
+check('33 ... and the popup shows the tapped word', "els.ttOriginal.textContent.toLowerCase() === 'dort'")
+
+reset(); c.js("__online = false; 1"); select_phrase()
+check('34 offline phrase: the on-device translation is shown, AI is not required', f"{MAIN} === 'кіт спить' && __ai.calls.length === 0", timeout=2)
 
 check('no API key reached the persistent cache', """(async () => { const db = await tcOpen(); return await new Promise(res => { const out = [];
   const r = db.transaction('entries').objectStore('entries').openCursor(); r.onsuccess = () => { const cur = r.result; if (!cur) return res(!out.some(v => /test-(groq|openai|gemini)-key/.test(v))); out.push(JSON.stringify(cur.value)); cur.continue(); }; }); })()""")
