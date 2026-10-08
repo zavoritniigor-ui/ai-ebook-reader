@@ -32,7 +32,7 @@ def tap(x,y):
 def settle():pause(.25)
 check('application initialized','typeof toggleDictation==="function" && __errors.length===0')
 js("els.askPanel.classList.add('expanded');els.askInput.value='My question:';toggleDictation();recognition.final('First part');recognition.interim('still thinking')")
-check('dictation final appended, interim separate',"els.askInput.value==='My question: First part' && dictationStatus.textContent==='still thinking'")
+check('dictation final and current interim visible',"els.askInput.value==='My question: First part still thinking' && dictationStatus.textContent==='still thinking'")
 js('recognition.onresult({resultIndex:0,results:recognition.results});recognition.end()')
 pause(8)
 check('eight-second pause retains text and restarts once',"els.askInput.value==='My question: First part' && dictation.wanted && __speech.length===2")

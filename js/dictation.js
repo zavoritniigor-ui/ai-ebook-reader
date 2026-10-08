@@ -1,40 +1,49 @@
-/* dictation.js — розпізнавання мовлення для панелі "Запитай AI":
- * updateDictationUI малює стан мікрофона (запис/іконка/aria), stopDictation
- * фіналізує накопичений розпізнаний текст рівно один раз (interim-текст живе
- * ОКРЕМО від поля вводу, тому паузи/ручне редагування/перезапуски розпізнавання
- * ніколи його не стирають), startDictationSession запускає SpeechRecognition і
- * керує авто-перезапуском (з обмеженням на порожні цикли), toggleDictation —
- * кнопка мікрофона.
- *
- * Класичний <script src>, НЕ ES-модуль — див. js/core.js. Завантажується одразу
- * після js/ai-client.js (SpeechRecognitionCtor/dictation-стан і всі функції —
- * самодостатній кластер, нічого іншого в цьому блоці не було).
+/* Speech recognition for Ask AI. Classic script; see ARCHITECTURE.md.
+ * The field is a projection of committed text + current final/interim slots.
+ * Only an ended engine may be replaced; callbacks belong to one generation.
  */
-
-// Dictation commits each final result once. Interim speech lives outside the
-// editable field, so pauses, manual edits and recognition restarts cannot erase it.
 let recognition;
 const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
 const micSecureOk = window.isSecureContext !== false;
-const dictation = { wanted: false, finishing: false, timer: null, finishTimer: null, emptyEnds: 0, generation: 0,
-    pendingInterim: '', afterFinish: null };
+const dictation = { wanted: false, finishing: false, phase: 'IDLE', timer: null, finishTimer: null,
+    emptyEnds: 0, generation: 0, afterFinish: null, retiring: null,
+    committedText: '', sessionFinalText: '', sessionInterimText: '', slots: [], ignoredSlots: 0,
+    boundaryReplay: false, renderedText: '', rendering: false };
 const dictationStatus = document.getElementById('dictation-status');
-// Android (and iOS/iPadOS) recognizers are single-utterance engines; their emulated `continuous` mode re-emits a
-// final result at the NEXT result index (results[0] "one" final, then results[1] "one" final), which the per-index
-// commit below appended twice ("one" -> "one one"). There each session asks for ONE utterance -- so one utterance
-// yields one final result -- and the restart loop in onend keeps dictation going. Desktop keeps continuous mode.
-const dictationSingleUtterance = /Android|iPad|iPhone|iPod/i.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-// Lifecycle trace for on-device diagnosis (`sttTrace` in the console): tells apart a duplicate emitted by the
-// browser (two results/indices), one result committed twice by the app, two live sessions, or one tap starting
-// twice. Holds recognized text only while the page is open; never keys or prompts.
+// Bounded, in-memory diagnostic trace; never persisted or sent to a service.
 const sttTrace = [];
 let sttSessionSeq = 0;
 function traceStt(event, data) {
     sttTrace.push(Object.assign({ t: Math.round(performance.now()), event }, data || {}));
     if (sttTrace.length > 80) sttTrace.shift();
+    const logButton = document.getElementById('stt-log-btn');
+    if (logButton && logButton.hidden) logButton.hidden = false;
 }
-function updateDictationUI(interim = '') {
+// Plain-text export of the trace for on-device diagnosis (button below the dictation status). Recognized words
+// only; never keys, prompts or page text.
+function dictationLogText() {
+    const lines = ['AI Ebook Reader dictation log', 'ua: ' + navigator.userAgent,
+        'single-utterance: ' + (typeof dictationSingleUtterance !== 'undefined' ? dictationSingleUtterance : '?'),
+        'lang: ' + (els.micLang ? els.micLang.value : '?'), 'events: ' + sttTrace.length, ''];
+    for (const entry of sttTrace) lines.push(JSON.stringify(entry));
+    return lines.join('\n');
+}
+async function copyDictationLog() {
+    const text = dictationLogText();
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { /* fall back below */ }
+    if (!ok) {
+        const area = document.createElement('textarea');
+        area.value = text; area.setAttribute('readonly', ''); area.style.cssText = 'position:fixed;left:-9999px;top:0';
+        document.body.appendChild(area); area.select();
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        area.remove();
+    }
+    showToast(ok ? t('dictationLogCopied') : text.slice(0, 200));
+}
+const sttLogButton = document.getElementById('stt-log-btn');
+if (sttLogButton) { sttLogButton.hidden = sttTrace.length === 0; sttLogButton.onclick = copyDictationLog; }
+function updateDictationUI(interim = dictation.sessionInterimText) {
     els.micBtn.classList.toggle('recording', dictation.wanted);
     els.micBtn.textContent = dictation.wanted ? '■' : '🎤';
     els.micBtn.setAttribute('aria-pressed', String(dictation.wanted));
@@ -42,84 +51,134 @@ function updateDictationUI(interim = '') {
     els.micBtn.title = t(dictation.wanted ? 'dictationStop' : 'dictationStart');
     dictationStatus.textContent = dictation.wanted ? (interim || t('dictationListening')) : '';
 }
+function joinDictationText(left, right) {
+    return left + (left && right && !/\s$/.test(left) ? ' ' : '') + right;
+}
+function dictationSessionSuffix(text) {
+    if (!dictation.boundaryReplay || !text) return text;
+    // Only the boundary of an automatic restart is eligible. Never deduplicate
+    // words inside an utterance or adjacent results in the same session.
+    const normalize = token => token.normalize('NFKC').toLowerCase().replace(/^[\p{P}]+|[\p{P}]+$/gu, '');
+    const before = dictation.committedText.trim().split(/\s+/).slice(-32).map(normalize);
+    const after = Array.from(text.matchAll(/\S+/g));
+    for (let n = Math.min(before.length, after.length, 32); n > 0; n--) {
+        if (before.slice(-n).every((token, i) => token && token === normalize(after[i][0]))) {
+            return text.slice(after[n - 1].index + after[n - 1][0].length).trimStart();
+        }
+    }
+    return text;
+}
+function syncDictationEdit() {
+    if (dictation.rendering || els.askInput.value === dictation.renderedText) return;
+    // Treat an explicit field edit as the new baseline, retiring already shown
+    // slots so replay cannot overwrite the edit. New result slots still append.
+    dictation.committedText = els.askInput.value;
+    dictation.ignoredSlots = dictation.slots.length;
+    dictation.sessionFinalText = ''; dictation.sessionInterimText = '';
+    dictation.boundaryReplay = false;
+    dictation.renderedText = els.askInput.value;
+}
+function renderDictation() {
+    const sessionText = joinDictationText(dictation.sessionFinalText, dictation.sessionInterimText);
+    const value = joinDictationText(dictation.committedText, dictationSessionSuffix(sessionText));
+    dictation.renderedText = value;
+    if (els.askInput.value !== value) {
+        dictation.rendering = true;
+        els.askInput.value = value;
+        els.askInput.dispatchEvent(new Event('input', { bubbles: true }));
+        dictation.rendering = false;
+    }
+    updateDictationUI();
+}
+function commitDictationSession(preserveInterim = false) {
+    syncDictationEdit();
+    const text = joinDictationText(dictation.sessionFinalText, preserveInterim ? dictation.sessionInterimText : '');
+    dictation.committedText = joinDictationText(dictation.committedText, dictationSessionSuffix(text));
+    dictation.slots = []; dictation.ignoredSlots = 0;
+    dictation.sessionFinalText = ''; dictation.sessionInterimText = '';
+    renderDictation();
+}
+function settleDictationFinish() {
+    const then = dictation.afterFinish;
+    dictation.afterFinish = null;
+    if (then) then();
+}
 function stopDictation(finish = false) {
     dictation.wanted = false;
     clearTimeout(dictation.timer); dictation.timer = null;
-    clearTimeout(dictation.finishTimer);
+    if (finish && dictation.finishing) return;
+    clearTimeout(dictation.finishTimer); dictation.finishTimer = null;
     if (finish && recognition) {
-        dictation.finishing = true;
+        dictation.finishing = true; dictation.phase = 'STOPPING';
         try {
             traceStt('stop');
-            recognition.stop(); // Let the engine finalize the last spoken fragment.
+            recognition.stop(); // Explicit Stop/Send only; ordinary results never stop the engine.
             if (recognition) dictation.finishTimer = setTimeout(() => stopDictation(), 2000);
             updateDictationUI(); return;
-        } catch (e) { /* A stopped/broken engine is aborted below. */ }
+        } catch (e) { /* Abort a broken engine below; wait for its end before another start. */ }
     }
+    // Explicit Stop/Send preserves the visible question even if finalization
+    // times out. An unexpected automatic restart commits finals only.
+    commitDictationSession(dictation.finishing || !!dictation.afterFinish);
     dictation.finishing = false; dictation.generation++;
-    clearTimeout(dictation.timer); dictation.timer = null;
     const old = recognition; recognition = null;
-    if (old) { traceStt('abort'); try { old.abort(); } catch (e) {} }
-    settleDictationFinish();
-    updateDictationUI();
+    if (old) {
+        dictation.retiring = old; dictation.phase = 'STOPPING';
+        traceStt('abort'); try { old.abort(); } catch (e) {}
+    } else if (!dictation.retiring) dictation.phase = 'IDLE';
+    settleDictationFinish(); updateDictationUI();
 }
-// Send while dictating (audit A11): the words being spoken are still INTERIM -- shown in the status, not yet in the
-// field -- and abort() throws them away. Finish recognition the way the Stop button does (stop -> the engine
-// finalizes the pending words -> end, bounded by the finish timeout above), THEN run `then` once. Words the engine
-// never finalized in time are committed as heard; anything arriving later is stale (generation) and ignored.
-function dictationBusy() { return !!recognition && (dictation.wanted || dictation.finishing); }
+function dictationBusy() { return dictation.wanted || dictation.finishing; }
 function finishDictationThen(then) {
-    if (dictation.afterFinish) return;               // a send is already waiting for this finish: one send only
+    if (dictation.afterFinish) return;
     dictation.afterFinish = then;
     traceStt('finish-then-send');
     if (dictation.wanted) stopDictation(true);
-    if (!dictation.finishing) settleDictationFinish();   // nothing left to finish (no live session)
+    if (!dictation.finishing) settleDictationFinish();
 }
-function settleDictationFinish() {
-    const then = dictation.afterFinish, heard = dictation.pendingInterim;
-    dictation.afterFinish = null; dictation.pendingInterim = '';
-    if (!then) return;
-    if (heard) {
-        traceStt('commit-pending', { text: heard });
-        const value = els.askInput.value;
-        els.askInput.value = value + (value && !/\s$/.test(value) ? ' ' : '') + heard;
-        els.askInput.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    then();
+function scheduleDictationRestart(delay) {
+    if (!dictation.wanted || recognition || dictation.retiring || dictation.timer !== null) return;
+    dictation.phase = 'RESTART_PENDING';
+    dictation.timer = setTimeout(() => {
+        dictation.timer = null; dictation.phase = 'IDLE'; startDictationSession();
+    }, delay);
 }
 function startDictationSession() {
-    if (!dictation.wanted || document.hidden || !SpeechRecognitionCtor || !micSecureOk) return;
+    if (!dictation.wanted || document.hidden || !SpeechRecognitionCtor || !micSecureOk
+        || recognition || dictation.retiring || dictation.timer !== null || dictation.phase !== 'IDLE') return;
     const generation = ++dictation.generation;
     const session = new SpeechRecognitionCtor(); recognition = session;
     const id = ++sttSessionSeq;
-    dictation.pendingInterim = '';
-    const current = () => generation === dictation.generation && recognition === session && (dictation.wanted || dictation.finishing) && !document.hidden;
-    session.lang = els.micLang.value; session.continuous = !dictationSingleUtterance; session.interimResults = true;
-    const committed = new Set(); let hadFinal = false;
+    dictation.phase = 'STARTING';
+    const current = () => generation === dictation.generation && recognition === session
+        && (dictation.wanted || dictation.finishing) && !document.hidden;
+    session.lang = els.micLang.value; session.continuous = true; session.interimResults = true;
+    let hadFinal = false;
+    session.onstart = () => { if (current() && dictation.phase === 'STARTING') dictation.phase = 'LISTENING'; };
     session.onresult = e => {
         traceStt('result', { session: id, stale: !current(), resultIndex: e.resultIndex,
             results: Array.from(e.results, (r, i) => ({ i, final: r.isFinal, text: r[0]?.transcript })) });
         if (!current()) return;
-        let interim = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-            const result = e.results[i], text = result[0]?.transcript?.trim();
-            if (!text) continue;
-            if (result.isFinal) {
-                if (committed.has(i)) continue;
-                committed.add(i); hadFinal = true; dictation.emptyEnds = 0;
-                traceStt('commit', { session: id, i, text });
-                // Always use the live value, including any edits since the last event.
-                const value = els.askInput.value;
-                els.askInput.value = value + (value && !/\s$/.test(value) ? ' ' : '') + text;
-                els.askInput.dispatchEvent(new Event('input', { bubbles: true }));
-            } else interim += (interim ? ' ' : '') + text;
+        syncDictationEdit();
+        // results is a session snapshot, NOT a new chunk to append. Preserve
+        // unchanged slots before resultIndex and remove withdrawn interim slots.
+        dictation.slots.length = e.results.length;
+        for (let i = 0; i < e.results.length; i++) {
+            if (i < e.resultIndex && dictation.slots[i]) continue;
+            const result = e.results[i];
+            dictation.slots[i] = { text: result[0]?.transcript?.trim() || '', final: !!result.isFinal };
         }
-        dictation.pendingInterim = interim;
-        updateDictationUI(interim);
+        const active = dictation.slots.slice(dictation.ignoredSlots);
+        dictation.sessionFinalText = active.filter(r => r.final).map(r => r.text).filter(Boolean).join(' ');
+        dictation.sessionInterimText = active.filter(r => !r.final).map(r => r.text).filter(Boolean).join(' ');
+        if (dictation.sessionFinalText) hadFinal = true;
+        traceStt('commit', { session: id, text: dictation.sessionFinalText });
+        renderDictation();
     };
     session.onerror = e => {
         traceStt('error', { session: id, error: e.error, stale: !current() });
         if (!current()) return;
-        if (e.error === 'no-speech') return; // Normal silence; onend owns the bounded restart.
+        if (e.error === 'no-speech') return; // onend alone owns restart scheduling.
         const messages = { 'not-allowed': t('micDenied'), 'service-not-allowed': t('micDenied'),
             'audio-capture': t('micNotFound'), 'network': t('micNetwork') };
         stopDictation();
@@ -127,36 +186,47 @@ function startDictationSession() {
     };
     session.onend = () => {
         traceStt('end', { session: id, stale: !current() });
+        if (dictation.retiring === session) {
+            dictation.retiring = null; dictation.phase = 'IDLE';
+            if (dictation.wanted) scheduleDictationRestart(0);
+            return;
+        }
         if (!current()) return;
-        recognition = null;
-        if (!dictation.wanted) { dictation.finishing = false; clearTimeout(dictation.finishTimer); settleDictationFinish(); updateDictationUI(); return; }
-        dictation.emptyEnds = hadFinal ? 0 : dictation.emptyEnds + 1;
-        // Broken engines must not produce an endless permission/start loop.
+        const before = dictation.committedText;
+        commitDictationSession(dictation.finishing);
+        const progressed = hadFinal && dictation.committedText !== before;
+        recognition = null; dictation.generation++; dictation.phase = 'IDLE';
+        if (!dictation.wanted) {
+            dictation.finishing = false; clearTimeout(dictation.finishTimer); dictation.finishTimer = null;
+            settleDictationFinish(); updateDictationUI(); return;
+        }
+        // Empty or replay-only cycles are bounded too, so duplicate finals cannot
+        // keep a broken engine in an endless immediate restart/beep loop.
+        dictation.emptyEnds = progressed ? 0 : dictation.emptyEnds + 1;
         if (dictation.emptyEnds > 3) { stopDictation(); showToast(t('dictationStopped')); return; }
-        // A session that ended WITH a final result is an ORDINARY utterance boundary: every session is
-        // single-utterance on Android/iOS (dictationSingleUtterance above), so this restart happens after
-        // EVERY spoken clause during normal continuous dictation, not just on a broken engine. Restarting
-        // at once -- instead of making the speaker wait out the same backoff a silent/broken engine needs --
-        // avoids losing the next words to an artificial gap where nothing is listening; a real multi-clause
-        // sentence has pauses well under the old flat 600ms, which is exactly what this used to eat. The
-        // escalating backoff (previously applied even here, at emptyEnds already reset to 0) still protects
-        // a genuinely empty/failing engine, now counted from its OWN first empty ending.
-        const delay = dictation.emptyEnds === 0 ? 0 : Math.min(3000, 600 * 2 ** (dictation.emptyEnds - 1));
-        dictation.timer = setTimeout(() => { dictation.timer = null; startDictationSession(); }, delay);
+        dictation.boundaryReplay = true;
+        scheduleDictationRestart(progressed ? 0 : Math.min(3000, 600 * 2 ** (dictation.emptyEnds - 1)));
     };
     try { session.start(); traceStt('start', { session: id, continuous: session.continuous, lang: session.lang }); updateDictationUI(); }
-    catch (e) { stopDictation(); showToast(t('dictationStopped')); }
+    catch (e) {
+        recognition = null; dictation.phase = 'IDLE';
+        stopDictation(); showToast(t('dictationStopped'));
+    }
 }
 function toggleDictation(e) {
     traceStt('toggle', { via: e ? e.type + (e.pointerType ? ':' + e.pointerType : '') : 'call', wanted: dictation.wanted, finishing: dictation.finishing });
     if (dictation.wanted) { stopDictation(true); return; }
     if (!SpeechRecognitionCtor || !micSecureOk || document.hidden) return;
+    // A quick second tap queues intent; it cannot overlap a stopping engine.
     if (dictation.finishing) stopDictation();
-    dictation.wanted = true; dictation.emptyEnds = 0; startDictationSession();
+    dictation.committedText = els.askInput.value; dictation.renderedText = els.askInput.value;
+    dictation.boundaryReplay = false;
+    dictation.wanted = true; dictation.emptyEnds = 0;
+    startDictationSession(); updateDictationUI();
 }
 if (!SpeechRecognitionCtor || !micSecureOk) els.micBtn.style.display = 'none';
+els.askInput.addEventListener('input', () => { if (dictationBusy()) syncDictationEdit(); });
 els.micLang.addEventListener('change', () => stopDictation());
-// Covers the close button, panel switching and Android Back alike.
 new MutationObserver(() => {
     if (!els.askPanel.classList.contains('expanded') && (dictation.wanted || dictation.finishing)) stopDictation();
 }).observe(els.askPanel, { attributes: true, attributeFilter: ['class'] });

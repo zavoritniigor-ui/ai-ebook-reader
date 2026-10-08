@@ -972,6 +972,9 @@
         #region-cancel { position: absolute; right: 12px; bottom: 24px; background: var(--panel-bg); }
         .dictation-status { padding: 0 16px 8px; font-size: 13px; color: var(--text-muted); min-height: 24px; }
         .dictation-status:empty { display: none; }
+        .stt-log-btn { margin: 0 16px 8px; padding: 6px 12px; font-size: 12.5px; border-radius: 14px; border: 1px solid var(--border-color, rgba(128,128,128,.4)); background: transparent; color: var(--text-muted); cursor: pointer; }
+        .stt-log-btn[hidden] { display: none; }
+        @media (pointer: coarse) { .stt-log-btn { min-height: 44px; font-size: 13.5px; } }
         #ask-input { min-width: 0; }
         .ask-attachment { display: flex; align-items: center; gap: 8px; margin: 0 16px 6px; padding: 6px 8px; border: 1px solid var(--border-color, #ccc); border-radius: 10px; font-size: 13px; }
         .ask-attachment[hidden] { display: none; }
@@ -1209,6 +1212,7 @@
                 </div>
             </form>
             <div id="dictation-status" class="dictation-status" role="status" aria-live="polite"></div>
+            <button type="button" id="stt-log-btn" class="stt-log-btn" hidden data-i18n="dictationCopyLog">📋 Копіювати журнал диктування</button>
         </div>
 
         <!-- ПРАВА ПАНЕЛЬ (Граматика: контекстна панель Verbs/Adjectives) -->
@@ -1315,7 +1319,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=3d1b7050a5ba"></script>
+    <script src="js/core.js?v=b6cc53b8fdbe"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1336,7 +1340,7 @@
     <script src="js/ai-client.js?v=f32df9e435c5"></script>
     <script src="js/practice-session.js?v=4a936b0b2205"></script>
     <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
-    <script src="js/dictation.js?v=6cf6ee491dd8"></script>
+    <script src="js/dictation.js?v=019533b3b417"></script>
     <script src="js/pdf-ink.js?v=9ed1750d501f"></script>
     <script src="js/pdf-crop.js?v=80bab2793f94"></script>
     <script src="js/pdf-outline.js?v=97d934db97c6"></script>
