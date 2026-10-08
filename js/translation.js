@@ -186,7 +186,11 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     els.ttOriginal.textContent = cleanText;
     els.ttOriginal.title = cleanText;
     els.ttOriginal.setAttribute('aria-label', cleanText);
-    els.ttTranslation.textContent = t('translating');
+    // A word shows its first result (cache / on-device / network) within milliseconds when one exists, so it starts
+    // with a reserved, empty line; "Translating..." appears only if nothing arrives within WORD_LOADING_DELAY_MS.
+    els.ttTranslation.classList.remove('tt-awaiting', 'tt-refining');
+    if (isMultiWord) els.ttTranslation.textContent = t('translating');
+    else { els.ttTranslation.textContent = '\u00a0'; els.ttTranslation.classList.add('tt-awaiting'); }
     els.tooltip.style.visibility = 'hidden';
     els.tooltip.style.display = 'flex';
     positionTooltip(clientX, clientY, anchorRect);
@@ -291,6 +295,10 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     const ctxKey = isMultiWord ? '' : '@' + (state.ctxSentence || '').slice(0, 80).toLowerCase();
     const cacheKey = srcCode + '>' + state.targetLang + '|' + (isMultiWord ? cleanText : cleanText.toLowerCase()) + ctxKey;
     const myLookup = ++state.lookupToken;   // щоб пізня відповідь не перебила новий тап
+    if (!isMultiWord) {
+        await translateWordMultiSource({ text: cleanText, src: srcCode, tgt: targetLang, context: contextSentence, cacheKey, lookup: myLookup, task });
+        return;
+    }
 
     let alignmentResult = null;
     let translated = true;   // false only when no translation arrived (the error text is shown instead)
@@ -299,10 +307,31 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         els.ttTranslation.innerHTML = typeof cached === 'string' ? cached : cached.html;
         alignmentResult = typeof cached === 'object' ? cached : null;
     } else {
-        // Groq відповідає настільки швидко, що змагатися з машинним перекладом
-        // немає сенсу: онлайн усе перекладає AI — і слова, і речення. Машинний
-        // лишається виключно як запасний варіант, коли немає мережі або ключа.
         let html = null;
+        let fastRendered = false;
+        if (aiAvailable() && navigator.onLine) {
+            (async () => {
+                try {
+                    const local = await translateLocallyIfReady(cleanText, srcCode, targetLang);
+                    if (local && myLookup === state.lookupToken && task.current() && !html) {
+                        fastRendered = true;
+                        els.ttTranslation.innerHTML = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
+                        const a = state.tooltipAnchor;
+                        if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+                        return;
+                    }
+                } catch (e) {}
+                try {
+                    const m = await machineTranslate(cleanText, srcCode, true, task.signal, targetLang, { skipLocal: true });
+                    if (m && m.html && myLookup === state.lookupToken && task.current() && !html) {
+                        fastRendered = true;
+                        els.ttTranslation.innerHTML = m.html;
+                        const a = state.tooltipAnchor;
+                        if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+                    }
+                } catch (e) {}
+            })();
+        }
         const ai = await aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000);
         if (myLookup !== state.lookupToken || !task.current()) return;
         if (ai) {
@@ -311,23 +340,14 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 (alignmentResult?.contextNote ? ` <span class="tt-context">(${escapeHtml(alignmentResult.contextNote)})</span>` : '') +
                 ' <span class="tt-note">⚡</span>';
             els.ttTranslation.innerHTML = html;
-            // Для окремого слова додаємо словникові значення: вони не дублюють
-            // переклад, а показують інші можливі значення.
-            if (!isMultiWord) {
-                try {
-                    const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
-                    if (myLookup !== state.lookupToken || !task.current()) return;
-                    if (m.extras) html += m.extras;
-                } catch (e) {}
-            }
-        } else {
+        } else if (!fastRendered) {
             try {
                 const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
                 if (myLookup !== state.lookupToken || !task.current()) return;
                 html = m.html;
             } catch (e) {
                 if (myLookup !== state.lookupToken || !task.current()) return;
-                els.ttTranslation.textContent = e.message || t('error');
+                els.ttTranslation.textContent = friendlyTranslationError(e);
                 translated = false;
             }
         }
@@ -353,6 +373,125 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     if (!isMultiWord && translated && els.tooltip.style.display !== 'none') scheduleTooltipHide();
 
 
+}
+
+// ========== WORD TAP: MULTI-SOURCE, LOCAL-FIRST (L0 cache -> L1 on-device -> L2 fast AI -> L3 refinement) ==========
+// The stages run side by side, not one after another, and each renders into the SAME popup line only if it outranks
+// what is already shown -- never "last response wins": a late on-device result can never replace an AI refinement.
+// Every render also checks the tap still owns the popup (lookupToken + the lookup task), so word A's late answer can
+// never land in word B's popup. The first useful result starts the reading timer and is spoken (once); refinements
+// update the text in place. Only AI results are cached (memory + IndexedDB, js/translation-cache.js).
+Object.assign(I18N, {
+    offlineNoTranslation: { uk: 'Офлайн-перекладу для цього слова немає.', en: 'No offline translation is available for this word.', fr: 'Aucune traduction hors ligne n’est disponible pour ce mot.', ru: 'Офлайн-перевода для этого слова нет.' },
+    translationUnavailable: { uk: 'Не вдалося перекласти. Перевірте з’єднання й спробуйте ще раз.', en: 'Could not translate. Check the connection and try again.', fr: 'Traduction impossible. Vérifiez la connexion et réessayez.', ru: 'Не удалось перевести. Проверьте соединение и попробуйте ещё раз.' },
+});
+const WORD_STAGE_RANK = { local: 1, machine: 1, cachedWord: 2, fast: 3, refine: 4, cachedContext: 5 };
+const WORD_LOADING_DELAY_MS = 250;   // no result by then: show the usual "Translating..."
+const WORD_CACHE_BUDGET_MS = 150;    // IndexedDB never holds the network stages back longer than this
+const WORD_STAGE_TIMEOUT_MS = { fast: 12000, refine: 20000 };
+
+function friendlyTranslationError(err) {
+    if (!navigator.onLine) return t('offlineNoTranslation');
+    if (!err || err instanceof TypeError || /fetch|network/i.test(err.message || '')) return t('translationUnavailable');
+    return err.message || t('error');
+}
+// Which AI stages this tap uses. Groq (fast) and OpenAI (refinement) run side by side when their keys are saved --
+// the reader need not switch the active provider for that; each uses only its own key. Otherwise the active provider
+// (e.g. Gemini) is the one AI stage, exactly as before.
+function wordTranslationAiStages() {
+    const stages = [];
+    if (state.groqKey) stages.push({ provider: 'groq', rank: WORD_STAGE_RANK.fast, timeoutMs: WORD_STAGE_TIMEOUT_MS.fast });
+    if (state.openaiKey) stages.push({ provider: 'openai', rank: WORD_STAGE_RANK.refine, timeoutMs: WORD_STAGE_TIMEOUT_MS.refine });
+    else if (state.activeAiProvider === 'gemini' && state.apiKey) stages.push({ provider: 'gemini', rank: WORD_STAGE_RANK.refine, timeoutMs: WORD_STAGE_TIMEOUT_MS.refine });
+    if (!stages.length) stages.push({ provider: null, rank: WORD_STAGE_RANK.refine });   // the active provider (null without a key)
+    return stages;
+}
+
+async function translateWordMultiSource({ text, src, tgt, context, cacheKey, lookup, task }) {
+    const live = () => lookup === state.lookupToken && task.current();
+    const line = els.ttTranslation;
+    let shown = 0, extras = '', first = true, pendingNetwork = 0;
+    const reposition = () => { const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect); };
+    const loadingTimer = setTimeout(() => {
+        if (!live() || shown) return;
+        line.classList.remove('tt-awaiting'); line.textContent = t('translating'); reposition();
+    }, WORD_LOADING_DELAY_MS);
+    const refining = () => line.classList.toggle('tt-refining', live() && shown > 0 && pendingNetwork > 0);
+    const paint = (rank, html) => {
+        if (!live() || rank <= shown) return false;
+        shown = rank; clearTimeout(loadingTimer);
+        line.classList.remove('tt-awaiting');
+        line.innerHTML = html;
+        refining(); reposition();
+        const visible = els.tooltip.style.display !== 'none';
+        if (first) {
+            first = false; state.tooltipLoading = false;
+            if (visible && state.speakSide === 'translation') speakInLang(mainTranslationText(), tgt, 'tr');   // once, the first result
+            if (visible) scheduleTooltipHide();
+        } else if (visible && !els.tooltip.matches(':hover')) scheduleTooltipHide();   // a refinement gets a fresh reading interval
+        return true;
+    };
+    const render = (rank, translation, note, mark) => paint(rank,
+        escapeHtml(translation) + (note ? ` <span class="tt-context">(${escapeHtml(note)})</span>` : '') + (mark ? ` <span class="tt-note">${mark}</span>` : '') + extras);
+
+    // L0a -- this session's memory: final, no other work.
+    const mem = state.translationCache[cacheKey];
+    if (mem && typeof mem === 'object' && mem.translation) { render(WORD_STAGE_RANK.cachedContext, mem.translation, mem.note, '⚡'); return; }
+    if (typeof mem === 'string') { paint(WORD_STAGE_RANK.cachedContext, mem); return; }
+
+    // L1 starts right away (local, no network) -- its result is only rendered after the cache check, so an exact
+    // cache hit never flashes a lower-quality line first.
+    const localResult = translateLocallyIfReady(text, src, tgt);
+    // L0b / L0c -- IndexedDB (bounded wait). An exact-context hit is final: zero network translation calls.
+    // Only for an open book: the cache is per book (no shared "no book" bucket).
+    const book = state.bookKey ? tcBookId() : null, word = tcNormWord(text), ctxHash = context ? tcHash(tcNormContext(context)) : null;
+    const cached = (book && word) ? await Promise.race([tcLookup(book, src, tgt, word, ctxHash), new Promise(r => setTimeout(() => r(null), WORD_CACHE_BUDGET_MS))]) : null;
+    if (!live()) { clearTimeout(loadingTimer); return; }
+    if (cached && cached.exact) {
+        state.translationCache[cacheKey] = { translation: cached.exact.translation, note: cached.exact.note, rank: cached.exact.rank };
+        render(WORD_STAGE_RANK.cachedContext, cached.exact.translation, cached.exact.note, '⚡');
+        return;
+    }
+    if (cached && cached.word) render(WORD_STAGE_RANK.cachedWord, cached.word.translation, null, '⚡');   // provisional
+
+    const stages = [];
+    const network = promise => { pendingNetwork++; refining(); return promise.finally(() => { pendingNetwork--; refining(); }); };
+    // L1 -- on-device translator, only if usable right now.
+    stages.push(localResult.then(out => { if (out) render(WORD_STAGE_RANK.local, out, null, '⌂'); }));
+    if (navigator.onLine) {
+        // Network machine translation: a result when nothing better exists yet, plus the dictionary meanings ("extras").
+        stages.push(network(machineTranslate(text, src, false, task.signal, tgt, { skipLocal: true }).then(m => {
+            if (!m || !live()) return;
+            if (m.extras) {
+                extras = m.extras;
+                if (shown && !line.querySelector('.tt-extra')) line.insertAdjacentHTML('beforeend', extras);
+            }
+            if (m.html && m.html.trim()) paint(WORD_STAGE_RANK.machine, m.html);
+        })));
+    }
+    // L2 / L3 -- AI, in parallel. Results are cached even if the popup moved on (the key carries its own context).
+    for (const stage of wordTranslationAiStages()) {
+        stages.push(network(aiTranslateText(text, src, task.signal, tgt, context, false,
+            stage.provider ? { provider: stage.provider, timeoutMs: stage.timeoutMs } : undefined).then(ai => {
+            if (!ai) return;
+            const translation = typeof ai === 'object' ? ai.translation : ai, note = typeof ai === 'object' ? ai.contextNote : null;
+            if (!translation) return;
+            const prev = state.translationCache[cacheKey];
+            if (!(prev && typeof prev === 'object' && prev.rank > stage.rank)) state.translationCache[cacheKey] = { translation, note, rank: stage.rank };
+            if (book && word) tcStore({ book, src, tgt, word, ctxHash, translation, note, provider: stage.provider || state.activeAiProvider, rank: stage.rank });
+            render(stage.rank, translation, note, '⚡');
+        })));
+    }
+    await Promise.allSettled(stages);
+    clearTimeout(loadingTimer);
+    if (!live()) return;
+    line.classList.remove('tt-refining');
+    if (!shown) {   // nothing from any source: a clear message, kept until dismissed (no reading timer)
+        state.tooltipLoading = false;
+        line.classList.remove('tt-awaiting');
+        line.textContent = navigator.onLine ? t('translationUnavailable') : t('offlineNoTranslation');
+        reposition();
+    }
 }
 
 // Лише основний переклад, без переліку значень і службової позначки — саме його
@@ -401,6 +540,7 @@ function buildTranslationExtras(data, mainTranslation) {
 // вона доступна ЛИШЕ в Chrome на комп'ютері — на Android та iOS її немає. Тому це
 // додатковий прошарок: де він є, працює миттєво й офлайн; де немає — усе як раніше.
 const localTranslators = new Map();     // 'fr>uk' → Promise<Translator>
+const localTranslatorReady = new Map(); // 'fr>uk' → Translator, once created (a word tap only uses these)
 function localTranslationSupported() { return typeof self !== 'undefined' && 'Translator' in self; }
 
 // showProgress: чи писати відсоток завантаження в els.progress — це той самий
@@ -434,7 +574,7 @@ async function getLocalTranslator(src, tgt, showProgress = false) {
         } catch (e) { return null; }
     })();
     localTranslators.set(key, p);
-    p.then(tr => { if (!tr && localTranslators.get(key) === p) localTranslators.delete(key); });
+    p.then(tr => { if (tr) localTranslatorReady.set(key, tr); else if (localTranslators.get(key) === p) localTranslators.delete(key); });
     return p;
 }
 
@@ -445,6 +585,23 @@ async function translateLocally(text, src, tgt) {
         if (!tr) return null;
         const out = await tr.translate(text);
         return (out || '').trim() || null;
+    } catch (e) { return null; }
+}
+// Word tap (L1): the on-device translator only if it is usable NOW -- an instance already created, or a pack already
+// on the device ('available'). A pack that still has to be downloaded never delays a tap: it is warmed in the
+// background instead (online only) and the network stages carry this tap.
+async function translateLocallyIfReady(text, src, tgt) {
+    if (!localTranslationSupported() || !src || !tgt || src === tgt) return null;
+    const key = `${src}>${tgt}`;
+    try {
+        let tr = localTranslatorReady.get(key);
+        if (!tr) {
+            const availability = await Translator.availability({ sourceLanguage: src, targetLanguage: tgt });
+            if (availability !== 'available') return null;
+            tr = await getLocalTranslator(src, tgt);
+            if (!tr) return null;
+        }
+        return ((await tr.translate(text)) || '').trim() || null;
     } catch (e) { return null; }
 }
 // Заздалегідь запускає завантаження мовного пакета — щоб офлайн-переклад
