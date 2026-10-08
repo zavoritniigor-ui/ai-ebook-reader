@@ -343,14 +343,25 @@ async function callGemini(prompt, dataUrl, key, signal, task, options = {}) {
     if (!text && finish && finish !== 'STOP') throw new AiRequestError(t('aiEmptyResponse'), 'blocked', { providerMessage: String(finish), meta });
     return text;
 }
-async function callGroq(prompt, dataUrl, key, signal, task, options = {}) {
+const GROQ_TASK_PROFILES = {
+    translation: { max_completion_tokens: 256 },
+    grammar: { max_completion_tokens: 700 },
+    ask: { max_completion_tokens: 1200 },
+    conjugation: { max_completion_tokens: 200 },
+    language_level: { max_completion_tokens: 800 },
+    vision: { max_completion_tokens: 700 },
+    default: { max_completion_tokens: 2048 }
+};
+
+async function callGroq(prompt, dataUrl, key, signal, task = 'default', options = {}) {
+    const profile = GROQ_TASK_PROFILES[task] || GROQ_TASK_PROFILES.default;
     const body = dataUrl ? {
-        model: GROQ_VISION_MODEL, reasoning_format: 'hidden', max_completion_tokens: 700,
+        model: GROQ_VISION_MODEL, reasoning_format: 'hidden', max_completion_tokens: profile.max_completion_tokens,
         messages: [{ role: 'user', content: [
             { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: dataUrl } }
         ] }]
     } : {
-        model: GROQ_MODEL, include_reasoning: false, reasoning_effort: 'low',
+        model: GROQ_MODEL, reasoning_format: 'hidden', reasoning_effort: 'low', max_completion_tokens: profile.max_completion_tokens,
         messages: [{ role: 'user', content: prompt }]
     };
     const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal, options.timeoutMs || aiTaskTimeout(task));
@@ -470,12 +481,55 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
             try {
                 const data = JSON.parse(out.trim().replace(/^json\s*/i, ''));
                 if (typeof data.translation !== 'string' || !data.translation.trim() || data.translation.length > 12000) return null;
-                return { translation: data.translation, alignment: validateAlignment(text, data.translation, data.alignment) };
+                const cleanTr = normalizeTranslation(data.translation, targetLang, false);
+                if (!cleanTr) return null;
+                return { translation: cleanTr, alignment: validateAlignment(text, cleanTr, data.alignment) };
             } catch (e) { return null; }
         }
-        if (isWord) return parseSingleWordTranslation(out);
-        return (out || '').trim().replace(/^["«»]|["«»]$/g, '') || null;
+        if (isWord) {
+            const parsed = parseSingleWordTranslation(out);
+            if (!parsed) return null;
+            const translation = normalizeTranslation(typeof parsed === 'string' ? parsed : parsed.translation, targetLang, true);
+            if (!translation) return null;
+            return typeof parsed === 'string' ? translation : { ...parsed, translation };
+        }
+        return normalizeTranslation(out, targetLang, false);
     } catch (e) { return null; }
+}
+
+const TRANSLATION_SCRIPT_RULES = {
+    uk: { primary: /\p{Script=Cyrillic}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    ru: { primary: /\p{Script=Cyrillic}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    en: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    fr: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    ga: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    zh: { primary: /\p{Script=Han}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Cyrillic}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    ko: { primary: /[\p{Script=Hangul}\p{Script=Han}]/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Cyrillic}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    hi: { primary: /\p{Script=Devanagari}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u }
+};
+
+function normalizeTranslation(raw, targetLang = state.targetLang, isWord = false) {
+    if (!raw || typeof raw !== 'string') return null;
+    let s = raw.trim();
+    s = s.replace(/^```[a-z]*\s*|\s*```$/gi, '').trim();
+    s = s.replace(/^["'«»“”„`]+|["'«»“”„`]+$/g, '').trim();
+    s = s.replace(/^(?:Переклад|Translation|Traduction|Значення)[:\s]+/i, '').trim();
+    if (isWord) {
+        const lines = s.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        s = lines[0] || '';
+    }
+    const rule = TRANSLATION_SCRIPT_RULES[targetLang];
+    if (rule) {
+        if (rule.primary.test(s)) {
+            while (rule.alienBlock.test(s)) {
+                s = s.replace(rule.alienBlock, '').trim();
+            }
+        } else if (rule.alienBlock.test(s)) {
+            return null;
+        }
+    }
+    s = s.replace(/^["'«»“”„`]+|["'«»“”„`]+$/g, '').trim();
+    return s || null;
 }
 
 // Single word: {"direct", "context"}. The direct translation of the selected word is what the popup shows first;
