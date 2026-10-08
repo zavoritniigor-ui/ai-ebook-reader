@@ -377,7 +377,7 @@ function buildTranslationExtras(data, mainTranslation) {
         dict.forEach(entry => {
             const pos = entry && entry[0];
             const terms = Array.isArray(entry && entry[1]) ? entry[1] : [];
-            const list = terms.filter(t => t && t.trim().toLowerCase() !== main).slice(0, 6);
+            const list = terms.filter(term => typeof term === 'string' && term.trim() && term.trim().toLowerCase() !== main).slice(0, 6);
             if (list.length) rows.push(`<div class="tt-sense"><span class="tt-pos">${escapeHtml(pos || '')}</span> ${escapeHtml(list.join(', '))}</div>`);
         });
         if (rows.length) out += `<div class="tt-extra">${rows.join('')}</div>`;
