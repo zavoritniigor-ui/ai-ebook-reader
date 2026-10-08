@@ -9,13 +9,13 @@ All project workflows, risk levels, testing requirements, security policies, and
 1. Read `AGENTS.md` before starting any work. It contains the mandatory 3-tier risk system (Small/Normal/High-risk) that dictates your workflow.
 2. Read `ARCHITECTURE.md` to locate functionality.
 3. Update `HANDOFF.md` when pausing or handing over a task.
-4. Work on `main` and push directly. GitHub Actions CI → Cloudflare production verification.
+4. `main` is protected: work on a short-lived branch, open a PR, merge after CI is green. Then Cloudflare production verification.
 
 ## Workflow
 
 **Single canonical branch: `main`**
 
-All development happens on `main`. Push directly to `origin/main` after committing fixes.
+`main` is protected (PR + required `test` check). Develop on a short-lived branch, open a PR to `main`, and delete the branch after merge.
 GitHub Actions CI runs on every push; wait for green before declaring completion.
 Cloudflare Pages auto-deploys from `main`.
 

@@ -213,6 +213,8 @@ function setSpeakSide(side) {
 function updateSpeakSideUI() {
     els.ttReplayBtn.classList.toggle('speak-active', state.speakSide === 'original');
     els.ttSpeakTranslation.classList.toggle('speak-active', state.speakSide === 'translation');
+    els.ttReplayBtn.setAttribute('aria-pressed', String(state.speakSide === 'original'));
+    els.ttSpeakTranslation.setAttribute('aria-pressed', String(state.speakSide === 'translation'));
 }
 
 // ========== ЧИТАННЯ ВГОЛОС: межі, синхронна підсвітка, пауза/продовження ==========
