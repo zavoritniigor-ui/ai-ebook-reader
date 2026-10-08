@@ -134,7 +134,9 @@ function positionTooltip(clientX, clientY, anchorRect) {
             height = ws.height;
         }
     }
-    els.tooltip.style.maxWidth = `${Math.max(0, Math.min(560, width - 2*margin))}px`;
+    // Phones: the bottom-docked popup must leave the right-hand panel tab (44px) reachable while the popup is open.
+    const tabClearance = (width <= 600 && window.matchMedia && matchMedia('(pointer: coarse)').matches) ? 54 : 0;
+    els.tooltip.style.maxWidth = `${Math.max(0, Math.min(560, width - tabClearance - 2*margin))}px`;
     els.tooltip.style.maxHeight = `${Math.max(0, Math.min(height - 2*margin, width <= 600 ? height*.7 : height))}px`;
     els.tooltip.style.height = '';
     const w = els.tooltip.offsetWidth, h = els.tooltip.offsetHeight;
@@ -143,7 +145,7 @@ function positionTooltip(clientX, clientY, anchorRect) {
     let x = (r.left+r.right)/2, y = r.bottom+gap;
     const above = r.top-gap-h >= top+margin;
     els.tooltip.classList.toggle('tooltip-above', above);
-    if (width <= 600) { x = left+width/2; y = top+height-h-margin; }
+    if (width <= 600) { x = left+(width-tabClearance)/2; y = top+height-h-margin; }
     else if (above) y = r.top-gap-h;
     else if (y+h > top+height-margin && r.right+gap+w < left+width-margin) {
         x = r.right+gap+w/2; y = r.top;

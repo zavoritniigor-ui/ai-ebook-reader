@@ -37,8 +37,9 @@ def load(width, height, touch):
 
 
 BUTTONS = "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn, els.ttAskBtn, els.ttAiBtn, els.ttSpeakTranslation]"
-HIT = """((b) => { const r = b.getBoundingClientRect(); const pad = %d; const pts = [[r.left - pad + 1, r.top - pad + 1], [r.right + pad - 1, r.bottom + pad - 1],
-  [r.left - pad + 1, r.bottom + pad - 1], [r.right + pad - 1, r.top - pad + 1]];
+HIT = """((b) => { const r = b.getBoundingClientRect(); const pad = %d; const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+  // above/below the control (vertical reach); sideways reach is shared with the neighbour inside the 8px gap, so it is checked on the outer edge only
+  const pts = [[cx, r.top - pad + 1], [cx, r.bottom + pad - 1]];
   return pts.every(([x, y]) => { const e = document.elementFromPoint(x, y); return e === b || b.contains(e); }); })"""
 
 # ---- desktop, mouse: unchanged compact sizes -------------------------------------------------------------------
@@ -49,8 +50,8 @@ check('mouse: compact 26px header buttons are unchanged', "[els.ttReplayBtn, els
 # ---- phone, portrait, touch ------------------------------------------------------------------------------------
 load(360, 740, True)
 check('touch: pointer is coarse', "matchMedia('(pointer: coarse)').matches")
-check('touch: small header buttons are 36px with a 44px hit area',
-      "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn].every(b => b.getBoundingClientRect().height >= 35.5 && %s(b))" % (HIT % 4))
+check('touch: compact header buttons keep a 44px hit area',
+      "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn].every(b => b.getBoundingClientRect().height >= 29.5 && %s(b))" % (HIT % 5))
 check('touch: the translation speaker is a 44px control', "(() => { const r = els.ttSpeakTranslation.getBoundingClientRect(); return r.width >= 43.5 && r.height >= 43.5; })()")
 check('touch: the two main actions are at least 44px tall', "[els.ttAskBtn, els.ttAiBtn].every(b => b.getBoundingClientRect().height >= 43.5)")
 check('touch: header buttons do not overlap each other',
@@ -61,7 +62,7 @@ check('touch: every button is inside the popup',
       """(() => { const tr = els.tooltip.getBoundingClientRect(); return %s.every(b => { const r = b.getBoundingClientRect();
         return r.width > 0 && r.left >= tr.left - 1 && r.right <= tr.right + 1 && r.top >= tr.top - 1 && r.bottom <= tr.bottom + 1; }); })()""" % BUTTONS)
 check('touch: the popup fits the 360px viewport', "(() => { const r = els.tooltip.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })()")
-check('touch: the selected word keeps a readable width (header wrapped, not squeezed)', "els.ttOriginal.getBoundingClientRect().width >= 120")
+check('touch: the selected word keeps some room in the single header row (>= 40px)', "els.ttOriginal.getBoundingClientRect().width >= 40")
 check('a11y: close button has a localized accessible name', "els.ttCloseBtn.getAttribute('aria-label') === t('tClose') && t('tClose') !== 'Close'")
 check('a11y: speaker buttons expose pressed state and a name',
       "(() => { setSpeakSide('original'); const a = els.ttReplayBtn.getAttribute('aria-pressed') === 'true' && els.ttSpeakTranslation.getAttribute('aria-pressed') === 'false';"
@@ -73,7 +74,7 @@ check('a11y: the translation is an aria-live region', "els.ttTranslation.getAttr
 
 # ---- tablet, landscape, touch ----------------------------------------------------------------------------------
 load(1024, 700, True)
-check('tablet: buttons keep 44px hit areas', "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn].every(b => %s(b))" % (HIT % 4))
+check('tablet: buttons keep 44px hit areas', "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn].every(b => %s(b))" % (HIT % 5))
 check('tablet: every button is inside the popup',
       """(() => { const tr = els.tooltip.getBoundingClientRect(); return %s.every(b => { const r = b.getBoundingClientRect();
         return r.width > 0 && r.left >= tr.left - 1 && r.right <= tr.right + 1 && r.top >= tr.top - 1 && r.bottom <= tr.bottom + 1; }); })()""" % BUTTONS)

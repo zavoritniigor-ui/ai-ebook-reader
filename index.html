@@ -627,20 +627,25 @@
         .tt-replay-btn, #tt-expand-btn, #tt-svo-btn { -webkit-tap-highlight-color: transparent; transition: background-color .15s, border-color .15s, transform .1s; }
         /* Active speaker: not colour alone -- double ring + filled background (the glyph itself becomes a stop square while speaking). */
         .tt-replay-btn.speak-active { box-shadow: inset 0 0 0 1px #10a37f; }
-        /* Touch screens: 44px hit areas (visible control 36px + a 4px invisible margin beyond its 1px border; the 8px gap keeps neighbours from overlapping),
-           readable label sizes, and a header that wraps instead of squeezing the selected word to nothing on a phone. */
+        /* Touch screens: 44px hit areas around compact 30px controls, readable label sizes. The header stays ONE row: a taller popup would cover
+           controls of the Grammar/Practice panel behind it on a phone. */
         @media (pointer: coarse) {
-            .tt-header-tools { gap: 8px; margin-left: auto; }
-            .tt-original-row { flex-wrap: wrap; row-gap: 6px; }
-            .tt-original-wrapper { flex: 1 1 140px; }
-            .tt-replay-btn { width: 36px; height: 36px; font-size: 15px; position: relative; }
-            #tt-expand-btn, #tt-svo-btn { height: 36px; padding: 0 12px; font-size: 13px; border-radius: 18px; position: relative; }
-            .tt-replay-btn::after, #tt-expand-btn::after, #tt-svo-btn::after { content: ''; position: absolute; inset: -5px; }
+            .tt-header-tools { gap: 8px; }
+            .tt-replay-btn { width: 30px; height: 30px; font-size: 14px; position: relative; }
+            #tt-expand-btn, #tt-svo-btn { height: 30px; padding: 0 8px; font-size: 12.5px; border-radius: 15px; position: relative; }
+            /* Invisible margin brings every control to a 44px hit area; the 8px visual gap means neighbours only share the gap itself. */
+            .tt-replay-btn::after, #tt-expand-btn::after, #tt-svo-btn::after { content: ''; position: absolute; inset: -8px; }
             /* This one sits at the clipped edge of the translation row, so an invisible margin would be cut off: make the control itself 44px. */
             #tt-speak-translation { width: 44px; height: 44px; font-size: 17px; }
             #tt-speak-translation::after { content: none; }
             .tt-ai-btn, .tt-ask-btn { min-height: 44px; font-size: 14px; }
             .tt-note, .tt-context { font-size: 13.5px; }
+        }
+        /* Narrow phones (<= 380px): the single row would leave the selected word ~25px, so the tools drop to their own line. */
+        @media (pointer: coarse) and (max-width: 380px) {
+            .tt-original-row { flex-wrap: wrap; row-gap: 6px; }
+            .tt-original-wrapper { flex: 1 1 100%; }
+            .tt-header-tools { margin-left: auto; }
         }
 
         /* ПАНЕЛІ AI ТА ГРАМАТИКИ */
@@ -1325,7 +1330,7 @@
     <script src="js/learning-stats.js?v=e901c3020682"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
-    <script src="js/ui-tooltip.js?v=afded3706fe4"></script>
+    <script src="js/ui-tooltip.js?v=c0f9f96e0b03"></script>
     <script src="js/translation.js?v=b5fbd84d5744"></script>
     <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
     <script src="js/ai-client.js?v=f32df9e435c5"></script>
