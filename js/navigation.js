@@ -261,7 +261,11 @@ let resizeTimer = null;
 let lastContainerResizeSize = null;
 let pendingPdfResizeAnchor = null;
 function invalidatePendingPdfResizeAnchor() {
-    if (resizeTimer !== null) pendingPdfResizeAnchor = null;
+    if (resizeTimer !== null) {
+        clearTimeout(resizeTimer);
+        resizeTimer = null;
+    }
+    pendingPdfResizeAnchor = null;
 }
 const containerResizeObserver = new ResizeObserver((entries) => {
     if (document.body.inert) return;
@@ -274,7 +278,16 @@ const containerResizeObserver = new ResizeObserver((entries) => {
     // (а з нею — TTS-переривання, скидання highlight-підсвітки тощо) на кожен
     // кадр CSS-переходу .workspace (margin-top/height, 0.3s), де розмір насправді
     // ще не змінився відносно попереднього виміру.
-    if (lastContainerResizeSize && Math.abs(lastContainerResizeSize.w - w) < 1 && Math.abs(lastContainerResizeSize.h - h) < 1) return;
+    const widthChanged = !lastContainerResizeSize || Math.abs(lastContainerResizeSize.w - w) >= 1;
+    const heightChanged = !lastContainerResizeSize || Math.abs(lastContainerResizeSize.h - h) >= 1;
+    if (!widthChanged && !heightChanged) return;
+    // У вертикальному PDF-режимі (fit: width або free zoom) розкладка сторінок залежить
+    // ТІЛЬКИ від ширини контейнера. Зміна лише висоти (поява/зникнення горизонтального скролбара
+    // при zoom) не повинна скидати масштаб чи фокус читання.
+    if (state.format === 'pdf' && state.pdfFit !== 'page' && !widthChanged) {
+        lastContainerResizeSize = { w, h };
+        return;
+    }
     // Capture the PDF anchor using the container size from just BEFORE this
     // resize (still in lastContainerResizeSize, about to be overwritten) —
     // by the time the debounced relayout below runs, els.container is
@@ -286,17 +299,26 @@ const containerResizeObserver = new ResizeObserver((entries) => {
         ? pdfAnchor(lastContainerResizeSize.w, lastContainerResizeSize.h) : null;
     lastContainerResizeSize = { w, h };
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
+    resizeTimer = setTimeout(function finishResize() {
+        // A workspace transition must not cancel a live pinch or commit its
+        // transform with a stale pre-gesture anchor. Wait until fingers lift.
+        if (state.format === 'pdf' && pdfPointers.size) {
+            pendingPdfResizeAnchor = null;
+            resizeTimer = setTimeout(finishResize, 100);
+            return;
+        }
         resizeTimer = null;
         // A resize can change the fit-width scale for every page (side panel
         // opened/closed, orientation change) — re-layout the whole continuous
         // stack rather than just re-rendering one page.
         if (state.format === 'pdf') {
             if (state.pdfDoc && !document.hidden && pdfContinuousReady) {
-                cancelPdfInteraction();
                 const anchor = pendingPdfResizeAnchor;
                 pendingPdfResizeAnchor = null;
-                relayoutContinuousPdfAtScale(anchor);
+                if (anchor) {
+                    cancelPdfInteraction();
+                    relayoutContinuousPdfAtScale(anchor);
+                }
             }
         }
         else if (state.format) repaginateBook();

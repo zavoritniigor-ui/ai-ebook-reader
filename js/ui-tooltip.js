@@ -60,6 +60,7 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 document.addEventListener('pointerdown', (e) => {
+    if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.target.closest('#menu-handle, #quick-menu-dock')) return;
     let closedPopup = false;
     if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
@@ -80,6 +81,16 @@ document.addEventListener('pointerdown', (e) => {
     }
 });
 
+// The header wraps to two toolbar rows on narrower desktop/tablet widths (~97px), but .workspace used a fixed
+// 58px offset, so the header covered the top of the book and the sidebar's Thumbnails/Contents tabs. Keep the
+// workspace offset equal to the header's real height (phones keep their own collapsible-menu offset).
+const appHeaderEl = document.getElementById('app-header');
+if (appHeaderEl && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+        document.documentElement.style.setProperty('--app-header-h', `${Math.ceil(appHeaderEl.getBoundingClientRect().height)}px`);
+    }).observe(appHeaderEl);
+}
+
 // Повноекранний режим на телефоні/планшеті: після відкриття книги ховаємо header —
 // футер на мобільному вже прихований за замовчуванням через CSS.
 function enterMobileFullScreenIfNeeded() {
@@ -99,7 +110,7 @@ els.tooltip.addEventListener('pointerenter', cancelTooltipHide);
 els.tooltip.addEventListener('pointerdown', cancelTooltipHide);
 els.tooltip.addEventListener('pointerleave', () => {
     // Для речення вікно не закриваємо — воно має лишатись, поки читаєш оригінал.
-    if (!state.tooltipPersistent) scheduleTooltipHide(1200);
+    if (!state.tooltipPersistent && !state.tooltipLoading) scheduleTooltipHide(1200);
 });
 
 // Розміщення вікна перекладу. Викликається двічі: одразу і ще раз після приходу
@@ -107,9 +118,22 @@ els.tooltip.addEventListener('pointerleave', () => {
 document.body.appendChild(els.tooltip);
 function positionTooltip(clientX, clientY, anchorRect) {
     const vv = window.visualViewport;
-    const left = vv?.offsetLeft || 0, top = vv?.offsetTop || 0;
-    const width = vv?.width || innerWidth, height = vv?.height || innerHeight;
+    const viewWidth = vv?.width || innerWidth;
+    const viewHeight = vv?.height || innerHeight;
+    const viewLeft = vv?.offsetLeft || 0;
+    const viewTop = vv?.offsetTop || 0;
     const margin = 10, gap = 12;
+
+    let left = viewLeft, top = viewTop, width = viewWidth, height = viewHeight;
+    if (typeof getReaderWorkspaceRect === 'function' && state.format === 'pdf' && viewWidth > 600) {
+        const ws = getReaderWorkspaceRect();
+        if (ws && ws.width >= 320) {
+            left = ws.left;
+            top = ws.top;
+            width = ws.width;
+            height = ws.height;
+        }
+    }
     els.tooltip.style.maxWidth = `${Math.max(0, Math.min(560, width - 2*margin))}px`;
     els.tooltip.style.maxHeight = `${Math.max(0, Math.min(height - 2*margin, width <= 600 ? height*.7 : height))}px`;
     els.tooltip.style.height = '';
@@ -136,52 +160,151 @@ function repositionTooltip() {
 window.visualViewport?.addEventListener('resize', repositionTooltip);
 window.visualViewport?.addEventListener('scroll', repositionTooltip);
 
-let keySettingsProvider;
+// The text the learner currently has in front of them in the popup: the whole selection for a multi-word
+// selection (verbatim, however long), or the sentence around a single tapped word. Level / Explain use it, so the
+// Quick Wheel acts on the live selection instead of on whatever an earlier AI action analysed.
+function currentReaderSelectionText() {
+    if (!els.tooltip || els.tooltip.style.display === 'none') return '';
+    const shown = (state.lastSelectionText || els.ttOriginal?.textContent || '').trim();
+    if (!shown) return '';
+    return /\s/.test(shown) ? shown : ((state.ctxSentence || '').trim() || shown);
+}
+
+// Dismiss the reader's translation popup and its selection -- the popup's own close button, and anything that
+// takes over the reading area (the Practice worksheet overlays the text the popup refers to).
+function dismissReaderPopup() {
+    cancelTooltipHide();
+    els.tooltip.style.display = 'none';
+    state.tooltipPersistent = false;
+    stopTooltipSpeech();
+    clearSelectionHighlight();
+}
+if (els.ttCloseBtn) {
+    els.ttCloseBtn.onclick = (e) => {
+        e.stopPropagation();
+        dismissReaderPopup();
+    };
+}
+
+// Key dialog contract. Each field is pre-filled with that provider's saved key (masked, type=password),
+// so what the learner sees is exactly what Save stores -- never a placeholder. Per provider on Save:
+//   typed value -> trimmed new key;  blank field -> keep the saved key (a cleared field is never a deletion);
+//   "Remove key" -> delete (state and storage).
+// The provider radio is a DRAFT choice that can be made before its key is typed; Save refuses to make a
+// provider active without a key. Everything is applied to state + storage synchronously, so the very next
+// request (aiProviderKey reads state at call time) uses the new provider/key -- no reload.
+let keySettingsProvider, keySettingsLoaded = false;
 function updateProviderRadios() {
     document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {
         radio.checked = radio.value === keySettingsProvider;
     });
 }
-function providerSettingsError(provider) {
+function providerSettingsError(provider, message = missingAiKey(provider)) {
     const error = document.getElementById('ai-provider-error');
-    error.textContent = missingAiKey(provider); error.hidden = false;
+    error.textContent = message; error.hidden = false;
+}
+function keyField(provider) { return document.getElementById(AI_PROVIDERS[provider].input); }
+// Trimmed key, '' for blank, or null when it cannot be a key: anything outside printable ASCII (control
+// characters, inner whitespace, the • of a masked display, a pasted "…") or only dots/asterisks. The
+// provider's own authentication stays the real validation -- no prefix/format rules here.
+function normalizeAiKeyInput(value) {
+    const key = String(value || '').trim();
+    if (!key) return '';
+    return /[^\x21-\x7E]/.test(key) || /^[.*]+$/.test(key) ? null : key;
+}
+function setKeyRemovePending(provider, pending) {
+    const field = keyField(provider);
+    if (pending) { field.value = ''; field.dataset.remove = '1'; }
+    else delete field.dataset.remove;
+    field.placeholder = pending ? t('aiKeyRemovePending') : aiProviderKey(provider) ? t('aiKeySavedHint') : field.dataset.example;
+    const remove = document.getElementById(field.id + '-remove');
+    if (remove) remove.hidden = pending || !aiProviderKey(provider);
+}
+// Key the provider will have if Save is pressed now.
+function draftAiKey(provider) {
+    const field = keyField(provider);
+    if (field.dataset.remove) return '';
+    const typed = normalizeAiKeyInput(field.value);
+    return typed === '' ? aiProviderKey(provider) || '' : typed;
 }
 function openKeySettings() {
+    bindKeyFields();
     Object.entries(AI_PROVIDERS).forEach(([provider, config]) => {
-        document.getElementById(config.input).value = aiProviderKey(provider) || '';
+        const field = document.getElementById(config.input);
+        field.dataset.example ??= field.placeholder;
+        field.value = aiProviderKey(provider) || '';
+        setKeyRemovePending(provider, false);
     });
     keySettingsProvider = state.activeAiProvider;
+    keySettingsLoaded = true;
     updateProviderRadios();
     document.getElementById('ai-provider-error').hidden = true;
     document.getElementById('settings-modal').style.display = 'flex';
 }
 function closeKeySettings() {
     document.getElementById('settings-modal').style.display = 'none';
+    keySettingsLoaded = false;
     // Preserve password masking while editing; remove key values from closed UI.
-    Object.values(AI_PROVIDERS).forEach(config => { document.getElementById(config.input).value = ''; });
+    Object.values(AI_PROVIDERS).forEach(config => { const field = document.getElementById(config.input); field.value = ''; delete field.dataset.remove; });
 }
 document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {
     radio.addEventListener('change', () => {
-        if (!document.getElementById(AI_PROVIDERS[radio.value].input).value.trim()) {
-            providerSettingsError(radio.value); updateProviderRadios(); return;
-        }
         keySettingsProvider = radio.value;
-        document.getElementById('ai-provider-error').hidden = true;
+        updateProviderRadios();
+        // A hint, not a refusal: the learner usually picks the provider first and pastes its key next.
+        if (draftAiKey(radio.value)) document.getElementById('ai-provider-error').hidden = true;
+        else providerSettingsError(radio.value);
     });
 });
-function saveApiKey() {
-    const provider = keySettingsProvider || state.activeAiProvider;
-    const key = document.getElementById(AI_PROVIDERS[provider].input).value.trim();
-    // A new choice is committed only together with its nonempty saved key.
-    // Clearing the currently selected key is allowed; it disables AI, not a fallback.
-    if (provider !== state.activeAiProvider && !key) { providerSettingsError(provider); return; }
-    const changed = provider !== state.activeAiProvider || key !== aiProviderKey();
-    if (changed) cancelAIRequests();
-    Object.values(AI_PROVIDERS).forEach(config => {
-        state[config.key] = document.getElementById(config.input).value.trim();
-        writeStored(config.storage, state[config.key]);
+// Bound on first open: AI_PROVIDERS is declared in js/ai-client.js, which loads after this file.
+let keyFieldsBound = false;
+function bindKeyFields() {
+    if (keyFieldsBound) return;
+    keyFieldsBound = true;
+    Object.entries(AI_PROVIDERS).forEach(([provider, config]) => {
+        const field = document.getElementById(config.input);
+        field.addEventListener('input', () => {
+            if (field.dataset.remove && field.value) setKeyRemovePending(provider, false);
+            if (provider === keySettingsProvider && draftAiKey(provider)) document.getElementById('ai-provider-error').hidden = true;
+        });
+        const remove = document.createElement('button');
+        remove.type = 'button'; remove.id = config.input + '-remove'; remove.className = 'btn-ghost key-remove';
+        remove.dataset.i18n = 'aiRemoveKey'; remove.textContent = t('aiRemoveKey'); remove.hidden = true;
+        remove.onclick = () => setKeyRemovePending(provider, true);
+        field.after(remove);
     });
+}
+function saveApiKey() {
+    if (!keySettingsLoaded) return; // fields were never filled from state: saving them could wipe saved keys
+    const provider = keySettingsProvider || state.activeAiProvider;
+    const next = {};
+    for (const [name, config] of Object.entries(AI_PROVIDERS)) {
+        const field = document.getElementById(config.input);
+        if (!field.dataset.remove && normalizeAiKeyInput(field.value) === null) {
+            providerSettingsError(name, t('aiKeyInvalid').replace('{provider}', config.name)); field.focus(); return;
+        }
+        next[name] = draftAiKey(name);
+    }
+    // A new choice is committed only together with a key. Removing the CURRENT provider's key is allowed:
+    // it disables AI, it never falls back to another provider.
+    if (provider !== state.activeAiProvider && !next[provider]) { providerSettingsError(provider); return; }
+    if (provider !== state.activeAiProvider || next[provider] !== aiProviderKey(provider)) cancelAIRequests();
+    for (const [name, config] of Object.entries(AI_PROVIDERS)) {
+        state[config.key] = next[name];
+        if (next[name]) writeStored(config.storage, next[name]);
+        else try { localStorage.removeItem(config.storage); } catch (e) { /* storage unavailable: state is still cleared */ }
+    }
     state.activeAiProvider = provider;
     writeStored('reader_active_ai_provider', provider);
     closeKeySettings();
 }
+// The action offered next to a 401/403: opens the key dialog. A Retry afterwards re-reads the key from
+// state (requests never capture it), so it uses the replacement.
+function aiUpdateKeyButton() {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'btn-secondary ai-update-key';
+    button.textContent = t('aiUpdateKey');
+    button.onclick = () => openKeySettings();
+    return button;
+}
+function isAiAuthError(err) { return !!err && (err.status === 401 || err.status === 403); }

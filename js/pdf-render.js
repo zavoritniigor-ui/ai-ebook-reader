@@ -179,6 +179,9 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         wrapperEl.classList.remove('pdf-placeholder');
         wrapperEl.dataset.rendered = '1';
         redrawInk(ink, pageNum); bindInkCanvas(ink, pageNum);
+        if (typeof restorePdfSelection === 'function') {
+            restorePdfSelection(pageNum, wrapperEl);
+        }
         return true;
     } catch (err) {
         if (err.name === 'RenderingCancelledException' || err.name === 'AbortException') return false;

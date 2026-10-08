@@ -90,3 +90,6 @@ run_ci*.sh
 http_server.log
 chrome.log
 .continue/
+
+# Output of tools/live_ai_probe.py (raw model replies of a live run)
+/live_ai_probe_out/

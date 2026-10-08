@@ -33,7 +33,7 @@ Before executing any task, evaluate its risk level to determine the necessary wo
 - Perform a thorough production verification / smoke test at `https://ai-ebook-reader.pages.dev` post-deployment.
 
 ## Project Workflow & Git Safety
-- **Branch**: Work on `main`. Push directly to `origin/main`. Never force-push.
+- **Branch**: `main` is protected (PR + required `test` check). Work on a short-lived branch, open a PR to `main`, merge after CI is green. Never force-push.
 - **Git Hygiene**: Add only relevant files. Do not commit secrets, API keys, browser profiles, scratch files, `dups.txt`, or local logs.
 - **Automated Release Flow**: 
   - Commit to `main` → Push to `origin/main` → GitHub Actions CI runs → Cloudflare Pages auto-deploys on success.

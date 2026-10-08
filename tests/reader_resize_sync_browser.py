@@ -276,6 +276,10 @@ c.js("document.body.classList.remove('immersive-mode')")
 pause(0.5)
 c.js("goToPageInChapter(1,false)")
 pause(0.2)
+# Headless Chrome rejects every utterance at once ('not-allowed': no user activation), so reading raced through
+# the whole queue and stopped -- whether TTS was still "active" 0.3s later depended only on how fast failing
+# speech drains. Hold each utterance (it never ends), so TTS really is mid-sentence during the resize below.
+c.js("speechSynthesis.speak = u => { window.__heldUtterance = u; }; 1")
 c.js("startTTS()")
 pause(0.3)
 ttsWasActive = c.js("isSpeakingGlobal===true && state.ttsQueue.length>0")

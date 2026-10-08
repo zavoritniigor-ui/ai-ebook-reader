@@ -46,17 +46,18 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; touch-action: manipulation; }
-        body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+        body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         button, select, input { font-family: inherit; }
         :focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; }
 
         header#app-header {
             position: fixed; top: 0; left: 0; width: 100%; min-height: 58px;
             background: var(--panel-bg); border-bottom: 1px solid var(--border-color);
-            padding: 8px 18px 8px 60px; z-index: 10000; box-shadow: 0 1px 0 rgba(var(--shadow-color),0.04), 0 6px 18px -12px rgba(var(--shadow-color),0.35);
+            padding: 8px 18px 8px calc(max(8px, env(safe-area-inset-left, 0px)) + 58px); z-index: 10000; box-shadow: 0 1px 0 rgba(var(--shadow-color),0.04), 0 6px 18px -12px rgba(var(--shadow-color),0.35);
             display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        #toggle-toc-desktop svg { display: block; pointer-events: none; flex-shrink: 0; }
         #menu-handle {
             position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left));
             width: 44px; height: 44px; border-radius: 50%; z-index: 10050;
@@ -200,10 +201,10 @@
             min-width: 0; text-overflow: ellipsis;
         }
 
-        .workspace { margin-top: 58px; height: calc(100vh - 58px - 50px); display: flex; flex: 1; overflow: hidden; position: relative; transition: margin-top 0.3s, height 0.3s; }
+        .workspace { margin-top: var(--app-header-h, 58px); height: calc(100vh - var(--app-header-h, 58px)); display: flex; flex: 1; overflow: hidden; position: relative; transition: margin-top 0.3s, height 0.3s; }
 
         body.immersive-mode header#app-header { transform: translateY(-100%); }
-        body.immersive-mode footer#app-footer { transform: translateY(100%); }
+        body.immersive-mode footer#app-footer { transform: translateY(calc(100% + 24px)); } /* clears the 14px floating offset too */
         body.immersive-mode .workspace { margin-top: 0; height: 100vh; }
 
         nav { position: absolute; top: 0; left: 0; height: 100%; width: min(280px, 82vw); background: var(--panel-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; transition: transform 0.3s; z-index: 9999; box-shadow: 2px 0 15px rgba(0,0,0,0.15); }
@@ -220,27 +221,101 @@
            (book chapter TOC for epub/txt/doc) and #pdf-sidebar are mutually
            exclusive, toggled by body.pdf-mode — kept as separate DOM subtrees so
            neither system's behavior can leak into the other. */
-        #pdf-sidebar { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+        #pdf-sidebar { display: none; flex-direction: column; height: 100%; overflow: hidden; background: #161a20; }
         body.pdf-mode #toc-list { display: none; }
         body.pdf-mode #pdf-sidebar { display: flex; }
-        #pdf-sidebar-tabs { display: flex; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        body.pdf-mode nav#sidebar {
+            background: #161a20;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        #pdf-sidebar-tabs {
+            display: flex;
+            background: #14171c;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+        }
         .pdf-sidebar-tab { flex: 1; padding: 10px 6px; background: none; border: none; border-bottom: 2px solid transparent;
-                          color: var(--text-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; letter-spacing: .02em; }
-        .pdf-sidebar-tab:hover:not(:disabled) { background: var(--hover-color); }
-        .pdf-sidebar-tab.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+                          color: #8b949e; font-size: 12.5px; font-weight: 600; cursor: pointer; letter-spacing: .02em; }
+        .pdf-sidebar-tab:hover:not(:disabled) { background: rgba(255, 255, 255, 0.05); color: #c9d1d9; }
+        .pdf-sidebar-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
         .pdf-sidebar-tab:disabled { opacity: .4; cursor: not-allowed; }
         .pdf-sidebar-list { list-style: none; margin: 0; padding: 10px; overflow-y: auto; flex: 1; }
 
-        /* Thumbnails */
-        .pdf-thumb-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; margin-bottom: 4px;
-                         border-radius: var(--radius-sm); cursor: pointer; border: 2px solid transparent; }
-        .pdf-thumb-item:hover { background: var(--hover-color); }
-        .pdf-thumb-item.active { border-color: var(--accent-color); background: var(--hover-color); }
-        .pdf-thumb-item canvas, .pdf-thumb-item .pdf-thumb-placeholder {
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2); background: var(--surface-2); display: block; max-width: 100%;
+        /* Thumbnails & Contents sidebar clean dark navy (#161a20) across all themes */
+        #pdf-thumb-list {
+            padding: 12px 10px 24px;
+            background: #161a20;
         }
-        .pdf-thumb-item .pdf-thumb-num { font-size: 11.5px; color: var(--text-muted); }
-        .pdf-thumb-item.active .pdf-thumb-num { color: var(--accent-color); font-weight: 700; }
+        [data-theme="dark"] #pdf-thumb-list,
+        [data-theme="sepia"] #pdf-thumb-list {
+            background: #161a20;
+        }
+        #pdf-outline-list {
+            background: #161a20;
+            color: #c9d1d9;
+        }
+        #pdf-outline-list .pdf-outline-item {
+            color: #c9d1d9;
+            transition: background-color 0.15s, color 0.15s;
+        }
+        #pdf-outline-list .pdf-outline-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+        #pdf-outline-list .pdf-outline-item.disabled {
+            color: #6e7681;
+        }
+        #pdf-thumb-list::-webkit-scrollbar, #pdf-outline-list::-webkit-scrollbar { width: 8px; }
+        #pdf-thumb-list::-webkit-scrollbar-thumb, #pdf-outline-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.18); border-radius: 4px;
+        }
+        #pdf-thumb-list::-webkit-scrollbar-track, #pdf-outline-list::-webkit-scrollbar-track {
+            background: #161a20;
+        }
+
+        .pdf-thumb-item {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 10px 8px; margin-bottom: 8px; border-radius: var(--radius-md);
+            cursor: pointer; border: 2px solid transparent;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+        }
+        .pdf-thumb-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .pdf-thumb-item.active {
+            border-color: #58a6ff;
+            background: rgba(56, 139, 253, 0.16);
+            box-shadow: 0 0 10px rgba(88, 166, 255, 0.25);
+        }
+        .pdf-thumb-item canvas, .pdf-thumb-item .pdf-thumb-placeholder {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.25);
+            background: #ffffff !important;
+            display: block;
+            max-width: 100%;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: box-shadow 0.15s ease;
+        }
+        [data-theme="dark"] .pdf-thumb-item canvas, [data-theme="dark"] .pdf-thumb-item .pdf-thumb-placeholder {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        [data-theme="sepia"] .pdf-thumb-item canvas, [data-theme="sepia"] .pdf-thumb-item .pdf-thumb-placeholder {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+        }
+        .pdf-thumb-item.active canvas, .pdf-thumb-item.active .pdf-thumb-placeholder {
+            box-shadow: 0 3px 12px rgba(88, 166, 255, 0.35);
+        }
+        .pdf-thumb-item .pdf-thumb-num {
+            font-size: 11.5px;
+            color: #8b949e;
+            transition: color 0.15s ease;
+        }
+        .pdf-thumb-item.active .pdf-thumb-num {
+            color: #58a6ff;
+            font-weight: 700;
+        }
 
         /* Contents (outline) */
         .pdf-outline-item { padding: 7px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13.5px;
@@ -271,6 +346,7 @@
         }
         /* PDF — сторінка з фіксованою версткою, тож обмеження 900px і великі поля лише
            з'їдають екран. Для нього віддаємо всю ширину вікна. */
+        body.pdf-mode main { justify-content: flex-start; }
         body.pdf-mode #reader-container { max-width: none; padding: 0; }
         body.pdf-mode.pdf-pannable #reader-container { cursor: grab; }
         body.pdf-mode.pdf-dragging #reader-container { cursor: grabbing; }
@@ -310,7 +386,7 @@
         #reader-pages.no-anim { transition: none; }
 
         ::selection { background: rgba(16, 163, 127, 0.38); }
-        .pdf-page-wrapper { position: relative; display: flex; justify-content: center; margin-bottom: 20px; }
+        .pdf-page-wrapper { position: relative; display: flex; justify-content: center; margin-left: auto; margin-right: auto; margin-bottom: 20px; }
         .pdf-canvas { box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: block; }
         .pdf-text-layer { position: absolute; left: 0; top: 0; overflow: hidden; line-height: 1.0; transform-origin: 0 0; text-size-adjust: none; -webkit-text-size-adjust: none; }
         .pdf-text-layer[data-main-rotation="90"] { transform: rotate(90deg) translateY(-100%); }
@@ -327,6 +403,7 @@
         .pdf-text-layer span {
             color: transparent; position: absolute; white-space: pre; pointer-events: none; transform-origin: 0% 0%;
             --scale-x: 1; --rotate: 0deg;
+            text-size-adjust: none; -webkit-text-size-adjust: none;
             font-size: calc(var(--total-scale-factor, 1) * var(--min-font-size, 1) * var(--font-height, 0px));
             transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(calc(1 / var(--min-font-size, 1)));
         }
@@ -339,7 +416,30 @@
         .mode-translate .pdf-text-layer span,
         body.mode-translate-on .pdf-text-layer span { pointer-events: auto; cursor: text; }
 
-        footer#app-footer { position: fixed; bottom: 0; left: 0; width: 100%; height: 50px; background: var(--panel-bg); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; gap: 20px; z-index: 10000; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        footer#app-footer {
+            position: fixed; bottom: 14px; left: var(--ws-left, 0px); width: var(--ws-width, 100%);
+            height: auto; min-height: 0; background: transparent !important; border: none !important;
+            box-shadow: none !important; display: flex; align-items: center; justify-content: center;
+            z-index: 90; pointer-events: none;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.15s ease, width 0.15s ease;
+        }
+        .footer-nav-group {
+            display: inline-flex; align-items: center; gap: 12px; padding: 5px 16px;
+            background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 9999px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.1); pointer-events: auto;
+            backdrop-filter: blur(8px);
+        }
+        .footer-nav-group button {
+            height: 30px; padding: 0 12px; font-size: 13px; border-radius: 15px;
+            background: transparent; border: 1px solid transparent; color: var(--text-color);
+        }
+        .footer-nav-group button:hover {
+            background: var(--hover-color); border-color: var(--border-color);
+        }
+        .footer-nav-group span#progress-indicator {
+            font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-color);
+            font-weight: 500; white-space: nowrap; padding: 0 4px;
+        }
         /* Плаваюче керування читанням — напівпрозоре, поверх тексту, з'являється лише
            під час читання. Кружечок: пауза/продовження. Стрілки: попереднє/наступне
            речення (переносять підсвітку навіть на паузі, без озвучення). */
@@ -364,7 +464,7 @@
            відступи потрібні для тексту, що переливається, але для сторінки PDF вони лише
            марнують простір. Нижче 641px (телефон) правило не діє — там усе як було. */
         @media (min-width: 641px) {
-            body.pdf-mode #reader-container { max-width: 100%; padding: 8px; }
+            body.pdf-mode #reader-container { max-width: 100%; padding: 0; }
             body.pdf-mode:not(.mode-translate-on) #reader-container { cursor: grab; }
         }
         /* Шар для письма поверх сторінки PDF — клас (не id): continuous scroll
@@ -453,9 +553,11 @@
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
         
-        .tt-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; flex-shrink: 0; }
-        .tt-original-wrapper { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; overflow: hidden; flex-shrink: 0; }
-        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 70px; min-width: 70px; }
+        .tt-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+        .tt-original-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; }
+        .tt-original-wrapper { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1 1 auto; min-width: 0; }
+        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 1; }
+        .tt-header-tools { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .tt-replay-btn {
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff;
             border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
@@ -467,6 +569,19 @@
         #tt-svo-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(255,193,7,0.16); border-color: transparent; color: #ffc107; white-space: nowrap; flex-shrink: 0; }
         #tt-expand-btn:hover { background: rgba(16,163,127,0.28); }
         #tt-svo-btn:hover { background: rgba(255,193,7,0.28); }
+        @keyframes tt-ticker {
+            0%, 15% { transform: translateX(0); }
+            85%, 100% { transform: translateX(calc(-100% + var(--ticker-container-w, 140px))); }
+        }
+        .tt-original.speaking-ticker {
+            max-width: none !important;
+            text-overflow: clip !important;
+            display: inline-block;
+            animation: tt-ticker 6s linear infinite alternate;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .tt-original.speaking-ticker { animation: none !important; }
+        }
         /* Члени речення прямо в тексті: підмет / присудок / додаток */
         ::highlight(svo-subject) { background-color: rgba(13, 110, 253, 0.40); }
         ::highlight(svo-verb)    { background-color: rgba(255, 193, 7, 0.48); }
@@ -486,12 +601,13 @@
         .tt-ai-label { display: block; font-size: 11px; color: #0dcaf0; letter-spacing: .3px; margin-bottom: 2px; }
         .tt-ai-text { display: block; font-size: 16px; font-weight: bold; color: #fff; line-height: 1.35; }
         
-        .tt-actions { display: flex; gap: 8px; width: 100%; flex-shrink: 0; margin-top: 0; }
+        .tt-actions { display: flex; gap: 8px; width: 100%; margin-top: 4px; flex-shrink: 0; }
         .tt-ai-btn, .tt-ask-btn {
-            border: none; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
-            cursor: pointer; white-space: nowrap; flex: 1 1 0; min-width: 0; flex-shrink: 0; transition: filter .15s, transform .1s;
+            border: none; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            cursor: pointer; white-space: nowrap; flex: 1 1 50%; min-width: 0; text-align: center;
+            transition: filter .15s, transform .1s; flex-shrink: 0;
         }
-        .tt-ai-btn { background: #10a37f; color: white; }
+        .tt-ai-btn { background: #0b7a5e; color: white; }   /* white on #0b7a5e = 5.3:1 (AA); #10a37f was 3.2:1 */
         .tt-ask-btn { background: #0dcaf0; color: #0b2226; }
         .tt-ai-btn:hover, .tt-ask-btn:hover { filter: brightness(1.08); }
         .tt-ai-btn:active, .tt-ask-btn:active { transform: scale(0.98); }
@@ -501,6 +617,7 @@
         .tt-sense { margin: 3px 0; line-height: 1.4; }
         .tt-pos { color: #3ddba8; font-style: italic; margin-right: 5px; }
         .tt-note { font-weight: normal; font-size: 12.5px; color: #9aa1ab; }
+        .tt-context { font-weight: normal; font-size: 13px; color: #9aa1ab; }   /* single word: contextual meaning, secondary to the direct translation */
         .tt-translation-row { display: flex; align-items: stretch; gap: 10px; margin-top: 4px; min-height: 0; }
         .tt-translation-row .tt-translation { flex: 1; }
         #tt-speak-translation { align-self: flex-start; margin-top: 2px; }
@@ -552,10 +669,6 @@
            (іде запит) або зелений (відповідь готова), і нічого більше. */
         .side-panel.loading .panel-tab { background: rgba(220, 53, 69, 0.14); }
         .side-panel.ready .panel-tab { background: rgba(25, 135, 84, 0.14); }
-        /* Друга лінія захисту (не лише статичне розведення вище): поки будь-яка бічна
-           панель розгорнута на весь екран, сам скрубер під час гортання сторінок не
-           потрібен і лише плутається під пальцем — тимчасово ховаємо його. */
-        body:has(.side-panel.expanded) #pdf-scrubber { opacity: 0; pointer-events: none; }
         
         /* Вміст панелей */
         .panel-header {
@@ -613,24 +726,49 @@
         /* contain: paint у деяких браузерах ховає власні смуги прокрутки контейнера,
            тому в режимі PDF це обмеження знімаємо. */
         body.pdf-mode #reader-container { scrollbar-width: auto; scrollbar-color: rgba(110,110,110,0.75) rgba(128,128,128,0.18); contain: none; }
-        /* Дієслова з речення — кнопками; під ними ряд часів для відмінювання */
-        .verb-card { margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2);
-                     border-left: 4px solid #10a37f; box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
-        /* Ряд дієслів закріплений унизу панелі: він не прокручується разом із текстом,
-           тому дієслова лишаються під рукою навіть коли розбір довгий. */
-        .verb-bar { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap;
-                    padding: 10px 15px; border-top: 1px solid var(--border-color);
-                    background: var(--hover-color); max-height: 96px; overflow-y: auto; }
-        .verb-bar:empty { display: none; }
-        .verb-chips { display: none; }
-        .verb-chip { background: #10a37f; color: #fff; border: none; padding: 6px 12px; border-radius: 14px; font-size: 14px; cursor: pointer; }
-        .verb-chip.active { outline: 2px solid var(--text-color); }
-        .tense-bar { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 15px 0; }
-        .tense-bar button { background: var(--border-color); color: var(--text-color); border: none; padding: 6px 11px; border-radius: 13px; font-size: 13px; cursor: pointer; }
-        .tense-bar button.active { background: #10a37f; color: #fff; }
-        .verb-focus { border-left-color: #0d6efd; }
-        .verb-head { margin-bottom: 8px; font-size: 17px; }
-        .verb-forme { font-size: 13px; color: var(--text-color); opacity: .75; font-style: italic; }
+        /* Redesigned Grammar panel: Verbs/Adjectives mode toggle, language-specific
+           tense/mood controls, and compact lemma cards — deliberately calm and
+           learner-oriented rather than raw parser/debugger output (task section 16). */
+        .grammar-mode-bar { display: flex; gap: 6px; padding: 12px 15px 0; flex-shrink: 0; }
+        .grammar-mode-btn { flex: 1; background: var(--surface-2); color: var(--text-color); border: 1px solid var(--border-color);
+                             padding: 8px 10px; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+        .grammar-mode-btn.active { background: #10a37f; color: #fff; border-color: #10a37f; }
+        .grammar-controls-bar { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 15px 0; }
+        .grammar-controls-bar:empty { padding: 0; }
+        .grammar-controls-bar button { background: var(--border-color); color: var(--text-color); border: none; padding: 6px 11px; border-radius: 13px; font-size: 13px; cursor: pointer; }
+        .grammar-controls-bar button.active { background: #10a37f; color: #fff; }
+        .grammar-empty { text-align: center; color: var(--text-muted, gray); padding-top: 50px; }
+        .grammar-note { margin: 0 0 10px 0; padding: 6px 10px; font-size: 12px; line-height: 1.4; color: var(--text-muted); border-left: 3px solid #d9822b; background: color-mix(in srgb, #d9822b 8%, transparent); border-radius: 4px; }
+        .grammar-card { margin: 10px 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-2); }
+        .grammar-card-lemma { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text-color);
+                               font-size: 16px; font-weight: 700; padding: 0; cursor: pointer; }
+        .grammar-card-forms { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+        .grammar-form-chip { background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
+                              padding: 4px 10px; border-radius: 12px; font-size: 12.5px; cursor: pointer; }
+        .grammar-focus { margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2);
+                          border-left: 4px solid #0d6efd; box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
+        .grammar-focus-head { font-size: 18px; margin-bottom: 6px; }
+        .grammar-focus-lemma { font-size: 14px; color: var(--text-color); opacity: .7; font-style: italic; }
+        .grammar-focus-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+        .grammar-badge { background: var(--border-color); color: var(--text-color); border-radius: 10px; padding: 2px 9px; font-size: 12px; }
+        .grammar-focus-pattern { font-family: ui-monospace, monospace; font-size: 15px; margin-bottom: 8px; }
+        .grammar-stem { color: var(--text-color); }
+        .grammar-ending { color: #10a37f; font-weight: 700; }
+        .grammar-grid-title { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; opacity: .65; margin: 6px 0 4px; }
+        .grammar-focus-grid { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; font-size: 14px; }
+        .grammar-grid-row { display: grid; grid-template-columns: minmax(6.5em, 10em) 1fr auto; column-gap: 12px; align-items: baseline; padding: 1px 6px; margin: 0 -6px; border-radius: 6px; }
+        .grammar-grid-row.current { background: rgba(16,163,127,.16); box-shadow: inset 3px 0 0 #10a37f; }
+        .grammar-grid-change { font-family: ui-monospace, monospace; font-size: 12px; opacity: .7; white-space: nowrap; }
+        .grammar-grid-change.irregular { opacity: 1; color: #d9822b; font-weight: 700; }
+        .grammar-grid-note { font-size: 13px; opacity: .7; margin: 4px 0 8px; }
+        .grammar-focus-agrees { font-size: 13.5px; margin: 0 0 8px; }
+        .grammar-grid-label { color: var(--text-color); opacity: .7; }
+        .grammar-grid-value { font-weight: 600; }
+        .grammar-focus-context { font-size: 14px; line-height: 1.5; margin: 8px 0; }
+        .grammar-context-target { background: none; color: inherit; font-weight: 700; border-bottom: 2px solid #10a37f; }
+        .grammar-context-agrees { background: none; color: inherit; border-bottom: 2px dotted #d9822b; }
+        .grammar-focus-why { font-size: 13.5px; line-height: 1.5; color: var(--text-color); opacity: .9; margin: 0; }
+        .grammar-practice-btn { margin-top: 15px; }
         #ask-content { cursor: text; }
         .panel-actions { padding: 12px 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
         .panel-action-btn {
@@ -680,7 +818,7 @@
             /* Меню на телефоні: рівна сітка замість хаотично відцентрованих рядків.
                Групи розділені тонкою лінією-заголовком замість вертикальної риски —
                на всю ширину вона читається краще, ніж бордер збоку. */
-            .header-controls { display: flex; flex-direction: column; gap: 0; background: var(--panel-bg); padding: 10px 16px 14px 62px; }
+            .header-controls { display: flex; flex-direction: column; gap: 0; background: var(--panel-bg); padding: 10px 16px 14px calc(max(8px, env(safe-area-inset-left, 0px)) + 58px); }
             .toolbar-group {
                 display: flex; flex-wrap: wrap; gap: 8px; width: 100%;
                 padding: 10px 0; border-right: none; border-bottom: 1px solid var(--border-color);
@@ -727,6 +865,8 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         #settings-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index:30000; justify-content:center; align-items:center; }
+        #settings-modal .key-remove { display: block; margin: 6px 0 0; padding: 4px 10px; font-size: 13px; }
+        #settings-modal .key-remove[hidden] { display: none; }
         .modal-content {
             position: relative; background: var(--panel-bg); padding: 28px; border-radius: var(--radius-lg);
             width: 90%; max-width: 460px; max-height: 86vh; overflow-y: auto;
@@ -774,9 +914,8 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
         #sw-update-banner button { height: 30px; padding: 0 14px; font-size: 12.5px; }
-        /* Native one-finger scrolling works in both axes; browser pinch zoom is
-           excluded because the PDF gesture handler owns two-finger scaling. */
-        body.pdf-mode #reader-container { touch-action: pan-x pan-y !important; overflow-anchor: none; scrollbar-gutter: stable; overflow: auto; }
+        body.pdf-mode #reader-container { touch-action: pan-x pan-y; overflow-anchor: none; scrollbar-gutter: stable; overflow: auto; }
+        body.touch-selecting #reader-container { touch-action: none !important; }
         body.pdf-mode #reader-pages { position: relative; height: auto; min-height: 100%; }
         /* .pdf-page-wrapper keeps its base (non-pdf) rule here — position:relative,
            margin-bottom gap — so multiple pages stack in normal document flow.
@@ -788,7 +927,7 @@
         #ink-tools { max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; }
         #ink-width { width: 94px; touch-action: auto; }
         #ink-tools label { color: white; display: flex; align-items: center; gap: 5px; font-size: 12px; }
-        #pdf-scrubber { transition: right 0.3s, opacity 0.3s;  display: none; position: absolute; right: 4px; top: 20%; z-index: 9000;
+        #pdf-scrubber { transition: right 0.3s, opacity 0.3s; display: none; position: absolute; right: calc(var(--ws-right, 0px) + 4px); top: 50%; transform: translateY(-50%); z-index: 9000;
             background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 22px;
             padding: 6px 0; width: 46px; text-align: center; opacity: .65; }
         body.pdf-mode #pdf-scrubber.available { display: block; }
@@ -803,10 +942,18 @@
         #crop-preview { display: block; max-width: 100%; max-height: 60dvh; margin: 12px auto; object-fit: contain; }
         #crop-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
         #word-tooltip { position: fixed; }
+        body.pdf-mode #word-tooltip .tt-original-wrapper { flex-basis: 100%; flex-wrap: wrap; overflow: visible; }
+        body.pdf-mode #word-tooltip .tt-original { flex: 1; min-width: 70px; max-width: none; }
+        body.pdf-mode #word-tooltip .tt-actions { width: 100%; margin-top: 0; }
         #region-cancel { position: absolute; right: 12px; bottom: 24px; background: var(--panel-bg); }
         .dictation-status { padding: 0 16px 8px; font-size: 13px; color: var(--text-muted); min-height: 24px; }
         .dictation-status:empty { display: none; }
         #ask-input { min-width: 0; }
+        .ask-attachment { display: flex; align-items: center; gap: 8px; margin: 0 16px 6px; padding: 6px 8px; border: 1px solid var(--border-color, #ccc); border-radius: 10px; font-size: 13px; }
+        .ask-attachment[hidden] { display: none; }
+        .ask-attachment img { width: 48px; height: 48px; object-fit: contain; background: #fff; border-radius: 6px; flex: none; }
+        .ask-attachment span { flex: 1; min-width: 0; }
+        .ask-attachment button { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
         .alignment-word { cursor: pointer; text-decoration: underline dotted rgba(255,255,255,.4); text-underline-offset: 4px; }
         .alignment-word:focus-visible { outline: 2px solid #b8c9ff; outline-offset: 2px; }
         .alignment-word.alignment-active { background: #516786; border-radius: 3px; }
@@ -831,6 +978,41 @@
             .onboarding-cue { animation: none; background-color: rgba(128,128,128,.24); }
             .mic-btn.recording { animation: none; }
         }
+        /* PDF Printing: clean high-res visual canvas, hidden text-layer to eliminate tofu glyphs */
+        @media print {
+            #app-header, #app-footer, #menu-handle, #quick-menu-dock, #sidebar, .side-panel,
+            #tts-controls, #footer-handle, #pdf-scrubber, #word-tooltip, .ink-layer, .pdf-link-layer,
+            .panel-tab {
+                display: none !important;
+            }
+            .pdf-text-layer {
+                display: none !important;
+            }
+            .workspace {
+                margin: 0 !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            #main-area, #reader-container {
+                padding: 0 !important;
+                overflow: visible !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                height: auto !important;
+            }
+            .pdf-page-wrapper {
+                page-break-after: always;
+                break-after: page;
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 auto !important;
+            }
+            .pdf-canvas {
+                display: block !important;
+                max-width: 100% !important;
+                height: auto !important;
+            }
+        }
     </style>
 </head>
 <body data-theme="light" inert>
@@ -838,7 +1020,7 @@
     <!-- Top/full menu toggle — independent of the bottom Quick Menu. Its own control,
          its own state (body.immersive-mode), unchanged since before the Quick Menu
          existed: tap opens/closes the header+footer toolbar. -->
-    <button type="button" id="menu-handle" data-i18n-title="wheelFull" aria-expanded="false">☰</button>
+    <button type="button" id="menu-handle" data-i18n-title="tMainMenu" aria-label="Головне меню" aria-expanded="false">☰</button>
     <!-- Bottom-center Quick Menu — a separate convenience control for thumb reach.
          #quick-menu-dock is a zero-size fixed anchor; every child is absolutely
          positioned from it, so nothing invisible ever blocks page turns. -->
@@ -852,7 +1034,7 @@
         <div class="header-controls" id="header-controls">
             <!-- FILE / BOOK -->
             <div class="toolbar-group">
-                <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tToc" data-i18n="tocIcon">☰</button>
+                <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tBookContents" aria-label="Зміст та ескізи книги"><svg class="book-nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></button>
                 <label class="btn" for="file-upload" data-i18n="open">📂 Відкрити</label>
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown">
             </div>
@@ -933,8 +1115,8 @@
             <ul id="toc-list"><li style="color: gray; padding: 20px;" data-i18n="noBook">Книгу не завантажено</li></ul>
             <div id="pdf-sidebar">
                 <div id="pdf-sidebar-tabs">
-                    <button type="button" id="pdf-tab-thumbs" class="pdf-sidebar-tab active" data-mode="thumbnails">Thumbnails</button>
-                    <button type="button" id="pdf-tab-outline" class="pdf-sidebar-tab" data-mode="outline" disabled>Contents</button>
+                    <button type="button" id="pdf-tab-thumbs" class="pdf-sidebar-tab active" data-mode="thumbnails" data-i18n="pdfTabThumbs">Ескізи</button>
+                    <button type="button" id="pdf-tab-outline" class="pdf-sidebar-tab" data-mode="outline" data-i18n="pdfTabContents" disabled>Зміст</button>
                 </div>
                 <ul id="pdf-thumb-list" class="pdf-sidebar-list"></ul>
                 <ul id="pdf-outline-list" class="pdf-sidebar-list" hidden></ul>
@@ -949,11 +1131,16 @@
             <div id="pdf-scrubber"><output id="pdf-page-preview">1</output><input id="pdf-page-range" aria-label="Сторінка PDF" type="range" min="1" max="1" value="1" step="1"></div>
             <div id="word-tooltip">
                 <div class="tt-header">
-                    <div class="tt-original-wrapper">
-                        <span class="tt-original" id="tt-original">word</span>
-                        <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig">🔊</button>
-                        <button class="tt-replay-btn" id="tt-expand-btn" data-i18n-title="tExpand" data-i18n="btnSentence">речення ⤢</button>
-                        <button class="tt-replay-btn" id="tt-svo-btn" data-i18n-title="tSvo">S-V-O</button>
+                    <div class="tt-original-row">
+                        <div class="tt-original-wrapper">
+                            <span class="tt-original" id="tt-original">word</span>
+                        </div>
+                        <div class="tt-header-tools">
+                            <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig">🔊</button>
+                            <button class="tt-replay-btn" id="tt-expand-btn" data-i18n-title="tExpand" data-i18n="btnSentence">речення ⤢</button>
+                            <button class="tt-replay-btn" id="tt-svo-btn" data-i18n-title="tSvo">S-V-O</button>
+                            <button class="tt-replay-btn" id="tt-close-btn" data-i18n-title="tClose" aria-label="Close">✕</button>
+                        </div>
                     </div>
                     <div class="tt-actions">
                         <button class="tt-ask-btn" id="tt-ask-btn" data-i18n="btnAsk">🤖 Запитай AI</button>
@@ -981,33 +1168,47 @@
                 <button id="btn-lang-level" class="panel-action-btn" data-i18n="btnLangLevel">📘 Мовний розбір</button>
                 <button id="btn-explain" class="panel-action-btn" data-i18n="btnExplain">📖 Пояснення</button>
             </div>
-            <div class="chat-input-area">
-                <select id="mic-lang" style="height:44px; max-width:76px;">
-                    <option value="uk-UA">UK</option><option value="en-US">EN</option><option value="fr-FR">FR</option><option value="ru-RU">RU</option>
-                    <option value="zh-CN">中文</option><option value="ko-KR">KO</option><option value="hi-IN">HI</option><option value="ga-IE">GA</option>
-                </select>
-                <button class="mic-btn" id="mic-btn" aria-label="Почати диктовку" aria-pressed="false">🎤</button>
-                <input type="text" id="ask-input" data-i18n-ph="ask">
-                <button id="ask-send-btn" class="btn-primary" style="width:44px; height:44px; padding:0; border-radius:50%; font-size:16px;">➤</button>
+            <div id="ask-attachment" class="ask-attachment" hidden>
+                <img id="ask-attachment-img" alt="">
+                <span id="ask-attachment-label"></span>
+                <button type="button" id="ask-attachment-remove" aria-label="Remove image">✕</button>
             </div>
+            <form id="ask-chat-form" role="search" autocomplete="off" onsubmit="event.preventDefault(); els.askSendBtn.click();" style="display:contents;">
+                <div class="chat-input-area">
+                    <select id="mic-lang" style="height:44px; max-width:76px;">
+                        <option value="uk-UA">UK</option><option value="en-US">EN</option><option value="fr-FR">FR</option><option value="ru-RU">RU</option>
+                        <option value="zh-CN">中文</option><option value="ko-KR">KO</option><option value="hi-IN">HI</option><option value="ga-IE">GA</option>
+                    </select>
+                    <button type="button" class="mic-btn" id="mic-btn" aria-label="Почати диктовку" aria-pressed="false">🎤</button>
+                    <input type="search" id="ask-input" name="conversational_query" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" enterkeyhint="send" data-i18n-ph="ask">
+                    <button type="submit" id="ask-send-btn" class="btn-primary" style="width:44px; height:44px; padding:0; border-radius:50%; font-size:16px;">➤</button>
+                </div>
+            </form>
             <div id="dictation-status" class="dictation-status" role="status" aria-live="polite"></div>
         </div>
 
-        <!-- ПРАВА ПАНЕЛЬ (Граматика) -->
+        <!-- ПРАВА ПАНЕЛЬ (Граматика: контекстна панель Verbs/Adjectives) -->
         <div id="grammar-panel" class="side-panel">
             <button type="button" id="grammar-tab" class="panel-tab" aria-label="Граматика" data-i18n-title="tGrammarPanel"></button>
             <div class="panel-header">
                 <h3 data-i18n="panelGrammar">📝 Граматика</h3>
                 <button class="close-panel-btn" onclick="document.getElementById('grammar-panel').classList.remove('expanded')" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
-            <div class="tense-bar" id="tense-bar">
-                <!-- Dynamically populated by grammar-svo.js:renderTenseBar()
-                     based on detected source language (English/French) -->
+            <div class="grammar-mode-bar" id="grammar-mode-bar">
+                <!-- Verbs/Adjectives toggle. Labels are set by
+                     grammar-svo.js:renderGrammarModeBar() in the SOURCE language's
+                     OWN terms (e.g. "Verbes"/"Adjectifs" for French text), not the
+                     interface language — see GRAMMAR_LANG_CONFIG in js/core.js. -->
+                <button type="button" id="grammar-mode-verbs" class="grammar-mode-btn active">Verbs</button>
+                <button type="button" id="grammar-mode-adjectives" class="grammar-mode-btn">Adjectives</button>
+            </div>
+            <div class="grammar-controls-bar" id="grammar-controls-bar">
+                <!-- Dynamically populated by grammar-svo.js:renderGrammarControlsBar():
+                     tense/mood buttons in Verbs mode, empty in Adjectives mode. -->
             </div>
             <div id="grammar-content" class="panel-content">
                 <div style="text-align:center; padding-top: 50px; color: gray;" data-i18n="grammarHint">…</div>
             </div>
-            <div class="verb-bar" id="verb-bar"></div>
         </div>
     </div>
 
@@ -1050,44 +1251,48 @@
 
     <div id="footer-handle" data-i18n-title="tFooter"></div>
     <footer id="app-footer">
-        <button id="prev-btn" data-i18n="prev">◀ Назад</button>
-        <span id="progress-indicator" data-i18n="waiting">Очікування...</span>
-        <button id="next-btn" data-i18n="next">Вперед ▶</button>
+        <div class="footer-nav-group">
+            <button id="prev-btn" data-i18n="prev">◀ Назад</button>
+            <span id="progress-indicator" data-i18n="waiting">Очікування...</span>
+            <button id="next-btn" data-i18n="next">Вперед ▶</button>
+        </div>
     </footer>
 
     <div id="settings-modal" onclick="if (event.target === this) closeKeySettings()">
         <div class="modal-content">
             <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" onclick="closeKeySettings()" data-i18n="close" data-i18n-title="tClose">✕</button>
-            <h3 id="gemini-key-label" data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
-            <input type="password" id="api-key-input" placeholder="AIza..." aria-labelledby="gemini-key-label" autocomplete="off" spellcheck="false">
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="key-link">aistudio.google.com/apikey</a>
+            <form id="api-keys-form" autocomplete="off" onsubmit="event.preventDefault(); saveApiKey();">
+                <h3 id="gemini-key-label" data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
+                <input type="password" id="api-key-input" name="gemini_api_key" placeholder="AIza..." aria-labelledby="gemini-key-label" autocomplete="new-password" spellcheck="false">
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="key-link">aistudio.google.com/apikey</a>
 
-            <h3 id="groq-key-label" style="margin-top:18px;" data-i18n="groqKeyTitle">⚡ Ключ Groq</h3>
-            <input type="password" id="groq-key-input" placeholder="gsk_..." aria-labelledby="groq-key-label" autocomplete="off" spellcheck="false">
-            <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="key-link">console.groq.com/keys</a>
-            <h3 id="openai-key-label" style="margin-top:18px;" data-i18n="openaiKeyTitle">🔑 OpenAI API</h3>
-            <input type="password" id="openai-key-input" placeholder="sk-..." aria-labelledby="openai-key-label" autocomplete="off" spellcheck="false">
-            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="key-link">platform.openai.com/api-keys</a>
-            <fieldset class="ai-provider-selector">
-                <legend data-i18n="aiProviderLabel">Активний AI</legend>
-                <div class="ai-provider-options">
-                    <label><input type="radio" name="ai-provider" value="openai"><span>OpenAI</span></label>
-                    <label><input type="radio" name="ai-provider" value="groq"><span>Groq</span></label>
-                    <label><input type="radio" name="ai-provider" value="gemini"><span>Gemini</span></label>
+                <h3 id="groq-key-label" style="margin-top:18px;" data-i18n="groqKeyTitle">⚡ Ключ Groq</h3>
+                <input type="password" id="groq-key-input" name="groq_api_key" placeholder="gsk_..." aria-labelledby="groq-key-label" autocomplete="new-password" spellcheck="false">
+                <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="key-link">console.groq.com/keys</a>
+                <h3 id="openai-key-label" style="margin-top:18px;" data-i18n="openaiKeyTitle">🔑 OpenAI API</h3>
+                <input type="password" id="openai-key-input" name="openai_api_key" placeholder="sk-..." aria-labelledby="openai-key-label" autocomplete="new-password" spellcheck="false">
+                <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="key-link">platform.openai.com/api-keys</a>
+                <fieldset class="ai-provider-selector">
+                    <legend data-i18n="aiProviderLabel">Активний AI</legend>
+                    <div class="ai-provider-options">
+                        <label><input type="radio" name="ai-provider" value="openai"><span>OpenAI</span></label>
+                        <label><input type="radio" name="ai-provider" value="groq"><span>Groq</span></label>
+                        <label><input type="radio" name="ai-provider" value="gemini"><span>Gemini</span></label>
+                    </div>
+                </fieldset>
+                <p id="ai-provider-error" role="alert" hidden></p>
+                <div class="key-hint" data-i18n="keyNote"></div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-ghost" onclick="closeKeySettings()" data-i18n="cancel">Скасувати</button>
+                    <button type="submit" class="btn-primary" data-i18n="save">Зберегти</button>
                 </div>
-            </fieldset>
-            <p id="ai-provider-error" role="alert" hidden></p>
-            <div class="key-hint" data-i18n="keyNote"></div>
-
-            <div class="modal-footer">
-                <button class="btn-ghost" onclick="closeKeySettings()" data-i18n="cancel">Скасувати</button>
-                <button class="btn-primary" onclick="saveApiKey()" data-i18n="save">Зберегти</button>
-            </div>
+            </form>
         </div>
     </div>
 
-    <script src="js/core.js?v=de6ed588ca16"></script>
-    <script src="js/lang-detect.js?v=21625d365df7"></script>
+    <script src="js/core.js?v=7b24e77b4063"></script>
+    <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
         // core.js: усередині він доходить до pageLang() (js/lang-detect.js), яка на момент
@@ -1096,28 +1301,28 @@
         // вище вже завантажений і виконаний, тож тут виклик безпечний.
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
-    <script src="js/tts.js?v=d0219e4d74e8"></script>
-    <script src="js/selection.js?v=887b5c4cb5a3"></script>
-    <script src="js/learning-stats.js?v=38a697ac8915"></script>
-    <script src="js/navigation.js?v=35e62f613b99"></script>
-    <script src="js/pdf-zoom-pan.js?v=4c15a4acf89a"></script>
-    <script src="js/ui-tooltip.js?v=1985b4724fd6"></script>
-    <script src="js/translation.js?v=3a8c557ecf71"></script>
-    <script src="js/grammar-svo.js?v=1e2cc926855e"></script>
-    <script src="js/ai-client.js?v=413306b7022c"></script>
-    <script src="js/practice-session.js?v=33a9e03c4ee0"></script>
-    <script src="js/practice-worksheet.js?v=acbcb2afec03"></script>
-    <script src="js/dictation.js?v=cd46e7d595c8"></script>
-    <script src="js/pdf-ink.js?v=9c7619668e39"></script>
-    <script src="js/pdf-crop.js?v=e4a75ce89d14"></script>
-    <script src="js/pdf-outline.js?v=54df75ee8ef2"></script>
-    <script src="js/pdf-thumbnails.js?v=ca9551e0f416"></script>
-    <script src="js/pdf-continuous.js?v=52e0ec07166e"></script>
-    <script src="js/pdf-render.js?v=f7f068dd2502"></script>
+    <script src="js/tts.js?v=a17baf6e57dd"></script>
+    <script src="js/selection.js?v=d6ecc9f25df0"></script>
+    <script src="js/learning-stats.js?v=e901c3020682"></script>
+    <script src="js/navigation.js?v=f9b3e52acfc7"></script>
+    <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
+    <script src="js/ui-tooltip.js?v=afded3706fe4"></script>
+    <script src="js/translation.js?v=b5fbd84d5744"></script>
+    <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
+    <script src="js/ai-client.js?v=f32df9e435c5"></script>
+    <script src="js/practice-session.js?v=4a936b0b2205"></script>
+    <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
+    <script src="js/dictation.js?v=6cf6ee491dd8"></script>
+    <script src="js/pdf-ink.js?v=9ed1750d501f"></script>
+    <script src="js/pdf-crop.js?v=80bab2793f94"></script>
+    <script src="js/pdf-outline.js?v=97d934db97c6"></script>
+    <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
+    <script src="js/pdf-continuous.js?v=ee42c36e7287"></script>
+    <script src="js/pdf-render.js?v=7bc44e26dd09"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=4be0c2aad933"></script>
-    <script src="js/main.js?v=2a36869ae4ec"></script>
-    <script src="js/pwa-lifecycle.js?v=6f08199a60e4"></script>
+    <script src="js/quick-wheel.js?v=3176ba147224"></script>
+    <script src="js/main.js?v=d8eabe80cbc4"></script>
+    <script src="js/pwa-lifecycle.js?v=dfdd779052a2"></script>
 </body>
 </html>

@@ -9,7 +9,9 @@ Fix: TTS_CANCEL_SPEAK_DELAY_MS gives cancel() a short head start before the next
 speak(), guarded by the existing ttsGen generation counter so a rapid second
 call (another tap, a fast double-step) discards the now-stale first speak()
 instead of also firing it — this is the actual "no double playback" guarantee
-this test exercises. speechSynthesis is mocked (no real audio in this sandbox);
+this test exercises. Since the first-tap fix, an IDLE synthesizer is not cancelled and speaks at once
+(inside the tap); only a busy one is cancelled, and then the next speak() waits the delay. The mock
+therefore tracks `speaking` like the real one. speechSynthesis is mocked (no real audio in this sandbox);
 the delay/guard logic under test is real. READER_TTS_URL can target production.
 """
 import json, os
@@ -19,7 +21,7 @@ c.call('Page.addScriptToEvaluateOnNewDocument', source='''
 window.__errors = [];
 addEventListener('error', e => __errors.push(e.message));
 addEventListener('unhandledrejection', e => __errors.push(String(e.reason)));
-window.__speakCalls = []; window.__cancelCalls = 0;
+window.__speakCalls = []; window.__cancelCalls = 0; window.__ttsEvents = [];
 // window.speechSynthesis is a native read-only property — a plain assignment
 // silently no-ops (non-strict mode), leaving the REAL synthesizer in place.
 // Object.defineProperty is required to actually replace it, same as the
@@ -29,8 +31,9 @@ Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
         { voiceURI: 'fr-fr', name: 'French', lang: 'fr-FR', localService: true },
         { voiceURI: 'en-us', name: 'English', lang: 'en-US', localService: true }
     ],
-    cancel() { window.__cancelCalls++; },
-    speak(u) { window.__speakCalls.push({ text: u.text, lang: u.lang }); },
+    speaking: false, pending: false, paused: false,
+    cancel() { window.__cancelCalls++; this.speaking = false; __ttsEvents.push('cancel'); },
+    speak(u) { window.__speakCalls.push({ text: u.text, lang: u.lang }); this.speaking = true; __ttsEvents.push('speak ' + u.text); },
     onvoiceschanged: null
 } });
 window.SpeechSynthesisUtterance = class {
@@ -55,31 +58,46 @@ DELAY = js('TTS_CANCEL_SPEAK_DELAY_MS')
 assert isinstance(DELAY, (int, float)) and 0 < DELAY <= 500, DELAY
 WAIT = DELAY + 80
 
-check('speakText: cancel() happens synchronously, speak() does not', f'''(()=>{{
-    window.__speakCalls.length = 0; window.__cancelCalls = 0;
+RESET = "window.__speakCalls.length = 0; window.__cancelCalls = 0; __ttsEvents.length = 0; lastSpeechCancelAt = -Infinity;"
+
+check('speakText on an idle synthesizer: no cancel(), speak() at once (inside the tap)', f'''(()=>{{
+    {RESET} speechSynthesis.speaking = false;
     speakText('Bonjour le monde.', 'orig');
+    return window.__cancelCalls === 0 && window.__speakCalls.length === 1 && window.__speakCalls[0].text === 'Bonjour le monde.';
+}})()''')
+
+check('speakText while speaking: cancel() now, speak() only after the delay', f'''(()=>{{
+    {RESET} speechSynthesis.speaking = true;
+    speakText('Encore une fois.', 'orig');
     return window.__cancelCalls === 1 && window.__speakCalls.length === 0;
 }})()''')
 
 check('speakText: the delayed speak() fires once, with the right text', f'''(async()=>{{
     await new Promise(r => setTimeout(r, {WAIT}));
-    return window.__speakCalls.length === 1 && window.__speakCalls[0].text === 'Bonjour le monde.';
+    return window.__speakCalls.length === 1 && window.__speakCalls[0].text === 'Encore une fois.';
 }})()''')
 
-check('speakText: a second call before the delay elapses cancels the first — never both play', f'''(async()=>{{
-    window.__speakCalls.length = 0; window.__cancelCalls = 0;
+check('speakText: a second call cancels the first BEFORE the second is spoken -- never both at once', f'''(async()=>{{
+    {RESET} speechSynthesis.speaking = false;
     speakText('First phrase.', 'orig');
     speakText('Second phrase.', 'orig');
     await new Promise(r => setTimeout(r, {WAIT}));
-    return window.__speakCalls.length === 1 && window.__speakCalls[0].text === 'Second phrase.';
+    return JSON.stringify(__ttsEvents) === JSON.stringify(['speak First phrase.', 'cancel', 'speak Second phrase.']) || JSON.stringify(__ttsEvents);
+}})()''')
+
+check('speakText: calls queued behind the same cancel speak only the last one', f'''(async()=>{{
+    {RESET} speechSynthesis.speaking = true;
+    speakText('One.', 'orig'); speakText('Two.', 'orig'); speakText('Three.', 'orig');
+    await new Promise(r => setTimeout(r, {WAIT}));
+    return window.__speakCalls.length === 1 && window.__speakCalls[0].text === 'Three.';
 }})()''')
 
 check('speakInLang: same no-double-speak guarantee', f'''(async()=>{{
-    window.__speakCalls.length = 0; window.__cancelCalls = 0;
+    {RESET} speechSynthesis.speaking = false;
     speakInLang('Bonjour.', 'fr', 'tr');
     speakInLang('Au revoir.', 'fr', 'tr');
     await new Promise(r => setTimeout(r, {WAIT}));
-    return window.__speakCalls.length === 1 && window.__speakCalls[0].text === 'Au revoir.';
+    return JSON.stringify(__ttsEvents) === JSON.stringify(['speak Bonjour.', 'cancel', 'speak Au revoir.']) || JSON.stringify(__ttsEvents);
 }})()''')
 
 # stepSentence(): a fast double-step (e.g. two quick taps on the next-sentence
@@ -102,12 +120,12 @@ setup = js('''(()=>{
 })()''')
 assert setup is True
 
-check('stepSentence: two rapid steps cancel synchronously, speak nothing yet', '''(()=>{
-    window.__speakCalls.length = 0; window.__cancelCalls = 0;
+check('stepSentence: two rapid steps cancel the playing sentence synchronously, speak nothing yet', f'''(()=>{{
+    {RESET} speechSynthesis.speaking = true;
     stepSentence(1);
     stepSentence(1);
-    return window.__cancelCalls === 2 && window.__speakCalls.length === 0;
-})()''')
+    return window.__cancelCalls >= 1 && window.__speakCalls.length === 0;
+}})()''')
 
 check('stepSentence: only the sentence actually landed on gets spoken, exactly once', f'''(async()=>{{
     await new Promise(r => setTimeout(r, {WAIT}));

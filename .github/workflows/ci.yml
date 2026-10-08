@@ -105,13 +105,20 @@ jobs:
               exit 1
           fi
           
+          echo "Runner CPU: $(lscpu | sed -n 's/^Model name: *//p') / $(nproc) cores"
           echo "Starting Headless Chrome ($CHROME_BIN)..."
+          # The runner pipes kernel core dumps to systemd-coredump; a crashed renderer then sat in the kernel's
+          # core-dump write indefinitely (kernel stack: vfs_coredump -> anon_pipe_write), so Chrome never
+          # reported the crash and the suite hung. No core dumps: a renderer crash surfaces immediately.
+          sudo -n sysctl -q -w kernel.core_pattern=core || true
+          ulimit -c 0
           mkdir -p /tmp/pdf-ux-test-profile
-          $CHROME_BIN --headless --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
+          $CHROME_BIN --headless --enable-logging=stderr --v=0 --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
           CHROME_PID=$!
           
           # Ensure cleanup of background processes when this step exits (success or failure)
-          trap "echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
+          # On failure, surface Chrome's own log (renderer crash / GPU hang reasons never reach the CDP client)
+          trap "status=\$?; if [ \$status -ne 0 ]; then echo '--- chrome.log (tail) ---'; grep -E 'FATAL|Check failed|NOTREACHED|DUMP_WITHOUT|:ERROR:' chrome.log | grep -v 'dbus\|gcm\|UPower' | tail -n 40; tail -n 30 chrome.log || true; bash tests/ci_chrome_stall_dump.sh || true; fi; echo 'Stopping background services...'; kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT
           
           # 3. Wait for services
           echo "Waiting for HTTP server (PID $SERVER_PID) to respond on port 8765..."
@@ -119,21 +126,43 @@ jobs:
           echo "HTTP server is running."
           
           echo "Waiting for Chrome CDP (PID $CHROME_PID) on port 9222..."
-          timeout 15 bash -c 'until curl -s http://127.0.0.1:9222/json > /dev/null; do sleep 0.5; done'
+          # A cold headless Chrome on a busy runner can need well over 15s to open its DevTools port.
+          timeout 45 bash -c 'until curl -s http://127.0.0.1:9222/json > /dev/null; do sleep 0.5; done'
           echo "Chrome CDP is ready."
           
           # 4. Run tests
           echo "Running pdf_ux_browser.py..."
           python3 -u tests/pdf_ux_browser.py
+          python3 -u tests/pdf_pinch_anchor_browser.py
 
           echo "Running pdf_continuous_browser.py..."
           python3 -u tests/pdf_continuous_browser.py
+
+          echo "Running pdf_workspace_browser.py..."
+          python3 -u tests/pdf_workspace_browser.py
+
+          echo "Running pdf_thumbnails_browser.py..."
+          python3 -u tests/pdf_thumbnails_browser.py
+
+          echo "Running pdf_workspace_regressions_browser.py..."
+          python3 -u tests/pdf_workspace_regressions_browser.py
+
+          echo "Running translation_popup_timer_browser.py..."
+          python3 -u tests/translation_popup_timer_browser.py
+          python3 -u tests/single_word_translation_browser.py
 
           echo "Running pdf_word_click_browser.py..."
           python3 -u tests/pdf_word_click_browser.py
 
           echo "Running pdf_page_identity_browser.py..."
           python3 -u tests/pdf_page_identity_browser.py
+
+          python3 -u tests/pdf_print_browser.py
+          python3 -u tests/pdf_crop_ai_share_browser.py
+          python3 -u tests/pdf_ink_ownership_browser.py
+          python3 -u tests/ai_cancel_state_browser.py
+          python3 -u tests/ai_key_preserve_browser.py
+          python3 -u tests/ai_key_replacement_browser.py
 
           echo "Running learning_ux_browser.py..."
           python3 -u tests/learning_ux_browser.py
@@ -145,6 +174,7 @@ jobs:
 
           echo "Running reader_resize_sync_browser.py..."
           python3 -u tests/reader_resize_sync_browser.py
+          python3 -u tests/reader_font_size_browser.py
 
           echo "Running pwa_start_url_browser.py..."
           python3 -u tests/pwa_start_url_browser.py
@@ -152,7 +182,16 @@ jobs:
           python3 -u tests/ai_providers_browser.py
           python3 -u tests/practice_browser.py
           python3 -u tests/practice_workspace_browser.py
+          python3 -u tests/practice_reading_browser.py
+          python3 -u tests/practice_allocation_browser.py
+          python3 -u tests/practice_sentence_actions_browser.py
+          python3 -u tests/practice_save_failure_browser.py
           python3 -u tests/grammar_language_isolation_browser.py
+          python3 -u tests/grammar_redesign_browser.py
+          python3 -u tests/grammar_french_browser.py
+          python3 -u tests/grammar_selection_preserve_browser.py
+          python3 -u tests/reader_repair_verification_browser.py
+          python3 -u tests/ai_contract_browser.py
 
           python3 -u tests/quick_wheel_browser.py
           python3 -u tests/quick_wheel_drag_browser.py
@@ -177,6 +216,9 @@ jobs:
 
           echo "Running ask_ai_language_browser.py..."
           python3 -u tests/ask_ai_language_browser.py
+          python3 -u tests/ask_dictation_browser.py
+          python3 -u tests/dictation_send_browser.py
+          python3 -u tests/ask_prompt_browser.py
 
           echo "Running local_translator_warmup_browser.py..."
           python3 -u tests/local_translator_warmup_browser.py
@@ -186,14 +228,26 @@ jobs:
 
           echo "Running tts_lang_voice_mismatch_browser.py..."
           python3 -u tests/tts_lang_voice_mismatch_browser.py
+          python3 -u tests/tts_first_tap_browser.py
 
           echo "Running pdf_sentence_reselect_browser.py..."
           python3 -u tests/pdf_sentence_reselect_browser.py
 
           echo "Running pdf_bilingual_columns_browser.py..."
           python3 -u tests/pdf_bilingual_columns_browser.py
+          python3 -u tests/bilingual_selection_browser.py
 
           echo "Running pdf_hitbox_stateless_browser.py..."
           python3 -u tests/pdf_hitbox_stateless_browser.py
 
           echo "All tests passed successfully!"
+
+      - name: Upload Chrome crash reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-crash-reports
+          path: |
+            ~/.config/google-chrome/Crash Reports
+            chrome.log
+          if-no-files-found: ignore

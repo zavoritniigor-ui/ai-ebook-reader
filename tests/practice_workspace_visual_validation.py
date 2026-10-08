@@ -78,20 +78,19 @@ c.js('''
     currentPracticeSession = createPracticeSession({
         sourceLanguage: 'en',
         targetLanguage: 'uk',
+        mode: 'verbs',
         level: 'A1'
     });
     currentPracticeSession.status = 'ready';
-    currentPracticeSession.worksheet = {
-        metadata: { title: 'Visual Test Exercises' },
-        exercises: Array.from({length: 25}, (_, i) => ({
-            id: 'ex-' + i,
-            type: 'fill_form',
-            difficulty: 1,
-            instruction: 'Complete the sentence',
-            prompt: 'Test prompt sentence ' + i + ' with some length. '.repeat(8),
-            expectedConcept: 'test',
-            hints: ['Hint 1 for exercise ' + i, 'Hint 2 for exercise ' + i]
-        }))
+    const visualParagraphs = Array.from({length: 25}, (_, i) =>
+        'Paragraph ' + i + ' with some length. '.repeat(8));
+    currentPracticeSession.reading = {
+        title: 'Visual Test Reading',
+        language: 'en',
+        mode: 'verbs',
+        paragraphs: visualParagraphs,
+        sections: [{heading: '', kind: 'story', start: 0, end: visualParagraphs.length}],
+        targets: []
     };
 
     // Show Grammar panel to test layout with drawer
@@ -234,14 +233,12 @@ for viewport_name, width, height in test_viewports:
               return r.left >= -1 && r.right <= window.innerWidth + 1;
           })()""")
 
-    # Reveal a hint and save state
+    # Scroll the mounted reading and save state (replaces the old hint-reveal probe —
+    # this redesign's Practice panel has no hints/answer UI, see grammar-redesign notes)
     c.js("""
     {
-        const hintBtn = document.getElementById('practice-panel').querySelector('.hint-reveal-btn');
-        if (hintBtn && !hintBtn.disabled) {
-            hintBtn.click();
-            window.hintRevealed = true;
-        }
+        const scroller = document.getElementById('practice-panel').querySelector('.practice-scroll');
+        if (scroller) { scroller.scrollTop = 40; window.scrollSaved = scroller.scrollTop; }
     }
     """)
 
@@ -255,8 +252,8 @@ for viewport_name, width, height in test_viewports:
     check(f'{viewport_name} restored from bookmark: session intact',
           "getCurrentPracticeSession().id === window.initialSession.id")
 
-    check(f'{viewport_name} restored from bookmark: hints preserved',
-          "window.hintRevealed ? Object.values(getCurrentPracticeSession().revealedHints).some(v => v > 0) : true")
+    check(f'{viewport_name} restored from bookmark: scroll position preserved',
+          "window.scrollSaved === undefined || document.getElementById('practice-panel').querySelector('.practice-scroll').scrollTop === window.scrollSaved")
 
     # === TRANSITIONS AND POSITION VERIFICATION ===
     print('\n  POSITIONING VERIFICATION:')

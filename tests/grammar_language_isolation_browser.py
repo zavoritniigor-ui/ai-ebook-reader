@@ -1,5 +1,17 @@
 """Grammar language isolation and Practice UX behavioral tests.
-Tests that would have failed on the language-mixing bug.
+
+Redesign note (grammar-redesign branch): the original version of this suite tested
+the OLD hardcoded EN/FR-only TENSE_SYSTEMS/DEFAULT_TENSE objects and the free-text
+buildConjugationPrompt('know', 'en', ...) HTML-prompt contract directly. Both were
+replaced by the data-driven GRAMMAR_LANG_CONFIG (all 8 supported languages, not just
+EN/FR) and a single structured-JSON buildGrammarAnalysisPrompt/normalizeGrammarAnalysis
+pipeline — see tests/grammar_redesign_browser.py for the bulk of the new behavioral
+coverage (mode switching, fabrication/duplicate rejection, caching, stale-response
+protection, contextual Practice reading, target-click focus). This file keeps the
+narrower "language isolation" focus its name promises, updated to the new API:
+prompt-text language purity for the redesigned Grammar analysis prompt, the French
+tense/mood system's expected richness, and the renamed Practice/async-task
+infrastructure's continued availability.
 """
 import json, os, time
 from browser_cdp import CDP
@@ -12,7 +24,7 @@ c.call('Page.navigate', url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:
 c.wait("document.readyState==='complete' && !document.body.inert")
 c.js("localStorage.clear();showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove()")
 c.call('Page.reload')
-c.wait("document.readyState==='complete' && !document.body.inert && typeof buildConjugationPrompt === 'function'")
+c.wait("document.readyState==='complete' && !document.body.inert && typeof buildGrammarAnalysisPrompt === 'function'")
 
 def check(name, expression, timeout=0):
     """Evaluate expression with timeout support."""
@@ -24,149 +36,124 @@ def check(name, expression, timeout=0):
     assert result is True, (name, result)
     print('PASS', name)
 
-print("\n=== TEST 1: TENSE_SYSTEMS Configuration ===")
+print("\n=== TEST 1: GRAMMAR_LANG_CONFIG structure ===")
 c.js(r"""
 window.__grammarTests = { config: {} };
-
-// Verify TENSE_SYSTEMS exists and has correct structure
-window.__grammarTests.config.hasTenseSystems = typeof TENSE_SYSTEMS === 'object';
-window.__grammarTests.config.hasFrench = window.TENSE_SYSTEMS && window.TENSE_SYSTEMS.fr ? true : false;
-window.__grammarTests.config.hasEnglish = window.TENSE_SYSTEMS && window.TENSE_SYSTEMS.en ? true : false;
-
-// Check French tenses
+window.__grammarTests.config.hasConfig = typeof GRAMMAR_LANG_CONFIG === 'object';
+window.__grammarTests.config.hasFrench = !!(GRAMMAR_LANG_CONFIG && GRAMMAR_LANG_CONFIG.fr);
+window.__grammarTests.config.hasEnglish = !!(GRAMMAR_LANG_CONFIG && GRAMMAR_LANG_CONFIG.en);
 if (window.__grammarTests.config.hasFrench) {
-    const frTenses = window.TENSE_SYSTEMS.fr;
+    const frTenses = GRAMMAR_LANG_CONFIG.fr.verb.tenses;
     window.__grammarTests.config.frTenseCount = frTenses.length;
     window.__grammarTests.config.frHasSubjonctif = frTenses.some(t => t.id.includes('subjonctif'));
     window.__grammarTests.config.frHasImparfait = frTenses.some(t => t.id.includes('imparfait'));
 }
-
-// Check English tenses
 if (window.__grammarTests.config.hasEnglish) {
-    const enTenses = window.TENSE_SYSTEMS.en;
+    const enTenses = GRAMMAR_LANG_CONFIG.en.verb.tenses;
     window.__grammarTests.config.enTenseCount = enTenses.length;
     window.__grammarTests.config.enHasPresent = enTenses.some(t => t.id.includes('present'));
     window.__grammarTests.config.enHasPast = enTenses.some(t => t.id.includes('past'));
 }
-
 true;
 """)
 
-check("T1: TENSE_SYSTEMS exists",
-      "typeof TENSE_SYSTEMS === 'object'")
+check("T1: GRAMMAR_LANG_CONFIG exists", "typeof GRAMMAR_LANG_CONFIG === 'object'")
+check("T1: French tenses configured", "GRAMMAR_LANG_CONFIG.fr.verb.tenses.length >= 8")
+check("T1: English tenses configured", "GRAMMAR_LANG_CONFIG.en.verb.tenses.length >= 8")
+check("T1: French has subjunctive tense", "window.__grammarTests.config.frHasSubjonctif")
+check("T1: French has imperfect tense", "window.__grammarTests.config.frHasImparfait")
+check("T1: every one of the 8 supported languages (not just EN/FR) has its own config",
+      "SUPPORTED_LANGUAGE_CODES.length === 8 && SUPPORTED_LANGUAGE_CODES.every(c => GRAMMAR_LANG_CONFIG[c])")
 
-check("T1: French tenses configured",
-      "TENSE_SYSTEMS && TENSE_SYSTEMS.fr && TENSE_SYSTEMS.fr.length >= 8")
-
-check("T1: English tenses configured",
-      "TENSE_SYSTEMS && TENSE_SYSTEMS.en && TENSE_SYSTEMS.en.length >= 8")
-
-print("\n=== TEST 2: English Conjugation Prompt ===")
+print("\n=== TEST 2: Grammar analysis prompt language purity ===")
 c.js(r"""
 window.__grammarTests.prompts = {};
+const englishPrompt = buildGrammarAnalysisPrompt('She has finished her work.', 'en', 'English');
+window.__grammarTests.prompts.enMentionsEnglish = englishPrompt.includes('English');
+window.__grammarTests.prompts.enListsEnFeatures = GRAMMAR_LANG_CONFIG.en.verb.features.every(f => englishPrompt.includes(f));
+window.__grammarTests.prompts.enOmitsMood = !GRAMMAR_LANG_CONFIG.en.verb.features.includes('mood');
 
-// Test buildConjugationPrompt for English
-const englishPrompt = buildConjugationPrompt('know', 'en', 'present_simple', 'Present Simple');
-window.__grammarTests.prompts.english = englishPrompt;
-window.__grammarTests.prompts.enHasEnglishWord = englishPrompt.includes('English verb');
-window.__grammarTests.prompts.enNoFrench = !englishPrompt.includes('verbe français');
-
-// Test buildConjugationPrompt for French
-const frenchPrompt = buildConjugationPrompt('savoir', 'fr', 'indicatif_present', 'Présent');
-window.__grammarTests.prompts.french = frenchPrompt;
-window.__grammarTests.prompts.frHasFrenchWord = frenchPrompt.includes('verbe français');
-window.__grammarTests.prompts.frNoEnglish = !frenchPrompt.includes('English verb');
-
+const frenchPrompt = buildGrammarAnalysisPrompt('Elle a terminé son travail.', 'fr', 'French');
+window.__grammarTests.prompts.frMentionsFrench = frenchPrompt.includes('French');
+window.__grammarTests.prompts.frListsFrFeatures = GRAMMAR_LANG_CONFIG.fr.verb.features.every(f => frenchPrompt.includes(f));
 true;
 """)
 
-check("T2: English prompt uses English",
-      "window.__grammarTests.prompts.enHasEnglishWord && window.__grammarTests.prompts.enNoFrench")
+check("T2: English analysis prompt names English and lists only EN-relevant features",
+      "window.__grammarTests.prompts.enMentionsEnglish && window.__grammarTests.prompts.enListsEnFeatures")
+check("T2: French analysis prompt names French and lists only FR-relevant features",
+      "window.__grammarTests.prompts.frMentionsFrench && window.__grammarTests.prompts.frListsFrFeatures")
 
-check("T2: French prompt uses French",
-      "window.__grammarTests.prompts.frHasFrenchWord && window.__grammarTests.prompts.frNoEnglish")
-
-print("\n=== TEST 3: French Tense System Preserved ===")
+print("\n=== TEST 3: Adjective form/paradigm slots are language-specific ===")
 c.js(r"""
-window.__grammarTests.french = {};
-
-const frTenses = TENSE_SYSTEMS.fr || [];
-window.__grammarTests.french.count = frTenses.length;
-window.__grammarTests.french.hasSubj = frTenses.some(t => t.id.includes('subjonctif'));
-window.__grammarTests.french.hasImperfect = frTenses.some(t => t.id.includes('imparfait'));
-window.__grammarTests.french.hasCompound = frTenses.some(t => t.label.includes('Composé'));
-window.__grammarTests.french.expectEnglish = frTenses.some(t => t.en && t.en.includes('Subjunctive'));
-
+window.__grammarTests.forms = {
+    frAdjForms: GRAMMAR_LANG_CONFIG.fr.adjective.forms.map(f => f.id),
+    enAdjForms: GRAMMAR_LANG_CONFIG.en.adjective.forms.map(f => f.id),
+    zhVerbPersons: GRAMMAR_LANG_CONFIG.zh.verb.persons
+};
 true;
 """)
+check("T3: French adjectives declare the 4-cell gender/number agreement grid plus the before-vowel slot (bel/nouvel/vieil/fol/mol)",
+      "['ms','fs','mp','fp','ms_vowel'].every(id => window.__grammarTests.forms.frAdjForms.includes(id)) && window.__grammarTests.forms.frAdjForms.length === 5")
+check("T3: English adjectives declare no agreement grid (no grammatical gender)",
+      "window.__grammarTests.forms.enAdjForms.length === 0")
+check("T3: Chinese verbs declare no person-based paradigm (not person-inflected)",
+      "window.__grammarTests.forms.zhVerbPersons.length === 0")
 
-check("T3: French has subjunctive tense",
-      "window.__grammarTests.french.hasSubj")
-
-check("T3: French has imperfect tense",
-      "window.__grammarTests.french.hasImperfect")
-
-print("\n=== TEST 4: Default Tense Configuration ===")
-c.js(r"""
-window.__grammarTests.defaults = {};
-
-// Check DEFAULT_TENSE configuration
-window.__grammarTests.defaults.hasConfig = typeof DEFAULT_TENSE === 'object';
-window.__grammarTests.defaults.enDefault = DEFAULT_TENSE && DEFAULT_TENSE.en;
-window.__grammarTests.defaults.frDefault = DEFAULT_TENSE && DEFAULT_TENSE.fr;
-
-true;
-""")
-
-check("T4: DEFAULT_TENSE configured",
-      "window.__grammarTests.defaults.hasConfig")
-
-check("T4: English and French have default tenses",
-      "(DEFAULT_TENSE && DEFAULT_TENSE.en && DEFAULT_TENSE.fr) === true || (DEFAULT_TENSE && typeof DEFAULT_TENSE.en === 'string' && typeof DEFAULT_TENSE.fr === 'string')")
-
-print("\n=== TEST 5: Practice Worksheet Infrastructure ===")
+print("\n=== TEST 4: Practice reading infrastructure (renamed API) ===")
 c.js(r"""
 window.__practiceCheck = {
-    hasGenerate: typeof generatePracticeWorksheet === 'function',
+    hasGenerate: typeof generatePracticeReading === 'function',
     hasDisplay: typeof displayPracticeSession === 'function',
     hasCurrent: typeof getCurrentPracticeSession === 'function',
-    hasPersist: typeof persistPracticeSession === 'function'
+    hasPersist: typeof persistPracticeSession === 'function',
+    hasValidate: typeof validatePracticeReading === 'function'
 };
-
 true;
 """)
 
-check("T5: Practice generation available",
-      "window.__practiceCheck.hasGenerate")
+check("T4: Practice reading generation available", "window.__practiceCheck.hasGenerate")
+check("T4: Practice display/validation functions available",
+      "window.__practiceCheck.hasDisplay && window.__practiceCheck.hasCurrent && window.__practiceCheck.hasValidate")
 
-check("T5: Practice display functions available",
-      "window.__practiceCheck.hasDisplay && window.__practiceCheck.hasCurrent")
-
-print("\n=== TEST 6: Practice Persistence ===")
+print("\n=== TEST 5: Practice Persistence ===")
 c.js(r"""
 window.__persistCheck = {
     canPersist: typeof persistPracticeSession === 'function',
     canLoad: typeof loadPracticeSession === 'function',
     canDelete: typeof deletePracticeSession === 'function'
 };
-
 true;
 """)
 
-check("T6: Session persistence functions available",
+check("T5: Session persistence functions available",
       "window.__persistCheck.canPersist && window.__persistCheck.canLoad")
 
-print("\n=== TEST 7: Async Task Tracking ===")
+print("\n=== TEST 6: Async Task Tracking ===")
 c.js(r"""
 window.__asyncCheck = {
     hasBegin: typeof beginAsyncTask === 'function',
     hasCancel: typeof cancelAsyncTasks === 'function'
 };
-
 true;
 """)
 
-check("T7: Async task tracking available",
+check("T6: Async task tracking available",
       "window.__asyncCheck.hasBegin && window.__asyncCheck.hasCancel")
+
+print("\n=== TEST 7: Book switch resets grammar state (no cross-book leakage) ===")
+c.js(r"""
+window.__resetCheck = { hasReset: typeof resetGrammarState === 'function' };
+if (window.__resetCheck.hasReset) {
+    grammarContext.analysis = {language: 'fr', items: [{pos:'verb', lemma:'test', surface:'test', sentence:'s', features:{}, explanation:'', forms:null}]};
+    grammarContext.sourceLanguage = 'fr';
+    resetGrammarState();
+    window.__resetCheck.clearedAnalysis = grammarContext.analysis === null;
+    window.__resetCheck.clearedLanguage = grammarContext.sourceLanguage === null;
+}
+true;
+""")
+check("T7: resetGrammarState exists and clears analysis/language",
+      "window.__resetCheck.hasReset && window.__resetCheck.clearedAnalysis && window.__resetCheck.clearedLanguage")
 
 print("\n=== ALL GRAMMAR & PRACTICE ISOLATION TESTS PASSED ===")

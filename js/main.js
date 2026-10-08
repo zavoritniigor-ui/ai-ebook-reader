@@ -78,12 +78,11 @@ els.voiceSelect.onchange = e => {
     const samples = { fr: 'Bonjour, ceci est ma voix.', en: 'Hello, this is my voice.', uk: 'Вітаю, це мій голос.', ru: 'Здравствуйте, это мой голос.', zh: '你好，这是我的声音。', ko: '안녕하세요, 제 목소리입니다.', hi: 'नमस्ते, यह मेरी आवाज़ है।', ga: 'Dia dhuit, seo é mo ghuth.' };
     const u = new SpeechSynthesisUtterance(samples[code] || 'Test');
     setUtteranceVoice(u, v.lang, v); u.rate = 0.95;
-    ttsSynth.cancel();
+    cancelSpeech();
     state.ttsGen++;
     const gen = state.ttsGen;
-    // Затримка перед speak() — див. TTS_CANCEL_SPEAK_DELAY_MS у js/tts.js (той самий
-    // "подвійний голос" на Android/Chrome, якщо speak() іде відразу за cancel()).
-    setTimeout(() => { if (gen === state.ttsGen) ttsSynth.speak(u); }, TTS_CANCEL_SPEAK_DELAY_MS);
+    // Після справжнього cancel() — пауза TTS_CANCEL_SPEAK_DELAY_MS (js/tts.js startUtterance), інакше одразу.
+    startUtterance(u, gen);
 };
 
 // РЕЖИМ ВИВЧЕННЯ ТА ZERO-MEMORY
@@ -105,7 +104,26 @@ els.translateBtn.onclick = () => {
 // завжди звіряється з реально відмальованою геометрією, а не з "плоскою" розкладкою.
 
 els.micBtn.onclick = toggleDictation;
-els.askSendBtn.onclick = () => { const q = els.askInput.value.trim(); if(q) { if(!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; } stopDictation(); els.askInput.value = ""; startAiTask(state.lastAskContext || q, 'ask', q); } };
+// Send while dictating: finish recognition first -- the last spoken words are still interim and would be dropped
+// (audit A11) -- then send exactly what is in the field. Without dictation, or without AI, Send is unchanged.
+function sendAskFromField() {
+    const q = els.askInput.value.trim();
+    if (askAttachment) { sendAskAttachment(q); return; }
+    if (!q) return;
+    if (!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; }
+    stopDictation();
+    els.askInput.value = "";
+    // One-shot: a context set by an earlier explicit selection (ttAskBtn/btn-explain/btn-lang-level)
+    // is used for THIS question only, then cleared -- an unrelated LATER question must never inherit
+    // a stale passage (startAiTask itself no longer re-remembers it; see the note there).
+    const context = state.lastAskContext;
+    state.lastAskContext = '';
+    startAiTask(context, 'ask', q);
+}
+els.askSendBtn.onclick = () => {
+    if (dictationBusy() && aiAvailable() && !(askAttachment && askAttachment.sending)) { finishDictationThen(sendAskFromField); return; }
+    sendAskFromField();
+};
 els.askInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') els.askSendBtn.click(); });
 
 // ПАРСЕРИ ФОРМАТІВ
@@ -148,12 +166,14 @@ async function openBookFile(file) {
     if (typeof resetPdfPageLabels === 'function') resetPdfPageLabels();
     state.bookTextOffset = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
-    state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = '';
-    state.activeVerb = null; state.verbs = []; state.inkMode = false;
+    state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = ''; state.lastGrammarSourceText = null;
+    state.inkMode = false;
     document.body.classList.remove('ink-mode', 'region-mode', 'pdf-pannable', 'pdf-dragging');
     els.askPanel.classList.remove('loading', 'ready'); els.grammarPanel.classList.remove('loading', 'ready');
     els.askContent.textContent = t('askHint'); els.grammarContent.textContent = t('grammarHint');
-    document.getElementById('verb-bar').replaceChildren(); els.toc.replaceChildren();
+    document.getElementById('grammar-controls-bar').replaceChildren();
+    if (typeof resetGrammarState === 'function') resetGrammarState(); // no stale analysis/cache across books (section 18)
+    els.toc.replaceChildren();
     els.pages.innerHTML = `<div style="text-align:center;">${t('loading')}</div>`;
     if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
     state.bookKey = bookKeyFor(file);
@@ -184,8 +204,29 @@ els.upload.addEventListener('change', async (e) => {
     await openBookFile(file);
 });
 
-document.getElementById('zoom-in').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); } else { state.fontSize += 2; writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; repaginateBook(); } };
-document.getElementById('zoom-out').onclick = () => { if (state.format === 'pdf') { setPdfScale(pdfBaseScale()*state.pdfZoom - 0.25); } else { state.fontSize = Math.max(12, state.fontSize - 2); writeStored('reader_font_size', state.fontSize); els.pages.style.fontSize = `${state.fontSize}px`; repaginateBook(); } };
+// Text formats: A-/A+ step the reader font within READER_FONT_MIN..READER_FONT_MAX (js/core.js) and are disabled at
+// the limit. In PDF mode the same buttons zoom the page (setPdfScale has its own range), so they stay enabled there;
+// the body's pdf-mode class switches with the format, so the observer below keeps the disabled state right.
+const zoomInBtn = document.getElementById('zoom-in'), zoomOutBtn = document.getElementById('zoom-out');
+function updateFontSizeControls() {
+    const text = !document.body.classList.contains('pdf-mode');
+    zoomInBtn.disabled = text && state.fontSize >= READER_FONT_MAX;
+    zoomOutBtn.disabled = text && state.fontSize <= READER_FONT_MIN;
+}
+function setReaderFontSize(size) {
+    const next = clampReaderFontSize(size);
+    if (next !== state.fontSize) {
+        state.fontSize = next;
+        writeStored('reader_font_size', state.fontSize);
+        els.pages.style.fontSize = `${state.fontSize}px`;
+        repaginateBook();
+    }
+    updateFontSizeControls();
+}
+zoomInBtn.onclick = () => { if (state.format === 'pdf') setPdfScale(pdfBaseScale()*state.pdfZoom + 0.25); else setReaderFontSize(state.fontSize + READER_FONT_STEP); };
+zoomOutBtn.onclick = () => { if (state.format === 'pdf') setPdfScale(pdfBaseScale()*state.pdfZoom - 0.25); else setReaderFontSize(state.fontSize - READER_FONT_STEP); };
+new MutationObserver(updateFontSizeControls).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+updateFontSizeControls();
 document.getElementById('theme-select').onchange = (e) => {
     document.body.setAttribute('data-theme', e.target.value);
     writeStored('reader_theme', e.target.value);

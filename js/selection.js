@@ -23,8 +23,22 @@ function caretRangeAt(clientX, clientY) {
         if (pos) { range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); range.collapse(true); }
     }
     // During transformed PDF hit-testing Chrome may return the layer element,
-    // not a text offset. Recover the nearest glyph within that PDF item only.
-    if (range && range.startContainer.nodeType === Node.ELEMENT_NODE) {
+    // page wrapper, or canvas instead of a text offset. Recover the nearest glyph.
+    if ((!range || range.startContainer.nodeType === Node.ELEMENT_NODE) && state.format === 'pdf') {
+        const el = (range && range.startContainer.nodeType === Node.ELEMENT_NODE) ? range.startContainer : document.elementFromPoint(clientX, clientY);
+        let layer = el?.closest?.('.pdf-text-layer');
+        if (!layer) {
+            const pageEl = el?.closest?.('.pdf-page-wrapper') ||
+                           document.elementFromPoint(clientX, clientY)?.closest('.pdf-page-wrapper') ||
+                           pdfPageWrappers?.[pdfActivePage] || document.querySelector('.pdf-page-wrapper');
+            if (pageEl) layer = pageEl.querySelector('.pdf-text-layer');
+        }
+        const span = layer && pdfNearestSpan(layer, clientX, clientY);
+        if (span) {
+            const caret = pdfCaretInSpan(span, clientX, clientY);
+            if (caret) return caret;
+        }
+    } else if (range && range.startContainer.nodeType === Node.ELEMENT_NODE) {
         const layer = range.startContainer.closest('.pdf-text-layer');
         const span = layer && pdfNearestSpan(layer, clientX, clientY);
         if (span) return pdfCaretInSpan(span, clientX, clientY) || range;
@@ -174,32 +188,47 @@ function pdfTextSpans(layer) {
         !s.classList.contains('markedContent') && s.textContent.trim() &&
         !s.parentElement.closest('span:not(.markedContent)'));
 }
-function pdfVisualGroup(layer, targetSpan) {
-    const spans = pdfTextSpans(layer);
-    if (!spans.length) return [];
-    const targetIdx = spans.indexOf(targetSpan);
-    if (targetIdx < 0) return spans;
-    const rects = spans.map(s => s.getBoundingClientRect());
-    // Колонки визначаються у ДВА кроки, не за лівими межами окремих фрагментів
-    // напряму: рядок часто розбитий на кілька фрагментів через зміну стилю ПОСЕРЕД
-    // рядка (напівжирне "Premièrement," посеред речення тощо, як у навчальних
-    // двомовних книгах) — такий фрагмент починається глибоко ВСЕРЕДИНІ рядка, і його
-    // власна ліва межа нічого не каже про те, до якої колонки належить рядок. А
-    // просте групування "спершу за Y" (без урахування X) теж не підходить: у
-    // двомовній книзі рядок оригіналу й рядок перекладу зазвичай лежать РІВНО на
-    // тій самій висоті (переклад надруковано навпроти, рядок у рядок) — тож звичайне
-    // Y-групування об'єднало б обидві колонки в один "рядок".
-    // Крок 1 — Y-СМУГИ: фрагменти на приблизно однаковій висоті (це можуть бути
-    // фрагменти з ОБОХ колонок одразу, якщо рядки вирівняні один навпроти одного).
-    // Крок 2 — усередині кожної Y-смуги фрагменти сортуються за X і розрізаються на
-    // "сегменти" там, де проміжок між ПРАВИМ краєм одного фрагмента й ЛІВИМ краєм
-    // наступного помітно більший за звичайний міжслівний — це і є межа колонок.
-    // Фрагменти одного стильового розриву посеред рядка (з попереднім вони СТИКУються
-    // впритул, без такого розриву) лишаються в ОДНОМУ сегменті, а не поділяються.
-    // Лише СТАРТОВА X-позиція кожного такого сегмента (не кожного фрагмента) далі йде
-    // в кластеризацію колонок — тому текст перед стильовим розривом більше не отруює
-    // її випадковими серединними X-значеннями.
-    const layerWidth = layer.getBoundingClientRect().width || 1;
+// Вправа "поставте дієслово у потрібну форму" друкує підказку в дужках і лишає широкий
+// пропуск перед рештою речення: "3. Ils (plaindre)            la pauvre femme." Пропуск
+// ширший за міжколонковий, але обидва фрагменти — ОДИН рядок. Тому рядок продовжується лише
+// коли ліворуч безсумнівна ознака вправи: французька дієслівна підказка (той самий предикат
+// isFrenchExerciseCue з js/lang-detect.js, що й для визначення мови) або явна лінія-пропуск.
+// Усе інше — справжня межа колонок: "l'allemand (m.)   German" (рід у дужках у словнику),
+// звичайний текст у двох колонках, наступний нумерований пункт праворуч.
+const EXERCISE_ITEM_RE = /^\s*(?:\d+[.)]|[a-zA-Z][.)]|•)\s/;
+function isExerciseBlankContinuation(leftText, rightText) {
+    const left = (leftText || '').trim(), right = (rightText || '').trim();
+    if (!left || !right || EXERCISE_ITEM_RE.test(right)) return false;   // наступний пункт — не продовження
+    if (/(?:_{2,}|\.{4,}|…)$/.test(left)) return true;                    // явна лінія-пропуск
+    const cue = /^([\s\S]*)\(([^()]{1,40})\)$/.exec(left);
+    return !!cue && typeof isFrenchExerciseCue === 'function' && isFrenchExerciseCue(cue[2], cue[1]);
+}
+// Колонки визначаються у ДВА кроки, не за лівими межами окремих фрагментів
+// напряму: рядок часто розбитий на кілька фрагментів через зміну стилю ПОСЕРЕД
+// рядка (напівжирне "Premièrement," посеред речення тощо, як у навчальних
+// двомовних книгах) — такий фрагмент починається глибоко ВСЕРЕДИНІ рядка, і його
+// власна ліва межа нічого не каже про те, до якої колонки належить рядок. А
+// просте групування "спершу за Y" (без урахування X) теж не підходить: у
+// двомовній книзі рядок оригіналу й рядок перекладу зазвичай лежать РІВНО на
+// тій самій висоті (переклад надруковано навпроти, рядок у рядок) — тож звичайне
+// Y-групування об'єднало б обидві колонки в один "рядок".
+// Крок 1 — Y-СМУГИ: фрагменти на приблизно однаковій висоті (це можуть бути
+// фрагменти з ОБОХ колонок одразу, якщо рядки вирівняні один навпроти одного).
+// Крок 2 — усередині кожної Y-смуги фрагменти сортуються за X і розрізаються на
+// "сегменти" там, де проміжок між ПРАВИМ краєм одного фрагмента й ЛІВИМ краєм
+// наступного помітно більший за звичайний міжслівний — це і є межа колонок.
+// Фрагменти одного стильового розриву посеред рядка (з попереднім вони СТИКУються
+// впритул, без такого розриву) лишаються в ОДНОМУ сегменті, а не поділяються.
+// Лише СТАРТОВА X-позиція кожного такого сегмента (не кожного фрагмента) далі йде
+// в кластеризацію колонок — тому текст перед стильовим розривом більше не отруює
+// її випадковими серединними X-значеннями.
+// Спільне для pdfVisualGroup (одна колонка навколо тапнутого фрагмента) і
+// pdfPartitionColumns (УСІ колонки одразу — для виділення, що навмисно захоплює і
+// оригінал, і переклад): саме групування спільне, розрізняється лише те, що
+// повертається — одна колонка чи всі.
+// Horizontal line bands -> per-line segments split at column gaps. `columnStarts` are x positions of column
+// edges confirmed elsewhere on the page (see pdfLayerColumnStarts).
+function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const bands = [];
     for (const i of rects.map((_, idx) => idx).sort((a, b) => rects[a].top - rects[b].top)) {
@@ -208,16 +237,59 @@ function pdfVisualGroup(layer, targetSpan) {
         if (band) band.indices.push(i);
         else bands.push({ top: r.top, height: r.height, indices: [i] });
     }
-    const segments = []; // { left, indices: [] }
+    const segments = []; // { left, right, indices: [], first }
     for (const band of bands) {
         const byLeft = band.indices.slice().sort((a, b) => rects[a].left - rects[b].left);
         let seg = null;
         for (const i of byLeft) {
             const r = rects[i];
-            if (seg && r.left - seg.right <= columnGapThreshold) { seg.indices.push(i); seg.right = Math.max(seg.right, r.right); }
-            else { seg = { left: r.left, right: r.right, indices: [i] }; segments.push(seg); }
+            const gap = seg ? r.left - seg.right : 0;
+            const isExerciseGap = seg && gap > columnGapThreshold && isExerciseBlankContinuation(
+                seg.indices.map(k => spans[k].textContent).join(' ').trim(),
+                spans[i].textContent.trim()
+            );
+            // A narrower-than-threshold gap still separates columns when the span resumes exactly at a column
+            // edge other rows confirm -- e.g. the real "tu es  you are (familiar)  vous êtes  you are" row,
+            // whose long gloss narrows the gutter to ~2 line heights and used to fuse into the left column.
+            const atColumnEdge = seg && columnStarts.length && gap <= columnGapThreshold && gap >= r.height * 1.2 &&
+                columnStarts.some(x => Math.abs(r.left - x) <= Math.max(4, r.height * 0.5)) &&
+                !isExerciseBlankContinuation(seg.indices.map(k => spans[k].textContent).join(' ').trim(), spans[i].textContent.trim());
+            if (seg && !atColumnEdge && (gap <= columnGapThreshold || isExerciseGap)) {
+                seg.indices.push(i);
+                seg.right = Math.max(seg.right, r.right);
+            } else {
+                seg = { left: r.left, right: r.right, indices: [i], first: !seg };
+                segments.push(seg);
+            }
         }
     }
+    return segments;
+}
+// Column edges (x of a segment that is not the first one of its line) shared by at least two lines of the
+// WHOLE page -- a drag range alone often holds just one such line. Cached per text layer and width.
+const pdfColumnStartCache = new WeakMap();
+function pdfLayerColumnStarts(layer, layerWidth) {
+    if (!layer) return [];
+    const hit = pdfColumnStartCache.get(layer);
+    const all = pdfTextSpans(layer);
+    if (hit && hit.width === layerWidth && hit.count === all.length && hit.left === layer.getBoundingClientRect().left) return hit.starts;
+    const rects = all.map(s => s.getBoundingClientRect());
+    const inner = pdfLineSegments(all, rects, layerWidth, []).filter(s => !s.first).map(s => s.left).sort((a, b) => a - b);
+    const starts = [];
+    for (let k = 0; k < inner.length;) {
+        let j = k;
+        while (j + 1 < inner.length && inner[j + 1] - inner[k] <= 6) j++;
+        if (j > k) starts.push(inner[k]);
+        k = j + 1;
+    }
+    pdfColumnStartCache.set(layer, { width: layerWidth, count: all.length, left: layer.getBoundingClientRect().left, starts });
+    return starts;
+}
+function pdfComputeColumns(spans, layerWidth) {
+    const rects = spans.map(s => s.getBoundingClientRect());
+    const columnGapThreshold = Math.max(24, layerWidth * 0.08);
+    const layer = spans[0]?.closest?.('.pdf-text-layer');
+    const segments = pdfLineSegments(spans, rects, layerWidth, pdfLayerColumnStarts(layer, layerWidth));
     const segLeft = segments.map(s => s.left);
     const segsByLeft = segLeft.map((_, i) => i).sort((a, b) => segLeft[a] - segLeft[b]);
     const segColumn = new Array(segments.length).fill(0);
@@ -227,6 +299,36 @@ function pdfVisualGroup(layer, targetSpan) {
     }
     const spanSeg = new Array(spans.length);
     segments.forEach((seg, si) => seg.indices.forEach(i => spanSeg[i] = si));
+    return { rects, segColumn, spanSeg, columnCount: segColumn.length ? Math.max(...segColumn) + 1 : 0 };
+}
+// Усі фрагменти (не лише один навколо тапнутого), згруповані по колонках — колонка
+// 0 лівіша, і так далі; кожна група — у справжньому порядку читання. Для звичайного
+// одноколонкового тексту завжди повертає РІВНО одну групу. Використовується для
+// виділення, що навмисно тягнеться через ОБИДВІ колонки двомовної сторінки: перш
+// ніж вирішувати, яка з них — мова вивчення, треба знати, де саме проходить межа.
+function pdfPartitionColumns(spans) {
+    if (!spans.length) return [];
+    const layer = spans[0].closest('.pdf-text-layer');
+    const layerWidth = (layer && layer.getBoundingClientRect().width) || 1;
+    const { rects, segColumn, spanSeg, columnCount } = pdfComputeColumns(spans, layerWidth);
+    const groups = Array.from({ length: columnCount }, () => ({ spans: [], rects: [] }));
+    spans.forEach((s, i) => { const g = groups[segColumn[spanSeg[i]]]; g.spans.push(s); g.rects.push(rects[i]); });
+    return groups.filter(g => g.spans.length).map(g => {
+        const order = g.spans.map((_, i) => i).sort((a, b) => {
+            const ra = g.rects[a], rb = g.rects[b];
+            if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+        return order.map(i => g.spans[i]);
+    });
+}
+function pdfVisualGroup(layer, targetSpan) {
+    const spans = pdfTextSpans(layer);
+    if (!spans.length) return [];
+    const targetIdx = spans.indexOf(targetSpan);
+    if (targetIdx < 0) return spans;
+    const layerWidth = layer.getBoundingClientRect().width || 1;
+    const { rects, segColumn, spanSeg } = pdfComputeColumns(spans, layerWidth);
     const targetColumn = segColumn[spanSeg[targetIdx]];
     const sameColumn = [];
     const sameColumnRects = [];
@@ -256,18 +358,47 @@ function pdfVisualGroup(layer, targetSpan) {
 // точний зібраний текст: звичайний Range.toString() однаково пройшовся б по DOM/
 // content-stream порядку між startContainer і endContainer і міг би знову зачепити
 // фрагмент іншої колонки, що лежить між ними в розмітці.
-function buildSentenceRangesFromSpans(spans) {
+// PDFs split ONE word into several text items: a detached first letter ("a" + "ppliquer"), small-caps
+// headings cut mid-word ("Pr","ÉP","ar","E","r"). Such an item starts exactly where the previous one ends,
+// on the same line. Joining those (and only those) keeps the word whole; a word space, a bullet, another
+// line or another column always leaves a real gap, so those still separate. The tolerance is a fraction of
+// the glyph height, well below a space (~0.25em), so a stream that omitted its space chars still separates.
+const PDF_SPAN_JOIN_GAP = 0.12;
+function pdfSpansContinueWord(prev, next) {
+    if (!prev || !next) return false;
+    const a = prev.getBoundingClientRect(), b = next.getBoundingClientRect();
+    const h = Math.min(a.height, b.height);
+    if (!(h > 0) || Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)) > h * 0.4) return false;   // another line
+    const gap = b.left - a.right;
+    return gap <= h * PDF_SPAN_JOIN_GAP && gap >= -h * 0.6;       // continues the run (a little overlap is normal); not a big backwards jump
+}
+// Плоский потік символів набору фрагментів PDF, з роздільником там, де його не
+// вистачає в тексті (див. pdfSpansContinueWord) — спільне для buildSentenceRangesFromSpans
+// (ділить далі на речення) і pdfSpansToText (просто зшиває — для виділення, що
+// свідомо охоплює кілька колонок і не є одним "реченням").
+function pdfSpansToChars(spans) {
     const chars = [];
-    for (const span of spans) {
+    for (let s = 0; s < spans.length; s++) {
+        const span = spans[s];
         const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
         let node;
         while (node = walker.nextNode()) {
             const text = node.nodeValue || '';
             for (let i = 0; i < text.length; i++) chars.push({ node, offset: i, ch: text[i], span });
         }
-        // PDF text items/lines need a separator even when the stream omits spaces.
-        if (chars.length && !/\s/.test(chars.at(-1).ch)) chars.push({ ...chars.at(-1), ch: ' ', separator: true });
+        // PDF text items/lines need a separator even when the stream omits spaces -- unless the next item merely
+        // CONTINUES this one's word (see pdfSpansContinueWord).
+        if (chars.length && !/\s/.test(chars.at(-1).ch) && !pdfSpansContinueWord(span, spans[s + 1])) chars.push({ ...chars.at(-1), ch: ' ', separator: true });
     }
+    return chars;
+}
+// Просто зшитий текст набору фрагментів — без розбиття на речення (звичайне
+// протягування мишею через кілька колонок не є "одним реченням").
+function pdfSpansToText(spans) {
+    return pdfSpansToChars(spans).map(c => c.ch).join('').trim();
+}
+function buildSentenceRangesFromSpans(spans) {
+    const chars = pdfSpansToChars(spans);
     const sentences = [];
     let buffer = '', startNode = null, startOffset = 0, nodes = [], pieces = [];
     for (let k = 0; k < chars.length; k++) {
@@ -296,6 +427,196 @@ function buildSentenceRangesFromSpans(spans) {
         }
     }
     return sentences;
+}
+// Plain text of an ARBITRARY PDF Range (a mouse drag, not built from whole spans like
+// pdfVisualGroup's group): clips partial start/end nodes correctly, and inserts a
+// separator wherever pdfSpansContinueWord says the next item is NOT a continuation of the
+// same word -- the same rule that already fixed the sentence/tap paths, now applied to a
+// raw drag range too, since a bare Range.toString() over a PDF text layer has NO
+// separator between items AT ALL (real page: a rectangle dragged across a bilingual
+// table's rows used to read "...having seenayant compris having understood...").
+function pdfRangeText(range) {
+    const root = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+        ? range.commonAncestorContainer : range.commonAncestorContainer.parentNode;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(n) { return n.nodeValue && range.intersectsNode(n) && !n.parentElement?.closest('.markedContent') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; }
+    });
+    let text = '', prevSpan = null, n;
+    while (n = walker.nextNode()) {
+        const from = (n === range.startContainer) ? range.startOffset : 0;
+        const to = (n === range.endContainer) ? range.endOffset : n.nodeValue.length;
+        if (to <= from) continue;
+        const span = n.parentElement?.closest('span') || null;
+        if (text && !/\s$/.test(text) && !pdfSpansContinueWord(prevSpan, span)) text += ' ';
+        text += n.nodeValue.slice(from, to);
+        prevSpan = span || prevSpan;
+    }
+    return text.trim();
+}
+// Every PDF text-layer span the range touches, for column partitioning (pdfPartitionColumns) --
+// whole-span granularity is enough there (a column decision is never made mid-word).
+function pdfRangeSpans(range) {
+    const startEl = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+    const layer = startEl && startEl.closest && startEl.closest('.pdf-text-layer');
+    if (!layer) return [];
+    return pdfTextSpans(layer).filter(s => range.intersectsNode(s));
+}
+
+// Canonical PDF selection resolver: ensures geometry-based column isolation,
+// study-language priority for multi-column / bilingual PDFs, and structured result object.
+function resolveCanonicalPdfSelection(range, options = {}) {
+    if (!range) return null;
+    const rawSpans = pdfRangeSpans(range);
+    if (!rawSpans.length) {
+        const text = (range.toString() || '').trim();
+        const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
+        const fallback = {
+            text,
+            grammarText: text,
+            sourceLanguage: studyLang,
+            targetLanguage: state.targetLang || 'uk',
+            isCrossColumn: false,
+            columns: [],
+            studyColumnIndex: -1,
+            spans: [],
+            range,
+            rect: null,
+            sourceType: options.sourceType || 'phrase_translation'
+        };
+        state.canonicalSelection = fallback;
+        return fallback;
+    }
+
+    const layer = rawSpans[0].closest('.pdf-text-layer');
+    const layerWidth = (layer && layer.getBoundingClientRect().width) || 1;
+    const { rects, segColumn, spanSeg, columnCount } = pdfComputeColumns(rawSpans, layerWidth);
+
+    // Identify start and end spans
+    const startNode = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+    const startSpan = startNode ? (startNode.closest ? startNode.closest('span') : null) : null;
+    const endNode = range.endContainer.nodeType === Node.TEXT_NODE ? range.endContainer.parentElement : range.endContainer;
+    const endSpan = endNode ? (endNode.closest ? endNode.closest('span') : null) : null;
+
+    let startCol = -1;
+    let endCol = -1;
+    if (startSpan) {
+        const idx = rawSpans.indexOf(startSpan);
+        if (idx >= 0) startCol = segColumn[spanSeg[idx]];
+    }
+    if (endSpan) {
+        const idx = rawSpans.indexOf(endSpan);
+        if (idx >= 0) endCol = segColumn[spanSeg[idx]];
+    }
+
+    // Partition spans into column groups
+    const colGroups = Array.from({ length: columnCount }, () => ({ spans: [], rects: [] }));
+    rawSpans.forEach((s, i) => {
+        const c = segColumn[spanSeg[i]];
+        if (colGroups[c]) {
+            colGroups[c].spans.push(s);
+            colGroups[c].rects.push(rects[i]);
+        }
+    });
+
+    const partitionedColumns = colGroups.filter(g => g.spans.length).map((g, colIdx) => {
+        const order = g.spans.map((_, i) => i).sort((a, b) => {
+            const ra = g.rects[a], rb = g.rects[b];
+            if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+        const spans = order.map(i => g.spans[i]);
+        const text = pdfSpansToText(spans);
+        const lang = (typeof detectLang === 'function' ? String(detectLang(text) || '') : '').slice(0, 2).toLowerCase();
+        return { index: colIdx, spans, text, lang };
+    });
+
+    const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
+
+    // CASE A: The drag started and ended in the SAME column of a multi-column page.
+    // Interleaved DOM nodes belonging to foreign columns are excluded.
+    if (partitionedColumns.length > 1 && startCol >= 0 && endCol >= 0 && startCol === endCol) {
+        const matchedCol = partitionedColumns.find(c => c.index === startCol) || partitionedColumns[0];
+        const colSpans = matchedCol.spans;
+        const i1 = startSpan ? colSpans.indexOf(startSpan) : 0;
+        const i2 = endSpan ? colSpans.indexOf(endSpan) : colSpans.length - 1;
+        const fromIdx = Math.max(0, Math.min(i1 >= 0 ? i1 : 0, i2 >= 0 ? i2 : colSpans.length - 1));
+        const toIdx = Math.min(colSpans.length - 1, Math.max(i1 >= 0 ? i1 : 0, i2 >= 0 ? i2 : colSpans.length - 1));
+        const selectedSpans = colSpans.slice(fromIdx, toIdx + 1);
+
+        const pieces = [];
+        for (let i = 0; i < selectedSpans.length; i++) {
+            const s = selectedSpans[i];
+            const walker = document.createTreeWalker(s, NodeFilter.SHOW_TEXT);
+            let n;
+            let foundText = false;
+            while ((n = walker.nextNode())) {
+                foundText = true;
+                const isStartNode = (n === range.startContainer);
+                const isEndNode = (n === range.endContainer);
+                const pStart = (i === 0 && isStartNode) ? range.startOffset : 0;
+                const pEnd = (i === selectedSpans.length - 1 && isEndNode) ? range.endOffset : n.nodeValue.length;
+                if (pEnd > pStart) {
+                    pieces.push({ node: n, start: pStart, end: pEnd, span: s });
+                }
+            }
+            if (!foundText && s.textContent) {
+                const node = s.firstChild || s;
+                pieces.push({ node, start: 0, end: (s.textContent || '').length, span: s });
+            }
+        }
+        range._pdfPieces = pieces;
+        const cleanText = pdfSpansToText(selectedSpans);
+        range.toString = () => cleanText;
+
+        let rect = null;
+        try { const b = range.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (e) {}
+
+        const canonical = {
+            text: cleanText,
+            grammarText: cleanText,
+            sourceLanguage: matchedCol.lang || studyLang,
+            targetLanguage: state.targetLang || 'uk',
+            isCrossColumn: false,
+            columns: [matchedCol],
+            studyColumnIndex: matchedCol.lang === studyLang ? 0 : -1,
+            spans: selectedSpans,
+            range,
+            rect,
+            sourceType: options.sourceType || 'phrase_translation'
+        };
+        state.canonicalSelection = canonical;
+        return canonical;
+    }
+
+    // CASE B: Ambiguous cross-column drag, or normal single-column layout.
+    const isCrossColumn = partitionedColumns.length > 1;
+    const fullText = pdfRangeText(range);
+    let studyCol = null;
+    let studyColIdx = -1;
+    if (isCrossColumn) {
+        studyColIdx = partitionedColumns.findIndex(c => c.lang === studyLang);
+        if (studyColIdx >= 0) studyCol = partitionedColumns[studyColIdx];
+    }
+
+    const grammarText = studyCol ? studyCol.text : fullText;
+    let rect = null;
+    try { const b = range.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (e) {}
+
+    const canonical = {
+        text: fullText,
+        grammarText,
+        sourceLanguage: (studyCol && studyCol.lang) || studyLang,
+        targetLanguage: state.targetLang || 'uk',
+        isCrossColumn,
+        columns: partitionedColumns,
+        studyColumnIndex: studyColIdx,
+        spans: rawSpans,
+        range,
+        rect,
+        sourceType: options.sourceType || 'phrase_translation'
+    };
+    state.canonicalSelection = canonical;
+    return canonical;
 }
 function sentenceRangeAt(clientX, clientY) {
     const caret = anchorCaret(clientX, clientY);
@@ -378,8 +699,140 @@ function unwrapSpans(spans) {
         parent.normalize();
     });
 }
+function capturePdfSelectionAnchor(range) {
+    if (!range || state.format !== 'pdf') return null;
+    const startNode = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+    const wrapper = startNode?.closest ? startNode.closest('.pdf-page-wrapper') : null;
+    if (!wrapper) return null;
+    const pageNum = Number(wrapper.dataset.page);
+    const layer = wrapper.querySelector('.pdf-text-layer');
+    if (!layer) return null;
+    const allSpans = pdfTextSpans(layer);
+    const text = state.lastSelectionText || (range.toString ? range.toString().trim() : '');
+
+    if (range._pdfPieces && range._pdfPieces.length > 0) {
+        const pieces = [];
+        for (const p of range._pdfPieces) {
+            const spanIdx = p.span ? allSpans.indexOf(p.span) : -1;
+            if (spanIdx >= 0) {
+                pieces.push({ spanIndex: spanIdx, start: p.start, end: p.end });
+            }
+        }
+        if (pieces.length > 0) {
+            return { pageNum, pieces, text };
+        }
+    }
+
+    const endNode = range.endContainer.nodeType === Node.TEXT_NODE ? range.endContainer.parentElement : range.endContainer;
+    const startSpan = startNode?.closest ? startNode.closest('span') : null;
+    const endSpan = endNode?.closest ? endNode.closest('span') : null;
+    const startSpanIndex = startSpan ? allSpans.indexOf(startSpan) : -1;
+    const endSpanIndex = endSpan ? allSpans.indexOf(endSpan) : -1;
+
+    if (startSpanIndex >= 0 && endSpanIndex >= 0) {
+        return {
+            pageNum,
+            startSpanIndex,
+            startOffset: range.startOffset,
+            endSpanIndex,
+            endOffset: range.endOffset,
+            text
+        };
+    }
+    return { pageNum, text };
+}
+
+function restorePdfSelection(pageNum, wrapperEl) {
+    const anchor = state.activeSelectionAnchor;
+    if (!anchor || anchor.pageNum !== pageNum) return;
+    if (!state.tooltipPersistent && els.tooltip.style.display === 'none') {
+        state.activeSelectionAnchor = null;
+        return;
+    }
+    const layer = wrapperEl.querySelector('.pdf-text-layer');
+    if (!layer) return;
+    const allSpans = pdfTextSpans(layer);
+    if (!allSpans.length) return;
+
+    let newRange = null;
+    let targetSpans = [];
+
+    if (anchor.pieces && anchor.pieces.length > 0) {
+        const reconstructedPieces = [];
+        for (const p of anchor.pieces) {
+            const s = allSpans[p.spanIndex];
+            if (!s) continue;
+            targetSpans.push(s);
+            const walker = document.createTreeWalker(s, NodeFilter.SHOW_TEXT);
+            const node = walker.nextNode() || s.firstChild || s;
+            const textLen = (node.nodeValue || s.textContent || '').length;
+            reconstructedPieces.push({
+                node,
+                start: Math.min(p.start, textLen),
+                end: Math.min(p.end, textLen),
+                span: s
+            });
+        }
+        if (reconstructedPieces.length > 0) {
+            newRange = document.createRange();
+            newRange._pdfPieces = reconstructedPieces;
+            const first = reconstructedPieces[0], last = reconstructedPieces.at(-1);
+            newRange.setStart(first.node, first.start);
+            newRange.setEnd(last.node, last.end);
+            newRange.toString = () => anchor.text;
+        }
+    } else if (anchor.startSpanIndex >= 0 && anchor.endSpanIndex >= 0) {
+        const sSpan = allSpans[anchor.startSpanIndex];
+        const eSpan = allSpans[anchor.endSpanIndex];
+        if (sSpan && eSpan) {
+            const sNode = sSpan.firstChild || sSpan;
+            const eNode = eSpan.firstChild || eSpan;
+            newRange = document.createRange();
+            newRange.setStart(sNode, Math.min(anchor.startOffset, (sNode.nodeValue || '').length));
+            newRange.setEnd(eNode, Math.min(anchor.endOffset, (eNode.nodeValue || '').length));
+            newRange.toString = () => anchor.text;
+            targetSpans = allSpans.slice(anchor.startSpanIndex, anchor.endSpanIndex + 1);
+        }
+    }
+
+    if (!newRange && anchor.text) {
+        const matchingSpans = allSpans.filter(s => s.textContent.trim() && anchor.text.includes(s.textContent.trim()));
+        if (matchingSpans.length > 0) {
+            const pieces = matchingSpans.map(s => ({
+                node: s.firstChild || s,
+                start: 0,
+                end: (s.textContent || '').length,
+                span: s
+            }));
+            newRange = document.createRange();
+            newRange._pdfPieces = pieces;
+            newRange.setStart(pieces[0].node, pieces[0].start);
+            newRange.setEnd(pieces.at(-1).node, pieces.at(-1).end);
+            newRange.toString = () => anchor.text;
+            targetSpans = matchingSpans;
+        }
+    }
+
+    if (newRange) {
+        state.lastSelectedRange = newRange;
+        if (state.canonicalSelection) {
+            state.canonicalSelection.range = newRange;
+            state.canonicalSelection.spans = targetSpans;
+        }
+        unwrapSpans(state.selSpans);
+        state.selSpans = wrapRangeInSpans(newRange, 'sel-word');
+    }
+}
+
 function showSelectionHighlight(range) {
+    let anchor = null;
+    if (state.format === 'pdf') {
+        anchor = capturePdfSelectionAnchor(range);
+    }
+    const savedCanonical = state.canonicalSelection;
     clearSelectionHighlight();
+    if (savedCanonical) state.canonicalSelection = savedCanonical;
+    if (anchor) state.activeSelectionAnchor = anchor;
     if (state.format === 'pdf') {
         state.selSpans = wrapRangeInSpans(range, 'sel-word');
         return;
@@ -397,6 +850,8 @@ function clearSelectionHighlight() {
     state.selSpans = [];
     clearSvoHighlights();
     state.lastSelectionText = null;
+    state.activeSelectionAnchor = null;
+    state.canonicalSelection = null;
 }
 // Від КЛІКНУТОГО СЛОВА до кінця речення (до крапки) — саме те, що робить
 // кнопка виділення у вікні перекладу.
@@ -633,21 +1088,91 @@ function wordBoundsAt(clientX, clientY) {
     const rTest = document.createRange();
     rTest.setStart(wBounds.node, wBounds.start);
     rTest.setEnd(wBounds.endNode || wBounds.node, wBounds.end);
-    if (!isPointInRects(clientX, clientY, rTest.getClientRects(), state.format === 'pdf' ? 10 : 2)) return null;
+    if (!isPointInRects(clientX, clientY, rTest.getClientRects(), state.format === 'pdf' ? 10 : 2)) {
+        if (state.format === 'pdf' && node.parentElement) {
+            const parentRect = node.parentElement.getBoundingClientRect();
+            if (!isPointInRects(clientX, clientY, [parentRect], 14)) return null;
+        } else {
+            return null;
+        }
+    }
     return wBounds;
 }
+
+let lastDragClientX = 0, lastDragClientY = 0;
+let pdfSelectionTouch = null;
+// A stylus selects on the mouse path (immediately, no long-press), but browsers give pen drags the same
+// touch-action panning as fingers (and on Android also dispatch them as touch events): without a guard the
+// first pen move over the PDF became a native scroll, fired pointercancel and dropped the selection.
+let penSelectionActive = false;
 
 function cancelDragSelection() {
     const hadDragHighlight = !!state.dragRange;
     clearTimeout(touchSelTimer); touchSelTimer = null;
     dragSel = null; dragMoved = false; state.dragRange = null;
     state.touchSelecting = false;
+    pdfSelectionTouch = null;
+    penSelectionActive = false;
+    document.body.classList.remove('touch-selecting');
     els.container.style.touchAction = '';
     if (hadDragHighlight && typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
 }
 document.addEventListener('pointercancel', cancelDragSelection);
+// Register before touchstart: adding a blocking listener after the hold is too late on
+// real touchscreens. Small pre-hold moves must not hand the gesture to native scrolling.
+// Touch coordinates remain authoritative even on browsers that coalesce pointer moves.
+document.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { cancelDragSelection(); return; }
+    if (state.format !== 'pdf' || !touchSelTimer || !els.container.contains(e.target)) return;
+    const t = e.touches[0];
+    pdfSelectionTouch = { id: t.identifier, x: t.clientX, y: t.clientY, blocked: false, scrolling: false };
+}, { passive: true });
+function guardTouchSelectionMove(e) {
+    if (penSelectionActive && e.touches.length === 1) {
+        if (e.cancelable) e.preventDefault();   // the pen's own touch stream: keep it a selection drag
+        return;
+    }
+    const gesture = pdfSelectionTouch;
+    if (!gesture) {
+        if (state.touchSelecting && e.cancelable && e.touches.length === 1 && els.mainArea.contains(e.target)) e.preventDefault();
+        return;
+    }
+    if (e.touches.length !== 1) { cancelDragSelection(); return; }
+    const t = Array.from(e.touches).find(t => t.identifier === gesture.id);
+    if (!t) return;
+    const dx = t.clientX - gesture.x, dy = t.clientY - gesture.y;
+    gesture.x = t.clientX; gesture.y = t.clientY;
+    if (!state.touchSelecting && !gesture.scrolling && Math.hypot(t.clientX - dragStartX, t.clientY - dragStartY) > 18) {
+        clearTimeout(touchSelTimer); touchSelTimer = null;
+        if (!gesture.blocked) { pdfSelectionTouch = null; return; } // ordinary swipe: native scrolling
+        // A cancelled jitter move can suppress native scrolling for the entire touch on
+        // some engines. Finish only that gesture as a pan; the next swipe stays native.
+        gesture.scrolling = true;
+    }
+    if (!e.cancelable) { cancelDragSelection(); return; }
+    e.preventDefault();
+    gesture.blocked = true;
+    if (gesture.scrolling) {
+        els.container.scrollLeft -= dx;
+        els.container.scrollTop -= dy;
+        state.suppressNextClick = true;
+    } else if (state.touchSelecting) {
+        updateDragSelection(t);
+    }
+}
+document.addEventListener('touchmove', guardTouchSelectionMove, { passive: false });
+document.addEventListener('touchcancel', cancelDragSelection);
+els.mainArea.addEventListener('contextmenu', e => {
+    if (state.touchSelecting || pdfSelectionTouch) e.preventDefault();
+});
 document.addEventListener('pointerup', e => {
-    if (!els.mainArea.contains(e.target)) cancelDragSelection();
+    if (state.touchSelecting || dragSel) {
+        const cx = e.clientX || lastDragClientX || dragStartX;
+        const cy = e.clientY || lastDragClientY || dragStartY;
+        commitDragSelection(cx, cy);
+    } else if (!els.mainArea.contains(e.target)) {
+        cancelDragSelection();
+    }
 });
 window.addEventListener('blur', cancelDragSelection);
 
@@ -655,9 +1180,9 @@ let dragSel = null;   // { node, start, end } — слово, з якого по
 let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 
 els.mainArea.addEventListener('pointerdown', (e) => {
+    if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
     if (state.format === 'pdf' && !els.container.contains(e.target)) return;
-    if (state.inkMode || (state.format === 'pdf' && e.pointerType === 'touch')) return;      // PDF touch belongs to zoom/pan
     if (state.inkMode) return;
     if (!state.translateMode) return;
     if (e.button !== 0) return;
@@ -673,47 +1198,99 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         clearTimeout(touchSelTimer);
         const px = e.clientX, py = e.clientY;
         touchSelTimer = setTimeout(() => {
-            if (state.format === 'pdf' && pdfPointers.size > 1) return;
-            const w = wordBoundsAt(px, py);
+            touchSelTimer = null;
+            if (state.format === 'pdf' && typeof pdfPointers !== 'undefined' && pdfPointers.size > 1) return;
+            let w = wordBoundsAt(px, py);
+            if (!w && state.format === 'pdf') {
+                for (const dy of [-8, 8, -16, 16, -24, 24]) {
+                    w = wordBoundsAt(px, py + dy);
+                    if (w) break;
+                }
+                if (!w) {
+                    for (const dx of [-8, 8, -16, 16]) {
+                        w = wordBoundsAt(px + dx, py);
+                        if (w) break;
+                    }
+                }
+            }
             if (!w) return;
             dragSel = w;
             dragMoved = true;                 // підсвітка з першого ж слова
             state.touchSelecting = true;      // свайпи гортання на час виділення вимкнені
+            document.body.classList.add('touch-selecting');
             state.suppressNextClick = true;
             // Забороняємо браузеру трактувати рух як прокрутку — інакше він
             // перехопить жест і виділення обірветься на першому ж русі пальця.
             els.container.style.touchAction = 'none';
             if (navigator.vibrate) navigator.vibrate(12);
             const r = rangeBetweenWords(w, w);
-            if (r && typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
+            if (r) {
                 state.dragRange = r;
-                try { CSS.highlights.set(SEL_HL_NAME, new Highlight(r)); } catch (err) {}
+                if (typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
+                    try {
+                        if (state.format === 'pdf') {
+                            resolveCanonicalPdfSelection(r, { isDragging: true });
+                            if (r._pdfPieces && r._pdfPieces.length) {
+                                const pieceRanges = r._pdfPieces.map(p => {
+                                    const pr = document.createRange();
+                                    pr.setStart(p.node, p.start);
+                                    pr.setEnd(p.node, p.end);
+                                    return pr;
+                                });
+                                CSS.highlights.set(SEL_HL_NAME, new Highlight(...pieceRanges));
+                            } else {
+                                CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                            }
+                        } else {
+                            CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                        }
+                    } catch (err) {}
+                }
             }
         }, 380);
         return;
     }
 
     // Миша й перо: виділення починається одразу, поріг руху нижче.
-    const w = wordBoundsAt(e.clientX, e.clientY);
+    let w = wordBoundsAt(e.clientX, e.clientY);
+    if (!w && state.format === 'pdf') {
+        for (const dy of [-6, 6, -12, 12]) {
+            w = wordBoundsAt(e.clientX, e.clientY + dy);
+            if (w) break;
+        }
+    }
     if (!w) return;
     dragSel = w;
+    penSelectionActive = e.pointerType === 'pen';
     e.preventDefault();               // глушимо системне виділення разом з його стрибками
 });
 
-els.mainArea.addEventListener('pointermove', (e) => {
+els.mainArea.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch' && pdfSelectionTouch) return;
+    updateDragSelection(e);
+});
+function updateDragSelection(e) {
     // Палець зрушив раніше, ніж спрацювало утримання — це гортання, не виділення.
-    if (touchSelTimer && !dragSel &&
-        (Math.abs(e.clientX - dragStartX) > 10 || Math.abs(e.clientY - dragStartY) > 10)) {
+    // Використовуємо радіальний поріг (18px) для ємнісних тачскринів планшетів.
+    if (touchSelTimer && !dragSel && Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > 18) {
         clearTimeout(touchSelTimer); touchSelTimer = null;
     }
+    if (state.touchSelecting && e.cancelable) e.preventDefault();
     if (!dragSel) return;
+    lastDragClientX = e.clientX; lastDragClientY = e.clientY;
     // Поріг руху: тремтіння пера чи миші під час звичайного тапу не має вважатись
     // протягуванням — інакше слово підсвічувалось зеленим (виділення) замість сірого.
     if (!dragMoved) {
         if (Math.abs(e.clientX - dragStartX) < 6 && Math.abs(e.clientY - dragStartY) < 6) return;
         dragMoved = true;
     }
-    const w = wordBoundsAt(e.clientX, e.clientY);
+    let w = wordBoundsAt(e.clientX, e.clientY);
+    if (!w && state.format === 'pdf' && dragSel) {
+        for (const dy of [-8, 8, -16, 16, -24, 24]) {
+            w = wordBoundsAt(e.clientX, e.clientY + dy);
+            if (w) break;
+        }
+    }
     if (!w) return;
     const r = rangeBetweenWords(dragSel, w);
     if (!r) return;
@@ -722,17 +1299,38 @@ els.mainArea.addEventListener('pointermove', (e) => {
     // змінює DOM, розрізає текстові вузли — і вузол, з якого почалось виділення,
     // ставав недійсним. Саме через це виділення мишею й перестало працювати.
     if (typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
-        try { CSS.highlights.set(SEL_HL_NAME, new Highlight(r)); } catch (err) {}
+        try {
+            if (state.format === 'pdf') {
+                resolveCanonicalPdfSelection(r, { isDragging: true });
+                if (r._pdfPieces && r._pdfPieces.length) {
+                    const pieceRanges = r._pdfPieces.map(p => {
+                        const pr = document.createRange();
+                        pr.setStart(p.node, p.start);
+                        pr.setEnd(p.node, p.end);
+                        return pr;
+                    });
+                    CSS.highlights.set(SEL_HL_NAME, new Highlight(...pieceRanges));
+                } else {
+                    CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+                }
+            } else {
+                CSS.highlights.set(SEL_HL_NAME, new Highlight(r));
+            }
+        } catch (err) {}
     }
-});
+    window.getSelection()?.removeAllRanges();
+}
 
-els.mainArea.addEventListener('pointerup', (e) => {
+function commitDragSelection(clientX, clientY) {
     clearTimeout(touchSelTimer); touchSelTimer = null;
+    penSelectionActive = false;
     if (state.touchSelecting) {
         touchStartTime = 0; // pointerup precedes touchend: do not turn the page after selection
         state.touchSelecting = false;
+        document.body.classList.remove('touch-selecting');
         els.container.style.touchAction = (state.format === 'pdf') ? '' : 'pan-y';
     }
+    window.getSelection()?.removeAllRanges();
     if (!dragSel) return;
     const start = dragSel; dragSel = null;
     const r = state.dragRange;
@@ -740,24 +1338,55 @@ els.mainArea.addEventListener('pointerup', (e) => {
     // Протягування не відбулось (кінець там само, де початок) — лишаємо звичайному
     // обробнику кліку, щоб слово опрацювалось як тап зі словниковою статтею.
     if (!r) return;
-    const text = r.toString().trim();
+    let text;
+    let canonical = null;
+    if (state.format === 'pdf') {
+        try {
+            canonical = resolveCanonicalPdfSelection(r, { sourceType: 'phrase_translation' });
+        } catch (err) {}
+        text = canonical ? canonical.text : pdfRangeText(r).trim();
+        state.lastGrammarSourceText = (canonical && canonical.grammarText !== text) ? canonical.grammarText : null;
+    } else {
+        text = r.toString().trim();
+        state.lastGrammarSourceText = null;
+        state.canonicalSelection = null;
+    }
     if (!text) return;
+
     // Capture source occurrence IDs while the drag Range still references the
     // untouched reader text layer.
     const helpContext = recordHelpForSpan(r, 'phrase_translation');
     state.suppressNextClick = true;   // інакше слідом спрацює ще й тап по слову
     // Одне слово — звичайний шлях (зі словниковою статтею); кілька — як фрагмент.
-    state.lastTapPoint = { x: e.clientX, y: e.clientY };
+    state.lastTapPoint = { x: clientX, y: clientY };
     state.expandLevel = 0;
     state.lastSelectedRange = r.cloneRange();
+    if (r._pdfPieces) state.lastSelectedRange._pdfPieces = r._pdfPieces;
     // Протягування завершено — тепер можна перемалювати точно (у PDF обгорткою).
     showSelectionHighlight(r);
     state.lastWordNode = null; state.ctxSentence = text.slice(0, 400);
     state.lastSelectionText = text;
-    let rect = null;
-    try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
-    handleWordOrSelection(text, e.clientX, e.clientY, rect, helpContext, 'phrase_translation');
-});
+    let rect = canonical?.rect || null;
+    if (!rect) {
+        try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
+    }
+    state.touchJustCommitted = Date.now();
+    handleWordOrSelection(text, clientX, clientY, rect, helpContext, 'phrase_translation');
+}
+
+document.addEventListener('touchend', (e) => {
+    const gesture = pdfSelectionTouch;
+    pdfSelectionTouch = null;
+    clearTimeout(touchSelTimer); touchSelTimer = null;
+    if (gesture?.blocked && e.cancelable) e.preventDefault();
+    if (state.touchSelecting) {
+        if (e.cancelable) e.preventDefault();
+        if (dragSel && state.dragRange) {
+            const touch = e.changedTouches?.[0];
+            commitDragSelection(touch ? touch.clientX : (lastDragClientX || dragStartX), touch ? touch.clientY : (lastDragClientY || dragStartY));
+        }
+    }
+}, { passive: false });
 
 // Діапазон від слова A до слова B у правильному порядку, з межами по словах.
 function rangeBetweenWords(a, b) {

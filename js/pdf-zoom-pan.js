@@ -40,12 +40,12 @@ els.mainArea.addEventListener('wheel', (e) => {
 
 let wheelZoomTimer, isPanning = false, panMoved = false, panStartX = 0, panStartY = 0, panScrollX = 0, panScrollY = 0;
 
-function rerenderPdfAtCurrentZoom() {
+function rerenderPdfAtCurrentZoom(anchor) {
     if (state.format !== 'pdf' || document.hidden) return;
     state.pdfScale = pdfBaseScale() * state.pdfZoom;
     state.pdfFit = 'free';
     persistPdfZoom();
-    relayoutContinuousPdfAtScale();
+    relayoutContinuousPdfAtScale(anchor);
 }
 
 els.mainArea.addEventListener('pointerdown', (e) => {
@@ -103,6 +103,19 @@ function pdfZoomAnchor(x, y) {
     x ??= (els.container.getBoundingClientRect().left + els.container.clientWidth / 2);
     y ??= (els.container.getBoundingClientRect().top + els.container.clientHeight / 2);
     return { x: (x - r.left) / r.width, y: (y - r.top) / r.height, clientX: x, clientY: y };
+}
+function pdfDocumentAnchor(clientX, clientY) {
+    const page = getPdfPageAtClientY(clientY), w = pdfPageWrappers[page];
+    if (!w) return null;
+    const r = w.getBoundingClientRect();
+    return { page, x: (clientX-r.left)/r.width, y: (clientY-r.top)/r.height, clientX, clientY };
+}
+function restorePdfDocumentAnchor(a) {
+    const w = a && pdfPageWrappers[a.page];
+    if (!w) return;
+    const r = w.getBoundingClientRect();
+    els.container.scrollLeft += r.left + a.x*r.width - a.clientX;
+    els.container.scrollTop += r.top + a.y*r.height - a.clientY;
 }
 function restorePdfZoomAnchor(a) {
     if (!a) return;
@@ -169,9 +182,13 @@ function persistPdfZoom() {
 }
 function setPdfScale(scale) {
     cancelPdfInteraction();
+    // Button zoom (A+/A-): take the page-relative reading anchor BEFORE the live transform. Re-reading it
+    // afterwards (relayout's default) measured the transformed stack and shifted the view by ~20% of a page
+    // per step, eventually onto the previous page.
+    const anchor = pdfContinuousReady ? pdfAnchor() : null;
     state.pdfFit = 'free';
     applyPdfZoom(Math.max(.25, Math.min(4, scale)) / pdfBaseScale());
-    rerenderPdfAtCurrentZoom();
+    rerenderPdfAtCurrentZoom(anchor);
 }
 
 // After a zoom gesture settles: re-layout every wrapper at the new base
@@ -179,14 +196,37 @@ function setPdfScale(scale) {
 // currently-visible window at full resolution, preserving the on-screen
 // anchor point. Clears the live transform/explicit size back to normal flow.
 //
-// explicitAnchor: optional pre-captured pdfAnchor()-shaped {page,x,y}, used
-// only by navigation.js's container-resize handler — see pdfAnchor()'s doc
-// comment for why a resize can't just let this function capture its own
-// anchor fresh. Every other caller (zoom/fit-mode changes, where the
-// container itself never resizes) omits it and gets the normal fresh read.
+// explicitAnchor preserves a pre-captured page-local point. Gestures also
+// supply clientX/clientY for their focal point; button zoom and resize restore
+// to the viewport center. A fresh capture is safe only before layout changes.
+// Pinch release (and any other relayout) resizes every page wrapper to the new scale and drops the live stack
+// transform, but a page's current render keeps the fixed CSS size it was drawn at until its re-render swaps in.
+// Visible pages therefore snapped back to their pre-zoom size inside an enlarged white wrapper -- the "white
+// flash" on tablets, where the sharp re-render takes a moment. Stretch that stale render to the wrapper instead
+// (the same look as the gesture's last frame); renderPdfPageIntoImpl replaces these elements when it is ready.
+function stretchStalePdfPageContent(w, width, height) {
+    const canvas = w.querySelector(':scope > canvas.pdf-canvas');
+    if (!canvas) return;
+    if (!canvas.dataset.drawnWidth) {
+        canvas.dataset.drawnWidth = parseFloat(canvas.style.width) || canvas.getBoundingClientRect().width;
+        canvas.dataset.drawnHeight = parseFloat(canvas.style.height) || canvas.getBoundingClientRect().height;
+    }
+    const drawnW = parseFloat(canvas.dataset.drawnWidth);
+    if (!drawnW) return;
+    const k = width / drawnW;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    for (const layer of w.querySelectorAll(':scope > .pdf-text-layer, :scope > .pdf-link-layer, :scope > .ink-layer')) {
+        layer.style.transformOrigin = '0 0';
+        layer.style.transform = Math.abs(k - 1) < 1e-4 ? '' : `scale(${k})`;
+    }
+}
+
 function relayoutContinuousPdfAtScale(explicitAnchor) {
     if (!pdfContinuousReady) return;
-    const anchor = (explicitAnchor && explicitAnchor.page === pdfActivePage) ? explicitAnchor : pdfAnchor();
+    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
+    const anchor = explicitAnchor && pdfPageWrappers[explicitAnchor.page] ? explicitAnchor : pdfAnchor();
+    pdfSuppressActiveTracking = true;
     let stackHeight = 0, stackWidth = 0;
     for (let n = 1; n <= state.totalPages; n++) {
         const w = pdfPageWrappers[n];
@@ -196,6 +236,7 @@ function relayoutContinuousPdfAtScale(explicitAnchor) {
         w.style.width = `${meta.width * scale}px`;
         w.style.height = `${meta.height * scale}px`;
         w.dataset.scale = state.pdfScale; // multiplier, not the absolute scale — see pdf-render.js
+        if (w.dataset.rendered) stretchStalePdfPageContent(w, meta.width * scale, meta.height * scale);
         stackHeight += meta.height * scale + 20;
         stackWidth = Math.max(stackWidth, meta.width * scale);
     }
@@ -218,9 +259,7 @@ function relayoutContinuousPdfAtScale(explicitAnchor) {
     state.pdfZoom = 1;
     // Force the active window's canvases to re-render at the new scale even
     // though the page NUMBERS in the window haven't changed.
-    pdfRenderedPages.clear();
-    updatePdfRenderWindow(pdfActivePage);
-    pdfSuppressActiveTracking = false;
+    pdfVisibleRatios.clear();
     // Restore the EXACT pixel the anchor pointed at — not a "jump to this
     // page" navigation. navigateToPdfPage()'s yFraction option deliberately
     // subtracts a 15% context margin (right for a thumbnail/outline/link
@@ -241,8 +280,8 @@ function relayoutContinuousPdfAtScale(explicitAnchor) {
             // offsetParent chain) has its own padding, and silently mis-
             // restores the anchor by that padding amount.
             const c = els.container.getBoundingClientRect();
-            const targetX = c.left + els.container.clientWidth / 2;
-            const targetY = c.top + els.container.clientHeight / 2;
+            const targetX = anchor.clientX ?? c.left + els.container.clientWidth / 2;
+            const targetY = anchor.clientY ?? c.top + els.container.clientHeight / 2;
             const r = w.getBoundingClientRect();
             els.container.scrollLeft += r.left + anchor.x * r.width - targetX;
             els.container.scrollTop += r.top + anchor.y * r.height - targetY;
@@ -251,6 +290,9 @@ function relayoutContinuousPdfAtScale(explicitAnchor) {
             syncActiveThumbnail(anchor.page);
         }
     }
+    pdfSuppressActiveTracking = false;
+    updatePdfActivePageOnScroll();
+    updatePdfRenderWindow(pdfActivePage, true);
     // navigateToPdfPage() (used elsewhere) already schedules a debounced
     // bookmark save — mirror that here rather than an immediate save, which
     // was redundant and could fire scheduleReaderOnboarding() (saveBookmark's
@@ -262,7 +304,7 @@ function relayoutContinuousPdfAtScale(explicitAnchor) {
 function cancelPdfRender() {
     cancelContinuousPdfRenders();
 }
-function cancelPdfInteraction() {
+function cancelPdfInteraction(keepTrackingSuppressed = false) {
     clearTimeout(wheelZoomTimer); cancelAnimationFrame(pdfFrame); pdfFrame = 0;
     pdfPointers.clear(); pdfGesture = null; pdfInkSnapshot = null;
     if (inkDrawing) { inkDrawing = false; inkCurrent = null; redrawInk(activeInkCanvas(), activeInkPage()); saveInk(); }
@@ -271,7 +313,7 @@ function cancelPdfInteraction() {
     // ended back at 1x" case where relayoutContinuousPdfAtScale() (the other
     // place this clears) is deliberately skipped — without this, that path
     // would leave active-page tracking suppressed forever.
-    pdfSuppressActiveTracking = false;
+    pdfSuppressActiveTracking = keepTrackingSuppressed;
     if (typeof updatePdfActivePageOnScroll === 'function') updatePdfActivePageOnScroll();
 }
 function pinchMetrics() {
@@ -284,7 +326,8 @@ function paintPdfGesture() {
     const m = pinchMetrics();
     const scale = Math.max(.25, Math.min(4, pdfGesture.scale * m.distance / pdfGesture.distance));
     layoutPdfZoom(scale / pdfBaseScale());
-    restorePdfZoomAnchor({ ...pdfGesture.anchor, clientX: m.x, clientY: m.y });
+    restorePdfDocumentAnchor({ ...pdfGesture.anchor, clientX: m.x, clientY: m.y });
+    pdfGesture.clientX = m.x; pdfGesture.clientY = m.y;
 }
 document.addEventListener('pointerdown', e => {
     if (state.format !== 'pdf' ||
@@ -300,7 +343,7 @@ document.addEventListener('pointerdown', e => {
     pdfPointers.set(e.pointerId, { x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY });
     if (pdfPointers.size >= 2) {
         const m = pinchMetrics();
-        pdfGesture = { ...m, scale: pdfBaseScale() * state.pdfZoom, anchor: pdfZoomAnchor(m.x,m.y), multi: true, moved: true };
+        pdfGesture = { ...m, scale: pdfBaseScale() * state.pdfZoom, anchor: pdfDocumentAnchor(m.x,m.y), multi: true, moved: true };
         pdfBlockClick = true;
         clearTimeout(touchSelTimer); dragSel = null; state.touchSelecting = false;
         invalidateSelection(); window.getSelection()?.removeAllRanges();
@@ -308,8 +351,6 @@ document.addEventListener('pointerdown', e => {
         inkDrawing = false; inkCurrent = null; regionStart = null; regionBox.style.display = 'none';
         els.pages.style.willChange = 'transform';
         e.preventDefault(); e.stopPropagation();
-    } else if (!state.inkMode && !document.body.classList.contains('region-mode')) {
-        els.container.setPointerCapture(e.pointerId);
     }
 }, true);
 document.addEventListener('pointermove', e => {
@@ -341,13 +382,16 @@ function endPdfPointer(e) {
     if (multi) { e.preventDefault(); e.stopPropagation(); }
     if (!pdfPointers.size) {
         const dirty = Math.abs(state.pdfZoom - 1) > .001;
-        cancelPdfInteraction();
+        // Capture before releasing tracking or clearing the transformed stack.
+        // Re-read the local point to include panning by the remaining finger.
+        const anchor = multi ? pdfDocumentAnchor(pdfGesture.clientX ?? pdfGesture.x, pdfGesture.clientY ?? pdfGesture.y) : pdfAnchor();
+        cancelPdfInteraction(dirty);
         if (e.type === 'pointercancel') pdfBlockClick = true;
-        if (dirty && !document.hidden) rerenderPdfAtCurrentZoom();
+        if (dirty && !document.hidden) rerenderPdfAtCurrentZoom(anchor);
         saveBookmark();
     } else if (pdfPointers.size >= 2) {
         const m = pinchMetrics();
-        pdfGesture = { ...m, scale: pdfBaseScale()*state.pdfZoom, anchor: pdfZoomAnchor(m.x,m.y), multi: true, moved: true };
+        pdfGesture = { ...m, scale: pdfBaseScale()*state.pdfZoom, anchor: pdfDocumentAnchor(m.x,m.y), multi: true, moved: true };
     }
 }
 document.addEventListener('pointerup', endPdfPointer, true);

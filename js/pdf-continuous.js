@@ -43,15 +43,76 @@ async function measurePdfPage(doc, pageNum) {
     return metadata[pageNum];
 }
 
+// ===================== CENTRAL PDF WORKSPACE GEOMETRY =====================
+// Canonical measurement function for the visible central workspace between side surfaces:
+// availableLeft  = max(mainArea.left, visible nav.right, visible askPanel.right)
+// availableRight = min(mainArea.right, visible grammarPanel.left)   (Practice overlays this gap; see below)
+// availableWidth = max(1, availableRight - availableLeft)
+// availableHeight = max(1, mainArea.bottom - mainArea.top)
+function getReaderWorkspaceRect() {
+    const mainEl = els.mainArea || document.getElementById('main-area');
+    const mainRect = mainEl ? mainEl.getBoundingClientRect() : {
+        left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight,
+        width: window.innerWidth, height: window.innerHeight
+    };
+
+    let availableLeft = mainRect.left;
+    let availableRight = mainRect.right;
+    const availableTop = mainRect.top;
+    const availableBottom = mainRect.bottom;
+
+    // 1. Left sidebar (nav#sidebar for thumbnails/contents, or #ask-panel)
+    const nav = document.getElementById('sidebar');
+    if (nav && !nav.classList.contains('collapsed')) {
+        const w = nav.offsetWidth || nav.getBoundingClientRect().width;
+        if (w > 0) {
+            availableLeft = Math.max(availableLeft, mainRect.left + w);
+        }
+    }
+    const ask = document.getElementById('ask-panel');
+    if (ask && ask.classList.contains('expanded')) {
+        const w = ask.offsetWidth || ask.getBoundingClientRect().width;
+        if (w > 0) {
+            availableLeft = Math.max(availableLeft, mainRect.left + w);
+        }
+    }
+
+    // 2. Right panel (#grammar-panel)
+    const grammar = document.getElementById('grammar-panel');
+    if (grammar && grammar.classList.contains('expanded')) {
+        const w = grammar.offsetWidth || grammar.getBoundingClientRect().width;
+        if (w > 0) {
+            availableRight = Math.min(availableRight, mainRect.right - w);
+        }
+    }
+    // #practice-panel is deliberately NOT a reserve: layoutPracticeWorkspace (practice-worksheet.js)
+    // always lays the expanded worksheet OVER this same central gap (start = max(nav, ask),
+    // end = innerWidth - Grammar), never beside it. Clamping to its left edge collapsed the book
+    // underneath to ~0px — a full relayout of every page at zero width plus a reading anchor taken
+    // from that collapsed stack — and its collapsed/bookmark tab must never reserve width either.
+
+    const availableWidth = Math.max(1, availableRight - availableLeft);
+    const availableHeight = Math.max(1, availableBottom - availableTop);
+
+    return {
+        left: availableLeft,
+        right: availableRight,
+        top: availableTop,
+        bottom: availableBottom,
+        width: availableWidth,
+        height: availableHeight
+    };
+}
+
 function pdfContainerAvailWidth() {
     const pad = parseFloat(getComputedStyle(els.container).paddingLeft) || 0;
     return Math.max(1, els.container.clientWidth - 2 * pad);
 }
 
-// Scale for one page: same "fit width / fit page / free zoom" semantics as the
-// old single-page renderer, generalized so each page can (rarely) differ in
-// natural size — a uniform book computes the same scale for every page.
+// Scale for one page: same "fit width / fit page / free zoom" semantics as continuous PDF,
+// adapting dynamically to the central workspace width.
 function pdfScaleForPage(natural) {
+    if (!natural || !natural.width || !natural.height) return 1;
     const avail = pdfContainerAvailWidth();
     const fitScale = avail > 0 && natural.width > 0 ? avail / natural.width : 1;
     if (state.pdfFit === 'page') {
@@ -88,6 +149,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     const isCurrent = () => generation === pdfContinuousGeneration && epoch === readerEpoch.book && state.pdfDoc === doc && state.format === 'pdf';
     pdfContinuousReady = false;
     pdfSuppressActiveTracking = false;
+    state.activeSelectionAnchor = null;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     clearTimeout(bookmarkSaveTimer);
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
@@ -107,6 +169,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
         state.pdfLabelsFullyScanned = false;
     }
     state.currentIndex = startPage; pdfActivePage = startPage;
+    updatePdfWorkspaceLayout({ immediate: true, force: true });
 
     await measurePdfPage(doc, startPage);
     if (!isCurrent()) return;
@@ -194,14 +257,18 @@ function handlePdfIntersection(entries) {
 
 function getPdfPageAtViewportCenter(containerH) {
     if (!pdfPageWrappers || pdfPageWrappers.length <= 1) return pdfActivePage;
-    const center = els.container.scrollTop + (containerH ?? els.container.clientHeight) / 2;
+    const center = els.container.getBoundingClientRect().top + (containerH ?? els.container.clientHeight) / 2;
+    return getPdfPageAtClientY(center);
+}
+
+// Client geometry includes the live stack transform; offsetTop does not.
+function getPdfPageAtClientY(center) {
     let low = 1, high = state.totalPages;
     while (low <= high) {
         const mid = (low + high) >> 1;
         const w = pdfPageWrappers[mid];
         if (!w) break;
-        const top = w.offsetTop;
-        const bottom = top + w.offsetHeight;
+        const { top, bottom } = w.getBoundingClientRect();
         if (center < top) {
             high = mid - 1;
         } else if (center > bottom) {
@@ -244,7 +311,7 @@ function cancelContinuousPdfRenders() {
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
 }
 
-function updatePdfRenderWindow(activePage) {
+function updatePdfRenderWindow(activePage, rerenderWanted = false) {
     if (!pdfContinuousReady || state.format !== 'pdf' || !state.pdfDoc) return new Map();
     const doc = state.pdfDoc, epoch = readerEpoch.book, generation = pdfContinuousGeneration;
     const lo = Math.max(1, activePage - PDF_RENDER_BUFFER);
@@ -261,7 +328,17 @@ function updatePdfRenderWindow(activePage) {
     // height, so scroll position never jumps). This also covers pages that
     // are STILL mid-render (not yet in pdfRenderedPages) but no longer
     // wanted — pdfRenderedPages alone only tracks completed ones.
-    pdfPagesWithActiveRenderTask().forEach(n => { if (!wanted.has(n)) cancelPdfPageRenderTask(n); });
+    pdfPagesWithActiveRenderTask().forEach(n => {
+        if (!wanted.has(n)) {
+            cancelPdfPageRenderTask(n);
+            const w = pdfPageWrappers[n];
+            if (w && !pdfRenderedPages.has(n) && w.children.length > 0) {
+                w.replaceChildren();
+                w.classList.add('pdf-placeholder');
+                delete w.dataset.rendered;
+            }
+        }
+    });
     pdfRenderedPages.forEach(n => {
         if (wanted.has(n)) return;
         pdfPageTokens[n]++;
@@ -279,7 +356,7 @@ function updatePdfRenderWindow(activePage) {
 
     const pending = new Map(); // pageNum -> Promise<boolean>, for callers that need to await a specific page
     wanted.forEach(n => {
-        if (pdfRenderedPages.has(n)) { pending.set(n, Promise.resolve(true)); return; }
+        if (!rerenderWanted && pdfRenderedPages.has(n)) { pending.set(n, Promise.resolve(true)); return; }
         const w = pdfPageWrappers[n];
         if (!w) return;
         // A still-wanted page can ALSO have a stale in-flight render — e.g.
@@ -381,46 +458,124 @@ function navigateToPdfPage(pageIndex, options = {}) {
     if (!options.skipHistory) scheduleBookmarkSave();
 }
 
-// ===================== SIDE PANEL GEOMETRY =====================
-// #reader-container does not shrink on its own when Grammar/Ask/nav open —
-// they are position:fixed/absolute overlays (see layoutPracticeWorkspace in
-// practice-worksheet.js for the same problem solved the same way for the
-// Practice panel), not flex siblings #main-area reflows around. Left
-// unhandled, PDF pages would render at full width and sit UNDERNEATH those
-// panels rather than beside them. Mirrors layoutPracticeWorkspace's exact
-// width math (nav/ask reserve space on the left, Grammar on the right) so
-// all three side surfaces agree on what counts as "available".
-function layoutPdfForPanels() {
-    if (state.format !== 'pdf') return;
-    const grammar = document.getElementById('grammar-panel');
-    const ask = document.getElementById('ask-panel');
-    const nav = document.querySelector('nav');
-    const grammarWidth = grammar?.classList.contains('expanded') ? grammar.offsetWidth : 0;
-    const askWidth = ask?.classList.contains('expanded') ? ask.offsetWidth : 0;
-    const navWidth = nav && !nav.classList.contains('collapsed') ? nav.offsetWidth : 0;
-    const leftReserve = Math.max(askWidth, navWidth);
-    const rightReserve = grammarWidth;
-    if (leftReserve || rightReserve) {
-        els.container.style.marginLeft = `${leftReserve}px`;
-        els.container.style.marginRight = `${rightReserve}px`;
-        els.container.style.width = `calc(100% - ${leftReserve + rightReserve}px)`;
+// ===================== CENTRAL PDF WORKSPACE SIZING & ALIGNMENT =====================
+let pdfWorkspaceLayoutFrame = 0;
+let lastPdfWorkspaceLeftReserve = null;
+let lastPdfWorkspaceRightReserve = null;
+
+function updatePdfWorkspaceLayout(options = {}) {
+    if (state.format !== 'pdf' || !els.container) return;
+    const immediate = options.immediate || false;
+
+    const applyLayout = () => {
+        if (state.format !== 'pdf' || !els.container) return;
+        const mainEl = els.mainArea || document.getElementById('main-area');
+        const mainRect = mainEl ? mainEl.getBoundingClientRect() : {
+            left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight,
+            width: window.innerWidth, height: window.innerHeight
+        };
+        const ws = getReaderWorkspaceRect();
+        document.documentElement.style.setProperty('--ws-left', `${Math.round(ws.left)}px`);
+        document.documentElement.style.setProperty('--ws-width', `${Math.round(ws.width)}px`);
+        const leftReserve = Math.max(0, Math.round(ws.left - mainRect.left));
+        const rightReserve = Math.max(0, Math.round(mainRect.right - ws.right));
+        document.documentElement.style.setProperty('--ws-right', `${rightReserve}px`);
+
+        const changed = (lastPdfWorkspaceLeftReserve === null) ||
+                        (Math.abs(lastPdfWorkspaceLeftReserve - leftReserve) >= 1) ||
+                        (Math.abs(lastPdfWorkspaceRightReserve - rightReserve) >= 1);
+
+        if (changed || options.force) {
+            lastPdfWorkspaceLeftReserve = leftReserve;
+            lastPdfWorkspaceRightReserve = rightReserve;
+
+            if (leftReserve > 0 || rightReserve > 0) {
+                els.container.style.marginLeft = `${leftReserve}px`;
+                els.container.style.marginRight = `${rightReserve}px`;
+                els.container.style.width = `calc(100% - ${leftReserve + rightReserve}px)`;
+            } else {
+                els.container.style.marginLeft = '';
+                els.container.style.marginRight = '';
+                els.container.style.width = '';
+            }
+
+            // Geometry only. Moving the margins resizes #reader-container, and navigation.js's
+            // containerResizeObserver re-lays the continuous stack out ONCE (debounced), with the reading
+            // anchor measured at the pre-resize size -- the same split main has always used. Relaying out here
+            // as well meant two back-to-back relayouts per panel toggle, each cancelling/restarting the page
+            if (typeof repositionTooltip === 'function') repositionTooltip();
+        }
+    };
+
+    if (immediate) {
+        if (pdfWorkspaceLayoutFrame) {
+            cancelAnimationFrame(pdfWorkspaceLayoutFrame);
+            pdfWorkspaceLayoutFrame = 0;
+        }
+        applyLayout();
     } else {
-        els.container.style.marginLeft = '';
-        els.container.style.marginRight = '';
-        els.container.style.width = '';
+        // No layout read here: this runs inside MutationObserver callbacks, and the side panels are fixed
+        // overlays, so #reader-container cannot change size before applyLayout() itself moves its margins --
+        // applyLayout() takes the reading anchor at exactly that point. (A synchronous pdfAnchor() in the
+        // observer callback, on every panel attribute write, crashed CI's software-raster renderer.)
+        if (!pdfWorkspaceLayoutFrame) {
+            pdfWorkspaceLayoutFrame = requestAnimationFrame(() => {
+                pdfWorkspaceLayoutFrame = 0;
+                applyLayout();
+            });
+        }
     }
-    // #reader-container's own size just changed — the existing
-    // containerResizeObserver (navigation.js) picks this up and calls
-    // relayoutContinuousPdfAtScale() to re-fit pages at the new width; no
-    // separate re-render trigger needed here.
 }
-const pdfPanelObserver = new MutationObserver(() => layoutPdfForPanels());
-['grammar-panel', 'ask-panel'].forEach(id => {
+
+const layoutPdfForPanels = updatePdfWorkspaceLayout;
+
+// Only opening/closing a drawer changes the free workspace: watch class/hidden, not inline style (which
+// these panels rewrite constantly while positioning themselves). #practice-panel is not a reserve at all
+// (it overlays the book -- see getReaderWorkspaceRect), so it is not observed.
+const PDF_PANEL_ATTRIBUTES = { attributes: true, attributeFilter: ['class', 'hidden'] };
+const pdfPanelObserver = new MutationObserver(() => updatePdfWorkspaceLayout());
+['sidebar', 'grammar-panel', 'ask-panel'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) pdfPanelObserver.observe(el, { attributes: true, attributeFilter: ['class'] });
+    if (el) pdfPanelObserver.observe(el, PDF_PANEL_ATTRIBUTES);
 });
-document.addEventListener('DOMContentLoaded', () => {
-    const nav = document.querySelector('nav');
-    if (nav) pdfPanelObserver.observe(nav, { attributes: true, attributeFilter: ['class'] });
-});
-if (document.querySelector('nav')) pdfPanelObserver.observe(document.querySelector('nav'), { attributes: true, attributeFilter: ['class'] });
+
+function registerPdfPanel(el) {
+    if (!el) return;
+    if (typeof pdfPanelObserver !== 'undefined' && pdfPanelObserver) {
+        try {
+            pdfPanelObserver.observe(el, PDF_PANEL_ATTRIBUTES);
+        } catch (e) {}
+    }
+    el.addEventListener('transitionend', (e) => {
+        if (e.target === el && (e.propertyName === 'transform' || e.propertyName === 'width' || e.propertyName === 'visibility' || e.propertyName === 'opacity')) {
+            updatePdfWorkspaceLayout({ immediate: true, force: true });
+        }
+    });
+}
+window.registerPdfPanel = registerPdfPanel;
+
+function initPdfPanelListeners() {
+    const nav = document.getElementById('sidebar') || document.querySelector('nav');
+    if (nav) {
+        pdfPanelObserver.observe(nav, PDF_PANEL_ATTRIBUTES);
+    }
+    ['sidebar', 'grammar-panel', 'ask-panel'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) registerPdfPanel(el);
+    });
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPdfPanelListeners);
+} else {
+    initPdfPanelListeners();
+}
+window.addEventListener('resize', () => {
+    if (state.format === 'pdf') {
+        updatePdfWorkspaceLayout();
+    }
+}, { passive: true });
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        if (state.format === 'pdf') updatePdfWorkspaceLayout();
+    }, { passive: true });
+}

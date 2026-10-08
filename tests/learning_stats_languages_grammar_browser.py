@@ -1,11 +1,12 @@
 """Focused checks for current-page stats, added languages, and grammar rules."""
+import os
 from browser_cdp import CDP
 
 c = CDP()
 c.call('Page.enable')
 c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Emulation.setDeviceMetricsOverride', width=1100, height=900, deviceScaleFactor=1, mobile=False)
-c.call('Page.navigate', url='http://127.0.0.1:8765/index.html')
+c.call('Page.navigate', url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html'))
 c.wait("document.readyState==='complete' && !document.body.inert")
 
 def check(name, expression):
@@ -113,21 +114,31 @@ check('unsupported local translation pair returns null', """(async()=>{
  const old=window.Translator;try{window.Translator={availability:async()=> 'unavailable',create:async()=>{throw Error('must not create')}};localTranslators.clear();return await translateLocally('hello','en','ga')===null;}finally{window.Translator=old;localTranslators.clear();}
 })()""")
 
-check('French grammar prompt requests only present rules and localized section', """(()=>{
- state.sourceLang='fr-FR';const p=buildGrammarPrompt('a terminé','Il a terminé son travail.','en');
- return p.includes('<h4>Grammar rules used</h4>')&&p.includes('passé composé')&&p.includes('uniquement celles réellement présentes')&&p.includes('A1/A2/B1/B2/C1/C2');
+# Redesign note: the old free-text buildGrammarPrompt()/raw-HTML <h4> contract was
+# replaced by structured-JSON buildGrammarAnalysisPrompt()/normalizeGrammarAnalysis()
+# - see tests/grammar_redesign_browser.py for the bulk of the new coverage. These
+# three checks keep this file's original intent (French/English grammar-prompt
+# language purity, and a real startAiTask('grammar') execution path rendering
+# safely) against the new API.
+check('French grammar analysis prompt requests only FR-relevant features, in French', """(()=>{
+ const p=buildGrammarAnalysisPrompt('Il a terminé son travail.','fr','English');
+ return p.includes('French')&&GRAMMAR_LANG_CONFIG.fr.verb.features.every(f=>p.includes(f));
 })()""")
-check('English grammar prompt uses selected explanation language', """(()=>{
- state.sourceLang='en-US';const p=buildGrammarPrompt('finished','She has finished her work.','fr');
- return p.includes('Answer in French')&&p.includes('<h4>Règles grammaticales utilisées</h4>')&&p.includes('passive voice')&&p.includes('only name those actually present');
+check('English grammar analysis prompt uses the selected explanation language', """(()=>{
+ const p=buildGrammarAnalysisPrompt('She has finished her work.','en','French');
+ return p.includes('French')&&GRAMMAR_LANG_CONFIG.en.verb.features.every(f=>p.includes(f));
 })()""")
 check('Grammar and Ask AI execution paths still render sanitized responses', """(async()=>{
  const oldAvailable=aiAvailable,oldCall=callAI,oldTarget=state.targetLang,oldKey=state.groqKey;
  try{aiAvailable=()=>true;state.groqKey='test';state.targetLang='en';
- callAI=async prompt=>prompt.includes('Grammar rules used')?'<section><h4>Grammar rules used</h4><div><b>Present perfect · B1</b><br>Links a past action to now.</div></section>':'<p>Ask answer</p>';
- state.sourceLang='en-US';state.lastGrammarSentence='She has finished her work.';
- await startAiTask('finished','grammar');if(!els.grammarContent.querySelector('section h4')||!els.grammarPanel.classList.contains('ready'))return false;
- await startAiTask('word','ask','Why?');return els.askContent.textContent==='Ask answer'&&els.askPanel.classList.contains('ready');
+ callAI=async (prompt,signal,task)=>task==='grammar_analysis'
+   ?JSON.stringify({items:[{pos:'verb',lemma:'finish',surface:'finished',sentence:'She has finished her work.',features:{tense:'present perfect'},explanation:'links a past action to now.',stemBreakdown:null,forms:null}]})
+   :'<script>alert(1)</script><p>Ask answer</p>';
+ state.lastGrammarSentence='She has finished her work.';
+ await startAiTask('finished','grammar');
+ if(!els.grammarContent.querySelector('.grammar-card')||!els.grammarPanel.classList.contains('ready'))return false;
+ await startAiTask('word','ask','Why?');
+ return !els.askContent.querySelector('script')&&els.askContent.textContent.includes('Ask answer')&&els.askPanel.classList.contains('ready');
  }finally{aiAvailable=oldAvailable;callAI=oldCall;state.targetLang=oldTarget;state.groqKey=oldKey;}
 })()""")
 

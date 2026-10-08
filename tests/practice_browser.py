@@ -1,8 +1,30 @@
-"""Practice Studio comprehensive browser tests — Phase 3A acceptance.
-Tests worksheet generation, rendering safety, persistence, and provider integration.
+"""Practice Studio comprehensive browser tests — contextual reading redesign.
+
+Redesign note (grammar-redesign branch): Practice no longer generates an AI
+worksheet of graded exercises (fill_form/conjugation/... with expectedAnswer,
+progressive hints, Check-Answer buttons). It now generates a short contextual
+READING passage grounded in detected grammar lemmas, with target verb/adjective
+forms highlighted and clickable (clicking one focuses the Grammar panel on that
+exact occurrence — see tests/grammar_redesign_browser.py for that cross-panel
+behavior in depth). This file keeps the original suite's structure and test
+numbering where the underlying behavior is unchanged (session lifecycle,
+persistence, stale-response protection, panel isolation, credential safety), and
+replaces the old worksheet/hints/exercise-type tests (T2-T6, T8, T16, T21) with
+their reading-schema equivalents. The old T16 (hints) and T21 (exercise-type
+constraint) tested UX this redesign explicitly removes per product spec section 9
+("no traditional answer-input quiz UI") — T21 below now asserts that removal
+directly, which is the new product requirement replacing the old one.
+
+Contract v2 (this file's mocks): the model returns `sections` of example sentences / connected
+paragraphs, each item carrying its own targets (see tests/practice_fixtures.py); the validator
+flattens that to `paragraphs` + `sections` ranges + `targets`. A payload handed to the renderer or
+stored in a session is the VALIDATED reading, not the raw model reply. The user-facing acceptance
+(sentences, no exercise UI, highlighting, click -> exact Grammar occurrence, isolation, legacy
+storage) lives in tests/practice_reading_browser.py.
 """
 import json, os, time
 from browser_cdp import CDP
+from practice_fixtures import VERBS_FR, ADJECTIVES_FR, to_json
 
 c = CDP(); c.sock.settimeout(45)
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
@@ -25,39 +47,29 @@ def check(name, expression, timeout=0):
     print('PASS', name)
 
 # Initialize test harness
-mockWorksheet = {
-    "metadata": {
-        "id": "ws1",
-        "title": "Past Tense Verbs",
-        "topic": "Verb conjugation",
-        "sourceLanguage": "en",
-        "targetLanguage": "uk",
-        "level": "A1",
-        "generatedAt": int(time.time() * 1000)
-    },
-    "context": {"sourceText": "I went to school"},
-    "exercises": [
-        {"id": "ex1", "type": "fill_form", "instruction": "Fill", "prompt": "I ___ (go)", "expectedConcept": "past", "difficulty": 1},
-        {"id": "ex2", "type": "conjugation", "instruction": "Conjugate", "prompt": "go (past)", "expectedConcept": "conjugation", "difficulty": 2}
-    ]
-}
+mockReading = VERBS_FR
+N_SENTENCES = sum(len(sec['items']) for sec in VERBS_FR['sections'] if sec['kind'] == 'examples')
+N_STORIES = sum(len(sec['items']) for sec in VERBS_FR['sections'] if sec['kind'] == 'story')
+N_ADJ_TARGETS = sum(len(i['targets']) for sec in ADJECTIVES_FR['sections'] for i in sec['items'])
 
 c.js(r'''
 window.__practiceTests = {
-    mockWorksheet: ''' + json.dumps(mockWorksheet) + r''',
+    mockReading: ''' + to_json(mockReading) + r''',
     generateCount: 0,
     requestCount: 0,
     hostileInputCaught: false,
     lastError: null
 };
+// The VALIDATED reading (flattened paragraphs/sections/targets): what sessions store and the renderer takes.
+window.__practiceTests.validReading = validatePracticeReading(window.__practiceTests.mockReading, {language: 'fr', mode: 'verbs'});
 
 // Mock callAI
 window.__originalCallAI = callAI;
 callAI = async function(prompt, signal, task, onDelta) {
-    if (task === 'practice') {
+    if (task === 'practice_reading') {
         __practiceTests.generateCount++;
         __practiceTests.requestCount++;
-        return JSON.stringify(__practiceTests.mockWorksheet);
+        return JSON.stringify(__practiceTests.mockReading);
     }
     return window.__originalCallAI(prompt, signal, task, onDelta);
 };
@@ -80,7 +92,7 @@ observer.observe(document.body, { subtree: true, childList: true, attributes: fa
 # TEST 1: Session creation
 print("\n=== TEST 1: Practice Session Creation ===")
 c.js(r"""
-const ctx = {sourceText: 'Test', sourceLanguage: 'en', targetLanguage: 'uk', level: null};
+const ctx = {sourceText: 'Test', sourceLanguage: 'fr', targetLanguage: 'uk', mode: 'verbs', level: null};
 window.__testSession = createPracticeSession(ctx);
 """)
 
@@ -90,14 +102,14 @@ check("T1: Session has unique ID",
 check("T1: Session in generating state",
       "window.__testSession.status === 'generating'")
 
-# TEST 2: Worksheet validation (FIXED - wrapped in IIFE)
-print("\n=== TEST 2: Worksheet Validation ===")
+# TEST 2: Reading validation
+print("\n=== TEST 2: Reading Validation ===")
 
-check("T2: Valid worksheet passes validation",
+check("T2: Valid reading passes validation",
       r"""
       (function() {
         try {
-          validateWorksheet(__practiceTests.mockWorksheet);
+          validatePracticeReading(__practiceTests.mockReading);
           return true;
         } catch (e) {
           __practiceTests.lastError = e.message;
@@ -106,16 +118,16 @@ check("T2: Valid worksheet passes validation",
       })()
       """)
 
-# TEST 3: Invalid worksheet rejection
-print("\n=== TEST 3: Invalid Worksheet Rejection ===")
+# TEST 3: Invalid reading rejection (missing/empty title)
+print("\n=== TEST 3: Invalid Reading Rejection ===")
 
 c.js(r"""
-window.__badWorksheet = {
-    metadata: {title: '', topic: '', sourceLanguage: 'en', targetLanguage: 'uk', level: 'A1'},
-    exercises: []
+window.__badReading = {
+    title: '', language: 'fr', mode: 'verbs',
+    sections: [{heading: 'x', kind: 'examples', items: [{text: 'Some sentence text that is long enough to pass the length check on its own here.', targets: []}]}]
 };
 try {
-    validateWorksheet(__badWorksheet);
+    validatePracticeReading(window.__badReading);
     __practiceTests.lastError = 'Should have thrown';
 } catch (e) {
     __practiceTests.lastError = e.message;
@@ -125,62 +137,58 @@ try {
 check("T3: Empty title rejected",
       "window.__practiceTests.lastError && window.__practiceTests.lastError.includes('title')")
 
-# TEST 4: Unsupported type rejection
-print("\n=== TEST 4: Unsupported Type Rejection ===")
+# TEST 4: Trivial/too-short passage rejection (the redesign's core substantiality requirement)
+print("\n=== TEST 4: Trivial Passage Rejection ===")
 
 c.js(r"""
-window.__badType = {
-    metadata: __practiceTests.mockWorksheet.metadata,
-    context: __practiceTests.mockWorksheet.context,
-    exercises: [{id: 'ex1', type: 'unsupported_type', instruction: 'T', prompt: 'T', expectedConcept: 'T', difficulty: 1}]
+window.__trivialReading = {
+    title: 'Trivial', language: 'fr', mode: 'verbs',
+    sections: [{heading: 'parler', kind: 'examples', items: [{text: 'Je parle.', targets: []}, {text: 'Tu parles.', targets: []}]}]
 };
 try {
-    validateWorksheet(__badType);
+    validatePracticeReading(window.__trivialReading);
     __practiceTests.lastError = 'Should have thrown';
 } catch (e) {
     __practiceTests.lastError = e.message;
 }
 """)
 
-check("T4: Unsupported type rejected",
-      "window.__practiceTests.lastError && window.__practiceTests.lastError.includes('unsupported')")
+check("T4: Trivial two-line passage is rejected as insubstantial",
+      "window.__practiceTests.lastError && window.__practiceTests.lastError !== 'Should have thrown'")
+check("T4: ...because it is too little material, not for an unrelated reason",
+      "/too little material|too short/.test(window.__practiceTests.lastError)")
 
-# TEST 5: Exercise count bounds
-print("\n=== TEST 5: Exercise Count Bounds ===")
+# TEST 5: Paragraph count bounds
+print("\n=== TEST 5: Section Count Bounds ===")
 
 c.js(r"""
 window.__tooMany = {
-    metadata: __practiceTests.mockWorksheet.metadata,
-    context: __practiceTests.mockWorksheet.context,
-    exercises: Array.from({length: 25}, (_, i) => ({
-        id: 'ex' + i, type: 'fill_form', instruction: 'T', prompt: 'T', expectedConcept: 'T', difficulty: 1
-    }))
+    // MAX_SECTIONS is now PRACTICE_MAX_LEMMAS(20) + 4 (one "examples" section per requested lemma, up to
+    // the same ceiling as grammarItemBudget, plus a few "story" sections) -- 25 exceeds it, 13 no longer does.
+    title: 'Too many', language: 'fr', mode: 'verbs',
+    sections: Array.from({length: 25}, (_, i) => ({heading: 'w' + i, kind: 'examples', items: [{text: 'Sentence number ' + i + ' with plenty of words so it is not trivially short by itself.', targets: []}]}))
 };
 try {
-    validateWorksheet(__tooMany);
+    validatePracticeReading(window.__tooMany);
     __practiceTests.lastError = 'Should have thrown';
 } catch (e) {
     __practiceTests.lastError = e.message;
 }
 """)
 
-check("T5: Excessive count rejected",
-      "window.__practiceTests.lastError && window.__practiceTests.lastError.includes('too many')")
+check("T5: Excessive section count rejected",
+      "window.__practiceTests.lastError && window.__practiceTests.lastError.includes('many')")
 
 # TEST 6: HTML injection safety
 print("\n=== TEST 6: HTML Content Safety ===")
 
 c.js(r"""
 window.__malicious = {
-    metadata: {
-        id: 'ws1', title: 'Test<script>alert("xss")</script>', topic: 'Test<img onerror="alert()">',
-        sourceLanguage: 'en', targetLanguage: 'uk', level: 'A1', generatedAt: Date.now()
-    },
-    context: {sourceText: 'Test'},
-    exercises: [{id: 'ex1', type: 'fill_form', instruction: 'Fill<img onerror=alert>', prompt: 'Prompt<script>', expectedConcept: 'Concept', difficulty: 1}]
+    title: 'Test<script>alert("xss")</script>', language: 'fr', mode: 'verbs',
+    sections: [{heading: 'x', kind: 'examples', items: [{text: 'A normal-looking sentence with <img onerror=alert(1)> embedded and enough length to pass otherwise.', targets: []}]}]
 };
 try {
-    validateWorksheet(__malicious);
+    validatePracticeReading(window.__malicious);
     __practiceTests.lastError = 'Should have thrown';
 } catch (e) {
     __practiceTests.lastError = e.message;
@@ -188,51 +196,45 @@ try {
 """)
 
 check("T6: HTML injection rejected",
-      "window.__practiceTests.lastError && window.__practiceTests.lastError.includes('suspicious')")
+      "window.__practiceTests.lastError && window.__practiceTests.lastError !== 'Should have thrown'")
 
 # TEST 7: Safe rendering
-print("\n=== TEST 7: Worksheet Rendering Safety ===")
+print("\n=== TEST 7: Reading Rendering Safety ===")
 
 c.js(r"""
 getPracticePanel();
-displayPracticeSession({status: 'ready', worksheet: __practiceTests.mockWorksheet, currentPage: 0});
+const s = createPracticeSession({sourceLanguage:'fr', targetLanguage:'uk', mode:'verbs'});
+s.status = 'ready'; s.reading = __practiceTests.validReading;
+displayPracticeSession(s);
 """)
 
-check("T7: Worksheet renders",
-      "document.querySelector('.worksheet-page') !== null")
+check("T7: Reading renders: one line per example sentence, one paragraph per story, a heading per section",
+      "document.querySelector('.practice-reading') !== null && document.querySelectorAll('.practice-sentence').length === %d && document.querySelectorAll('.practice-paragraph').length === %d && document.querySelectorAll('.practice-section-title').length === 2" % (N_SENTENCES, N_STORIES))
 
 check("T7: Content not executed",
       r"!window.__practiceTests.hostileInputCaught")
 
-# TEST 8: All exercise types
-print("\n=== TEST 8: All Exercise Types Render ===")
+# TEST 8: Target highlighting for both Verbs and Adjectives modes
+print("\n=== TEST 8: Target Highlighting Renders For Both Modes ===")
 
-types = ["fill_form", "auxiliary", "conjugation", "transform", "correct_error", "translate", "short_production", "contextual_usage"]
 c.js(r"""
-const multiType = {
-    metadata: __practiceTests.mockWorksheet.metadata,
-    context: __practiceTests.mockWorksheet.context,
-    exercises: """ + json.dumps([{"id": f"ex{i}", "type": t, "instruction": "T", "prompt": "T", "expectedConcept": "T", "difficulty": 1} for i, t in enumerate(types)]) + r"""
-};
-displayPracticeSession({status: 'ready', worksheet: multiType, currentPage: 0});
-""")
+window.__adjValid = validatePracticeReading(%s, {language: 'fr', mode: 'adjectives'});
+const s2 = createPracticeSession({sourceLanguage:'fr', targetLanguage:'uk', mode:'adjectives'});
+s2.status = 'ready'; s2.reading = window.__adjValid;
+displayPracticeSession(s2);
+""" % to_json(ADJECTIVES_FR))
 
-check("T8: All 8 types render",
-      "document.querySelectorAll('.exercise').length === 8")
+check("T8: Adjective targets render as highlighted clickable buttons",
+      "document.querySelectorAll('.practice-target-adjective').length === %d && document.querySelectorAll('.practice-target-verb').length === 0" % N_ADJ_TARGETS)
 
 # TEST 9: Session persistence
 print("\n=== TEST 9: Session Persistence ===")
 
 c.js(r"""
-window.__persistedSession = {
-    id: 'test_persist_123',
-    status: 'ready',
-    sourceText: 'Test',
-    sourceLanguage: 'en',
-    targetLanguage: 'uk',
-    worksheet: __practiceTests.mockWorksheet,
-    createdAt: Date.now()
-};
+window.__persistedSession = createPracticeSession({sourceText: 'Test', sourceLanguage: 'fr', targetLanguage: 'uk', mode: 'verbs', lemmas: ['parler']});
+window.__persistedSession.id = 'test_persist_123';
+window.__persistedSession.status = 'ready';
+window.__persistedSession.reading = __practiceTests.validReading;
 persistPracticeSession(__persistedSession);
 """)
 
@@ -272,69 +274,73 @@ currentPracticeSession = {
     id: 'retry_test_001',
     status: 'error',
     sourceText: 'Test context',
-    sourceLanguage: 'en',
+    sourceLanguage: 'fr',
     targetLanguage: 'uk',
-    level: 'A1',
+    mode: 'verbs',
     lastError: {message: 'First attempt failed'}
 };
 window.__retryTest.oldId = currentPracticeSession.id;
 """)
 
-# Note: Full retry would require mocking callAI with async behavior
-# Verify retry function exists and preserves context
 check("T12: Retry preserves session context",
       "typeof retryPracticeGeneration === 'function'")
 
-# TEST 13: Stale response protection (race condition)
-print("\n=== TEST 13: Stale Response Protection ===")
+# TEST 13: Stale response protection — real race, not just an existence check
+print("\n=== TEST 13: Stale Response Protection (real race) ===")
 
 c.js(r"""
-window.__staleRaceTest = { taskId: null, finalSession: null };
-const origTask = window.beginAsyncTask;
-let taskCounter = 0;
-window.beginAsyncTask = function(name) {
-    const id = ++taskCounter;
-    window.__staleRaceTest.taskId = id;
-    return origTask.call(this, name);
+window.__raceReadingLog = [];
+window.__origCallAI13 = callAI;
+callAI = async function(prompt, signal, task) {
+    if (task !== 'practice_reading') return window.__origCallAI13(prompt, signal, task);
+    if (prompt.includes('STALE_MARKER')) {
+        // Deliberately ignores signal.aborted so it still resolves late — this proves
+        // generatePracticeReading's own task.current() guard (not just AbortController)
+        // discards a stale response instead of applying it.
+        await new Promise(r => setTimeout(r, 200));
+        window.__raceReadingLog.push('stale-resolved');
+        return JSON.stringify({...__practiceTests.mockReading, title: 'STALE'});
+    }
+    await new Promise(r => setTimeout(r, 20));
+    window.__raceReadingLog.push('fresh-resolved');
+    return JSON.stringify({...__practiceTests.mockReading, title: 'FRESH'});
 };
-
-const origDisplay = window.displayPracticeSession;
-window.displayPracticeSession = function(s) {
-    window.__staleRaceTest.finalSession = s;
-    return origDisplay?.call(this, s);
-};
+window.__staleCtx = {sourceText: 'STALE_MARKER context text long enough to pad the prompt out a bit here.', sourceLanguage:'fr', targetLanguage:'uk', mode:'verbs'};
+window.__freshCtx = {sourceText: 'fresh context text long enough to pad the prompt out a bit here too.', sourceLanguage:'fr', targetLanguage:'uk', mode:'verbs'};
+window.__stalePromise = generatePracticeReading(window.__staleCtx);
+true;
+""")
+c.js(r"""
+window.__freshPromise = new Promise(resolve => setTimeout(() => resolve(generatePracticeReading(window.__freshCtx)), 15));
+true;
 """)
 
-check("T13: Task tracking prevents stale overwrites",
-      "typeof beginAsyncTask === 'function'")
+check("T13: The stale (slower) request never becomes the active session",
+      "(async () => { await window.__stalePromise; await window.__freshPromise; return getCurrentPracticeSession()?.reading?.title === 'FRESH'; })()",
+      timeout=3)
+check("T13: The stale response resolved late but was discarded, not applied",
+      "window.__raceReadingLog.includes('stale-resolved') && getCurrentPracticeSession()?.reading?.title === 'FRESH'",
+      timeout=1)
+c.js("callAI = window.__origCallAI13;")
 
 # TEST 14: Session persistence across close/reload
 print("\n=== TEST 14: Session Persistence After UI Close ===")
 
 c.js(r"""
-// Persist a ready session
-const readySession = {
-    id: 'persist_test',
-    status: 'ready',
-    sourceText: 'Test',
-    sourceLanguage: 'en',
-    targetLanguage: 'uk',
-    level: 'A1',
-    worksheet: __practiceTests.mockWorksheet,
-    createdAt: Date.now()
-};
+const readySession = createPracticeSession({sourceText: 'Test', sourceLanguage: 'fr', targetLanguage: 'uk', mode: 'verbs'});
+readySession.id = 'persist_test';
+readySession.status = 'ready';
+readySession.reading = __practiceTests.validReading;
 persistPracticeSession(readySession);
 currentPracticeSession = readySession;
 window.__beforeClose = {hasSession: !!getCurrentPracticeSession()};
 """)
 
-# Close UI
 c.js("closePracticeSession();")
 
 check("T14: Session cleared from memory after close",
       "getCurrentPracticeSession() === null")
 
-# Restore from storage
 c.js("const restored = loadPracticeSession('persist_test'); window.__afterRestore = restored;")
 
 check("T14: Ready session survives close and can be restored",
@@ -347,9 +353,9 @@ c.js(r"""
 const session = {
     id: 'sec_test',
     sourceText: 'Test',
-    sourceLanguage: 'en',
+    sourceLanguage: 'fr',
     targetLanguage: 'uk',
-    worksheet: __practiceTests.mockWorksheet
+    reading: __practiceTests.validReading
 };
 window.__secTest = {
     sessionStr: JSON.stringify(session),
@@ -363,278 +369,28 @@ check("T15: No API keys in session",
 check("T15: No credentials in storage",
       r"!window.__secTest.storageKeys.some(k => localStorage[k]?.includes('sk-') || localStorage[k]?.includes('gsk_'))")
 
-# Phase 3B: Hints tests
-print("\n=== TEST 16: Phase 3B - Hints Support ===")
+# TEST 16: Duplicate/invalid target schema handling (replaces the old hints test)
+print("\n=== TEST 16: Target Schema Robustness ===")
 
 c.js(r"""
-window.__hintsTest = {
-    mockWorksheet: null,
-    hintValidationPassed: false,
-    hintsRendered: false,
-    hintRevealWorks: false
-};
-
-// Create worksheet with hints for testing
-window.__hintsTest.mockWorksheet = {
-    metadata: {
-        id: 'ws1',
-        title: 'Hints Practice',
-        topic: 'Verb conjugation',
-        sourceLanguage: 'en',
-        targetLanguage: 'uk',
-        level: 'A1',
-        generatedAt: Date.now()
-    },
-    context: { sourceText: 'I know the answer' },
-    exercises: [
-        {
-            id: 'ex1',
-            type: 'fill_form',
-            instruction: 'Fill the blank',
-            prompt: 'I ___ (know) the answer',
-            expectedConcept: 'verb knowledge',
-            difficulty: 1,
-            hints: [
-                'Think about the present tense of know',
-                'It is a simple form',
-                'The answer is "know"'
-            ]
-        },
-        {
-            id: 'ex2',
-            type: 'conjugation',
-            instruction: 'Conjugate',
-            prompt: 'know',
-            expectedConcept: 'conjugation',
-            difficulty: 2
-            // No hints on this exercise - optional
-        }
-    ]
-};
-
-// Test hints validation
-try {
-    validateWorksheet(window.__hintsTest.mockWorksheet);
-    window.__hintsTest.hintValidationPassed = true;
-} catch (e) {
-    window.__hintsTest.hintValidationError = e.message;
-}
-
-true;
+const cloneBase = () => JSON.parse(JSON.stringify(__practiceTests.mockReading));
+window.__baseTargets = validatePracticeReading(cloneBase(), {language: 'fr', mode: 'verbs'}).targets.length;
+const dup = cloneBase();
+const firstTargets = dup.sections[0].items[0].targets;
+firstTargets.push(Object.assign({}, firstTargets[0], {explanation: 'duplicate — must be dropped.'}));
+window.__dupValidated = validatePracticeReading(dup, {language: 'fr', mode: 'verbs'});
 """)
 
-check("T16: Hints validation accepts valid hints",
-      "window.__hintsTest.hintValidationPassed")
+check("T16: Duplicate sentence+surface target pairs are deduplicated at validation",
+      "window.__dupValidated.targets.length === window.__baseTargets")
 
 c.js(r"""
-// Test hint rendering
-displayPracticeSession({status: 'ready', worksheet: window.__hintsTest.mockWorksheet, currentPage: 0});
-window.__hintsTest.hintsRendered = document.querySelectorAll('.hint-reveal-btn').length === 1;
-window.__hintsTest.hintCount = document.querySelectorAll('.hint').length;
+const inj = JSON.parse(JSON.stringify(__practiceTests.mockReading));
+inj.sections[0].items[0].targets[0].explanation = '<script>alert(1)</script>';
+window.__explValidated = validatePracticeReading(inj, {language: 'fr', mode: 'verbs'});
 """)
-
-check("T16: Hints render with buttons",
-      "window.__hintsTest.hintsRendered && window.__hintsTest.hintCount === 3")
-
-c.js(r"""
-// Test progressive hint reveal with actual visibility checks
-const hintBtn = document.querySelector('.hint-reveal-btn');
-const hintsContainer = hintBtn.parentElement.querySelector('.hints-container');
-const hints = Array.from(hintsContainer.querySelectorAll('.hint'));
-
-// Helper to check actual visibility (parent and self)
-function isActuallyVisible(el) {
-    return el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
-}
-
-window.__hintsTest.beforeClick = {
-    containerVisible: isActuallyVisible(hintsContainer),
-    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
-    buttonDisabled: hintBtn.disabled
-};
-
-// Click to reveal first hint
-hintBtn.click();
-
-window.__hintsTest.afterClick1 = {
-    containerVisible: isActuallyVisible(hintsContainer),
-    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
-    buttonDisabled: hintBtn.disabled
-};
-
-// Click again to reveal second hint
-hintBtn.click();
-
-window.__hintsTest.afterClick2 = {
-    containerVisible: isActuallyVisible(hintsContainer),
-    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
-    buttonDisabled: hintBtn.disabled
-};
-
-// Click to reveal third (final) hint
-hintBtn.click();
-
-window.__hintsTest.afterClick3 = {
-    visibleCount: hints.filter(h => isActuallyVisible(h)).length,
-    buttonDisabled: hintBtn.disabled,
-    buttonText: hintBtn.textContent.trim()
-};
-""")
-
-check("T16: Container hidden before reveal",
-      "!window.__hintsTest.beforeClick.containerVisible && window.__hintsTest.beforeClick.visibleCount === 0")
-
-check("T16: First hint reveals and container becomes visible",
-      "window.__hintsTest.afterClick1.containerVisible && window.__hintsTest.afterClick1.visibleCount === 1 && !window.__hintsTest.afterClick1.buttonDisabled")
-
-check("T16: Second hint reveals progressively",
-      "window.__hintsTest.afterClick2.containerVisible && window.__hintsTest.afterClick2.visibleCount === 2 && !window.__hintsTest.afterClick2.buttonDisabled")
-
-check("T16: All hints revealed and button disables on final hint",
-      "window.__hintsTest.afterClick3.visibleCount === 3 && window.__hintsTest.afterClick3.buttonDisabled && window.__hintsTest.afterClick3.buttonText.includes('✓')")
-
-c.js(r"""
-// Test hint persistence across navigation
-// Reset worksheet to clean state (previous mutations from injection test)
-window.__hintsTest.mockWorksheet.exercises[0].hints = [
-    'Think about the present tense of know',
-    'It is a simple form',
-    'The answer is "know"'
-];
-
-window.__persistenceTest = {
-    hints2VisibleBefore: false,
-    hints2VisibleAfter: false,
-    revealCount: 0
-};
-
-// Display fresh session
-const persistSession = {
-    id: 'persist_hints_test',
-    status: 'ready',
-    worksheet: window.__hintsTest.mockWorksheet,
-    currentPage: 0,
-    revealedHints: {}
-};
-currentPracticeSession = persistSession;
-
-displayPracticeSession(persistSession);
-
-// Get fresh reference to button and hints
-const persistBtn = document.querySelector('.hint-reveal-btn');
-const persistContainer = persistBtn.parentElement.querySelector('.hints-container');
-const persistHints = Array.from(persistContainer.querySelectorAll('.hint'));
-
-function isActuallyVisible(el) {
-    return el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
-}
-
-// Reveal first hint
-persistBtn.click();
-// Reveal second hint
-persistBtn.click();
-
-window.__persistenceTest.hints2VisibleBefore = persistHints.slice(0, 2).every(h => isActuallyVisible(h));
-window.__persistenceTest.revealCount = persistSession.revealedHints.ex1;
-
-// Simulate page navigation by re-displaying the same session
-displayPracticeSession(persistSession);
-
-// Re-check if hints remain visible after re-display
-const newBtn = document.querySelector('.hint-reveal-btn');
-const newContainer = newBtn.parentElement.querySelector('.hints-container');
-const newHints = Array.from(newContainer.querySelectorAll('.hint'));
-window.__persistenceTest.hints2VisibleAfter = newHints.slice(0, 2).every(h => isActuallyVisible(h));
-window.__persistenceTest.sessionRevealedCount = persistSession.revealedHints.ex1;
-""")
-
-check("T16: Hint reveal persists after navigation",
-      "window.__persistenceTest.hints2VisibleBefore && window.__persistenceTest.hints2VisibleAfter && window.__persistenceTest.sessionRevealedCount === 2")
-
-c.js(r"""
-// Test hint safety - no HTML injection
-const maliciousWorksheet = window.__hintsTest.mockWorksheet;
-maliciousWorksheet.exercises[0].hints[0] = '<script>alert("xss")</script>';
-
-window.__hintsTest.injectionTest = {
-    attempted: true,
-    caught: false
-};
-
-try {
-    validateWorksheet(maliciousWorksheet);
-} catch (e) {
-    window.__hintsTest.injectionTest.caught = e.message.includes('suspicious');
-}
-""")
-
-check("T16: Hints reject HTML injection",
-      "window.__hintsTest.injectionTest.caught")
-
-c.js(r"""
-// Test optional hints - exercises without hints still work
-const noHintsWorksheet = {
-    metadata: {
-        id: 'ws1',
-        title: 'Optional Hints Test',
-        topic: 'Verb conjugation',
-        sourceLanguage: 'en',
-        targetLanguage: 'uk',
-        level: 'A1',
-        generatedAt: Date.now()
-    },
-    context: { sourceText: 'Test' },
-    exercises: [
-        {
-            id: 'ex_with_hints',
-            type: 'fill_form',
-            instruction: 'Fill',
-            prompt: 'I ___ (know)',
-            expectedConcept: 'verb',
-            difficulty: 1,
-            hints: ['Hint 1', 'Hint 2']
-        },
-        {
-            id: 'ex_no_hints',
-            type: 'conjugation',
-            instruction: 'Conjugate',
-            prompt: 'know',
-            expectedConcept: 'conjugation',
-            difficulty: 2
-            // No hints on this exercise
-        }
-    ]
-};
-
-window.__hintsTest.noHintsTest = {
-    validationPassed: false,
-    rendersCorrectly: false,
-    ex1HasHints: false,
-    ex2NoHints: false
-};
-
-try {
-    validateWorksheet(noHintsWorksheet);
-    window.__hintsTest.noHintsTest.validationPassed = true;
-} catch (e) {
-    window.__hintsTest.noHintsTest.validationError = e.message;
-}
-
-// Render and check
-const sessionNoHints = {status: 'ready', worksheet: noHintsWorksheet, currentPage: 0, revealedHints: {}};
-currentPracticeSession = sessionNoHints;
-displayPracticeSession(sessionNoHints);
-
-const ex1HintsEl = document.querySelector('[data-id="ex_with_hints"]').querySelector('.exercise-hints');
-const ex2HintsEl = document.querySelector('[data-id="ex_no_hints"]').querySelector('.exercise-hints');
-
-window.__hintsTest.noHintsTest.ex1HasHints = ex1HintsEl !== null;
-window.__hintsTest.noHintsTest.ex2NoHints = ex2HintsEl === null;
-window.__hintsTest.noHintsTest.rendersCorrectly = window.__hintsTest.noHintsTest.ex1HasHints && window.__hintsTest.noHintsTest.ex2NoHints;
-""")
-
-check("T16: Optional hints work correctly",
-      "window.__hintsTest.noHintsTest.validationPassed && window.__hintsTest.noHintsTest.rendersCorrectly && window.__hintsTest.noHintsTest.ex1HasHints && window.__hintsTest.noHintsTest.ex2NoHints")
+check("T16: A target with an unsafe explanation is dropped, not sanitized-and-kept",
+      "window.__explValidated.targets.length === window.__baseTargets - 1")
 
 # TEST 17: Practice Panel Visibility Regression (Production fix)
 print("\n=== TEST 17: Practice Panel Visibility (Regression) ===")
@@ -647,16 +403,11 @@ window.__visibilityTest = {
     notOffscreen: false
 };
 
-// Get the practice panel (created by previous tests)
 const practicePanel = document.getElementById('practice-panel');
 if (practicePanel) {
-    // Check computed styles
     const computed = window.getComputedStyle(practicePanel);
     window.__visibilityTest.computedDisplay = computed.display;
     window.__visibilityTest.computedVisibility = computed.visibility;
-
-    // For fixed-positioned elements, check that transform is not hidden
-    // (visibility:visible + transform:none means it's visible, not off-screen)
     const transform = computed.transform;
     window.__visibilityTest.notOffscreen = !transform.includes('translateX(100%)');
     window.__visibilityTest.hidden = practicePanel.hidden;
@@ -681,7 +432,6 @@ check("T17: Practice panel not off-screen (transform not translateX(100%))",
 print("\n=== TEST 18: Grammar/Ask Panel Isolation ===")
 
 c.js(r"""
-// Close any open panels first (from previous tests)
 const grammaPanelSetup = document.getElementById('grammar-panel');
 const askPanelSetup = document.getElementById('ask-panel');
 if (grammaPanelSetup) grammaPanelSetup.hidden = true;
@@ -702,7 +452,6 @@ if (grammarPanelT18) window.__isolationTest.grammarHidden = grammarPanelT18.hidd
 if (askPanelT18) window.__isolationTest.askHidden = askPanelT18.hidden;
 if (practicePanelT18) window.__isolationTest.practiceHidden = practicePanelT18.hidden;
 
-// All should be independent
 window.__isolationTest.noConflict =
     window.__isolationTest.grammarHidden &&
     window.__isolationTest.askHidden &&
@@ -728,29 +477,17 @@ print("\n=== TEST 19: Async Lifecycle - Single Request Success (Regression) ==="
 
 c.js(r"""
 window.__asyncTest = {
-    singleSuccess: {
-        sessionCreated: false,
-        generatingShown: false,
-        readyShown: false,
-        stateTransition: false
-    },
-    raceTest: {
-        bothCreated: false,
-        aNotOverwriteB: false,
-        bFinal: false
-    }
+    singleSuccess: { sessionCreated: false, readyShown: false, stateTransition: false },
+    raceTest: { bothCreated: false, aNotOverwriteB: false, bFinal: false }
 };
 
-// Mock callAI to return success after a brief delay
 const origCallAI = window.callAI;
 let testCallCount = 0;
 window.callAI = async function(prompt, signal, task) {
-    if (task === 'practice') {
+    if (task === 'practice_reading') {
         testCallCount++;
-        // Simulate brief generation time
         await new Promise(resolve => setTimeout(resolve, 50));
-        // Return success with mock worksheet
-        return JSON.stringify(__practiceTests.mockWorksheet);
+        return JSON.stringify(__practiceTests.mockReading);
     }
     return origCallAI(prompt, signal, task);
 };
@@ -758,27 +495,14 @@ window.callAI = async function(prompt, signal, task) {
 true;
 """)
 
-# Test single successful generation
 c.js(r"""
 window.__asyncTest.singlePromise = (async () => {
-    const singleContext = {
-        sourceText: 'Single test',
-        sourceLanguage: 'en',
-        targetLanguage: 'uk',
-        level: 'A1'
-    };
-
+    const singleContext = { sourceText: 'Single test', sourceLanguage: 'fr', targetLanguage: 'uk', mode: 'verbs' };
     try {
-        window.__asyncTest.singleSuccess.sessionCreated = false;
-
-        // Start generation (session created in 'generating' state internally)
-        const result = await generatePracticeWorksheet(singleContext);
+        const result = await generatePracticeReading(singleContext);
         const after = getCurrentPracticeSession();
-
-        // Verify session was created and is ready after generation
         window.__asyncTest.singleSuccess.sessionCreated = !!after;
         window.__asyncTest.singleSuccess.readyShown = after?.status === 'ready';
-        // State transition: session created in 'generating', now 'ready' means it transitioned
         window.__asyncTest.singleSuccess.stateTransition = result?.status === 'ready' && after?.status === 'ready' && result?.id === after?.id;
     } catch (e) {
         window.__asyncTest.singleSuccess.error = e.message;
@@ -800,21 +524,18 @@ check("T19: Session transitioned generating → ready",
 print("\n=== TEST 20: Async Lifecycle - Race Condition (Regression) ===")
 
 c.js(r"""
-// Mock callAI for race test: A fails after delay, B succeeds quickly
 let raceCallCount = 0;
 window.callAI = async function(prompt, signal, task) {
-    if (task === 'practice') {
+    if (task === 'practice_reading') {
         const callNum = ++raceCallCount;
         if (callNum === 1) {
-            // A: fail after a delay (to ensure B completes first)
             await new Promise(resolve => setTimeout(resolve, 150));
             if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
             throw new Error('A failed deliberately for race test');
         } else if (callNum === 2) {
-            // B: succeed quickly
             await new Promise(resolve => setTimeout(resolve, 30));
             if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
-            return JSON.stringify(__practiceTests.mockWorksheet);
+            return JSON.stringify(__practiceTests.mockReading);
         }
     }
     return origCallAI(prompt, signal, task);
@@ -826,41 +547,27 @@ true;
 c.js(r"""
 window.__asyncTest.racePromise = (async () => {
     try {
-        const contextA = {
-            sourceText: 'Request A',
-            sourceLanguage: 'en',
-            targetLanguage: 'uk',
-            level: 'A1'
-        };
-        const contextB = {
-            sourceText: 'Request B',
-            sourceLanguage: 'en',
-            targetLanguage: 'uk',
-            level: 'A1'
-        };
+        const contextA = { sourceText: 'Request A', sourceLanguage: 'fr', targetLanguage: 'uk', mode: 'verbs' };
+        const contextB = { sourceText: 'Request B', sourceLanguage: 'fr', targetLanguage: 'uk', mode: 'verbs' };
 
-        // Start A
-        const promiseA = generatePracticeWorksheet(contextA);
+        const promiseA = generatePracticeReading(contextA);
         const sessionAId = getCurrentPracticeSession()?.id;
 
-        // Immediately start B (before A completes)
         await new Promise(resolve => setTimeout(resolve, 10));
-        const promiseB = generatePracticeWorksheet(contextB);
+        const promiseB = generatePracticeReading(contextB);
         const sessionBId = getCurrentPracticeSession()?.id;
 
         window.__asyncTest.raceTest.bothCreated = sessionAId !== sessionBId;
 
-        // Wait for both to complete
         const resultA = await promiseA.catch(e => ({ error: e.message }));
         const resultB = await promiseB.catch(e => ({ error: e.message }));
 
         const finalSession = getCurrentPracticeSession();
 
-        // A should fail but NOT overwrite B
         window.__asyncTest.raceTest.aNotOverwriteB =
             finalSession?.id === sessionBId &&
             finalSession?.status === 'ready' &&
-            !!finalSession?.worksheet;
+            !!finalSession?.reading;
 
         window.__asyncTest.raceTest.bFinal = finalSession?.id === sessionBId;
     } catch (e) {
@@ -882,65 +589,39 @@ check("T20: Stale request A cannot overwrite active B",
 check("T20: Final session is B's ready state",
       "window.__asyncTest.raceTest.bFinal")
 
-# TEST 21: Worksheet Type Constraint (Regression test for AI-generated unsupported types)
-print("\n=== TEST 21: Worksheet Type Constraint (Regression) ===")
+# TEST 21: No traditional quiz UI in this Grammar Practice mode (replaces the old
+# exercise-type-constraint regression — this redesign explicitly removes that UX;
+# see product spec section 9/26.23: "no traditional answer-input quiz UI")
+print("\n=== TEST 21: No Traditional Quiz UI (Regression for removed UX) ===")
 
 c.js(r"""
-window.__typeConstraintTest = {
-    unsupportedTypeRejected: false,
-    supportedTypesAccepted: false
+const finalSession = createPracticeSession({sourceLanguage:'fr', targetLanguage:'uk', mode:'verbs'});
+finalSession.status = 'ready';
+finalSession.reading = __practiceTests.validReading;
+displayPracticeSession(finalSession);
+window.__quizUiCheck = {
+    answerInputs: document.querySelectorAll('#practice-panel input, #practice-panel textarea').length,
+    checkButtons: document.querySelectorAll('#practice-panel .answer-check-btn').length,
+    hintButtons: document.querySelectorAll('#practice-panel .hint-reveal-btn').length,
+    exerciseBlocks: document.querySelectorAll('#practice-panel .exercise').length,
+    pagination: document.querySelectorAll('#practice-panel .practice-pagination').length,
+    hasHighlightedTargets: document.querySelectorAll('#practice-panel .practice-target').length > 0
 };
-
-// Test that unsupported types like "recognition" are rejected
-const unsupportedWorksheet = {
-    metadata: __practiceTests.mockWorksheet.metadata,
-    context: __practiceTests.mockWorksheet.context,
-    exercises: [{
-        id: 'ex1',
-        type: 'recognition',  // This is NOT an allowed type
-        instruction: 'Identify the correct form',
-        prompt: 'What is the past tense?',
-        expectedConcept: 'past tense',
-        difficulty: 1
-    }]
-};
-
-try {
-    validateWorksheet(unsupportedWorksheet);
-    __typeConstraintTest.unsupportedTypeRejected = false;
-} catch (e) {
-    // Should throw for unsupported type
-    __typeConstraintTest.unsupportedTypeRejected = e.message.includes('unsupported') || e.message.includes('type');
-}
-
-// Test that all supported types are accepted
-const supportedWorksheet = {
-    metadata: __practiceTests.mockWorksheet.metadata,
-    context: __practiceTests.mockWorksheet.context,
-    exercises: [
-        { id: 'ex1', type: 'fill_form', instruction: 'Fill', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
-        { id: 'ex2', type: 'auxiliary', instruction: 'Aux', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
-        { id: 'ex3', type: 'conjugation', instruction: 'Conj', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
-        { id: 'ex4', type: 'transform', instruction: 'Transform', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
-        { id: 'ex5', type: 'correct_error', instruction: 'Error', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
-        { id: 'ex6', type: 'translate', instruction: 'Trans', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
-        { id: 'ex7', type: 'short_production', instruction: 'Prod', prompt: 'Test', expectedConcept: 'test', difficulty: 1 },
-        { id: 'ex8', type: 'contextual_usage', instruction: 'Context', prompt: 'Test', expectedConcept: 'test', difficulty: 1 }
-    ]
-};
-
-try {
-    validateWorksheet(supportedWorksheet);
-    __typeConstraintTest.supportedTypesAccepted = true;
-} catch (e) {
-    __typeConstraintTest.supportedTypesAccepted = false;
-}
+true;
 """)
 
-check("T21: Unsupported type 'recognition' is rejected",
-      "window.__typeConstraintTest.unsupportedTypeRejected")
+check("T21: No answer inputs/textareas exist anywhere in the Practice panel",
+      "window.__quizUiCheck.answerInputs === 0")
+check("T21: No Check-Answer buttons exist",
+      "window.__quizUiCheck.checkButtons === 0")
+check("T21: No Hint buttons exist",
+      "window.__quizUiCheck.hintButtons === 0")
+check("T21: No numbered exercise blocks exist",
+      "window.__quizUiCheck.exerciseBlocks === 0")
+check("T21: No exercise pagination exists",
+      "window.__quizUiCheck.pagination === 0")
+check("T21: The reading DOES contain clickable highlighted target forms (the replacement interaction)",
+      "window.__quizUiCheck.hasHighlightedTargets")
 
-check("T21: All supported types are accepted",
-      "window.__typeConstraintTest.supportedTypesAccepted")
-
+c.js("callAI = window.__originalCallAI;")
 print("\n=== ALL PRACTICE STUDIO TESTS PASSED ===")

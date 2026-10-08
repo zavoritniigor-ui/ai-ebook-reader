@@ -1,5 +1,10 @@
-/* practice-worksheet.js — Worksheet rendering and Practice Studio UI.
- * Displays worksheets safely without executing AI-generated HTML.
+/* practice-worksheet.js — Practice reading rendering and Practice workspace UI.
+ * Renders the generated reading — per-word example sentences and connected paragraphs — safely
+ * (createElement/textContent throughout, never innerHTML of AI text) with every target form
+ * highlighted and clickable (see focusGrammarItem in js/grammar-svo.js). There is NOTHING to answer
+ * here: no inputs, no hints, no check/submit, no grading — and no renderer for the retired exercise
+ * worksheet exists any more. The three-mode workspace positioning (expanded/collapsed-bottom/
+ * bookmark) below is unrelated to the content model.
  */
 
 // UI state deliberately lives outside the persisted PracticeSession.
@@ -64,6 +69,18 @@ function layoutPracticeWorkspace(dockDrawers = false) {
     }
 }
 
+// Exposes the actual Practice session's status on the collapsed tab (bookmark/collapsed-bottom
+// restore button) as `.ready` / `.loading` / `.error` + `data-status`, reusing the SAME green/red
+// convention already used for the Grammar/Ask panel tabs (index.html's `.side-panel.ready .panel-tab`
+// / `.loading`) rather than inventing a second readiness state. This is deliberately the ONLY place
+// that derives it, from `getCurrentPracticeSession()` -- never a separate flag that could drift from
+// the session -- so a UI (this file's own default styling, or Gemini's own collapsed-tab component)
+// can style the tab purely from `#practice-restore[data-status]`/its classes.
+function practiceRestoreStatus() {
+    const session = getCurrentPracticeSession();
+    if (!session || !isValidPracticeSession(session)) return 'error';
+    return session.status === 'ready' ? 'ready' : session.status === 'generating' ? 'loading' : 'error';
+}
 function syncPracticeRestore(panel) {
     const restore = document.getElementById('practice-restore');
     const grammar = document.getElementById('grammar-panel');
@@ -73,7 +90,11 @@ function syncPracticeRestore(panel) {
     if (restore.parentElement !== parent) parent.appendChild(restore);
     restore.dataset.mode = practiceWorkspaceMode;
     restore.hidden = practiceWorkspaceMode === 'expanded' || panel.hidden;
-
+    const status = practiceRestoreStatus();
+    restore.dataset.status = status;
+    restore.classList.toggle('ready', status === 'ready');
+    restore.classList.toggle('loading', status === 'loading');
+    restore.classList.toggle('error', status === 'error');
 }
 
 function setPracticeWorkspaceMode(mode) {
@@ -84,6 +105,7 @@ function setPracticeWorkspaceMode(mode) {
     panel.inert = mode !== 'expanded';
     panel.setAttribute('aria-hidden', String(mode !== 'expanded'));
     const restore = document.getElementById('practice-restore');
+    if (mode === 'expanded' && typeof dismissReaderPopup === 'function') dismissReaderPopup();
     syncPracticeRestore(panel);
     layoutPracticeWorkspace(mode === 'expanded');
     if (mode !== 'expanded') restore.focus({ preventScroll: true });
@@ -140,7 +162,7 @@ function getPracticePanel() {
         restore.id = 'practice-restore';
         restore.className = 'side-panel practice-restore';
         restore.type = 'button';
-        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span>Practice</span>';
+        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span data-i18n="practiceTabLabel">' + t('practiceTabLabel') + '</span>';
         restore.title = 'Restore Practice workspace';
         restore.setAttribute('aria-label', 'Restore Practice workspace');
         restore.setAttribute('aria-controls', 'practice-panel');
@@ -160,14 +182,18 @@ function getPracticePanel() {
     return panel;
 }
 
-// Show practice panel with worksheet
+// Show practice panel with the current session's reading passage
 function displayPracticeSession(session) {
     const panel = getPracticePanel();
     const opening = panel.hidden;
 
-    if (session.status === 'generating') {
+    if (!isValidPracticeSession(session)) {
+        // A session of another schema (e.g. the retired exercise worksheet) or a broken payload is never
+        // rendered — not even partially. The learner gets a clear, retryable error instead.
+        displayPracticeError(panel, { lastError: { message: t('practiceUnknownError') } });
+    } else if (session.status === 'generating') {
         displayPracticeGenerating(panel, session);
-    } else if (session.status === 'ready' && session.worksheet) {
+    } else if (session.status === 'ready') {
         displayPracticeReady(panel, session);
     } else if (session.status === 'error') {
         displayPracticeError(panel, session);
@@ -176,6 +202,8 @@ function displayPracticeSession(session) {
     panel.hidden = false;
     mountPracticeWorkspaceControls(panel);
     if (opening) practiceWorkspaceMode = 'expanded';
+    // The expanded worksheet covers the reader text: a popup kept open for Grammar (P1-3) must not float over it.
+    if (practiceWorkspaceMode === 'expanded' && typeof dismissReaderPopup === 'function') dismissReaderPopup();
     panel.dataset.mode = practiceWorkspaceMode;
     panel.inert = practiceWorkspaceMode !== 'expanded';
     panel.setAttribute('aria-hidden', String(panel.inert));
@@ -202,254 +230,284 @@ function displayPracticeGenerating(panel, session) {
     mountPracticeWorkspaceControls(panel);
 }
 
-// Show ready state with worksheet
+// Show ready state with the reading passage
 function displayPracticeReady(panel, session) {
-    const worksheet = session.worksheet;
-    if (!worksheet) return;
+    const reading = session.reading;
+    if (!reading) return;
 
-    const metadata = worksheet.metadata || {};
-    const exercises = worksheet.exercises || [];
-    const maxPage = Math.ceil(exercises.length / getExercisesPerPage());
+    panel.innerHTML = '';
 
-    let html = `
-        <div class="practice-header">
-            <button id="practice-close" class="icon-btn" title="${t('tClose')}" aria-label="${t('tClose')}">←</button>
-            <h2>${escapeHtml(metadata.title)}</h2>
-        </div>
-        <div class="practice-meta">
-            <div class="meta-row">
-                <span class="meta-label">${t('practiceSource')}</span>
-                <span class="meta-value">${session.sourceText ? escapeHtml(session.sourceText.substring(0, 50)) + (session.sourceText.length > 50 ? '...' : '') : '(no context)'}</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">${t('practiceLevel')}</span>
-                <span class="meta-value">${escapeHtml(session.level)}</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">${t('practiceExercises')}</span>
-                <span class="meta-value">${exercises.length}</span>
-            </div>
-        </div>
-    `;
+    const header = document.createElement('div');
+    header.className = 'practice-header';
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'practice-close'; closeBtn.className = 'icon-btn';
+    closeBtn.title = t('tClose'); closeBtn.setAttribute('aria-label', t('tClose')); closeBtn.textContent = '←';
+    const h2 = document.createElement('h2');
+    h2.textContent = reading.title;
+    header.append(closeBtn, h2);
+    panel.appendChild(header);
 
-    // Render worksheet pages
-    html += '<div class="practice-worksheet">';
-    html += renderWorksheetPages(worksheet, session.currentPage);
-    html += '</div>';
-
-    // Page navigation and actions
-    if (maxPage > 1) {
-        html += `
-            <div class="practice-pagination">
-                <button id="practice-prev-page" ${session.currentPage === 0 ? 'disabled' : ''}>${t('practicePrevious')}</button>
-                <span>${t('practicePage')} ${session.currentPage + 1}/${maxPage}</span>
-                <button id="practice-next-page" ${session.currentPage >= maxPage - 1 ? 'disabled' : ''}>${t('practiceNext')}</button>
-            </div>
-        `;
+    // What is being practised — the words, NOT the raw selection: that is often a book exercise
+    // ("Ils (plaindre) …") and must not appear on a reading surface.
+    const focusWords = (session.lemmas && session.lemmas.length ? session.lemmas : [...new Set(reading.targets.map(x => x.lemma))]).slice(0, PRACTICE_MAX_LEMMAS);
+    if (focusWords.length) {
+        const meta = document.createElement('div');
+        meta.className = 'practice-meta';
+        const row = document.createElement('div'); row.className = 'meta-row';
+        const label = document.createElement('span'); label.className = 'meta-label'; label.textContent = t('practiceFocus');
+        const value = document.createElement('span'); value.className = 'meta-value'; value.textContent = focusWords.join(' · ');
+        row.append(label, value);
+        meta.appendChild(row);
+        panel.appendChild(meta);
     }
 
-    html += `
-        <div class="practice-actions">
-            <button id="practice-retry" class="btn-secondary">${t('retry')}</button>
-            <button id="practice-regenerate" class="btn-secondary">${t('practiceRegenerate')}</button>
-        </div>
-    `;
+    panel.appendChild(renderPracticeReading(reading));
 
-    panel.innerHTML = html;
+    const actions = document.createElement('div');
+    actions.className = 'practice-actions';
+    const retryBtn = document.createElement('button'); retryBtn.id = 'practice-retry'; retryBtn.className = 'btn-secondary'; retryBtn.textContent = t('retry');
+    const regenBtn = document.createElement('button'); regenBtn.id = 'practice-regenerate'; regenBtn.className = 'btn-secondary'; regenBtn.textContent = t('practiceRegenerate');
+    actions.append(retryBtn, regenBtn);
+    panel.appendChild(actions);
 
     // Attach event handlers
-    document.getElementById('practice-close').onclick = closePractice;
+    closeBtn.onclick = closePractice;
     mountPracticeWorkspaceControls(panel);
-    document.getElementById('practice-retry').onclick = retryPractice;
-    document.getElementById('practice-regenerate').onclick = regeneratePractice;
-
-    if (session.currentPage > 0) {
-        document.getElementById('practice-prev-page').onclick = () => {
-            session.currentPage--;
-            displayPracticeSession(session);
-        };
-    }
-
-    if (session.currentPage < maxPage - 1) {
-        document.getElementById('practice-next-page').onclick = () => {
-            session.currentPage++;
-            displayPracticeSession(session);
-        };
-    }
-
-    // Phase 3B: Attach hint reveal handlers
-    setupHintControls();
-
-    // Phase 3C: Attach answer checking handlers
-    // (Disabled temporarily for CI debugging)
-    // setupAnswerControls();
+    retryBtn.onclick = retryPractice;
+    regenBtn.onclick = regeneratePractice;
+    syncPracticeSaveWarning();
 }
 
-// Setup hint reveal controls for all exercises
-function setupHintControls() {
-    const hintButtons = document.querySelectorAll('.hint-reveal-btn');
+// Persistent "not saved" banner under the Practice header (outside the scroll area, so it stays in view)
+// while the shown session's last save failed; its button retries the save. Removed as soon as a save
+// succeeds. Called from js/practice-session.js whenever the save state changes.
+function syncPracticeSaveWarning() {
+    const panel = document.getElementById('practice-panel');
+    if (!panel) return;
+    let banner = panel.querySelector('#practice-save-warning');
     const session = getCurrentPracticeSession();
+    if (!isPracticeSessionUnsaved(session) || session.status !== 'ready') { banner?.remove(); return; }
+    if (banner) return;
+    banner = document.createElement('div');
+    banner.id = 'practice-save-warning';
+    banner.setAttribute('role', 'alert');
+    const text = document.createElement('span'); text.textContent = t('practiceSaveFailed');
+    const retry = document.createElement('button');
+    retry.type = 'button'; retry.className = 'btn-secondary'; retry.textContent = t('practiceSaveRetry');
+    retry.onclick = () => { retryPracticeSave(); };
+    banner.append(text, retry);
+    panel.querySelector('.practice-header')?.after(banner);
+}
 
-    hintButtons.forEach(btn => {
-        const exerciseId = btn.closest('.exercise-hints')?.dataset.exerciseId;
+// Renders the whole reading: for each section a quiet heading, then either its example sentences (one
+// per line) or its connected paragraphs, with every target form highlighted and clickable. Built with
+// createElement/textContent throughout — the AI response is untrusted input and is NEVER assigned via
+// innerHTML. There is no numbering and nothing to fill in.
+function renderPracticeReading(reading) {
+    const wrap = document.createElement('div');
+    wrap.className = 'practice-reading';
 
-        // Restore previously revealed hints for this exercise
-        if (session && exerciseId && session.revealedHints[exerciseId]) {
-            const revealedCount = session.revealedHints[exerciseId];
-            const hints = btn.parentElement.querySelector('.hints-container')?.querySelectorAll('.hint') || [];
-
-            // Show container and previously revealed hints
-            if (revealedCount > 0) {
-                btn.parentElement.querySelector('.hints-container').style.display = 'block';
-                for (let i = 0; i < revealedCount && i < hints.length; i++) {
-                    hints[i].style.display = 'block';
-                }
-
-                // Update button state if all hints revealed
-                if (revealedCount >= hints.length) {
-                    btn.textContent = `✓ ${t('hint')}`;
-                    btn.disabled = true;
-                }
-            }
-        }
-
-        btn.onclick = (e) => {
-            e.preventDefault();
-            revealNextHint(btn);
-        };
+    const targetsByParagraph = new Map();
+    (reading.targets || []).forEach(target => {
+        if (!targetsByParagraph.has(target.paragraphIndex)) targetsByParagraph.set(target.paragraphIndex, []);
+        targetsByParagraph.get(target.paragraphIndex).push(target);
     });
-}
 
-// Reveal next hint progressively for an exercise
-function revealNextHint(button) {
-    const hintsContainer = button.parentElement.querySelector('.hints-container');
-    const hints = hintsContainer.querySelectorAll('.hint');
-    const exerciseId = button.closest('.exercise-hints')?.dataset.exerciseId;
-    const session = getCurrentPracticeSession();
-
-    // Show container on first reveal
-    if (hintsContainer.style.display === 'none') {
-        hintsContainer.style.display = 'block';
-    }
-
-    // Find first hidden hint
-    let revealedCount = 0;
-    for (let i = 0; i < hints.length; i++) {
-        if (hints[i].style.display === 'none') {
-            // Reveal this hint
-            hints[i].style.display = 'block';
-            revealedCount = i + 1;
-
-            // Update button text when all hints shown
-            if (i === hints.length - 1) {
-                button.textContent = `✓ ${t('hint')}`;
-                button.disabled = true;
-            }
-
-            // Persist hint reveal state to session
-            if (session && exerciseId) {
-                session.revealedHints[exerciseId] = revealedCount;
-                persistPracticeSession(session);
-            }
-
-            return;
-        } else {
-            revealedCount++;
+    (reading.sections || []).forEach(section => {
+        const block = document.createElement('section');
+        block.className = 'practice-section practice-section-' + section.kind;
+        if (section.heading) {
+            const h = document.createElement('h3');
+            h.className = 'practice-section-title';
+            h.textContent = section.heading;
+            block.appendChild(h);
         }
-    }
+        for (let idx = section.start; idx < section.end; idx++) {
+            block.appendChild(buildPracticeSentenceRow(idx, reading.paragraphs[idx], targetsByParagraph.get(idx) || [], reading.language, section.kind));
+        }
+        wrap.appendChild(block);
+    });
+
+    return wrap;
 }
 
-// Setup answer input and checking controls (Phase 3C)
-function setupAnswerControls() {
-    try {
-        const session = getCurrentPracticeSession();
-        if (!session || !session.worksheet) return;
+// One reading row: the sentence/paragraph text with its clickable highlighted targets (unchanged —
+// renderParagraphWithTargets below is untouched and still focuses the exact Grammar occurrence with
+// zero extra AI calls, independent of anything below), plus a small, visually secondary [listen]
+// [translate] action pair and a collapsible translation slot directly under it. These reuse the
+// EXISTING TTS system (speakInLang, js/tts.js) and the EXISTING translation engine (aiTranslateText /
+// machineTranslate, js/ai-client.js) exactly as the reader's own translation tooltip does — never a
+// second implementation of either, and neither action calls Grammar or regenerates the session.
+function buildPracticeSentenceRow(idx, text, targets, langCode, kind) {
+    const row = document.createElement('div');
+    row.className = kind === 'story' ? 'practice-paragraph' : 'practice-sentence';
+    row.dataset.paragraph = String(idx);
 
-        const checkButtons = document.querySelectorAll('.answer-check-btn');
-        const answerInputs = document.querySelectorAll('.answer-input');
+    const textSpan = document.createElement('span');
+    textSpan.className = 'practice-sentence-text';
+    renderParagraphWithTargets(textSpan, text, targets, langCode);
+    row.appendChild(textSpan);
 
-        if (checkButtons.length === 0 || answerInputs.length === 0) return;
+    const actions = document.createElement('span');
+    actions.className = 'practice-sentence-actions';
 
-        // Persist answer when user types
-        answerInputs.forEach(input => {
-            input.addEventListener('input', () => {
-                const exerciseEl = input.closest('.exercise');
-                if (exerciseEl) {
-                    const exerciseId = exerciseEl.dataset.id;
-                    if (!session.answers) session.answers = {};
-                    if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
-                    session.answers[exerciseId].answer = input.value;
-                    persistPracticeSession(session);
-                }
-            });
+    const speakBtn = document.createElement('button');
+    speakBtn.type = 'button';
+    speakBtn.className = 'practice-action-btn practice-speak-btn';
+    speakBtn.textContent = '🔊';
+    speakBtn.title = t('practiceSpeakSentence');
+    speakBtn.setAttribute('aria-label', t('practiceSpeakSentence'));
+    speakBtn.onclick = (e) => { e.stopPropagation(); togglePracticeSpeak(text, langCode, speakBtn); };
+    actions.appendChild(speakBtn);
 
-            // Allow checking with Enter key for single-line inputs
-            if (input.tagName === 'INPUT') {
-                input.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        const btn = input.closest('.exercise-input')?.querySelector('.answer-check-btn');
-                        if (btn) btn.click();
-                    }
-                });
-            }
+    const translateBtn = document.createElement('button');
+    translateBtn.type = 'button';
+    translateBtn.className = 'practice-action-btn practice-translate-btn';
+    translateBtn.textContent = '🌐';
+    translateBtn.title = t('practiceTranslateSentence');
+    translateBtn.setAttribute('aria-label', t('practiceTranslateSentence'));
+    actions.appendChild(translateBtn);
+    row.appendChild(actions);
+
+    const translationEl = document.createElement('div');
+    translationEl.className = 'practice-sentence-translation';
+    translationEl.hidden = true;
+    row.appendChild(translationEl);
+
+    // First press fetches and shows the translation; every later press just hides/reopens the SAME
+    // result (no re-fetch, no regenerating the Practice session, no Grammar call) — see
+    // fetchPracticeTranslation's own cache below.
+    let requested = false;
+    translateBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (requested) {
+            translationEl.hidden = !translationEl.hidden;
+            translateBtn.classList.toggle('active', !translationEl.hidden);
+            return;
+        }
+        requested = true;
+        translationEl.hidden = false;
+        translationEl.textContent = t('translating');
+        translateBtn.classList.add('active');
+        fetchPracticeTranslation(text, langCode).then(result => {
+            translationEl.textContent = result || t('error');
         });
+    };
 
-        // Attach check button handlers
-        checkButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                try {
-                    const exerciseId = btn.dataset.exerciseId;
-                    if (!exerciseId) return;
+    return row;
+}
 
-                    const exerciseEl = document.querySelector(`.exercise[data-id="${CSS.escape(exerciseId)}"]`);
-                    const inputEl = exerciseEl?.querySelector('.answer-input');
+// ---- sentence-level TTS -------------------------------------------------------------------------
+// Reuses speakInLang (js/tts.js) exactly as the translation tooltip's own translation speaker does —
+// same voice selection, same cancel-then-speak race handling, same 'speakingSide' bookkeeping — just
+// with a THIRD side value ('practice') and a completion hook instead of the tooltip's own icons.
+// Exactly one Practice speaker button is ever marked "playing": starting a different one resets the
+// previous, pressing the SAME one again stops it (mirrors the tooltip's own toggle idiom via the
+// existing stopTooltipSpeech, which is a generic "stop whatever is speaking" primitive despite its
+// name), and natural completion resets it via the onEnd hook. No overlapping speech is possible: every
+// speakInLang call cancels the shared synthesizer first, exactly as it already does for every caller.
+let practiceSpeakingBtn = null;
+function resetPracticeSpeakBtn() {
+    if (practiceSpeakingBtn) { practiceSpeakingBtn.textContent = '🔊'; practiceSpeakingBtn.classList.remove('speak-active'); }
+    practiceSpeakingBtn = null;
+}
+function togglePracticeSpeak(text, langCode, btn) {
+    if (practiceSpeakingBtn === btn) { stopTooltipSpeech(); resetPracticeSpeakBtn(); return; }
+    resetPracticeSpeakBtn();
+    practiceSpeakingBtn = btn;
+    btn.textContent = '■'; btn.classList.add('speak-active');
+    speakInLang(text, langCode, 'practice', 0, () => { if (practiceSpeakingBtn === btn) resetPracticeSpeakBtn(); });
+}
 
-                    if (!exerciseEl || !inputEl) return;
-
-                    const userAnswer = inputEl.value;
-                    const exercise = session.worksheet?.exercises?.find(ex => ex.id === exerciseId);
-                    if (!exercise) return;
-
-                    // Grade the answer
-                    const feedback = gradeExerciseAnswer(exercise, userAnswer);
-
-                    // Store feedback in session
-                    if (!session.answers) session.answers = {};
-                    if (!session.answers[exerciseId]) session.answers[exerciseId] = {};
-                    session.answers[exerciseId].answer = userAnswer;
-                    session.answers[exerciseId].feedback = feedback;
-                    persistPracticeSession(session);
-
-                    // Show feedback
-                    const feedbackEl = exerciseEl.querySelector('.exercise-feedback');
-                    if (feedbackEl) {
-                        feedbackEl.remove();
-                    }
-
-                    const feedbackClass = feedback.isCorrect ? 'feedback-correct' : 'feedback-incorrect';
-                    const feedbackIcon = feedback.needsReview ? '📝' : (feedback.isCorrect ? '✓' : '✗');
-                    const feedbackHtml = `
-                        <div class="exercise-feedback ${feedbackClass}">
-                            ${feedbackIcon}
-                            ${escapeHtml(feedback.feedback)}
-                        </div>
-                    `;
-
-                    // Insert feedback before hints
-                    const hintsEl = exerciseEl.querySelector('.exercise-hints');
-                    if (hintsEl) {
-                        hintsEl.insertAdjacentHTML('beforebegin', feedbackHtml);
-                    } else {
-                        exerciseEl.insertAdjacentHTML('beforeend', feedbackHtml);
-                    }
-                } catch (e) {
-                    console.warn('Error checking answer:', e.message);
-                }
-            });
-        });
-    } catch (e) {
-        console.warn('Error setting up answer controls:', e.message);
+// ---- sentence-level translation ------------------------------------------------------------------
+// The SAME two-step engine the translation tooltip uses (aiTranslateText first, machineTranslate as
+// its own existing fallback -- js/ai-client.js), called with the exact Practice sentence as input and
+// its own text as context (task: "translate exactly that sentence"). Source language is the READING'S
+// OWN validated language (never re-detected -- the language-isolation contract from the bilingual
+// selection fix applies here too); target language is the reader's existing state.targetLang, per the
+// same rule the tooltip itself follows. Cached (source+target+text) for the life of the page: a
+// Practice-scoped plain-text cache, kept separate from the tooltip's own HTML-annotated cache (which
+// carries markup like the ⚡/⌂ provenance notes) rather than fragile reverse-parsing it.
+const practiceTranslationCache = new Map();
+async function fetchPracticeTranslation(text, srcLang) {
+    const targetLang = state.targetLang;
+    const key = srcLang + '>' + targetLang + '|' + text;
+    if (practiceTranslationCache.has(key)) return practiceTranslationCache.get(key);
+    let result = null;
+    try { result = await aiTranslateText(text, srcLang, undefined, targetLang, text, false); } catch (e) {}
+    if (!result) {
+        try { const m = await machineTranslate(text, srcLang, true, undefined, targetLang); result = m && m.plain; } catch (e) {}
     }
+    if (result) practiceTranslationCache.set(key, result);
+    return result;
+}
+
+// Places each target at its OWN occurrence in the paragraph — the offsets validated when the
+// reading was accepted (validatePracticeReading), or, for a session persisted before offsets
+// existed, the first WHOLE-WORD match (never a bare substring: "est" inside "reste") — and rebuilds
+// the paragraph as text nodes with a clickable <button> wrapped around ONLY that exact occurrence,
+// never every occurrence of the word, since each target's explanation is tied to one specific
+// sentence (task section 12/13).
+function renderParagraphWithTargets(container, text, targets, langCode) {
+    const positioned = [];
+    for (const target of targets) {
+        let start = Number.isInteger(target.start) && target.start >= 0 && text.startsWith(target.surface, target.start) ? target.start : -1;
+        if (start === -1) {
+            const found = findSurfaceOccurrences(text, target.surface);
+            start = found.length ? found[0] : -1;
+        }
+        if (start === -1) continue;
+        positioned.push({ target, start, end: start + target.surface.length });
+    }
+    positioned.sort((a, b) => a.start - b.start);
+
+    let cursor = 0;
+    for (const { target, start, end } of positioned) {
+        if (start < cursor) continue; // overlapping targets guard
+        if (start > cursor) container.appendChild(document.createTextNode(text.slice(cursor, start)));
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'practice-target practice-target-' + target.pos;
+        btn.textContent = text.slice(start, end);
+        btn.dataset.lemma = target.lemma;
+        btn.onclick = () => {
+            const span = sentenceSpanAround(text, start, end);
+            focusGrammarItem({
+                pos: target.pos, lemma: target.lemma, surface: target.surface,
+                sentence: text.slice(span.from, span.to), start: start - span.from, end: end - span.from,
+                features: target.features || {}, explanation: target.explanation || '',
+                stemBreakdown: null, forms: target.forms || null,
+                transformations: target.transformations || null, irregularForms: target.irregularForms || null
+            }, langCode);
+        };
+        container.appendChild(btn);
+        cursor = end;
+    }
+    if (cursor < text.length) container.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+// The [from, to) slice of `text` that is the sentence a [start,end) span sits in (trimmed),
+// for the Grammar focus card's "used in context" display when a Practice target is clicked.
+// Terminators include the CJK / Devanagari full stops so non-Latin readings split correctly.
+const PRACTICE_SENTENCE_END = ['.', '!', '?', '。', '！', '？', '।'];
+function sentenceSpanAround(text, start, end) {
+    let from = 0;
+    for (const p of PRACTICE_SENTENCE_END) {
+        const i = text.lastIndexOf(p, start - 1);
+        if (i !== -1) from = Math.max(from, i + 1);
+    }
+    let to = text.length;
+    for (const p of PRACTICE_SENTENCE_END) {
+        const i = text.indexOf(p, end);
+        if (i !== -1) to = Math.min(to, i + 1);
+    }
+    while (from < start && /\s/.test(text[from])) from++;
+    while (to > end && /\s/.test(text[to - 1])) to--;
+    return { from, to };
+}
+function sentenceAround(text, start, end) {
+    const span = sentenceSpanAround(text, start, end);
+    return text.slice(span.from, span.to);
 }
 
 // Show error state
@@ -474,126 +532,7 @@ function displayPracticeError(panel, session) {
     document.getElementById('practice-close').onclick = closePractice;
     mountPracticeWorkspaceControls(panel);
     document.getElementById('practice-close-error').onclick = closePractice;
-}
-
-// Get exercises per page (responsive)
-function getExercisesPerPage() {
-    // Mobile: 5 per page
-    // Tablet+: 12 per page (enough for pagination testing)
-    return window.innerWidth < 768 ? 5 : 12;
-}
-
-// Render worksheet pages
-function renderWorksheetPages(worksheet, currentPage) {
-    const exercises = worksheet.exercises || [];
-    const perPage = getExercisesPerPage();
-    const startIdx = currentPage * perPage;
-    const endIdx = Math.min(startIdx + perPage, exercises.length);
-    const pageExercises = exercises.slice(startIdx, endIdx);
-
-    let html = '<div class="worksheet-page">';
-    html += `<h3 class="worksheet-title">${escapeHtml(worksheet.metadata?.title || '')}</h3>`;
-
-    pageExercises.forEach((ex, idx) => {
-        const actualNumber = startIdx + idx + 1;
-        html += renderExercise(ex, actualNumber);
-    });
-
-    html += '</div>';
-    return html;
-}
-
-// Render single exercise - preserves original structure for compatibility
-function renderExercise(exercise, number) {
-    const typeIcon = getExerciseTypeIcon(exercise.type);
-    const difficulty = '●'.repeat(exercise.difficulty) + '○'.repeat(5 - exercise.difficulty);
-    const hasHints = exercise.hints && exercise.hints.length > 0;
-
-    let html = `
-        <div class="exercise" data-id="${escapeHtml(exercise.id)}">
-            <div class="exercise-number">${number}. ${typeIcon}</div>
-            <div class="exercise-instruction">${escapeHtml(exercise.instruction)}</div>
-            <div class="exercise-prompt">${escapeHtml(exercise.prompt)}</div>
-            <div class="exercise-answer-space"></div>
-            <div class="exercise-meta">
-                <span class="exercise-difficulty" title="Difficulty">${difficulty}</span>
-                <span class="exercise-concept">${escapeHtml(exercise.expectedConcept)}</span>
-            </div>
-    `;
-
-    // Phase 3B: Progressive hints
-    if (hasHints) {
-        html += `
-            <div class="exercise-hints" data-exercise-id="${escapeHtml(exercise.id)}">
-                <button class="hint-reveal-btn" type="button" title="Show hint">💡 ${t('hint')}</button>
-                <div class="hints-container" style="display:none;">
-        `;
-
-        exercise.hints.forEach((hint, idx) => {
-            html += `
-                <div class="hint hint-${idx + 1}" style="display:none;">
-                    <span class="hint-level">Hint ${idx + 1}:</span>
-                    <span class="hint-text">${escapeHtml(hint)}</span>
-                </div>
-            `;
-        });
-
-        html += `
-                </div>
-            </div>
-        `;
-    }
-
-    html += `
-        </div>
-    `;
-
-    return html;
-}
-
-// Build answer input control appropriate for exercise type
-function buildAnswerControl(exercise, savedValue) {
-    const id = `answer_${escapeHtml(exercise.id)}`;
-    const types = {
-        'fill_form': 'text',
-        'auxiliary': 'text',
-        'conjugation': 'text',
-        'transform': 'textarea',
-        'correct_error': 'text',
-        'translate': 'text',
-        'short_production': 'textarea',
-        'contextual_usage': 'textarea'
-    };
-
-    const inputType = types[exercise.type] || 'text';
-    const checkButtonLabel = exercise.expectedAnswer ? 'Check' : 'Submit';
-
-    if (inputType === 'textarea') {
-        return `
-            <textarea id="${id}" class="answer-input" placeholder="Your answer..." rows="2">${escapeHtml(savedValue)}</textarea>
-            <button class="answer-check-btn" data-exercise-id="${escapeHtml(exercise.id)}" data-has-answer="${!!exercise.expectedAnswer}">${checkButtonLabel}</button>
-        `;
-    } else {
-        return `
-            <input type="text" id="${id}" class="answer-input" placeholder="Your answer..." value="${escapeHtml(savedValue)}" />
-            <button class="answer-check-btn" data-exercise-id="${escapeHtml(exercise.id)}" data-has-answer="${!!exercise.expectedAnswer}">${checkButtonLabel}</button>
-        `;
-    }
-}
-
-// Get icon for exercise type
-function getExerciseTypeIcon(type) {
-    const icons = {
-        'fill_form': '✏️',
-        'auxiliary': '◎',
-        'conjugation': '→',
-        'transform': '↻',
-        'correct_error': '✓',
-        'translate': '⇄',
-        'short_production': '💬',
-        'contextual_usage': '◆'
-    };
-    return icons[type] || '◆';
+    if (isAiAuthError(error)) panel.querySelector('.practice-error .practice-actions').prepend(aiUpdateKeyButton());
 }
 
 // Close practice panel
@@ -637,14 +576,7 @@ async function regeneratePractice() {
     const session = getCurrentPracticeSession();
     if (!session) return;
 
-    const context = {
-        sourceLanguage: session.sourceLanguage,
-        targetLanguage: session.targetLanguage,
-        bookId: session.bookId,
-        sourceText: session.sourceText,
-        sourceContext: session.sourceContext,
-        level: session.level
-    };
+    const context = practiceContextFromSession(session);
 
     const panel = getPracticePanel();
 
@@ -652,8 +584,8 @@ async function regeneratePractice() {
         // Show generating state immediately
         displayPracticeGenerating(panel, { status: 'generating' });
 
-        // Generate entirely new worksheet
-        const newSession = await regeneratePracticeWorksheet(context);
+        // Generate an entirely new reading passage
+        const newSession = await regeneratePracticeReading(context);
         if (newSession) {
             displayPracticeSession(newSession);
         }
@@ -684,6 +616,12 @@ const practiceStyles = `
     transition: transform 180ms ease, opacity 180ms ease, visibility 180ms;
 }
 #practice-panel[hidden], #practice-restore[hidden] { display: none; }
+#practice-save-warning {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin: 0 12px 8px; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid #d97706; background: rgba(217, 119, 6, .12); color: inherit; font-size: 13px;
+}
+#practice-save-warning span { flex: 1 1 200px; }
 #practice-panel:not([hidden])[data-mode="collapsed-bottom"] {
     transform: translateY(35%); opacity: 0; visibility: hidden; pointer-events: none;
 }
@@ -694,9 +632,12 @@ const practiceStyles = `
     flex: 1; min-height: 0; min-width: 0; overflow-y: auto;
     overflow-x: hidden; overscroll-behavior: contain; overflow-wrap: anywhere;
 }
-#practice-panel .practice-worksheet, #practice-panel .practice-content,
+#practice-panel .practice-reading, #practice-panel .practice-content,
 #practice-panel .practice-error { overflow: visible; }
-#practice-panel .practice-header { padding: 6px; min-width: 0; }
+/* The floating menu handle (#menu-handle, fixed 44px circle at the top-left, z-index above every panel) sits
+   over the panel's left edge; the app's own toolbar reserves 60px for it, and so must this header, otherwise the
+   Close button underneath is covered and cannot be clicked. */
+#practice-panel .practice-header { padding: 6px 6px 6px max(60px, calc(env(safe-area-inset-left, 0px) + 52px)); min-width: 0; }
 #practice-panel .practice-header h2 {
     min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -714,10 +655,11 @@ const practiceStyles = `
     cursor: pointer; box-shadow: 0 -2px 10px #0002;
 }
 #practice-restore { flex-direction: row; gap: 8px; font-weight: 600; }
-/* Reserve a slim outside rail and provide positioning context for bookmark tab. */
+/* Reserve a slim outside rail for the bookmark tab. Grammar stays position:fixed (.side-panel), which is
+   already the tab's positioning context: position:relative here dropped the drawer into .workspace's flex
+   flow, so #main-area lost the drawer's full width — even after Grammar was closed — leaving a blank strip. */
 #grammar-panel.practice-bookmark-dock {
     max-width: calc(100vw - 44px);
-    position: relative;
 }
 #practice-restore[data-mode="bookmark"] {
     position: absolute; height: auto; width: 44px; min-height: 100px; max-height: 120px;
@@ -749,6 +691,13 @@ const practiceStyles = `
     border-left-color: var(--accent-color);
 }
 #practice-restore:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
+/* Same green/red convention as the Grammar/Ask panel tabs (.side-panel.ready/.loading .panel-tab in
+   index.html) -- ready = a session is generated and waiting to be read; loading = generating; error =
+   the last attempt failed. A default so the state is visible even before any richer tab styling exists;
+   easy to override, since it is plain class + data-status, not inline style. */
+#practice-restore.ready { background: rgba(25, 135, 84, 0.14); border-color: rgba(25, 135, 84, 0.5); }
+#practice-restore.loading { background: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
+#practice-restore.error { background: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
 @media (prefers-reduced-motion: reduce) {
     #practice-panel { transition: none; }
 }
@@ -821,260 +770,132 @@ const practiceStyles = `
     text-align: center;
 }
 
-.practice-worksheet {
+/* Contextual reading passage: comfortable prose, not an exercise grid (task
+   section 9/10/16) — target forms get a restrained accent underline rather than a
+   noisy highlight, per section 12. */
+.practice-reading {
     flex: 1;
     overflow-y: auto;
-    padding: 12px;
+    padding: 12px 14px;
 }
 
-.worksheet-page {
-    background: var(--panel-bg);
-    padding: 0;
-    border-radius: 0;
-    box-shadow: none;
+/* Now a <div> (was <p>), since it can hold a per-sentence translation block below the text without
+   invalid block-inside-inline markup; unchanged class name, so pre-existing selectors elsewhere are
+   unaffected. display:flex/wrap lets the [listen][translate] actions sit at the end of the same
+   visual line as the sentence text, wrapping onto their own line only when the text is long. */
+.practice-paragraph, .practice-sentence {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 8px;
+    row-gap: 2px;
+}
+.practice-sentence-text {
+    flex: 1 1 auto;
+    min-width: 55%;
 }
 
-.worksheet-title {
-    font-size: 16px;
-    font-weight: bold;
-    margin: 0 0 12px 0;
-    padding: 0 8px;
+.practice-paragraph {
+    font-size: 15px;
+    line-height: 1.7;
+    margin: 0 0 14px 0;
     color: var(--text-color);
-    border-bottom: 2px solid var(--border-color);
-    padding-bottom: 8px;
 }
 
-.exercise {
-    margin-bottom: 12px;
-    padding: 10px 8px;
+/* One section per practised word (or one connected story): a quiet heading, then its sentences, one
+   per line. No numbering, no boxes — reading material, not a worksheet. */
+.practice-section {
+    margin: 0 0 20px 0;
+}
+.practice-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    color: var(--text-muted);
+    margin: 0 0 8px 0;
+    padding-bottom: 5px;
     border-bottom: 1px solid var(--border-color);
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 6px;
 }
-
-.exercise:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.exercise-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-}
-
-.exercise-number {
-    font-weight: 600;
-    font-size: 12px;
-    min-width: 24px;
+.practice-sentence {
+    font-size: 15px;
+    line-height: 1.65;
+    margin: 0 0 8px 0;
     color: var(--text-color);
-    background: var(--surface-2);
-    padding: 2px 6px;
-    border-radius: 3px;
-    text-align: center;
 }
 
-.exercise-type-icon {
-    font-size: 12px;
-    color: var(--text-muted);
-}
-
-.exercise-instruction {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-weight: 500;
-    flex: 1;
-}
-
-.exercise-prompt {
-    font-size: 13px;
+.practice-target {
+    background: none;
+    border: none;
+    padding: 0 1px;
     margin: 0;
-    padding: 6px 8px;
-    background: var(--surface-2);
-    border-left: 3px solid var(--accent-color);
-    border-radius: 2px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    line-height: 1.4;
-}
-
-.exercise-input {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 6px;
-    align-items: center;
-}
-
-.answer-input {
-    font-size: 13px;
-    padding: 6px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 3px;
-    background: var(--panel-bg);
-    color: var(--text-color);
-    font-family: inherit;
-    min-height: 32px;
-}
-
-.answer-input:focus {
-    outline: 2px solid var(--accent-color);
-    outline-offset: -1px;
-}
-
-.answer-input[type="text"] {
-    min-width: 150px;
-}
-
-.answer-input[type="text"]::placeholder,
-.answer-input[type="textarea"]::placeholder {
-    color: var(--text-muted);
-}
-
-.answer-check-btn {
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    background: var(--accent-color);
-    color: white;
-    border: none;
-    border-radius: 3px;
+    font: inherit;
+    color: inherit;
     cursor: pointer;
-    transition: opacity 0.2s;
-    white-space: nowrap;
-}
-
-.answer-check-btn:hover {
-    opacity: 0.9;
-}
-
-.answer-check-btn:active {
-    opacity: 0.8;
-}
-
-.exercise-feedback {
-    font-size: 12px;
-    padding: 6px 8px;
-    border-radius: 3px;
-    display: flex;
-    gap: 6px;
-    align-items: flex-start;
-    margin-top: 4px;
-}
-
-.feedback-correct {
-    background: #e8f5e9;
-    color: #2e7d32;
-    border-left: 3px solid #4caf50;
-}
-
-.feedback-incorrect {
-    background: #ffebee;
-    color: #c62828;
-    border-left: 3px solid #f44336;
-}
-
-@media (prefers-color-scheme: dark) {
-    .feedback-correct {
-        background: color-mix(in srgb, #4caf50 15%, var(--panel-bg));
-        color: #81c784;
-    }
-
-    .feedback-incorrect {
-        background: color-mix(in srgb, #f44336 15%, var(--panel-bg));
-        color: #e57373;
-    }
-}
-
-/* Phase 3B: Hint controls with theme support */
-.exercise-hints {
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid var(--border-color);
-}
-
-.hint-reveal-btn {
-    background: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    color: var(--accent-color);
-    padding: 4px 8px;
-    border-radius: 2px;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.hint-reveal-btn:hover:not(:disabled) {
-    background: var(--surface-2);
-    border-color: var(--accent-color);
-}
-
-.hint-reveal-btn:disabled {
-    color: var(--text-muted);
-    border-color: var(--border-color);
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-.hints-container {
-    margin-top: 6px;
-    padding-left: 8px;
-    border-left: 3px solid var(--accent-color);
-}
-
-.hint {
-    margin: 4px 0;
-    padding: 4px 6px;
-    background: var(--surface-2);
-    border-radius: 2px;
-    font-size: 11px;
-    line-height: 1.4;
-    color: var(--text-color);
-}
-
-.hint-level {
+    border-bottom: 2px solid #10a37f;
     font-weight: 600;
-    color: var(--accent-color);
-    margin-right: 4px;
 }
 
-.hint-text {
-    color: var(--text-color);
+.practice-target:hover, .practice-target:focus-visible {
+    background: color-mix(in srgb, #10a37f 16%, transparent);
+    outline: none;
 }
 
-.practice-pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    border-top: 1px solid var(--border-color);
-    flex-shrink: 0;
-    font-size: 12px;
-    gap: 8px;
+.practice-target-adjective {
+    border-bottom-color: #0d6efd;
 }
 
-.practice-pagination button {
-    padding: 4px 10px;
-    background: var(--accent-color);
-    color: white;
+/* Sentence-level learning actions: compact and visually secondary (task requirement) — muted until
+   hovered/focused, never a full toolbar. flex:0 0 auto keeps them from stretching or wrapping apart
+   from each other; the row above wraps them as a UNIT onto their own line for a long sentence. */
+.practice-sentence-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 1px;
+    opacity: .5;
+}
+.practice-sentence-actions:hover, .practice-sentence-actions:focus-within {
+    opacity: 1;
+}
+.practice-action-btn {
+    background: none;
     border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 500;
-    transition: opacity 0.2s;
-}
-
-.practice-pagination button:hover {
-    opacity: 0.9;
-}
-
-.practice-pagination button:disabled {
-    background: var(--border-color);
+    padding: 3px 5px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1;
     color: var(--text-muted);
-    cursor: not-allowed;
-    opacity: 0.6;
+    cursor: pointer;
+    border-radius: 4px;
+    min-width: 26px;
+    min-height: 22px;
+}
+.practice-action-btn:hover, .practice-action-btn:focus-visible {
+    background: var(--surface-2);
+    color: var(--text-color);
+    outline: none;
+}
+.practice-action-btn.speak-active, .practice-action-btn.active {
+    color: #10a37f;
+}
+.practice-sentence-translation {
+    flex: 1 0 100%;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    padding: 2px 0 2px 8px;
+    margin-top: -1px;
+    border-left: 2px solid var(--border-color);
+}
+.practice-sentence-translation[hidden] {
+    display: none;
+}
+/* Comfortable touch targets without enlarging the icons themselves (still "compact"). */
+@media (max-width: 480px) {
+    .practice-action-btn {
+        min-width: 34px;
+        min-height: 32px;
+        font-size: 15px;
+    }
 }
 
 .practice-actions {
@@ -1126,7 +947,7 @@ const practiceStyles = `
 
 /* Mobile responsiveness */
 @media (max-width: 767px) {
-    .worksheet-page {
+    .practice-reading {
         padding: 15px;
     }
 
@@ -1137,33 +958,10 @@ const practiceStyles = `
     .practice-meta {
         padding: 8px 10px;
     }
-
-    .exercise {
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-    }
-
-    .exercise-answer-space {
-        min-height: 30px;
-    }
 }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-    .worksheet-page {
-        background: #222;
-        color: #fff;
-    }
-
-    .exercise-prompt {
-        background: #333;
-        color: #ddd;
-    }
-
-    .exercise {
-        border-bottom-color: #444;
-    }
-
     .btn-secondary {
         background: #333;
         color: #ddd;

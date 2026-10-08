@@ -1,3 +1,398 @@
+## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
+
+**Not yet merged.** Branch `fix/dictation-android-reliability` from main `949d8b2` (includes PR #147's Ask AI
+question-priority fix, unrelated and untouched here).
+
+**User report:** voice dictation on an Android tablet captures only the beginning of a sentence, sometimes
+duplicates words, then stops/beeps. ("Пошукай в інтернеті, яка сьогодні погода в Монреалі." recognized with
+wrong individual words -- that part is the platform's own STT accuracy, out of this app's control and not
+investigated further; "captures only the beginning" and "stops" are this app's own event-handling, and were.)
+
+**Root cause** (`js/dictation.js`'s `onend` restart handler): every session on Android/iOS is single-utterance
+(`dictationSingleUtterance`, PR #131), so a fresh session restarts after EVERY spoken clause during ordinary
+continuous dictation -- not just when something is broken. The restart delay formula
+`Math.min(3000, 600 * 2 ** emptyEnds)` applied its full exponential-backoff ladder even when the ending session
+had just SUCCEEDED (`hadFinal` true, `emptyEnds` reset to 0): `2 ** 0 === 1`, so the "no backoff" case still
+computed a flat 600ms silent gap before the next session started listening. A real sentence's natural
+pause-between-clauses is routinely shorter than that, so the app was not listening right when the speaker
+continued -- a plausible, confirmable explanation for "only the beginning" arriving, and (via cascading empty
+endings once the mic falls behind the speaker) for dictation eventually self-stopping.
+
+**Fix:** restart at once (0ms) when the ending session produced a final result; the escalating backoff
+(600/1200/2400ms) now only applies to a session's OWN first, second, third genuinely empty ending -- the
+"broken/silent engine must not loop forever" protection this delay existed for is unchanged.
+
+**Not fixed, explicitly out of scope:** individual mis-recognized words (STT model accuracy) and any native
+Android start/stop beep tone -- both outside the web app's control; separating these from this app's own bug
+was done per the task's own instruction, not skipped by oversight.
+
+**Tests:** `tests/ask_dictation_browser.py` extended -- timing instrumentation added to the deterministic
+SpeechRecognition mock; new checks 16/16b (restart after a successful utterance is near-immediate; an empty
+ending still backs off -- confirmed 16 fails on the pre-fix code via a local git-stash negative control, real
+measured gap matched the old formula), 17/17b (the two reported Ukrainian phrases, delivered as realistic
+short-gapped multi-utterance sequences, arrive complete), 18 (legitimate Ukrainian repetitions `дуже дуже
+добре` / `ні ні зачекай` survive -- no blanket dedup), 19 (an already-committed result index resent by the
+engine is not double-committed, tested on the continuous desktop session where the index stays addressable).
+All 39 checks pass; `dictation_send_browser.py` (PR #140, Send-while-dictating) and `ask_prompt_browser.py`
+(PR #147) re-run unmodified -- no regression. `learning_ux`, `migration_audit`, `ai_providers`,
+`practice_browser`, `app_shell_versions`, `ci_suite_coverage` also re-run clean.
+
+**MANUAL ANDROID MICROPHONE VALIDATION: PENDING** -- the deterministic mock proves the application's own
+restart-latency defect and its fix; it cannot prove real Android microphone/OS speech-service behavior
+(duplicate words from genuine audio overlap at a session boundary, or the platform's own recognition
+accuracy). Physical device testing is still required before claiming the field problem itself is resolved.
+
+## Phase A (work preservation) — MERGED / PRODUCTION VERIFIED; physical checks pending (2026-10-02, Claude)
+
+**Merged:** PR #143 squash-merged as main `a0947f4` (PR head `ee9b150` = Phase A `f4c3587` + merge of main
+`43d2eec`; conflicts were only generated ?v=/CACHE_NAME, regenerated). PR CI and main CI (run 36943106527) green.
+Production https://ai-ebook-reader.pages.dev: HTTP 200, all 25 script versions = main, sw `ai-reader-shell-ab3bd54eeaeb`;
+pdf_ink_ownership (29), practice_save_failure (19) and ai_key_replacement (43) suites pass AGAINST PRODUCTION.
+**Open before Phase 3B (NOT started):** physical-device checks -- (A) PDF ink A draw/clear/Undo -> B draw/Undo -> A:
+no cross-document ink; (B) Practice save failure -> banner -> Retry save -> reload restores last saved session.
+- P0 (js/pdf-ink.js): undo history was page-keyed and survived loadInk(), so A's ops replayed on B and saveInk()
+  persisted them as ink_B; draw-undo spliced index -1. Now loadInk() sets inkOwner = bookKey and resets history;
+  ops/canvases carry their owner; saveInk refuses foreign ink; Undo never splices -1.
+- P1 (js/practice-session.js, practice-worksheet.js, pwa-lifecycle.js): failed save was console-only and
+  Regenerate/Retry deleted the old stored session. Now: unsaved session kept in memory, toast once + banner with
+  Retry save, old session kept, persistCriticalState() retries. 24h retention unchanged.
+
+## AI key replacement — CLOSED / MERGED / PRODUCTION VERIFIED (2026-10-01, Claude)
+
+**Merged:** PR #144 squash-merged as main `6e5f1fd` (PR CI green on head `36a3314`; main CI green). Cloudflare
+production deployed and verified (https://ai-ebook-reader.pages.dev serves index.html / sw.js / ui-tooltip.js
+`?v=afded3706fe4`); tests/ai_key_replacement_browser.py run AGAINST PRODUCTION with fake keys: all checks pass,
+incl. service-worker-controlled reload and a Cache Storage leak scan.
+**Still open (not blocking):** user's own final check with a REAL key (replace -> Save -> Ask at once -> reload ->
+Ask -> replace -> Grammar/Practice). Phase 3B NOT started. Phase A PR #143 (ink ownership + Practice save
+recovery) is a separate DRAFT awaiting independent review -- not merged.
+
+- Cause: the key dialog's provider radio REFUSED a provider whose field was empty, so "pick provider -> paste key ->
+  Save" stored the key but kept the OLD provider active (no/invalid key): AI kept failing until reload-ish luck.
+- Fix (js/ui-tooltip.js): radio = draft choice + add-key hint; Save activates it only with a key (no silent
+  switch). Fields show the real saved key (password); a CLEARED field keeps the key; deletion only via the new
+  per-provider "Remove key" (pending until Save). Trim; reject non-printable-ASCII / masked dots / inner spaces.
+  Save refuses unless the dialog was filled from state. 401/403 in Ask/Grammar/Practice show "Update AI key";
+  Retry re-reads the key. New strings in all 8 languages (js/core.js).
+- Tests: new tests/ai_key_replacement_browser.py (fails on 83fc8d6 at T1); tests/ai_providers_browser.py updated
+  to the draft-radio / explicit-Remove contract (its old asserts encoded the bug).
+
+## A11 — CLOSED / MERGED / PRODUCTION VERIFIED: Send while dictating keeps the last spoken words (2026-09-28, Claude)
+
+**Merged:** PR #140 squash-merged as main `8ab9bcd` (PR CI needed one retry: attempt 1 failed only on the known
+`format_reader_audit` PDF-reopen flake; attempt 2 green). Main CI `test` green (attempt 1); Cloudflare production
+deployed and verified (https://ai-ebook-reader.pages.dev: HTTP 200, index.html, sw.js `ai-reader-shell-b7aa8c6a5982`
+and all 25 scripts byte-identical to main; live dictation.js has `finishDictationThen`).
+**Manual acceptance still open (not blocking):** Android Chrome -- start dictation, speak a question, press Send
+before recognition finishes, check the last spoken words appear exactly once (`sttTrace` shows
+`finish-then-send` / `commit-pending`). Next audit item: NOT started, awaits approval.
+
+Branch `fix/dictation-send-finalize` from main `6081045`. Scope: Astra audit A11 only.
+- Cause: both Send paths (js/main.js askSendBtn -> text Ask; js/pdf-crop.js `sendAskAttachment` -> crop) read the
+  field and called `stopDictation()` WITHOUT finish = `recognition.abort()`: the words still being spoken (interim,
+  shown only in #dictation-status) were discarded and any later final result ignored (generation guard).
+- Fix (js/dictation.js): per-session `pendingInterim`; `finishDictationThen(fn)` finishes like the Stop button
+  (stop -> engine finalizes -> onend; bounded by the existing 2 s finish timeout), commits words never finalized as
+  heard, then runs `fn` once; repeat activations while waiting are ignored. js/main.js: Send uses it only when
+  dictation is live AND AI is available; otherwise Send is unchanged (no-key: toast, dictation keeps listening).
+- Tests: tests/dictation_send_browser.py (fails on 6081045: sent "Explain this" / crop "Check" without the last
+  words); tests/ask_dictation_browser.py case 10 updated to the A11 contract (was asserting the dropped interim).
+- Physical: real-microphone Send-while-speaking on the tablet (Android Chrome) still to verify (`sttTrace`).
+
+## DONE: P1-3 — Explain/Level keep the reader's work when AI is not configured (2026-09-27, Claude)
+
+**Merged:** PR #138 squash-merged as main `5d3ca30`; main CI `test` green; Cloudflare production deployed and
+verified (https://ai-ebook-reader.pages.dev: HTTP 200, index.html, sw.js `ai-reader-shell-0bbdbd00a863` and all 25
+scripts byte-identical to main). Also adjusted: pdf_workspace_regressions I1 and reader_repair_verification
+("Explain clears a stale query") now run with AI configured. NOT started (awaits approval): A11 and the rest.
+
+Branch `fix/ai-key-preserve-input` from main `a3514a2`. Scope: Astra audit P1-3 only (A11 etc. untouched).
+Checkpoint: A10 (#136) and its handoff (#137) are merged; main `a3514a2`, CI + production verified after restart.
+- Cause: `btn-explain` / `btn-lang-level` handlers (js/grammar-svo.js) called `recordHelpForSpan(.., 'ask_ai')` and
+  cleared `els.askInput` BEFORE `startAiTask()` checked `aiAvailable()`; without a key the typed Ask question was
+  erased and a phantom "help requested" entry was recorded (reading statistics), every click.
+- Fix: in both handlers, after the existing "select first" check, `if (!aiAvailable())` shows the existing needKey
+  toast, keeps the Ask panel open and returns -- nothing recorded or cleared. Configured paths unchanged.
+- Test: tests/ai_key_preserve_browser.py (fails on a3514a2: input "" + help ["ask_ai"]).
+
+## DONE: A10 — one reader font-size range for A-/A+ and restore (2026-09-26, Claude)
+
+**Merged:** PR #136 squash-merged as main `ae3d6e0`; main CI `test` green; Cloudflare production deployed and
+verified (https://ai-ebook-reader.pages.dev: HTTP 200, index.html, sw.js `ai-reader-shell-c036c6028d49` and all 25
+scripts byte-identical to main). Not started (await approval): P1-3, A11 and the other audit items.
+
+Branch `fix/font-size-range` from main `4d7dee7`. Scope: Astra audit A10 only.
+- Cause: A+ added 2 px with no upper bound (58 px observed); A- floored at 12; startup read the saved size with
+  `readStoredNumber(.., 18, 12, 40)`, which REJECTS out-of-range values -> default 18 after a reload.
+- Now: `READER_FONT_MIN/MAX/STEP/DEFAULT` (12/40/2/18) + `clampReaderFontSize()` in js/core.js are the only range;
+  startup clamps the saved value (58 -> 40, 8 -> 12; unreadable -> 18). js/main.js `setReaderFontSize()` backs A-/A+;
+  `updateFontSizeControls()` disables A+ at 40 / A- at 12 in text formats only (PDF mode keeps them for page zoom),
+  kept in sync by a body-class observer (pdf-mode switches with the format).
+- Test: tests/reader_font_size_browser.py (reproduces 58 px on the old code).
+
+## DONE: A3 / audit §12-2 — cancelled AI request no longer leaves Ask/crop "generating" (2026-09-26, Claude)
+
+**Merged:** PR #134 squash-merged as main `1b07097`; main CI `test` green; Cloudflare production deployed and
+verified (https://ai-ebook-reader.pages.dev: HTTP 200, index.html, sw.js `ai-reader-shell-6088fbadb95b` and all 25
+scripts byte-identical to main). Remaining audit items (A10, P1-3, A11, ...) are NOT started and await approval;
+the original audit is in the user's Downloads (`AI-Reader-Audit-2026-09-13.md`), not in this repo.
+
+Branch `fix/ai-cancel-state` from main `cbceaaa`. Scope: only this defect (Astra audit A3; A10/P1-3/A11 untouched).
+- Cause: `startAiTask` and the crop's `checkExerciseImage` returned silently when `task.current()` was false, so a
+  request cancelled by the app going to the background (`cancelAsyncTasks`), the book changing, or the page changing
+  under it left the spinner (and, for crop, the red `loading` state) forever. #133 had made the crop path silent too.
+- Ownership (js/grammar-svo.js `settleCancelledAskRequest`): a cancelled request may leave the loading state only
+  while no NEWER 'ask' request holds the task slot, and may show "Request cancelled" + Retry only while the panel
+  still shows its own view (`data-ask-request` id; the streaming updater keeps it). Page-change AbortErrors show the
+  cancelled state instead of a red error. Crop: attachment kept, `sending` reset only when no newer request owns
+  the panel; Retry marks it sending so it sends once.
+- Test: tests/ai_cancel_state_browser.py (fails on cbceaaa).
+
+## PR (stacked on #132 -> ... -> #126): PDF crop "Send to AI" answer invisible + Share messages (2026-09-26, Claude)
+
+Branch `fix/crop-ask-ai-attachment`. Crop dialog (js/pdf-crop.js) is a showModal() <dialog>. "Send to AI" used to
+fire a fixed exercise-check vision request and close the dialog only on SUCCESS: spinner and every error went into
+the Ask panel behind the modal (invisible); requestAI also dropped the answer if the page changed meanwhile.
+Now: Send to AI -> dialog closes, crop attached to Ask AI (#ask-attachment chip, ✕, focused input); Send -> question
++ image (empty question = the old exercise check); answer/errors/Retry in the visible panel; callAIVision passes
+{anyPosition:true}. Attachment: one at a time, replaced by a new crop, removed by ✕ / closing Ask AI, consumed on
+success, kept on error; send is idempotent while in flight (➤ submit + form onsubmit double-click; Enter).
+No key: dialog stays with the crop + message (unchanged). All 3 providers already send images correctly.
+Share: navigator.share called synchronously in the tap (was already correct); fallback now names the reason
+(not https / no Web Share / files unsupported), refused share shows its error, cancel is silent.
+Tests: tests/pdf_crop_ai_share_browser.py; tests/pdf_ux_browser.py updated to the attach-then-Send contract.
+REAL MULTIMODAL PROVIDER: NOT VERIFIED. PHYSICAL ANDROID SHARE SHEET (Gemini/ChatGPT/Claude as targets): NOT VERIFIED.
+
+## PR (stacked on #131 -> ... -> #126): PDF print — tall pages split over two sheets (2026-09-25, Claude)
+
+Branch `fix/pdf-print-page-fit`. Print = `printCurrentReaderPage` (js/quick-wheel.js; Quick Wheel 🖨, Ctrl/⌘+P):
+renders physical page `state.currentIndex` fresh via pdfDoc.getPage (intent 'print', <=3x / 8 MP, ~216 dpi for
+Letter), draws ink with the on-screen geometry, embeds a PNG in a hidden iframe, prints, removes it on afterprint.
+Page identity, labels, zoom, virtualization, ink, repeat/switch/error were all verified correct.
+Defect fixed: print doc used `@page{size:auto}` + img width:100%/height:auto, so pages taller (proportionally) than
+the paper (6x9 in, A5) printed on 2 sheets. Now `@page{size:<w>pt <h>pt;margin:0}` + image contained in one page box.
+Test: tests/pdf_print_browser.py (marker-encoded fixtures; captured print doc laid out by Chrome printToPDF on
+A4/Letter and rasterized back). NOT changed, for the user to decide: page-range printing (only the current page is
+in the print document); Chrome's own menu Print prints the whole virtualized viewer (unrendered pages blank).
+PHYSICAL PRINTER / NATIVE PRINT PREVIEW VERIFICATION REQUIRED — NOT YET VERIFIED.
+
+## PR (stacked on #130 -> ... -> #126): Ask AI dictation "one" -> "one one" on tablet (2026-09-25, Claude)
+
+Branch `fix/ask-dictation-duplicates`. Web Speech SpeechRecognition in js/dictation.js; same code on every device.
+Interim text is status-only; finals are committed per result index per session; one live recognizer (generation
+guard); no listener accumulation (onclick properties, one MutationObserver). Root cause (engine-side, modelled):
+Android's recognizer is single-utterance and Chrome's emulated continuous mode re-emits a final at the next index,
+which the per-index commit appended twice. Fix: Android/iOS/iPadOS sessions use continuous=false (one utterance ->
+one final result); the existing onend restart loop continues dictation. Desktop unchanged (continuous=true).
+No text-based dedup. `sttTrace` (console) = last 80 toggle/start/result/commit/stop/abort/end/error events.
+Test: tests/ask_dictation_browser.py (old code reproduces "one one" under the same engine model).
+PHYSICAL TABLET DICTATION VERIFICATION REQUIRED — NOT YET VERIFIED. If it still duplicates, read `sttTrace`:
+two `result` entries at different indices = engine duplicate; two `commit` for one index = app bug; two sessions
+live = lifecycle bug; two `toggle` per tap = activation bug.
+
+## PR (stacked on #129 -> #128 -> #127 -> #126): TTS first-tap silence / clipped start (2026-09-25, Claude)
+
+Branch `fix/tts-first-tap`. Only engine: Web Speech `speechSynthesis` (words, sentences, popup speakers, Practice,
+read-aloud all share js/tts.js). Trace showed every tap sent pointerdown cancel() + speakText cancel() and then
+speak() from an 80 ms timer even with nothing playing (Android: TextToSpeech.stop() right before the first speak).
+- `cancelSpeech()` cancels only a busy synth (speaking/pending/paused); `startUtterance()` speaks at once inside the
+  gesture when idle, waits only the rest of TTS_CANCEL_SPEAK_DELAY_MS after a real cancel; one automatic retry when the
+  engine never starts (2.5 s) or reports audio-busy/audio-hardware/synthesis-failed; other errors console.warn'd.
+- `ttsTrace` (console) = last 60 speak/cancel/start/end/error/retry events, for on-device diagnosis.
+- Web Speech never hands the audio to the page: "generated vs played" can't be captured in-app. On the tablet: if
+  `ttsTrace` shows start+end for a silent/clipped first tap, the loss is in the platform output path (e.g. Bluetooth
+  or speaker waking from standby), not the app.
+- Tests: new `tests/tts_first_tap_browser.py` (fails on the old code); `tts_double_voice` + `practice_sentence_actions`
+  mocks now track `speaking` like the real API (contract: idle -> no cancel, speak now).
+- PHYSICAL TABLET VERIFICATION REQUIRED — NOT YET VERIFIED.
+
+## PR (stacked on #128 -> #127 -> #126): single-word AI translation, literal first (2026-09-25, Claude)
+
+Branch `fix/single-word-literal-translation`. Merge order: #126 -> #127 -> #128 -> this PR.
+- Cause: the single-word AI prompt asked for "the meaning in THIS sentence (1-4 words)", so models returned the
+  translation of the surrounding construction ("run" -> "керувати компанією") instead of the word.
+- `js/ai-client.js` `aiTranslateText`: single-word prompt now asks for the translation of the word itself (the sentence
+  only picks the sense/form) and returns JSON `{"direct","context"}`; `parseSingleWordTranslation` parses it (fenced /
+  almost-JSON / plain-text replies tolerated) and drops a context note that just repeats the direct translation.
+  Multi-word (alignment) prompt unchanged.
+- `js/translation.js`: the direct translation is primary; the note renders after it as `.tt-context` (smaller, grey,
+  in parentheses) only when present. Dictionary extras / non-AI path unchanged.
+- Test: `tests/single_word_translation_browser.py` (mocked `callAI`, no real provider). Neighbouring suites pass locally.
+- Not verifiable automatically: real-model output quality on real books -- check a few words (e.g. a phrasal verb,
+  a polysemous noun) with the user's actual AI key.
+
+## PR (stacked on #127 -> #126): translation popup auto-close timer (2026-09-25, Claude)
+
+- Branch `fix/translation-popup-timer` on top of `fix/pinch-release-flash` (#127) on top of #126 — merge #126, #127 first.
+- Bug: `handleWordOrSelection` (js/translation.js) started the single-word 1800 ms auto-close when the popup OPENED,
+  while "translating…" was showing — an AI answer slower than 1.8 s arrived in an already-closed popup. Also
+  `pointerleave` (js/ui-tooltip.js) restarted a 1.2 s hide while loading, and failed lookups auto-closed.
+- Fix: no countdown while loading (`state.tooltipLoading`); the existing 1800 ms countdown starts only when a
+  translation is actually rendered, only for the current lookup, only if the popup is still open. A failed
+  lookup keeps its error until dismissed. Multi-word/sentence popups unchanged (persistent). Durations unchanged.
+  Existing `lookupToken` + task cancellation already stop stale answers; verified.
+- Tests: new `tests/translation_popup_timer_browser.py` (in CI) with controllable mocked lookups: immediate, 1 s,
+  3 s (required: countdown starts at ~T=3 s), 6 s, failure, re-request after failure, close while loading, newer
+  word while loading, late old answer, sentence stays open. Fails on the previous head at the 3 s case.
+  Neighbouring suites pass: learning_ux, pdf_word_click, language_context, local_translator_warmup,
+  grammar_selection_preserve, pdf_workspace_regressions.
+- No Retry button exists in the translation popup; re-tapping the word is the retry path and gets a fresh countdown.
+
+## PR (stacked on #126): tablet pinch-release white flash (2026-09-25, Claude)
+
+- Branch `fix/pinch-release-flash`, based on `fix/tablet-touch-range-selection` (PR #126, NOT yet merged — merge
+  #126 first, then this PR retargets to main automatically / rebase onto main).
+- Root cause (measured, not assumed): live pinch = one CSS `scale()` on `#reader-pages`; release ->
+  `relayoutContinuousPdfAtScale` resizes every page wrapper to the committed scale and drops that transform, but each
+  page's current render (canvas + text/link/ink layers) keeps the fixed CSS pixel size it was drawn at until its
+  re-render swaps in. The visible page snapped back to its PRE-zoom size inside an enlarged white wrapper for the
+  whole re-render (~0.2 s here, longer at tablet DPR). Nothing was cleared/removed; renders already swap atomically.
+- Fix: `stretchStalePdfPageContent()` (js/pdf-zoom-pan.js), called from the relayout loop for rendered wrappers:
+  stretch the stale canvas to the wrapper and scale the overlay layers (origin 0 0) by the same factor until the
+  sharp render replaces them. No extra renders, no extra canvases.
+- Evidence (renders slowed 700 ms like a tablet): viewer pixels changed between the last gesture frame and the first
+  frame after release — baseline 30% (zoom in) / 19.7% (zoom out); fixed 0% / 1.1%. Same canvas stays, stretched,
+  until the swap ~0.9 s later.
+- Tests: `pdf_workspace_regressions_browser.py` section K (K1/K2 fail on the baseline): no blank frame, old render
+  kept until replaced, final scale, focal anchor < 3 px, no page jump, 3 zoom cycles, continuous scroll after,
+  pen selection on a zoomed page. `pdf_pinch_anchor_browser`, `pdf_ux`, `pdf_continuous` pass.
+- Physical tablet verification: REQUIRED — NOT YET VERIFIED.
+
+## ACTIVE: physical tablet multi-word selection repair (2026-09-25)
+
+- User physically confirmed current production cannot reliably long-press/drag multiple words or sentences. This supersedes the old "no engineering work open" conclusion below.
+- Dedicated worktree `/tmp/reader-touch-range`, branch `fix/tablet-touch-range-selection`, base current main `aaf252ba5900e8918d770582d5499b0be00df0e3`. Old #122 worktree and all other worktrees preserved; no conflicting modifications found.
+- Reproduced on unchanged main by adding 4/8/12/16px pre-hold jitter to real CDP touch input: native `pointercancel` at 152ms clears timer/anchor before 380ms activation. Previous test held perfectly still.
+- `js/selection.js`: register non-passive touchmove before gesture; protect pending jitter; use touch coordinates for active range extension; retain native ordinary swipes, pan a gesture that transitions from prevented jitter into scrolling; touchcancel cleanup; suppress native context menu during owned gesture. Desktop range algorithm and PDF column partitioning unchanged.
+- Local gates PASS: expanded `pdf_workspace_regressions_browser.py` (including second-finger takeover and pre-activation cancellation), `pdf_ux_browser.py`, `learning_ux_browser.py`, `pdf_continuous_browser.py`, `bilingual_selection_browser.py`, `pdf_bilingual_columns_browser.py`, `grammar_selection_preserve_browser.py`; all JS syntax, app-shell versions, CI suite coverage, diff whitespace. Final focused log: `/tmp/tablet-touch-final-focused.log`.
+- Repair committed and pushed as `aa825196d9fef6727ab5f6e33eefe929b856c69f`; PR #126 (`https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/126`), head verified exact. CI run `36181047568` in progress; syntax/setup green. Production not updated yet. This checkpoint update is local/uncommitted documentation only.
+- Pre-existing local pinch-suite failure: after 36 successful pinches, first sidebar-open pinch reports dx=230 (page 10, fraction .15, ratio 1.5). IDENTICAL result on untouched main served from `/tmp/reader-touch-main-control` port 8766; log `/tmp/tablet-pinch-main-control.log`. Isolated fresh-tab sidebar case passes all four ratios on repair branch. Chrome 153.0.8010.36. Do not blame/rework selection for this baseline failure. No pinch code/test modified.
+- **Pen/stylus (2026-09-25, Claude):** the user's physical input is a PEN. Pen does NOT use the touch path: it
+  selects on the mouse branch (immediate drag, no long-press), and Astra's scroll guard only engaged for a touch
+  long-press. On a real tablet Chrome pans pen drags over the PDF container like fingers (touch-action pan) ->
+  pointercancel -> selection dropped. Fix (js/selection.js, `penSelectionActive`): while a pen selection is live
+  its single-touch touchmove is cancelled; reset on commit/cancel. Ink mode unaffected (pen draws). ui-tooltip's
+  documented "stylus may use native selection" decision left unchanged.
+  Tests: `pdf_workspace_regressions_browser.py` section J with real CDP pointerType "pen" events: multi-word,
+  complete sentence, reverse, retained after pointerup, pointercancel, small jitter = tap, ink mode, and the
+  touchmove guard (J8a fails on aa82519, passes now; J8b finger scroll still native). CDP cannot emulate a stylus
+  that pans, so physical stylus verification: REQUIRED — NOT YET VERIFIED.
+- Exact next action: monitor exact-SHA CI run 36181047568, review PR #126 and deliver through normal PR workflow; verify main CI, deployed assets and focused production tests. Physical tablet verification REQUIRED; no physical success claimed.
+
+## DONE: PR #124 reader UX/tablet repair — merged (2026-09-24, Claude)
+
+- **Merged:** PR #124 squash-merged as `e2e9919` on main (feature head `2bd7376`, feature CI run 36083076997 green).
+- **Post-merge:** main CI run 36084120803 green (test + Cloudflare Pages). Production https://ai-ebook-reader.pages.dev
+  serves the merged assets (script versions match main) and `tests/pdf_workspace_regressions_browser.py` passes 18/18
+  against production.
+- **Remaining — user physical verification only:** tablet pinch-zoom keeps the reading position; tablet long-press /
+  drag range selection; Chrome Print Preview without tofu glyphs. No engineering work open.
+- Details of the completion pass below.
+
+### Completion pass details
+
+- Worktree `/tmp/reader-ux-tablet-repair`, branch `feature/reader-ux-tablet-repair`, PR #124, base origin/main `5f25137`.
+- Branch `feature/reader-ux-tablet-repair` (merged). Picked up at `a85ac87`. The previous "Failed: None" below was stale: CI had failed 6/6 at suite 5
+  (`pdf_workspace_regressions` B1), so the remaining suites had NEVER run in CI on this branch.
+
+### Fixed in this pass
+1. **B1 CI failure (root cause):** after `pdf_pinch_anchor_browser.py`'s ~48 emulated two-finger pinches, Chrome
+   delivers NO further touches to that tab (even about:blank; a new tab is fine) — every later touch test on the
+   shared CI browser saw zero events. The pinch suite now runs in its own tab and closes it. `main`'s boot/touch
+   setup for section B restored (the extra about:blank / clearDeviceMetricsOverride workarounds were not the cause).
+2. **Regressions the full suite exposed (CI never got that far):**
+   - `grammar_french`: P1-3 auto-expanded the Grammar drawer — breaks #119's contract (analysis runs behind the
+     closed drawer). Restored; P1-3 persistence of popup + green selection kept; P1-3 test opens the drawer with a
+     real tab click. The kept popup covers the next word, so `close_drawer()` also closes it with its ×.
+   - `practice_reading` / `practice_allocation`: the kept popup floated over the Practice worksheet and swallowed
+     clicks. Opening/restoring the expanded worksheet now dismisses it (`dismissReaderPopup`, shared with ×).
+   - `reader_resize_sync`: headless speech fails at once ('not-allowed'); the iterative P1-7 TTS drains the queue
+     instantly, so "still active after 0.3s" only held on main by accident — the test now holds the utterance.
+3. **P2 (none were implemented before):**
+   - Contents for PDFs without bookmarks (the real book has none → tab was dead): generated from headings in a
+     throttled background pass (`js/pdf-outline.js` startPdfHeadingScan). Real book: Preface → every chapter →
+     Appendix D, entries open the exact page.
+   - Header covered the top of the workspace (2-row toolbar ~97px vs fixed 58px offset) incl. the sidebar tabs:
+     `--app-header-h` from a ResizeObserver; tab labels localized.
+   - Grammar button contrast 3.2:1 → 5.3:1 (`#0b7a5e`).
+   - Quick Wheel Level/Explain used only text from an EARLIER AI action; now the live selection (captured when
+     the wheel opens, since opening hides the popup).
+   - Regression coverage: `tests/pdf_workspace_regressions_browser.py` sections F–I.
+
+- Column threshold: cdceca8 had lowered the PDF column-gap threshold 8% -> 6% without rationale; real-book diff:
+  19/36 pages change, incl. over-splitting (p.61 3->5 columns). Restored 8% (the value validated on the real book
+  in #122); all column/selection suites pass.
+
+### Known flake (pre-existing)
+- `format_reader_audit` "pdf offline navigation and reopen": 1/3 locally on this branch (main 0/3 today; memory
+  records ~50% on untouched main earlier). Rerun once if it is the only failure.
+
+### Physical verification still required from the user (not provable by CDP)
+- Tablet pinch-zoom keeps the reading position; tablet long-press/drag range selection; Chrome Print Preview.
+
+## SUPERSEDED (see section above): post-merge reader UX/tablet repair (2026-09-23)
+
+- Current Worktree: `/tmp/reader-ux-tablet-repair`
+- Branch: `feature/reader-ux-tablet-repair`
+- PR: #124 (`feat(repair): Reader UX, tablet & reliability repair`)
+- Current Local HEAD SHA: `5c76c4ff7ed1051780f6d4f9ec415cde6f1ceb81`
+- Base origin/main SHA: `5f2513766d4bcc6809c4fee8f780f52a6f9a16d9`
+- Working tree: clean. All commits pushed to `origin/feature/reader-ux-tablet-repair`.
+
+### Completed Today (All P1 Items Implemented & Automated Verification Clean):
+1. **P1-1 (Tablet Pinch-Zoom Position Loss & Canvas Eviction) — COMPLETE**:
+   - Preserved document anchor (physical page + page-local normalized coordinates + viewport focal point) across pinch gesture end.
+   - Fixed page eviction bug during distant jumps by preserving re-rendered pages in `pdfRenderedPages`.
+   - Prevented ResizeObserver height-only scrollbar fluctuations from resetting horizontal scroll.
+   - Tests: `tests/pdf_pinch_anchor_browser.py`, `tests/pdf_workspace_regressions_browser.py`, `tests/pdf_continuous_browser.py` — 100% PASS.
+2. **P1-2 (Tablet Range/Sentence Touch Selection) — COMPLETE**:
+   - Distinguished taps, scrolls, and drag selections with 18px radial threshold and non-blocking `body.touch-selecting` touch-action guard.
+   - Preserved column isolation and multi-word green highlight (`.sel-word`) across line breaks.
+   - Tests: `tests/grammar_selection_preserve_browser.py`, `tests/pdf_workspace_regressions_browser.py` — 100% PASS.
+3. **P1-3 (Preserve Selection & Translation on Grammar Open) — COMPLETE**:
+   - Tooltip stays persistent on Grammar open (`state.tooltipPersistent = true`), selection text intact.
+   - Green highlight (`.sel-word`) restored during PDF page re-rendering via physical span anchoring.
+   - Tooltip bounds clamped to visible reader workspace (`getReaderWorkspaceRect()`) on desktop/tablet, while retaining full viewport width on mobile (`<=600px`).
+   - Added explicit close button (`#tt-close-btn`) to dismiss tooltip and highlight.
+   - Tests: `tests/grammar_selection_preserve_browser.py`, `tests/pdf_thumbnails_browser.py` — 100% PASS.
+4. **P1-4 (Print Preview Tofu / Square Glyphs Elimination & Ink Overlay) — COMPLETE**:
+   - Created canvas in host document where PDF.js fonts reside (preventing empty `doc.fonts` in detached print iframe from triggering tofu squares).
+   - Rendered ink strokes directly onto canvas using normalized page coordinates.
+   - Awaited `img.decode()` before triggering print; bound `Ctrl+P`/`Cmd+P` to `printCurrentReaderPage()`.
+   - Tests: `tests/reader_repair_verification_browser.py` — 100% PASS.
+5. **P1-5 (Ask/Explain Input & Credential Autofill Isolation) — COMPLETE**:
+   - Isolated API key inputs in `<form id="api-keys-form" autocomplete="off">` with `autocomplete="new-password"`.
+   - Isolated Ask input in `<form id="ask-chat-form" role="search">` with `type="search"`, `autocomplete="off"`, `data-lpignore="true"`.
+   - Cleared stale conversational query text when contextual Explain is triggered.
+   - Tests: `tests/reader_repair_verification_browser.py` (with sentinel `TEST_API_KEY_DO_NOT_EXPOSE_123`) — 100% PASS.
+6. **P1-6 (Right-Side Reader Controls Geometry) — COMPLETE**:
+   - Removed rule that hid scrubber when side panels expanded.
+   - Anchored scrubber to active workspace edge (`right: calc(var(--ws-right, 0px) + 4px)`).
+   - Vertically centered scrubber at 50% to prevent overlap with Practice bookmark (top) and Grammar tab (bottom).
+   - Tests: `tests/reader_repair_verification_browser.py` — 100% PASS.
+7. **P1-7 (TTS Stack Overflow / Recursion Guard) — COMPLETE**:
+   - Replaced recursive `speakSegment` calls with iterative loop and `queueMicrotask`.
+   - Added double-callback protection and stale generation guards on stop.
+   - Tests: `tests/reader_repair_verification_browser.py`, `tests/tts_double_voice_browser.py` — 100% PASS.
+
+### Status of Tests:
+- Passed: `tests/pdf_pinch_anchor_browser.py`, `tests/grammar_selection_preserve_browser.py`, `tests/reader_repair_verification_browser.py`, `tests/pdf_thumbnails_browser.py`, `tests/pdf_continuous_browser.py`, `tests/pdf_workspace_regressions_browser.py`, `tests/tts_double_voice_browser.py`, `tests/app_shell_versions.py`, `tests/ci_suite_coverage.py`, all JS syntax checks (`node --check`).
+- Failed: None.
+- Not run: Live AI model calls (no API keys in environment; tested via deterministic mocks/contracts).
+
+### Remaining P1/P2 Issues:
+- P1-1 through P1-7 are code-complete and automated-test-verified on PR #124.
+- No partially completed items.
+- Mandatory physical device validation remaining before merge:
+  1. Physical tablet pinch-zoom gesture: verify reading position remains stable without jumping across pages on physical touchscreen.
+  2. Physical tablet range selection: verify long-press and drag creates/retains green selection on physical touchscreen without accidental scrolling.
+  3. Chrome Print Preview: verify real print preview renders canvas text without tofu glyphs.
+
+### Exact Next Action for Tomorrow:
+1. Conduct user physical tablet acceptance testing on https://feature-reader-ux-tablet-repair.ai-ebook-reader.pages.dev (or live deployment of PR #124).
+2. Upon user approval, merge PR #124 into `main`.
+3. Verify main CI and verify production at https://ai-ebook-reader.pages.dev.
+
 # AI Ebook Reader — Agent Handoff
 
 This file is the shared handoff state between Claude Code and Codex. The 19-step
@@ -18,33 +413,342 @@ part of normal task startup.
 
 ## Current handoff
 
-Status: **PR #121 READY FOR MERGE (Selection Popup: Script Contamination & Responsive Header)** (2026-09-20).
-- Branch: `fix/selection-popup-translation-responsive`
-- PR: https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/121 (#121)
-- PR Head SHA: `86cede7b2c20ef933dbd7c224cf1d723dd7d2dfe`
-- CI Status: **ALL CHECKS GREEN** (GitHub Actions run `35542733072` passed in 7m38s, Cloudflare Pages deployed)
-- Root Causes Fixed:
-  1. Mixed-script translation corruption: When translating French words (e.g. `vraiment`) to Ukrainian (`uk`), open-weights models on Groq (`openai/gpt-oss-120b`) hallucinated Common Crawl gambling/SEO spam tokens (`彩在线`) appended directly to the Ukrainian word (`справді彩在线 ⚡`). Fixed by:
-     - Constraining Groq requests with `GROQ_TASK_PROFILES` (`max_completion_tokens: 256` for translation) and passing `reasoning_format: 'hidden'`.
-     - Passing `task` from `requestAI` to `callGroq`.
-     - Implementing script-aware `normalizeTranslation` in `js/ai-client.js` with `TRANSLATION_SCRIPT_RULES` that strips trailing alien script contamination (e.g. Han script spillover in Ukrainian, Russian, Latin, Hindi, or Korean targets) while preserving authentic Han script when `targetLang === 'zh'`.
-  2. Responsive selection-popup header: Long selections caused `.tt-original` to expand horizontally, pushing action controls (`🔊`, `речення ⤢`, `S-V-O`, `🤖 Запитай AI`, `✨ Граматика`) out of the popup or into broken wrapped lines. Fixed by:
-     - Restructuring `.tt-header` into a flex-column layout with full-width `.tt-original-wrapper` (row 1) and full-width `.tt-actions` (row 2).
-     - Setting `.tt-original` to `flex: 1 1 70px; min-width: 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`.
-     - Setting all action controls to `flex-shrink: 0` so they never shrink or wrap destructively.
-     - Removing conflicting `body.pdf-mode` wrapper overrides.
-- Verification:
-  - Local browser test verification passed across 375px mobile and 1280px desktop viewports.
-  - `tests/ai_providers_browser.py`: all 65 checks PASS.
-  - `tests/pdf_ux_browser.py`: all 35 checks PASS including mobile long-selection bounds and ellipsis.
-  - `node --check` syntax gate for all JS files, `sw.js`, and `archive-guard.worker.js` passed.
-  - `tests/app_shell_versions.py` and `tests/ci_suite_coverage.py` passed.
-- Next Action: Ready for user-approved merge into `main`. Do NOT merge without explicit user approval.
-- Concurrent Work Note: Zero modifications to Claude's active Grammar/Practice redesign files (`js/grammar-svo.js`, `js/practice-session.js`, `js/practice-worksheet.js`).
+### PR #122 continuation by Claude (2026-09-23) — real-book acceptance fixes + CI stall diagnosis
 
-Status: **PR #118 MERGED INTO MAIN (Continuous PDF Viewer Foundation)** (2026-09-20).
+Picked up at `d294ae2` (= PR head = origin branch; already contained origin/main `ffba29d`). Its last three CI
+runs were **cancelled after up to 6h**: `pdf_ux_browser.py` hung after the landscape fit-page/fit-width switch.
+- `tests/browser_cdp.py`: every CDP reply is bounded (`READER_CDP_TIMEOUT`, default 180s), renderer crash / JS
+  dialog fail fast, a timeout reports recent page events and — opt-in `READER_CDP_DEBUG_STACK=1` (local
+  diagnosis only: with it pre-enabled in CI pdf_ux stalled 2/5, without it 0/6) — the spinning JS stack.
+  CI prints `chrome.log` on failure.
+- The 6h CI "hang" was a renderer CRASH (SIGTRAP) whose kernel core dump never finished (renderer kernel
+  stack: get_signal -> vfs_coredump -> anon_pipe_write into systemd-coredump), so Chrome never reported it.
+  Same-runner CI bisects: only disconnecting the panel MutationObserver avoided it. Cause: Gemini's
+  applyLayout() moved the container margins AND relaid the stack out immediately, then navigation.js's
+  ResizeObserver relaid it out again. Fix: geometry only, one debounced relayout (main's split); observer
+  watches class/hidden of sidebar/Grammar/Ask. Control on a Xeon 8370C (old code crashed 2/2): branch 4/4
+  and origin/main 4/4 clean. CI keeps core dumps off, Chrome logging on, uploads crash reports
+  (`chrome-crash-reports`) and prints process states / pipe owners (`tests/ci_chrome_stall_dump.sh`).
+- Found, not fixed (pre-existing on main): tts.js speakSegment recurses synchronously via utterance.onerror /
+  empty segments -> "Maximum call stack size exceeded" where speech errors immediately (CI, no voices).
+- practice_sentence_actions section 9 tapped while the full-width Grammar drawer was still sliding out
+  (events went to #grammar-content) -- test now waits for the drawer to be hidden.
+- Real-book acceptance (`~/Books/Complete French All-in-One .pdf`, 657 pp) with real controls/input found and
+  fixed: Practice expanded squeezed the book to ~0px (getReaderWorkspaceRect treated the overlay as a right
+  panel); `#grammar-panel.practice-bookmark-dock{position:relative}` made Grammar reserve 500px twice and
+  after closing; narrow-gutter table rows fused columns (pdfComputeColumns now splits at column edges
+  confirmed page-wide, cached per layer); touch long-press drag was cancelled by native scroll (document-level
+  non-passive touchmove guard, installed only while a touch selection is live so ordinary taps/scrolls stay
+  non-blocking); A+/A− drifted the reading anchor (pre-existing); pill peeked 6px in immersive.
+  Guarded by `tests/pdf_workspace_regressions_browser.py` (fails on 353b498, passes now).
+- Thumbnails on the 657-page book: first pages render at open, far jumps/rapid scroll settle ≤2.3s, ≤80
+  canvases — no change needed. Gemini's `pdf_workspace_browser.py` wrote to a hardcoded `/home/igor/.gemini/…`
+  path (CI PermissionError) — now a temp dir.
+- Next: exact-SHA green CI, squash-merge "(#122)", main CI, production check (see PR #122 for final SHAs).
+
+### PDF Central Workspace, Selection, Thumbnails & UI Integration (2026-09-22, branch `feature/pdf-workspace-layout`, PR #122 — Reconciled onto main)
+
+Branch `feature/pdf-workspace-layout`, PR #122 rebased/reconciled cleanly onto `origin/main` (`ffba29d` containing PR #119 and PR #123).
+**Zero regressions against Grammar/Practice:** Claude's PR #119 and PR #123 features (multi-verb selection, balanced allocation, coverage validation, sentence-level translate/listen actions) fully preserved and passing.
+
+Key Deliverables:
+1. **Task 1 — Bottom PDF Floating Navigation Pill**:
+   - Replaced full-width bottom background bar with a compact, floating navigation pill (`◀ Previous page X/Y Next ▶`).
+   - `#app-footer` styled with `background: transparent !important`, `height: auto`, `min-height: 0`, and `pointer-events: none` so it never consumes layout height or blocks clicks to thumbnails at the bottom of `#pdf-thumb-list`.
+   - `.footer-nav-group` styled as a rounded pill (`border-radius: 9999px; backdrop-filter: blur(8px); background: var(--panel-bg); box-shadow: 0 4px 16px rgba(0,0,0,0.18)`), with `pointer-events: auto`.
+   - Centered strictly within the active reading workspace via CSS variables `--ws-left` and `--ws-width` updated dynamically in `js/pdf-continuous.js` on every panel/sidebar toggle.
+   - `.workspace` height expanded to `calc(100vh - 58px)` to maximize vertical reading area.
+2. **Task 2 — Top-Left Controls Differentiation & Safe Clearance**:
+   - `#menu-handle` preserved as hamburger icon (`☰`) with localized tooltip and aria-label (`tMainMenu`, "Main menu" / "Головне меню").
+   - `#toggle-toc-desktop` updated with clean Feather SVG book-open icon with localized label (`tBookContents`, "Book contents and thumbnails" / "Зміст та ескізи книги").
+   - Added safe clearance in `#app-header` (`padding-left: calc(max(8px, env(safe-area-inset-left, 0px)) + 58px);`), guaranteeing 14px minimum separation between menu handle and book contents button.
+3. **Task 3 — Thumbnail Sidebar Background & Outline Styling**:
+   - Styled `#pdf-sidebar`, `#pdf-thumb-list`, and `#pdf-outline-list` with clean solid dark neutral `#161a20` across Light, Dark, and Sepia themes.
+   - Outline list (`#pdf-outline-list`) styled with high-contrast text (`#c9d1d9`), subtle hover (`rgba(255, 255, 255, 0.08)`), and clean scrollbars.
+4. **Task 4 — Thumbnail Loading & Missing First Pages**:
+   - In `js/pdf-thumbnails.js`, fixed the root cause where opening a book at page 300+ left pages 1–5 blank:
+     - `schedulePrefetchWindow()` now preserves tasks in visible DOM viewport (`visMin..visMax`) in addition to the predictive center window.
+     - Visible page tasks are prioritized first in candidate sorting and queue execution.
+     - Rapid scroll boundary check (`list.scrollTop <= 20`) immediately schedules page 1 without debounce delay.
+     - In `js/pdf-outline.js`, tab switching to thumbnails immediately schedules visible thumbnails.
+5. **Task 5 — PDF Bilingual Column Selection & Tablet Multi-Word Selection**:
+   - In `js/selection.js`, added vertical probing (`±8px`, `±16px`, `±24px`) in `pointerdown` and `pointermove` to bridge inter-line line spacing in continuous PDF without aborting touch/drag range extension.
+   - 380ms touch-hold timer for initiating selection vs smooth scrolling.
+   - Preserved column isolation and live highlight partitioning in `resolveCanonicalPdfSelection`.
+6. **Task 6 — Quick Wheel Header & Verbatim Text Strip**:
+   - Ensured verbatim text retention in `els.ttOriginal.textContent` with `title` and `aria-label` attributes.
+   - Bounded header viewport in `.tt-header` (`.tt-original-wrapper` has `flex: 1 1 auto; min-width: 0; overflow: hidden;`). Action buttons and header tools have `flex-shrink: 0;`.
+   - Added dynamic reading-follow ticker animation (`@keyframes tt-ticker`) when speech is active on `#tt-original` (`state.speakingSide === 'orig'`), respecting `prefers-reduced-motion: reduce`.
+7. **Task 7 — PDF Printing (Tofu/Square Glyphs Fix)**:
+   - Added comprehensive `@media print` rules in `index.html` hiding UI chrome and `.pdf-text-layer` (`display: none !important;`) while showing `.pdf-canvas` (`display: block !important;`).
+   - In `js/quick-wheel.js` `printCurrentReaderPage()`, converted rendered PDF page canvas and ink overlay into a raster `<img>` tag with PNG Data URL, completely eliminating un-embedded font and tofu glyph issues.
+8. **Automated Verification**:
+   - `tests/pdf_workspace_browser.py`: 100% PASS (12 layout states, floating pill centering 0.01px, icon differentiation, dark sidebar across themes).
+   - `tests/pdf_thumbnails_browser.py`: 100% PASS (all 6 sections: bounded scheduler, jump purging, verbatim text with fixed controls, touch hold, distant page thumbnail loading, speech ticker, print rasterization).
+   - `tests/bilingual_selection_browser.py`: 100% PASS (all 8 sections across 'rows' and 'columns' stream orders).
+   - `tests/learning_ux_browser.py`: 100% PASS.
+   - `tests/quick_wheel_browser.py`: 100% PASS.
+   - `tests/pdf_continuous_browser.py`: 100% PASS.
+   - `tests/pdf_bilingual_columns_browser.py`: 100% PASS.
+   - `tests/ci_suite_coverage.py`: 100% PASS (all browser suites invoked by CI).
+   - App-shell versioning and syntax checks: 100% PASS.
+
+### Practice: sentence-level translate + listen actions (2026-09-22, branch `practice-sentence-actions`, PR #123 — Merged to main at `ffba29d`)
+
+PR #119 (the whole `grammar-redesign` branch — Grammar redesign, real-model AI contract, bilingual
+multi-verb fix, and the Grammar → Practice hand-off fix directly below) was squash-merged to `main` at
+commit `6ffb18421128d7f15ff736f90c057a251ac6c57b`, verified deployed to production (content-hash asset
+match against the live `sw.js`). A manual production acceptance pass then found Practice missing a
+capability the reader offers everywhere else: translating or listening to ONE specific generated
+sentence (only the whole reader selection/tooltip had these, never an individual Practice sentence).
+
+**Fix** (`js/practice-worksheet.js`, `js/tts.js` — full detail in `ARCHITECTURE.md`'s new "Practice:
+sentence-level translate + listen" section), reusing existing infrastructure throughout:
+- Every generated row (`buildPracticeSentenceRow`, replacing the old bare `renderParagraphWithTargets`
+  call) gets a small, visually secondary `[listen][translate]` action pair and a collapsible translation
+  slot. The row is now a `<div>` (was `<p>`) purely so it can validly hold that slot; the highlighted,
+  clickable target rendering itself (`renderParagraphWithTargets`) is completely unchanged.
+- Translation (`fetchPracticeTranslation`) calls the SAME `aiTranslateText`/`machineTranslate` engine the
+  reader's own translation tooltip uses, with the reading's own validated language as source (never
+  re-detected) and `state.targetLang` as target — never a second translation engine. Cached per
+  (source, target, sentence) for the page's life; a repeated click just toggles visibility.
+- TTS (`togglePracticeSpeak`) calls the SAME `speakInLang` the tooltip's translation speaker uses.
+  `bindUtterance`/`speakText`/`speakInLang` gained one small, backward-compatible optional `onEnd`
+  callback (existing callers unaffected) so Practice — a third consumer beyond the tooltip's 'orig'/'tr'
+  sides — can track which of potentially many sentences is playing without a second TTS implementation or
+  polling; switching sentences or pressing the same one again correctly stops/transfers playback via the
+  existing `speakInLang` cancel-first behaviour and `stopTooltipSpeech()`.
+
+**Verified**: new `tests/practice_sentence_actions_browser.py` (9 sections) — every row gets working
+actions; translation is exact-sentence, correct-language, Grammar-free, non-regenerating, and cached;
+repeated clicks toggle without re-fetching; TTS start/stop/switch/natural-completion all correct with zero
+overlapping speech; a highlighted target click after a translation is expanded still focuses Grammar with
+zero AI calls; the balanced allocation from the multi-target work is unaffected across verbs, adjectives, a
+reflexive verb and properly accented French; a real touch tap on a phone-width viewport works. The `onEnd`
+hook was confirmed load-bearing (reverted individually, its own check failed, restored byte-identical) —
+this negative control needed `Network.setCacheDisabled` in the test (added), since a first attempt without
+it silently re-tested stale cached JS and passed for the wrong reason; a subsequent full regression battery
+was re-run once on a brand-new Chrome profile (zero prior cache of any kind) to confirm nothing else in this
+session's long-lived scratch browser had been silently stale either — all suites passed clean.
+
+Files changed: `js/practice-worksheet.js`, `js/tts.js`, `js/core.js` (2 new i18n keys), `.github/workflows/ci.yml`,
+`ARCHITECTURE.md`, `HANDOFF.md`, `index.html`/`sw.js` (regenerated hashes), new
+`tests/practice_sentence_actions_browser.py`; `tests/practice_reading_browser.py`,
+`grammar_redesign_browser.py`, `grammar_french_browser.py` updated where they read a row's raw `textContent`
+(now also containing the new buttons' glyphs) or whitelisted only `.practice-target` as an allowed button
+class — both switched to the precise equivalent, never loosened.
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment).
+
+### Grammar → Practice: button fix, balanced multi-target allocation, coverage validation (2026-09-22, branch `grammar-redesign`, PR #119 — Merged to main at `6ffb184`)
+
+Follow-up to the bilingual multi-verb fix directly below: once Grammar correctly detects every verb/adjective
+in a selection (up to 8, in the reported real case), Practice did not keep up. Reproduced live (real 8-verb
+bilingual selection, mocked-but-realistic provider) BEFORE any change, per the task's own requirement.
+
+**Three real defects found, all in the Grammar → Practice hand-off, none in Grammar itself:**
+1. `sanitizePracticeLemmas`'s `PRACTICE_MAX_LEMMAS` was a hard **5** — with the real 8-verb selection, only
+   `voir, comprendre, jouer, traverser, aller` ever reached the Practice prompt; `partir, se promener,
+   se retrouver` were silently dropped before the AI was even asked. The exact same class of bug as the
+   original "collapses to voir" report, one layer downstream, at N=5 instead of N=1.
+2. No deterministic allocation existed: the prompt asked for one flat "N examples per lemma" number (a
+   3-tier heuristic), and the validator only checked GLOBAL floors (`MIN_ITEMS`/`MIN_TARGETS`) — a reply
+   could pass while covering only one or two of many requested lemmas.
+3. The Practice button had no re-entrancy guard and no immediate visual feedback — a fast double-click (or
+   just not knowing whether the click registered) could fire two provider requests, confirmed live: with a
+   realistic ~500ms network delay, two rapid clicks produced two `practice_reading` calls before the fix.
+
+**Fix** (`js/practice-session.js`, `js/grammar-svo.js`, `js/practice-worksheet.js`, `js/core.js` — full detail
+in `ARCHITECTURE.md`'s new "Grammar → Practice" section): `PRACTICE_MAX_LEMMAS` raised 5→20 (matches Grammar's
+own `grammarItemBudget` ceiling — Practice can now demonstrate every lemma one Grammar analysis can ever
+produce); `MAX_SECTIONS` raised to match (`PRACTICE_MAX_LEMMAS + 4`) so a large lemma set is never rejected
+purely for its own section count; a deterministic base+remainder allocation (`allocatePracticeExamples`,
+documented order: the lemmas' own supplied order, focused-first) computed BEFORE the request and told to the
+model as an explicit per-target count, replacing the old flat number; a coverage check in
+`validatePracticeReading` (1-3 requested lemmas must ALL appear, a larger set may omit up to a third) that
+rejects the exact "A, A, A, B while C-G vanish" shape the task described, wired through the SAME retryable-error
+path as every other structural failure so mode/lemmas/sourceLanguage survive for Retry; the output token budget
+now scales from the SAME allocation (`practiceOutputBudget`/`practiceTimeoutMs`, mirroring `grammarProfile`'s
+own scaling) instead of one flat per-task constant; the button now guards against a generation already in
+flight (`getCurrentPracticeSession()?.status==='generating'`) and gives immediate disabled+"Generating…"
+feedback restored in a `.finally()`; the collapsed Practice tab (`#practice-restore`) now exposes
+ready/loading/error (`.ready`/`.loading`/`.error` + `data-status`, reusing the SAME green/red convention as the
+Grammar/Ask panel tabs) derived ONLY from the real session status, and its previously hard-coded English label
+now carries `data-i18n="practiceTabLabel"` so a UI-language switch relabels it without touching the session.
+
+**Verified, live, through the real UI** (mocked-but-realistic provider: reports exactly what was allocated,
+never invents coverage): all 8 verbs from the real reported selection now reach Practice and render, in a
+near-even allocation; the exact same allocation appears in the REAL outgoing prompt; a severely under-covering
+reply is rejected while a compliant one renders every target; a reflexive verb's compound form
+(`nous sommes promenés`) and an adjective's irregular before-vowel form (`bel`) survive with correct
+features/no tense controls; occurrence clicks stay exact with zero AI calls; a bilingual raw source with
+Grammar's OWN validated `sourceLanguage:'fr'` still produces a French Practice request (never redetects and
+flips to English merely because English words are present in the raw text — task section 10); idle/loading/
+ready/error are each distinctly visible on the collapsed tab; a UI-language switch relabels the tab without
+dropping the ready session; an 8-lemma session round-trips through the unchanged schema (`PRACTICE_SCHEMA_VERSION`
+stayed 2 — no migration needed, since only prompt construction/validation/budget changed, not the stored
+session shape) while a legacy-worksheet-schema or corrupt payload under the same storage key is still refused.
+
+**Negative controls**: each of the three production fixes (the lemma cap, the coverage check, the button
+guard) was confirmed to make its own matching assertion fail when reverted individually, then restored.
+
+Tests: new `tests/practice_allocation_browser.py` (9 sections, wired into CI). `tests/practice_reading_browser.py`,
+`tests/practice_browser.py` and `tests/bilingual_selection_browser.py` were updated where they asserted the OLD
+flat prompt wording, a canned reading the NEW coverage check correctly rejects for the lemma actually requested,
+or the OLD fixed 8000-token/12-section bounds — each brought to the new, still-strict, size-aware equivalent,
+never loosened (each update's necessity was confirmed live: the OLD assertion failed for a real, explainable
+reason tied to the new size-aware design, never adjusted to paper over an unexplained failure).
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment) — see the entry below for why.
+
+### Bilingual multi-verb selection collapsed to one lemma ("voir" only) — root cause found and fixed (2026-09-21, branch `grammar-redesign`, PR #119 — NOT merged)
+
+Real report: dragging across a bilingual page (French `avoir`/`être` + participe présent table, French left
+column + English translation right column — e.g. physical page 349 of "Complete French All-in-One": `ayant
+vu`/`having seen`, `ayant compris`/`having understood`, ... 8 rows) rendered ONLY `voir` in Grammar.
+
+**Root cause, reproduced with a purpose-built bilingual PDF fixture (`tests/browser_cdp.py`'s
+`verb_table_pdf_bytes`) before any fix, with only the provider call recorded** (never assumed): a PDF
+drag-selection's `Range.toString()` has NO separator between text items AT ALL — unlike the sentence/tap
+paths (already fixed for this in an earlier commit) — so the raw selection read
+`"ayant vu having seenayant compris having understood..."`; the whole-word validator then rightly rejected
+every French form with a letter glued to its left (`surface_not_in_text`), and only the very FIRST item in
+the drag (nothing precedes it) survived. Confirmed at every pipeline stage: selection extraction (fused),
+Grammar request (fused), validation (7 of 8 rejected), rendering (1 card) — never the model's fault.
+
+**Fix, `js/selection.js`'s drag-commit handler:**
+1. `pdfRangeText(range)`: the same "join only if it's a genuine word-continuation" rule
+   (`pdfSpansContinueWord`, from the earlier PDF-word-split fix) now also covers a raw drag range.
+2. `pdfPartitionColumns`/`pdfComputeColumns` (the column-clustering shared with `pdfVisualGroup`, refactored
+   out rather than duplicated): when the drag's own spans partition into MORE than one geometric column, each
+   column's own text is classified with the existing `detectLang`, and the one matching the book's persisted
+   `pageLang()` becomes `state.lastGrammarSourceText` — a ONE-SHOT value consumed by `js/translation.js`'s
+   `handleWordOrSelection` for the Grammar button only (the translation popup still sees the full raw
+   selection, unchanged). Geometry-based, not lexical: many of the real forms here ("ayant vu", "étant
+   parti"...) have no individual FR/EN dictionary signal of their own — a lexical re-split of the flattened
+   text was tried and found to flip the WHOLE selection's detected language rather than just fail to split
+   it (documented in `ARCHITECTURE.md`'s new "Bilingual PDF selections" section; not committed).
+3. `js/grammar-svo.js` needed NO changes: once `contextText` arrives already isolated, its existing
+   budget/bounding/validation treats it like any other selection.
+
+Also added: a visible note (`grammarBudgetLimited`, `js/core.js`) when a selection has more valid verbs than
+`grammarItemBudget` — previously only truncation/trimming were announced; being over budget was silent.
+
+**Verified, all through the real UI (drag/click/tap), for BOTH PDF content-stream orders (rows-interleaved
+and columns-major — column detection is geometry-based, so both work identically):** all 8 French verbs
+survive request → validation → rendering, unfocused; the Grammar request contains no English; an all-English
+or all-French selection alone still resolves as itself; a single-word tap is completely unaffected (one
+focused occurrence); a sentence/paragraph with several verbs yields several unfocused items; an
+over-budget selection is deterministic (same 14 of 16 kept every run) with a visible note; clicking an
+already-analysed card or a Practice target makes zero further AI calls; the translation request for the
+same drag is properly spaced (no fusion) but is still one combined fragment (documented limitation, not
+fixed here — translation was not made column-aware).
+
+**Negative controls**: each of the three production changes (no `pdfRangeText`; column isolation disabled;
+`translation.js` ignoring the isolated override) was reverted individually and shown to fail the exact
+matching assertion, then restored byte-identical.
+
+Tests: new `tests/bilingual_selection_browser.py` (17 checks, wired into CI). Directly-affected + required
+suites all pass locally (grammar_french 128, grammar_redesign 73, grammar_language_isolation 16,
+practice_reading 65, practice_browser 43, practice_workspace 30, ask_ai_language 9, ai_providers 61,
+language_paren 24, language_context 17, learning_stats_languages_grammar 30, learning_ux 60, migration_audit
+35, ai_contract 73, pdf_bilingual_columns 22, pdf_sentence_reselect 13, pdf_hitbox_stateless 17,
+pdf_word_click all pass). Syntax gate (27 files), app-shell versions, CI suite coverage (36 suites) pass.
+
+LIVE AI NOT TESTED against a real provider (no credential in this environment).
+
+### Live-AI acceptance FAILED → real-model contract hardened (2026-09-20, branch `grammar-redesign`, PR #119 — NOT merged)
+
+A live acceptance run (preview `98f4b680.ai-ebook-reader.pages.dev`, real French PDF, HVAC page "PRÉPARER LES TRAVAUX / Établi un diagnostic du travail à effectuer / Observation visuelle et olfactive... / Mettre en place les mesures pour effectuer le travail / Appliquer les mesures sécuritaires…") entered French **Verbes** but showed "Відповідь AI некоректна або неповна". Every mocked test had passed because every mock was an ideal reply.
+
+**LIVE AI TESTED: NO** (direct provider). No provider credential exists in this environment, and the user's own browser profile / `~/.gemini` OAuth token were deliberately not read; `agy` (an autonomous agent) was not used as a completion sampler. **The failing raw reply was therefore NOT captured**, and the exact rejection point in that session cannot be named from evidence. What IS proven (`tests/ai_contract_browser.py`, 64 checks, real `callAI` path with only `fetch` stubbed): the reported banner is reproduced on the old code through the real OpenAI path by an `incomplete`/`max_output_tokens` reply, and the old parser also rejected unescaped inner quotes, trailing commas and cut-off replies as `malformed_json` and kept 2 of 5 items of a model-style reply. A single word tap on a PDF page with unpunctuated headings analyses the whole merged run (measured: 101 chars / 14 words) with a full-contract multi-item request that the old 1400-token OpenAI cap could not hold (reasoning tokens count against `max_output_tokens`).
+
+What changed (all layers keep their strictness; only harmless deviations are normalised):
+- `ai-client.js`: typed `AiRequestError` reasons per provider (network/timeout/http/envelope_invalid/empty_reply/blocked/provider_error/truncated), truncation keeps `partial`, provider/model/finish/usage in `meta`, bounded diagnostics ring, developer panel only with `?aiDebug=1`.
+- `core.js`: `parseAiJson` (string-aware; fences, prose, trailing commas, comments, unescaped inner quotes; truncated → salvage at array-element boundary; bare array still rejected); French `lemmaCase:'lower'`.
+- `grammar-svo.js`: `grammarProfile` (bounded whole-sentence input ≤1400 chars, output budget from expected items, lite contract for long selections), hardened prompt, partial recovery + visible note, ONE bounded retry on the first half, per-reason diagnostics, extra fields ignored.
+- `practice-session.js`: same extraction/truncation/diagnostics for `practice_reading` (validator unchanged; v2 reading-only Practice from `9b56d25` intact).
+- `tests/ai_contract_browser.py` + `ai_contract_fixtures.py` (wired into CI), `tests/live_responses/` (replay directory), `tools/live_ai_probe.py`.
+
+**External blocker / how to close it (needs the user's key):**
+1. Reproduce on the preview with `?aiDebug=1`; the red banner now carries "AI diagnostics (developer)" with the exact `reason`; press **Copy**, save as `tests/live_responses/<name>.json` (README there) — CI then replays the REAL failing reply through the pipeline.
+2. Or run the whole A–E + real-PDF + Practice acceptance against the real provider: `READER_LIVE_AI_PROVIDER=openai READER_LIVE_AI_KEY=… python3 tools/live_ai_probe.py --pdf` (throw-away Chrome profile, key from the environment only, scrubbed from all output; failures are written as replay-ready files under `live_ai_probe_out/`). `--url https://<hash>.ai-ebook-reader.pages.dev/` drives a deployed build. Report "LIVE AI TESTED: YES" only from that output.
+Remaining risks: real-model behaviour with the new long prompts/budgets (latency up to the 150s Practice timeout, larger OpenAI output caps) is unverified live; Practice has the same untested-live status.
+
+**Follow-up 2026-09-21 — real-page evidence, two more defects, CI test hardened (still LIVE AI TESTED: NO).**
+Working on the REAL reported page (`~/Books/GUIAPP_systeme_frigorifique_classe_1.pdf`, physical page 11; a local file, not in the repo) with only the provider call recorded showed what the app actually hands the model, and it is not what the mocks assumed:
+- One tap on `effectuer` sends a **320-char / 47-word unpunctuated run** (the `¡` check-box bullets never end a "sentence"): item budget 14, lite contract, 4020-token budget. The OLD code sent this under a fixed 1400-token cap with the full contract — a credible reason for OpenAI `status:'incomplete'` → "Відповідь AI некоректна або неповна". This is the most probable cause of the reported failure but is **inferred, not captured**: no raw reply exists.
+- **Defect A (fixed): PDF words split across text items were corrupted.** The page's body lines have a detached first letter (`3. a|ppliquer les mesures…`, `4. a|ssurer l'approvisionnement…`) and its small-caps headings are cut mid-word (`Pr`,`ÉP`,`ar`,`E`,`r`,`LES`,`trava`,`U`,`x`). `buildSentenceRangesFromSpans` put a space after EVERY item, so the model received `a ppliquer les mesures…` and `tâche a Pr ÉP ar E r LES trava U x` — the user's own example verbs (appliquer, assurer) could never be returned as a valid whole-word, literal item, however good the model. Now items that continue a glyph run on the same line are joined (`pdfSpansContinueWord`); real gaps (word space, bullet, next line) still separate. Regression: `tests/pdf_bilingual_columns_browser.py` (real-page geometry + a negative control) and Section 10 of `tests/ai_contract_browser.py` on the real file.
+- **Defect B (fixed): a tapped word beyond the 1400-char input cap was dropped.** `boundGrammarText` always kept the START of an over-long run, so for a tap deep in a long unpunctuated PDF run the analysed text did not contain the tapped word at all; the bounded retry after a cut-off reply kept the first half, again without it. Now the window/half follows the tapped word (`tests/ai_contract_browser.py` A2, incl. a multi-sentence case).
+- Not fixed, by design: the page's `¡` bullets still do not end a sentence (one 320–400-char run per list); the detached first letter also means a tap on `ppliquer` selects the fragment `ppliquer`, not `appliquer` (word selection across items is PDF-selection territory) — the sentence context and the model's analysis of `appliquer` are correct.
+- **Red CI on `d1a9b06` (HVAC tap never opened the tooltip) — root cause found and reproduced.** It did not reproduce under CI's Chrome flags, CI test order, 16× CPU throttling or slow network, so the tap helper was made self-diagnosing; the next CI run (`3c02d60`) then named the cause in its own failure message: the tap point was `at:[1245.9,515.4]` in a `viewport:[1000,1100]` — the word `effectuer` sat ~250 px **off-screen to the right** (`under: None`), everything else (learning mode, viewer ready, format) fine. The helper called `scrollIntoView` on the WORD'S SPAN; a span wider than the viewport that is already partly visible gets no horizontal scroll, so the word inside it stayed off-screen (the fixture's word positions depend on pdf.js's font metrics, which differ between machines; the reader container itself scrolls in PDF mode). Reproduced on demand by zooming the page in (`setPdfScale(3.5)` → `at:[1452.9,542.1]`, same signature), fixed by scrolling the reader container so the WORD is in view, and kept as a permanent scenario (`tests/ai_contract_browser.py`, end of Section 9). The helper also waits for `pdfContinuousReady`, waits for stable geometry, closes any leftover Practice panel/drawer, retries like a user, and reports what was under the pointer. It is an APP-independent test-helper defect, not an app bug (a user cannot tap a word that is off-screen). Separately, the FIRST attempt on `3c02d60` died after 16 s in the runner's Chrome start-up wait (`timeout 15 … 9222`, exit 124, no test ran): the documented CI Chrome-CDP flake, cleared by a rerun of the same SHA.
+- Housekeeping lessons: a worktree under `/tmp` is lost on reboot (this session lost its uncommitted work that way and rebuilt it); this work now lives in `.claude/worktrees/live-ai` (git-excluded). The shared checkout still holds another session's uncommitted **inverse of `d1a9b06`** (old `grammar-svo.js`/`grammar_french_browser.py`, the three live-AI files deleted): it was preserved untouched and is backed up as `refs/backup/grammar-redesign-dirty-2026-09-20` (+ `~/grammar-redesign-dirty-tree-2026-09-20.patch`); it must NOT be committed.
+
+
+### Grammar + contextual Practice redesign — branch `grammar-redesign` (2026-09-20)
+
+Worktree `/media/igor/SAMSUNG_LINUX/Projects/AI-Ebook-Reader-Grammar`, branch `grammar-redesign`, PR #119 (open, base `main`). **No merge to `main` is authorized.** Gemini owns the PDF subsystem — none of `pdf-*.js`, `selection.js` or `translation.js` were modified by this work.
+
+Done: Grammar panel is a Verbs/Adjectives contextual-learning panel (`js/grammar-svo.js`, `js/core.js` `GRAMMAR_LANG_CONFIG`, `index.html`); Practice is a contextual READING surface whose highlighted targets focus the exact occurrence in Grammar (`js/practice-session.js`, `js/practice-worksheet.js`). All quiz UI was removed. See `ARCHITECTURE.md` (`grammar-svo.js` row, "Practice workspace", test map).
+
+Hardening pass (French first, then English; scope decision: **Polish was requested, started, then explicitly dropped by the user — nothing Polish is in the tree**, `pl` is still not a supported language):
+- Structured AI contract: explicit language (name+code, echoed and verified), injection-safe embedded text, whole-word EXACT occurrences with source-derived sentence + offsets, malformed/wrong-language/unsupported-language replies are retryable errors (never "no verbs found", never cached), wrong-POS / duplicate / occurrence-conflict / lemma-shape rejection, enforced lemma budget, features/forms/stem splits validated against per-language config (French: infinitive lemma, real endings only, no split for irregular or compound forms, conjugation/agreement grids must contain the analysed form, before-vowel slot only for beau/nouveau/vieux/fou/mou, derived transformations computed from the grid, agreement target must be in the sentence).
+- Sentence context: tapped text and sentence are NFC/whitespace-normalised before matching; when `selection.js` leaves `lastWordNode` on the whole block (sentence = block's first sentence, tapped word absent) the sentence is recovered from `state.lastTapPoint`; Retry re-sends the already-resolved sentence.
+- Stale protection: a cache hit now cancels in-flight analyses (a slow earlier reply used to overwrite it); a conjugation table arriving after the learner focused another verb is dropped; mode switch clears a focused item of the other POS.
+- Practice: reading must be in the requested language, targets must be whole-word occurrences of the session's POS with stored offsets (`occurrence` supported); click → exact Grammar occurrence, zero AI calls.
+- Tests: new `tests/grammar_french_browser.py` (120 checks after the acceptance pass, wired into CI, hand-authored gold replies + real mouse tap flow). Two existing assertions were updated on purpose: French adjectives now declare 5 grid slots (`ms_vowel`), and an unstructured provider reply is now a retryable error instead of an empty state (`ai_providers_browser.py`).
+
+Final acceptance pass (2026-09-20, real browser: French Markdown book opened through `openBookFile`, real mouse taps/drags/clicks, only the network call `callAI` stubbed with hand-authored gold replies; desktop 1000px and 390px touch-emulated; light/dark/sepia). Verified OK: tap → tooltip → ✨ Grammar → Verbes/Adjectifs (0 extra AI calls, verb chips vanish in Adjectifs), être/avoir/aller, compound (`sont allés`, `a mangé`), imparfait, regular + irregular adjectives (`heureuse`, `belles`/`bel`, `blanches`, `vieille`), agreement with the real noun, tense chips (cached tenses not re-requested), one word / manual drag / sentence / paragraph selection (sentence context preserved), Practice passage → highlighted target → exact Grammar occurrence with ZERO AI calls, slow-reply-after-newer-tap, French→English book switch (no leaked labels/tenses/cards), translation, dark theme. Four real defects found and fixed in `js/grammar-svo.js`/`js/core.js`:
+1. The learner's tapped occurrence was never shown — Grammar opened on a bare lemma card (tense chips inert) and a tapped ADJECTIVE opened in Verbs mode listing an unrelated verb. Now `presentGrammarAnalysis` opens it in its own POS mode.
+2. A tense chip stayed lit after focusing a different word (labelled the wrong conjugation). `focusGrammarItem` now clears it.
+3. A Practice-target focus was rendered above the book selection's unrelated lemma cards. Cards now render only for items of the current analysis.
+4. Compound-tense chips were bare (`être`, `allé`); now `auxiliaire: être` / `participe: allé` (English `auxiliary:`), from per-language `featureLabels`.
+Each has its own failing-without-the-fix check in `tests/grammar_french_browser.py` (new SECTION 6a + one Practice-cards assertion; 120 checks total; each fix was reverted individually to prove its check fails).
+**LIVE AI NOT TESTED** — no provider key exists in this environment (BYOK in browser localStorage; none in env/repo/fresh profile) and the user's own browser profile was deliberately not read. Live-model risks that mocks cannot show: numeric feature values (`person: 3`) pass through as bare chips; two identical forms in ONE sentence (`est … est`) are de-duplicated by lemma+surface, so the tapped one cannot always be told from the other; Practice passages shorter than the 100–220 words the prompt asks for are only rejected below 220 chars.
+
+Known, NOT caused by this branch (verified against the unmodified baseline `82acc93`): `learning_ux_browser.py`'s last check `onboarding returns to normal` fails identically on baseline; `format_reader_audit_browser.py`'s reopen-position checks are intermittently flaky (~1 in 3 runs).
+
+Limitations to know: **no live AI key was available — every model reply in tests/acceptance is a hand-authored mock**, so the prompts (incl. the French/English `promptNote`s) are unverified against a real model, and the validators are calibrated to what a correct French/English reply looks like. Grammar labels/paradigms for zh/ko/hi/ga/ru are reasonable defaults, not linguist-reviewed. The full 657-page French PDF acceptance was deliberately not run from this branch. Real-device touch/stylus behaviour is not covered.
+
+Integration with `main`: `main` already contains the squash-merged PDF work (#118, `ddcd0b2`) while this branch still carries the un-squashed PDF history beneath the Grammar commits, so a plain merge reports add/add conflicts in the PDF files. Resolution policy: take `origin/main`'s version of every PDF-only file (Gemini owns them; this branch never modified them); merge `index.html`/`sw.js` by hand and regenerate hashes with `python3 tools/version_app_shell.py`.
+
+Next action: exact-SHA CI for the pushed branch; when green, review the PR diff (it should contain only Grammar/Practice changes once merged with `main`). Do NOT merge without explicit user approval.
+
+### Practice = reading/examples surface (2026-09-20, branch `grammar-redesign`, PR #119 — NOT merged)
+
+**Why the exercise UI was still visible:** PRODUCTION (`ai-ebook-reader.pages.dev`, i.e. `main`) still serves the OLD worksheet — `practice-worksheet.js` there is 37,821 bytes with `exercises`×13/`hint`×59; the branch preview (`grammar-redesign.ai-ebook-reader.pages.dev`) serves the reading surface (26,355 bytes, no exercise code) — because PR #119 is unmerged. On the branch itself there was no exercise renderer, but three real hazards: (1) the startup handler restored the latest stored session with NO schema check (the old worksheet used the same `practice_session:*` keys and `status:'ready'`); (2) `displayPracticeSession` silently rendered nothing for a ready session without `reading`, leaving a stale panel; (3) `regeneratePractice` dropped `mode` and `lemmas`, so an Adjectives session regenerated as a generic Verbs one. The reading contract was also only a 100–220-word passage, not several minutes of example sentences.
+
+Done: contract v2 (sections of per-lemma example sentences + connected paragraphs, targets attached to their own sentence) with a substantiality floor (10 items / 900 chars / 3 targets), exercise-artifact filter (blanks, numbering, parenthesised French cue verbs via `isFrenchExerciseCue`, one-line drills) and a reject-if-mostly-exercises rule; a selection that IS a book exercise is never sent to the model; session keeps mode+lemmas; schema-versioned storage with a startup purge (`purgeLegacyPracticeStorage`) and refusal at load/render; per-task AI budget (OpenAI 8000 tokens, 150s timeout for all providers); section renderer (heading per lemma, one sentence per line, subtle bold+underline targets, no numbering); "Focus: lemmas" meta row instead of the raw source text; dead exercise-era i18n strings removed; header padded 60px because the floating `☰` menu handle covered the Close button (it was unclickable). The right Grammar panel is unchanged apart from `maybeShowPracticeButton` passing prioritised lemmas + the forms the learner met.
+
+Tests: new `tests/practice_reading_browser.py` (65 checks, wired into CI; real mouse/touch, desktop + 390px) and shared `tests/practice_fixtures.py`; `practice_browser.py`, `practice_workspace_browser.py`, `grammar_redesign_browser.py`, `grammar_french_browser.py` updated to the v2 contract. Each guard was reverted individually to prove its check fails (purge, regenerate context, renderer guard, exercise filter, source withholding, load validation, header CSS). LIVE AI STILL NOT TESTED: every model reply is a hand-authored gold reply, so the new prompt (long, ~30 items with per-target annotations) is unverified against a real model — watch for truncation (retry is offered), over-long latency, and models returning the old flat shape (rejected as invalid, retryable).
+
+Next action for the user: merge decision on PR #119 (production stays on the old worksheet until then), ideally after one real-key Practice run in French verbs + adjectives.
+
+### Independent Release QA — PDF exercise context + French exercise cues (2026-09-20, audited and reworked)
+
+Worktree `/home/igor/Projects/AI-Ebook-Reader-Grammar`, branch `grammar-redesign`, PR #119 (open, base `main`). **Do NOT merge without explicit user approval.**
+
+Gemini's QA on the real 657-page *Complete French All-in-One* found two reproducible defects (page 221, `3. Ils (plaindre)   <blank>   la pauvre femme.`). Both were reproduced here on the REAL PDF (page 221 only) before any change:
+- `sentenceRangeAt` returned `Ils (plaindre) 4.` — the ~160px blank exceeded the column-gap threshold (`max(24, layerWidth*0.08)`) so the right half of the line became a separate "column" (`js/selection.js` `pdfVisualGroup`).
+- Grammar source language was `en`, the prompt asked for English, the model answered French, the validator showed `language_mismatch` — `buildLanguageSegments` gives a parenthetical the OPPOSITE language of what precedes it (a gloss), and `(plaindre)` has no diacritic/function word to say otherwise (`js/lang-detect.js`).
+
+Gemini's first fix (`66eece4`) repaired those two cases but was AUDITED against the real book and the bilingual behavior and REPLACED, because it regressed legitimate behavior: (1) `isFrenchVerbTarget` treated ANY word ending `-er/-re/-ir/-oir` as a French cue, so genuine glosses `eau (water)`, `le père (father)`, `le professeur (teacher)`, `le dîner (dinner)`, `le feu (fire)`, `le désir (desire)`… became French (12 new regressions in a 43-case matrix; `(loudspeaker)` is even a real gloss in the book); (2) `isExerciseBlankContinuation` merged any left cell ending in a parenthesis with the next fragment, so vocabulary rows `l'allemand (m.) | German` became one blob (137 fragments changed on pages 200/208/222).
+
+Final design — ONE shared structural predicate, `isFrenchExerciseCue(inner, textBefore)` in `js/lang-detect.js`. A parenthetical is a French fill-in-the-blank cue only if it is a single infinitive-shaped word (≥4 letters, optionally `ne pas …` / `se …` / `s'…`), not an English word, AND (a) a French subject pronoun (`je tu il elle on nous vous ils elles ce ça cela ceci qui que où dont`, optionally with clitics `me te se lui leur y en ne`) stands right before the `(` — any infinitive shape then, or (b) the word is reflexive, or (c) it has an ending no English word has (`-dre -ttre -uire(not -quire) -ivre -oir`, consonant+`-ir`, or être/avoir/aller/faire/dire/lire/rire/boire/croire/plaire/taire; tiny stoplist stir/emir/elixir/nadir/choir/memoir/reservoir/boudoir). Shape alone is never enough: `père (father)` and `Ils (parler)` look identical. Consumers: `buildLanguageSegments` (gives the cue French instead of the opposite-language gloss prior — fixes `fragmentLangInContext`, `grammarSourceLanguageFor`, translation direction, TTS voice) and `js/selection.js` `isExerciseBlankContinuation` (bridges the blank only when the left fragment ENDS with such a cue or an explicit `____`/`....`/`…` blank AND the right fragment is not the next item marker `N.`/`a)`/`•`). Vocabulary tags `(m.)`, `(familiar)`, glosses `(teacher)`, wrapped numbered lists and two-column exercises stay separate columns.
+
+Measured on the real book (text-only, no full acceptance): 344/361 (95.3%) of numbered exercise cues on pages 30–260 recognised, 0 false positives on 465 other parentheticals; 87 gap merges across 18 sampled pages, every one a genuine exercise line, 0 on prose/table pages. Page 221 differential vs pre-fix: exactly the ten exercise lines changed (`Ils (plaindre) la pauvre femme.`, `La muraille (ceindre) la ville.`, …); tables on pages 200/222 byte-identical; page 208 changes only because its four exercise lines now merge legitimately, which un-fuses its two-column conjugation table (a correct side effect).
+
+KNOWN LIMITATION (deliberate, not a regression — identical before): a NOUN subject with a plain `-er`/`-ire` cue (`Les enfants (manger) une pomme.`, `Lucie (travailler)`, ~9 of 361 on pages 30–260) is still read as an English gloss; without a dictionary it is indistinguishable from `le professeur (teacher)`, and keeping bilingual text correct was preferred. Also unchanged: `aimer (love)`-style lines with no French signal anywhere are undecidable.
+
+Tests: `tests/language_paren_browser.py` (18 French cues, 22 English glosses incl. `-er/-re/-ir/-oir` words, 7 French glosses after English, predicate table), `tests/pdf_bilingual_columns_browser.py` (real page-221 geometry, other cue shapes, 5 negative controls, two-column exercises), `tests/grammar_french_browser.py` SECTION 6c (real tap on the cue → French request accepted; real tap on `father`/`teacher` → English). Verified to FAIL on pre-fix `0415609` (reported defects) and on `66eece4` (the regressions above).
+
+Status: **PR #118 READY FOR MERGE (Continuous PDF Viewer Foundation)** (2026-09-20).
 - Branch: `pdf-continuous-viewer`
-- Base: Merged into `main` (`ddcd0b2`).
+- PR: https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/118 (#118)
+- PR Head SHA: `6522ba9b06e372edb9974828225e5e7032805e06`
+- CI Status: **ALL CHECKS GREEN** (GitHub Actions run `35516728647` passed, Cloudflare Pages deployed)
+- Verification: 100% PASS across all 31 browser suites (including `pdf_continuous_browser.py`, `pdf_page_identity_browser.py` with the 657-page textbook, `pdf_word_click_browser.py`, `pdf_ux_browser.py`, `learning_ux_browser.py`).
+- Next Action: Ready for user-approved merge into `main`. Do NOT merge without explicit user approval.
 
 Status: **Phase 2 IN PROGRESS - 5 User Work Preservation Fixes Implemented** (2026-09-13 ~23:00 UTC). Latest: 95fc1ac 
 
