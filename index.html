@@ -623,6 +623,30 @@
         #tt-speak-translation { align-self: flex-start; margin-top: 2px; }
         /* Активний динамік — той, що озвучувався останнім; саме він відповідає за повтор */
         .tt-replay-btn.speak-active { border-color: #10a37f; color: #3ddba8; background: rgba(16,163,127,0.18); }
+        .tt-replay-btn:active, #tt-expand-btn:active, #tt-svo-btn:active { transform: scale(0.94); }
+        .tt-replay-btn, #tt-expand-btn, #tt-svo-btn { -webkit-tap-highlight-color: transparent; transition: background-color .15s, border-color .15s, transform .1s; }
+        /* Active speaker: not colour alone -- double ring + filled background (the glyph itself becomes a stop square while speaking). */
+        .tt-replay-btn.speak-active { box-shadow: inset 0 0 0 1px #10a37f; }
+        /* Touch screens: 44px hit areas around compact 30px controls, readable label sizes. The header stays ONE row: a taller popup would cover
+           controls of the Grammar/Practice panel behind it on a phone. */
+        @media (pointer: coarse) {
+            .tt-header-tools { gap: 8px; }
+            .tt-replay-btn { width: 30px; height: 30px; font-size: 14px; position: relative; }
+            #tt-expand-btn, #tt-svo-btn { height: 30px; padding: 0 8px; font-size: 12.5px; border-radius: 15px; position: relative; }
+            /* Invisible margin brings every control to a 44px hit area; the 8px visual gap means neighbours only share the gap itself. */
+            .tt-replay-btn::after, #tt-expand-btn::after, #tt-svo-btn::after { content: ''; position: absolute; inset: -8px; }
+            /* This one sits at the clipped edge of the translation row, so an invisible margin would be cut off: make the control itself 44px. */
+            #tt-speak-translation { width: 44px; height: 44px; font-size: 17px; }
+            #tt-speak-translation::after { content: none; }
+            .tt-ai-btn, .tt-ask-btn { min-height: 44px; font-size: 14px; }
+            .tt-note, .tt-context { font-size: 13.5px; }
+        }
+        /* Narrow phones (<= 380px): the single row would leave the selected word ~25px, so the tools drop to their own line. */
+        @media (pointer: coarse) and (max-width: 380px) {
+            .tt-original-row { flex-wrap: wrap; row-gap: 6px; }
+            .tt-original-wrapper { flex: 1 1 100%; }
+            .tt-header-tools { margin-left: auto; }
+        }
 
         /* ПАНЕЛІ AI ТА ГРАМАТИКИ */
         .side-panel { 
@@ -1136,10 +1160,10 @@
                             <span class="tt-original" id="tt-original">word</span>
                         </div>
                         <div class="tt-header-tools">
-                            <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig">🔊</button>
+                            <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig" data-i18n-aria="tSpeakOrig" aria-pressed="false">🔊</button>
                             <button class="tt-replay-btn" id="tt-expand-btn" data-i18n-title="tExpand" data-i18n="btnSentence">речення ⤢</button>
                             <button class="tt-replay-btn" id="tt-svo-btn" data-i18n-title="tSvo">S-V-O</button>
-                            <button class="tt-replay-btn" id="tt-close-btn" data-i18n-title="tClose" aria-label="Close">✕</button>
+                            <button class="tt-replay-btn" id="tt-close-btn" data-i18n-title="tClose" data-i18n-aria="tClose" aria-label="Close">✕</button>
                         </div>
                     </div>
                     <div class="tt-actions">
@@ -1148,8 +1172,8 @@
                     </div>
                 </div>
                 <div class="tt-translation-row">
-                    <div class="tt-translation" id="tt-translation" data-i18n="translating">Переклад...</div>
-                    <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr">🔊</button>
+                    <div class="tt-translation" id="tt-translation" aria-live="polite" data-i18n="translating">Переклад...</div>
+                    <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr" data-i18n-aria="tSpeakTr" aria-pressed="false">🔊</button>
                 </div>
             </div>
         </main>
@@ -1291,7 +1315,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=7b24e77b4063"></script>
+    <script src="js/core.js?v=3d1b7050a5ba"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1301,12 +1325,12 @@
         // вище вже завантажений і виконаний, тож тут виклик безпечний.
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
-    <script src="js/tts.js?v=a17baf6e57dd"></script>
+    <script src="js/tts.js?v=4ebdfe8af2bb"></script>
     <script src="js/selection.js?v=d6ecc9f25df0"></script>
     <script src="js/learning-stats.js?v=e901c3020682"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
-    <script src="js/ui-tooltip.js?v=afded3706fe4"></script>
+    <script src="js/ui-tooltip.js?v=c0f9f96e0b03"></script>
     <script src="js/translation.js?v=b5fbd84d5744"></script>
     <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
     <script src="js/ai-client.js?v=f32df9e435c5"></script>
