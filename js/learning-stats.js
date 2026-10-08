@@ -303,11 +303,6 @@ function recordHelpForSpan(span, sourceType = 'phrase_translation') {
         stats: { total: stats.total, helped: stats.helped, independent: stats.independent,
             readingPercent: stats.readingPercent, helpPercent: stats.helpPercent }
     };
-    console.debug('[learning-stats] help coverage', {
-        scope, sourceType: source, total: stats.total, helped: stats.helped,
-        independent: stats.independent, readingPercent: stats.readingPercent,
-        helpPercent: stats.helpPercent, addedOccurrenceIds
-    });
     return descriptor;
 }
 
