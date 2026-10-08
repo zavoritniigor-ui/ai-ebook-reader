@@ -329,6 +329,7 @@ check('replayed finals cannot drive an endless restart/beep loop',
 # ===================== DESKTOP (mouse) =====================
 load(DESKTOP_UA, False)
 open_ask()
+check('20 the diagnostic-log button is hidden until dictation has been used', "document.getElementById('stt-log-btn').hidden === true")
 tap('#mic-btn', False); wait_listening()
 check('15 desktop: one mouse click starts one continuous session (unchanged)', "__rec.length === 1 && recognition.continuous === true")
 c.js("recognition.interim('open'); recognition.final('open'); recognition.interim('the'); recognition.final('the book'); 1"); pause(.1)
@@ -341,6 +342,14 @@ c.js("recognition._emit(0); recognition._emit(0); 1"); pause(.05)
 check('19 a resend of an ALREADY-final index is not committed again',
       "els.askInput.value === 'open the book very very good'")
 
+check('20 the diagnostic-log button appears once dictation was used', "document.getElementById('stt-log-btn').hidden === false")
+c.js("window.__copied = null; Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: async t => { window.__copied = t; }}}); 1")
+c.js("document.getElementById('stt-log-btn').click(); 1"); pause(.2)
+check('20 clicking it copies a readable log (header, device, start/result events) and no secrets',
+      "typeof __copied === 'string' && __copied.startsWith('AI Ebook Reader dictation log') && __copied.includes('ua: ') && __copied.includes('\"event\":\"start\"') && __copied.includes('\"event\":\"result\"') && !/key/i.test(__copied.replace(/keyword/ig, ''))")
+check('20 ... and tells the user it was copied', "__log.some(l => l.includes(t('dictationLogCopied')))")
+c.js("navigator.clipboard.writeText = async () => { throw new Error('denied'); }; document.getElementById('stt-log-btn').click(); 1"); pause(.3)
+check('20 clipboard denied: falls back without an error', "__errors.length === 0 || JSON.stringify(__errors)")
 tap('#mic-btn', False); pause(.3)
 check('15 desktop: click stops dictation', "!dictation.wanted && %s.length === 0" % live())
 check('no application errors (desktop)', "__errors.length === 0 || JSON.stringify(__errors)")

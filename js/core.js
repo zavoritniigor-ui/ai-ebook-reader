@@ -1026,6 +1026,8 @@ const I18N = {
     micNoSpeech:    { uk: 'Мовлення не розпізнано, спробуйте ще раз.', en: 'No speech detected, try again.', fr: 'Aucune parole détectée, réessayez.', ru: 'Речь не распознана, попробуйте ещё раз.' },
     micNotFound:    { uk: 'Мікрофон не знайдено.', en: 'Microphone not found.', fr: 'Microphone introuvable.', ru: 'Микрофон не найден.' },
     dictationStart: { uk: 'Почати диктовку', en: 'Start dictation', fr: 'Démarrer la dictée', ru: 'Начать диктовку' },
+    dictationCopyLog: { uk: '📋 Копіювати журнал диктування', en: '📋 Copy dictation log', fr: '📋 Copier le journal de dictée', ru: '📋 Копировать журнал диктовки' },
+    dictationLogCopied: { uk: 'Журнал скопійовано. Він містить розпізнаний текст, але не ключі.', en: 'Log copied. It contains recognized text, but no keys.', fr: 'Journal copié. Il contient le texte reconnu, mais aucune clé.', ru: 'Журнал скопирован. В нём распознанный текст, но не ключи.' },
     dictationStop: { uk: 'Зупинити диктовку', en: 'Stop dictation', fr: 'Arrêter la dictée', ru: 'Остановить диктовку' },
     dictationListening: { uk: 'Слухаю… Можна робити паузи. ■ — зупинити.', en: 'Listening… Pauses are fine. ■ to stop.', fr: "À l'écoute… Vous pouvez faire des pauses. ■ pour arrêter.", ru: 'Слушаю… Можно делать паузы. ■ — остановить.' },
     dictationStopped: { uk: 'Диктовку зупинено. Текст збережено в полі; натисніть 🎤, щоб продовжити.', en: 'Dictation stopped. Your text is still in the field; tap 🎤 to continue.', fr: 'Dictée arrêtée. Le texte reste dans le champ ; touchez 🎤 pour continuer.', ru: 'Диктовка остановлена. Текст остался в поле; нажмите 🎤 для продолжения.' },

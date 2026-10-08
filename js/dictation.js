@@ -16,7 +16,33 @@ let sttSessionSeq = 0;
 function traceStt(event, data) {
     sttTrace.push(Object.assign({ t: Math.round(performance.now()), event }, data || {}));
     if (sttTrace.length > 80) sttTrace.shift();
+    const logButton = document.getElementById('stt-log-btn');
+    if (logButton && logButton.hidden) logButton.hidden = false;
 }
+// Plain-text export of the trace for on-device diagnosis (button below the dictation status). Recognized words
+// only; never keys, prompts or page text.
+function dictationLogText() {
+    const lines = ['AI Ebook Reader dictation log', 'ua: ' + navigator.userAgent,
+        'single-utterance: ' + (typeof dictationSingleUtterance !== 'undefined' ? dictationSingleUtterance : '?'),
+        'lang: ' + (els.micLang ? els.micLang.value : '?'), 'events: ' + sttTrace.length, ''];
+    for (const entry of sttTrace) lines.push(JSON.stringify(entry));
+    return lines.join('\n');
+}
+async function copyDictationLog() {
+    const text = dictationLogText();
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { /* fall back below */ }
+    if (!ok) {
+        const area = document.createElement('textarea');
+        area.value = text; area.setAttribute('readonly', ''); area.style.cssText = 'position:fixed;left:-9999px;top:0';
+        document.body.appendChild(area); area.select();
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        area.remove();
+    }
+    showToast(ok ? t('dictationLogCopied') : text.slice(0, 200));
+}
+const sttLogButton = document.getElementById('stt-log-btn');
+if (sttLogButton) { sttLogButton.hidden = sttTrace.length === 0; sttLogButton.onclick = copyDictationLog; }
 function updateDictationUI(interim = dictation.sessionInterimText) {
     els.micBtn.classList.toggle('recording', dictation.wanted);
     els.micBtn.textContent = dictation.wanted ? '■' : '🎤';
