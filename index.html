@@ -602,9 +602,60 @@
         .tt-ai-text { display: block; font-size: 16px; font-weight: bold; color: #fff; line-height: 1.35; }
         
         .tt-actions { display: flex; gap: 8px; width: 100%; margin-top: 4px; flex-shrink: 0; }
+        /* Sentence breakdown painted in the text (js/sentence-structure.js) */
+        ::highlight(struct-subject) { background-color: rgba(59,130,196, 0.40); }
+        ::highlight(struct-verb) { background-color: rgba(217,83,79, 0.40); }
+        ::highlight(struct-object) { background-color: rgba(47,158,110, 0.40); }
+        ::highlight(struct-indirect) { background-color: rgba(124,92,191, 0.40); }
+        ::highlight(struct-complement) { background-color: rgba(194,138,26, 0.40); }
+        ::highlight(struct-time) { background-color: rgba(217,130,43, 0.40); }
+        ::highlight(struct-place) { background-color: rgba(42,155,176, 0.40); }
+        ::highlight(struct-manner) { background-color: rgba(138,109,59, 0.40); }
+        ::highlight(struct-reason) { background-color: rgba(176,74,143, 0.40); }
+        ::highlight(struct-connector) { background-color: rgba(107,114,128, 0.40); }
+        .struct-key { font-size: 11.5px; padding: 3px 9px; min-height: 28px; border-radius: 12px; color: #fff; border: 1px solid transparent; cursor: pointer; background: color-mix(in srgb, var(--role) 78%, #000); text-align: left; }
+        .struct-key.active { outline: 2px solid #fff; outline-offset: 1px; }
+        .struct-deep { flex-basis: 100%; margin-top: 6px; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.07); font-weight: normal; font-size: 12.5px; line-height: 1.5; }
+        .struct-deep .structure-legend { margin: 6px 0; }
+        .struct-deep-head { margin: 0; }
+        .struct-sub { padding: 0 3px; border-radius: 4px; border-bottom: 2px solid var(--sub); background: color-mix(in srgb, var(--sub) 22%, transparent); }
+        .structure-chip.struct-sub { border: 1px solid var(--sub); }
+        .struct-sub-noun { --sub: #3b82c4; }
+        .struct-sub-pronoun { --sub: #7c5cbf; }
+        .struct-sub-determiner { --sub: #6b7280; }
+        .struct-sub-adjective { --sub: #c28a1a; }
+        .struct-sub-verb { --sub: #d9534f; }
+        .struct-sub-auxiliary { --sub: #e0813a; }
+        .struct-sub-adverb { --sub: #2a9bb0; }
+        .struct-sub-preposition { --sub: #8a6d3b; }
+        .struct-sub-conjunction { --sub: #b04a8f; }
+        .struct-sub-negation { --sub: #c0392b; }
+        .struct-sub-other { --sub: #888; }
+        .tt-struct-host:empty { display: none; }
+        .tt-struct-line { margin-top: 9px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.16); display: flex; gap: 8px; flex-wrap: wrap; font-weight: normal; }
+        .tt-struct-note { flex-basis: 100%; margin-top: 4px; font-size: 12.5px; color: #c3c8cf; font-weight: normal; }
+        .structure-sentence { margin: 0 0 8px 0; font-size: 15px; line-height: 1.9; }
+        .structure-part { padding: 1px 3px; border-radius: 4px; border-bottom: 2px solid var(--role); background: color-mix(in srgb, var(--role) 14%, transparent); }
+        .structure-summary { margin: 0 0 8px 0; }
+        .structure-legend { list-style: none; margin: 0 0 8px 0; padding: 0; display: grid; gap: 4px; }
+        .structure-chip { display: inline-block; padding: 0 7px; font-size: 12px; line-height: 1.6; border-radius: 10px; border: 1px solid var(--role); color: var(--text-color); background: color-mix(in srgb, var(--role) 14%, transparent); }
+        .structure-markers { margin-top: 4px; }
+        .structure-role-subject { --role: #3b82c4; }
+        .structure-role-verb { --role: #d9534f; }
+        .structure-role-object { --role: #2f9e6e; }
+        .structure-role-indirect { --role: #7c5cbf; }
+        .structure-role-complement { --role: #c28a1a; }
+        .structure-role-time { --role: #d9822b; }
+        .structure-role-place { --role: #2a9bb0; }
+        .structure-role-manner { --role: #8a6d3b; }
+        .structure-role-reason { --role: #b04a8f; }
+        .structure-role-connector { --role: #6b7280; }
+        .tt-struct-btn { background: #6f42c1; color: white; border: none; padding: 9px 8px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex: 1 1 0; min-width: 0; text-align: center; }
+        .tt-struct-btn:hover { filter: brightness(1.08); }
+        .tt-struct-btn:active { transform: scale(0.98); }
         .tt-ai-btn, .tt-ask-btn {
-            border: none; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
-            cursor: pointer; white-space: nowrap; flex: 1 1 50%; min-width: 0; text-align: center;
+            border: none; padding: 9px 8px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            cursor: pointer; white-space: nowrap; flex: 1 1 0; min-width: 0; text-align: center;
             transition: filter .15s, transform .1s; flex-shrink: 0;
         }
         .tt-ai-btn { background: #0b7a5e; color: white; }   /* white on #0b7a5e = 5.3:1 (AA); #10a37f was 3.2:1 */
@@ -638,7 +689,7 @@
             /* This one sits at the clipped edge of the translation row, so an invisible margin would be cut off: make the control itself 44px. */
             #tt-speak-translation { width: 44px; height: 44px; font-size: 17px; }
             #tt-speak-translation::after { content: none; }
-            .tt-ai-btn, .tt-ask-btn { min-height: 44px; font-size: 14px; }
+            .tt-ai-btn, .tt-ask-btn, .tt-struct-btn { min-height: 44px; font-size: 14px; }
             .tt-note, .tt-context { font-size: 13.5px; }
         }
         /* Narrow phones (<= 380px): the single row would leave the selected word ~25px, so the tools drop to their own line. */
@@ -1175,10 +1226,12 @@
                     <div class="tt-actions">
                         <button class="tt-ask-btn" id="tt-ask-btn" data-i18n="btnAsk">🤖 Запитай AI</button>
                         <button class="tt-ai-btn" id="tt-ai-btn" data-i18n="btnGrammar">✨ Граматика</button>
+                        <button class="tt-struct-btn" id="tt-struct-btn" data-i18n="btnStruct" data-i18n-title="tStruct" data-i18n-aria="tStruct">🧩 Розбір</button>
                     </div>
                 </div>
                 <div class="tt-translation-row">
                     <div class="tt-translation" id="tt-translation" aria-live="polite" data-i18n="translating">Переклад...</div>
+                    <div id="tt-struct-host" class="tt-struct-host"></div>
                     <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr" data-i18n-aria="tSpeakTr" aria-pressed="false">🔊</button>
                 </div>
             </div>
@@ -1321,7 +1374,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=3d1b7050a5ba"></script>
+    <script src="js/core.js?v=f311306c0e22"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1332,14 +1385,15 @@
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
     <script src="js/tts.js?v=4ebdfe8af2bb"></script>
-    <script src="js/selection.js?v=d6ecc9f25df0"></script>
+    <script src="js/selection.js?v=9a685020b260"></script>
     <script src="js/learning-stats.js?v=e901c3020682"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=c0f9f96e0b03"></script>
-    <script src="js/translation.js?v=b5fbd84d5744"></script>
+    <script src="js/translation.js?v=bd7e21e24d0b"></script>
+    <script src="js/sentence-structure.js?v=2acda419abec"></script>
     <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
-    <script src="js/ai-client.js?v=f32df9e435c5"></script>
+    <script src="js/ai-client.js?v=a084f303d4db"></script>
     <script src="js/practice-session.js?v=4a936b0b2205"></script>
     <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
     <script src="js/dictation.js?v=6cf6ee491dd8"></script>

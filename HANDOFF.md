@@ -1,3 +1,7 @@
+## Tooltip sentence breakdown button (2026-10-09, Claude)
+
+PR #156 (Grammar + Practice breakdown, S-V-O removal) was CLOSED unmerged at the user's request; its code stays on branch `feat/sentence-structure`. New smaller branch `feat/tooltip-struct-button` from main: "🧩 Розбір" button in the tooltip action row paints the sentence parts in the text + deep breakdown per part (see ARCHITECTURE.md `sentence-structure.js`). S-V-O is untouched. Not verified with a real AI or a real phone.
+
 ## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
 
 **Not yet merged.** Branch `fix/dictation-android-reliability` from main `949d8b2` (includes PR #147's Ask AI
