@@ -1,3 +1,7 @@
+## Main menu labels and tablet layout (2026-10-09, Claude)
+
+Branch `feat/menu-labels` (stacked on `fix/menu-discoverability` = PR #154, so merge #154 first or this PR carries its commit). Renamed menu wording (Open book / Read aloud / Word study), labelled the ink/region/AI-key buttons, visible labels for the translate-to and menu-language selects, group captions (phone + desktop; hidden on tablets to keep the header at 3 short rows), the right-hand block split into "Text & notes" and "Settings". Tests: `tests/menu_labels_browser.py`. Not seen on a real tablet.
+
 ## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
 
 **Not yet merged.** Branch `fix/dictation-android-reliability` from main `949d8b2` (includes PR #147's Ask AI

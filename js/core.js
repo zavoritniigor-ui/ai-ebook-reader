@@ -874,15 +874,15 @@ function saveVoiceChoices() {
 // сторінок, повідомлення) беруться через t().
 const I18N = {
     toc:            { uk: '☰ Зміст',        en: '☰ Contents',     fr: '☰ Sommaire',     ru: '☰ Содержание' },
-    open:           { uk: '📂 Відкрити',    en: '📂 Open',        fr: '📂 Ouvrir',      ru: '📂 Открыть' },
+    open:           { uk: '📂 Відкрити книгу', en: '📂 Open book', fr: '📂 Ouvrir un livre', ru: '📂 Открыть книгу' },
     loading:        { uk: 'Завантаження...', en: 'Loading...',    fr: 'Chargement...',  ru: 'Загрузка...' },
-    read:           { uk: '🔊 Читати',      en: '🔊 Read',        fr: '🔊 Lire',        ru: '🔊 Читать' },
+    read:           { uk: '🔊 Читати вголос', en: '🔊 Read aloud', fr: '🔊 Lire à voix haute', ru: '🔊 Читать вслух' },
     pause:          { uk: '⏸ Пауза',        en: '⏸ Pause',        fr: '⏸ Pause',        ru: '⏸ Пауза' },
     resume:         { uk: '▶ Продовжити',   en: '▶ Resume',       fr: '▶ Reprendre',    ru: '▶ Продолжить' },
     altVoicesOn:    { uk: '👥 Два голоси: УВІМК', en: '👥 Two voices: ON',  fr: '👥 Deux voix : ON',  ru: '👥 Два голоса: ВКЛ' },
     altVoicesOff:   { uk: '👥 Два голоси: ВИМК', en: '👥 Two voices: OFF', fr: '👥 Deux voix : OFF', ru: '👥 Два голоса: ВЫКЛ' },
-    learnOn:        { uk: '🔮 Вивчення: УВІМК', en: '🔮 Study: ON',   fr: '🔮 Étude : ON',  ru: '🔮 Изучение: ВКЛ' },
-    learnOff:       { uk: '🔮 Вивчення: ВИМК', en: '🔮 Study: OFF',  fr: '🔮 Étude : OFF', ru: '🔮 Изучение: ВЫКЛ' },
+    learnOn:        { uk: '🔮 Вивчення слів: УВІМК', en: '🔮 Word study: ON', fr: '🔮 Étude des mots : ON', ru: '🔮 Изучение слов: ВКЛ' },
+    learnOff:       { uk: '🔮 Вивчення слів: ВИМК', en: '🔮 Word study: OFF', fr: '🔮 Étude des mots : OFF', ru: '🔮 Изучение слов: ВЫКЛ' },
     themeLight:     { uk: 'Світла',         en: 'Light',          fr: 'Clair',          ru: 'Светлая' },
     themeSepia:     { uk: 'Сепія',          en: 'Sepia',          fr: 'Sépia',          ru: 'Сепия' },
     themeDark:      { uk: 'Темна',          en: 'Dark',           fr: 'Sombre',         ru: 'Тёмная' },
@@ -1068,6 +1068,18 @@ const I18N = {
     // Redesigned Grammar/Practice UI strings (contextual Verbs/Adjectives panel + reading Practice).
     grammarEmptyVerbs:      { uk: 'У цьому фрагменті дієслів не знайдено.', en: 'No verbs found in this selection.', fr: 'Aucun verbe trouvé dans cette sélection.', ru: 'В этом фрагменте глаголов не найдено.' },
     grammarEmptyAdjectives: { uk: 'У цьому фрагменті прикметників не знайдено.', en: 'No adjectives found in this selection.', fr: 'Aucun adjectif trouvé dans cette sélection.', ru: 'В этом фрагменте прилагательных не найдено.' },
+    // Main-menu group captions and field labels.
+    grpBook: { uk: 'Книга', en: 'Book', fr: 'Livre', ru: 'Книга' },
+    grpSpeech: { uk: 'Озвучення', en: 'Read aloud', fr: 'Lecture à voix haute', ru: 'Озвучка' },
+    grpStudy: { uk: 'Вивчення та переклад', en: 'Study & translation', fr: 'Étude et traduction', ru: 'Изучение и перевод' },
+    grpView: { uk: 'Налаштування', en: 'Settings', fr: 'Réglages', ru: 'Настройки' },
+    grpText: { uk: 'Текст і нотатки', en: 'Text & notes', fr: 'Texte et notes', ru: 'Текст и заметки' },
+    lblVoice: { uk: 'Голос', en: 'Voice', fr: 'Voix', ru: 'Голос' },
+    lblTranslateTo: { uk: 'Переклад на', en: 'Translate to', fr: 'Traduire en', ru: 'Перевод на' },
+    lblUiLang: { uk: 'Мова меню', en: 'Menu language', fr: 'Langue du menu', ru: 'Язык меню' },
+    lblInk: { uk: 'Писати', en: 'Write', fr: 'Écrire', ru: 'Писать' },
+    lblRegion: { uk: 'Фрагмент', en: 'Region', fr: 'Zone', ru: 'Фрагмент' },
+    lblAiKey: { uk: 'AI-ключ', en: 'AI key', fr: 'Clé AI', ru: 'AI-ключ' },
     grammarWhy:              { uk: 'Чому', en: 'Why', fr: 'Pourquoi', ru: 'Почему' },
     grammarAgreesWith:       { uk: 'Узгоджується з', en: 'Agrees with', fr: 'Accord avec', ru: 'Согласуется с' },
     grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },
@@ -1097,6 +1109,61 @@ const I18N_EXTRA = {
         toc:'☰ Clár',open:'📂 Oscail',loading:'Á luchtú…',read:'🔊 Léigh',pause:'⏸ Cuir ar sos',resume:'▶ Lean ar aghaidh',altVoicesOn:'👥 Dhá ghuth: ANN',altVoicesOff:'👥 Dhá ghuth: AS',learnOn:'🔮 Staidéar: ANN',learnOff:'🔮 Staidéar: AS',themeLight:'Geal',themeSepia:'Seipia',themeDark:'Dorcha',aiKey:'🔑 Eochair AI',noBook:'Níl leabhar luchtaithe',welcome:'Brúigh "Oscail" chun leabhar (EPUB, PDF, DOCX, FB2, TXT, MD, HTML nó RTF) a luchtú.',btnSentence:'abairt ⤢',btnAsk:'🤖 Fiafraigh de AI',btnGrammar:'✨ Gramadach',translating:'Á aistriú…',panelAsk:'🤖 Míniú focal',panelGrammar:'📝 Gramadach',tClose:'Dún',cancel:'Cealaigh',askHint:'Tapáil focal agus brúigh "Fiafraigh de AI" chun brí agus úsáid a fheiceáil.',grammarHint:'Roghnaigh focal agus brúigh "Gramadach" chun anailís a dhéanamh air.',prev:'◀ Siar',next:'Ar aghaidh ▶',waiting:'Ag fanacht…',keyTitle:'🔑 Eochair Google AI Studio (Gemini)',save:'Sábháil',ask:'Cuir ceist…',generating:'Á ghiniúint…',error:'Earráid',chapter:'Caibidil',block:'Bloc',of:'as',page:'lch.',tMenu:'Taispeáin/folaigh an roghchlár',tToc:'Clár',tAiKey:'Eochair AI (Gemini / Groq)',tExitApp:'Scoir den aip',exitFallback:'Sábháladh na sonraí. Is féidir an aip a dhúnadh leis an gcnaipe córais nó gotha.',updateAvailable:'Tá leagan nua den aip ar fáil.',updateReload:'Nuashonraigh',archiveGuardFailed:'Níorbh fhéidir sábháilteacht an chomhaid a dheimhniú. Bain triail eile as.',tAltVoices:'Malartaigh dhá ghuth agus tú ag léamh',tStudyMode:'Mód staidéir: is féidir focail a thapáil',tZoomOut:'Téacs níos lú',tZoomIn:'Téacs níos mó',tTheme:'Téama',tVoice:'Guth',tTargetLang:'Teanga aistriúcháin',tUiLang:'Teanga an chomhéadain',tExpand:'Leathnaigh: deireadh abairte → abairt iomlán → alt',tSvo:'Taispeáin ainmní, briathar agus cuspóir',tSpeakTr:'Léigh an t-aistriúchán',tSpeakOrig:'Léigh an buntéacs',tAskPanel:'Cúntóir AI',tGrammarPanel:'Gramadach',tPrevSent:'An abairt roimhe',tPlayPause:'Sos / lean ar aghaidh',tNextSent:'An chéad abairt eile',tFooter:'Caibidil · leathanach · siar/ar aghaidh',tStop:'Stop ag léamh',unsupportedFormat:'Ní thacaítear leis an bhformáid.',fileTooLarge:'Tá an comhad rómhór (uasmhéid 300 MB).',emptyDoc:'Níor aimsíodh téacs sa chomhad.',pickVerb:'Roghnaigh briathar san anailís ar dtús.',btnInk:'✏️ Scríobh',done:'Déanta',clearPageAsk:'Scrios gach rud scríofa ar an leathanach seo?',btnRegion:'✂️ Réigiún',regionHint:'Roghnaigh réigiún PDF',regionPdfOnly:'Ní oibríonn gabháil réigiúin ach le PDF.',regionFail:'Níorbh fhéidir an réigiún sin a ghabháil.',checking:'An cleachtadh á sheiceáil…',btnExplain:'📖 Mínigh',btnTranslatePanel:'🌐 Aistrigh',btnLangLevel:'📘 Anailís teanga',selectFirst:'Tapáil focal nó roghnaigh abairt sa téacs ar dtús.',keyFaster:'(níos tapúla)',needKey:'Cuir an eochair AI isteach sna socruithe!',needKeySvo:'Tá eochair AI de dhíth le haghaidh anailís abairte.',analysing:'An abairt á hanailísiú…',approx:'(meastachán as líne)',svoSubject:'ainmní',svoVerb:'briathar',svoObject:'cuspóir',svoCoi:'cuspóir indíreach',more:'tuilleadh',alreadyIn:'tá an téacs cheana i',oneVoice:'Níl ach guth Fraincise amháin ar an ngléas seo—ní bheidh an malartú soiléir.',micDenied:'Diúltaíodh rochtain ar an micreafón.',micNoSpeech:'Níor braitheadh caint; bain triail eile as.',micNotFound:'Níor aimsíodh micreafón.',dictationStart:'Tosaigh deachtú',dictationStop:'Stop deachtú',dictationListening:'Ag éisteacht… Is féidir sosanna a ghlacadh. ■ chun stopadh.',dictationStopped:'Stopadh an deachtú. Tá an téacs fós sa réimse.',micNetwork:'Fadhb líonra le linn aithint cainte.',noChapters:'Níor aimsíodh caibidlí.',chapterMissing:'Níor aimsíodh an chaibidil sa chartlann.',voicesFr:'Fraincis',voicesEn:'Béarla',voicesUk:'Úcráinis',voicesRu:'Rúisis',voicesZh:'Sínis Shimplithe',voicesKo:'Cóiréis',voicesHi:'Hiondúis',voicesGa:'Gaeilge',statsTitle:'Tuiscint léitheoireachta',statsReading:'Léite gan chabhair',statsReadWithoutHelp:'Léite gan chabhair',statsHelpRequested:'Cabhair iarrtha',statsPageWords:'Focail ar an leathanach',statsIndependentWords:'Gan chabhair',statsUniqueTapped:'Focail uathúla tapáilte',statsTappedVocabulary:'Stór focal tapáilte',statsUnknown:'Gan rangú',statsUnknownShort:'Eile',statsNoHelp:'Níl aon iarratas cabhrach fós'
     }
 };
+// Main-menu captions for the UI languages that live in I18N_EXTRA.
+for (const [locale, values] of Object.entries({
+    zh: {
+        grpBook: '图书',
+        grpSpeech: '朗读',
+        grpStudy: '学习与翻译',
+        grpView: '设置',
+        grpText: '文字与笔记',
+        lblVoice: '语音',
+        lblTranslateTo: '翻译成',
+        lblUiLang: '菜单语言',
+        lblInk: '书写',
+        lblRegion: '区域',
+        lblAiKey: 'AI 密钥',
+    },
+    ko: {
+        grpBook: '책',
+        grpSpeech: '소리 내어 읽기',
+        grpStudy: '학습 및 번역',
+        grpView: '설정',
+        grpText: '텍스트 및 메모',
+        lblVoice: '음성',
+        lblTranslateTo: '번역 언어',
+        lblUiLang: '메뉴 언어',
+        lblInk: '쓰기',
+        lblRegion: '영역',
+        lblAiKey: 'AI 키',
+    },
+    hi: {
+        grpBook: 'पुस्तक',
+        grpSpeech: 'ज़ोर से पढ़ना',
+        grpStudy: 'अध्ययन और अनुवाद',
+        grpView: 'सेटिंग',
+        grpText: 'पाठ और नोट्स',
+        lblVoice: 'आवाज़',
+        lblTranslateTo: 'अनुवाद भाषा',
+        lblUiLang: 'मेनू भाषा',
+        lblInk: 'लिखें',
+        lblRegion: 'क्षेत्र',
+        lblAiKey: 'AI कुंजी',
+    },
+    ga: {
+        grpBook: 'Leabhar',
+        grpSpeech: 'Léamh os ard',
+        grpStudy: 'Staidéar agus aistriúchán',
+        grpView: 'Socruithe',
+        grpText: 'Téacs agus nótaí',
+        lblVoice: 'Guth',
+        lblTranslateTo: 'Aistrigh go',
+        lblUiLang: 'Teanga roghchláir',
+        lblInk: 'Scríobh',
+        lblRegion: 'Réigiún',
+        lblAiKey: 'Eochair AI',
+    },
+})) Object.assign(I18N_EXTRA[locale], values);
 for (const [locale, values] of Object.entries(I18N_EXTRA)) {
     for (const [key, value] of Object.entries(values)) if (I18N[key]) I18N[key][locale] = value;
 }

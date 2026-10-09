@@ -115,6 +115,11 @@
             padding: 0 12px; border-right: 1px solid var(--border-color);
         }
         .toolbar-group:last-child { border-right: none; margin-left: auto; }
+        /* Підписи груп і полів головного меню: що означає кожна кнопка видно без підказки. */
+        .toolbar-group { position: relative; padding-top: 15px; }
+        .group-caption { position: absolute; top: 0; left: 12px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; pointer-events: none; }
+        .toolbar-group:first-child .group-caption { left: 0; }
+        .field-cap { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
         .toolbar-group:first-child { padding-left: 0; }
 
         button, label.btn {
@@ -828,6 +833,16 @@
                 height: 44px; font-size: 14px;
             }
             .toolbar-group { gap: 8px; row-gap: 8px; }
+            /* Планшет: підписи кнопок і полів ("Переклад на", "Мова меню", "Писати"…) лишаються, а заголовки груп
+               ховаємо — вони з'їдали б цілий рядок висоти шапки. Вони показуються на телефоні й на великому екрані. */
+            .group-caption { display: none; }
+            .toolbar-group { padding-top: 0; }
+            #voice-select { max-width: 150px; }
+            .header-controls { row-gap: 6px; }
+            .toolbar-group { padding-left: 8px; padding-right: 8px; }
+            .toolbar-group:first-child { padding-left: 0; }
+            .toolbar-group:last-child { padding-right: 0; }
+            .field-cap { font-size: 11.5px; }
             nav { width: min(320px, 42vw); }
             #toc-list li { padding: 13px 14px; font-size: 15.5px; }
             #reader-container { padding: 40px 44px; }
@@ -856,6 +871,10 @@
             .toolbar-group:last-child { margin-left: 0; border-bottom: none; padding-bottom: 4px; }
             .toolbar-group > * { flex: 1 1 calc(50% - 4px); margin: 0; max-width: none; }
             .toolbar-group > select { flex: 1 1 calc(50% - 4px); }
+            .toolbar-group { padding-top: 10px; }
+            .group-caption { position: static; flex: 1 1 100%; margin: 0; }
+            .toolbar-group:first-child .group-caption { left: auto; }
+            .toolbar-group > .field-cap { flex: 1 1 100%; margin: 2px 0 -4px; font-size: 11.5px; }
             /* Іконкові кнопки лишаються квадратними, а не розтягнутими на півширини */
             .toolbar-group > .icon-btn.compact { flex: 0 0 44px; }
             .toolbar-group > .reading-stats-control { flex: 0 0 auto; }
@@ -1064,12 +1083,14 @@
         <div class="header-controls" id="header-controls">
             <!-- FILE / BOOK -->
             <div class="toolbar-group">
+                <span class="group-caption" data-i18n="grpBook"></span>
                 <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tBookContents" aria-label="Зміст та ескізи книги"><svg class="book-nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></button>
                 <label class="btn" for="file-upload" data-i18n="open">📂 Відкрити</label>
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown">
             </div>
             <!-- READING / TTS -->
             <div class="toolbar-group">
+                <span class="group-caption" data-i18n="grpSpeech"></span>
                 <button class="icon-btn" id="btn-tts" data-i18n="read">🔊 Читати</button>
                 <button class="icon-btn compact" id="btn-tts-stop" style="display:none;" data-i18n-title="tStop">⏹</button>
                 <button class="icon-btn" id="btn-alt-voices" data-i18n-title="tAltVoices">👥 Два голоси: ВИМК</button>
@@ -1077,7 +1098,9 @@
             </div>
             <!-- STUDY / TRANSLATION / STATISTICS -->
             <div class="toolbar-group">
+                <span class="group-caption" data-i18n="grpStudy"></span>
                 <button class="icon-btn" id="btn-translate-mode" data-i18n-title="tStudyMode">🔮 Вивчення: ВИМК</button>
+                <label class="field-cap" for="target-lang" data-i18n="lblTranslateTo"></label>
                 <select id="target-lang" data-i18n-title="tTargetLang">
                     <option value="uk">🇺🇦 Українська</option>
                     <option value="en">🇬🇧 English</option>
@@ -1110,18 +1133,24 @@
                     </section>
                 </div>
             </div>
-            <!-- ANNOTATION / DISPLAY / SETTINGS -->
+            <!-- TEXT / ANNOTATION -->
             <div class="toolbar-group">
-                <button class="icon-btn compact" id="btn-ink" data-i18n-title="btnInk" data-i18n-aria="btnInk">✏️</button>
-                <button class="icon-btn compact" id="btn-region" data-i18n-title="btnRegion" data-i18n-aria="btnRegion">✂️</button>
+                <span class="group-caption" data-i18n="grpText"></span>
+                <button class="icon-btn" id="btn-ink" data-i18n-title="btnInk" data-i18n-aria="btnInk"><span aria-hidden="true">✏️</span> <span data-i18n="lblInk">Писати</span></button>
+                <button class="icon-btn" id="btn-region" data-i18n-title="btnRegion" data-i18n-aria="btnRegion"><span aria-hidden="true">✂️</span> <span data-i18n="lblRegion">Фрагмент</span></button>
                 <button class="icon-btn compact" id="zoom-out" data-i18n-title="tZoomOut" data-i18n-aria="tZoomOut">A-</button>
                 <button class="icon-btn compact" id="zoom-in" data-i18n-title="tZoomIn" data-i18n-aria="tZoomIn">A+</button>
                 <select id="pdf-fit" aria-label="Масштаб PDF"><option value="width">Fit width</option><option value="page">Fit page</option><option value="free">Free zoom</option></select>
+                </div>
+            <!-- SETTINGS -->
+            <div class="toolbar-group">
+                <span class="group-caption" data-i18n="grpView"></span>
                 <select id="theme-select" data-i18n-title="tTheme">
                     <option value="light" data-i18n="themeLight">Світла</option>
                     <option value="sepia" data-i18n="themeSepia">Сепія</option>
                     <option value="dark" data-i18n="themeDark">Темна</option>
                 </select>
+                <label class="field-cap" for="ui-lang" data-i18n="lblUiLang"></label>
                 <select id="ui-lang" data-i18n-title="tUiLang">
                     <option value="uk">UA</option>
                     <option value="en">EN</option>
@@ -1132,7 +1161,7 @@
                     <option value="hi">हिन्दी</option>
                     <option value="ga">Gaeilge</option>
                 </select>
-                <button class="icon-btn compact" onclick="openKeySettings()" data-i18n-title="tAiKey" data-i18n-aria="tAiKey">🔑</button>
+                <button class="icon-btn" onclick="openKeySettings()" data-i18n-title="tAiKey" data-i18n-aria="tAiKey"><span aria-hidden="true">🔑</span> <span data-i18n="lblAiKey">AI-ключ</span></button>
                 <!-- Показується лише у встановленому standalone-PWA (вмикається з JS) —
                      у звичайній вкладці браузера ця кнопка не потрібна. -->
                 <button class="icon-btn compact" id="btn-exit-app" style="display:none;" onclick="exitApp()" data-i18n-title="tExitApp">🚪</button>
@@ -1321,7 +1350,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=3d1b7050a5ba"></script>
+    <script src="js/core.js?v=1e9b347483ac"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
