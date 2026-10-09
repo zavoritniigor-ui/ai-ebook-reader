@@ -1,9 +1,8 @@
 /* grammar-svo.js — панелі "Граматика"/"Запитай AI": вкладки, startAiTask (запит до
  * AI й вивід у панель; forward-called з index.html та js/translation.js, тому
  * перенесено сюди разом із самою функцією), побудова промптів для "Запитай AI"
- * (buildAskPrompt/buildLanguageLevelPrompt), і розбір речення на члени
- * (SVO: flattenRange/rangeForSlice/localSVO/buildSvoPrompt/analyzeSVO/applySVOParts)
- * через CSS Custom Highlight API.
+ * (buildAskPrompt/buildLanguageLevelPrompt), та flattenRange/rangeForSlice —
+ * допоміжні функції плоского тексту діапазону для js/sentence-structure.js.
  *
  * Redesigned contextual Grammar panel (Verbs/Adjectives modes): grammarContext,
  * buildGrammarAnalysisPrompt/normalizeGrammarAnalysis (structured JSON, not raw
@@ -202,12 +201,10 @@ async function startAiTask(contextText, mode, userPrompt = "") {
 }
 
 
-// ========== РОЗБІР РЕЧЕННЯ: ПІДМЕТ / ПРИСУДОК / ДОДАТОК ==========
-// Підсвічуємо частини прямо в тексті через CSS Custom Highlight API: він малює
-// поверх наявного тексту й не змінює DOM, що тут критично — у реченні вже є сірі
-// span'и відкритих слів, і будь-яке перезагортання їх поламало б.
-// Межі частин визначає модель, бо французький синтаксис (складені часи, зворотні
-// дієслова, займенники перед дієсловом) надійно не розбирається простими правилами.
+// ========== ДОПОМІЖНЕ: ПЛОСКИЙ ТЕКСТ ДІАПАЗОНУ ==========
+// Використовує js/sentence-structure.js для підсвітки частин речення прямо в тексті
+// через CSS Custom Highlight API (він малює поверх наявного тексту й не змінює DOM —
+// у реченні вже є сірі span'и відкритих слів, і будь-яке перезагортання їх поламало б).
 
 // Плоский текст діапазону + карта відповідності позицій текстовим вузлам.
 function flattenRange(range) {
@@ -238,218 +235,6 @@ function rangeForSlice(flat, start, end) {
     const r = document.createRange();
     r.setStart(sN, sO); r.setEnd(eN, eO);
     return r;
-}
-function clearSvoHighlights() {
-    if (typeof CSS !== 'undefined' && CSS.highlights) {
-        ['svo-subject', 'svo-verb', 'svo-object', 'svo-coi'].forEach(n => CSS.highlights.delete(n));
-    }
-}
-
-// Місцевий (без мережі) розбір: приблизний, за формою слів. Підмет — усе до
-// першого особового дієслова, присудок — сама дієслівна група, решта — додаток.
-// Для французької спираємось на ЯВНІ дієслівні форми й лише на однозначні
-// закінчення. Загальні -e/-es/-é сюди не входять: на них закінчується безліч
-// іменників і прикметників, через що присудком ставало перше-ліпше слово.
-const FR_VERB_RE = /^(est|sont|es|suis|sommes|êtes|était|étaient|étais|sera|seront|a|as|ai|ont|avons|avez|avait|avaient|aura|auront|fait|font|va|vont|vais|allez|peut|peuvent|peux|doit|doivent|dois|veut|veulent|veux|sait|savent|vient|viennent|prend|prennent|met|mettent|dit|disent|voit|voient)$|(ons|ez|ent|ait|aient|ais|era|eras|erez|eront|iront|rait|raient|rons)$/i;
-const EN_VERB_RE = /^(is|are|was|were|has|have|had|do|does|did|will|would|can|could|must|should|may|might|be|been|being)$|(s|ed|ing)$/i;
-// Службові слова окремо для КОЖНОЇ мови: спільний список плутав мови — французьке
-// "a" (має) виключалось як англійський артикль, і присудок зміщувався.
-const NOT_VERB_FR = new Set(('le la les l un une des du de d ce cet cette ces mon ma mes ton ta tes ' +
-    'son sa ses notre nos votre vos leur leurs je tu il elle on nous vous ils elles me te se y en ' +
-    'que qui quoi dont ne pas plus très comme dans pour avec sans sur sous aux au par et ou mais donc car').split(' '));
-const NOT_VERB_EN = new Set(('the a an this that these those my your his her its our their and or but so ' +
-    'of in on for with to at by from some any no not very as than then there here').split(' '));
-// Означники: слово після них — майже завжди іменник, а не дієслово. Саме це
-// відрізняє "le séisme" (іменник) від "il pense" (дієслово) для закінчення -e.
-const FR_DET = new Set('le la les l un une des du de d ce cet cette ces mon ma mes ton ta tes son sa ses notre nos votre vos leur leurs quelques plusieurs'.split(' '));
-const FR_PRON = new Set('me te se le la les lui leur nous vous y en m t s l'.split(' '));
-// Закінчення 3-ї особи однини (-e, -es) допускаємо лише поза позицією після означника.
-const FR_SOFT_VERB_RE = /(e|es)$/i;
-
-function localSVO(sentence) {
-    const isFr = detectLang(sentence).startsWith('fr');
-    const re = isFr ? FR_VERB_RE : EN_VERB_RE;
-    const stop = isFr ? NOT_VERB_FR : NOT_VERB_EN;
-    const words = sentence.split(/\s+/).filter(Boolean);
-    const clean = i => (words[i] || '').replace(/[^\p{L}''-]/gu, '').toLowerCase();
-
-    let vi = -1;
-    for (let i = 0; i < words.length; i++) {
-        const w = clean(i);
-        if (!w || stop.has(w)) continue;
-        if (re.test(w)) { vi = i; break; }
-        // М'яке правило для французької: -e/-es вважаємо дієсловом, лише якщо
-        // попереднє слово не означник (інакше це іменник на кшталт "séisme").
-        if (isFr && i > 0 && FR_SOFT_VERB_RE.test(w) && !FR_DET.has(clean(i - 1)) && w.length > 3) {
-            vi = i; break;
-        }
-    }
-    if (vi <= 0) return null;
-
-    let ve = vi;
-    while (ve + 1 < words.length) {
-        const nx = clean(ve + 1);
-        if (!nx || stop.has(nx) || !re.test(nx)) break;
-        ve++;
-    }
-
-    // Займенники-додатки перед дієсловом ("te voient") належать до присудка.
-    let sEnd = vi;
-    if (isFr) while (sEnd > 1 && FR_PRON.has(clean(sEnd - 1))) sEnd--;
-
-    return {
-        sujet: words.slice(0, sEnd).join(' ').replace(/^[«"']+/, ''),
-        verbe: words.slice(sEnd, ve + 1).join(' '),
-        objet: words.slice(ve + 1).join(' ').replace(/[.!?»"']+$/, '')
-    };
-}
-
-// Промпт для AI-розбору. Схема свідомо трохи багатша за "класичний" S-V-O:
-// cod/coi розрізняють прямий і непрямий додаток (важливо для французької), а
-// "note" — це саме те місце, куди модель виносить усе, що НЕ вкладається в
-// просту схему (заперечення, пасив, питання, відсутність додатка), замість того
-// щоб штучно натягувати відповідь на S-V-O там, де його нема.
-function buildSvoPrompt(sentence, isFr) {
-    if (isFr) {
-        return `Analyse la structure grammaticale de cette phrase française : "${sentence}"
-Retourne UNIQUEMENT du JSON strict, sans markdown, sans commentaire, exactement dans ce format :
-{"sujet":"...","verbe":"...","cod":"...","coi":"...","note":"..."}
-
-Règles :
-- "sujet", "verbe", "cod", "coi" sont des sous-chaînes EXACTES copiées littéralement dans la phrase (mêmes mots, casse, apostrophes). Mets "" si cette partie n'existe pas.
-- "verbe" est le groupe verbal complet : auxiliaire + verbe + négation + pronom complément collé juste avant (ex. "s'est levé", "ne mange pas", "lui donne" si le pronom précède immédiatement). Pour l'inversion avec trait d'union (ex. "Aimes-tu"), copie le bloc entier.
-- "cod" = complément d'objet direct (répond à qui/quoi, sans préposition, ex. "une pomme", "le livre"). "coi" = complément d'objet indirect (répond à à qui/à quoi/de qui — souvent un pronom "lui/leur/y/en" ou un groupe avec à/de, ex. "lui" dans "Je lui donne le livre").
-- Les compléments circonstanciels (temps, lieu, manière — ex. "pendant deux heures", "hier", "dans le jardin") ne sont JAMAIS cod/coi : laisse-les vides, mentionne-les dans "note" si utile.
-- À la voix passive, le complément d'agent ("par Marie") n'est ni cod ni coi.
-- S'il n'y a pas de complément d'objet direct, laisse "cod" vide — ne force rien.
-- Si la phrase ne suit pas du tout un schéma sujet-verbe-objet (fragment, interjection, phrase nominale), remplis seulement ce qui existe vraiment et explique dans "note".
-- "note" : UNE courte note en UKRAINIEN (une phrase brève, ou "" si rien de particulier) signalant négation, voix passive, question/inversion/"est-ce que", absence de complément, ou structure non-SVO. Laisse "" pour une phrase simple sans particularité.`;
-    }
-    return `Analyse the grammatical structure of this English sentence: "${sentence}"
-Return STRICT JSON only, no markdown, no explanation, exactly in this format:
-{"sujet":"...","verbe":"...","cod":"...","coi":"...","note":"..."}
-
-Rules:
-- "sujet", "verbe", "cod", "coi" must be EXACT substrings copied literally from the sentence (same words, case, punctuation). Use "" if that part does not exist.
-- "verbe" is the complete verb group: main verb + all auxiliaries (be/have/do/modal) + negation ("not"/"n't"), e.g. "has been reading", "does not come", "was opened". If an auxiliary is separated from the main verb by the subject (question inversion, e.g. "Do you like"), put only the CONTIGUOUS main verb in "verbe" (e.g. "like") and mention the inversion in "note" instead — never invent a non-contiguous substring.
-- "cod" is the direct object (what/whom directly receives the action, no preposition, e.g. "the door", "this book"). "coi" is the indirect object (usually introduced by "to"/"for", or a person receiving something, e.g. "her" in "I give her the book").
-- Adverbials of time, place, manner, frequency or duration (e.g. "for two hours", "yesterday", "in the garden") are NEVER the object — leave cod/coi empty for these; mention them in "note" only if useful.
-- In passive voice, the "by ..." agent is NOT the object.
-- If the sentence has no direct object at all, leave "cod" empty — do not force one.
-- If the sentence does not follow a Subject-Verb-Object pattern at all (fragment, interjection, subject+adjective, imperative with no subject), fill in only what genuinely exists and explain in "note".
-- "note": a SHORT note in UKRAINIAN (one brief sentence, or "" if nothing special) mentioning negation, passive voice, question/inversion, missing object, or a non-SVO structure, when relevant. Leave "" for a plain simple sentence with nothing notable.`;
-}
-
-// Дуже рідкісний збіг: AI не дав придатної відповіді, а місцевий резерв теж не
-// впорався з реченням (напр. незнайомий формі дієслова). Без цього користувач
-// бачив би просто зникнення індикатора "Розбираю…" без жодного пояснення.
-function showSvoFailureNote() {
-    const line = document.createElement('div');
-    line.className = 'tt-svo-line';
-    line.innerHTML = `<span class="tt-note">${escapeHtml(t('error'))}</span>`;
-    els.ttTranslation.appendChild(line);
-    const a = state.tooltipAnchor;
-    if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
-}
-let svoToken = 0;
-async function analyzeSVO(sentence) {
-    // Те саме обмеження, що й у startAiTask: ручне виділення нічим не обмежене
-    // на вході, S-V-O-кнопка доступна і для дуже довгого фрагмента.
-    sentence = (sentence || '').slice(0, AI_PROMPT_TEXT_MAX);
-    const myToken = ++svoToken;
-    const task = beginAsyncTask('svo');
-    // Місцевий розбір без мережі: спрощений, лише S-V-O, без COD/COI й без "note".
-    // Використовується як РЕЗЕРВ — коли немає ключа/мережі, або коли сам запит до
-    // AI не вдався чи повернув щось, що не вдалося застосувати до тексту.
-    const tryLocalFallback = () => {
-        const parts = localSVO(sentence);
-        return !!parts && applySVOParts(parts, true);
-    };
-    if (!aiAvailable() || !navigator.onLine) {
-        if (!tryLocalFallback()) alert(t('needKeySvo'));
-        return;
-    }
-    if (!state.lastSelectedRange) return;
-
-    // Знімаємо зелену підсвітку виділення: разом із кольорами членів речення вона
-    // зливалася й заважала розрізняти підмет, присудок і додаток.
-    if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
-    unwrapSpans(state.selSpans); state.selSpans = [];
-
-    const legend = document.createElement('div');
-    legend.className = 'tt-svo-line';
-    legend.innerHTML = `<span class="tt-note">${t('analysing')}</span>`;
-    els.ttTranslation.appendChild(legend);
-
-    const isFr = detectLang(sentence).startsWith('fr');
-    const prompt = buildSvoPrompt(sentence, isFr);
-
-    try {
-        const answer = await callAI(prompt, task.signal, 'grammar');
-        if (myToken !== svoToken || !task.current()) return;
-        const raw = answer.replace(/```json|```/g, '').trim();
-        let parts = null;
-        try { parts = JSON.parse(raw); } catch (e) { parts = null; }
-        legend.remove();
-        // AI відповів, але або не дав валідний JSON, або жоден фрагмент не
-        // знайшовся дослівно в тексті (перефразував) — це помилка розбору, а не
-        // "немає ключа", тому тут доречний саме резервний МІСЦЕВИЙ розбір, а не
-        // мовчазне зникнення індикатора.
-        if (!applySVOParts(parts) && !tryLocalFallback()) showSvoFailureNote();
-    } catch (e) {
-        if (myToken !== svoToken || !task.current()) return;
-        legend.remove();
-        if (!tryLocalFallback()) showSvoFailureNote();
-    }
-}
-
-// Підсвічує знайдені члени речення й показує легенду. Спільна для розбору через AI
-// (sujet/verbe/cod/coi/note) і для місцевого розбору без мережі (sujet/verbe/objet,
-// старий формат теж підтримується — objet трактується як cod).
-function applySVOParts(parts, approximate) {
-    if (!state.lastSelectedRange || !parts || typeof parts !== 'object') return false;
-    if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
-    unwrapSpans(state.selSpans); state.selSpans = [];
-
-    const flat = flattenRange(state.lastSelectedRange);
-    const found = {};
-    const map = {
-        sujet: 'svo-subject', verbe: 'svo-verb',
-        cod: 'svo-object', coi: 'svo-coi'
-    };
-    const values = {
-        sujet: parts.sujet, verbe: parts.verbe,
-        cod: parts.cod ?? parts.objet,   // старий локальний розбір і, про всяк випадок, старий формат AI
-        coi: parts.coi
-    };
-    for (const [key, hlName] of Object.entries(map)) {
-        const frag = typeof values[key] === 'string' ? values[key].trim() : '';
-        if (!frag) continue;
-        const idx = flat.text.indexOf(frag);
-        if (idx === -1) continue;           // модель перефразувала — пропускаємо
-        const r = rangeForSlice(flat, idx, idx + frag.length);
-        if (!r) continue;
-        try { CSS.highlights.set(hlName, new Highlight(r)); found[key] = frag; } catch (e) {}
-    }
-    const note = typeof parts.note === 'string' ? parts.note.trim() : '';
-    // Нема жодного підсвіченого члена речення І нема пояснення — по суті, розбір
-    // нічого не дав; хай викликач спробує резервний варіант.
-    if (!Object.keys(found).length && !note) return false;
-
-    const line = document.createElement('div');
-    line.className = 'tt-svo-line';
-    line.innerHTML =
-        (found.sujet ? `<span class="svo-key svo-s">${t('svoSubject')}</span>` : '') +
-        (found.verbe ? `<span class="svo-key svo-v">${t('svoVerb')}</span>` : '') +
-        (found.cod ? `<span class="svo-key svo-o">${t('svoObject')}</span>` : '') +
-        (found.coi ? `<span class="svo-key svo-coi">${t('svoCoi')}</span>` : '') +
-        (approximate ? `<span class="tt-note">${t('approx')}</span>` : '') +
-        // Довільний текст від AI — лише як textContent через escapeHtml, ніколи як HTML.
-        (note ? `<span class="tt-svo-note">${escapeHtml(note)}</span>` : '');
-    els.ttTranslation.appendChild(line);
-    const a = state.tooltipAnchor;
-    if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
-    return true;
 }
 
 // ========== ГРАМАТИКА: КОНТЕКСТНИЙ АНАЛІЗ VERBS / ADJECTIVES ==========

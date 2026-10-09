@@ -125,12 +125,12 @@ function cancelAsyncTasks(keys = Array.from(asyncTasks.keys())) {
 function invalidateSelection() {
     cancelDragSelection();
     state.lookupToken++;
-    svoToken++;
-    cancelAsyncTasks(['lookup', 'svo']);
+    structToken++;
+    cancelAsyncTasks(['lookup', 'structure', 'structureDeep']);
     cancelTooltipHide();
     els.tooltip.style.display = 'none';
     clearSelectionHighlight();
-    state.lastSelectedRange = null;
+    state.lastSelectedRange = null; state.ctxSentenceRange = null;
     state.lastTapPoint = null; state.lastWordNode = null; state.ctxSentence = '';
 }
 function showReaderError(err) {
@@ -700,7 +700,7 @@ const els = {
     toc: document.getElementById('toc-list'), progress: document.getElementById('progress-indicator'),
     tooltip: document.getElementById('word-tooltip'), ttOriginal: document.getElementById('tt-original'),
     ttReplayBtn: document.getElementById('tt-replay-btn'), ttExpandBtn: document.getElementById('tt-expand-btn'), ttTranslation: document.getElementById('tt-translation'),
-    ttSpeakTranslation: document.getElementById('tt-speak-translation'), ttSvoBtn: document.getElementById('tt-svo-btn'),
+    ttSpeakTranslation: document.getElementById('tt-speak-translation'), ttStructBtn: document.getElementById('tt-struct-btn'), ttStructHost: document.getElementById('tt-struct-host'),
     ttAiBtn: document.getElementById('tt-ai-btn'), ttAskBtn: document.getElementById('tt-ask-btn'),
     ttCloseBtn: document.getElementById('tt-close-btn'),
     mainArea: document.getElementById('main-area'), translateBtn: document.getElementById('btn-translate-mode'),
@@ -956,7 +956,7 @@ const I18N = {
     tTargetLang:    { uk: 'Мова перекладу', en: 'Translation language', fr: 'Langue de traduction', ru: 'Язык перевода' },
     tUiLang:        { uk: 'Мова інтерфейсу', en: 'Interface language', fr: "Langue de l'interface", ru: 'Язык интерфейса' },
     tExpand:        { uk: 'Розширити: до кінця речення → усе речення → абзац', en: 'Expand: to end of sentence → whole sentence → paragraph', fr: "Étendre : jusqu'à la fin de la phrase → phrase entière → paragraphe", ru: 'Расширить: до конца предложения → всё предложение → абзац' },
-    tSvo:           { uk: 'Показати підмет, присудок і додаток', en: 'Show subject, verb and object', fr: 'Afficher sujet, verbe et complément', ru: 'Показать подлежащее, сказуемое и дополнение' },
+    tStruct:        { uk: 'Розбір речення: частини речення кольорами в тексті', en: 'Sentence breakdown: colour the parts in the text', fr: 'Analyse de la phrase : parties en couleur dans le texte', ru: 'Разбор предложения: части цветом в тексте' },
     tSpeakTr:       { uk: 'Озвучити переклад', en: 'Speak the translation', fr: 'Lire la traduction', ru: 'Озвучить перевод' },
     tSpeakOrig:     { uk: 'Озвучити оригінал', en: 'Speak the original', fr: "Lire l'original", ru: 'Озвучить оригинал' },
     tAskPanel:      { uk: 'AI Помічник',    en: 'AI assistant',   fr: 'Assistant IA',   ru: 'AI Помощник' },
@@ -1008,13 +1008,13 @@ const I18N = {
                       fr: "Impossible de joindre le serveur IA. Causes fréquentes : fichier ouvert depuis le disque (file://), pas d'internet, ou une extension bloque la requête.",
                       ru: 'Не удалось соединиться с сервером AI. Частые причины: файл открыт с диска (file://), нет интернета, или запрос блокирует расширение браузера.' },
     needKey:        { uk: 'Введіть ключ AI у налаштуваннях!', en: 'Enter the AI key in settings!', fr: 'Saisissez la clé IA dans les réglages !', ru: 'Введите ключ AI в настройках!' },
-    needKeySvo:     { uk: 'Для розбору речення потрібен ключ AI.', en: 'Sentence analysis needs the AI key.', fr: "L'analyse de la phrase nécessite la clé IA.", ru: 'Для разбора предложения нужен ключ AI.' },
+    needKeyStruct:  { uk: 'Для розбору речення потрібен ключ AI.', en: 'Sentence analysis needs the AI key.', fr: "L'analyse de la phrase nécessite la clé AI.", ru: 'Для разбора предложения нужен ключ AI.' },
+    structTooLong:  { uk: 'Виберіть коротше речення для розбору (до 400 символів).', en: 'Select a shorter sentence to break down (up to 400 characters).', fr: 'Sélectionnez une phrase plus courte (400 caractères max).', ru: 'Выберите предложение покороче (до 400 символов).' },
+    structUnsupported: { uk: 'Розбір поки недоступний для цієї мови.', en: 'Breakdown is not available for this language yet.', fr: "L'analyse n'est pas encore disponible pour cette langue.", ru: 'Разбор пока недоступен для этого языка.' },
+    structDeepHint: { uk: 'Натисніть частину для глибокого розбору', en: 'Tap a part for a deeper breakdown', fr: 'Touchez une partie pour une analyse plus poussée', ru: 'Нажмите на часть для глубокого разбора' },
+    structDeepTitle: { uk: 'Глибокий розбір', en: 'Deep breakdown', fr: 'Analyse approfondie', ru: 'Глубокий разбор' },
     analysing:      { uk: 'Розбираю речення…', en: 'Analysing the sentence…', fr: 'Analyse de la phrase…', ru: 'Разбираю предложение…' },
     approx:         { uk: '(приблизно, без мережі)', en: '(approximate, offline)', fr: '(approximatif, hors ligne)', ru: '(приблизительно, офлайн)' },
-    svoSubject:     { uk: 'підмет',         en: 'subject',        fr: 'sujet',          ru: 'подлежащее' },
-    svoVerb:        { uk: 'присудок',       en: 'verb',           fr: 'verbe',          ru: 'сказуемое' },
-    svoObject:      { uk: 'додаток (COD)',  en: 'object',         fr: 'COD',            ru: 'дополнение (COD)' },
-    svoCoi:         { uk: 'непрямий додаток (COI)', en: 'indirect object', fr: 'COI',    ru: 'косвенное дополнение (COI)' },
     more:           { uk: 'ще',             en: 'more',           fr: 'aussi',          ru: 'ещё' },
     alreadyIn:      { uk: 'текст уже',      en: 'text is already in', fr: 'texte déjà en', ru: 'текст уже' },
     synthUnavailable: { uk: 'Озвучення недоступне', en: 'Speech Synthesis unavailable', fr: 'Synthèse vocale indisponible', ru: 'Синтез речи недоступен' },
@@ -1089,6 +1089,17 @@ const I18N = {
     structKind_duration: { uk: 'тривалість', en: 'duration', fr: 'durée', ru: 'длительность' },
     structKind_frequency: { uk: 'частота', en: 'frequency', fr: 'fréquence', ru: 'частота' },
     structKind_sequence: { uk: 'послідовність', en: 'sequence', fr: 'succession', ru: 'последовательность' },
+    structSub_noun: { uk: 'іменник', en: 'noun', fr: 'nom', ru: 'существительное' },
+    structSub_pronoun: { uk: 'займенник', en: 'pronoun', fr: 'pronom', ru: 'местоимение' },
+    structSub_determiner: { uk: 'артикль / означник', en: 'determiner', fr: 'déterminant', ru: 'артикль / определитель' },
+    structSub_adjective: { uk: 'прикметник', en: 'adjective', fr: 'adjectif', ru: 'прилагательное' },
+    structSub_verb: { uk: 'дієслово', en: 'verb', fr: 'verbe', ru: 'глагол' },
+    structSub_auxiliary: { uk: 'допоміжне дієслово', en: 'auxiliary', fr: 'auxiliaire', ru: 'вспомогательный глагол' },
+    structSub_adverb: { uk: 'прислівник', en: 'adverb', fr: 'adverbe', ru: 'наречие' },
+    structSub_preposition: { uk: 'прийменник', en: 'preposition', fr: 'préposition', ru: 'предлог' },
+    structSub_conjunction: { uk: 'сполучник', en: 'conjunction', fr: 'conjonction', ru: 'союз' },
+    structSub_negation: { uk: 'заперечення', en: 'negation', fr: 'négation', ru: 'отрицание' },
+    structSub_other: { uk: 'інше', en: 'other', fr: 'autre', ru: 'другое' },
     grammarWhy:              { uk: 'Чому', en: 'Why', fr: 'Pourquoi', ru: 'Почему' },
     grammarAgreesWith:       { uk: 'Узгоджується з', en: 'Agrees with', fr: 'Accord avec', ru: 'Согласуется с' },
     grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },

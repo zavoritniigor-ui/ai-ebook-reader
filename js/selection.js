@@ -844,11 +844,11 @@ function showSelectionHighlight(range) {
 // Знімає підсвітку виділеного фрагмента (при закритті вікна перекладу).
 function clearSelectionHighlight() {
     clearAlignment();
-    svoToken++; cancelAsyncTasks(['svo']);
+    structToken++; cancelAsyncTasks(['structure', 'structureDeep']);
     if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
     unwrapSpans(state.selSpans);
     state.selSpans = [];
-    clearSvoHighlights();
+    clearStructureHighlights();
     state.lastSelectionText = null;
     state.activeSelectionAnchor = null;
     state.canonicalSelection = null;
@@ -1454,6 +1454,7 @@ els.mainArea.addEventListener('click', (e) => {
             // Новий тап скидає підсвітку попереднього фрагмента.
             clearSelectionHighlight();
             state.lastSelectedRange = null;
+            state.ctxSentenceRange = null;
             state.lastTapPoint = { x: e.clientX, y: e.clientY };
             state.expandLevel = 0;
 
@@ -1464,11 +1465,12 @@ els.mainArea.addEventListener('click', (e) => {
             try {
                 const sr = sentenceRangeAt(e.clientX, e.clientY);
                 state.ctxSentence = sr ? sr.toString().trim().slice(0, 400) : '';
+                state.ctxSentenceRange = sr ? sr.cloneRange() : null;   // для розбору речення прямо в тексті (js/sentence-structure.js)
                 if (state.ctxSentence && detectLang(state.ctxSentence).startsWith('en')) {
                     const phrasal = detectPhrasalVerb(word, state.ctxSentence);
                     if (phrasal) lookup = phrasal;
                 }
-            } catch (err) { state.ctxSentence = ''; }
+            } catch (err) { state.ctxSentence = ''; state.ctxSentenceRange = null; }
             let rect = null;
             try { if (state.lastWordNode && state.lastWordNode.getBoundingClientRect) rect = state.lastWordNode.getBoundingClientRect(); } catch (err) {}
             handleWordOrSelection(lookup, e.clientX, e.clientY, rect, helpContext, 'word_tap');

@@ -566,9 +566,9 @@
         .tt-replay-btn:hover { background: rgba(255,255,255,0.14); }
         /* Кнопка виділення речення — помітніша за динамік, щоб її не плутали з оформленням */
         #tt-expand-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(16,163,127,0.16); border-color: transparent; color: #3ddba8; white-space: nowrap; flex-shrink: 0; }
-        #tt-svo-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(255,193,7,0.16); border-color: transparent; color: #ffc107; white-space: nowrap; flex-shrink: 0; }
+        #tt-struct-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(255,193,7,0.16); border-color: transparent; color: #ffc107; white-space: nowrap; flex-shrink: 0; }
         #tt-expand-btn:hover { background: rgba(16,163,127,0.28); }
-        #tt-svo-btn:hover { background: rgba(255,193,7,0.28); }
+        #tt-struct-btn:hover { background: rgba(255,193,7,0.28); }
         @keyframes tt-ticker {
             0%, 15% { transform: translateX(0); }
             85%, 100% { transform: translateX(calc(-100% + var(--ticker-container-w, 140px))); }
@@ -583,19 +583,39 @@
             .tt-original.speaking-ticker { animation: none !important; }
         }
         /* Члени речення прямо в тексті: підмет / присудок / додаток */
-        ::highlight(svo-subject) { background-color: rgba(13, 110, 253, 0.40); }
-        ::highlight(svo-verb)    { background-color: rgba(255, 193, 7, 0.48); }
-        ::highlight(svo-object)  { background-color: rgba(214, 51, 132, 0.38); }
-        ::highlight(svo-coi)     { background-color: rgba(111, 66, 193, 0.40); }
-        .tt-svo-line { margin-top: 9px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.16); display: flex; gap: 8px; flex-wrap: wrap; font-weight: normal; }
-        .svo-key { font-size: 11px; padding: 2px 8px; border-radius: 10px; color: #fff; }
-        .svo-s { background: rgba(13, 110, 253, 0.75); }
-        .svo-v { background: rgba(255, 193, 7, 0.8); color: #212529; }
-        .svo-o { background: rgba(214, 51, 132, 0.75); }
-        .svo-coi { background: rgba(111, 66, 193, 0.8); }
+        ::highlight(struct-subject) { background-color: rgba(59,130,196, 0.40); }
+        ::highlight(struct-verb) { background-color: rgba(217,83,79, 0.40); }
+        ::highlight(struct-object) { background-color: rgba(47,158,110, 0.40); }
+        ::highlight(struct-indirect) { background-color: rgba(124,92,191, 0.40); }
+        ::highlight(struct-complement) { background-color: rgba(194,138,26, 0.40); }
+        ::highlight(struct-time) { background-color: rgba(217,130,43, 0.40); }
+        ::highlight(struct-place) { background-color: rgba(42,155,176, 0.40); }
+        ::highlight(struct-manner) { background-color: rgba(138,109,59, 0.40); }
+        ::highlight(struct-reason) { background-color: rgba(176,74,143, 0.40); }
+        ::highlight(struct-connector) { background-color: rgba(107,114,128, 0.40); }
+        .struct-key { font-size: 11.5px; padding: 3px 9px; min-height: 28px; border-radius: 12px; color: #fff; border: 1px solid transparent; cursor: pointer; background: color-mix(in srgb, var(--role) 78%, #000); text-align: left; }
+        .struct-key.active { outline: 2px solid #fff; outline-offset: 1px; }
+        .struct-deep { flex-basis: 100%; margin-top: 6px; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.07); font-weight: normal; font-size: 12.5px; line-height: 1.5; }
+        .struct-deep .structure-legend { margin: 6px 0; }
+        .struct-deep-head { margin: 0; }
+        .struct-sub { padding: 0 3px; border-radius: 4px; border-bottom: 2px solid var(--sub); background: color-mix(in srgb, var(--sub) 22%, transparent); }
+        .structure-chip.struct-sub { border: 1px solid var(--sub); }
+        .struct-sub-noun { --sub: #3b82c4; }
+        .struct-sub-pronoun { --sub: #7c5cbf; }
+        .struct-sub-determiner { --sub: #6b7280; }
+        .struct-sub-adjective { --sub: #c28a1a; }
+        .struct-sub-verb { --sub: #d9534f; }
+        .struct-sub-auxiliary { --sub: #e0813a; }
+        .struct-sub-adverb { --sub: #2a9bb0; }
+        .struct-sub-preposition { --sub: #8a6d3b; }
+        .struct-sub-conjunction { --sub: #b04a8f; }
+        .struct-sub-negation { --sub: #c0392b; }
+        .struct-sub-other { --sub: #888; }
+        .tt-struct-host:empty { display: none; }
+        .tt-struct-line { margin-top: 9px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.16); display: flex; gap: 8px; flex-wrap: wrap; font-weight: normal; }
         /* Коротке пояснення (заперечення/пасив/питання/відсутність додатка тощо) —
            окремим рядком під кольоровими бейджами членів речення. */
-        .tt-svo-note { flex-basis: 100%; margin-top: 4px; font-size: 12.5px; color: #c3c8cf; font-weight: normal; }
+        .tt-struct-note { flex-basis: 100%; margin-top: 4px; font-size: 12.5px; color: #c3c8cf; font-weight: normal; }
         /* Зв'язний переклад — окремим рядком під дослівним, а не замість нього */
         .tt-ai-line { margin-top: 9px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.16); font-weight: normal; }
         .tt-ai-label { display: block; font-size: 11px; color: #0dcaf0; letter-spacing: .3px; margin-bottom: 2px; }
@@ -623,8 +643,8 @@
         #tt-speak-translation { align-self: flex-start; margin-top: 2px; }
         /* Активний динамік — той, що озвучувався останнім; саме він відповідає за повтор */
         .tt-replay-btn.speak-active { border-color: #10a37f; color: #3ddba8; background: rgba(16,163,127,0.18); }
-        .tt-replay-btn:active, #tt-expand-btn:active, #tt-svo-btn:active { transform: scale(0.94); }
-        .tt-replay-btn, #tt-expand-btn, #tt-svo-btn { -webkit-tap-highlight-color: transparent; transition: background-color .15s, border-color .15s, transform .1s; }
+        .tt-replay-btn:active, #tt-expand-btn:active, #tt-struct-btn:active { transform: scale(0.94); }
+        .tt-replay-btn, #tt-expand-btn, #tt-struct-btn { -webkit-tap-highlight-color: transparent; transition: background-color .15s, border-color .15s, transform .1s; }
         /* Active speaker: not colour alone -- double ring + filled background (the glyph itself becomes a stop square while speaking). */
         .tt-replay-btn.speak-active { box-shadow: inset 0 0 0 1px #10a37f; }
         /* Touch screens: 44px hit areas around compact 30px controls, readable label sizes. The header stays ONE row: a taller popup would cover
@@ -632,9 +652,9 @@
         @media (pointer: coarse) {
             .tt-header-tools { gap: 8px; }
             .tt-replay-btn { width: 30px; height: 30px; font-size: 14px; position: relative; }
-            #tt-expand-btn, #tt-svo-btn { height: 30px; padding: 0 8px; font-size: 12.5px; border-radius: 15px; position: relative; }
+            #tt-expand-btn, #tt-struct-btn { height: 30px; padding: 0 8px; font-size: 12.5px; border-radius: 15px; position: relative; }
             /* Invisible margin brings every control to a 44px hit area; the 8px visual gap means neighbours only share the gap itself. */
-            .tt-replay-btn::after, #tt-expand-btn::after, #tt-svo-btn::after { content: ''; position: absolute; inset: -8px; }
+            .tt-replay-btn::after, #tt-expand-btn::after, #tt-struct-btn::after { content: ''; position: absolute; inset: -8px; }
             /* This one sits at the clipped edge of the translation row, so an invisible margin would be cut off: make the control itself 44px. */
             #tt-speak-translation { width: 44px; height: 44px; font-size: 17px; }
             #tt-speak-translation::after { content: none; }
@@ -1185,7 +1205,7 @@
                         <div class="tt-header-tools">
                             <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig" data-i18n-aria="tSpeakOrig" aria-pressed="false">🔊</button>
                             <button class="tt-replay-btn" id="tt-expand-btn" data-i18n-title="tExpand" data-i18n="btnSentence">речення ⤢</button>
-                            <button class="tt-replay-btn" id="tt-svo-btn" data-i18n-title="tSvo">S-V-O</button>
+                            <button class="tt-replay-btn" id="tt-struct-btn" data-i18n-title="tStruct" data-i18n-aria="tStruct" aria-label="Sentence structure">🧩</button>
                             <button class="tt-replay-btn" id="tt-close-btn" data-i18n-title="tClose" data-i18n-aria="tClose" aria-label="Close">✕</button>
                         </div>
                     </div>
@@ -1196,6 +1216,7 @@
                 </div>
                 <div class="tt-translation-row">
                     <div class="tt-translation" id="tt-translation" aria-live="polite" data-i18n="translating">Переклад...</div>
+                    <div id="tt-struct-host" class="tt-struct-host"></div>
                     <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr" data-i18n-aria="tSpeakTr" aria-pressed="false">🔊</button>
                 </div>
             </div>
@@ -1338,7 +1359,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=0b2b32db470f"></script>
+    <script src="js/core.js?v=d7796ca97f53"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1349,15 +1370,15 @@
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
     <script src="js/tts.js?v=4ebdfe8af2bb"></script>
-    <script src="js/selection.js?v=d6ecc9f25df0"></script>
+    <script src="js/selection.js?v=d64ab9f20f62"></script>
     <script src="js/learning-stats.js?v=e901c3020682"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=c0f9f96e0b03"></script>
-    <script src="js/translation.js?v=b5fbd84d5744"></script>
-    <script src="js/sentence-structure.js?v=872691ae555a"></script>
-    <script src="js/grammar-svo.js?v=1c6b1a32bf55"></script>
-    <script src="js/ai-client.js?v=7d739b6d153d"></script>
+    <script src="js/translation.js?v=2b0bc7d2e08d"></script>
+    <script src="js/sentence-structure.js?v=fb79118364c5"></script>
+    <script src="js/grammar-svo.js?v=1797abecceb0"></script>
+    <script src="js/ai-client.js?v=67c804b6ef09"></script>
     <script src="js/practice-session.js?v=e584d692920a"></script>
     <script src="js/practice-worksheet.js?v=bc7095815ebc"></script>
     <script src="js/dictation.js?v=6cf6ee491dd8"></script>

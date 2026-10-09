@@ -125,7 +125,7 @@ for lang, text in test_cases:
         const aiBtn = document.getElementById('tt-ai-btn');
         const replayBtn = document.getElementById('tt-replay-btn');
         const expandBtn = document.getElementById('tt-expand-btn');
-        const svoBtn = document.getElementById('tt-svo-btn');
+        const svoBtn = document.getElementById('tt-struct-btn');
         const actions = document.querySelector('.tt-actions');
         const origRow = document.querySelector('.tt-original-row');
         return {

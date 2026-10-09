@@ -14,7 +14,6 @@ const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 // Task-specific OpenAI profiles: optimize reasoning effort, max_output_tokens, and streaming per workload
 const OPENAI_TASK_PROFILES = {
     translation: { reasoning: 'none', max_output_tokens: 128, stream: false },
-    grammar: { reasoning: 'none', max_output_tokens: 700, stream: false }, // inline S-V-O tooltip analysis (js/grammar-svo.js:analyzeSVO)
     ask: { reasoning: 'low', max_output_tokens: 1200, stream: true },
     // Redesigned Grammar panel (Verbs/Adjectives): one structured multi-item JSON
     // analysis, plus a small targeted per-lemma conjugation/agreement lookup.
@@ -23,6 +22,7 @@ const OPENAI_TASK_PROFILES = {
     grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
     // Sentence structure (js/sentence-structure.js): functional parts + time markers of ONE sentence.
     sentence_structure: { reasoning: 'none', max_output_tokens: 1400, stream: false },
+    structure_deep: { reasoning: 'none', max_output_tokens: 900, stream: false },
     // Practice reading: per-word example sentences + connected paragraphs, each with its own
     // annotated targets — several minutes of material, so by far the largest structured reply.
     practice_reading: { reasoning: 'low', max_output_tokens: 8000, stream: false },

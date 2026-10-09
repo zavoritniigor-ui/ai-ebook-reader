@@ -2,7 +2,7 @@
  * вирівнювання оригінал↔переклад (exactSpan/validateAlignment/installAlignment/
  * flashAlignment/alignmentSourceAt через CSS Custom Highlight API), головний
  * обробник тапу/виділення (handleWordOrSelection — дістає й показує переклад,
- * а також підключає кнопки підказки: озвучення, SVO, AI/Ask, розгортання —
+ * а також підключає кнопки підказки: озвучення, розбір речення, AI/Ask, розгортання —
  * самі ці функції лишаються в інших модулях, викликаються лише з onclick, тобто
  * відкладено, а не одразу під час завантаження), mainTranslationText/
  * buildTranslationExtras, локальний перекладач Chrome (Translator API, офлайн),
@@ -14,7 +14,7 @@
  * selectRangeAndTranslate/wordToSentenceEndRangeAt/showSelectionHighlight (уже
  * визначені раніше) та від js/tts.js (speakText/speakInLang/setSpeakSide/
  * stopTooltipSpeech, теж уже завантажені). aiTranslateText/machineTranslate
- * (js/ai-client.js) та startAiTask/analyzeSVO (поки що в index.html, Крок 8) —
+ * (js/ai-client.js) та startAiTask/analyzeSentenceInText (поки що в index.html, Крок 8) —
  * форвард-виклики лише всередині callback'ів/async-функцій, це безпечно, бо
  * викликаються не одразу — той самий механізм, що вже описаний у
  * js/pdf-render.js для pdfAnchor. selection.js, зі свого боку, так само
@@ -150,7 +150,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     }
     if (helpContext) lastReaderHelpContext = helpContext;
     const task = beginAsyncTask('lookup');
-    svoToken++; cancelAsyncTasks(['svo']);
+    structToken++; cancelAsyncTasks(['structure', 'structureDeep']);
     const contextSentence = state.ctxSentence;
     const targetLang = state.targetLang;
     // Контекст для кнопок "AI"/"Ask" беремо ОДРАЗУ тут, поки clientX/clientY ще
@@ -213,12 +213,12 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // Кнопка потрібна лише для довгих фрагментів: окреме слово нема куди "зв'язувати",
     // а токени витрачались би ті самі. Для слів працює словникова стаття.
     // Розбір на члени речення — теж лише для фрагмента з кількох слів.
-    els.ttSvoBtn.style.display = '';
-    els.ttSvoBtn.onclick = (e) => {
+    els.ttStructBtn.style.display = '';
+    els.ttStructBtn.onclick = (e) => {
         e.stopPropagation();
         cancelTooltipHide();
         if (helpContext) recordHelpForSpan(helpContext, 'grammar');
-        analyzeSVO(state.ctxSentence || cleanText);
+        analyzeSentenceInText(state.ctxSentence || cleanText);
     };
     // Динамік перекладу: озвучує переклад ОБРАНОЮ мовою і робить його активною стороною.
     els.ttSpeakTranslation.onclick = (e) => {

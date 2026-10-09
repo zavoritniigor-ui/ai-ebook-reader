@@ -36,7 +36,7 @@ def load(width, height, touch):
     c.wait("els.tooltip.style.display === 'flex' && els.ttTranslation.textContent.includes('Kitty')", timeout=10)
 
 
-BUTTONS = "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn, els.ttAskBtn, els.ttAiBtn, els.ttSpeakTranslation]"
+BUTTONS = "[els.ttReplayBtn, els.ttExpandBtn, els.ttStructBtn, els.ttCloseBtn, els.ttAskBtn, els.ttAiBtn, els.ttSpeakTranslation]"
 HIT = """((b) => { const r = b.getBoundingClientRect(); const pad = %d; const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
   // above/below the control (vertical reach); sideways reach is shared with the neighbour inside the 8px gap, so it is checked on the outer edge only
   const pts = [[cx, r.top - pad + 1], [cx, r.bottom + pad - 1]];
@@ -45,17 +45,17 @@ HIT = """((b) => { const r = b.getBoundingClientRect(); const pad = %d; const cx
 # ---- desktop, mouse: unchanged compact sizes -------------------------------------------------------------------
 load(1280, 800, False)
 check('mouse: pointer is not coarse', "!matchMedia('(pointer: coarse)').matches")
-check('mouse: compact 26px header buttons are unchanged', "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn].every(b => Math.round(b.getBoundingClientRect().height) === 26)")
+check('mouse: compact 26px header buttons are unchanged', "[els.ttReplayBtn, els.ttExpandBtn, els.ttStructBtn, els.ttCloseBtn].every(b => Math.round(b.getBoundingClientRect().height) === 26)")
 
 # ---- phone, portrait, touch ------------------------------------------------------------------------------------
 load(360, 740, True)
 check('touch: pointer is coarse', "matchMedia('(pointer: coarse)').matches")
 check('touch: compact header buttons keep a 44px hit area',
-      "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn].every(b => b.getBoundingClientRect().height >= 29.5 && %s(b))" % (HIT % 5))
+      "[els.ttReplayBtn, els.ttExpandBtn, els.ttStructBtn, els.ttCloseBtn].every(b => b.getBoundingClientRect().height >= 29.5 && %s(b))" % (HIT % 5))
 check('touch: the translation speaker is a 44px control', "(() => { const r = els.ttSpeakTranslation.getBoundingClientRect(); return r.width >= 43.5 && r.height >= 43.5; })()")
 check('touch: the two main actions are at least 44px tall', "[els.ttAskBtn, els.ttAiBtn].every(b => b.getBoundingClientRect().height >= 43.5)")
 check('touch: header buttons do not overlap each other',
-      """(() => { const bs = [els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn].map(b => b.getBoundingClientRect());
+      """(() => { const bs = [els.ttReplayBtn, els.ttExpandBtn, els.ttStructBtn, els.ttCloseBtn].map(b => b.getBoundingClientRect());
       for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) { const a = bs[i], b = bs[j];
         if (a.left < b.right + 7 && b.left < a.right + 7 && a.top < b.bottom && b.top < a.bottom) return false; } return true; })()""")
 check('touch: every button is inside the popup',
@@ -74,7 +74,7 @@ check('a11y: the translation is an aria-live region', "els.ttTranslation.getAttr
 
 # ---- tablet, landscape, touch ----------------------------------------------------------------------------------
 load(1024, 700, True)
-check('tablet: buttons keep 44px hit areas', "[els.ttReplayBtn, els.ttExpandBtn, els.ttSvoBtn, els.ttCloseBtn].every(b => %s(b))" % (HIT % 5))
+check('tablet: buttons keep 44px hit areas', "[els.ttReplayBtn, els.ttExpandBtn, els.ttStructBtn, els.ttCloseBtn].every(b => %s(b))" % (HIT % 5))
 check('tablet: every button is inside the popup',
       """(() => { const tr = els.tooltip.getBoundingClientRect(); return %s.every(b => { const r = b.getBoundingClientRect();
         return r.width > 0 && r.left >= tr.left - 1 && r.right <= tr.right + 1 && r.top >= tr.top - 1 && r.bottom <= tr.bottom + 1; }); })()""" % BUTTONS)
