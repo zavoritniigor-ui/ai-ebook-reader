@@ -24,6 +24,9 @@ const OPENAI_TASK_PROFILES = {
     // Grammar rules panel (js/grammar-rules.js): find a rule's occurrences in the visible page text; explain one by theory.
     rules_search: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     rules_explain: { reasoning: 'low', max_output_tokens: 900, stream: false },
+    // Sentence breakdown painted in the text (js/sentence-structure.js): parts of ONE sentence, then one part in depth.
+    sentence_structure: { reasoning: 'none', max_output_tokens: 1400, stream: false },
+    structure_deep: { reasoning: 'none', max_output_tokens: 900, stream: false },
     // Practice reading: per-word example sentences + connected paragraphs, each with its own
     // annotated targets — several minutes of material, so by far the largest structured reply.
     practice_reading: { reasoning: 'low', max_output_tokens: 8000, stream: false },

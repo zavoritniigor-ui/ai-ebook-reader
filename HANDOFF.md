@@ -1,6 +1,9 @@
 ## Grammar rules panel — French catalogue (phase 1) (2026-10-09, Claude)
 
 Branch `feat/grammar-rules` from main. New `js/grammar-rules-data-fr.js` (56 topics) + `js/grammar-rules.js` + panel `#rules-panel` + header button. Phase 2 (next PR): English catalogue `grammar-rules-data-en.js` (the panel already has the language select and shows a "coming" note for EN). Known limits: only the visible text (≤3000 chars) is searched; the theory is mine and has not been reviewed by a French teacher; real model precision is untested (gold mocks only); the header button was added to the existing group without a layout pass on tablet.
+## Tooltip sentence breakdown button (2026-10-09, Claude)
+
+PR #156 (Grammar + Practice breakdown, S-V-O removal) was CLOSED unmerged at the user's request; its code stays on branch `feat/sentence-structure`. New smaller branch `feat/tooltip-struct-button` from main: "🧩 Розбір" button in the tooltip action row paints the sentence parts in the text + deep breakdown per part (see ARCHITECTURE.md `sentence-structure.js`). S-V-O is untouched. Not verified with a real AI or a real phone.
 
 ## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
 
