@@ -68,6 +68,12 @@ check("1b the validation gate drops invented / overlapping / unknown-role parts 
       """(() => { const r = normalizeSentenceStructure(JSON.stringify({language:'fr', parts:[{text:'hier',role:'time',kind:'past'},{text:'Marie',role:'subject'},{text:'Pierre',role:'subject'},{text:'Marie a',role:'verb'},{text:'x',role:'wizard'}]}), 'fr', 'Hier, Marie a mangé.');
          return r.ok && r.parts.map(p => p.text).join('|') === 'Hier|Marie' && r.markers.length === 1 && r.rejected.length === 3; })()""")
 
+check("1d every UI language has its OWN text for every breakdown string (no silent English fallback) and the button follows the menu language",
+      """(() => { const keys = Object.keys(I18N).filter(k => /^(struct|btnStruct|tStruct|needKeyStruct)/.test(k)); const langs = ['uk','en','fr','ru','zh','ko','hi','ga'];
+         const missing = []; for (const k of keys) for (const l of langs) if (l !== 'en' && I18N[k][l] === I18N[k].en && !['structRole_object'].includes(k)) missing.push(k + ':' + l);
+         const saved = state.uiLang; const labels = langs.map(l => { state.uiLang = l; applyI18n(); return els.ttStructBtn.textContent; }); state.uiLang = saved; applyI18n();
+         return keys.length >= 35 && missing.length === 0 && new Set(labels).size === langs.length || JSON.stringify({missing, labels}); })()""")
+
 pos = c.js(r"""(()=>{ const w='mangé'; const walker=document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT); let n;
   while((n=walker.nextNode())){ const i=n.nodeValue.indexOf(w); if(i!==-1){ const r=document.createRange(); r.setStart(n,i); r.setEnd(n,i+w.length); const b=r.getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2}; } } return null; })()""")
 click_xy(pos['x'], pos['y'])
