@@ -739,6 +739,12 @@
         }
         #grammar-tab { left: -42px; border-radius: 42px 0 0 42px; }
         #ask-tab { right: -42px; border-radius: 0 42px 42px 0; }
+        /* The handles stay quiet but must say what they open: AI + voice on the left, grammar on the right.
+           The icons are decorative (the buttons carry aria-labels). */
+        .panel-tab { display: flex; align-items: center; justify-content: center; text-align: center; white-space: pre; font-size: 17px; line-height: 1.7; background: rgba(128,128,128,0.16); }
+        .panel-tab::before { opacity: .8; }
+        #ask-tab::before { content: '🤖\A🎤'; }
+        #grammar-tab::before { content: '✨'; }
 
         /* Статус запиту — єдине, що робить ручку помітною: ледь відчутний перехід у червоний
            (іде запит) або зелений (відповідь готова), і нічого більше. */
@@ -1134,7 +1140,7 @@
                     <option value="ga">Gaeilge</option>
                 </select>
                 <div class="reading-stats-control">
-                    <button type="button" class="icon-btn" id="reading-stats-button" aria-expanded="false" aria-controls="reading-stats-popover"><span id="reading-stats-value">0%</span></button>
+                    <button type="button" class="icon-btn" id="reading-stats-button" data-i18n-title="statsTitle" aria-expanded="false" aria-controls="reading-stats-popover"><span id="reading-stats-value">0%</span></button>
                     <section id="reading-stats-popover" role="dialog" aria-labelledby="reading-stats-heading" hidden>
                         <h3 class="stats-heading" id="reading-stats-heading" data-i18n="statsTitle">Розуміння прочитаного</h3>
                         <div class="stats-overview">
@@ -1157,10 +1163,10 @@
             </div>
             <!-- ANNOTATION / DISPLAY / SETTINGS -->
             <div class="toolbar-group">
-                <button class="icon-btn compact" id="btn-ink" data-i18n-title="btnInk">✏️</button>
-                <button class="icon-btn compact" id="btn-region" data-i18n-title="btnRegion">✂️</button>
-                <button class="icon-btn compact" id="zoom-out" data-i18n-title="tZoomOut">A-</button>
-                <button class="icon-btn compact" id="zoom-in" data-i18n-title="tZoomIn">A+</button>
+                <button class="icon-btn compact" id="btn-ink" data-i18n-title="btnInk" data-i18n-aria="btnInk">✏️</button>
+                <button class="icon-btn compact" id="btn-region" data-i18n-title="btnRegion" data-i18n-aria="btnRegion">✂️</button>
+                <button class="icon-btn compact" id="zoom-out" data-i18n-title="tZoomOut" data-i18n-aria="tZoomOut">A-</button>
+                <button class="icon-btn compact" id="zoom-in" data-i18n-title="tZoomIn" data-i18n-aria="tZoomIn">A+</button>
                 <select id="pdf-fit" aria-label="Масштаб PDF"><option value="width">Fit width</option><option value="page">Fit page</option><option value="free">Free zoom</option></select>
                 <select id="theme-select" data-i18n-title="tTheme">
                     <option value="light" data-i18n="themeLight">Світла</option>
@@ -1177,7 +1183,7 @@
                     <option value="hi">हिन्दी</option>
                     <option value="ga">Gaeilge</option>
                 </select>
-                <button class="icon-btn compact" onclick="openKeySettings()" data-i18n-title="tAiKey">🔑</button>
+                <button class="icon-btn compact" onclick="openKeySettings()" data-i18n-title="tAiKey" data-i18n-aria="tAiKey">🔑</button>
                 <!-- Показується лише у встановленому standalone-PWA (вмикається з JS) —
                      у звичайній вкладці браузера ця кнопка не потрібна. -->
                 <button class="icon-btn compact" id="btn-exit-app" style="display:none;" onclick="exitApp()" data-i18n-title="tExitApp">🚪</button>
