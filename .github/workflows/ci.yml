@@ -224,6 +224,9 @@ jobs:
           echo "Running local_translator_warmup_browser.py..."
           python3 -u tests/local_translator_warmup_browser.py
 
+          echo "Running grammar_rules_browser.py..."
+          python3 -u tests/grammar_rules_browser.py
+
           echo "Running tts_double_voice_browser.py..."
           python3 -u tests/tts_double_voice_browser.py
 

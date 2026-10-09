@@ -164,6 +164,7 @@ const OVERLAY_LAYERS = [
     { name: 'ink', test: () => document.body.classList.contains('ink-mode') },
     { name: 'tooltip', test: () => els.tooltip.style.display === 'flex' },
     { name: 'ask', test: () => els.askPanel.classList.contains('expanded') },
+    { name: 'rules', test: () => document.getElementById('rules-panel').classList.contains('expanded') },
     { name: 'grammar', test: () => els.grammarPanel.classList.contains('expanded') },
     { name: 'nav', test: () => !els.sidebar.classList.contains('collapsed') }
 ];
@@ -178,6 +179,7 @@ function closeTopOverlay(name) {
         case 'ink': state.inkMode = false; document.body.classList.remove('ink-mode'); break;
         case 'tooltip': cancelTooltipHide(); els.tooltip.style.display = 'none'; break;
         case 'ask': els.askPanel.classList.remove('expanded'); break;
+        case 'rules': document.getElementById('rules-panel').classList.remove('expanded'); break;
         case 'grammar': els.grammarPanel.classList.remove('expanded'); break;
         case 'nav': els.sidebar.classList.add('collapsed'); break;
     }
@@ -198,7 +200,7 @@ window.addEventListener('popstate', () => {
 });
 try {
     const overlayObserver = new MutationObserver(syncOverlayHistory);
-    [document.getElementById('quick-menu'), cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, els.sidebar, document.getElementById('settings-modal')]
+    [document.getElementById('quick-menu'), cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, document.getElementById('rules-panel'), els.sidebar, document.getElementById('settings-modal')]
         .forEach((el) => el && overlayObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] }));
 } catch (e) {}
 
