@@ -125,12 +125,12 @@ function cancelAsyncTasks(keys = Array.from(asyncTasks.keys())) {
 function invalidateSelection() {
     cancelDragSelection();
     state.lookupToken++;
-    svoToken++;
-    cancelAsyncTasks(['lookup', 'svo']);
+    svoToken++; structToken++;
+    cancelAsyncTasks(['lookup', 'svo', 'structure', 'structureDeep']);
     cancelTooltipHide();
     els.tooltip.style.display = 'none';
     clearSelectionHighlight();
-    state.lastSelectedRange = null;
+    state.lastSelectedRange = null; state.ctxSentenceRange = null;
     state.lastTapPoint = null; state.lastWordNode = null; state.ctxSentence = '';
 }
 function showReaderError(err) {
@@ -702,6 +702,7 @@ const els = {
     ttReplayBtn: document.getElementById('tt-replay-btn'), ttExpandBtn: document.getElementById('tt-expand-btn'), ttTranslation: document.getElementById('tt-translation'),
     ttSpeakTranslation: document.getElementById('tt-speak-translation'), ttSvoBtn: document.getElementById('tt-svo-btn'),
     ttAiBtn: document.getElementById('tt-ai-btn'), ttAskBtn: document.getElementById('tt-ask-btn'),
+    ttStructBtn: document.getElementById('tt-struct-btn'), ttStructHost: document.getElementById('tt-struct-host'),
     ttCloseBtn: document.getElementById('tt-close-btn'),
     mainArea: document.getElementById('main-area'), translateBtn: document.getElementById('btn-translate-mode'),
     sidebar: document.getElementById('sidebar'), voiceSelect: document.getElementById('voice-select'),
@@ -1068,6 +1069,42 @@ const I18N = {
     // Redesigned Grammar/Practice UI strings (contextual Verbs/Adjectives panel + reading Practice).
     grammarEmptyVerbs:      { uk: 'У цьому фрагменті дієслів не знайдено.', en: 'No verbs found in this selection.', fr: 'Aucun verbe trouvé dans cette sélection.', ru: 'В этом фрагменте глаголов не найдено.' },
     grammarEmptyAdjectives: { uk: 'У цьому фрагменті прикметників не знайдено.', en: 'No adjectives found in this selection.', fr: 'Aucun adjectif trouvé dans cette sélection.', ru: 'В этом фрагменте прилагательных не найдено.' },
+    // Sentence breakdown painted in the text (js/sentence-structure.js).
+    needKeyStruct:  { uk: 'Для розбору речення потрібен ключ AI.', en: 'Sentence analysis needs the AI key.', fr: "L'analyse de la phrase nécessite la clé AI.", ru: 'Для разбора предложения нужен ключ AI.' },
+    structTooLong:  { uk: 'Виберіть коротше речення для розбору (до 400 символів).', en: 'Select a shorter sentence to break down (up to 400 characters).', fr: 'Sélectionnez une phrase plus courte (400 caractères max).', ru: 'Выберите предложение покороче (до 400 символов).' },
+    structUnsupported: { uk: 'Розбір поки недоступний для цієї мови.', en: 'Breakdown is not available for this language yet.', fr: "L'analyse n'est pas encore disponible pour cette langue.", ru: 'Разбор пока недоступен для этого языка.' },
+    structDeepHint: { uk: 'Натисніть частину для глибокого розбору', en: 'Tap a part for a deeper breakdown', fr: 'Touchez une partie pour une analyse plus poussée', ru: 'Нажмите на часть для глубокого разбора' },
+    structDeepTitle: { uk: 'Глибокий розбір', en: 'Deep breakdown', fr: 'Analyse approfondie', ru: 'Глубокий разбор' },
+    structFailed: { uk: 'Не вдалося розібрати речення. Спробуйте ще раз.', en: 'Could not analyse this sentence. Try again.', fr: 'Impossible d’analyser cette phrase. Réessayez.', ru: 'Не удалось разобрать предложение. Попробуйте ещё раз.' },
+    structRole_subject: { uk: 'Підмет', en: 'Subject', fr: 'Sujet', ru: 'Подлежащее' },
+    structRole_verb: { uk: 'Присудок', en: 'Verb', fr: 'Verbe', ru: 'Сказуемое' },
+    structRole_object: { uk: 'Додаток', en: 'Object', fr: 'Complément d’objet', ru: 'Дополнение' },
+    structRole_indirect: { uk: 'Непрямий додаток', en: 'Indirect object', fr: 'Objet indirect', ru: 'Косвенное дополнение' },
+    structRole_complement: { uk: 'Означення / іменна частина', en: 'Complement', fr: 'Attribut', ru: 'Определение / именная часть' },
+    structRole_time: { uk: 'Час', en: 'Time', fr: 'Temps', ru: 'Время' },
+    structRole_place: { uk: 'Місце', en: 'Place', fr: 'Lieu', ru: 'Место' },
+    structRole_manner: { uk: 'Спосіб', en: 'Manner', fr: 'Manière', ru: 'Образ действия' },
+    structRole_reason: { uk: 'Причина / мета', en: 'Reason / purpose', fr: 'Cause / but', ru: 'Причина / цель' },
+    structRole_connector: { uk: 'Сполучник', en: 'Connector', fr: 'Connecteur', ru: 'Союз' },
+    structKind_past: { uk: 'минуле', en: 'past', fr: 'passé', ru: 'прошлое' },
+    structKind_present: { uk: 'теперішнє', en: 'present', fr: 'présent', ru: 'настоящее' },
+    structKind_future: { uk: 'майбутнє', en: 'future', fr: 'futur', ru: 'будущее' },
+    structKind_duration: { uk: 'тривалість', en: 'duration', fr: 'durée', ru: 'длительность' },
+    structKind_frequency: { uk: 'частота', en: 'frequency', fr: 'fréquence', ru: 'частота' },
+    structKind_sequence: { uk: 'послідовність', en: 'sequence', fr: 'succession', ru: 'последовательность' },
+    structSub_noun: { uk: 'іменник', en: 'noun', fr: 'nom', ru: 'существительное' },
+    structSub_pronoun: { uk: 'займенник', en: 'pronoun', fr: 'pronom', ru: 'местоимение' },
+    structSub_determiner: { uk: 'артикль / означник', en: 'determiner', fr: 'déterminant', ru: 'артикль / определитель' },
+    structSub_adjective: { uk: 'прикметник', en: 'adjective', fr: 'adjectif', ru: 'прилагательное' },
+    structSub_verb: { uk: 'дієслово', en: 'verb', fr: 'verbe', ru: 'глагол' },
+    structSub_auxiliary: { uk: 'допоміжне дієслово', en: 'auxiliary', fr: 'auxiliaire', ru: 'вспомогательный глагол' },
+    structSub_adverb: { uk: 'прислівник', en: 'adverb', fr: 'adverbe', ru: 'наречие' },
+    structSub_preposition: { uk: 'прийменник', en: 'preposition', fr: 'préposition', ru: 'предлог' },
+    structSub_conjunction: { uk: 'сполучник', en: 'conjunction', fr: 'conjonction', ru: 'союз' },
+    structSub_negation: { uk: 'заперечення', en: 'negation', fr: 'négation', ru: 'отрицание' },
+    structSub_other: { uk: 'інше', en: 'other', fr: 'autre', ru: 'другое' },
+    btnStruct:      { uk: '🧩 Розбір', en: '🧩 Parts', fr: '🧩 Analyse', ru: '🧩 Разбор' },
+    tStruct:        { uk: 'Розбір речення: частини речення кольорами в тексті', en: 'Sentence breakdown: colour the parts in the text', fr: 'Analyse de la phrase : parties en couleur dans le texte', ru: 'Разбор предложения: части цветом в тексте' },
     grammarWhy:              { uk: 'Чому', en: 'Why', fr: 'Pourquoi', ru: 'Почему' },
     grammarAgreesWith:       { uk: 'Узгоджується з', en: 'Agrees with', fr: 'Accord avec', ru: 'Согласуется с' },
     grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },
