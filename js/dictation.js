@@ -95,6 +95,12 @@ function startDictationSession() {
     const current = () => generation === dictation.generation && recognition === session && (dictation.wanted || dictation.finishing) && !document.hidden;
     session.lang = els.micLang.value; session.continuous = !dictationSingleUtterance; session.interimResults = true;
     const committed = new Set(); let hadFinal = false;
+    // Single-utterance sessions: the engine can still emit a SECOND final in the same session whose text repeats or
+    // extends the first (cumulative "пошукай" -> "пошукай в інтернеті"). One session = one utterance, so such a
+    // result REPLACES what this session already typed instead of being appended. Desktop (continuous) sessions
+    // legitimately produce separate finals, so this only applies to dictationSingleUtterance.
+    let sessionTyped = null;   // { heard, inserted }
+    const cmp = s => s.toLocaleLowerCase().replace(/[\s.,!?;:…"'«»-]+/g, ' ').trim();
     session.onresult = e => {
         traceStt('result', { session: id, stale: !current(), resultIndex: e.resultIndex,
             results: Array.from(e.results, (r, i) => ({ i, final: r.isFinal, text: r[0]?.transcript })) });
@@ -108,8 +114,21 @@ function startDictationSession() {
                 committed.add(i); hadFinal = true; dictation.emptyEnds = 0;
                 traceStt('commit', { session: id, i, text });
                 // Always use the live value, including any edits since the last event.
-                const value = els.askInput.value;
-                els.askInput.value = value + (value && !/\s$/.test(value) ? ' ' : '') + text;
+                let value = els.askInput.value, add = text;
+                if (dictationSingleUtterance && sessionTyped) {
+                    const prev = cmp(sessionTyped.heard), next = cmp(text);
+                    if (next === prev) { traceStt('skip-repeat', { session: id, i, text }); continue; }
+                    if (prev && next.startsWith(prev + ' ')) {
+                        // Cumulative result: drop our earlier insertion if the field still ends with it.
+                        if (value.endsWith(sessionTyped.inserted)) value = value.slice(0, value.length - sessionTyped.inserted.length).replace(/\s+$/, '');
+                        else add = text.split(/\s+/).slice(sessionTyped.heard.trim().split(/\s+/).length).join(' ');
+                        traceStt('replace-cumulative', { session: id, i, text });
+                    }
+                }
+                if (!add) continue;
+                const inserted = (value && !/\s$/.test(value) ? ' ' : '') + add;
+                els.askInput.value = value + inserted;
+                sessionTyped = { heard: text, inserted };
                 els.askInput.dispatchEvent(new Event('input', { bubbles: true }));
             } else interim += (interim ? ' ' : '') + text;
         }
