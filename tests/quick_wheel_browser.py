@@ -85,7 +85,7 @@ def detent():
     c.call('Input.dispatchMouseEvent', type='mouseWheel', x=xy[0], y=xy[1], deltaX=0, deltaY=66)
     c.js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
 def seek(action):
-    for _ in range(12):
+    for _ in range(13):
         if c.js(f"!!document.querySelector('.qm-item[data-action=\"{action}\"]:not([hidden])')"):
             return
         detent()
@@ -100,10 +100,10 @@ detent()
 assert 'btn-print' in boxes(), boxes()
 print('PASS Print appears after two detents from initial opening',flush=True)
 seen = set(boxes())
-for _ in range(12):
+for _ in range(13):
     detent(); seen.update(boxes())
-assert len(seen) == 12, seen
-print('PASS all 12 actions visibly reachable:', sorted(seen), flush=True)
+assert len(seen) == 13, seen
+print('PASS all 13 actions visibly reachable:', sorted(seen), flush=True)
 
 # A drag starts ON an action, moves multiple boxes, and continues after release.
 xy = point('.qm-item.qm-active'); before = boxes()
@@ -213,6 +213,6 @@ check('Full Menu controls share state', "document.getElementById('menu-handle').
 c.call('Emulation.setEmulatedMedia',features=[{'name':'prefers-reduced-motion','value':'reduce'}])
 open_wheel();close_wheel()
 c.call('Emulation.setEmulatedMedia',features=[])
-check('12 stable DOM actions', "document.querySelectorAll('.qm-item').length===12")
+check('12 stable DOM actions', "document.querySelectorAll('.qm-item').length===13")
 check('no runtime errors','__wheelErrors.length===0')
 print('PASS Quick Wheel behavioral suite',flush=True)
