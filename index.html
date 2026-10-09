@@ -669,8 +669,25 @@
         #ask-panel.expanded { transform: none; visibility: visible; }
 
         /* Панель «Правила» (js/grammar-rules.js) */
-        #rules-panel { right: 0; transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.2); border-radius: 16px 0 0 16px; z-index: 10003; }
+        /* Портрет/телефон: бокова панель ПІД головним меню; альбом (планшет): нижня шторка. Позицію задає layoutRulesPanel() (--rules-top, --rules-inset). */
+        #rules-panel { right: 0; top: var(--rules-top, 10%); height: calc(100dvh - var(--rules-top, 10%) - 12px); width: min(440px, 94vw); transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.2); border-radius: 16px 0 0 16px; z-index: 10003; }
         #rules-panel.expanded { transform: none; visibility: visible; }
+        #rules-panel.rules-sheet { left: 0; right: 0; top: auto; bottom: 0; margin: 0 auto; width: min(980px, 100vw); height: min(46vh, calc(100dvh - var(--rules-top, 0px) - 12px)); border-radius: 16px 16px 0 0; transform: translateY(105%); box-shadow: 0 -5px 25px rgba(0,0,0,0.22); }
+        #rules-panel.rules-sheet.expanded { transform: none; }
+        body.rules-inset #reader-pages { padding-bottom: calc(var(--rules-inset, 0px) + 24px); }
+        .rules-pill { position: fixed; right: 12px; bottom: 132px; z-index: 10004; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); box-shadow: 0 4px 18px rgba(0,0,0,.22); font-size: 14px; font-weight: 600; cursor: pointer; }
+        .rules-pill[hidden] { display: none; }
+        .rules-pill-dot { width: 12px; height: 12px; border-radius: 50%; background: #8a8f98; flex: none; }
+        .rules-pill[data-state="ready"] .rules-pill-dot { background: #198754; box-shadow: 0 0 0 4px rgba(25,135,84,.2); }
+        .rules-pill[data-state="failed"] .rules-pill-dot { background: #dc3545; }
+        .rules-pill[data-state="running"] .rules-pill-dot { background: #0d6efd; animation: rules-pulse 1s ease-in-out infinite; }
+        @keyframes rules-pulse { 50% { opacity: .35; transform: scale(.8); } }
+        .rules-details-head { margin: 10px 0 4px; font-size: 14px; color: var(--text-color); }
+        .rules-details-list { margin: 4px 0; padding-left: 20px; }
+        #rules-min { margin-left: auto; }
+        .rules-badge { display: inline-block; align-self: flex-start; font-size: 12px; font-weight: 700; color: #7a4a00; background: rgba(255,152,0,.22); border-radius: 10px; padding: 1px 8px; margin: 0 0 4px; }
+        .rules-exception-note { color: #9a5b00; }
+        ::highlight(rule-exception) { background-color: rgba(255, 112, 67, 0.5); text-decoration: underline wavy; }
         #rules-content { font-size: 15px; line-height: 1.5; }
         .rules-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
         .rules-toolbar select, .rules-search { min-height: 40px; font-size: 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--panel-bg); color: var(--text-color); padding: 0 8px; }
@@ -1249,10 +1266,12 @@
         <div id="rules-panel" class="side-panel" role="dialog" aria-labelledby="rules-title">
             <div class="panel-header">
                 <h3 id="rules-title" data-i18n="panelRules">📚 Правила граматики</h3>
+                <button class="close-panel-btn" id="rules-min" data-i18n-title="rulesHide" data-i18n-aria="rulesHide" aria-label="Hide">⌄</button>
                 <button class="close-panel-btn" id="rules-close" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
             <div class="panel-content" id="rules-content"></div>
         </div>
+        <button type="button" id="rules-pill" class="rules-pill" hidden><span class="rules-pill-dot" aria-hidden="true"></span><span id="rules-pill-text"></span></button>
 
         <!-- ПРАВА ПАНЕЛЬ (Граматика: контекстна панель Verbs/Adjectives) -->
         <div id="grammar-panel" class="side-panel">
@@ -1358,7 +1377,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=39f9fdeb9c8e"></script>
+    <script src="js/core.js?v=351a1c9c168c"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1378,7 +1397,9 @@
     <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
-    <script src="js/grammar-rules.js?v=b3fa6b7559d6"></script>
+    <script src="js/grammar-rules-details-fr.js?v=2c2795797582"></script>
+    <script src="js/grammar-rules-details-en.js?v=3b4c13715fdc"></script>
+    <script src="js/grammar-rules.js?v=53fc9ce2efc4"></script>
     <script src="js/ai-client.js?v=186d66f4feb5"></script>
     <script src="js/practice-session.js?v=4a936b0b2205"></script>
     <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
@@ -1391,8 +1412,8 @@
     <script src="js/pdf-render.js?v=7bc44e26dd09"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=c7f41ab664e7"></script>
+    <script src="js/quick-wheel.js?v=59bd435f0bbc"></script>
     <script src="js/main.js?v=d8eabe80cbc4"></script>
-    <script src="js/pwa-lifecycle.js?v=5de84b602b7f"></script>
+    <script src="js/pwa-lifecycle.js?v=9860f4b9576c"></script>
 </body>
 </html>

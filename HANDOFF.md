@@ -1,3 +1,7 @@
+## Rules panel UX round (2026-10-09, Claude)
+
+Branch `feat/rules-ux` (stacked on `feat/grammar-rules-en` → `feat/grammar-rules`). Done: expanded rules + exceptions text for all 115 topics; hide/readiness pill; landscape bottom sheet and "below the main menu" placement; quick-wheel Rules action (and a latent bug fixed: `quick-wheel.js` hard-coded 12 actions in its angular maths); highlights survive text-size/zoom re-render; exceptions flagged by the model are badged/coloured/counted. The "missing grammar-breakdown icon" in the word tooltip is NOT a regression: the 🧩 button lives in the still-unmerged PR #157; main only has the old S-V-O button. CI note: #157/#158/#159 keep failing on different, unrelated-looking suites (pdf_continuous `target_closed`, practice_sentence_actions timing) — reruns needed; not diagnosed beyond that.
+
 ## Grammar rules panel — French catalogue (phase 1) (2026-10-09, Claude)
 
 Branch `feat/grammar-rules` from main. New `js/grammar-rules-data-fr.js` (56 topics) + `js/grammar-rules.js` + panel `#rules-panel` + header button. Phase 2 (this branch `feat/grammar-rules-en`, stacked on `feat/grammar-rules`): English catalogue `grammar-rules-data-en.js`, 56 topics. Known limits: only the visible text (≤3000 chars) is searched; the theory is mine and has not been reviewed by a French teacher; real model precision is untested (gold mocks only); the header button was added to the existing group without a layout pass on tablet.

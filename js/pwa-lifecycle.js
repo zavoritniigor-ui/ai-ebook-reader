@@ -179,7 +179,7 @@ function closeTopOverlay(name) {
         case 'ink': state.inkMode = false; document.body.classList.remove('ink-mode'); break;
         case 'tooltip': cancelTooltipHide(); els.tooltip.style.display = 'none'; break;
         case 'ask': els.askPanel.classList.remove('expanded'); break;
-        case 'rules': document.getElementById('rules-panel').classList.remove('expanded'); break;
+        case 'rules': minimizeRulesPanel(); break;
         case 'grammar': els.grammarPanel.classList.remove('expanded'); break;
         case 'nav': els.sidebar.classList.add('collapsed'); break;
     }

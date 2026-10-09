@@ -25,7 +25,7 @@ def positions():
     c.js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
     return json.loads(c.js("JSON.stringify([...document.querySelectorAll('.qm-item:not([hidden])')].map(el=>({action:el.dataset.action,y:el.getBoundingClientRect().y})))"))
 
-check('all twelve current actions persist in DOM', "document.querySelectorAll('.qm-item').length===12")
+check('all thirteen current actions persist in DOM', "document.querySelectorAll('.qm-item').length===13")
 c.js("window.__dragActions=[];document.addEventListener('click',e=>{if(e.target.closest('.qm-item'))__dragActions.push(e.target.closest('.qm-item').dataset.action)},true)")
 x, y = c.js("(()=>{const r=document.querySelector('.qm-active').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()")
 before = positions()
