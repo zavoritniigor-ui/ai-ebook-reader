@@ -15,7 +15,7 @@ const RULES_MAX_MATCHES = 40;
 const RULES_MATCH_MAX_CHARS = 120;
 const RULES_LANGS = ['fr', 'en'];
 
-const rulesState = { lang: 'fr', topic: null, matches: [], ranges: [], active: -1, token: 0, text: '', watching: false, status: 'idle', remapTimer: 0, failSince: 0 };
+const rulesState = { lang: 'fr', topic: null, matches: [], ranges: [], active: -1, token: 0, text: '', watching: false, status: 'idle', remapTimer: 0, failSince: 0, layoutAt: 0 };
 const rulesSearchCache = new Map(), rulesExplainCache = new Map();
 const RULES_CACHE_MAX = 60;
 
@@ -49,14 +49,14 @@ function collectVisibleText(maxChars = RULES_PAGE_MAX, all = false) {
         if (!value || !value.trim()) continue;
         const parent = node.parentElement;
         if (!parent || /^(SCRIPT|STYLE|NOSCRIPT)$/.test(parent.tagName)) continue;
-        if (!all) {
-            probe.selectNodeContents(node);
-            const r = probe.getBoundingClientRect();
-            if (!r.width && !r.height) continue;
-            if (r.bottom <= 0 || r.top >= vh || r.right <= 0 || r.left >= vw) {
-                if (r.top >= vh && segs.length) break;     // нижче видимого — далі не йдемо
-                continue;
-            }
+        // Невидимі (нульового розміру) вузли — службові дублікати текстового шару PDF — ніколи не потрапляють у текст: однакова
+        // побудова тексту у видимому й повному режимах потрібна, щоб після перемальовки знайти речення знову (remapRuleHighlights).
+        probe.selectNodeContents(node);
+        const r = probe.getBoundingClientRect();
+        if (!r.width && !r.height) continue;
+        if (!all && (r.bottom <= 0 || r.top >= vh || r.right <= 0 || r.left >= vw)) {
+            if (r.top >= vh && segs.length) break;     // нижче видимого — далі не йдемо
+            continue;
         }
         const block = isPdf ? null : parent.closest('p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, pre, div');
         if (text && ((isPdf && !/\s$/.test(text) && !/^\s/.test(value)) || (!isPdf && block !== prevBlock))) text += isPdf ? ' ' : '\n';
@@ -168,24 +168,57 @@ function setActiveRule(index, { scroll = true } = {}) {
 // пробуємо ЗНОВУ знайти кожне речення збігу в новому тексті сторінки й перемалювати підсвітку; лише коли нічого не знайшлось
 // (інша сторінка) — підсвітка й список скидаються. Перемальовка (особливо PDF) іде кількома хвилями, тому — з затримкою.
 function rulesRangesBroken() { return rulesState.ranges.some(r => r && (r.collapsed || !r.startContainer.isConnected)); }   // вилучений вузол не «від'єднує» діапазон: він схлопується
+// The visible-text window is a FILTERED subsequence of the DOM (nodes outside the viewport are skipped), so a sentence that was
+// contiguous there can be split by off-screen nodes in the full text (columns, high zoom). Hence two strategies: the whole sentence
+// first, then the match text itself scored by how much of its left/right context still fits.
+function ruleContextScore(text, pos, len, m) {
+    const strip = x => x.replace(/\s+/g, '');
+    const left = strip(m.sentence.slice(Math.max(0, m.sentenceStart - 24), m.sentenceStart)), right = strip(m.sentence.slice(m.sentenceStart + m.text.length, m.sentenceStart + m.text.length + 24));
+    const before = strip(text.slice(Math.max(0, pos - 40), pos)), after = strip(text.slice(pos + len, pos + len + 40));
+    let a = 0; while (a < left.length && a < before.length && left[left.length - 1 - a] === before[before.length - 1 - a]) a++;
+    let b = 0; while (b < right.length && b < after.length && right[b] === after[b]) b++;
+    return a + b;
+}
 function remapRuleHighlights() {
     const flat = collectVisibleText(500000, true);
     const ranges = []; let from = 0, found = 0;
     for (const m of rulesState.matches) {
+        let at = -1;
         let idx = flat.text.indexOf(m.sentence, from);
         if (idx === -1) idx = flat.text.indexOf(m.sentence);
+        if (idx !== -1) at = idx + m.sentenceStart;
+        else {
+            const candidates = findSurfaceOccurrences(flat.text, m.text);
+            let best = -1, bestScore = -1, tie = false;
+            for (const pos of candidates) {
+                const score = ruleContextScore(flat.text, pos, m.text.length, m);
+                if (score > bestScore) { best = pos; bestScore = score; tie = false; } else if (score === bestScore) tie = true;
+            }
+            if (best !== -1 && bestScore >= 4 && !tie) at = best;   // a look-alike word on ANOTHER page (no shared context) is not the same match
+        }
         let r = null;
-        if (idx !== -1) {
-            const at = idx + m.sentenceStart;
+        if (at !== -1) {
             r = rangeForSlice(flat, at, at + m.text.length);
             if (r && r.toString() !== m.text) r = null;
-            if (r) from = idx + m.sentence.length;
+            if (r) from = at + m.text.length;
         }
         ranges.push(r); if (r) found++;
     }
     return { ranges, found };
 }
+// A text-size / zoom / resize change just happened: the page may be RE-PAGINATED (paged EPUB/TXT), so the sentences we marked can
+// simply not be on screen any more. In that case keep the rule active and search the NEW visible text instead of dropping it.
+function markRuleLayoutChange() { rulesState.layoutAt = Date.now(); }
+['zoom-in', 'zoom-out'].forEach(id => document.getElementById(id)?.addEventListener('click', markRuleLayoutChange, true));
+document.getElementById('pdf-fit')?.addEventListener('change', markRuleLayoutChange, true);
+window.addEventListener('resize', markRuleLayoutChange);
 function giveUpRuleHighlights() {
+    if (rulesState.topic && Date.now() - rulesState.layoutAt < 6000) {
+        clearRuleHighlights(); rulesState.matches = []; rulesState.failSince = 0;
+        document.querySelectorAll('#rules-content .rules-matches, #rules-content .rules-detail').forEach(n => n.replaceChildren());
+        runRuleSearch(true);
+        return;
+    }
     clearRuleHighlights(); rulesState.matches = []; rulesState.token++; rulesState.status = 'idle'; rulesState.failSince = 0;
     setRulesStatus(t('rulesChanged'));
     document.querySelectorAll('#rules-content .rules-matches, #rules-content .rules-detail').forEach(n => n.replaceChildren());
@@ -205,7 +238,7 @@ function watchRulePage() {
             return;
         }
         if (!rulesState.failSince) rulesState.failSince = Date.now();
-        if (Date.now() - rulesState.failSince > 1400) giveUpRuleHighlights();
+        if (Date.now() - rulesState.failSince > 2500) giveUpRuleHighlights();
         else rulesState.remapTimer = setTimeout(attempt, 500);
     };
     new MutationObserver(() => {

@@ -242,8 +242,21 @@ check("49 after the text size changes the highlights are re-applied on the NEW t
 check("50 ... without asking the model again", "__calls.filter(x => x.task === 'rules_search').length === %d" % n_calls)
 c.js("document.getElementById('zoom-out').click(); document.getElementById('zoom-out').click(); 1"); time.sleep(2)
 check("51 the same after making the text smaller again", "(() => { const t2 = k => CSS.highlights.has(k) ? [...CSS.highlights.get(k)].map(r => r.toString()).join('|') : ''; return t2('rule-match') === 'a mangé|avons fini' && t2('rule-exception') === 'est partie'; })()", timeout=5)
+# a text-size change that RE-PAGINATES (the marked sentences leave the screen): the rule stays on and the new visible text is searched
+c.js("__calls.length = 0; rulesSearchCache.clear(); document.getElementById('rules-panel').classList.add('expanded'); 1")
+c.js("document.getElementById('zoom-in').click(); els.pages.innerHTML = '<p>Autre page: Paul a mangé du pain. Ils sont partis hier.</p>'; __reply = %s; 1" % json.dumps(GOLD([{"text": "a mangé", "note": "avoir + participe"}])))
+check("53 after a zoom that re-paginates the page the same rule is searched again on the NEW visible text (one new call) and painted there",
+      "__calls.filter(x => x.task === 'rules_search').length === 1 && CSS.highlights.has('rule-match') && [...CSS.highlights.get('rule-match')].map(r => r.toString()).join('|') === 'a mangé' && rulesState.matches.length === 1", timeout=12)
+c.js("document.getElementById('zoom-out').click(); 1")
+# the visible window is a FILTERED subsequence of the DOM: a sentence contiguous there is split by off-screen nodes in the full text
+c.js("""(() => { clearRuleHighlights(); els.pages.innerHTML = '<p>Il (ceindre) la ville.</p><p>aaa (ceindre) 5.</p><p>NODE HORS ECRAN</p><p>Vous (feindre) 6.</p><p>Vous (feindre) l indifference.</p>';
+  rulesState.matches = [{ text: 'feindre', start: 0, end: 7, note: '', exception: false, exceptionNote: '', sentence: '(ceindre) 5. Vous (feindre) 6.', sentenceStart: 19 },
+                        { text: 'ceindre', start: 0, end: 7, note: '', exception: false, exceptionNote: '', sentence: 'aaa (ceindre) 5. Vous', sentenceStart: 5 }];
+  const r = remapRuleHighlights(); window.__remap = r.ranges.map(x => x && x.toString() + '@' + x.startContainer.parentElement.textContent); return 1; })()""")
+check("54 a sentence that is no longer contiguous in the page text is re-found by the match + its surrounding context (right occurrence among look-alikes)",
+      "__remap.length === 2 && __remap[0] === 'feindre@Vous (feindre) 6.' && __remap[1] === 'ceindre@aaa (ceindre) 5.'")
 check("52 the quick wheel has a Rules action that opens the panel",
-      """(() => { const b = document.querySelector('.qm-item[data-action="btn-rules"]'); if (!b) return false; document.getElementById('btn-rules').click(); const open = document.getElementById('rules-panel').classList.contains('expanded'); document.getElementById('rules-close').click(); return open && !!b.querySelector('.qm-label'); })()""")
+      """(() => { const b = document.querySelector('.qm-item[data-action="btn-rules"]'); if (!b) return false; document.getElementById('rules-panel').classList.remove('expanded'); document.getElementById('btn-rules').click(); const open = document.getElementById('rules-panel').classList.contains('expanded'); document.getElementById('rules-close').click(); return open && !!b.querySelector('.qm-label'); })()""")
 
 # ---- English rules on an English page ----
 c.js("""(() => { clearRuleHighlights(); rulesState.topic = null; rulesState.matches = []; state.sourceLang = 'en-US'; els.pages.innerHTML = '<p>She has lived here for years. They were playing when it rained.</p>';
