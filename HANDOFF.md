@@ -1,6 +1,6 @@
 ## Grammar rules panel — French catalogue (phase 1) (2026-10-09, Claude)
 
-Branch `feat/grammar-rules` from main. New `js/grammar-rules-data-fr.js` (56 topics) + `js/grammar-rules.js` + panel `#rules-panel` + header button. Phase 2 (next PR): English catalogue `grammar-rules-data-en.js` (the panel already has the language select and shows a "coming" note for EN). Known limits: only the visible text (≤3000 chars) is searched; the theory is mine and has not been reviewed by a French teacher; real model precision is untested (gold mocks only); the header button was added to the existing group without a layout pass on tablet.
+Branch `feat/grammar-rules` from main. New `js/grammar-rules-data-fr.js` (56 topics) + `js/grammar-rules.js` + panel `#rules-panel` + header button. Phase 2 (this branch `feat/grammar-rules-en`, stacked on `feat/grammar-rules`): English catalogue `grammar-rules-data-en.js`, 56 topics. Known limits: only the visible text (≤3000 chars) is searched; the theory is mine and has not been reviewed by a French teacher; real model precision is untested (gold mocks only); the header button was added to the existing group without a layout pass on tablet.
 
 ## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
 
