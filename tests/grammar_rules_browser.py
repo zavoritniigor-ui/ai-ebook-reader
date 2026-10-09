@@ -36,8 +36,12 @@ def click_xy(x, y):
 
 
 def word_pos(word):
+    """Centre of the FIRST client rect of the word (a word wrapping over two lines is tapped on its first line), scrolled into view."""
+    c.js(r"""(()=>{ const w=%s; const walker=document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT); let n;
+      while((n=walker.nextNode())){ const i=n.nodeValue.indexOf(w); if(i!==-1){ n.parentElement.scrollIntoView({block:'center'}); return 1; } } return 0; })()""" % json.dumps(word, ensure_ascii=False))
+    time.sleep(0.3)
     return c.js(r"""(()=>{ const w=%s; const walker=document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT); let n;
-      while((n=walker.nextNode())){ const i=n.nodeValue.indexOf(w); if(i!==-1){ const r=document.createRange(); r.setStart(n,i); r.setEnd(n,i+w.length); const b=r.getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2}; } } return null; })()""" % json.dumps(word, ensure_ascii=False))
+      while((n=walker.nextNode())){ const i=n.nodeValue.indexOf(w); if(i!==-1){ const r=document.createRange(); r.setStart(n,i); r.setEnd(n,i+w.length); const b=r.getClientRects()[0]; return {x:b.left+Math.min(b.width/2, 30),y:b.top+b.height/2}; } } return null; })()""" % json.dumps(word, ensure_ascii=False))
 
 
 def center(sel):
@@ -118,7 +122,7 @@ c.js("els.tooltip.style.display = 'none'; document.getElementById('rules-panel')
 check("17 closing the panel keeps the highlights on the page", "CSS.highlights.has('rule-match') && !document.getElementById('rules-panel').classList.contains('expanded')")
 c.js("window.scrollTo(0, 0); document.getElementById('reader-container')?.scrollTo?.(0, 0); 1"); time.sleep(0.3)
 p = word_pos('avons fini')
-click_xy(p['x'] + 8, p['y'])
+click_xy(p['x'], p['y'])
 check("18 a real tap on a highlighted word opens the panel with ITS card and does not open the word tooltip",
       "document.getElementById('rules-panel').classList.contains('expanded') && rulesState.active === 2 && document.querySelector('#rules-content .rules-card mark').textContent === 'avons fini' && els.tooltip.style.display !== 'flex' && !__calls.some(x => x.task === 'translation')", timeout=5)
 c.js("document.getElementById('rules-panel').classList.remove('expanded'); 1"); time.sleep(0.5)
