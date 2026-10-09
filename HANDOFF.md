@@ -1,3 +1,10 @@
+## Sentence structure + time markers (Grammar & Practice) — implemented on `feat/sentence-structure`, not pushed (2026-10-09, Claude)
+
+**Request:** extend Grammar to show time markers and a sentence breakdown (members of the sentence with roles), and show the same examples in Practice.
+**Done:** new `js/sentence-structure.js` (see ARCHITECTURE.md); 🧩 button in the Grammar focus card head; Practice sentence rows get a 🧩 button and dotted time-marker highlights (verbs mode only — the generation prompt now asks for optional `timeMarkers`, validated in `validatePracticeReading`; stored readings without them still render). New task profile `sentence_structure` (ai-client.js), i18n keys `struct*` (core.js), CI step + `tests/sentence_structure_browser.py` (22 checks). Related suites re-run green: grammar_french, grammar_redesign, practice_* , migration_audit, learning_ux, ai_providers, app_shell_versions, ci_suite_coverage.
+**Not verified:** real AI output quality (all replies are gold mocks) and a real phone/tablet; the Practice output budget formula was left unchanged (markers add ~25 tokens/item).
+**Also pending:** branch `fix/dictation-cumulative-results` (commit e49d116, cumulative STT finals replace instead of append) is committed locally, not pushed.
+
 ## Dictation restart gap — root cause found and fixed; physical Android mic test still pending (2026-10-03, Claude)
 
 **Not yet merged.** Branch `fix/dictation-android-reliability` from main `949d8b2` (includes PR #147's Ask AI

@@ -313,6 +313,13 @@ function renderPracticeReading(reading) {
         targetsByParagraph.get(target.paragraphIndex).push(target);
     });
 
+    const markersByParagraph = new Map();
+    (Array.isArray(reading.timeMarkers) ? reading.timeMarkers : []).forEach(marker => {
+        if (!marker || !Number.isInteger(marker.paragraphIndex) || typeof marker.surface !== 'string') return;
+        if (!markersByParagraph.has(marker.paragraphIndex)) markersByParagraph.set(marker.paragraphIndex, []);
+        markersByParagraph.get(marker.paragraphIndex).push(marker);
+    });
+
     (reading.sections || []).forEach(section => {
         const block = document.createElement('section');
         block.className = 'practice-section practice-section-' + section.kind;
@@ -323,7 +330,7 @@ function renderPracticeReading(reading) {
             block.appendChild(h);
         }
         for (let idx = section.start; idx < section.end; idx++) {
-            block.appendChild(buildPracticeSentenceRow(idx, reading.paragraphs[idx], targetsByParagraph.get(idx) || [], reading.language, section.kind));
+            block.appendChild(buildPracticeSentenceRow(idx, reading.paragraphs[idx], targetsByParagraph.get(idx) || [], reading.language, section.kind, markersByParagraph.get(idx) || []));
         }
         wrap.appendChild(block);
     });
@@ -338,14 +345,16 @@ function renderPracticeReading(reading) {
 // EXISTING TTS system (speakInLang, js/tts.js) and the EXISTING translation engine (aiTranslateText /
 // machineTranslate, js/ai-client.js) exactly as the reader's own translation tooltip does — never a
 // second implementation of either, and neither action calls Grammar or regenerates the session.
-function buildPracticeSentenceRow(idx, text, targets, langCode, kind) {
+function buildPracticeSentenceRow(idx, text, targets, langCode, kind, markers = []) {
     const row = document.createElement('div');
     row.className = kind === 'story' ? 'practice-paragraph' : 'practice-sentence';
     row.dataset.paragraph = String(idx);
 
     const textSpan = document.createElement('span');
     textSpan.className = 'practice-sentence-text';
-    renderParagraphWithTargets(textSpan, text, targets, langCode);
+    // A time marker opens the same sentence breakdown as the 🧩 button (only a single sentence has one).
+    let openStructure = null;
+    renderParagraphWithTargets(textSpan, text, targets, langCode, markers, () => { if (openStructure) openStructure(true); });
     row.appendChild(textSpan);
 
     const actions = document.createElement('span');
@@ -367,12 +376,48 @@ function buildPracticeSentenceRow(idx, text, targets, langCode, kind) {
     translateBtn.title = t('practiceTranslateSentence');
     translateBtn.setAttribute('aria-label', t('practiceTranslateSentence'));
     actions.appendChild(translateBtn);
+
+    // Sentence structure + time markers (js/sentence-structure.js): one lazy, cached AI call per sentence, the SAME
+    // engine and renderer as the Grammar panel's breakdown. Not offered for a multi-sentence story paragraph.
+    const structureEl = document.createElement('div');
+    structureEl.className = 'practice-sentence-structure structure-result';
+    structureEl.hidden = true;
+    if (kind !== 'story' && text.length <= STRUCTURE_MAX_SENTENCE) {
+        const structBtn = document.createElement('button');
+        structBtn.type = 'button';
+        structBtn.className = 'practice-action-btn practice-structure-btn';
+        structBtn.textContent = '🧩';
+        structBtn.title = t('structButton');
+        structBtn.setAttribute('aria-label', t('structButton'));
+        structBtn.setAttribute('aria-expanded', 'false');
+        actions.appendChild(structBtn);
+        let loaded = false, loading = false;
+        const setOpen = open => {
+            structureEl.hidden = !open;
+            structBtn.classList.toggle('active', open);
+            structBtn.setAttribute('aria-expanded', String(open));
+        };
+        openStructure = onlyOpen => {
+            if (loaded) { setOpen(onlyOpen ? true : structureEl.hidden); return; }
+            if (loading) return;
+            loading = true; setOpen(true);
+            structureEl.textContent = t('generating');
+            getSentenceStructure(text, langCode).then(result => {
+                loading = false;
+                if (!structureEl.isConnected) return;
+                if (result.ok) { loaded = true; renderSentenceStructure(structureEl, result); }
+                else structureEl.textContent = t('structFailed');
+            });
+        };
+        structBtn.onclick = e => { e.stopPropagation(); openStructure(false); };
+    }
     row.appendChild(actions);
 
     const translationEl = document.createElement('div');
     translationEl.className = 'practice-sentence-translation';
     translationEl.hidden = true;
     row.appendChild(translationEl);
+    row.appendChild(structureEl);
 
     // First press fetches and shows the translation; every later press just hides/reopens the SAME
     // result (no re-fetch, no regenerating the Practice session, no Grammar call) — see
@@ -448,7 +493,7 @@ async function fetchPracticeTranslation(text, srcLang) {
 // the paragraph as text nodes with a clickable <button> wrapped around ONLY that exact occurrence,
 // never every occurrence of the word, since each target's explanation is tied to one specific
 // sentence (task section 12/13).
-function renderParagraphWithTargets(container, text, targets, langCode) {
+function renderParagraphWithTargets(container, text, targets, langCode, markers = [], onMarker = null) {
     const positioned = [];
     for (const target of targets) {
         let start = Number.isInteger(target.start) && target.start >= 0 && text.startsWith(target.surface, target.start) ? target.start : -1;
@@ -459,12 +504,30 @@ function renderParagraphWithTargets(container, text, targets, langCode) {
         if (start === -1) continue;
         positioned.push({ target, start, end: start + target.surface.length });
     }
+    // Time markers sit in the same left-to-right pass; a marker that touches a target loses to the target.
+    for (const marker of markers) {
+        if (!marker || typeof marker.surface !== 'string' || !text.startsWith(marker.surface, marker.start)) continue;
+        const end = marker.start + marker.surface.length;
+        if (positioned.some(p => marker.start < p.end && end > p.start)) continue;
+        positioned.push({ marker, start: marker.start, end });
+    }
     positioned.sort((a, b) => a.start - b.start);
 
     let cursor = 0;
-    for (const { target, start, end } of positioned) {
+    for (const { target, marker, start, end } of positioned) {
         if (start < cursor) continue; // overlapping targets guard
         if (start > cursor) container.appendChild(document.createTextNode(text.slice(cursor, start)));
+        if (marker) {
+            const mark = document.createElement(onMarker ? 'button' : 'span');
+            if (onMarker) { mark.type = 'button'; mark.onclick = () => onMarker(); }
+            mark.className = 'practice-time-marker';
+            mark.textContent = text.slice(start, end);
+            mark.title = t('structTimeMarkers') + (marker.kind ? ': ' + structureKindLabel(marker.kind) : '');
+            if (marker.kind) mark.dataset.kind = marker.kind;
+            container.appendChild(mark);
+            cursor = end;
+            continue;
+        }
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'practice-target practice-target-' + target.pos;

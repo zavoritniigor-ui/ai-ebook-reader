@@ -35,6 +35,8 @@ const MAX_ITEMS = 140;
 const MAX_ITEM_CHARS = 900;
 const MAX_TARGETS = 220;
 const MAX_TARGETS_PER_ITEM = 8;
+const MAX_TIME_MARKERS = 120;
+const MAX_MARKERS_PER_ITEM = 4;
 const MIN_ITEMS = 10;
 const MIN_READING_CHARS = 900;
 const MIN_TARGETS = 3;
@@ -221,7 +223,7 @@ function validatePracticeReading(data, expected) {
     if (data.sections.length > MAX_SECTIONS) throw new Error(`Invalid reading: too many sections (${data.sections.length} > ${MAX_SECTIONS})`);
 
     const verbCfg = grammarConfigFor(language).verb;
-    const paragraphs = [], targets = [], sections = [];
+    const paragraphs = [], targets = [], sections = [], timeMarkers = [];
     const seenLemmaSurface = new Set(), claimedSpans = new Set();
     let itemsIn = 0, droppedExercise = 0, totalChars = 0;
 
@@ -280,6 +282,25 @@ function validatePracticeReading(data, expected) {
                     transformations: forms ? info.transformations : null, irregularForms: forms ? info.irregularForms : null
                 });
             }
+
+            // Optional time markers ("hier", "depuis deux ans"): whole-word occurrences of this item's own text, kept only
+            // when they do not overlap a target (the target wins). Absent/invalid markers never fail a reading.
+            const rawMarkers = rawItem && typeof rawItem === 'object' && Array.isArray(rawItem.timeMarkers) ? rawItem.timeMarkers.slice(0, MAX_MARKERS_PER_ITEM) : [];
+            for (const raw of rawMarkers) {
+                if (timeMarkers.length >= MAX_TIME_MARKERS) break;
+                if (!raw || typeof raw !== 'object') continue;
+                const surface = typeof raw.surface === 'string' ? normalizeGrammarText(raw.surface) : '';
+                if (!surface || surface.length > 60 || SUSPICIOUS_CONTENT_RE.test(surface)) continue;
+                const found = findSurfaceOccurrences(text, surface);
+                const occurrence = Number.isInteger(raw.occurrence) && raw.occurrence >= 1 ? raw.occurrence : 1;
+                if (occurrence > found.length) continue;
+                const from = found[occurrence - 1], to = from + surface.length;
+                const clash = targets.some(t => t.paragraphIndex === paragraphIndex && from < t.end && to > t.start)
+                    || timeMarkers.some(m => m.paragraphIndex === paragraphIndex && from < m.end && to > m.start);
+                if (clash) continue;
+                const kind = STRUCTURE_TIME_KINDS.includes(String(raw.kind || '').toLowerCase()) ? String(raw.kind).toLowerCase() : null;
+                timeMarkers.push({ paragraphIndex, surface, start: from, end: to, kind });
+            }
         }
         if (paragraphs.length > start) sections.push({ heading, kind, start, end: paragraphs.length });
     }
@@ -307,7 +328,7 @@ function validatePracticeReading(data, expected) {
         }
     }
 
-    return { title: data.title.trim().slice(0, 140), language, mode, sections, paragraphs, targets };
+    return { title: data.title.trim().slice(0, 140), language, mode, sections, paragraphs, targets, timeMarkers };
 }
 
 // Parse AI response and validate. `info` (optional) receives { notes, truncated }: the formatting repairs applied and whether
@@ -656,7 +677,7 @@ Return STRICT JSON only, no markdown, no comments, exactly this shape:
     { "heading": "the word", "kind": "examples", "items": [
       { "text": "one complete natural sentence", "targets": [
         { "surface": "the exact form as written in that text", "lemma": "dictionary form", "occurrence": 1, "features": {}, "explanation": "one short sentence in ${safeLangName}: why THIS form is used HERE", "forms": null }
-      ] }
+      ]${mode === 'verbs' ? `, "timeMarkers": [ { "surface": "the time expression exactly as written", "occurrence": 1, "kind": "past" } ]` : ''} }
     ] },
     { "heading": "", "kind": "story", "items": [ { "text": "a connected paragraph", "targets": [] } ] }
   ]
@@ -666,7 +687,8 @@ Rules:
 - "language" must be exactly "${safeSourceLang}"; write every "text" in ${sourceName}, never in the explanation language.
 - "surface" must be a literal WHOLE word (or contiguous word group) of that item's "text" (same spelling, case, accents). If the same form occurs more than once in that text, set "occurrence" to the one you mean (1 = first); otherwise use 1.
 - ${featureLine}
-- ${formsLine}
+- ${formsLine}${mode === 'verbs' ? `
+- "timeMarkers" (optional, may be []): every expression in that item's text saying WHEN, for how long or how often (e.g. yesterday, already, since 2019, every day, il y a deux ans), copied exactly as a contiguous word group; "kind" is exactly one of: ${STRUCTURE_TIME_KINDS.join(', ')}. Let the sentences use such time expressions naturally, matching the tense shown, and never list a word that is already a target.` : ''}
 - "explanation" explains why THIS exact form is used in THIS sentence (person, tense, agreement, structure) — never a dictionary definition.
 - Aim for about ${list.length ? total + stories : 20} items in total (every example sentence and every paragraph is one item); keep every explanation to ONE short sentence.
 - If you are not confident about a form, leave that target out rather than guessing.

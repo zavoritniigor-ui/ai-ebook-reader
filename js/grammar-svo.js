@@ -1330,6 +1330,16 @@ function renderGrammarFocusDetail(item, langCode) {
         detail.appendChild(why);
     }
 
+    // Sentence structure + time markers for THIS sentence (js/sentence-structure.js): one lazy, cached AI call on
+    // demand — opened straight away when the same sentence was already analysed, so re-focusing never re-asks.
+    if (item.sentence && item.sentence.length <= STRUCTURE_MAX_SENTENCE) {
+        const slot = document.createElement('div');
+        slot.className = 'structure-slot';
+        detail.appendChild(slot);
+        const structure = mountSentenceStructure(slot, item.sentence, langCode, () => detail.isConnected, head);
+        if (peekSentenceStructure(item.sentence, langCode)) structure.open();
+    }
+
     content.prepend(detail);
     content.scrollTop = 0;
 }

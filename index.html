@@ -791,6 +791,29 @@
         .grammar-focus-context { font-size: 14px; line-height: 1.5; margin: 8px 0; }
         .grammar-context-target { background: none; color: inherit; font-weight: 700; border-bottom: 2px solid #10a37f; }
         .grammar-context-agrees { background: none; color: inherit; border-bottom: 2px dotted #d9822b; }
+        /* Sentence structure + time markers (js/sentence-structure.js) */
+        .structure-btn { margin-top: 10px; padding: 6px 12px; min-height: 36px; font-size: 13px; border: 1px solid var(--border-color, #8884); border-radius: 8px; background: transparent; color: var(--text-color); cursor: pointer; }
+        .grammar-focus-head:has(.structure-btn) { position: relative; padding-right: 138px; min-height: 30px; }
+        .grammar-focus-head .structure-btn { position: absolute; right: 0; top: 0; margin: 0; padding: 0 10px; min-height: 30px; line-height: 1.2; }
+        .structure-btn.active { background: color-mix(in srgb, #3b82c4 14%, transparent); }
+        .structure-result { margin-top: 8px; font-size: 13.5px; line-height: 1.55; }
+        .structure-sentence { margin: 0 0 8px 0; font-size: 15px; line-height: 1.9; }
+        .structure-part { padding: 1px 3px; border-radius: 4px; border-bottom: 2px solid var(--role); background: color-mix(in srgb, var(--role) 14%, transparent); }
+        .structure-summary { margin: 0 0 8px 0; }
+        .structure-legend { list-style: none; margin: 0 0 8px 0; padding: 0; display: grid; gap: 4px; }
+        .structure-chip { display: inline-block; padding: 0 7px; font-size: 12px; line-height: 1.6; border-radius: 10px; border: 1px solid var(--role); color: var(--text-color); background: color-mix(in srgb, var(--role) 14%, transparent); }
+        .structure-markers { margin-top: 4px; }
+        .practice-time-marker { border-bottom: 2px dotted #d9822b; background: color-mix(in srgb, #d9822b 12%, transparent); border-radius: 3px; cursor: pointer; font: inherit; color: inherit; padding: 0 1px; border-top: 0; border-left: 0; border-right: 0; }
+        .structure-role-subject { --role: #3b82c4; }
+        .structure-role-verb { --role: #d9534f; }
+        .structure-role-object { --role: #2f9e6e; }
+        .structure-role-indirect { --role: #7c5cbf; }
+        .structure-role-complement { --role: #c28a1a; }
+        .structure-role-time { --role: #d9822b; }
+        .structure-role-place { --role: #2a9bb0; }
+        .structure-role-manner { --role: #8a6d3b; }
+        .structure-role-reason { --role: #b04a8f; }
+        .structure-role-connector { --role: #6b7280; }
         .grammar-focus-why { font-size: 13.5px; line-height: 1.5; color: var(--text-color); opacity: .9; margin: 0; }
         .grammar-practice-btn { margin-top: 15px; }
         #ask-content { cursor: text; }
@@ -1315,7 +1338,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=3d1b7050a5ba"></script>
+    <script src="js/core.js?v=0b2b32db470f"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1332,10 +1355,11 @@
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=c0f9f96e0b03"></script>
     <script src="js/translation.js?v=b5fbd84d5744"></script>
-    <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
-    <script src="js/ai-client.js?v=f32df9e435c5"></script>
-    <script src="js/practice-session.js?v=4a936b0b2205"></script>
-    <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
+    <script src="js/sentence-structure.js?v=872691ae555a"></script>
+    <script src="js/grammar-svo.js?v=1c6b1a32bf55"></script>
+    <script src="js/ai-client.js?v=7d739b6d153d"></script>
+    <script src="js/practice-session.js?v=e584d692920a"></script>
+    <script src="js/practice-worksheet.js?v=bc7095815ebc"></script>
     <script src="js/dictation.js?v=6cf6ee491dd8"></script>
     <script src="js/pdf-ink.js?v=9ed1750d501f"></script>
     <script src="js/pdf-crop.js?v=80bab2793f94"></script>

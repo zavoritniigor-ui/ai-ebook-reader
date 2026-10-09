@@ -21,6 +21,8 @@ const OPENAI_TASK_PROFILES = {
     // The per-request budget is set by grammarProfile() (grammar-svo.js) from the size of the text; this is only the fallback.
     grammar_analysis: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
+    // Sentence structure (js/sentence-structure.js): functional parts + time markers of ONE sentence.
+    sentence_structure: { reasoning: 'none', max_output_tokens: 1400, stream: false },
     // Practice reading: per-word example sentences + connected paragraphs, each with its own
     // annotated targets — several minutes of material, so by far the largest structured reply.
     practice_reading: { reasoning: 'low', max_output_tokens: 8000, stream: false },
