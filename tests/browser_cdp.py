@@ -3,6 +3,25 @@ import base64, json, os, socket, struct, time, urllib.request
 
 class CDP:
     def __init__(self, ws_url=None):
+        # A suite that starts right after another one can attach to a tab that is still closing (CI: "Inspector.detached:
+        # target_closed" on the very first call, always at the same suite boundary). So: pick a page target, prove it answers
+        # twice (with a short settle between), and otherwise choose again -- a few attempts, then the real error.
+        last = None
+        for attempt in range(5):
+            try:
+                self._connect(ws_url)
+                self.call('Runtime.evaluate', expression='1')
+                time.sleep(0.25)
+                self.call('Runtime.evaluate', expression='1')
+                return
+            except (ConnectionError, OSError) as e:
+                last = e
+                try: self.sock.close()
+                except Exception: pass
+                if ws_url: break                     # an explicit target is the caller's choice: no silent swap
+                time.sleep(0.5 * (attempt + 1))
+        raise last
+    def _connect(self, ws_url=None):
         from urllib.parse import urlparse
         if not ws_url:
             tabs = json.load(urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('READER_CDP_PORT', '9222') + '/json'))
