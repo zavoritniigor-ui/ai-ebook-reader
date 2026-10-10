@@ -1,3 +1,7 @@
+## AI task routing + instant local translation (2026-10-09, Claude)
+
+Branch `feat/ai-routing-instant-translation`. Per the user: single-word translation = on-device Chrome translator FIRST (instant, ⌂), then Groq replaces it (⚡); grammar/breakdowns/rules/practice/ask → OpenAI. Root cause of "offline translation never works on desktop": `Translator.create()` of a 'downloadable' model needs a user gesture, but the only caller was the background warm-up (no gesture) and the lookup path ran AI first and never reached the local translator; it is now started in the tap handler. Routing is a settings checkbox (default on). `tests/ai_providers_browser.py` now pins routing off (it verifies the single-active-provider contract). Not verified on a real desktop Chrome with a real language pack and real Groq/OpenAI keys.
+
 ## Grammar rules panel — French catalogue (phase 1) (2026-10-09, Claude)
 
 Branch `feat/grammar-rules` from main. New `js/grammar-rules-data-fr.js` (56 topics) + `js/grammar-rules.js` + panel `#rules-panel` + header button. Phase 2 (next PR): English catalogue `grammar-rules-data-en.js` (the panel already has the language select and shows a "coming" note for EN). Known limits: only the visible text (≤3000 chars) is searched; the theory is mine and has not been reviewed by a French teacher; real model precision is untested (gold mocks only); the header button was added to the existing group without a layout pass on tablet.

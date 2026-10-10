@@ -663,6 +663,8 @@ const state = {
     })(),
     apiKey: readStored('reader_gemini_key') || '', groqKey: readStored('reader_groq_key') || '',
     openaiKey: readStored('reader_openai_key') || '',
+    // Task routing: translation -> Groq (fast), grammar / breakdowns / rules / practice / ask -> OpenAI, whenever those keys exist.
+    aiRouting: readStored('reader_ai_routing') === 'off' ? 'off' : 'auto',
     activeAiProvider: (() => {
         const saved = readStored('reader_active_ai_provider');
         if (['openai', 'groq', 'gemini'].includes(saved)) return saved;
@@ -1126,6 +1128,9 @@ const I18N = {
     structSub_other: { uk: 'інше', en: 'other', fr: 'autre', ru: 'другое' },
     btnStruct:      { uk: '🧩 Розбір', en: '🧩 Parts', fr: '🧩 Analyse', ru: '🧩 Разбор' },
     tStruct:        { uk: 'Розбір речення: частини речення кольорами в тексті', en: 'Sentence breakdown: colour the parts in the text', fr: 'Analyse de la phrase : parties en couleur dans le texte', ru: 'Разбор предложения: части цветом в тексте' },
+    // AI task routing (settings).
+    aiRoutingLabel: { uk: 'Розподіл за завданнями: переклад — Groq, граматика й розбори — OpenAI', en: 'Route by task: translation → Groq, grammar & breakdowns → OpenAI', fr: 'Répartition par tâche : traduction → Groq, grammaire et analyses → OpenAI', ru: 'Распределение по задачам: перевод — Groq, грамматика и разборы — OpenAI' },
+    aiRoutingHint: { uk: 'Працює лише для провайдерів, чиї ключі збережено; інакше використовується «Активний AI». Вимкніть, щоб усе йшло через один активний провайдер.', en: 'Only applies to providers whose keys are saved; otherwise the active AI is used. Turn off to send everything through the single active provider.', fr: 'Ne s’applique qu’aux fournisseurs dont la clé est enregistrée ; sinon l’IA active est utilisée. Désactivez pour tout envoyer au fournisseur actif.', ru: 'Работает только для провайдеров с сохранёнными ключами; иначе используется «Активный AI». Выключите, чтобы всё шло через один активный провайдер.' },
     grammarWhy:              { uk: 'Чому', en: 'Why', fr: 'Pourquoi', ru: 'Почему' },
     grammarAgreesWith:       { uk: 'Узгоджується з', en: 'Agrees with', fr: 'Accord avec', ru: 'Согласуется с' },
     grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },
@@ -1395,6 +1400,25 @@ for (const [locale, values] of Object.entries({
         structSub_conjunction: 'Cónasc',
         structSub_negation: 'Diúltú',
         structSub_other: 'Eile',
+    },
+})) Object.assign(I18N_EXTRA[locale], values);
+// AI task routing strings for the I18N_EXTRA languages.
+for (const [locale, values] of Object.entries({
+    zh: {
+        aiRoutingLabel: '按任务分配：翻译 → Groq，语法与解析 → OpenAI',
+        aiRoutingHint: '仅对已保存密钥的提供商生效；否则使用当前 AI。关闭后所有请求都走当前提供商。',
+    },
+    ko: {
+        aiRoutingLabel: '작업별 분배: 번역 → Groq, 문법·분석 → OpenAI',
+        aiRoutingHint: '키가 저장된 제공업체에만 적용되며, 없으면 활성 AI를 사용합니다. 끄면 모든 요청이 활성 제공업체로 갑니다.',
+    },
+    hi: {
+        aiRoutingLabel: 'कार्य के अनुसार: अनुवाद → Groq, व्याकरण और विश्लेषण → OpenAI',
+        aiRoutingHint: 'केवल उन प्रदाताओं पर लागू जिनकी कुंजी सहेजी है; अन्यथा सक्रिय AI इस्तेमाल होता है। बंद करने पर सब कुछ सक्रिय प्रदाता से जाएगा।',
+    },
+    ga: {
+        aiRoutingLabel: 'Roinn de réir tascanna: aistriúchán → Groq, gramadach agus anailísí → OpenAI',
+        aiRoutingHint: 'Ní bhaineann ach le soláthraithe a bhfuil a n-eochair sábháilte; seachas sin úsáidtear an AI gníomhach. Múch chun gach rud a sheoladh tríd an soláthraí gníomhach amháin.',
     },
 })) Object.assign(I18N_EXTRA[locale], values);
 for (const [locale, values] of Object.entries(I18N_EXTRA)) {

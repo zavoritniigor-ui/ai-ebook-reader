@@ -125,6 +125,21 @@ function aiProviderKey(provider = state.activeAiProvider) {
     return Object.hasOwn(AI_PROVIDERS, provider) ? state[AI_PROVIDERS[provider].key] : '';
 }
 function aiAvailable() { return !!aiProviderKey(); }
+// ---- Task routing --------------------------------------------------------------------------------------------------
+// With routing 'auto' (default) each task goes to the provider that suits it, IF that provider's key is stored:
+//   translation  -> Groq   (near-instant answers while the learner waits at a tapped word)
+//   grammar, breakdowns, rules, practice, ask, language level -> OpenAI (the deeper, structured work)
+// Anything else (vision, default) and every task whose preferred provider has no key use the ACTIVE provider, exactly as before.
+// This is a choice made BEFORE the request by task type; a failed request is never silently re-sent to another provider.
+const AI_ROUTE_GROQ_TASKS = new Set(['translation']);
+const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'practice_reading', 'sentence_structure', 'structure_deep',
+    'rules_search', 'rules_explain', 'language_level', 'ask']);
+function aiProviderForTask(task) {
+    const active = state.activeAiProvider;
+    if (state.aiRouting === 'off') return active;
+    const wanted = AI_ROUTE_GROQ_TASKS.has(task) ? 'groq' : AI_ROUTE_OPENAI_TASKS.has(task) ? 'openai' : null;
+    return wanted && aiProviderKey(wanted) ? wanted : active;
+}
 function missingAiKey(provider = state.activeAiProvider) {
     return t('aiAddKey').replace('{provider}', AI_PROVIDERS[provider]?.name || 'AI');
 }
@@ -385,7 +400,7 @@ function callAI(prompt, signal, task = 'default', onDelta, options) { return req
 function callAIVision(prompt, dataUrl, signal, options) { return requestAI(prompt, dataUrl, signal, 'vision', undefined, options); }
 async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
-    const provider = state.activeAiProvider, key = aiProviderKey(provider);
+    const provider = aiProviderForTask(task), key = aiProviderKey(provider);
     if (!key) throw new Error(missingAiKey(provider));
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -395,7 +410,7 @@ async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, opt
     const startedAt = position();
     // options.anyPosition: the answer is about data captured with the request (a page crop), not about the page the
     // reader is on now -- scrolling meanwhile must not discard it.
-    const current = () => !controller.signal.aborted && provider === state.activeAiProvider && key === aiProviderKey(provider) && (options.anyPosition || startedAt === position());
+    const current = () => !controller.signal.aborted && provider === aiProviderForTask(task) && key === aiProviderKey(provider) && (options.anyPosition || startedAt === position());
     const meta = options.meta || (options.meta = {});
     meta.provider = provider; meta.task = task;
     meta.maxOutputTokens = options.maxOutputTokens || (provider === 'openai' ? (OPENAI_TASK_PROFILES[task] || OPENAI_TASK_PROFILES.default).max_output_tokens : null);

@@ -175,7 +175,7 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     const taskType = mode === 'level' ? 'language_level' : 'ask';
 
     // For streaming tasks (ask, language_level on OpenAI), provide incremental callback
-    const isStreaming = (state.activeAiProvider === 'openai') && (mode === 'ask' || mode === 'level');
+    const isStreaming = (aiProviderForTask(taskType) === 'openai') && (mode === 'ask' || mode === 'level');
     const onDelta = isStreaming ? createStreamingUpdater(content, task, panel, mode, requestId) : undefined;
 
     try {
