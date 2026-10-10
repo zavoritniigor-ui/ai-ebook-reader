@@ -1,4 +1,4 @@
-/* Lower-right Quick Menu: a curved scrollable wheel with 11 real actions,
+/* Lower-right Quick Menu: a curved scrollable wheel with 13 real actions,
  * inertia, detent snapping, and synchronized roulette ticking sound.
  * Thumb-reachable on tablets, expands inward/leftward from launcher.
  *
@@ -22,6 +22,7 @@ I18N.printError = {en:'Could not print. Try again.',uk:'Не вдалось на
 I18N.wheelInk = {en:'Draw',uk:'Малювання',fr:'Dessiner',ru:'Рисовать',zh:'绘制',ko:'그리기',hi:'ड्रा करें',ga:'Tarraing'};
 I18N.wheelRegion = {en:'Region',uk:'Область',fr:'Région',ru:'Область',zh:'区域',ko:'영역',hi:'क्षेत्र',ga:'Réigiún'};
 I18N.wheelVoices = {en:'Alt Voices',uk:'Голоси',fr:'Voix',ru:'Голоса',zh:'声音',ko:'목소리',hi:'आवाजें',ga:'Guthanna'};
+I18N.wheelRules = I18N.wheelRules || { en:'Rules',uk:'Правила',fr:'Règles',ru:'Правила' };
 I18N.wheelLevel = {en:'Language Level',uk:'Рівень',fr:'Niveau',ru:'Уровень',zh:'等级',ko:'레벨',hi:'स्तर',ga:'Leibhéal'};
 
 // ========== ЄДИНЕ ДЖЕРЕЛО ІСТИНИ ДЛЯ ПОВНОГО МЕНЮ ==========
@@ -46,7 +47,7 @@ const quickMenu = (() => {
     const panel = document.getElementById('quick-menu');
     const backdrop = document.getElementById('qm-backdrop');
 
-    // 12 real actions, no empty slots
+    // 13 real actions, no empty slots
     // 'btn-print' and 'wheelFull' are virtual actions (no source element, handled specially in click handler)
     const allActions = [
         ['wheelOpen', 'file-upload', '⌑'],
@@ -60,6 +61,7 @@ const quickMenu = (() => {
         ['wheelRegion', 'btn-region', '◻'],
         ['wheelVoices', 'btn-alt-voices', '♪'],
         ['wheelLevel', 'btn-lang-level', '📊'],
+        ['wheelRules', 'btn-rules', '📚'],
         ['wheelFull', 'wheelFull', '☰']
     ];
 
@@ -153,7 +155,7 @@ const quickMenu = (() => {
     }
     function render() {
         buttons.forEach((b, i) => {
-            const d = (((i - wheelPosition) % 12 + 18) % 12) - 6;
+            const n = allActions.length, d = (((i - wheelPosition) % n + n * 1.5) % n) - n / 2;   // shortest cyclic offset in (-n/2, n/2]
             const distance = Math.abs(d), visible = distance < slots / 2;
             const delay = Math.min(distance, 2) * .04;
             const progress = Math.max(0, (reveal - delay) / (1 - delay));
@@ -213,7 +215,7 @@ const quickMenu = (() => {
         navigationState = navigationKey();
         els.askPanel.classList.remove('expanded');
         els.grammarPanel.classList.remove('expanded');
-        document.getElementById('rules-panel').classList.remove('expanded');
+        if (typeof minimizeRulesPanel === 'function') minimizeRulesPanel();
         els.sidebar.classList.add('collapsed');
         closeReadingStats();
         closeFooterMenu();

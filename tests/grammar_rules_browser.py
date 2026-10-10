@@ -77,7 +77,7 @@ if not c.js('state.translateMode'):
     c.js('els.translateBtn.click()'); time.sleep(0.3)
 c.js("state.targetLang='uk'")
 c.js("""(()=>{ aiAvailable=()=>true; showToast=()=>{}; window.__calls=[]; window.__reply=null; window.__explain='Крок 1. Допоміжне дієслово.\\n\\nКрок 2. Participe passé.';
-  callAI=async (prompt, signal, task)=>{ __calls.push({task, prompt}); if (task==='rules_search') { if (__reply instanceof Error) throw __reply; return __reply; } if (task==='rules_explain') return __explain; return 'ok'; }; return 1; })()""")
+  callAI=async (prompt, signal, task)=>{ __calls.push({task, prompt}); if (task==='rules_search') { if (window.__slow) { await new Promise(r => setTimeout(r, 1800)); window.__slow = false; } if (__reply instanceof Error) throw __reply; return __reply; } if (task==='rules_explain') return __explain; return 'ok'; }; return 1; })()""")
 
 # ---- 3. panel + menu ----
 c.js("document.getElementById('btn-rules').click()"); time.sleep(0.5)
@@ -160,9 +160,112 @@ check("26 when the page changes the highlights and list are dropped and the lear
       "!CSS.highlights.has('rule-match') && document.querySelectorAll('#rules-content .rules-match').length === 0 && document.getElementById('rules-status').textContent === t('rulesChanged')", timeout=5)
 check("27 the panel takes part in the Back-button overlay stack", "topOpenOverlay() === 'rules' && (closeTopOverlay('rules'), !document.getElementById('rules-panel').classList.contains('expanded'))")
 check("28 every panel string exists in all 8 UI languages with its own text",
-      """(() => { const keys = ['btnRules','tRules','panelRules','rulesLangLabel','rulesSearchPlaceholder','rulesCatalogueSoon','rulesNoTopics','rulesBack','rulesTheory','rulesFind','rulesClear','rulesRunning','rulesFound','rulesNone','rulesFailed','rulesNoText','rulesChanged','rulesExplain','rulesAskPlaceholder','rulesAskBtn'];
-         const langs = ['uk','en','fr','ru','zh','ko','hi','ga']; const bad = []; for (const k of keys) for (const l of langs) { const v = I18N[k] && I18N[k][l]; if (!v) bad.push(k + ':' + l); else if (l !== 'en' && v === I18N[k].en && !/^[^a-z]*$/i.test(v) && !['btnRules','panelRules'].includes(k)) bad.push('fallback ' + k + ':' + l); }
+      """(() => { const keys = ['btnRules','tRules','panelRules','rulesLangLabel','rulesSearchPlaceholder','rulesCatalogueSoon','rulesNoTopics','rulesBack','rulesTheory','rulesFind','rulesClear','rulesRunning','rulesFound','rulesNone','rulesFailed','rulesNoText','rulesChanged','rulesExplain','rulesAskPlaceholder','rulesAskBtn','rulesHide','rulesPillRunning','rulesPillReady','rulesPillFailed','rulesDetails','rulesException','rulesExceptionsCount','wheelRules'];
+         const langs = ['uk','en','fr','ru','zh','ko','hi','ga']; const bad = []; for (const k of keys) for (const l of langs) { const v = I18N[k] && I18N[k][l]; if (!v) bad.push(k + ':' + l); else if (l !== 'en' && v === I18N[k].en && !/^[^a-z]*$/i.test(v) && !['btnRules','panelRules','rulesException'].includes(k)) bad.push('fallback ' + k + ':' + l); }
          return bad.length === 0 || JSON.stringify(bad); })()""")
+
+# ================= UX: details, exceptions, hide + pill, layout, interplay, zoom, quick wheel =================
+check("33 every topic of both catalogues has expanded rules AND exceptions (uk + en)",
+      """(() => { const bad = []; for (const lang of ['fr', 'en']) for (const s of GRAMMAR_RULES[lang].sections) for (const x of s.topics) { const d = GRAMMAR_RULE_DETAILS[lang] && GRAMMAR_RULE_DETAILS[lang][x.id];
+         if (!d) { bad.push(lang + ':' + x.id + ':missing'); continue; }
+         if (!/^Правила:/m.test(d.uk) || !/^Винятки/m.test(d.uk) || d.uk.length < 250) bad.push(lang + ':' + x.id + ':uk');
+         if (!/^Rules:/m.test(d.en) || !/^Exceptions/m.test(d.en) || d.en.length < 250) bad.push(lang + ':' + x.id + ':en'); }
+         return bad.length === 0 || JSON.stringify(bad.slice(0, 12)); })()""")
+c.js("openBookFile(new File([Uint8Array.from(atob(%s),ch=>ch.charCodeAt(0))],'lecture.md',{lastModified:%d}))" % (json.dumps(b64), int(time.time())))
+c.wait("els.pages.textContent.includes('Marie a mangé')", timeout=20); time.sleep(0.8)
+EXC = GOLD([{"text": "a mangé", "note": "avoir + participe"}, {"text": "est partie", "note": "être + participe", "exception": True, "exceptionNote": "Participe accordé avec le sujet (verbe de mouvement)"},
+            {"text": "avons fini", "note": "avoir + participe", "exception": True, "exceptionNote": ""}])
+c.js("__calls.length = 0; clearRuleHighlights(); rulesState.topic = null; rulesSearchCache.clear(); __reply = %s; document.getElementById('rules-panel').dataset.ready = ''; state.sourceLang = 'fr-FR'; openRulesPanel(); 1" % json.dumps(EXC))
+c.js("openRuleTopic(GRAMMAR_RULES.fr.sections.flatMap(s => s.topics).find(x => x.id === 'passe-compose')); 1")
+check("34 the topic view has the expanded 'rules and exceptions' section with subheadings and list items",
+      """(() => { const d = document.querySelector('#rules-content .rules-details'); return !!d && d.querySelector('summary').textContent === t('rulesDetails') && d.querySelectorAll('h5').length >= 2 && d.querySelectorAll('li').length >= 4 && d.textContent.includes('Винятки'); })()""", timeout=8)
+check("35 an exception flagged by the model is labelled in the list (badge + its description), coloured differently on the page, and counted",
+      """(() => { const items = [...document.querySelectorAll('#rules-content .rules-match')]; return items.length === 3 && items[1].querySelector('.rules-badge') && items[1].textContent.includes('Participe accordé avec le sujet')
+         && !items[0].querySelector('.rules-badge') && !items[2].querySelector('.rules-badge')
+         && [...CSS.highlights.get('rule-exception')].map(r => r.toString()).join('|') === 'est partie' && [...CSS.highlights.get('rule-match')].map(r => r.toString()).join('|') === 'a mangé|avons fini'
+         && document.getElementById('rules-status').textContent.includes(t('rulesExceptionsCount').replace('{n}', 1)); })()""", timeout=8)
+c.js("document.querySelectorAll('#rules-content .rules-match')[1].click(); 1")
+check("36 the card of an exception shows the badge and its explanation, and the explain prompt carries the flagged exception + the detailed rules",
+      """(() => { const card = document.querySelector('#rules-content .rules-card'); document.querySelector('#rules-content .rules-explain-btn').click(); return !!card.querySelector('.rules-badge') && card.textContent.includes('Participe accordé avec le sujet'); })()""")
+check("37 ... and the explain prompt includes the exception and the detailed rules", "(p => p.includes('EXCEPTION') && p.includes('Participe accordé') && p.includes('Detailed rules and exceptions'))((__calls.filter(x => x.task === 'rules_explain').at(-1) || {prompt: ''}).prompt)", timeout=8)
+
+check("34b tense topics carry conjugation tables by person, number and gender; the passé composé table has all persons and the être forms agree in gender/number",
+      """(() => { const d = GRAMMAR_RULE_DETAILS.fr['passe-compose']; const need = ['j’ai parlé','tu as parlé','elle est allée','ils sont allés','elles sont allées','nous sommes allés']; const tenses = ['present','imparfait','plus-que-parfait','passe-simple','futur-simple','futur-anterieur','conditionnel-present','conditionnel-passe','subjonctif-present','subjonctif-passe','imperatif','voix-passive','verbes-pronominaux','accord-participe-etre','accord-adjectif'];
+         const missing = tenses.filter(id => !/^\\| /m.test(GRAMMAR_RULE_DETAILS.fr[id].uk) || !/^Відмінювання/m.test(GRAMMAR_RULE_DETAILS.fr[id].uk)); const en = ['present-simple','past-simple','present-perfect','passive-voice'].filter(id => !/^\\| /m.test(GRAMMAR_RULE_DETAILS.en[id].en));
+         return need.every(x => d.uk.includes(x)) && missing.length === 0 && en.length === 0 || JSON.stringify({missing, en}); })()""")
+c.js("openRuleTopic(GRAMMAR_RULES.fr.sections.flatMap(s => s.topics).find(x => x.id === 'passe-compose')); 1")
+check("34c the tables are rendered as real tables (header row + one row per person) inside the expanded section",
+      """(() => { const tb = document.querySelector('#rules-content .rules-details .rules-table'); return !!tb && tb.querySelectorAll('tr').length === 9 && tb.querySelector('tr:first-child th').textContent === 'Особа' && tb.textContent.includes('elles sont allées'); })()""", timeout=6)
+
+# hide window + readiness pill
+c.js("document.getElementById('rules-min').click(); 1"); time.sleep(0.6)
+check("38 'hide' removes the window but keeps highlights, results and shows a green readiness pill with the count",
+      """(() => { const pill = document.getElementById('rules-pill'); return !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && !pill.hidden && pill.dataset.state === 'ready' && pill.textContent.includes('3'); })()""")
+c.js("document.getElementById('rules-pill').click(); 1"); time.sleep(0.5)
+check("39 the pill brings the same window back (same topic, same results) and hides itself",
+      "document.getElementById('rules-panel').classList.contains('expanded') && document.getElementById('rules-pill').hidden && document.querySelectorAll('#rules-content .rules-match').length === 3")
+c.js("window.__slow = true; document.getElementById('rules-find').click(); 1")
+c.js("document.getElementById('rules-min').click(); 1")
+check("40 while a search runs the hidden window shows a pulsing 'searching' pill", "(() => { const p = document.getElementById('rules-pill'); return !p.hidden && p.dataset.state === 'running'; })()", timeout=3)
+check("41 ... which turns into the ready pill when the answer arrives", "(() => { const p = document.getElementById('rules-pill'); return !p.hidden && p.dataset.state === 'ready'; })()", timeout=10)
+
+# layout
+check("42 landscape (tablet): the window is a bottom sheet, never above the main menu, and the page gets bottom padding",
+      """(() => { document.getElementById('rules-pill').click(); const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
+         return p.classList.contains('rules-sheet') && r.bottom >= innerHeight - 1 && r.top >= hb && r.height <= innerHeight * 0.5 && document.body.classList.contains('rules-inset')
+           && parseFloat(getComputedStyle(document.getElementById('reader-pages')).paddingBottom) >= r.height; })()""", timeout=3)
+c.call('Emulation.setDeviceMetricsOverride', width=820, height=1180, deviceScaleFactor=1, mobile=True); time.sleep(0.8)
+check("43 portrait: a side panel that starts BELOW the main menu and fits the screen; no bottom padding",
+      """(() => { const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
+         return !p.classList.contains('rules-sheet') && r.top >= hb && r.bottom <= innerHeight && r.right <= innerWidth + 1 && !document.body.classList.contains('rules-inset') || JSON.stringify({sheet: p.className, top: r.top, hb, bottom: r.bottom, ih: innerHeight}); })()""", timeout=3)
+c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False); time.sleep(0.8)
+
+# interplay
+c.js("els.askPanel.classList.add('expanded'); 1"); time.sleep(0.5)
+check("44 opening 'Ask AI' hides the rules window but keeps its highlights and the pill", "!document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && !document.getElementById('rules-pill').hidden")
+c.js("els.askPanel.classList.remove('expanded'); document.getElementById('btn-rules').click(); 1"); time.sleep(0.5)
+c.js("els.grammarPanel.classList.add('expanded'); 1"); time.sleep(0.5)
+check("45 opening 'Grammar' hides the rules window too; opening rules closes Grammar and Ask", "!document.getElementById('rules-panel').classList.contains('expanded')")
+c.js("document.getElementById('btn-rules').click(); 1"); time.sleep(0.4)
+check("46 ... and reopening rules closes Grammar", "document.getElementById('rules-panel').classList.contains('expanded') && !els.grammarPanel.classList.contains('expanded') && !els.askPanel.classList.contains('expanded')")
+p = word_pos('chat')
+click_xy(p['x'], p['y'])
+check("47 tapping an ordinary word opens its translation and tucks the rules window away (no overlap with the tooltip)",
+      "els.tooltip.style.display === 'flex' && !document.getElementById('rules-panel').classList.contains('expanded')", timeout=8)
+c.js("els.ttCloseBtn.click(); 1")
+c.js("document.getElementById('btn-rules').click(); 1"); time.sleep(0.4)
+check("48 the Back button / overlay close HIDES the window (highlights stay); the ✕ closes it AND clears the highlights",
+      """(() => { closeTopOverlay('rules'); const hidden = !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match'); document.getElementById('btn-rules').click(); document.getElementById('rules-close').click(); return hidden && !CSS.highlights.has('rule-match') && !CSS.highlights.has('rule-exception') && document.getElementById('rules-pill').hidden; })()""")
+
+# highlights survive a text-size change
+c.js("__calls.length = 0; rulesSearchCache.clear(); __reply = %s; document.getElementById('btn-rules').click(); 1" % json.dumps(EXC))
+c.js("document.querySelector('#rules-content .rules-back') && document.querySelector('#rules-content .rules-back').click(); 1")
+c.js("openRuleTopic(GRAMMAR_RULES.fr.sections.flatMap(s => s.topics).find(x => x.id === 'passe-compose')); 1")
+c.wait("CSS.highlights.has('rule-match')", timeout=10)
+c.js("document.querySelectorAll('#rules-content .rules-match')[1].click(); document.getElementById('rules-min').click(); 1"); time.sleep(0.5)
+n_calls = c.js("__calls.filter(x => x.task === 'rules_search').length")
+c.js("document.getElementById('zoom-in').click(); document.getElementById('zoom-in').click(); 1"); time.sleep(2.5)
+check("49 after the text size changes the highlights are re-applied on the NEW text (same words, regular and exception colours, active match kept, no new AI call)",
+      """(() => { const t2 = k => CSS.highlights.has(k) ? [...CSS.highlights.get(k)].map(r => r.toString()).join('|') : ''; return t2('rule-match') === 'a mangé|avons fini' && t2('rule-exception') === 'est partie' && t2('rule-active') === 'est partie' && !rulesRangesBroken(); })()""", timeout=5)
+check("50 ... without asking the model again", "__calls.filter(x => x.task === 'rules_search').length === %d" % n_calls)
+c.js("document.getElementById('zoom-out').click(); document.getElementById('zoom-out').click(); 1"); time.sleep(2)
+check("51 the same after making the text smaller again", "(() => { const t2 = k => CSS.highlights.has(k) ? [...CSS.highlights.get(k)].map(r => r.toString()).join('|') : ''; return t2('rule-match') === 'a mangé|avons fini' && t2('rule-exception') === 'est partie'; })()", timeout=5)
+# a text-size change that RE-PAGINATES (the marked sentences leave the screen): the rule stays on and the new visible text is searched
+c.js("__calls.length = 0; rulesSearchCache.clear(); document.getElementById('rules-panel').classList.add('expanded'); 1")
+c.js("document.getElementById('zoom-in').click(); els.pages.innerHTML = '<p>Autre page: Paul a mangé du pain. Ils sont partis hier.</p>'; __reply = %s; 1" % json.dumps(GOLD([{"text": "a mangé", "note": "avoir + participe"}])))
+check("53 after a zoom that re-paginates the page the same rule is searched again on the NEW visible text (one new call) and painted there",
+      "__calls.filter(x => x.task === 'rules_search').length === 1 && CSS.highlights.has('rule-match') && [...CSS.highlights.get('rule-match')].map(r => r.toString()).join('|') === 'a mangé' && rulesState.matches.length === 1", timeout=12)
+c.js("document.getElementById('zoom-out').click(); 1")
+# the visible window is a FILTERED subsequence of the DOM: a sentence contiguous there is split by off-screen nodes in the full text
+c.js("""(() => { clearRuleHighlights(); els.pages.innerHTML = '<p>Il (ceindre) la ville.</p><p>aaa (ceindre) 5.</p><p>NODE HORS ECRAN</p><p>Vous (feindre) 6.</p><p>Vous (feindre) l indifference.</p>';
+  rulesState.matches = [{ text: 'feindre', start: 0, end: 7, note: '', exception: false, exceptionNote: '', sentence: '(ceindre) 5. Vous (feindre) 6.', sentenceStart: 19 },
+                        { text: 'ceindre', start: 0, end: 7, note: '', exception: false, exceptionNote: '', sentence: 'aaa (ceindre) 5. Vous', sentenceStart: 5 }];
+  const r = remapRuleHighlights(); window.__remap = r.ranges.map(x => x && x.toString() + '@' + x.startContainer.parentElement.textContent); return 1; })()""")
+check("54 a sentence that is no longer contiguous in the page text is re-found by the match + its surrounding context (right occurrence among look-alikes)",
+      "__remap.length === 2 && __remap[0] === 'feindre@Vous (feindre) 6.' && __remap[1] === 'ceindre@aaa (ceindre) 5.'")
+check("52 the quick wheel has a Rules action that opens the panel",
+      """(() => { const b = document.querySelector('.qm-item[data-action="btn-rules"]'); if (!b) return false; document.getElementById('rules-panel').classList.remove('expanded'); document.getElementById('btn-rules').click(); const open = document.getElementById('rules-panel').classList.contains('expanded'); document.getElementById('rules-close').click(); return open && !!b.querySelector('.qm-label'); })()""")
+
 # ---- English rules on an English page ----
 c.js("""(() => { clearRuleHighlights(); rulesState.topic = null; rulesState.matches = []; state.sourceLang = 'en-US'; els.pages.innerHTML = '<p>She has lived here for years. They were playing when it rained.</p>';
   document.getElementById('rules-panel').dataset.ready = ''; rulesSearchCache.clear(); __calls.length = 0;
@@ -173,6 +276,6 @@ check("31 an English topic sends an English-language search (prompt names Englis
       """__calls.filter(x => x.task === 'rules_search').length === 1 && __calls[0].prompt.includes('"language":"en"') && __calls[0].prompt.includes('in the English text') && __calls[0].prompt.includes('Present perfect') && !__calls[0].prompt.includes('Present perfect" ("Present perfect")') && [...CSS.highlights.get('rule-match')].map(r => r.toString()).join('|') === 'has lived|were playing'""", timeout=8)
 c.js("document.querySelectorAll('#rules-content .rules-match')[0].click(); document.querySelector('#rules-content .rules-explain-btn').click(); 1")
 check("32 the English explanation carries the English theory and the grammar tutor framing for English",
-      "(p => p.includes('grammar tutor for English') && p.includes('Theory to rely on') && p.includes('has lived'))(__calls.filter(x => x.task === 'rules_explain').at(-1).prompt)", timeout=8)
+      "(p => p.includes('grammar tutor for English') && p.includes('Theory to rely on') && p.includes('has lived'))((__calls.filter(x => x.task === 'rules_explain').at(-1) || {prompt: ''}).prompt)", timeout=8)
 check("29 no application errors", "__errs.length === 0 || JSON.stringify(__errs)")
 print('ALL GRAMMAR RULES CHECKS PASSED')
