@@ -1131,6 +1131,15 @@ const I18N = {
     // AI task routing (settings).
     aiRoutingLabel: { uk: 'Розподіл за завданнями: переклад — Groq, граматика й розбори — OpenAI', en: 'Route by task: translation → Groq, grammar & breakdowns → OpenAI', fr: 'Répartition par tâche : traduction → Groq, grammaire et analyses → OpenAI', ru: 'Распределение по задачам: перевод — Groq, грамматика и разборы — OpenAI' },
     aiRoutingHint: { uk: 'Працює лише для провайдерів, чиї ключі збережено; інакше використовується «Активний AI». Вимкніть, щоб усе йшло через один активний провайдер.', en: 'Only applies to providers whose keys are saved; otherwise the active AI is used. Turn off to send everything through the single active provider.', fr: 'Ne s’applique qu’aux fournisseurs dont la clé est enregistrée ; sinon l’IA active est utilisée. Désactivez pour tout envoyer au fournisseur actif.', ru: 'Работает только для провайдеров с сохранёнными ключами; иначе используется «Активный AI». Выключите, чтобы всё шло через один активный провайдер.' },
+    // Rules panel: hide / readiness pill / exceptions.
+    rulesHide: { uk: 'Сховати вікно (підсвітка лишається)', en: 'Hide window (highlights stay)', fr: 'Masquer la fenêtre (le surlignage reste)', ru: 'Скрыть окно (подсветка остаётся)' },
+    rulesPillRunning: { uk: 'Шукаю…', en: 'Searching…', fr: 'Recherche…', ru: 'Ищу…' },
+    rulesPillReady: { uk: 'Знайдено: {n}', en: 'Found: {n}', fr: 'Trouvé : {n}', ru: 'Найдено: {n}' },
+    rulesPillFailed: { uk: 'Не вдалося', en: 'Failed', fr: 'Échec', ru: 'Не получилось' },
+    rulesDetails: { uk: 'Докладно: правила та винятки', en: 'In detail: rules and exceptions', fr: 'En détail : règles et exceptions', ru: 'Подробно: правила и исключения' },
+    rulesException: { uk: 'Виняток', en: 'Exception', fr: 'Exception', ru: 'Исключение' },
+    rulesExceptionsCount: { uk: 'винятків: {n}', en: 'exceptions: {n}', fr: 'exceptions : {n}', ru: 'исключений: {n}' },
+    wheelRules: { uk: 'Правила', en: 'Rules', fr: 'Règles', ru: 'Правила' },
     grammarWhy:              { uk: 'Чому', en: 'Why', fr: 'Pourquoi', ru: 'Почему' },
     grammarAgreesWith:       { uk: 'Узгоджується з', en: 'Agrees with', fr: 'Accord avec', ru: 'Согласуется с' },
     grammarNoParadigm:       { uk: 'таблиця форм недоступна', en: 'no form table available', fr: 'tableau de formes indisponible', ru: 'таблица форм недоступна' },
@@ -1419,6 +1428,49 @@ for (const [locale, values] of Object.entries({
     ga: {
         aiRoutingLabel: 'Roinn de réir tascanna: aistriúchán → Groq, gramadach agus anailísí → OpenAI',
         aiRoutingHint: 'Ní bhaineann ach le soláthraithe a bhfuil a n-eochair sábháilte; seachas sin úsáidtear an AI gníomhach. Múch chun gach rud a sheoladh tríd an soláthraí gníomhach amháin.',
+    },
+})) Object.assign(I18N_EXTRA[locale], values);
+// Rules panel (hide / pill / exceptions) strings for the I18N_EXTRA languages.
+for (const [locale, values] of Object.entries({
+    zh: {
+        rulesHide: '隐藏窗口（高亮保留）',
+        rulesPillRunning: '查找中…',
+        rulesPillReady: '找到：{n}',
+        rulesPillFailed: '失败',
+        rulesDetails: '详解：规则与例外',
+        rulesException: '例外',
+        rulesExceptionsCount: '例外：{n}',
+        wheelRules: '规则',
+    },
+    ko: {
+        rulesHide: '창 숨기기 (강조 유지)',
+        rulesPillRunning: '검색 중…',
+        rulesPillReady: '찾음: {n}',
+        rulesPillFailed: '실패',
+        rulesDetails: '자세히: 규칙과 예외',
+        rulesException: '예외',
+        rulesExceptionsCount: '예외: {n}',
+        wheelRules: '규칙',
+    },
+    hi: {
+        rulesHide: 'विंडो छिपाएँ (हाइलाइट रहेंगे)',
+        rulesPillRunning: 'खोज रहे हैं…',
+        rulesPillReady: 'मिले: {n}',
+        rulesPillFailed: 'विफल',
+        rulesDetails: 'विस्तार से: नियम और अपवाद',
+        rulesException: 'अपवाद',
+        rulesExceptionsCount: 'अपवाद: {n}',
+        wheelRules: 'नियम',
+    },
+    ga: {
+        rulesHide: 'Folaigh an fhuinneog (fanann na haibhsithe)',
+        rulesPillRunning: 'Ag cuardach…',
+        rulesPillReady: 'Aimsithe: {n}',
+        rulesPillFailed: 'Theip',
+        rulesDetails: 'Go mion: rialacha agus eisceachtaí',
+        rulesException: 'Eisceacht',
+        rulesExceptionsCount: 'eisceachtaí: {n}',
+        wheelRules: 'Rialacha',
     },
 })) Object.assign(I18N_EXTRA[locale], values);
 for (const [locale, values] of Object.entries(I18N_EXTRA)) {

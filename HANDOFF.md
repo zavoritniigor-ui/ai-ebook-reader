@@ -1,6 +1,9 @@
 ## AI task routing + instant local translation (2026-10-09, Claude)
 
 Branch `feat/ai-routing-instant-translation`. Per the user: single-word translation = on-device Chrome translator FIRST (instant, ⌂), then Groq replaces it (⚡); grammar/breakdowns/rules/practice/ask → OpenAI. Root cause of "offline translation never works on desktop": `Translator.create()` of a 'downloadable' model needs a user gesture, but the only caller was the background warm-up (no gesture) and the lookup path ran AI first and never reached the local translator; it is now started in the tap handler. Routing is a settings checkbox (default on). `tests/ai_providers_browser.py` now pins routing off (it verifies the single-active-provider contract). Not verified on a real desktop Chrome with a real language pack and real Groq/OpenAI keys.
+## Rules panel UX round (2026-10-09, Claude)
+
+Branch `feat/rules-ux` (stacked on `feat/grammar-rules-en` → `feat/grammar-rules`). Done: expanded rules + exceptions text for all 115 topics; hide/readiness pill; landscape bottom sheet and "below the main menu" placement; quick-wheel Rules action (and a latent bug fixed: `quick-wheel.js` hard-coded 12 actions in its angular maths); highlights survive text-size/zoom re-render; exceptions flagged by the model are badged/coloured/counted. The "missing grammar-breakdown icon" in the word tooltip is NOT a regression: the 🧩 button lives in the still-unmerged PR #157; main only has the old S-V-O button. CI note: #157/#158/#159 keep failing on different, unrelated-looking suites (pdf_continuous `target_closed`, practice_sentence_actions timing) — reruns needed; not diagnosed beyond that.
 
 ## Grammar rules panel — French catalogue (phase 1) (2026-10-09, Claude)
 
