@@ -379,10 +379,24 @@ function renderRulesTree(filter = '') {
 
 // Expanded text: lines ending with ':' are subheadings ("Правила:", "Винятки:"), lines starting with '• ' are list items.
 function renderRuleDetailsText(container, text) {
-    let list = null;
+    let list = null, table = null;
     for (const raw of String(text || '').split('\n')) {
         const line = raw.trim();
-        if (!line) { list = null; continue; }
+        if (!line) { list = null; table = null; continue; }
+        if (line.startsWith('|') && line.endsWith('|')) {      // conjugation / agreement table; the first row is the header
+            const cells = line.slice(1, -1).split(' | ').map(x => x.replace(/^\s*\|?\s*|\s*$/g, ''));
+            if (!table) {
+                const wrap = ruleEl('div', 'rules-table-wrap');
+                table = ruleEl('table', 'rules-table');
+                wrap.appendChild(table); container.appendChild(wrap);
+                const head = ruleEl('tr'); cells.forEach(c => head.appendChild(ruleEl('th', '', c))); table.appendChild(head);
+            } else {
+                const row = ruleEl('tr'); cells.forEach((c, i) => row.appendChild(ruleEl(i === 0 ? 'th' : 'td', i === 0 ? 'rules-table-row-head' : '', c))); table.appendChild(row);
+            }
+            list = null;
+            continue;
+        }
+        table = null;
         if (line.startsWith('• ')) { if (!list) { list = ruleEl('ul', 'rules-details-list'); container.appendChild(list); } list.appendChild(ruleEl('li', '', line.slice(2))); continue; }
         list = null;
         container.appendChild(ruleEl(line.endsWith(':') ? 'h5' : 'p', line.endsWith(':') ? 'rules-details-head' : '', line));

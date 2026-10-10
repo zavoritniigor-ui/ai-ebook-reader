@@ -1148,6 +1148,48 @@ Exceptions:
 • Because of ≠ because: not because of it rained.
 • Such + a + adj + noun / so + adj: such a long day / so long a day (formal).`);
 
+
+    // ---- Tables: person · number (English has no grammatical gender on verbs). Row = "| cell | cell |", first row is the header. ----
+    const TBL = (id, rows) => {
+        if (!en[id]) throw new Error('details table for unknown topic ' + id);
+        const block = rows.map(r => '| ' + r.join(' | ') + ' |').join('\n');
+        en[id].uk += '\nВідмінювання (особа, число):\n' + block.replace('PERSON', 'Особа');
+        en[id].en += '\nConjugation (person, number):\n' + block.replace('PERSON', 'Person');
+    };
+    TBL('present-simple', [
+        ['PERSON', 'work', 'be', 'have', 'do', 'go'],
+        ['I', 'work', 'am', 'have', 'do', 'go'], ['you', 'work', 'are', 'have', 'do', 'go'],
+        ['he / she / it', 'works', 'is', 'has', 'does', 'goes'],
+        ['we / you / they', 'work', 'are', 'have', 'do', 'go']]);
+    TBL('present-continuous', [
+        ['PERSON', 'be + working'],
+        ['I', 'am working'], ['you', 'are working'], ['he / she / it', 'is working'], ['we / you / they', 'are working']]);
+    TBL('present-perfect', [
+        ['PERSON', 'have/has + worked', 'have/has + gone'],
+        ['I / you / we / they', 'have worked', 'have gone'], ['he / she / it', 'has worked', 'has gone']]);
+    TBL('past-simple', [
+        ['PERSON', 'work (regular)', 'go (irregular)', 'be', 'have', 'do'],
+        ['I', 'worked', 'went', 'was', 'had', 'did'], ['you', 'worked', 'went', 'were', 'had', 'did'],
+        ['he / she / it', 'worked', 'went', 'was', 'had', 'did'], ['we / you / they', 'worked', 'went', 'were', 'had', 'did']]);
+    TBL('past-continuous', [
+        ['PERSON', 'was/were + working'],
+        ['I / he / she / it', 'was working'], ['you / we / they', 'were working']]);
+    TBL('past-perfect', [
+        ['PERSON', 'had + past participle'],
+        ['I / you / he / she / it / we / they', 'had worked · had gone · had been']]);
+    TBL('future-will', [
+        ['PERSON', 'will + base verb', 'going to'],
+        ['I', 'I will work (I’ll work)', 'I am going to work'], ['you', 'you will work', 'you are going to work'],
+        ['he / she / it', 'he will work', 'he is going to work'], ['we / they', 'we will work', 'we are going to work']]);
+    TBL('passive-voice', [
+        ['tense', 'be + past participle (singular / plural)'],
+        ['present', 'the letter is written / the letters are written'], ['past', 'the letter was written / the letters were written'],
+        ['present perfect', 'the letter has been written / the letters have been written'], ['future', 'the letter will be written / the letters will be written']]);
+    TBL('plurals', [
+        ['singular', 'plural', 'rule'],
+        ['book', 'books', '+s'], ['box', 'boxes', '-x/-s/-ch/-sh → +es'], ['city', 'cities', 'consonant + y → -ies'],
+        ['knife', 'knives', '-f/-fe → -ves'], ['man', 'men', 'irregular'], ['child', 'children', 'irregular'], ['sheep', 'sheep', 'unchanged']]);
+
     const store = window.GRAMMAR_RULE_DETAILS || (window.GRAMMAR_RULE_DETAILS = {});
     store.en = en;
 })();

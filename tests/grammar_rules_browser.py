@@ -189,6 +189,14 @@ check("36 the card of an exception shows the badge and its explanation, and the 
       """(() => { const card = document.querySelector('#rules-content .rules-card'); document.querySelector('#rules-content .rules-explain-btn').click(); return !!card.querySelector('.rules-badge') && card.textContent.includes('Participe accordé avec le sujet'); })()""")
 check("37 ... and the explain prompt includes the exception and the detailed rules", "(p => p.includes('EXCEPTION') && p.includes('Participe accordé') && p.includes('Detailed rules and exceptions'))((__calls.filter(x => x.task === 'rules_explain').at(-1) || {prompt: ''}).prompt)", timeout=8)
 
+check("34b tense topics carry conjugation tables by person, number and gender; the passé composé table has all persons and the être forms agree in gender/number",
+      """(() => { const d = GRAMMAR_RULE_DETAILS.fr['passe-compose']; const need = ['j’ai parlé','tu as parlé','elle est allée','ils sont allés','elles sont allées','nous sommes allés']; const tenses = ['present','imparfait','plus-que-parfait','passe-simple','futur-simple','futur-anterieur','conditionnel-present','conditionnel-passe','subjonctif-present','subjonctif-passe','imperatif','voix-passive','verbes-pronominaux','accord-participe-etre','accord-adjectif'];
+         const missing = tenses.filter(id => !/^\\| /m.test(GRAMMAR_RULE_DETAILS.fr[id].uk) || !/^Відмінювання/m.test(GRAMMAR_RULE_DETAILS.fr[id].uk)); const en = ['present-simple','past-simple','present-perfect','passive-voice'].filter(id => !/^\\| /m.test(GRAMMAR_RULE_DETAILS.en[id].en));
+         return need.every(x => d.uk.includes(x)) && missing.length === 0 && en.length === 0 || JSON.stringify({missing, en}); })()""")
+c.js("openRuleTopic(GRAMMAR_RULES.fr.sections.flatMap(s => s.topics).find(x => x.id === 'passe-compose')); 1")
+check("34c the tables are rendered as real tables (header row + one row per person) inside the expanded section",
+      """(() => { const tb = document.querySelector('#rules-content .rules-details .rules-table'); return !!tb && tb.querySelectorAll('tr').length === 9 && tb.querySelector('tr:first-child th').textContent === 'Особа' && tb.textContent.includes('elles sont allées'); })()""", timeout=6)
+
 # hide window + readiness pill
 c.js("document.getElementById('rules-min').click(); 1"); time.sleep(0.6)
 check("38 'hide' removes the window but keeps highlights, results and shows a green readiness pill with the count",

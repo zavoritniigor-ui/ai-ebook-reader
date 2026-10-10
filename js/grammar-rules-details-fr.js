@@ -1124,6 +1124,148 @@ Exceptions:
 • Ne … pas que — "not only": il n’y a pas que moi.
 • Not to be confused with ne … pas: ne … que is affirmative in meaning.`);
 
+
+    // ---- Таблиці відмінювання: особа · число · рід. Рядок таблиці — «| клітинка | клітинка |», перший рядок — заголовок. ----
+    const TBL = (id, rows) => {
+        if (!fr[id]) throw new Error('details table for unknown topic ' + id);
+        const block = rows.map(r => '| ' + r.join(' | ') + ' |').join('\n');
+        fr[id].uk += '\nВідмінювання (особа, число, рід):\n' + block.replace('PERSON', 'Особа');
+        fr[id].en += '\nConjugation (person, number, gender):\n' + block.replace('PERSON', 'Person');
+    };
+    TBL('present', [
+        ['PERSON', 'parler', 'finir', 'vendre', 'être', 'avoir', 'aller', 'faire'],
+        ['je', 'parle', 'finis', 'vends', 'suis', 'ai', 'vais', 'fais'],
+        ['tu', 'parles', 'finis', 'vends', 'es', 'as', 'vas', 'fais'],
+        ['il / elle / on', 'parle', 'finit', 'vend', 'est', 'a', 'va', 'fait'],
+        ['nous', 'parlons', 'finissons', 'vendons', 'sommes', 'avons', 'allons', 'faisons'],
+        ['vous', 'parlez', 'finissez', 'vendez', 'êtes', 'avez', 'allez', 'faites'],
+        ['ils / elles', 'parlent', 'finissent', 'vendent', 'sont', 'ont', 'vont', 'font']]);
+    TBL('passe-compose', [
+        ['PERSON', 'avoir + parlé (рід не впливає)', 'être + allé (рід і число!)'],
+        ['je', 'j’ai parlé', 'je suis allé (ч.) / allée (ж.)'],
+        ['tu', 'tu as parlé', 'tu es allé / allée'],
+        ['il', 'il a parlé', 'il est allé'],
+        ['elle', 'elle a parlé', 'elle est allée'],
+        ['nous', 'nous avons parlé', 'nous sommes allés (ч.) / allées (ж.)'],
+        ['vous', 'vous avez parlé', 'vous êtes allé(e) (одн.) · allé(e)s (мн.)'],
+        ['ils', 'ils ont parlé', 'ils sont allés'],
+        ['elles', 'elles ont parlé', 'elles sont allées']]);
+    TBL('imparfait', [
+        ['PERSON', 'parler', 'finir', 'être', 'avoir', 'aller'],
+        ['je', 'parlais', 'finissais', 'étais', 'avais', 'allais'],
+        ['tu', 'parlais', 'finissais', 'étais', 'avais', 'allais'],
+        ['il / elle / on', 'parlait', 'finissait', 'était', 'avait', 'allait'],
+        ['nous', 'parlions', 'finissions', 'étions', 'avions', 'allions'],
+        ['vous', 'parliez', 'finissiez', 'étiez', 'aviez', 'alliez'],
+        ['ils / elles', 'parlaient', 'finissaient', 'étaient', 'avaient', 'allaient']]);
+    TBL('plus-que-parfait', [
+        ['PERSON', 'avoir (imparfait) + parlé', 'être (imparfait) + allé'],
+        ['je', 'j’avais parlé', 'j’étais allé (ч.) / allée (ж.)'],
+        ['tu', 'tu avais parlé', 'tu étais allé / allée'],
+        ['il / elle', 'il / elle avait parlé', 'il était allé · elle était allée'],
+        ['nous', 'nous avions parlé', 'nous étions allés / allées'],
+        ['vous', 'vous aviez parlé', 'vous étiez allé(e)(s)'],
+        ['ils / elles', 'ils / elles avaient parlé', 'ils étaient allés · elles étaient allées']]);
+    TBL('passe-simple', [
+        ['PERSON', 'parler', 'finir', 'être', 'avoir'],
+        ['je', 'parlai', 'finis', 'fus', 'eus'],
+        ['tu', 'parlas', 'finis', 'fus', 'eus'],
+        ['il / elle', 'parla', 'finit', 'fut', 'eut'],
+        ['nous', 'parlâmes', 'finîmes', 'fûmes', 'eûmes'],
+        ['vous', 'parlâtes', 'finîtes', 'fûtes', 'eûtes'],
+        ['ils / elles', 'parlèrent', 'finirent', 'furent', 'eurent']]);
+    TBL('futur-simple', [
+        ['PERSON', 'parler', 'finir', 'être', 'avoir', 'aller', 'faire'],
+        ['je', 'parlerai', 'finirai', 'serai', 'aurai', 'irai', 'ferai'],
+        ['tu', 'parleras', 'finiras', 'seras', 'auras', 'iras', 'feras'],
+        ['il / elle / on', 'parlera', 'finira', 'sera', 'aura', 'ira', 'fera'],
+        ['nous', 'parlerons', 'finirons', 'serons', 'aurons', 'irons', 'ferons'],
+        ['vous', 'parlerez', 'finirez', 'serez', 'aurez', 'irez', 'ferez'],
+        ['ils / elles', 'parleront', 'finiront', 'seront', 'auront', 'iront', 'feront']]);
+    TBL('futur-anterieur', [
+        ['PERSON', 'avoir (futur) + parlé', 'être (futur) + allé'],
+        ['je', 'j’aurai parlé', 'je serai allé (ч.) / allée (ж.)'],
+        ['tu', 'tu auras parlé', 'tu seras allé / allée'],
+        ['il / elle', 'il / elle aura parlé', 'il sera allé · elle sera allée'],
+        ['nous', 'nous aurons parlé', 'nous serons allés / allées'],
+        ['vous', 'vous aurez parlé', 'vous serez allé(e)(s)'],
+        ['ils / elles', 'ils / elles auront parlé', 'ils seront allés · elles seront allées']]);
+    TBL('futur-proche', [
+        ['PERSON', 'aller (présent) + інфінітив'],
+        ['je', 'je vais parler'], ['tu', 'tu vas parler'], ['il / elle / on', 'il va parler'],
+        ['nous', 'nous allons parler'], ['vous', 'vous allez parler'], ['ils / elles', 'ils vont parler']]);
+    TBL('passe-recent', [
+        ['PERSON', 'venir de (présent) + інфінітив'],
+        ['je', 'je viens de parler'], ['tu', 'tu viens de parler'], ['il / elle / on', 'il vient de parler'],
+        ['nous', 'nous venons de parler'], ['vous', 'vous venez de parler'], ['ils / elles', 'ils viennent de parler']]);
+    TBL('conditionnel-present', [
+        ['PERSON', 'parler', 'finir', 'être', 'avoir', 'aller', 'pouvoir'],
+        ['je', 'parlerais', 'finirais', 'serais', 'aurais', 'irais', 'pourrais'],
+        ['tu', 'parlerais', 'finirais', 'serais', 'aurais', 'irais', 'pourrais'],
+        ['il / elle / on', 'parlerait', 'finirait', 'serait', 'aurait', 'irait', 'pourrait'],
+        ['nous', 'parlerions', 'finirions', 'serions', 'aurions', 'irions', 'pourrions'],
+        ['vous', 'parleriez', 'finiriez', 'seriez', 'auriez', 'iriez', 'pourriez'],
+        ['ils / elles', 'parleraient', 'finiraient', 'seraient', 'auraient', 'iraient', 'pourraient']]);
+    TBL('conditionnel-passe', [
+        ['PERSON', 'avoir (conditionnel) + voulu', 'être (conditionnel) + venu'],
+        ['je', 'j’aurais voulu', 'je serais venu (ч.) / venue (ж.)'],
+        ['tu', 'tu aurais voulu', 'tu serais venu / venue'],
+        ['il / elle', 'il / elle aurait voulu', 'il serait venu · elle serait venue'],
+        ['nous', 'nous aurions voulu', 'nous serions venus / venues'],
+        ['vous', 'vous auriez voulu', 'vous seriez venu(e)(s)'],
+        ['ils / elles', 'ils / elles auraient voulu', 'ils seraient venus · elles seraient venues']]);
+    TBL('subjonctif-present', [
+        ['PERSON', 'parler', 'finir', 'être', 'avoir', 'aller', 'faire'],
+        ['que je', 'parle', 'finisse', 'sois', 'aie', 'aille', 'fasse'],
+        ['que tu', 'parles', 'finisses', 'sois', 'aies', 'ailles', 'fasses'],
+        ['qu’il / qu’elle', 'parle', 'finisse', 'soit', 'ait', 'aille', 'fasse'],
+        ['que nous', 'parlions', 'finissions', 'soyons', 'ayons', 'allions', 'fassions'],
+        ['que vous', 'parliez', 'finissiez', 'soyez', 'ayez', 'alliez', 'fassiez'],
+        ['qu’ils / qu’elles', 'parlent', 'finissent', 'soient', 'aient', 'aillent', 'fassent']]);
+    TBL('subjonctif-passe', [
+        ['PERSON', 'avoir (subjonctif) + fini', 'être (subjonctif) + parti'],
+        ['que je', 'j’aie fini', 'je sois parti (ч.) / partie (ж.)'],
+        ['que tu', 'tu aies fini', 'tu sois parti / partie'],
+        ['qu’il / qu’elle', 'il / elle ait fini', 'il soit parti · elle soit partie'],
+        ['que nous', 'nous ayons fini', 'nous soyons partis / parties'],
+        ['que vous', 'vous ayez fini', 'vous soyez parti(e)(s)'],
+        ['qu’ils / qu’elles', 'ils / elles aient fini', 'ils soient partis · elles soient parties']]);
+    TBL('imperatif', [
+        ['PERSON', 'parler', 'finir', 'être', 'avoir', 'aller'],
+        ['tu', 'parle !', 'finis !', 'sois !', 'aie !', 'va !'],
+        ['nous', 'parlons !', 'finissons !', 'soyons !', 'ayons !', 'allons !'],
+        ['vous', 'parlez !', 'finissez !', 'soyez !', 'ayez !', 'allez !']]);
+    TBL('voix-passive', [
+        ['рід і число / gender and number', 'présent', 'passé composé', 'futur simple'],
+        ['чол. одн. / masc. sg.', 'le livre est écrit', 'le livre a été écrit', 'le livre sera écrit'],
+        ['жін. одн. / fem. sg.', 'la lettre est écrite', 'la lettre a été écrite', 'la lettre sera écrite'],
+        ['чол. мн. / masc. pl.', 'les livres sont écrits', 'les livres ont été écrits', 'les livres seront écrits'],
+        ['жін. мн. / fem. pl.', 'les lettres sont écrites', 'les lettres ont été écrites', 'les lettres seront écrites']]);
+    TBL('verbes-pronominaux', [
+        ['PERSON', 'présent (se laver)', 'passé composé (з être)'],
+        ['je', 'je me lave', 'je me suis lavé (ч.) / lavée (ж.)'],
+        ['tu', 'tu te laves', 'tu t’es lavé / lavée'],
+        ['il', 'il se lave', 'il s’est lavé'],
+        ['elle', 'elle se lave', 'elle s’est lavée'],
+        ['nous', 'nous nous lavons', 'nous nous sommes lavés / lavées'],
+        ['vous', 'vous vous lavez', 'vous vous êtes lavé(e)(s)'],
+        ['ils', 'ils se lavent', 'ils se sont lavés'],
+        ['elles', 'elles se lavent', 'elles se sont lavées']]);
+    TBL('accord-participe-etre', [
+        ['рід і число / gender and number', 'закінчення / ending', 'приклад / example'],
+        ['чол. одн.', '—', 'il est parti'], ['жін. одн.', '+e', 'elle est partie'],
+        ['чол. мн.', '+s', 'ils sont partis'], ['жін. мн.', '+es', 'elles sont parties']]);
+    TBL('accord-participe-avoir', [
+        ['COD перед дієсловом / object BEFORE the verb', 'participe', 'приклад / example'],
+        ['чол. одн.', 'mangé', 'le gâteau que j’ai mangé'], ['жін. одн.', 'mangée', 'la pomme que j’ai mangée'],
+        ['чол. мн.', 'mangés', 'les gâteaux que j’ai mangés'], ['жін. мн.', 'mangées', 'les pommes que j’ai mangées']]);
+    TBL('accord-adjectif', [
+        ['чол. одн.', 'жін. одн.', 'чол. мн.', 'жін. мн.'],
+        ['petit', 'petite', 'petits', 'petites'], ['grand', 'grande', 'grands', 'grandes'],
+        ['bon', 'bonne', 'bons', 'bonnes'], ['heureux', 'heureuse', 'heureux', 'heureuses'],
+        ['blanc', 'blanche', 'blancs', 'blanches'], ['beau (bel)', 'belle', 'beaux', 'belles'],
+        ['nouveau (nouvel)', 'nouvelle', 'nouveaux', 'nouvelles']]);
+
     const store = window.GRAMMAR_RULE_DETAILS || (window.GRAMMAR_RULE_DETAILS = {});
     store.fr = fr;
 })();
