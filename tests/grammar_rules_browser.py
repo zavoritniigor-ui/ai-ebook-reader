@@ -56,14 +56,17 @@ c.wait("document.readyState==='complete' && !document.body.inert && typeof openR
 c.js("state.uiLang = 'uk'; applyI18n(); window.__errs = []; addEventListener('error', e => __errs.push(e.message)); addEventListener('unhandledrejection', e => __errs.push(String(e.reason))); 1")
 
 # ---- 1. catalogue integrity ----
-check("1 the French catalogue is complete and well-formed (sections, >= 50 unique topics, all texts present)",
-      """(() => { const cat = GRAMMAR_RULES.fr; const topics = cat.sections.flatMap(s => s.topics); const ids = topics.map(x => x.id); const bad = [];
-         for (const s of cat.sections) if (!s.title.fr || !s.title.uk || !s.title.en) bad.push('section ' + s.id);
-         for (const x of topics) { if (!x.title.fr || !x.title.uk || !x.title.en) bad.push(x.id + ':title'); if (!x.theory.uk || x.theory.uk.length < 40 || !x.theory.en || x.theory.en.length < 40) bad.push(x.id + ':theory');
+check("1 both catalogues (French, English) are complete and well-formed (sections, >= 50 unique topics, all texts present)",
+      """(() => { const out = {}; for (const lang of ['fr', 'en']) { const cat = GRAMMAR_RULES[lang]; const topics = cat.sections.flatMap(s => s.topics); const ids = topics.map(x => x.id); const bad = [];
+         for (const s of cat.sections) if (!s.title[lang] || !s.title.uk) bad.push('section ' + s.id);
+         for (const x of topics) { if (!x.title[lang] || !x.title.uk) bad.push(x.id + ':title'); if (!x.theory.uk || x.theory.uk.length < 40 || !x.theory.en || x.theory.en.length < 40) bad.push(x.id + ':theory');
            if (!x.examples || !x.examples.length || x.examples.some(e => typeof e !== 'string' || e.length < 6)) bad.push(x.id + ':examples'); if (!x.find || x.find.length < 40) bad.push(x.id + ':find'); }
-         return cat.sections.length >= 7 && topics.length >= 50 && new Set(ids).size === ids.length && bad.length === 0 || JSON.stringify({n: topics.length, bad}); })()""")
-check("2 the catalogue covers the core grammar areas (tenses, moods, agreement, determiners, pronouns, negation, questions, time markers)",
-      """(() => { const ids = GRAMMAR_RULES.fr.sections.flatMap(s => s.topics.map(x => x.id)); return ['passe-compose','imparfait','futur-simple','subjonctif-present','conditionnel-present','imperatif','voix-passive','accord-participe-avoir','article-partitif','pronoms-relatifs','pronoms-y-en','negation','interrogation','marqueurs-temps','comparatif','depuis-il-y-a-pendant'].every(i => ids.includes(i)); })()""")
+         out[lang] = cat.sections.length >= 7 && topics.length >= 50 && new Set(ids).size === ids.length && bad.length === 0 || JSON.stringify({lang, n: topics.length, bad}); }
+         return out.fr === true && out.en === true || JSON.stringify(out); })()""")
+check("2 the catalogues cover the core grammar areas (tenses, moods, agreement, determiners, pronouns, negation, questions, time markers)",
+      """(() => { const has = (lang, list) => { const ids = GRAMMAR_RULES[lang].sections.flatMap(s => s.topics.map(x => x.id)); return list.every(i => ids.includes(i)); };
+         return has('fr', ['passe-compose','imparfait','futur-simple','subjonctif-present','conditionnel-present','imperatif','voix-passive','accord-participe-avoir','article-partitif','pronoms-relatifs','pronoms-y-en','negation','interrogation','marqueurs-temps','comparatif','depuis-il-y-a-pendant'])
+           && has('en', ['present-simple','present-perfect','past-simple','future-will','conditional-second','modal-verbs','passive-voice','reported-speech','articles-a-an','quantifiers','comparatives','relative-pronouns','negatives','questions','time-markers','for-since-ago-during','phrasal-verbs']); })()""")
 
 # ---- 2. open the book, install mocks ----
 b64 = base64.b64encode(BOOK.encode()).decode()
@@ -82,8 +85,8 @@ check("3 the header button opens the panel; it lists the French sections as fold
       "document.getElementById('rules-panel').classList.contains('expanded') && document.querySelectorAll('#rules-content .rules-section').length >= 7 && document.querySelectorAll('#rules-content .rules-topic').length >= 6")
 check("4 the language of the page (fr) is preselected and the topic filter narrows the list",
       """(() => { const sel = document.querySelector('#rules-content .rules-lang'); const before = document.querySelectorAll('#rules-content .rules-topic').length; const inp = document.querySelector('#rules-content .rules-search'); inp.value = 'passé'; inp.dispatchEvent(new Event('input')); const after = document.querySelectorAll('#rules-content .rules-topic'); return sel.value === 'fr' && after.length > 0 && after.length < 20 && [...after].some(b => b.dataset.topic === 'passe-compose'); })()""")
-check("5 the English catalogue is announced as coming (no crash, no topics)",
-      """(() => { const sel = document.querySelector('#rules-content .rules-lang'); sel.value = 'en'; sel.dispatchEvent(new Event('change')); const ok = !!document.querySelector('#rules-content .rules-note') && !document.querySelector('#rules-content .rules-topic'); const s2 = document.querySelector('#rules-content .rules-lang'); s2.value = 'fr'; s2.dispatchEvent(new Event('change')); return ok; })()""")
+check("5 the English catalogue lists English topics with English headings (UI-language name under it)",
+      """(() => { const sel = document.querySelector('#rules-content .rules-lang'); sel.value = 'en'; sel.dispatchEvent(new Event('change')); const first = document.querySelector('#rules-content .rules-topic'); const ok = !!first && first.querySelector('b').textContent === 'Present simple' && first.querySelector('.rules-topic-sub').textContent.includes('Present Simple') && !document.querySelector('#rules-content .rules-note'); const s2 = document.querySelector('#rules-content .rules-lang'); s2.value = 'fr'; s2.dispatchEvent(new Event('change')); return ok || first && first.textContent; })()""")
 
 # ---- 4. search + highlight ----
 c.js("__calls.length = 0; __reply = %s; rulesSearchCache.clear(); 1" % json.dumps(PC))
@@ -160,5 +163,16 @@ check("28 every panel string exists in all 8 UI languages with its own text",
       """(() => { const keys = ['btnRules','tRules','panelRules','rulesLangLabel','rulesSearchPlaceholder','rulesCatalogueSoon','rulesNoTopics','rulesBack','rulesTheory','rulesFind','rulesClear','rulesRunning','rulesFound','rulesNone','rulesFailed','rulesNoText','rulesChanged','rulesExplain','rulesAskPlaceholder','rulesAskBtn'];
          const langs = ['uk','en','fr','ru','zh','ko','hi','ga']; const bad = []; for (const k of keys) for (const l of langs) { const v = I18N[k] && I18N[k][l]; if (!v) bad.push(k + ':' + l); else if (l !== 'en' && v === I18N[k].en && !/^[^a-z]*$/i.test(v) && !['btnRules','panelRules'].includes(k)) bad.push('fallback ' + k + ':' + l); }
          return bad.length === 0 || JSON.stringify(bad); })()""")
+# ---- English rules on an English page ----
+c.js("""(() => { clearRuleHighlights(); rulesState.topic = null; rulesState.matches = []; state.sourceLang = 'en-US'; els.pages.innerHTML = '<p>She has lived here for years. They were playing when it rained.</p>';
+  document.getElementById('rules-panel').dataset.ready = ''; rulesSearchCache.clear(); __calls.length = 0;
+  __reply = JSON.stringify({language: 'en', matches: [{text: 'has lived', note: 'has + participle'}, {text: 'were playing', note: 'past continuous'}]}); openRulesPanel(); return 1; })()""")
+check("30 on an English page the rules language preselects English", "document.querySelector('#rules-content .rules-lang').value === 'en' && rulesState.lang === 'en'")
+c.js("openRuleTopic(GRAMMAR_RULES.en.sections.flatMap(s => s.topics).find(x => x.id === 'present-perfect')); 1")
+check("31 an English topic sends an English-language search (prompt names English and the topic) and paints the validated matches",
+      """__calls.filter(x => x.task === 'rules_search').length === 1 && __calls[0].prompt.includes('"language":"en"') && __calls[0].prompt.includes('in the English text') && __calls[0].prompt.includes('Present perfect') && !__calls[0].prompt.includes('Present perfect" ("Present perfect")') && [...CSS.highlights.get('rule-match')].map(r => r.toString()).join('|') === 'has lived|were playing'""", timeout=8)
+c.js("document.querySelectorAll('#rules-content .rules-match')[0].click(); document.querySelector('#rules-content .rules-explain-btn').click(); 1")
+check("32 the English explanation carries the English theory and the grammar tutor framing for English",
+      "(p => p.includes('grammar tutor for English') && p.includes('Theory to rely on') && p.includes('has lived'))(__calls.filter(x => x.task === 'rules_explain').at(-1).prompt)", timeout=8)
 check("29 no application errors", "__errs.length === 0 || JSON.stringify(__errs)")
 print('ALL GRAMMAR RULES CHECKS PASSED')
