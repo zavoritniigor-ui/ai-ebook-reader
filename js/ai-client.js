@@ -21,6 +21,9 @@ const OPENAI_TASK_PROFILES = {
     // The per-request budget is set by grammarProfile() (grammar-svo.js) from the size of the text; this is only the fallback.
     grammar_analysis: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
+    // Grammar rules panel (js/grammar-rules.js): find a rule's occurrences in the visible page text; explain one by theory.
+    rules_search: { reasoning: 'low', max_output_tokens: 3000, stream: false },
+    rules_explain: { reasoning: 'low', max_output_tokens: 900, stream: false },
     // Sentence breakdown painted in the text (js/sentence-structure.js): parts of ONE sentence, then one part in depth.
     sentence_structure: { reasoning: 'none', max_output_tokens: 1400, stream: false },
     structure_deep: { reasoning: 'none', max_output_tokens: 900, stream: false },
@@ -33,7 +36,7 @@ const OPENAI_TASK_PROFILES = {
 };
 
 // A long structured reply cannot fit the 45s default of fetchWithTimeout; per-task overrides (ms).
-const AI_TASK_TIMEOUT_MS = { practice_reading: 150000 };
+const AI_TASK_TIMEOUT_MS = { practice_reading: 150000, rules_search: 90000 };
 function aiTaskTimeout(task) { return AI_TASK_TIMEOUT_MS[task] || 45000; }
 
 // ===== Typed provider errors and the development diagnostics =====================================================

@@ -213,6 +213,7 @@ const quickMenu = (() => {
         navigationState = navigationKey();
         els.askPanel.classList.remove('expanded');
         els.grammarPanel.classList.remove('expanded');
+        document.getElementById('rules-panel').classList.remove('expanded');
         els.sidebar.classList.add('collapsed');
         closeReadingStats();
         closeFooterMenu();

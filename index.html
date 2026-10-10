@@ -719,6 +719,39 @@
         #ask-panel { left: 0; transform: translateX(-100%); box-shadow: 5px 0 25px rgba(0,0,0,0.2); border-radius: 0 16px 16px 0; }
         #ask-panel.expanded { transform: none; visibility: visible; }
 
+        /* Панель «Правила» (js/grammar-rules.js) */
+        #rules-panel { right: 0; transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.2); border-radius: 16px 0 0 16px; z-index: 10003; }
+        #rules-panel.expanded { transform: none; visibility: visible; }
+        #rules-content { font-size: 15px; line-height: 1.5; }
+        .rules-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+        .rules-toolbar select, .rules-search { min-height: 40px; font-size: 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--panel-bg); color: var(--text-color); padding: 0 8px; }
+        .rules-search { flex: 1; min-width: 0; }
+        .rules-section { border: 1px solid var(--border-color); border-radius: 10px; margin: 8px 0; padding: 0 10px; }
+        .rules-section > summary { cursor: pointer; font-weight: 600; padding: 10px 0; min-height: 24px; }
+        .rules-topic { display: flex; flex-direction: column; align-items: flex-start; width: 100%; height: auto; box-sizing: border-box; text-align: left; background: transparent; border: none; border-top: 1px solid var(--border-color); padding: 10px 4px; min-height: 44px; color: var(--text-color); cursor: pointer; font-size: 15px; }
+        .rules-topic:hover, .rules-topic:focus-visible { background: var(--hover-color); }
+        .rules-topic-sub { font-size: 12.5px; color: var(--text-muted); }
+        .rules-note, .rules-status, .rules-subtitle { color: var(--text-muted); font-size: 13.5px; margin: 6px 0; }
+        .rules-back { height: auto; background: transparent; border: none; color: var(--accent-color); cursor: pointer; min-height: 40px; padding: 0; font-size: 14px; }
+        .rules-title { margin: 4px 0; font-size: 20px; }
+        .rules-theory { border: 1px solid var(--border-color); border-radius: 10px; padding: 8px 12px; margin: 10px 0; }
+        .rules-theory > summary { cursor: pointer; font-weight: 600; }
+        .rules-examples { color: var(--text-muted); font-style: italic; }
+        .rules-actions, .rules-ask-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .rules-find, .rules-clear, .rules-explain-btn, .rules-ask-btn { height: auto; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--surface-2); color: var(--text-color); cursor: pointer; font-size: 14px; }
+        .rules-find { background: #6f42c1; color: #fff; border-color: transparent; font-weight: 600; }
+        .rules-find[disabled] { opacity: .6; cursor: progress; }
+        .rules-matches { display: grid; gap: 6px; margin-top: 8px; }
+        .rules-match { display: flex; flex-direction: column; align-items: flex-start; text-align: left; width: 100%; height: auto; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); color: var(--text-color); padding: 8px 10px; min-height: 44px; cursor: pointer; font-size: 14px; }
+        .rules-match.active { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,.25); }
+        .rules-match mark, .rules-card mark { background: rgba(255,193,7,.55); color: inherit; border-radius: 3px; padding: 0 2px; }
+        .rules-match-note, .rules-card-note { font-size: 12.5px; color: var(--text-muted); }
+        .rules-card { border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; margin-top: 12px; display: grid; gap: 8px; }
+        .rules-card-sentence { margin: 0; font-size: 15.5px; }
+        .rules-ask { flex: 1; min-width: 0; min-height: 40px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--panel-bg); color: var(--text-color); padding: 0 10px; font-size: 14px; }
+        .rules-explain p { margin: 6px 0; font-size: 14.5px; }
+        ::highlight(rule-match) { background-color: rgba(255, 193, 7, 0.5); }
+        ::highlight(rule-active) { background-color: rgba(13, 110, 253, 0.45); text-decoration: underline; }
         #practice-panel { right: 0; transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.2); border-radius: 16px 0 0 16px; }
         #practice-panel:not([hidden]) { transform: none; visibility: visible; }
         
@@ -1129,6 +1162,7 @@
             <!-- STUDY / TRANSLATION / STATISTICS -->
             <div class="toolbar-group">
                 <button class="icon-btn" id="btn-translate-mode" data-i18n-title="tStudyMode">🔮 Вивчення: ВИМК</button>
+                <button class="icon-btn" id="btn-rules" data-i18n="btnRules" data-i18n-title="tRules" aria-controls="rules-panel">📚 Правила</button>
                 <select id="target-lang" data-i18n-title="tTargetLang">
                     <option value="uk">🇺🇦 Українська</option>
                     <option value="en">🇬🇧 English</option>
@@ -1270,6 +1304,15 @@
             <div id="dictation-status" class="dictation-status" role="status" aria-live="polite"></div>
         </div>
 
+        <!-- ПАНЕЛЬ «ПРАВИЛА»: каталог правил граматики + пошук і підсвітка їх у видимому тексті (js/grammar-rules.js) -->
+        <div id="rules-panel" class="side-panel" role="dialog" aria-labelledby="rules-title">
+            <div class="panel-header">
+                <h3 id="rules-title" data-i18n="panelRules">📚 Правила граматики</h3>
+                <button class="close-panel-btn" id="rules-close" data-i18n="close" data-i18n-title="tClose">✕</button>
+            </div>
+            <div class="panel-content" id="rules-content"></div>
+        </div>
+
         <!-- ПРАВА ПАНЕЛЬ (Граматика: контекстна панель Verbs/Adjectives) -->
         <div id="grammar-panel" class="side-panel">
             <button type="button" id="grammar-tab" class="panel-tab" aria-label="Граматика" data-i18n-title="tGrammarPanel"></button>
@@ -1374,7 +1417,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=f311306c0e22"></script>
+    <script src="js/core.js?v=2b8cc36cb238"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1393,7 +1436,9 @@
     <script src="js/translation.js?v=bd7e21e24d0b"></script>
     <script src="js/sentence-structure.js?v=2acda419abec"></script>
     <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
-    <script src="js/ai-client.js?v=a084f303d4db"></script>
+    <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
+    <script src="js/grammar-rules.js?v=781c0355b31b"></script>
+    <script src="js/ai-client.js?v=3cc95078b1bd"></script>
     <script src="js/practice-session.js?v=4a936b0b2205"></script>
     <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
     <script src="js/dictation.js?v=6cf6ee491dd8"></script>
@@ -1405,8 +1450,8 @@
     <script src="js/pdf-render.js?v=7bc44e26dd09"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=3176ba147224"></script>
+    <script src="js/quick-wheel.js?v=c7f41ab664e7"></script>
     <script src="js/main.js?v=d8eabe80cbc4"></script>
-    <script src="js/pwa-lifecycle.js?v=dfdd779052a2"></script>
+    <script src="js/pwa-lifecycle.js?v=5de84b602b7f"></script>
 </body>
 </html>
