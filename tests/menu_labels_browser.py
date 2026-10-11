@@ -34,6 +34,8 @@ check('3 four+ group captions exist and the previously icon-only buttons have vi
       """document.querySelectorAll('.group-caption').length >= 5 && ['btn-ink', 'btn-region'].every(id => document.getElementById(id).textContent.trim().length > 4) && document.querySelector('button[onclick="openKeySettings()"]').textContent.trim().length > 4""")
 check('4 tablet portrait: captions hidden, header <= 190px, no horizontal overflow',
       """(() => { const h = document.getElementById('app-header').getBoundingClientRect().height; return getComputedStyle(document.querySelector('.group-caption')).display === 'none' && h <= 190 && document.documentElement.scrollWidth <= innerWidth + 1 || JSON.stringify({h, sw: document.documentElement.scrollWidth}); })()""")
+check('4b tablet portrait with wider glyphs (CI fonts): header still <= 190px',
+      """(() => { const s = document.createElement('style'); s.id = 'wide-glyph-probe'; s.textContent = '#app-header *{letter-spacing:.5px !important}'; document.head.append(s); const h = document.getElementById('app-header').getBoundingClientRect().height; s.remove(); return h <= 190 || h; })()""")
 check('5 tablet portrait: every header control fits inside the viewport',
       "[...document.querySelectorAll('#header-controls button, #header-controls select, #header-controls label.btn')].filter(e => e.offsetParent !== null).every(e => { const r = e.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; })")
 check('6 the learning toggle names what it toggles', "els.translateBtn.textContent.includes('Вивчення слів')")
