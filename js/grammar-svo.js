@@ -1234,6 +1234,40 @@ function switchGrammarMode(mode) {
 // Adds the "Practice" button after a successful analysis, grounding the reading-
 // generation request in the lemmas actually detected for the CURRENT mode
 // (task section 21: ground AI-generated examples in detected target lemmas).
+const PRACTICE_TOPIC_STORAGE_KEY = 'reader_practice_topic';
+// 🎤 for the topic field: one spoken phrase replaces the field (the learner's own topic, any language). Uses the dictation
+// language the learner picked for Ask AI; a running Ask dictation is stopped first so two recognizers never compete.
+function buildPracticeTopicMic(input) {
+    const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor || window.isSecureContext === false) return null;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'icon-btn grammar-practice-topic-mic'; btn.textContent = '🎤';
+    btn.setAttribute('aria-label', t('dictationStart')); btn.title = t('dictationStart'); btn.setAttribute('aria-pressed', 'false');
+    let rec = null;
+    const setListening = on => {
+        btn.textContent = on ? '■' : '🎤'; btn.classList.toggle('recording', on); btn.setAttribute('aria-pressed', String(on));
+        btn.setAttribute('aria-label', t(on ? 'dictationStop' : 'dictationStart')); btn.title = t(on ? 'dictationStop' : 'dictationStart');
+    };
+    btn.onclick = () => {
+        if (rec) { try { rec.stop(); } catch (e) {} return; }
+        if (typeof dictationBusy === 'function' && dictationBusy()) stopDictation();
+        try {
+            rec = new Ctor();
+            rec.lang = (els.micLang && els.micLang.value) || 'uk-UA';
+            rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
+            rec.onresult = e => {
+                const heard = [...e.results].map(r => r[0] && r[0].transcript || '').join(' ').trim();
+                if (heard) { input.value = sanitizePracticeTopic(heard); input.dispatchEvent(new Event('input', { bubbles: true })); }
+            };
+            rec.onerror = e => { if (e && e.error && e.error !== 'no-speech' && e.error !== 'aborted') showToast(t('error')); };
+            rec.onend = () => { rec = null; setListening(false); };
+            rec.start();
+            setListening(true);
+        } catch (e) { rec = null; setListening(false); showToast(t('error')); }
+    };
+    return btn;
+}
+
 function maybeShowPracticeButton() {
     if (typeof generatePracticeReading !== 'function') return;
     const sourceLang = grammarContext.sourceLanguage || DEFAULT_GRAMMAR_LANG;
@@ -1241,6 +1275,21 @@ function maybeShowPracticeButton() {
     const practiceBtn = document.createElement('button');
     practiceBtn.className = 'btn-secondary grammar-practice-btn';
     practiceBtn.textContent = t('practice');
+    // The learner's topic for the generated sentences (optional, remembered between sessions).
+    // One row with the button (never pushes it lower: on phones the bottom-docked word popup covers the panel's lower part).
+    const topicWrap = document.createElement('div');
+    topicWrap.className = 'grammar-practice-row';
+    const topicInput = document.createElement('input');
+    topicInput.type = 'text'; topicInput.id = 'grammar-practice-topic'; topicInput.maxLength = 80;
+    topicInput.autocomplete = 'off'; topicInput.placeholder = t('practiceTopicPlaceholder');
+    topicInput.className = 'grammar-practice-topic';
+    topicInput.setAttribute('aria-label', t('practiceTopicLabel')); topicInput.title = t('practiceTopicLabel');
+    try { topicInput.value = localStorage.getItem(PRACTICE_TOPIC_STORAGE_KEY) || ''; } catch (e) { /* storage blocked: start empty */ }
+    topicWrap.appendChild(topicInput);
+    const topicMic = buildPracticeTopicMic(topicInput);
+    if (topicMic) topicWrap.appendChild(topicMic);
+    topicInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); practiceBtn.click(); } });
+    topicInput.addEventListener('input', () => { try { localStorage.setItem(PRACTICE_TOPIC_STORAGE_KEY, sanitizePracticeTopic(topicInput.value)); } catch (e) {} });
     practiceBtn.onclick = () => {
         if (!aiAvailable()) return showToast(t('needKey'));
         // A generation is already running (e.g. a fast double-click, or Practice was reopened while its
@@ -1263,8 +1312,10 @@ function maybeShowPracticeButton() {
             mode,
             lemmas: Array.from(new Set([...focused, ...items].map(it => it.lemma))),
             seenForms: [...focused, ...items].slice(0, 12).map(it => ({ surface: it.surface, lemma: it.lemma })),
-            level: null
+            level: null,
+            topic: topicInput.value
         };
+        try { localStorage.setItem(PRACTICE_TOPIC_STORAGE_KEY, sanitizePracticeTopic(topicInput.value)); } catch (e) { /* not remembered */ }
         // Immediate, visible feedback on the button itself (not just the Practice panel elsewhere on
         // screen) so a click never looks dead, and re-entrancy stays impossible for the life of this
         // button even before the session's own 'generating' status has had a chance to be read back.
@@ -1283,7 +1334,8 @@ function maybeShowPracticeButton() {
             if (updated) displayPracticeSession(updated);
         }).finally(restoreBtn);
     };
-    content.appendChild(practiceBtn);
+    topicWrap.appendChild(practiceBtn);
+    content.appendChild(topicWrap);
 }
 
 // The language a tapped fragment is written in: read from ITS OWN position inside the sentence
