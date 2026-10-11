@@ -11,6 +11,8 @@ c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Emulation.setDeviceMetricsOverride',width=1280,height=900,deviceScaleFactor=1,mobile=False)
 bootstrap = c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
 window.__keys={openai:'sk-proj-test-only-not-a-real-key',groq:'gsk_test_only_not_real',gemini:'AIza_test_only_not_real'};
+// This suite verifies the single ACTIVE-provider contract (explicit selection, no cross-provider routing); task routing has its own suite (ai_routing_browser.py).
+try { localStorage.setItem('reader_ai_routing', 'off'); } catch (e) {}
 window.__calls=[];window.__logs=[];window.__errors=[];window.__pending=[];window.__mode='success';window.__aborts=0;
 for(const name of ['log','warn','error']) { const original=console[name];console[name]=(...args)=>{__logs.push(args.map(String).join(' '));original.apply(console,args)}; }
 addEventListener('error',e=>__errors.push(e.message));

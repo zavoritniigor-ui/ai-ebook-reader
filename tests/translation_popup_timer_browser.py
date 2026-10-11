@@ -35,6 +35,7 @@ c.js(r"""(() => {
   window.__pending = []; window.__fail = false;
   aiTranslateText = (text, src, signal) => new Promise((resolve, reject) => __pending.push({text, resolve, reject}));
   machineTranslate = async () => { if (__fail) throw new Error('translation failed'); return {html: '', extras: ''}; };
+  translateLocally = async () => null;   // this suite is about the countdown timer: no instant on-device layer here
   state.translationCache = {};
   // When did the popup open / close? (performance.now of the transition)
   window.__openedAt = null; window.__closedAt = null;

@@ -240,6 +240,7 @@ function openKeySettings() {
     keySettingsProvider = state.activeAiProvider;
     keySettingsLoaded = true;
     updateProviderRadios();
+    document.getElementById('ai-routing-input').checked = state.aiRouting !== 'off';
     document.getElementById('ai-provider-error').hidden = true;
     document.getElementById('settings-modal').style.display = 'flex';
 }
@@ -298,6 +299,8 @@ function saveApiKey() {
     }
     state.activeAiProvider = provider;
     writeStored('reader_active_ai_provider', provider);
+    state.aiRouting = document.getElementById('ai-routing-input').checked ? 'auto' : 'off';
+    writeStored('reader_ai_routing', state.aiRouting);
     closeKeySettings();
 }
 // The action offered next to a 401/403: opens the key dialog. A Retry afterwards re-reads the key from

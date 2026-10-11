@@ -314,7 +314,20 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         // немає сенсу: онлайн усе перекладає AI — і слова, і речення. Машинний
         // лишається виключно як запасний варіант, коли немає мережі або ключа.
         let html = null;
+        // МИТТЄВИЙ ШАР (лише слова): локальна модель Chrome перекладає без мережі й показується ОДРАЗУ; щойно приходить AI
+        // (за маршрутизацією завдань — Groq), він замінює її. Запускається тут же, в обробнику тапу: створення моделі
+        // ('downloadable') вимагає жесту користувача, а фонове «розігрівання» його не має — тому раніше локальний
+        // переклад на комп'ютері практично ніколи не вмикався.
+        let aiDone = false;
+        if (!isMultiWord) {
+            waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 8000).then(local => {
+                if (!local || aiDone || myLookup !== state.lookupToken || !task.current()) return;
+                els.ttTranslation.innerHTML = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
+                const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+            }).catch(() => {});
+        }
         const ai = await aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000);
+        aiDone = true;
         if (myLookup !== state.lookupToken || !task.current()) return;
         if (ai) {
             alignmentResult = typeof ai === 'object' ? ai : null;
