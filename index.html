@@ -649,6 +649,13 @@
         .struct-sub-negation { --sub: #c0392b; }
         .struct-sub-other { --sub: #888; }
         .tt-struct-host:empty { display: none; }
+        /* Розбір речення: легенда зверху на всю ширину, переклад під нею, а прокручується все тіло підказки разом
+           (раніше легенда стояла збоку від перекладу в одному flex-рядку, і переклад стискався до вузької колонки). */
+        #word-tooltip .tt-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        #word-tooltip .tt-struct-host { flex: 0 0 auto; }
+        #word-tooltip:has(.tt-struct-host:not(:empty)) .tt-body { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.45) transparent; }
+        #word-tooltip:has(.tt-struct-host:not(:empty)) .tt-translation-row { flex: 0 0 auto; overflow: visible; margin-top: 10px; }
+        #word-tooltip:has(.tt-struct-host:not(:empty)) .tt-translation { flex: 1 1 auto; overflow: visible; max-height: none; }
         .tt-struct-line { margin-top: 9px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.16); display: flex; gap: 8px; flex-wrap: wrap; font-weight: normal; }
         .tt-struct-note { flex-basis: 100%; margin-top: 4px; font-size: 12.5px; color: #c3c8cf; font-weight: normal; }
         .structure-sentence { margin: 0 0 8px 0; font-size: 15px; line-height: 1.9; }
@@ -735,6 +742,10 @@
         
         #ask-panel { left: 0; transform: translateX(-100%); box-shadow: 5px 0 25px rgba(0,0,0,0.2); border-radius: 0 16px 16px 0; }
         #ask-panel.expanded { transform: none; visibility: visible; }
+        /* Граматика й «Запитай AI» починаються ПІД шапкою (на планшеті вона буває в 3 рядки), а не перекривають її кнопки. */
+        @media (min-width: 641px) {
+            body:not(.immersive-mode) #grammar-panel, body:not(.immersive-mode) #ask-panel { top: calc(var(--app-header-h, 58px) + 8px); height: calc(100dvh - var(--app-header-h, 58px) - 20px); }
+        }
 
         /* Панель «Правила» (js/grammar-rules.js) */
         /* Портрет/телефон: бокова панель ПІД головним меню; альбом (планшет): нижня шторка. Позицію задає layoutRulesPanel() (--rules-top, --rules-inset). */
@@ -1337,10 +1348,12 @@
                         <button class="tt-struct-btn" id="tt-struct-btn" data-i18n="btnStruct" data-i18n-title="tStruct" data-i18n-aria="tStruct">🧩 Розбір</button>
                     </div>
                 </div>
-                <div class="tt-translation-row">
-                    <div class="tt-translation" id="tt-translation" aria-live="polite" data-i18n="translating">Переклад...</div>
+                <div class="tt-body">
                     <div id="tt-struct-host" class="tt-struct-host"></div>
-                    <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr" data-i18n-aria="tSpeakTr" aria-pressed="false">🔊</button>
+                    <div class="tt-translation-row">
+                        <div class="tt-translation" id="tt-translation" aria-live="polite" data-i18n="translating">Переклад...</div>
+                        <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr" data-i18n-aria="tSpeakTr" aria-pressed="false">🔊</button>
+                    </div>
                 </div>
             </div>
         </main>
@@ -1511,7 +1524,7 @@
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=4c4755fb447a"></script>
-    <script src="js/translation.js?v=180012eb27e1"></script>
+    <script src="js/translation.js?v=74e8aa7d047b"></script>
     <script src="js/sentence-structure.js?v=e0e7035fe6c4"></script>
     <script src="js/grammar-svo.js?v=f682fd7a3122"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
@@ -1521,7 +1534,7 @@
     <script src="js/grammar-rules.js?v=7a335c239003"></script>
     <script src="js/ai-client.js?v=2483ab245406"></script>
     <script src="js/practice-session.js?v=4a936b0b2205"></script>
-    <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
+    <script src="js/practice-worksheet.js?v=9eb9851b66df"></script>
     <script src="js/dictation.js?v=528d67e2696e"></script>
     <script src="js/pdf-ink.js?v=9ed1750d501f"></script>
     <script src="js/pdf-crop.js?v=80bab2793f94"></script>

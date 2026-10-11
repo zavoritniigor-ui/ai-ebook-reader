@@ -639,7 +639,7 @@ function translatePanelPoint(e, root) {
     if (!text && phrase && root.contains(phrase) && phrase.textContent.trim().length <= 120) {
         range = document.createRange(); range.selectNodeContents(phrase); text = range.toString().trim();
     }
-    const host = e.target.closest('.verb-forme, .lvl-block, tr, p, li, .verb-head, .verb-card') || e.target;
+    const host = e.target.closest('.verb-forme, .lvl-block, tr, p, li, .verb-head, .verb-card, .practice-sentence, .practice-paragraph') || e.target;
     state.ctxSentence = (host.textContent || '').trim().slice(0, 400);
     if (!text) text = selectWordAtPoint(e.clientX, e.clientY);
     if (!text) return;
@@ -651,3 +651,36 @@ function translatePanelPoint(e, root) {
 }
 els.askContent.addEventListener('click', e => translatePanelPoint(e, els.askContent));
 els.grammarContent.addEventListener('click', e => translatePanelPoint(e, els.grammarContent));
+
+// Practice: тап по слову, яке не є ціллю вправи, відкриває те саме вікно перекладу (ціль, як і раніше, веде в Граматику).
+function wirePracticePanelTranslate(panel) {
+    if (!panel || panel.dataset.translateWired) return;
+    panel.dataset.translateWired = '1';
+    panel.addEventListener('click', e => { if (!e.target.closest('.practice-target')) translatePanelPoint(e, panel); });
+}
+window.wirePracticePanelTranslate = wirePracticePanelTranslate;
+
+// Виділення тексту в самих панелях (Граматика, Запитай AI, Practice) — слово, речення чи абзац — теж відкриває вікно перекладу.
+// На дотик нативне виділення (довге натискання + ручки) НЕ породжує click, тож слухаємо selectionchange і чекаємо, поки
+// читач закінчить рухати ручки; миша/перо дають click, який обробляє translatePanelPoint (воно ж знімає виділення).
+const PANEL_SELECTION_SETTLE_MS = 650;
+let panelSelectionTimer = 0;
+function panelRootForRange(range) {
+    const roots = [els.askContent, els.grammarContent, document.getElementById('practice-panel')];
+    return roots.find(r => r && r.contains(range.startContainer) && r.contains(range.endContainer)) || null;
+}
+document.addEventListener('selectionchange', () => {
+    clearTimeout(panelSelectionTimer);
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || sel.isCollapsed || !panelRootForRange(sel.getRangeAt(0))) return;
+    const snapshot = sel.toString();
+    panelSelectionTimer = setTimeout(() => {
+        const now = window.getSelection();
+        if (!now || !now.rangeCount || now.isCollapsed || now.toString() !== snapshot) return;
+        const range = now.getRangeAt(0), root = panelRootForRange(range);
+        if (!root || !snapshot.trim()) return;
+        const rect = range.getBoundingClientRect();
+        const anchor = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+        translatePanelPoint({ target: anchor || root, clientX: rect.left + rect.width / 2, clientY: rect.bottom }, root);
+    }, PANEL_SELECTION_SETTLE_MS);
+});

@@ -144,6 +144,7 @@ function getPracticePanel() {
     if (!panel) {
         panel = document.createElement('div');
         panel.id = 'practice-panel';
+        if (typeof wirePracticePanelTranslate === 'function') wirePracticePanelTranslate(panel);
         panel.className = 'side-panel';
         panel.hidden = true;
         panel.setAttribute('role', 'region');
