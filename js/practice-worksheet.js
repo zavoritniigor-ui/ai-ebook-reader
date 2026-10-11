@@ -262,6 +262,17 @@ function displayPracticeReady(panel, session) {
         panel.appendChild(meta);
     }
 
+    if (session.topic) {
+        const meta = document.createElement('div');
+        meta.className = 'practice-meta practice-topic-meta';
+        const row = document.createElement('div'); row.className = 'meta-row';
+        const label = document.createElement('span'); label.className = 'meta-label'; label.textContent = t('practiceTopicMeta');
+        const value = document.createElement('span'); value.className = 'meta-value'; value.textContent = session.topic;
+        row.append(label, value);
+        meta.appendChild(row);
+        panel.appendChild(meta);
+    }
+
     panel.appendChild(renderPracticeReading(reading));
 
     const actions = document.createElement('div');

@@ -231,6 +231,9 @@ jobs:
           echo "Running panel_translate_layout_browser.py..."
           python3 -u tests/panel_translate_layout_browser.py
 
+          echo "Running practice_topic_browser.py..."
+          python3 -u tests/practice_topic_browser.py
+
           echo "Running ai_stream_audit_browser.py..."
           python3 -u tests/ai_stream_audit_browser.py
 
