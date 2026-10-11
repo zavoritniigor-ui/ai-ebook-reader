@@ -1057,6 +1057,9 @@ const I18N = {
     // Practice Studio UI strings
     practiceSource:     { uk: 'Джерело:', en: 'Source:', fr: 'Source:', ru: 'Источник:' },
     practiceFocus:      { uk: 'Слова:', en: 'Words:', fr: 'Mots :', ru: 'Слова:' },
+    practiceTopicLabel: { uk: 'Тема речень', en: 'Topic of the sentences', fr: 'Thème des phrases', ru: 'Тема предложений', zh: '句子主题', ko: '문장 주제', hi: 'वाक्यों का विषय', ga: 'Ábhar na n-abairtí' },
+    practiceTopicPlaceholder: { uk: "Тема (необов'язково): одяг, здоров'я…", en: 'Topic (optional): clothes, health…', fr: 'Thème (facultatif) : vêtements, santé…', ru: 'Тема (необязательно): одежда, здоровье…', zh: '主题（可选）：服装、健康…', ko: '주제(선택): 옷, 건강…', hi: 'विषय (वैकल्पिक): कपड़े, स्वास्थ्य…', ga: 'Ábhar (roghnach): éadaí, sláinte…' },
+    practiceTopicMeta: { uk: 'Тема:', en: 'Topic:', fr: 'Thème :', ru: 'Тема:', zh: '主题：', ko: '주제:', hi: 'विषय:', ga: 'Ábhar:' },
     practiceRegenerate: { uk: 'Регенерувати', en: 'Regenerate', fr: 'Régénérer', ru: 'Перегенерировать' },
     // Sentence-level learning actions in Practice (js/practice-worksheet.js buildPracticeSentenceRow):
     // small, secondary [listen]/[translate] buttons on every generated sentence/paragraph.

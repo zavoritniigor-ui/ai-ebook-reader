@@ -1234,6 +1234,14 @@ function switchGrammarMode(mode) {
 // Adds the "Practice" button after a successful analysis, grounding the reading-
 // generation request in the lemmas actually detected for the CURRENT mode
 // (task section 21: ground AI-generated examples in detected target lemmas).
+const PRACTICE_TOPIC_STORAGE_KEY = 'reader_practice_topic';
+// Quick picks for the topic field, in the menu language (the field itself accepts anything).
+const PRACTICE_TOPIC_SUGGESTIONS = {
+    uk: ['Одяг', "Здоров'я", 'Винаймання житла', 'Їжа і ресторан', 'Покупки', 'Подорожі', 'Робота', 'Погода', "Сім'я", 'Транспорт'],
+    ru: ['Одежда', 'Здоровье', 'Аренда жилья', 'Еда и ресторан', 'Покупки', 'Путешествия', 'Работа', 'Погода', 'Семья', 'Транспорт'],
+    fr: ['Les vêtements', 'La santé', 'Louer un logement', 'Au restaurant', 'Les courses', 'Les voyages', 'Le travail', 'La météo', 'La famille', 'Les transports'],
+    en: ['Clothes', 'Health', 'Renting a flat', 'Food and restaurants', 'Shopping', 'Travel', 'Work', 'Weather', 'Family', 'Transport']
+};
 function maybeShowPracticeButton() {
     if (typeof generatePracticeReading !== 'function') return;
     const sourceLang = grammarContext.sourceLanguage || DEFAULT_GRAMMAR_LANG;
@@ -1241,6 +1249,23 @@ function maybeShowPracticeButton() {
     const practiceBtn = document.createElement('button');
     practiceBtn.className = 'btn-secondary grammar-practice-btn';
     practiceBtn.textContent = t('practice');
+    // The learner's topic for the generated sentences (optional, remembered between sessions).
+    // One row with the button (never pushes it lower: on phones the bottom-docked word popup covers the panel's lower part).
+    const topicWrap = document.createElement('div');
+    topicWrap.className = 'grammar-practice-row';
+    const topicInput = document.createElement('input');
+    topicInput.type = 'text'; topicInput.id = 'grammar-practice-topic'; topicInput.maxLength = 80;
+    topicInput.autocomplete = 'off'; topicInput.placeholder = t('practiceTopicPlaceholder');
+    topicInput.setAttribute('list', 'practice-topic-suggestions');
+    topicInput.className = 'grammar-practice-topic';
+    topicInput.setAttribute('aria-label', t('practiceTopicLabel')); topicInput.title = t('practiceTopicLabel');
+    try { topicInput.value = localStorage.getItem(PRACTICE_TOPIC_STORAGE_KEY) || ''; } catch (e) { /* storage blocked: start empty */ }
+    const suggestions = document.createElement('datalist');
+    suggestions.id = 'practice-topic-suggestions';
+    for (const s of (PRACTICE_TOPIC_SUGGESTIONS[state.uiLang] || PRACTICE_TOPIC_SUGGESTIONS.en)) { const o = document.createElement('option'); o.value = s; suggestions.appendChild(o); }
+    topicWrap.append(topicInput, suggestions);
+    topicInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); practiceBtn.click(); } });
+    topicInput.addEventListener('input', () => { try { localStorage.setItem(PRACTICE_TOPIC_STORAGE_KEY, sanitizePracticeTopic(topicInput.value)); } catch (e) {} });
     practiceBtn.onclick = () => {
         if (!aiAvailable()) return showToast(t('needKey'));
         // A generation is already running (e.g. a fast double-click, or Practice was reopened while its
@@ -1263,8 +1288,10 @@ function maybeShowPracticeButton() {
             mode,
             lemmas: Array.from(new Set([...focused, ...items].map(it => it.lemma))),
             seenForms: [...focused, ...items].slice(0, 12).map(it => ({ surface: it.surface, lemma: it.lemma })),
-            level: null
+            level: null,
+            topic: topicInput.value
         };
+        try { localStorage.setItem(PRACTICE_TOPIC_STORAGE_KEY, sanitizePracticeTopic(topicInput.value)); } catch (e) { /* not remembered */ }
         // Immediate, visible feedback on the button itself (not just the Practice panel elsewhere on
         // screen) so a click never looks dead, and re-entrancy stays impossible for the life of this
         // button even before the session's own 'generating' status has had a chance to be read back.
@@ -1283,7 +1310,8 @@ function maybeShowPracticeButton() {
             if (updated) displayPracticeSession(updated);
         }).finally(restoreBtn);
     };
-    content.appendChild(practiceBtn);
+    topicWrap.appendChild(practiceBtn);
+    content.appendChild(topicWrap);
 }
 
 // The language a tapped fragment is written in: read from ITS OWN position inside the sentence
