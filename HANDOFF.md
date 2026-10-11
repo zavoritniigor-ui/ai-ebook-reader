@@ -1,12 +1,14 @@
-## Tablet-feedback round + code audit: #158, #166-#172 merged (2026-10-11, Claude)
+## Tablet-feedback round + code audit: #158, #166-#174 merged, #175 open (2026-10-11, Claude)
 
-All merged to main (squash), each with exact-SHA PR CI green, main CI green, production serving main's script versions.
+#158 and #166-#174 merged to main (squash), each with exact-SHA PR CI green, main CI green, production serving main's script versions.
 - #158 menu labels: the CI-only 211px tablet-portrait header (wider CI fonts wrapped a 4th row) fixed with 13px controls and a narrower voice select; `menu_labels` check 4b stresses it with wider glyphs.
 - #166 S-V-O tooltip button removed; sentence breakdown covers every clause (prompt, 28 parts / 2800 tokens, one gap-fill call for uncovered word runs, `structureGaps`); near-duplicate «ще» alternatives dropped.
 - #167 + #171 Rules bookmark `#rules-tab` on the right edge (green found / red searching-failed / neutral idle), docks on the open window's edge and collapses it; placement = lowest free vertical gap between the PDF scrubber, ✦ launcher, Grammar handle, header and bottom sheet (`layoutRulesPanel`). Replaces the readiness pill.
 - #168 single-word prompt demands the most precise equivalent and keeps near-synonyms apart (sentier стежка / chemin дорога).
 - #169 + #170 breakdown popup: legend above, translation full width, `.tt-body` scrolls; Grammar/Ask panels start below the header (>=641px); selecting text in Grammar / Ask / Practice opens the translation popup via `selectionchange` (native selection and its drag handles are KEPT, the popup updates as it grows); a tap on a plain Practice word translates, a target still goes to Grammar. Practice's own 🔊/🌐 stay (user's choice).
 - #172 audit fixes: streaming Ask/Level had no timeout after the headers (stall = endless spinner) -> 30 s per-read idle limit; `response.incomplete`/`failed` are errors; completes on `response.completed`; Practice startup restore guarded against blocked storage; dead S-V-O code removed (its i18n strings kept); five Ask/crop strings translated to zh/ko/hi/ga. Test `ai_stream_audit_browser.py`.
+- #174 deep-breakdown part-of-speech chips were dark text on the always-dark popup in light/sepia themes (`.structure-chip` used `--text-color`); fixed inside `#word-tooltip`; `sentence_structure_text` 8b fails without the fix (contrast 1.26).
+- #175 (open at writing) Practice topic: optional field in one row with the Grammar panel's Practice button, quoted into the practice_reading prompt as data, kept on the session for Retry/Regenerate, shown in Practice; test `practice_topic_browser.py`.
 - Audit result before #172: all 66 browser suites + 3 tool checks passed locally on main `7dee26c`; no XSS path (book HTML via `safeHtml`, AI text via `escapeHtml`), no undefined calls, no global name clashes, no listener leaks.
 - Known CI flakes seen today: `practice_sentence_actions` section 4 (TTS timing; rerun passes).
 - Cleanup: remote branches of the 13 merged PRs deleted; local merged branches deleted after checking each equals its PR head. Kept: `feat/sentence-structure` (user's #156 code), `feat/rules-ux`, `feat/grammar-rules-en`, and the open drafts #142 / #149.
