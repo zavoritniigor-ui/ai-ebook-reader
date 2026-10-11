@@ -626,6 +626,9 @@
         .struct-deep-head { margin: 0; }
         .struct-sub { padding: 0 3px; border-radius: 4px; border-bottom: 2px solid var(--sub); background: color-mix(in srgb, var(--sub) 22%, transparent); }
         .structure-chip.struct-sub { border: 1px solid var(--sub); }
+        /* Вікно підказки завжди темне, а --text-color у світлій/сепія темі темний: без цього назви частин мови в глибокому розборі
+           були темним текстом на темному фоні (контраст ~1.2). */
+        #word-tooltip .structure-chip { color: #f1f3f5; background: color-mix(in srgb, var(--sub, var(--role)) 38%, #22242a); }
         .struct-sub-noun { --sub: #3b82c4; }
         .struct-sub-pronoun { --sub: #7c5cbf; }
         .struct-sub-determiner { --sub: #6b7280; }

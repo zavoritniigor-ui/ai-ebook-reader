@@ -96,6 +96,15 @@ check("6 pressing a part asks for a deep breakdown of THAT part (one call) and s
       "__calls.filter(x => x.task === 'structure_deep').length === 1 && document.querySelectorAll('#tt-struct-host .struct-deep-head .struct-sub').length === 2 && !document.querySelector('#tt-struct-host .struct-deep').textContent.includes('xyz')", timeout=8)
 check("7 the deep prompt carries the part and the sentence as JSON strings",
       "(p => p.includes(JSON.stringify('a mangé')) && p.includes(JSON.stringify(%s)))(__calls.find(x => x.task === 'structure_deep').prompt)" % json.dumps(SENT, ensure_ascii=False))
+c.js("(() => { const sel = document.getElementById('theme-select'); window.__theme = sel.value; sel.value = 'light'; sel.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(0.3)
+check("8b the part-of-speech chips of the deep breakdown are readable on the always-dark popup in the light theme (contrast >= 4.5)",
+      """(() => { const lum = c => { const m = c.match(/[\\d.]+/g).map(Number); const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(m[0]) + .7152 * f(m[1]) + .0722 * f(m[2]); };
+         const chips = [...document.querySelectorAll('#tt-struct-host .structure-chip')]; if (!chips.length) return 'no chips';
+         const bgOf = el => { const layers = []; for (let e = el; e; e = e.parentElement) { const m = getComputedStyle(e).backgroundColor.match(/[\\d.]+/g); if (m && (m[3] === undefined || +m[3] > 0)) { layers.push(m.map(Number)); if (m[3] === undefined || +m[3] >= 1) break; } }
+           let base = [255, 255, 255]; for (const l of layers.reverse()) { const al = l[3] === undefined ? 1 : l[3]; base = base.map((v, i) => v * (1 - al) + l[i] * al); } return 'rgb(' + base.join(',') + ')'; };
+         const bad = chips.map(ch => { const fg = lum(getComputedStyle(ch).color), bg = lum(bgOf(ch)); return (Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05); }).filter(r => r < 4.5);
+         return document.getElementById('theme-select').value === 'light' && bad.length === 0 || JSON.stringify(bad); })()""")
+c.js("(() => { const sel = document.getElementById('theme-select'); sel.value = window.__theme; sel.dispatchEvent(new Event('change')); return 1; })()")
 check("8 the explanation is shown", "document.querySelector('#tt-struct-host .struct-deep').textContent.includes('auxiliaire avoir')")
 c.js("document.querySelectorAll('#tt-struct-host .struct-key')[2].click(); document.querySelectorAll('#tt-struct-host .struct-key')[2].click(); 1")
 time.sleep(0.4)
