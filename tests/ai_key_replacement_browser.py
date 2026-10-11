@@ -20,6 +20,8 @@ KEYS = {'OAI_1': 'sk-test-only-one-aaaaaaaa', 'OAI_2': 'sk-test-only-two-bbbbbbb
         'OAI_A': 'sk-test-only-rapid-a-dddd', 'OAI_B': 'sk-test-only-rapid-b-eeee',
         'GROQ': 'gsk_test_only_groq_ffffffff', 'GEM': 'AIza_test_only_gemini_gggggg'}
 c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
+// This suite verifies key entry against the single ACTIVE provider; task routing has its own suite (ai_routing_browser.py).
+try { localStorage.setItem('reader_ai_routing', 'off'); } catch (e) {}
 window.__K=''' + json.dumps({v: k for k, v in KEYS.items()}) + r''';
 window.__calls=[];window.__logs=[];window.__defer=false;window.__pending=[];
 for (const n of ['log','info','warn','error']) { const o=console[n]; console[n]=(...a)=>{__logs.push(a.map(String).join(' '));o.apply(console,a)}; }
