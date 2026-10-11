@@ -207,6 +207,18 @@ check("39 the bookmark brings the same window back (same topic, same results) an
 check("39b open window, portrait-width side panel: the bookmark is docked on the window's LEFT edge and the window is not covered",
       """(() => { const tb = document.getElementById('rules-tab').getBoundingClientRect(), p = document.getElementById('rules-panel').getBoundingClientRect();
          return document.getElementById('rules-panel').classList.contains('rules-sheet') ? tb.right >= innerWidth - 1 : (Math.abs(tb.right - p.left) <= 2 || JSON.stringify({tb: tb.right, p: p.left})); })()""", timeout=3)
+# translating FROM the rules window: a long-press selection in an example opens the popup; the window, its results and the
+# book highlights stay; a tap on the example still jumps to it in the book
+c.js("""(() => { window.__lookups = []; if (!window.__origHWS) { window.__origHWS = handleWordOrSelection; handleWordOrSelection = (t, ...r) => { __lookups.push(t); return __origHWS(t, ...r); }; }
+  const s = document.querySelector('#rules-content .rules-match .rules-match-sentence'); const r = document.createRange(); r.selectNodeContents(s);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); return 1; })()""")
+check("39-tr1 selecting an example sentence inside the rules window opens its translation",
+      "__lookups.length === 1 && __lookups[0].length > 5 && els.tooltip.style.display === 'flex'", timeout=4)
+time.sleep(0.6)
+check("39-tr2 ... and the rules window stays open with its results and the highlights in the book",
+      "document.getElementById('rules-panel').classList.contains('expanded') && document.querySelectorAll('#rules-content .rules-match').length === 3 && CSS.highlights.has('rule-match')")
+c.js("els.ttCloseBtn.click(); getSelection().removeAllRanges(); document.querySelectorAll('#rules-content .rules-match')[2].click(); 1"); time.sleep(0.4)
+check("39-tr3 a tap on an example still makes it the active one (jump to it in the book)", "document.querySelectorAll('#rules-content .rules-match')[2].classList.contains('active') && document.querySelectorAll('#rules-content .rules-match')[2].getAttribute('role') === 'button'")
 c.js("document.getElementById('rules-tab').click(); 1"); time.sleep(0.6)
 check("39c pressing the bookmark collapses the window at once (highlights and results stay); it sits on the right screen edge, green, above the Grammar handle and the ✦ launcher",
       """(() => { const tab = document.getElementById('rules-tab'), r = tab.getBoundingClientRect(), g = document.getElementById('grammar-tab').getBoundingClientRect(), q = document.getElementById('qm-launcher').getBoundingClientRect(); const bg = getComputedStyle(tab).backgroundColor;
@@ -235,9 +247,10 @@ check("42 landscape (tablet): the window is a bottom sheet, never above the main
          return p.classList.contains('rules-sheet') && r.bottom >= innerHeight - 1 && r.top >= hb && r.height <= innerHeight * 0.5 && document.body.classList.contains('rules-inset')
            && parseFloat(getComputedStyle(document.getElementById('reader-pages')).paddingBottom) >= r.height; })()""", timeout=3)
 c.call('Emulation.setDeviceMetricsOverride', width=820, height=1180, deviceScaleFactor=1, mobile=True); time.sleep(0.8)
-check("43 portrait: a side panel that starts BELOW the main menu and fits the screen; no bottom padding",
+check("43 portrait too: a bottom sheet (the book above it stays readable), never above the main menu, at most half the screen, and the page gets bottom padding",
       """(() => { const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
-         return !p.classList.contains('rules-sheet') && r.top >= hb && r.bottom <= innerHeight && r.right <= innerWidth + 1 && !document.body.classList.contains('rules-inset') || JSON.stringify({sheet: p.className, top: r.top, hb, bottom: r.bottom, ih: innerHeight}); })()""", timeout=3)
+         return p.classList.contains('rules-sheet') && r.bottom >= innerHeight - 1 && r.top >= hb && r.height <= innerHeight * 0.5 && document.body.classList.contains('rules-inset')
+           && parseFloat(getComputedStyle(document.getElementById('reader-pages')).paddingBottom) >= r.height || JSON.stringify({cls: p.className, top: r.top, hb, h: r.height, ih: innerHeight}); })()""", timeout=3)
 c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False); time.sleep(0.8)
 
 # interplay
