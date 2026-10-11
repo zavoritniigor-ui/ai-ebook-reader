@@ -624,6 +624,7 @@ function detectPhrasalVerb(word, sentenceText) {
 // Розбір пропонує спрощені варіанти французькою, і їх теж треба вміти перекласти.
 // Тому тап по слову в самій панелі працює так само, як у тексті книги.
 function translatePanelPoint(e, root, { keepNative = false } = {}) {
+    state.tooltipFromRules = !!root && root.id === 'rules-content';
     if (e.target.closest('button, a, input, select, textarea') || root.closest('.loading')) return;
     const selection = window.getSelection();
     let text = '', range = null;
@@ -653,6 +654,9 @@ function translatePanelPoint(e, root, { keepNative = false } = {}) {
 els.askContent.addEventListener('click', e => translatePanelPoint(e, els.askContent));
 els.grammarContent.addEventListener('click', e => translatePanelPoint(e, els.grammarContent));
 
+// Будь-яка взаємодія з книгою — новий контекст: підказка, відкрита потім, уже не «належить» вікну Правил.
+els.mainArea.addEventListener('pointerdown', () => { state.tooltipFromRules = false; }, true);
+
 // Practice: тап по слову, яке не є ціллю вправи, відкриває те саме вікно перекладу (ціль, як і раніше, веде в Граматику).
 function wirePracticePanelTranslate(panel) {
     if (!panel || panel.dataset.translateWired) return;
@@ -667,7 +671,7 @@ window.wirePracticePanelTranslate = wirePracticePanelTranslate;
 const PANEL_SELECTION_SETTLE_MS = 450;
 let panelSelectionTimer = 0;
 function panelRootForRange(range) {
-    const roots = [els.askContent, els.grammarContent, document.getElementById('practice-panel')];
+    const roots = [els.askContent, els.grammarContent, document.getElementById('practice-panel'), document.getElementById('rules-content')];
     return roots.find(r => r && r.contains(range.startContainer) && r.contains(range.endContainer)) || null;
 }
 document.addEventListener('selectionchange', () => {

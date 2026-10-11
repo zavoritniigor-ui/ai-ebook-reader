@@ -796,6 +796,8 @@
         .rules-matches { display: grid; gap: 6px; margin-top: 8px; }
         .rules-match { display: flex; flex-direction: column; align-items: flex-start; text-align: left; width: 100%; height: auto; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); color: var(--text-color); padding: 8px 10px; min-height: 44px; cursor: pointer; font-size: 14px; }
         .rules-match.active { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,.25); }
+        .rules-match { cursor: pointer; -webkit-user-select: text; user-select: text; }
+        .rules-match:focus-visible { outline: 2px solid #6383e8; outline-offset: 1px; }
         .rules-match mark, .rules-card mark { background: rgba(255,193,7,.55); color: inherit; border-radius: 3px; padding: 0 2px; }
         .rules-match-note, .rules-card-note { font-size: 12.5px; color: var(--text-muted); }
         .rules-card { border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; margin-top: 12px; display: grid; gap: 8px; }
@@ -1517,14 +1519,14 @@
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=4c4755fb447a"></script>
-    <script src="js/translation.js?v=777195891eba"></script>
+    <script src="js/translation.js?v=d9ee10ab6fc5"></script>
     <script src="js/sentence-structure.js?v=e0e7035fe6c4"></script>
     <script src="js/grammar-svo.js?v=a6b8ce04200a"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=90e924ba8930"></script>
+    <script src="js/grammar-rules.js?v=623c48f208b5"></script>
     <script src="js/ai-client.js?v=fc1b5ff27948"></script>
     <script src="js/practice-session.js?v=b6b3dc6e43db"></script>
     <script src="js/practice-worksheet.js?v=9eb9851b66df"></script>

@@ -272,7 +272,9 @@ function layoutRulesPanel() {
     const header = document.getElementById('app-header');
     const hb = header && !document.body.classList.contains('immersive-mode') ? Math.max(0, Math.round(header.getBoundingClientRect().bottom)) : 0;
     document.documentElement.style.setProperty('--rules-top', (hb + 8) + 'px');
-    const sheet = window.innerWidth > window.innerHeight && window.innerWidth >= 700;
+    // Always a bottom sheet (portrait too): a side panel covered half of the page in portrait, the sheet leaves the text above it
+    // readable, and the page gets bottom padding so every line can be scrolled above the sheet.
+    const sheet = true;
     panel.classList.toggle('rules-sheet', sheet);
     const inset = sheet && panel.classList.contains('expanded') ? Math.round(panel.getBoundingClientRect().height) : 0;
     document.documentElement.style.setProperty('--rules-inset', inset + 'px');
@@ -360,7 +362,8 @@ function updateRulesTab() {
         updateRulesTab();
         if (!rulesOpen()) return;
         const practice = document.getElementById('practice-panel');
-        if (els.askPanel.classList.contains('expanded') || els.grammarPanel.classList.contains('expanded') || (practice && !practice.hidden) || els.tooltip.style.display === 'flex') minimizeRulesPanel();
+        // A translation popup opened FROM the rules window (selected text in it) keeps the window open.
+        if (els.askPanel.classList.contains('expanded') || els.grammarPanel.classList.contains('expanded') || (practice && !practice.hidden) || (els.tooltip.style.display === 'flex' && !state.tooltipFromRules)) minimizeRulesPanel();
     };
     try {
         const mo = new MutationObserver(guard);
@@ -529,8 +532,11 @@ function renderRuleMatches() {
     if (!host) return;
     host.replaceChildren();
     rulesState.matches.forEach((m, i) => {
-        const b = ruleEl('button', 'rules-match');
-        b.type = 'button';
+        // A div with role="button" (not a <button>): its sentence must stay SELECTABLE so a long-press can translate it,
+        // while a tap still jumps to the example in the book.
+        const b = ruleEl('div', 'rules-match');
+        b.setAttribute('role', 'button'); b.tabIndex = 0;
+        b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveRule(i); } };
         const line = ruleEl('span', 'rules-match-sentence');
         line.append(document.createTextNode(m.sentence.slice(0, m.sentenceStart)), ruleEl('mark', '', m.text), document.createTextNode(m.sentence.slice(m.sentenceStart + m.text.length)));
         if (m.exception) b.appendChild(ruleEl('span', 'rules-badge', '⚠ ' + t('rulesException')));
