@@ -125,7 +125,6 @@ for lang, text in test_cases:
         const aiBtn = document.getElementById('tt-ai-btn');
         const replayBtn = document.getElementById('tt-replay-btn');
         const expandBtn = document.getElementById('tt-expand-btn');
-        const svoBtn = document.getElementById('tt-svo-btn');
         const actions = document.querySelector('.tt-actions');
         const origRow = document.querySelector('.tt-original-row');
         return {
@@ -135,7 +134,6 @@ for lang, text in test_cases:
             aiVisible: aiBtn.offsetWidth > 0 && aiBtn.offsetHeight > 0,
             replayVisible: replayBtn.offsetWidth > 0 && replayBtn.offsetHeight > 0,
             expandVisible: expandBtn.offsetWidth > 0 && expandBtn.offsetHeight > 0,
-            svoVisible: svoBtn.offsetWidth > 0 && svoBtn.offsetHeight > 0,
             actionsWidth: actions ? actions.offsetWidth : 0,
             origRowWidth: origRow ? origRow.offsetWidth : 0,
             askWidth: askBtn.offsetWidth,
@@ -144,7 +142,7 @@ for lang, text in test_cases:
     })()""")
     assert tt_data['text'] == text, f"[{lang}] Expected tooltip to retain actual selected text '{text}', got '{tt_data['text']}'"
     assert tt_data['askVisible'] and tt_data['aiVisible'], f"[{lang}] Action buttons must be visible"
-    assert tt_data['replayVisible'] and tt_data['expandVisible'] and tt_data['svoVisible'], f"[{lang}] Header tool controls must remain visible"
+    assert tt_data['replayVisible'] and tt_data['expandVisible'], f"[{lang}] Header tool controls must remain visible"
     print(f"PASS [{lang}] Selection '{text[:25]}...' retained verbatim, fixed controls visible (ask={tt_data['askWidth']}px, ai={tt_data['aiWidth']}px)")
 
 # Responsive check at 390px and 320px

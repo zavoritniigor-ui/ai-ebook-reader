@@ -1,6 +1,6 @@
 """Sentence breakdown painted IN THE BOOK TEXT (tooltip "🧩 Розбір" action button) + deep breakdown of one part.
 
-The existing S-V-O header button is untouched. A real tap on a word opens the tooltip; its 🧩 button asks the model (mocked with a
+A real tap on a word opens the tooltip; its 🧩 button asks the model (mocked with a
 GOLD reply, no live AI) for the sentence's functional parts and paints each in the text through the CSS Custom
 Highlight API (no DOM rewrap), with a legend of role-coloured buttons; pressing a part asks for a deeper breakdown
 of just that part. Checks: highlights land on the exact words, one call per sentence / per part (cached after),
@@ -118,5 +118,25 @@ c.wait("els.tooltip.style.display==='flex'", timeout=8)
 b = center('#tt-struct-btn'); click_xy(b['x'], b['y'])
 check("12 an unusable reply shows the failure note and paints nothing",
       "els.ttStructHost.textContent.includes(t('structFailed')) && !CSS.highlights.has('struct-subject') && !document.querySelector('#tt-struct-host .struct-key')", timeout=8)
+# gap fill: a first reply that stops after the first clause leaves the rest uncoloured -> ONE follow-up call about just those words
+PART1 = json.dumps({"language": "fr", "parts": [{"text": "Hier", "role": "time", "kind": "past"}, {"text": "Marie", "role": "subject"}, {"text": "a mangé", "role": "verb"}]}, ensure_ascii=False)
+PART2 = json.dumps({"language": "fr", "parts": [{"text": "une pomme", "role": "object"}, {"text": "dans le jardin", "role": "place"}]}, ensure_ascii=False)
+c.js("els.ttCloseBtn.click(); structureCache.clear(); __calls.length = 0; { const seq = [%s, %s]; callAI = async (prompt, signal, task) => { __calls.push({task, prompt}); return seq.shift() || '{}'; }; } 1" % (json.dumps(PART1), json.dumps(PART2))); time.sleep(0.3)
+click_xy(pos['x'], pos['y'])
+c.wait("els.tooltip.style.display==='flex'", timeout=8)
+b = center('#tt-struct-btn'); click_xy(b['x'], b['y'])
+check("14 words the first reply left uncovered are asked about in ONE follow-up call and painted too",
+      "document.querySelectorAll('#tt-struct-host .struct-key').length === 5 && __calls.filter(x => x.task === 'sentence_structure').length === 2 && __calls[1].prompt.includes(JSON.stringify('une pomme dans le jardin')) && CSS.highlights.has('struct-place') && [...CSS.highlights.get('struct-place')].map(x => x.toString()).join('|') === 'dans le jardin'", timeout=15)
+check("14b a fully covered sentence needs no follow-up (gap finder)",
+      "structureGaps('Hier, Marie a mangé.', [{start:0,end:4},{start:6,end:11},{start:12,end:19}]).length === 0 && structureGaps('Hier, Marie a mangé une pomme.', [{start:0,end:4}]).length === 1")
+
+# near-identical "more" alternatives are not shown as extra translations
+check("15 a sentence alternative that only swaps a word or two is dropped; a really different one stays",
+      """(() => { const main = 'Було б помилкою думати, що додавання англійських слів у французьку мову є раптовим явищем.';
+         const mk = alts => [null, null, null, null, null, [['x', 'y', alts.map(a => [a])]]];
+         const same = buildTranslationExtras(mk(['Було б помилкою вважати, що додавання англійських слів до французької мови є раптовим явищем.']), main);
+         const diff = buildTranslationExtras(mk(['Англійські запозичення — це не раптовий збій у мові']), main);
+         return same === '' && diff.includes('запозичення') || JSON.stringify({same, diff}); })()""")
+check("15b the tooltip no longer has an S-V-O button", "!document.getElementById('tt-svo-btn') && els.ttSvoBtn === undefined")
 check("13 no application errors / alerts", "!__calls.some(x => x.alert)")
 print('ALL SENTENCE STRUCTURE TEXT CHECKS PASSED')
