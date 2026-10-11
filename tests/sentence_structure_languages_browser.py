@@ -28,7 +28,7 @@ CASES = {
     'zh': ("昨天，玛丽在花园里吃了一个苹果。", [("昨天", "time", "past"), ("玛丽", "subject", None), ("在花园里", "place", None), ("吃了", "verb", None), ("一个苹果", "object", None)]),
     'ko': ("어제 마리아는 정원에서 사과를 먹었습니다.", [("어제", "time", "past"), ("마리아는", "subject", None), ("정원에서", "place", None), ("사과를", "object", None), ("먹었습니다", "verb", None)]),
     'hi': ("कल मारिया ने बगीचे में एक सेब खाया।", [("कल", "time", "past"), ("मारिया ने", "subject", None), ("बगीचे में", "place", None), ("एक सेब", "object", None), ("खाया", "verb", None)]),
-    'ga': ("Inné, d'ith Máire úll sa ghairdín agus bhí sí sásta.", [("Inné", "time", "past"), ("d'ith", "verb", None), ("Máire", "subject", None), ("úll", "object", None), ("sa ghairdín", "place", None), ("agus", "connector", None), ("bhí", "verb", None)]),
+    'ga': ("Inné, d'ith Máire úll sa ghairdín agus bhí sí sásta.", [("Inné", "time", "past"), ("d'ith", "verb", None), ("Máire", "subject", None), ("úll", "object", None), ("sa ghairdín", "place", None), ("agus", "connector", None), ("bhí", "verb", None), ("sí", "subject", None), ("sásta", "complement", None)]),
 }
 
 
