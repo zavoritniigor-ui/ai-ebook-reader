@@ -70,13 +70,13 @@ regionOverlay.addEventListener('pointerup', async (e) => {
 regionOverlay.addEventListener('pointercancel', () => { regionStart = null; regionBox.style.display = 'none'; });
 const cropDialog = document.getElementById('crop-dialog');
 Object.assign(I18N, {
-    cropAttached: { uk: 'Фрагмент сторінки додано. Поставте запитання й натисніть ➤', en: 'Page crop attached. Ask your question and press ➤', fr: 'Extrait de page joint. Posez votre question et appuyez sur ➤', ru: 'Фрагмент страницы добавлен. Задайте вопрос и нажмите ➤' },
-    cropRemove: { uk: 'Прибрати зображення', en: 'Remove image', fr: "Retirer l'image", ru: 'Убрать изображение' },
-    cropAskPlaceholder: { uk: 'Запитання про зображення (порожнє — перевірити вправу)', en: 'Question about the image (empty = check the exercise)', fr: "Question sur l'image (vide = vérifier l'exercice)", ru: 'Вопрос об изображении (пусто — проверить упражнение)' },
+    cropAttached: { uk: 'Фрагмент сторінки додано. Поставте запитання й натисніть ➤', en: 'Page crop attached. Ask your question and press ➤', fr: 'Extrait de page joint. Posez votre question et appuyez sur ➤', ru: 'Фрагмент страницы добавлен. Задайте вопрос и нажмите ➤', zh: '已附加页面片段。请输入问题并按 ➤', ko: '페이지 조각을 첨부했습니다. 질문을 입력하고 ➤ 를 누르세요', hi: 'पृष्ठ का अंश जोड़ा गया। अपना प्रश्न लिखें और ➤ दबाएँ', ga: 'Tá blúire den leathanach ceangailte. Cuir do cheist agus brúigh ➤' },
+    cropRemove: { uk: 'Прибрати зображення', en: 'Remove image', fr: "Retirer l'image", ru: 'Убрать изображение', zh: '移除图片', ko: '이미지 제거', hi: 'छवि हटाएँ', ga: 'Bain an íomhá' },
+    cropAskPlaceholder: { uk: 'Запитання про зображення (порожнє — перевірити вправу)', en: 'Question about the image (empty = check the exercise)', fr: "Question sur l'image (vide = vérifier l'exercice)", ru: 'Вопрос об изображении (пусто — проверить упражнение)', zh: '关于图片的问题（留空 = 检查练习）', ko: '이미지에 대한 질문 (비우면 = 연습 확인)', hi: 'छवि के बारे में प्रश्न (खाली = अभ्यास जाँचें)', ga: 'Ceist faoin íomhá (folamh = seiceáil an cleachtadh)' },
     shareNeedsHttps: { uk: 'Поділитися можна лише на сторінці https://. Скористайтеся Save PNG.', en: 'Sharing needs the https:// page. Use Save PNG.', fr: 'Le partage nécessite la page https://. Utilisez Save PNG.', ru: 'Поделиться можно только на странице https://. Используйте Save PNG.' },
     shareUnsupported: { uk: 'Цей браузер не має системного меню «Поділитися». Скористайтеся Save PNG або Copy image.', en: 'This browser has no system Share menu. Use Save PNG or Copy image.', fr: "Ce navigateur n'a pas de menu Partager. Utilisez Save PNG ou Copy image.", ru: 'В этом браузере нет системного меню «Поделиться». Используйте Save PNG или Copy image.' },
     shareFilesUnsupported: { uk: 'Цей браузер не може поділитися зображенням. Скористайтеся Save PNG або Copy image.', en: 'This browser cannot share images. Use Save PNG or Copy image.', fr: "Ce navigateur ne peut pas partager d'images. Utilisez Save PNG ou Copy image.", ru: 'Этот браузер не может поделиться изображением. Используйте Save PNG или Copy image.' },
-    shareFailed: { uk: 'Не вдалося поділитися', en: 'Sharing failed', fr: 'Échec du partage', ru: 'Не удалось поделиться' },
+    shareFailed: { uk: 'Не вдалося поділитися', en: 'Sharing failed', fr: 'Échec du partage', ru: 'Не удалось поделиться', zh: '分享失败', ko: '공유하지 못했습니다', hi: 'साझा नहीं हो सका', ga: 'Theip ar an gcomhroinnt' },
 });
 let cropData = null, cropBlob = null;
 function closeCropPreview() {

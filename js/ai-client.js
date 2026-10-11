@@ -14,7 +14,7 @@ const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 // Task-specific OpenAI profiles: optimize reasoning effort, max_output_tokens, and streaming per workload
 const OPENAI_TASK_PROFILES = {
     translation: { reasoning: 'none', max_output_tokens: 128, stream: false },
-    grammar: { reasoning: 'none', max_output_tokens: 700, stream: false }, // inline S-V-O tooltip analysis (js/grammar-svo.js:analyzeSVO)
+    grammar: { reasoning: 'none', max_output_tokens: 700, stream: false },
     ask: { reasoning: 'low', max_output_tokens: 1200, stream: true },
     // Redesigned Grammar panel (Verbs/Adjectives): one structured multi-item JSON
     // analysis, plus a small targeted per-lemma conjugation/agreement lookup.
@@ -184,12 +184,8 @@ async function fetchStreamingWithTimeout(url, options = {}, timeoutMs = 30000) {
     const controller = new AbortController();
     let timeoutId = null;
 
-    if (signal) {
-        signal.addEventListener('abort', () => {
-            controller.abort();
-            if (timeoutId) clearTimeout(timeoutId);
-        });
-    }
+    const onAbort = () => { controller.abort(); if (timeoutId) clearTimeout(timeoutId); };
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
 
     timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -206,18 +202,44 @@ async function fetchStreamingWithTimeout(url, options = {}, timeoutMs = 30000) {
 // Parse OpenAI Responses API SSE stream. Returns accumulated text and first-token time.
 // Handles chunk boundaries correctly: keeps incomplete lines in buffer.
 // Calls onDelta(delta, accumulated) for each text delta, allowing incremental UI updates.
-async function parseOpenAIStream(reader, signal, onDelta) {
+// A stream can stall AFTER its headers arrived (a mobile connection that freezes mid-answer): the request-level
+// timeout is already over by then, so every read gets its own idle limit -- otherwise the spinner never ends.
+const AI_STREAM_IDLE_MS = 30000;
+function readWithIdleTimeout(reader, idleMs) {
+    let timer;
+    const idle = new Promise((_, reject) => { timer = setTimeout(() => {
+        // Reject BEFORE cancelling: cancel() settles the pending read as {done:true}, which would otherwise win the race
+        // and turn a stalled answer into a "complete" one.
+        reject(new AiRequestError(t('aiNetworkError'), 'timeout'));
+        try { reader.cancel().catch(() => {}); } catch (e) {}
+    }, idleMs); });
+    return Promise.race([reader.read(), idle]).finally(() => clearTimeout(timer));
+}
+async function parseOpenAIStream(reader, signal, onDelta, idleMs = AI_STREAM_IDLE_MS) {
     const decoder = new TextDecoder();
     let buffer = '';
     let firstTokenTime = null;
     let result = '';
     let sawValidEvent = false;
     const startTime = performance.now();
+    let finished = false;
+    // The stream's own end state: a cut-off ("incomplete", usually the token cap) or a failure is NOT a complete answer.
+    const terminal = data => {
+        if (data.type === 'response.incomplete') {
+            const why = data.response && data.response.incomplete_details && data.response.incomplete_details.reason;
+            throw new AiRequestError(t('aiInvalidResponse'), why === 'content_filter' ? 'blocked' : 'truncated', { partial: result, providerMessage: why || 'incomplete' });
+        }
+        if (data.type === 'response.failed' || data.type === 'error') {
+            const err = data.response && data.response.error || data.error || data;
+            throw new AiRequestError(t('aiInvalidResponse'), 'provider_error', { providerMessage: providerErrorText(JSON.stringify({ error: err })) });
+        }
+        if (data.type === 'response.completed') finished = true;   // output_text.done ends one content part, not the reply
+    };
 
-    while (true) {
+    while (!finished) {
         if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
 
-        const { done, value } = await reader.read();
+        const { done, value } = await readWithIdleTimeout(reader, idleMs);
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -228,8 +250,9 @@ async function parseOpenAIStream(reader, signal, onDelta) {
             if (!line.trim()) continue;
             if (!line.startsWith('data: ')) continue;
 
-            try {
-                const data = JSON.parse(line.slice(6));
+            let data;
+            try { data = JSON.parse(line.slice(6)); } catch (_) { continue; }   // skip malformed JSON lines
+            {
                 sawValidEvent = true;  // Successfully parsed a valid SSE event
 
                 // Handle text deltas (OpenAI Responses API format)
@@ -242,15 +265,12 @@ async function parseOpenAIStream(reader, signal, onDelta) {
                     }
                 }
 
-                // Handle completion event
-                if (data.type === 'response.output_text.done') {
-                    break;
-                }
-            } catch (_) {
-                // Skip malformed JSON lines
+                terminal(data);
+                if (finished) break;
             }
         }
     }
+    if (finished) { try { reader.cancel().catch(() => {}); } catch (e) {} }
 
     // Process any remaining buffer
     if (buffer.trim() && buffer.trim().startsWith('data: ')) {
@@ -262,7 +282,8 @@ async function parseOpenAIStream(reader, signal, onDelta) {
                 result += data.delta;
                 if (onDelta) onDelta(data.delta, result);
             }
-        } catch (_) {}
+            terminal(data);
+        } catch (err) { if (err instanceof AiRequestError) throw err; }
     }
 
     // Validate that we received at least one valid SSE event

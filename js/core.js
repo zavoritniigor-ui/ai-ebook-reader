@@ -125,8 +125,8 @@ function cancelAsyncTasks(keys = Array.from(asyncTasks.keys())) {
 function invalidateSelection() {
     cancelDragSelection();
     state.lookupToken++;
-    svoToken++; structToken++;
-    cancelAsyncTasks(['lookup', 'svo', 'structure', 'structureDeep']);
+    structToken++;
+    cancelAsyncTasks(['lookup', 'structure', 'structureDeep']);
     cancelTooltipHide();
     els.tooltip.style.display = 'none';
     clearSelectionHighlight();

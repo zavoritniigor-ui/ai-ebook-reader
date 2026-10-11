@@ -758,14 +758,20 @@ function cleanupExpiredPracticeSessions() {
 // retired exercise worksheet can never become the "current" session.
 document.addEventListener('DOMContentLoaded', () => {
     purgeLegacyPracticeStorage();
-    const latestSessionId = localStorage.getItem(PRACTICE_SESSION_LATEST_KEY);
-    if (latestSessionId) {
-        const restored = loadPracticeSession(latestSessionId);
-        if (restored && restored.status === 'ready') {
-            currentPracticeSession = restored;
-        } else {
-            // Clear stale/invalid latest reference
-            localStorage.removeItem(PRACTICE_SESSION_LATEST_KEY);
+    // Storage can be blocked for the site (private mode, "don't allow sites to save data"): then there is simply
+    // nothing to restore -- never an uncaught SecurityError at startup.
+    try {
+        const latestSessionId = localStorage.getItem(PRACTICE_SESSION_LATEST_KEY);
+        if (latestSessionId) {
+            const restored = loadPracticeSession(latestSessionId);
+            if (restored && restored.status === 'ready') {
+                currentPracticeSession = restored;
+            } else {
+                // Clear stale/invalid latest reference
+                localStorage.removeItem(PRACTICE_SESSION_LATEST_KEY);
+            }
         }
+    } catch (e) {
+        console.warn('Practice session restore skipped:', e.message);
     }
 });
