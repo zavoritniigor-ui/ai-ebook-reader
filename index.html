@@ -1013,6 +1013,9 @@
             width: 100%; height: 44px; padding: 0 12px; margin: 12px 0 6px; border: 1px solid var(--border-color);
             border-radius: var(--radius-sm); background: var(--bg-color); color: var(--text-color); font-size: 15px;
         }
+        .ai-routing { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 0; cursor: pointer; font-size: 14px; font-weight: 600; min-height: 44px; }
+        .ai-routing input { width: 22px; height: 22px; flex: none; margin: 2px 0 0; }
+        .ai-routing-hint { margin-top: 2px; }
         .ai-provider-selector { margin: 18px 0 0; padding: 0; border: 0; min-width: 0; }
         .ai-provider-selector legend { margin-bottom: 8px; font-size: 14px; font-weight: 600; }
         .ai-provider-options { display: flex; gap: 6px; }
@@ -1430,6 +1433,8 @@
                         <label><input type="radio" name="ai-provider" value="gemini"><span>Gemini</span></label>
                     </div>
                 </fieldset>
+                <label class="ai-routing"><input type="checkbox" id="ai-routing-input"><span data-i18n="aiRoutingLabel">Розподіл за завданнями</span></label>
+                <p class="key-hint ai-routing-hint" data-i18n="aiRoutingHint"></p>
                 <p id="ai-provider-error" role="alert" hidden></p>
                 <div class="key-hint" data-i18n="keyNote"></div>
 
@@ -1441,7 +1446,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=d041a8998fe5"></script>
+    <script src="js/core.js?v=4ecb4484c409"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1456,16 +1461,16 @@
     <script src="js/learning-stats.js?v=e901c3020682"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
-    <script src="js/ui-tooltip.js?v=c0f9f96e0b03"></script>
-    <script src="js/translation.js?v=bd7e21e24d0b"></script>
+    <script src="js/ui-tooltip.js?v=4c4755fb447a"></script>
+    <script src="js/translation.js?v=e23424023c67"></script>
     <script src="js/sentence-structure.js?v=2acda419abec"></script>
-    <script src="js/grammar-svo.js?v=f8dd3d9337d5"></script>
+    <script src="js/grammar-svo.js?v=f682fd7a3122"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
     <script src="js/grammar-rules.js?v=19561307ed1e"></script>
-    <script src="js/ai-client.js?v=3cc95078b1bd"></script>
+    <script src="js/ai-client.js?v=edf24908daa8"></script>
     <script src="js/practice-session.js?v=4a936b0b2205"></script>
     <script src="js/practice-worksheet.js?v=0c73af38d9e7"></script>
     <script src="js/dictation.js?v=6cf6ee491dd8"></script>
