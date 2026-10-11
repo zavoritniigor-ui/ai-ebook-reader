@@ -1058,7 +1058,7 @@ const I18N = {
     practiceSource:     { uk: 'Джерело:', en: 'Source:', fr: 'Source:', ru: 'Источник:' },
     practiceFocus:      { uk: 'Слова:', en: 'Words:', fr: 'Mots :', ru: 'Слова:' },
     practiceTopicLabel: { uk: 'Тема речень', en: 'Topic of the sentences', fr: 'Thème des phrases', ru: 'Тема предложений', zh: '句子主题', ko: '문장 주제', hi: 'वाक्यों का विषय', ga: 'Ábhar na n-abairtí' },
-    practiceTopicPlaceholder: { uk: "Тема: одяг, здоров'я…", en: 'Topic: clothes, health…', fr: 'Thème : vêtements, santé…', ru: 'Тема: одежда, здоровье…', zh: '主题：服装、健康…', ko: '주제: 옷, 건강…', hi: 'विषय: कपड़े, स्वास्थ्य…', ga: 'Ábhar: éadaí, sláinte…' },
+    practiceTopicPlaceholder: { uk: 'Своя тема…', en: 'Your topic…', fr: 'Votre thème…', ru: 'Своя тема…', zh: '自定主题…', ko: '내 주제…', hi: 'अपना विषय…', ga: 'Do théama…' },
     practiceTopicMeta: { uk: 'Тема:', en: 'Topic:', fr: 'Thème :', ru: 'Тема:', zh: '主题：', ko: '주제:', hi: 'विषय:', ga: 'Ábhar:' },
     practiceRegenerate: { uk: 'Регенерувати', en: 'Regenerate', fr: 'Régénérer', ru: 'Перегенерировать' },
     // Sentence-level learning actions in Practice (js/practice-worksheet.js buildPracticeSentenceRow):

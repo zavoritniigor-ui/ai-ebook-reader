@@ -1235,13 +1235,39 @@ function switchGrammarMode(mode) {
 // generation request in the lemmas actually detected for the CURRENT mode
 // (task section 21: ground AI-generated examples in detected target lemmas).
 const PRACTICE_TOPIC_STORAGE_KEY = 'reader_practice_topic';
-// Quick picks for the topic field, in the menu language (the field itself accepts anything).
-const PRACTICE_TOPIC_SUGGESTIONS = {
-    uk: ['Одяг', "Здоров'я", 'Винаймання житла', 'Їжа і ресторан', 'Покупки', 'Подорожі', 'Робота', 'Погода', "Сім'я", 'Транспорт'],
-    ru: ['Одежда', 'Здоровье', 'Аренда жилья', 'Еда и ресторан', 'Покупки', 'Путешествия', 'Работа', 'Погода', 'Семья', 'Транспорт'],
-    fr: ['Les vêtements', 'La santé', 'Louer un logement', 'Au restaurant', 'Les courses', 'Les voyages', 'Le travail', 'La météo', 'La famille', 'Les transports'],
-    en: ['Clothes', 'Health', 'Renting a flat', 'Food and restaurants', 'Shopping', 'Travel', 'Work', 'Weather', 'Family', 'Transport']
-};
+// 🎤 for the topic field: one spoken phrase replaces the field (the learner's own topic, any language). Uses the dictation
+// language the learner picked for Ask AI; a running Ask dictation is stopped first so two recognizers never compete.
+function buildPracticeTopicMic(input) {
+    const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor || window.isSecureContext === false) return null;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'icon-btn grammar-practice-topic-mic'; btn.textContent = '🎤';
+    btn.setAttribute('aria-label', t('dictationStart')); btn.title = t('dictationStart'); btn.setAttribute('aria-pressed', 'false');
+    let rec = null;
+    const setListening = on => {
+        btn.textContent = on ? '■' : '🎤'; btn.classList.toggle('recording', on); btn.setAttribute('aria-pressed', String(on));
+        btn.setAttribute('aria-label', t(on ? 'dictationStop' : 'dictationStart')); btn.title = t(on ? 'dictationStop' : 'dictationStart');
+    };
+    btn.onclick = () => {
+        if (rec) { try { rec.stop(); } catch (e) {} return; }
+        if (typeof dictationBusy === 'function' && dictationBusy()) stopDictation();
+        try {
+            rec = new Ctor();
+            rec.lang = (els.micLang && els.micLang.value) || 'uk-UA';
+            rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
+            rec.onresult = e => {
+                const heard = [...e.results].map(r => r[0] && r[0].transcript || '').join(' ').trim();
+                if (heard) { input.value = sanitizePracticeTopic(heard); input.dispatchEvent(new Event('input', { bubbles: true })); }
+            };
+            rec.onerror = e => { if (e && e.error && e.error !== 'no-speech' && e.error !== 'aborted') showToast(t('error')); };
+            rec.onend = () => { rec = null; setListening(false); };
+            rec.start();
+            setListening(true);
+        } catch (e) { rec = null; setListening(false); showToast(t('error')); }
+    };
+    return btn;
+}
+
 function maybeShowPracticeButton() {
     if (typeof generatePracticeReading !== 'function') return;
     const sourceLang = grammarContext.sourceLanguage || DEFAULT_GRAMMAR_LANG;
@@ -1256,14 +1282,12 @@ function maybeShowPracticeButton() {
     const topicInput = document.createElement('input');
     topicInput.type = 'text'; topicInput.id = 'grammar-practice-topic'; topicInput.maxLength = 80;
     topicInput.autocomplete = 'off'; topicInput.placeholder = t('practiceTopicPlaceholder');
-    topicInput.setAttribute('list', 'practice-topic-suggestions');
     topicInput.className = 'grammar-practice-topic';
     topicInput.setAttribute('aria-label', t('practiceTopicLabel')); topicInput.title = t('practiceTopicLabel');
     try { topicInput.value = localStorage.getItem(PRACTICE_TOPIC_STORAGE_KEY) || ''; } catch (e) { /* storage blocked: start empty */ }
-    const suggestions = document.createElement('datalist');
-    suggestions.id = 'practice-topic-suggestions';
-    for (const s of (PRACTICE_TOPIC_SUGGESTIONS[state.uiLang] || PRACTICE_TOPIC_SUGGESTIONS.en)) { const o = document.createElement('option'); o.value = s; suggestions.appendChild(o); }
-    topicWrap.append(topicInput, suggestions);
+    topicWrap.appendChild(topicInput);
+    const topicMic = buildPracticeTopicMic(topicInput);
+    if (topicMic) topicWrap.appendChild(topicMic);
     topicInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); practiceBtn.click(); } });
     topicInput.addEventListener('input', () => { try { localStorage.setItem(PRACTICE_TOPIC_STORAGE_KEY, sanitizePracticeTopic(topicInput.value)); } catch (e) {} });
     practiceBtn.onclick = () => {

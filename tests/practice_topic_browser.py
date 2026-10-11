@@ -1,5 +1,5 @@
 """Practice topic: the learner can say what the generated sentences should be ABOUT ("одяг", "здоров'я", "renting a flat").
-An optional topic field sits above the Practice button in the Grammar panel (quick picks in the menu language, remembered between
+An optional topic field sits above the Practice button in the Grammar panel (typed or dictated with its own 🎤 -- no preset topics; remembered between
 sessions, Enter starts Practice). The topic is quoted into the practice_reading prompt as data and takes priority over the topic of
 the selected text; it is kept on the session, so Retry / Regenerate stay on it, and the Practice panel shows it. An empty field
 leaves the prompt exactly as before. The model is mocked (VERBS_FR gold reply); no network."""
@@ -32,12 +32,19 @@ c.js("""(() => { aiAvailable = () => true; showToast = () => {}; state.uiLang = 
 RENDER = """(() => { grammarContext.mode = 'verbs'; grammarContext.sourceLanguage = 'fr'; grammarContext.sentence = 'Je parle et je me plains.';
   grammarContext.analysis = { items: [{ pos: 'verb', lemma: 'parler', surface: 'parle' }, { pos: 'verb', lemma: 'plaindre', surface: 'plains' }] };
   grammarContext.focused = null; els.grammarContent.replaceChildren(); maybeShowPracticeButton(); return 1; })()"""
+c.js("window.SpeechRecognition = class { constructor() { window.__rec = this; } start() {} stop() { this.onend && this.onend(); } }; 1")
 c.js(RENDER)
-check("1 the Grammar panel shows an optional topic field (localized name + example placeholder) in ONE row with the Practice button",
+check("1 the Grammar panel shows an optional topic field (localized name + placeholder, no example topics) in ONE row with the Practice button",
       """(() => { const i = document.getElementById('grammar-practice-topic'), b = document.querySelector('.grammar-practice-btn');
          const ri = i && i.getBoundingClientRect(), rb = b && b.getBoundingClientRect();
-         return !!i && !!b && i.getAttribute('aria-label') === 'Тема речень' && i.placeholder.includes('одяг') && Math.abs((ri.top + ri.bottom) / 2 - (rb.top + rb.bottom) / 2) < 6 && ri.right <= rb.left && i.value === ''; })()""")
-check("1b quick picks are offered in the menu language", "[...document.querySelectorAll('#practice-topic-suggestions option')].map(o => o.value).includes(\"Здоров'я\")")
+         return !!i && !!b && i.getAttribute('aria-label') === 'Тема речень' && i.placeholder === 'Своя тема…' && Math.abs((ri.top + ri.bottom) / 2 - (rb.top + rb.bottom) / 2) < 6 && ri.right <= rb.left && i.value === ''; })()""")
+check("1b no preset topics: the learner writes (or dictates) their own -- no suggestion list is attached", "!document.getElementById('grammar-practice-topic').hasAttribute('list') && !document.querySelector('#grammar-content datalist')")
+check("1c the topic can be DICTATED: one spoken phrase fills the field (and is remembered)",
+      """(() => { const btn = document.querySelector('.grammar-practice-topic-mic'); if (!btn) return 'no mic button'; btn.click(); const r = window.__rec; if (!r) return 'recognizer not started';
+         const listening = btn.getAttribute('aria-pressed') === 'true';
+         r.onresult({ results: [[{ transcript: 'винаймання житла' }]] }); r.onend();
+         return listening && r.lang === els.micLang.value && r.continuous === false && document.getElementById('grammar-practice-topic').value === 'винаймання житла'
+           && localStorage.getItem('reader_practice_topic') === 'винаймання житла' && btn.getAttribute('aria-pressed') === 'false' || JSON.stringify({listening, lang: r.lang, v: document.getElementById('grammar-practice-topic').value}); })()""")
 
 TOPIC = 'Винаймання житла'
 c.js("(() => { const i = document.getElementById('grammar-practice-topic'); i.value = %s; i.dispatchEvent(new Event('input')); document.querySelector('.grammar-practice-btn').click(); return 1; })()" % json.dumps(TOPIC))
