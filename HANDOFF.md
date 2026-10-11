@@ -1,3 +1,10 @@
+## Release round: #165, #155 merged; #158 compact laptop header (2026-10-11, Claude)
+
+- #165 (AI routing + instant local translation) merged as `afbbac4`: its CI failed only because `ai_key_replacement_browser.py` expected Ask on the active Groq while routing sends Ask to OpenAI; that suite now pins `reader_ai_routing=off` (like `ai_providers`). Main CI green; production serves main; `ai_routing` + `ai_key_replacement` pass AGAINST PRODUCTION.
+- #155 (dictation cumulative finals) merged as `2cf2081` after regenerating shell versions.
+- #158: with captions + labelled ✏️ ✂️ 🔑 the header at 1200-1366px was 3 rows (184px; main 97px) and `reader_repair_verification` caught the PDF scrubber overlapping the Grammar tab. Per the user ("compact"): from 641 to 1599px the group captions and the ✏️ ✂️ 🔑 text are hidden (names stay in aria-label/title) and groups are tighter; captions + text show on phones and >= 1600px. 1181-1299px also hides the two field labels (else PDF mode, with the zoom select, wraps again). Result: 97px at 1190-1599 in all 8 languages, text and PDF mode (Russian at 1181-1189px text mode is still 3 rows). Cost: at >= 1600px the captions make the header 2 rows (127px) where main is 1 row (58px).
+- Open drafts left as they are: #142 (has a persistent IndexedDB translation cache not in #165), #149 (alternative Android dictation approach). Not verified on real devices / real keys: everything in the sections below still stands.
+
 ## Main menu labels and tablet layout (2026-10-09, Claude)
 
 Branch `feat/menu-labels` (stacked on `fix/menu-discoverability` = PR #154, so merge #154 first or this PR carries its commit). Renamed menu wording (Open book / Read aloud / Word study), labelled the ink/region/AI-key buttons, visible labels for the translate-to and menu-language selects, group captions (phone + desktop; hidden on tablets to keep the header at 3 short rows), the right-hand block split into "Text & notes" and "Settings". Tests: `tests/menu_labels_browser.py`. Not seen on a real tablet.

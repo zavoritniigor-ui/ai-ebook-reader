@@ -1,5 +1,5 @@
 """Main menu clarity: every header control says what it is (visible text or accessible name), the two language
-selects are told apart by a visible label, group captions exist (shown on phone and wide screens, hidden on tablets
+selects are told apart by a visible label, group captions exist (shown on phone and screens >= 1600px, hidden on tablets/laptops
 to keep the header short), nothing overflows horizontally at phone / tablet portrait / tablet landscape widths, the
 header height on tablets stays bounded, and every label exists in all 8 UI languages. No network."""
 import os, time
@@ -46,8 +46,18 @@ load(390, 800)
 check('8 phone: group captions are shown as their own row above each group and nothing overflows',
       """(() => { const caps = [...document.querySelectorAll('.group-caption')]; return caps.length >= 5 && caps.every(x => getComputedStyle(x).display !== 'none' && x.textContent.trim().length > 2) && document.documentElement.scrollWidth <= innerWidth + 1; })()""")
 
-load(1366, 900, mobile=False)
-check('9 desktop: captions are shown above the groups', "[...document.querySelectorAll('.group-caption')].every(x => getComputedStyle(x).display !== 'none')")
+for w, caps_shown in ((1200, False), (1366, True)):
+    load(w, 900, mobile=False)
+    for mode in ('text', 'pdf'):
+        c.js("document.body.classList.toggle('pdf-mode', %s); 1" % ('true' if mode == 'pdf' else 'false')); time.sleep(0.2)
+        check(f'9 laptop {w}px, {mode} mode: two header rows (<= 100px, was 184px with captions), captions and ✏️ ✂️ 🔑 text hidden, names kept in aria-label',
+              """(() => { const h = document.getElementById('app-header').getBoundingClientRect().height; const hidden = x => getComputedStyle(x).display === 'none';
+                 return h <= 100 && [...document.querySelectorAll('.group-caption, .btn-text')].every(hidden) && ['btn-ink', 'btn-region'].every(id => document.getElementById(id).getAttribute('aria-label').length > 2)
+                   && document.querySelectorAll('label.field-cap').length === 2 && [...document.querySelectorAll('label.field-cap')].every(x => hidden(x) === %s) || h; })()""" % ('false' if caps_shown else 'true'))
+
+load(1920, 1080, mobile=False)
+check('9b wide desktop: captions are shown above the groups and the buttons carry their text',
+      "[...document.querySelectorAll('.group-caption, .btn-text')].every(x => getComputedStyle(x).display !== 'none')")
 
 check('10 every new label exists in all 8 UI languages with its own text (no raw key, no English fallback)',
       """(() => { const keys = ['grpBook','grpSpeech','grpStudy','grpText','grpView','lblTranslateTo','lblUiLang','lblInk','lblRegion','lblAiKey','open','read','learnOn','learnOff'];
