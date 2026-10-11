@@ -68,6 +68,9 @@ check('1 plain word: the direct translation only, no contextual note', "(%s === 
 check('1 the single-word request still carries the sentence (context kept) and asks for the WORD, as JSON',
       "(p => p.includes('The weather is beautiful today') && p.includes('\"direct\"') && p.includes('САМЕ ЦЬОГО СЛОВА'))(%s)" % LAST_PROMPT)
 
+check('1b the request tells the model to pick the MOST PRECISE equivalent and keep near-synonyms apart (sentier "стежка" vs chemin "дорога/шлях")',
+      "(p => p.includes('НАЙТОЧНІШИЙ') && p.includes('sentier') && p.includes('chemin'))(%s)" % LAST_PROMPT)
+
 # 2. polysemous word: context selects the lexical sense
 tap('bank', '{"direct":"берег","context":null}')
 check('2 polysemous word: the sentence goes with the request so the sense can be chosen; the word sense is shown',
