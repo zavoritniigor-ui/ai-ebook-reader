@@ -234,6 +234,9 @@ jobs:
           echo "Running sentence_structure_text_browser.py..."
           python3 -u tests/sentence_structure_text_browser.py
 
+          echo "Running ai_routing_browser.py..."
+          python3 -u tests/ai_routing_browser.py
+
           echo "Running tts_double_voice_browser.py..."
           python3 -u tests/tts_double_voice_browser.py
 
