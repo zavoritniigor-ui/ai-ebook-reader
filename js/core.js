@@ -702,7 +702,7 @@ const els = {
     toc: document.getElementById('toc-list'), progress: document.getElementById('progress-indicator'),
     tooltip: document.getElementById('word-tooltip'), ttOriginal: document.getElementById('tt-original'),
     ttReplayBtn: document.getElementById('tt-replay-btn'), ttExpandBtn: document.getElementById('tt-expand-btn'), ttTranslation: document.getElementById('tt-translation'),
-    ttSpeakTranslation: document.getElementById('tt-speak-translation'), ttSvoBtn: document.getElementById('tt-svo-btn'),
+    ttSpeakTranslation: document.getElementById('tt-speak-translation'),
     ttAiBtn: document.getElementById('tt-ai-btn'), ttAskBtn: document.getElementById('tt-ask-btn'),
     ttStructBtn: document.getElementById('tt-struct-btn'), ttStructHost: document.getElementById('tt-struct-host'),
     ttCloseBtn: document.getElementById('tt-close-btn'),

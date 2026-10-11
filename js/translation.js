@@ -2,7 +2,7 @@
  * вирівнювання оригінал↔переклад (exactSpan/validateAlignment/installAlignment/
  * flashAlignment/alignmentSourceAt через CSS Custom Highlight API), головний
  * обробник тапу/виділення (handleWordOrSelection — дістає й показує переклад,
- * а також підключає кнопки підказки: озвучення, SVO, AI/Ask, розгортання —
+ * а також підключає кнопки підказки: озвучення, розбір, AI/Ask, розгортання —
  * самі ці функції лишаються в інших модулях, викликаються лише з onclick, тобто
  * відкладено, а не одразу під час завантаження), mainTranslationText/
  * buildTranslationExtras, локальний перекладач Chrome (Translator API, офлайн),
@@ -212,16 +212,6 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         state.speakResume = null;
         speakText(cleanText, 'orig', from);
     };
-    // Кнопка потрібна лише для довгих фрагментів: окреме слово нема куди "зв'язувати",
-    // а токени витрачались би ті самі. Для слів працює словникова стаття.
-    // Розбір на члени речення — теж лише для фрагмента з кількох слів.
-    els.ttSvoBtn.style.display = '';
-    els.ttSvoBtn.onclick = (e) => {
-        e.stopPropagation();
-        cancelTooltipHide();
-        if (helpContext) recordHelpForSpan(helpContext, 'grammar');
-        analyzeSVO(state.ctxSentence || cleanText);
-    };
     // Динамік перекладу: озвучує переклад ОБРАНОЮ мовою і робить його активною стороною.
     els.ttSpeakTranslation.onclick = (e) => {
         e.stopPropagation();
@@ -390,6 +380,16 @@ function mainTranslationText() {
 // Розбирає додаткові секції відповіді перекладача: для окремого слова — словникову
 // статтю (усі значення за частинами мови), для фрагмента — альтернативні варіанти.
 // Саме брак переліку значень і робив переклад окремого слова неоднозначним.
+// Той самий переклад, якщо збігаються слова (без регістру й розділових знаків) на ≥ 50% за Жаккаром.
+function isNearDuplicateTranslation(a, b) {
+    const words = v => new Set(String(v || '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+    const x = words(a), y = words(b);
+    if (!x.size || !y.size) return x.size === y.size;
+    let shared = 0;
+    for (const w of x) if (y.has(w)) shared++;
+    return shared / (x.size + y.size - shared) >= 0.5;
+}
+
 function buildTranslationExtras(data, mainTranslation) {
     const main = (mainTranslation || '').trim().toLowerCase();
     let out = '';
@@ -415,7 +415,11 @@ function buildTranslationExtras(data, mainTranslation) {
             (seg[2] || []).forEach(a => { if (a && a[0]) alts.push(a[0]); });
         });
     } catch (e) {}
-    alts = [...new Set(alts.filter(a => a.trim().toLowerCase() !== main))].slice(0, 2);
+    // Альтернативи речення часто лише переставляють розділові знаки чи міняють одне слово ("думати" / "вважати"):
+    // це той самий переклад, а не «ще один варіант», тож показуємо лише справді відмінні від основного й одне від одного.
+    const kept = [];
+    for (const a of new Set(alts)) if (!isNearDuplicateTranslation(a, main) && !kept.some(k => isNearDuplicateTranslation(a, k))) kept.push(a);
+    alts = kept.slice(0, 2);
     if (alts.length) out += `<div class="tt-extra"><div class="tt-sense"><span class="tt-pos">${t('more')}</span> ${escapeHtml(alts.join(' · '))}</div></div>`;
     return out;
 }
