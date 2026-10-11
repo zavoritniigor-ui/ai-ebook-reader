@@ -228,6 +228,15 @@ jobs:
           echo "Running menu_labels_browser.py..."
           python3 -u tests/menu_labels_browser.py
 
+          echo "Running grammar_rules_browser.py..."
+          python3 -u tests/grammar_rules_browser.py
+
+          echo "Running sentence_structure_languages_browser.py..."
+          python3 -u tests/sentence_structure_languages_browser.py
+
+          echo "Running sentence_structure_text_browser.py..."
+          python3 -u tests/sentence_structure_text_browser.py
+
           echo "Running tts_double_voice_browser.py..."
           python3 -u tests/tts_double_voice_browser.py
 
