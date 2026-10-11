@@ -66,12 +66,13 @@ def select_in(selector, start_word, end_word):
 
 c.js("""(() => { els.grammarPanel.classList.add('expanded'); const p = document.createElement('p'); p.id = 'g-sent'; p.textContent = %s; els.grammarContent.appendChild(p); window.__lookups.length = 0; return 1; })()""" % json.dumps(SENT))
 time.sleep(0.4)
-assert select_in('#g-sent', 'Le sentier', 'arbres')
-check("3 selecting a whole sentence inside the Grammar panel (native touch selection, no click) opens the translation of that sentence",
-      "__lookups.length === 1 && __lookups[0].replace(/\\.$/, '') === %s && els.tooltip.style.display === 'flex'" % json.dumps(SENT.rstrip('.')), timeout=4)
-c.js("els.tooltip.style.display = 'none'; window.__lookups.length = 0; getSelection().removeAllRanges(); 1"); time.sleep(0.3)
 assert select_in('#g-sent', 'sentier', 'sentier')
-check("3b a single word inside the Grammar panel too", "__lookups.length === 1 && __lookups[0] === 'sentier'", timeout=4)
+check("3 a long-press on a word inside the Grammar panel (native selection, no click) opens its translation", "__lookups.length === 1 && __lookups[0] === 'sentier' && els.tooltip.style.display === 'flex'", timeout=4)
+check("3b ... and the NATIVE selection (with its drag handles) is left in place", "!getSelection().isCollapsed && getSelection().toString() === 'sentier'")
+c.js("""(() => { const s = getSelection(), r = s.getRangeAt(0).cloneRange(); const root = document.getElementById('g-sent'); const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n, last = null; while ((n = w.nextNode())) last = n;
+  r.setStart(root.firstChild, 0); r.setEnd(last, last.nodeValue.length); s.removeAllRanges(); s.addRange(r); return 1; })()""")
+check("3c dragging the handles out to the whole sentence updates the popup to the whole sentence",
+      "__lookups.length === 2 && __lookups[1].replace(/\\.$/, '') === %s && els.ttOriginal.textContent.startsWith('Le sentier longe')" % json.dumps(SENT.rstrip('.')), timeout=4)
 c.js("els.tooltip.style.display = 'none'; els.grammarPanel.classList.remove('expanded'); window.__lookups.length = 0; getSelection().removeAllRanges(); 1")
 
 c.js("""(() => { els.askPanel.classList.add('expanded'); const p = document.createElement('p'); p.id = 'a-sent'; p.textContent = %s; els.askContent.appendChild(p); return 1; })()""" % json.dumps(SENT))
