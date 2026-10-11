@@ -264,6 +264,22 @@ say_final('ні'); say_final('ні'); say_final('зачекай'); pause(.1)
 check('18 "ні" "ні" "зачекай" as separate utterances all stay (no text-based dedup)',
       "els.askInput.value === 'дуже дуже добре ні ні зачекай'")
 
+# 20: cumulative / repeated finals inside ONE single-utterance session replace, never append.
+reset(); open_ask(); tap('#mic-btn', True); wait_listening()
+c.js("recognition.final('пошукай'); recognition.final('пошукай в інтернеті'); recognition.final('Пошукай в інтернеті, яка погода'); 1"); pause(.2)
+check('20 cumulative finals in one session -> only the longest, once',
+      "els.askInput.value === 'Пошукай в інтернеті, яка погода'")
+reset(); open_ask(); tap('#mic-btn', True); wait_listening()
+c.js("recognition.final('hello world'); recognition.final('Hello world.'); 1"); pause(.2)
+check('20b an identical repeated final in one session is skipped', "els.askInput.value === 'hello world'")
+say_final('so'); say_final('so'); pause(.1)
+check('20c identical text from SEPARATE sessions is still kept (legitimate repetition)',
+      "els.askInput.value === 'hello world so so'")
+reset(); open_ask(); c.js("els.askInput.value = 'Q:'; 1"); tap('#mic-btn', True); wait_listening()
+c.js("recognition.final('one two'); els.askInput.value += ' (edited)'; recognition.final('one two three'); 1"); pause(.2)
+check('20d a manual edit between cumulative finals is not destroyed (only the new words are added)',
+      "els.askInput.value === 'Q: one two (edited) three'")
+
 # ===================== DESKTOP (mouse) =====================
 load(DESKTOP_UA, False)
 open_ask()
