@@ -151,6 +151,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     if (helpContext) lastReaderHelpContext = helpContext;
     const task = beginAsyncTask('lookup');
     svoToken++; cancelAsyncTasks(['svo']);
+    structToken++; cancelAsyncTasks(['structure', 'structureDeep']);
+    if (els.ttStructHost) els.ttStructHost.replaceChildren();
     const contextSentence = state.ctxSentence;
     const targetLang = state.targetLang;
     // Контекст для кнопок "AI"/"Ask" беремо ОДРАЗУ тут, поки clientX/clientY ще
@@ -250,6 +252,15 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             state.expandLevel = 3;
             selectRangeAndTranslate(paragraphRangeAt(p.x, p.y), p.x, p.y, 'paragraph_translation');
         }
+    };
+
+    // Розбір речення: частини фарбуються прямо в тексті, легенда — у вікні підказки (js/sentence-structure.js).
+    els.ttStructBtn.onclick = (e) => {
+        e.stopPropagation();
+        cancelTooltipHide();
+        state.tooltipPersistent = true;   // як і для «Граматики»: вікно й підсвітка лишаються, поки читач їх не закриє
+        if (helpContext) recordHelpForSpan(helpContext, 'grammar');
+        analyzeSentenceInText(state.ctxSentence || cleanText);
     };
 
     els.ttAiBtn.onclick = (e) => {
