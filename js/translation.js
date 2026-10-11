@@ -624,7 +624,7 @@ function detectPhrasalVerb(word, sentenceText) {
 // ========== ПЕРЕКЛАД ПРЯМО В ПАНЕЛІ AI ==========
 // Розбір пропонує спрощені варіанти французькою, і їх теж треба вміти перекласти.
 // Тому тап по слову в самій панелі працює так само, як у тексті книги.
-function translatePanelPoint(e, root) {
+function translatePanelPoint(e, root, { keepNative = false } = {}) {
     if (e.target.closest('button, a, input, select, textarea') || root.closest('.loading')) return;
     const selection = window.getSelection();
     let text = '', range = null;
@@ -646,7 +646,9 @@ function translatePanelPoint(e, root) {
     state.lastSelectedRange = range;
     state.lastSelectionText = range ? text : null;
     state.lastTapPoint = { x: e.clientX, y: e.clientY }; state.expandLevel = 0;
-    if (range) { showSelectionHighlight(range); state.lastSelectionText = text; selection?.removeAllRanges(); }
+    // keepNative (виділення пальцем із ручками): нативне виділення НЕ знімаємо, щоб читач міг тягнути ручки далі — від слова до
+    // речення; вікно просто оновлюється, коли виділення розширилось.
+    if (range) { state.lastSelectionText = text; if (!keepNative) { showSelectionHighlight(range); selection?.removeAllRanges(); } }
     handleWordOrSelection(text, e.clientX, e.clientY, range?.getBoundingClientRect());
 }
 els.askContent.addEventListener('click', e => translatePanelPoint(e, els.askContent));
@@ -663,7 +665,7 @@ window.wirePracticePanelTranslate = wirePracticePanelTranslate;
 // Виділення тексту в самих панелях (Граматика, Запитай AI, Practice) — слово, речення чи абзац — теж відкриває вікно перекладу.
 // На дотик нативне виділення (довге натискання + ручки) НЕ породжує click, тож слухаємо selectionchange і чекаємо, поки
 // читач закінчить рухати ручки; миша/перо дають click, який обробляє translatePanelPoint (воно ж знімає виділення).
-const PANEL_SELECTION_SETTLE_MS = 650;
+const PANEL_SELECTION_SETTLE_MS = 450;
 let panelSelectionTimer = 0;
 function panelRootForRange(range) {
     const roots = [els.askContent, els.grammarContent, document.getElementById('practice-panel')];
@@ -681,6 +683,6 @@ document.addEventListener('selectionchange', () => {
         if (!root || !snapshot.trim()) return;
         const rect = range.getBoundingClientRect();
         const anchor = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
-        translatePanelPoint({ target: anchor || root, clientX: rect.left + rect.width / 2, clientY: rect.bottom }, root);
+        translatePanelPoint({ target: anchor || root, clientX: rect.left + rect.width / 2, clientY: rect.bottom }, root, { keepNative: true });
     }, PANEL_SELECTION_SETTLE_MS);
 });
