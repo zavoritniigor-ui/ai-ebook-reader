@@ -600,19 +600,8 @@
             .tt-original.speaking-ticker { animation: none !important; }
         }
         /* Члени речення прямо в тексті: підмет / присудок / додаток */
-        ::highlight(svo-subject) { background-color: rgba(13, 110, 253, 0.40); }
-        ::highlight(svo-verb)    { background-color: rgba(255, 193, 7, 0.48); }
-        ::highlight(svo-object)  { background-color: rgba(214, 51, 132, 0.38); }
-        ::highlight(svo-coi)     { background-color: rgba(111, 66, 193, 0.40); }
-        .tt-svo-line { margin-top: 9px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.16); display: flex; gap: 8px; flex-wrap: wrap; font-weight: normal; }
-        .svo-key { font-size: 11px; padding: 2px 8px; border-radius: 10px; color: #fff; }
-        .svo-s { background: rgba(13, 110, 253, 0.75); }
-        .svo-v { background: rgba(255, 193, 7, 0.8); color: #212529; }
-        .svo-o { background: rgba(214, 51, 132, 0.75); }
-        .svo-coi { background: rgba(111, 66, 193, 0.8); }
         /* Коротке пояснення (заперечення/пасив/питання/відсутність додатка тощо) —
            окремим рядком під кольоровими бейджами членів речення. */
-        .tt-svo-note { flex-basis: 100%; margin-top: 4px; font-size: 12.5px; color: #c3c8cf; font-weight: normal; }
         /* Зв'язний переклад — окремим рядком під дослівним, а не замість нього */
         .tt-ai-line { margin-top: 9px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.16); font-weight: normal; }
         .tt-ai-label { display: block; font-size: 11px; color: #0dcaf0; letter-spacing: .3px; margin-bottom: 2px; }
@@ -1509,7 +1498,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=01eee28c63f1"></script>
+    <script src="js/core.js?v=e2a66e62d634"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1520,25 +1509,25 @@
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
     <script src="js/tts.js?v=4ebdfe8af2bb"></script>
-    <script src="js/selection.js?v=9a685020b260"></script>
+    <script src="js/selection.js?v=137809b4b4f3"></script>
     <script src="js/learning-stats.js?v=e901c3020682"></script>
     <script src="js/navigation.js?v=f9b3e52acfc7"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=4c4755fb447a"></script>
-    <script src="js/translation.js?v=f2c003021bfc"></script>
+    <script src="js/translation.js?v=777195891eba"></script>
     <script src="js/sentence-structure.js?v=e0e7035fe6c4"></script>
-    <script src="js/grammar-svo.js?v=f682fd7a3122"></script>
+    <script src="js/grammar-svo.js?v=a6b8ce04200a"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
     <script src="js/grammar-rules.js?v=90e924ba8930"></script>
-    <script src="js/ai-client.js?v=543e1269df7b"></script>
-    <script src="js/practice-session.js?v=4a936b0b2205"></script>
+    <script src="js/ai-client.js?v=fc1b5ff27948"></script>
+    <script src="js/practice-session.js?v=b6b3dc6e43db"></script>
     <script src="js/practice-worksheet.js?v=9eb9851b66df"></script>
     <script src="js/dictation.js?v=528d67e2696e"></script>
     <script src="js/pdf-ink.js?v=9ed1750d501f"></script>
-    <script src="js/pdf-crop.js?v=80bab2793f94"></script>
+    <script src="js/pdf-crop.js?v=74f9702b939e"></script>
     <script src="js/pdf-outline.js?v=97d934db97c6"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
     <script src="js/pdf-continuous.js?v=ee42c36e7287"></script>

@@ -14,7 +14,7 @@
  * selectRangeAndTranslate/wordToSentenceEndRangeAt/showSelectionHighlight (уже
  * визначені раніше) та від js/tts.js (speakText/speakInLang/setSpeakSide/
  * stopTooltipSpeech, теж уже завантажені). aiTranslateText/machineTranslate
- * (js/ai-client.js) та startAiTask/analyzeSVO (поки що в index.html, Крок 8) —
+ * (js/ai-client.js) та startAiTask (поки що в index.html, Крок 8) —
  * форвард-виклики лише всередині callback'ів/async-функцій, це безпечно, бо
  * викликаються не одразу — той самий механізм, що вже описаний у
  * js/pdf-render.js для pdfAnchor. selection.js, зі свого боку, так само
@@ -150,7 +150,6 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     }
     if (helpContext) lastReaderHelpContext = helpContext;
     const task = beginAsyncTask('lookup');
-    svoToken++; cancelAsyncTasks(['svo']);
     structToken++; cancelAsyncTasks(['structure', 'structureDeep']);
     if (els.ttStructHost) els.ttStructHost.replaceChildren();
     const contextSentence = state.ctxSentence;

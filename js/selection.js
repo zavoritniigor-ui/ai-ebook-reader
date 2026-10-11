@@ -844,12 +844,10 @@ function showSelectionHighlight(range) {
 // Знімає підсвітку виділеного фрагмента (при закритті вікна перекладу).
 function clearSelectionHighlight() {
     clearAlignment();
-    svoToken++; cancelAsyncTasks(['svo']);
     structToken++; cancelAsyncTasks(['structure', 'structureDeep']); clearStructureHighlights();
     if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(SEL_HL_NAME);
     unwrapSpans(state.selSpans);
     state.selSpans = [];
-    clearSvoHighlights();
     state.lastSelectionText = null;
     state.activeSelectionAnchor = null;
     state.canonicalSelection = null;
