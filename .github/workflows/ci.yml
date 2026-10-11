@@ -228,6 +228,9 @@ jobs:
           echo "Running menu_labels_browser.py..."
           python3 -u tests/menu_labels_browser.py
 
+          echo "Running panel_translate_layout_browser.py..."
+          python3 -u tests/panel_translate_layout_browser.py
+
           echo "Running grammar_rules_browser.py..."
           python3 -u tests/grammar_rules_browser.py
 
