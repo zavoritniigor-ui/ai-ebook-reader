@@ -222,7 +222,7 @@ function giveUpRuleHighlights() {
     clearRuleHighlights(); rulesState.matches = []; rulesState.token++; rulesState.status = 'idle'; rulesState.failSince = 0;
     setRulesStatus(t('rulesChanged'));
     document.querySelectorAll('#rules-content .rules-matches, #rules-content .rules-detail').forEach(n => n.replaceChildren());
-    updateRulesPill();
+    updateRulesTab();
 }
 function watchRulePage() {
     if (rulesState.watching || typeof MutationObserver === 'undefined') return;
@@ -277,6 +277,16 @@ function layoutRulesPanel() {
     const inset = sheet && panel.classList.contains('expanded') ? Math.round(panel.getBoundingClientRect().height) : 0;
     document.documentElement.style.setProperty('--rules-inset', inset + 'px');
     document.body.classList.toggle('rules-inset', inset > 0);
+    // Закладка: збоку відкритого вікна — на його лівому краї; над шторкою — над нею; інакше — на краю екрана над язичком Граматики.
+    const open = panel.classList.contains('expanded'), r = panel.getBoundingClientRect();
+    const tab = document.getElementById('rules-tab');
+    // Над усім, що лежить на тому ж правому краї: язичок Граматики і кругла кнопка швидкого меню (✦).
+    const edgeTops = ['grammar-tab', 'qm-launcher'].map(id => document.getElementById(id)).filter(Boolean).map(e => e.getBoundingClientRect()).filter(b => b.height > 0 && b.right > window.innerWidth - 120).map(b => b.top);
+    const aboveEdgeControls = edgeTops.length ? Math.max(12, Math.round(window.innerHeight - Math.min(...edgeTops) + 12)) : 124;
+    const right = open && !sheet ? Math.round(r.width) : 0;
+    document.documentElement.style.setProperty('--rules-tab-right', right + 'px');
+    document.documentElement.style.setProperty('--rules-tab-bottom', (open && sheet ? Math.round(r.height) + 12 : aboveEdgeControls) + 'px');
+    if (tab) { tab.dataset.offscreen = right + 44 > window.innerWidth ? '1' : '0'; updateRulesTab(); }
 }
 function openRulesPanel({ keep = false } = {}) {
     const { panel } = rulesEls();
@@ -293,41 +303,47 @@ function openRulesPanel({ keep = false } = {}) {
     }
     panel.classList.add('expanded');
     layoutRulesPanel();
-    updateRulesPill();
+    updateRulesTab();
 }
 // «Сховати»: вікно йде з екрана, а підсвітка, результати й індикатор готовності лишаються (плашка внизу).
-function minimizeRulesPanel() { rulesEls().panel.classList.remove('expanded'); layoutRulesPanel(); updateRulesPill(); }
+function minimizeRulesPanel() { rulesEls().panel.classList.remove('expanded'); layoutRulesPanel(); updateRulesTab(); }
 // «Закрити»: вікно й підсвітка зникають повністю.
 function closeRulesPanel() {
     rulesEls().panel.classList.remove('expanded');
     rulesState.token++; clearRuleHighlights(); rulesState.matches = []; rulesState.status = 'idle';
     document.querySelectorAll('#rules-content .rules-matches, #rules-content .rules-detail').forEach(n => n.replaceChildren());
     setRulesStatus('');
-    layoutRulesPanel(); updateRulesPill();
+    layoutRulesPanel(); updateRulesTab();
 }
 // Плашка-індикатор: коли вікно сховане, показує, що пошук іде / готовий (скільки знайдено) / не вдався.
-function updateRulesPill() {
-    const pill = document.getElementById('rules-pill');
-    if (!pill) return;
-    const st = rulesState.status;
-    const show = !rulesOpen() && st !== 'idle';
-    pill.hidden = !show;
-    if (!show) return;
-    pill.dataset.state = st;
+function updateRulesTab() {
+    const tab = document.getElementById('rules-tab');
+    if (!tab) return;
+    const practice = document.getElementById('practice-panel');
+    const st = rulesState.status === 'none' ? 'idle' : rulesState.status;
     const n = rulesState.matches.length;
-    document.getElementById('rules-pill-text').textContent = st === 'running' ? t('rulesPillRunning') : st === 'failed' ? t('rulesPillFailed') : t('rulesPillReady').replace('{n}', n);
-    pill.setAttribute('aria-label', (rulesState.topic ? ruleTitle(rulesState.topic) + ': ' : '') + document.getElementById('rules-pill-text').textContent);
+    const open = rulesOpen();
+    tab.dataset.state = st;
+    tab.setAttribute('aria-expanded', String(open));
+    // Граматика/Практика лежать на тому самому краї; відкрите вікно на вузькому екрані не лишає місця збоку — там є ⌄ у заголовку.
+    tab.hidden = els.grammarPanel.classList.contains('expanded') || !!(practice && !practice.hidden && practice.dataset.mode === 'expanded') || tab.dataset.offscreen === '1';
+    const count = document.getElementById('rules-tab-count');
+    count.hidden = !(st === 'ready' && n > 0);
+    count.textContent = String(n);
+    const status = st === 'running' ? t('rulesPillRunning') : st === 'failed' ? t('rulesPillFailed') : st === 'ready' ? t('rulesPillReady').replace('{n}', n) : '';
+    tab.setAttribute('aria-label', [t('wheelRules'), rulesState.topic ? ruleTitle(rulesState.topic) : '', status].filter(Boolean).join(': '));
 }
 // Взаємодія з іншими вікнами: відкрилась «Граматика»/«Запитай AI»/Практика/підказка слова/швидке колесо — «Правила» ховаються.
 (function wireRulesInteraction() {
     const guard = () => {
+        updateRulesTab();
         if (!rulesOpen()) return;
         const practice = document.getElementById('practice-panel');
         if (els.askPanel.classList.contains('expanded') || els.grammarPanel.classList.contains('expanded') || (practice && !practice.hidden) || els.tooltip.style.display === 'flex') minimizeRulesPanel();
     };
     try {
         const mo = new MutationObserver(guard);
-        [els.askPanel, els.grammarPanel, els.tooltip, document.getElementById('practice-panel')].forEach(el => el && mo.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] }));
+        [els.askPanel, els.grammarPanel, els.tooltip, document.getElementById('practice-panel')].forEach(el => el && mo.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-mode'] }));
         // Меню зверху показали/сховали (режим читання) або змінили орієнтацію/розмір: перерахувати позицію й відступ тексту.
         const relayout = () => { layoutRulesPanel(); };
         new MutationObserver(relayout).observe(document.body, { attributes: true, attributeFilter: ['class'] });
@@ -415,7 +431,7 @@ function renderRuleTopic() {
     content.replaceChildren();
     const back = ruleEl('button', 'rules-back', '← ' + t('rulesBack'));
     back.type = 'button';
-    back.onclick = () => { rulesState.token++; rulesState.topic = null; rulesState.matches = []; rulesState.status = 'idle'; clearRuleHighlights(); renderRulesTree(); updateRulesPill(); };
+    back.onclick = () => { rulesState.token++; rulesState.topic = null; rulesState.matches = []; rulesState.status = 'idle'; clearRuleHighlights(); renderRulesTree(); updateRulesTab(); };
     content.appendChild(back);
     content.appendChild(ruleEl('h4', 'rules-title', ruleTitle(topic)));
     if (rulesPick(topic.title) !== ruleTitle(topic)) content.appendChild(ruleEl('p', 'rules-subtitle', rulesPick(topic.title)));
@@ -456,14 +472,14 @@ async function runRuleSearch(force = false) {
     const myToken = ++rulesState.token;
     if (!aiAvailable() || !navigator.onLine) { setRulesStatus(t('needKey')); return; }
     const flat = collectVisibleText();
-    if (!flat.text.trim()) { clearRuleHighlights(); rulesState.status = 'idle'; setRulesStatus(t('rulesNoText')); updateRulesPill(); return; }
+    if (!flat.text.trim()) { clearRuleHighlights(); rulesState.status = 'idle'; setRulesStatus(t('rulesNoText')); updateRulesTab(); return; }
     clearRuleHighlights();
     rulesState.text = flat.text;
     const langCode = rulesState.lang;
     const key = [langCode, topic.id, state.targetLang, rulesHash(flat.text)].join('|');
     let result = !force && rulesSearchCache.get(key);
     if (!result) {
-        setRulesStatus(t('rulesRunning')); rulesState.status = 'running'; updateRulesPill();
+        setRulesStatus(t('rulesRunning')); rulesState.status = 'running'; updateRulesTab();
         document.getElementById('rules-find')?.setAttribute('disabled', '');
         try {
             const prompt = buildRuleSearchPrompt(topic, langCode, flat.text, LANG_NAMES[state.targetLang] || 'English');
@@ -474,14 +490,14 @@ async function runRuleSearch(force = false) {
         document.getElementById('rules-find')?.removeAttribute('disabled');
     }
     if (myToken !== rulesState.token || rulesState.topic !== topic) return;     // замінено новим запитом / іншою темою
-    if (!result.ok) { rulesState.status = 'failed'; setRulesStatus(t('rulesFailed')); updateRulesPill(); return; }
+    if (!result.ok) { rulesState.status = 'failed'; setRulesStatus(t('rulesFailed')); updateRulesTab(); return; }
     rulesState.matches = result.matches;
     paintRuleMatches(flat, result.matches);
     renderRuleMatches();
     rulesState.status = result.matches.length ? 'ready' : 'none';
     const exc = result.matches.filter(m => m.exception).length;
     setRulesStatus(result.matches.length ? t('rulesFound').replace('{n}', result.matches.length) + (exc ? ' · ' + t('rulesExceptionsCount').replace('{n}', exc) : '') : t('rulesNone'));
-    updateRulesPill();
+    updateRulesTab();
 }
 
 function renderRuleMatches() {
@@ -561,4 +577,5 @@ async function explainRuleMatch(m, topic, question, out, isCurrent) {
 document.getElementById('btn-rules').onclick = () => { if (rulesOpen()) minimizeRulesPanel(); else openRulesPanel({ keep: true }); };
 document.getElementById('rules-close').onclick = closeRulesPanel;
 document.getElementById('rules-min').onclick = minimizeRulesPanel;
-document.getElementById('rules-pill').onclick = () => openRulesPanel({ keep: true });
+document.getElementById('rules-tab').onclick = () => { if (rulesOpen()) minimizeRulesPanel(); else openRulesPanel({ keep: true }); };
+layoutRulesPanel();

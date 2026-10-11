@@ -200,18 +200,27 @@ check("34c the tables are rendered as real tables (header row + one row per pers
 # hide window + readiness pill
 c.js("document.getElementById('rules-min').click(); 1"); time.sleep(0.6)
 check("38 'hide' removes the window but keeps highlights, results and shows a green readiness pill with the count",
-      """(() => { const pill = document.getElementById('rules-pill'); return !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && !pill.hidden && pill.dataset.state === 'ready' && pill.textContent.includes('3'); })()""")
-c.js("document.getElementById('rules-pill').click(); 1"); time.sleep(0.5)
-check("39 the pill brings the same window back (same topic, same results) and hides itself",
-      "document.getElementById('rules-panel').classList.contains('expanded') && document.getElementById('rules-pill').hidden && document.querySelectorAll('#rules-content .rules-match').length === 3")
+      """(() => { const pill = document.getElementById('rules-tab'); return !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && !pill.hidden && pill.dataset.state === 'ready' && pill.textContent.includes('3'); })()""")
+c.js("document.getElementById('rules-tab').click(); 1"); time.sleep(0.5)
+check("39 the bookmark brings the same window back (same topic, same results) and stays visible as the quick-collapse handle",
+      "document.getElementById('rules-panel').classList.contains('expanded') && !document.getElementById('rules-tab').hidden && document.getElementById('rules-tab').getAttribute('aria-expanded') === 'true' && document.querySelectorAll('#rules-content .rules-match').length === 3")
+check("39b open window, portrait-width side panel: the bookmark is docked on the window's LEFT edge and the window is not covered",
+      """(() => { const tb = document.getElementById('rules-tab').getBoundingClientRect(), p = document.getElementById('rules-panel').getBoundingClientRect();
+         return document.getElementById('rules-panel').classList.contains('rules-sheet') ? tb.right >= innerWidth - 1 : (Math.abs(tb.right - p.left) <= 2 || JSON.stringify({tb: tb.right, p: p.left})); })()""", timeout=3)
+c.js("document.getElementById('rules-tab').click(); 1"); time.sleep(0.6)
+check("39c pressing the bookmark collapses the window at once (highlights and results stay); it sits on the right screen edge, green, above the Grammar handle and the ✦ launcher",
+      """(() => { const tab = document.getElementById('rules-tab'), r = tab.getBoundingClientRect(), g = document.getElementById('grammar-tab').getBoundingClientRect(), q = document.getElementById('qm-launcher').getBoundingClientRect(); const bg = getComputedStyle(tab).backgroundColor;
+         return !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && Math.abs(r.right - innerWidth) <= 1 && r.bottom <= g.top + 1 && r.bottom <= q.top + 1 && bg.includes('25, 135, 84') && !tab.hidden && tab.getAttribute('aria-expanded') === 'false'
+           || JSON.stringify({right: r.right, iw: innerWidth, bottom: r.bottom, gTop: g.top, bg}); })()""", timeout=3)
+c.js("document.getElementById('rules-tab').click(); 1"); time.sleep(0.5)
 c.js("window.__slow = true; document.getElementById('rules-find').click(); 1")
 c.js("document.getElementById('rules-min').click(); 1")
-check("40 while a search runs the hidden window shows a pulsing 'searching' pill", "(() => { const p = document.getElementById('rules-pill'); return !p.hidden && p.dataset.state === 'running'; })()", timeout=3)
-check("41 ... which turns into the ready pill when the answer arrives", "(() => { const p = document.getElementById('rules-pill'); return !p.hidden && p.dataset.state === 'ready'; })()", timeout=10)
+check("40 while a search runs the hidden window shows a red bookmark in the 'searching' state", "(() => { const p = document.getElementById('rules-tab'); return !p.hidden && p.dataset.state === 'running'; })()", timeout=3)
+check("41 ... which turns green when the answer arrives", "(() => { const p = document.getElementById('rules-tab'); return !p.hidden && p.dataset.state === 'ready'; })()", timeout=10)
 
 # layout
 check("42 landscape (tablet): the window is a bottom sheet, never above the main menu, and the page gets bottom padding",
-      """(() => { document.getElementById('rules-pill').click(); const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
+      """(() => { document.getElementById('rules-tab').click(); const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
          return p.classList.contains('rules-sheet') && r.bottom >= innerHeight - 1 && r.top >= hb && r.height <= innerHeight * 0.5 && document.body.classList.contains('rules-inset')
            && parseFloat(getComputedStyle(document.getElementById('reader-pages')).paddingBottom) >= r.height; })()""", timeout=3)
 c.call('Emulation.setDeviceMetricsOverride', width=820, height=1180, deviceScaleFactor=1, mobile=True); time.sleep(0.8)
@@ -222,7 +231,11 @@ c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScale
 
 # interplay
 c.js("els.askPanel.classList.add('expanded'); 1"); time.sleep(0.5)
-check("44 opening 'Ask AI' hides the rules window but keeps its highlights and the pill", "!document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && !document.getElementById('rules-pill').hidden")
+c.js("els.grammarPanel.classList.add('expanded'); 1"); time.sleep(0.5)
+check("44b opening Grammar hides the rules bookmark (they share the right edge)", "document.getElementById('rules-tab').hidden")
+c.js("els.grammarPanel.classList.remove('expanded'); 1"); time.sleep(0.5)
+check("44c the bookmark is back after Grammar closes", "!document.getElementById('rules-tab').hidden")
+check("44 opening 'Ask AI' hides the rules window but keeps its highlights and the pill", "!document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && !document.getElementById('rules-tab').hidden")
 c.js("els.askPanel.classList.remove('expanded'); document.getElementById('btn-rules').click(); 1"); time.sleep(0.5)
 c.js("els.grammarPanel.classList.add('expanded'); 1"); time.sleep(0.5)
 check("45 opening 'Grammar' hides the rules window too; opening rules closes Grammar and Ask", "!document.getElementById('rules-panel').classList.contains('expanded')")
@@ -235,7 +248,7 @@ check("47 tapping an ordinary word opens its translation and tucks the rules win
 c.js("els.ttCloseBtn.click(); 1")
 c.js("document.getElementById('btn-rules').click(); 1"); time.sleep(0.4)
 check("48 the Back button / overlay close HIDES the window (highlights stay); the ✕ closes it AND clears the highlights",
-      """(() => { closeTopOverlay('rules'); const hidden = !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match'); document.getElementById('btn-rules').click(); document.getElementById('rules-close').click(); return hidden && !CSS.highlights.has('rule-match') && !CSS.highlights.has('rule-exception') && document.getElementById('rules-pill').hidden; })()""")
+      """(() => { closeTopOverlay('rules'); const hidden = !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match'); document.getElementById('btn-rules').click(); document.getElementById('rules-close').click(); return hidden && !CSS.highlights.has('rule-match') && !CSS.highlights.has('rule-exception') && !document.getElementById('rules-tab').hidden && document.getElementById('rules-tab').dataset.state === 'idle'; })()""")
 
 # highlights survive a text-size change
 c.js("__calls.length = 0; rulesSearchCache.clear(); __reply = %s; document.getElementById('btn-rules').click(); 1" % json.dumps(EXC))
