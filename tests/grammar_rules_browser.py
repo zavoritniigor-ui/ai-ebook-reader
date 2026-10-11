@@ -218,6 +218,17 @@ c.js("document.getElementById('rules-min').click(); 1")
 check("40 while a search runs the hidden window shows a red bookmark in the 'searching' state", "(() => { const p = document.getElementById('rules-tab'); return !p.hidden && p.dataset.state === 'running'; })()", timeout=3)
 check("41 ... which turns green when the answer arrives", "(() => { const p = document.getElementById('rules-tab'); return !p.hidden && p.dataset.state === 'ready'; })()", timeout=10)
 
+# the bookmark never lies on the page scrubber ("page-turning line"), the ✦ launcher or the Grammar handle, on any tablet size
+for (w, h, mobile) in ((820, 1180, True), (1180, 820, True), (1024, 768, True), (1000, 900, False)):
+    c.call('Emulation.setDeviceMetricsOverride', width=w, height=h, deviceScaleFactor=1, mobile=mobile); time.sleep(0.8)
+    c.js("(() => { document.getElementById('rules-panel').classList.remove('expanded'); document.body.classList.add('pdf-mode'); const sc = document.getElementById('pdf-scrubber'); sc.classList.add('available'); sc.style.height = '340px'; layoutRulesPanel(); return 1; })()"); time.sleep(0.8)
+    check("42-pre %dx%d: the Rules bookmark overlaps none of: page scrubber, ✦ launcher, Grammar handle, main menu" % (w, h),
+          """(() => { const t = document.getElementById('rules-tab').getBoundingClientRect(); const hit = id => { const e = document.getElementById(id), b = e && e.getBoundingClientRect(); return !!b && b.width > 0 && b.height > 0 && b.left < t.right && b.right > t.left && b.top < t.bottom && b.bottom > t.top; };
+             const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
+             const bad = ['pdf-scrubber', 'qm-launcher', 'grammar-tab'].filter(hit); return (bad.length === 0 && t.top >= hb - 1 && t.bottom <= innerHeight + 1) || JSON.stringify({bad, t: [t.top, t.bottom], hb, ih: innerHeight}); })()""", timeout=3)
+    c.js("(() => { document.body.classList.remove('pdf-mode'); const sc = document.getElementById('pdf-scrubber'); sc.classList.remove('available'); sc.style.height = ''; layoutRulesPanel(); return 1; })()")
+c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False); time.sleep(0.8)
+
 # layout
 check("42 landscape (tablet): the window is a bottom sheet, never above the main menu, and the page gets bottom padding",
       """(() => { document.getElementById('rules-tab').click(); const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = document.getElementById('app-header').getBoundingClientRect().bottom;

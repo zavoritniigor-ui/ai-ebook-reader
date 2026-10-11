@@ -280,12 +280,33 @@ function layoutRulesPanel() {
     // Закладка: збоку відкритого вікна — на його лівому краї; над шторкою — над нею; інакше — на краю екрана над язичком Граматики.
     const open = panel.classList.contains('expanded'), r = panel.getBoundingClientRect();
     const tab = document.getElementById('rules-tab');
-    // Над усім, що лежить на тому ж правому краї: язичок Граматики і кругла кнопка швидкого меню (✦).
-    const edgeTops = ['grammar-tab', 'qm-launcher'].map(id => document.getElementById(id)).filter(Boolean).map(e => e.getBoundingClientRect()).filter(b => b.height > 0 && b.right > window.innerWidth - 120).map(b => b.top);
-    const aboveEdgeControls = edgeTops.length ? Math.max(12, Math.round(window.innerHeight - Math.min(...edgeTops) + 12)) : 124;
     const right = open && !sheet ? Math.round(r.width) : 0;
+    // Закладка не лягає на те, що живе на тому ж правому краї: повзунок сторінок (#pdf-scrubber, «лінія перегортання»), кругла
+    // кнопка швидкого меню (✦), язичок Граматики, шапка і нижня шторка. Шукаємо найнижчий вільний проміжок по вертикалі,
+    // куди закладка влізає; якщо такого нема — найбільший, а закладка стискається по висоті.
+    const TAB_H = 112, PAD = 8, ih = window.innerHeight;
+    let bottomPx = 124, maxH = '';
+    if (right === 0) {
+        const blocks = [[0, hb]];
+        for (const id of ['pdf-scrubber', 'qm-launcher', 'grammar-tab']) {
+            const el = document.getElementById(id), b = el && el.getBoundingClientRect();
+            if (b && b.width > 0 && b.height > 0 && b.right > window.innerWidth - 110 && b.left < window.innerWidth) blocks.push([b.top, b.bottom]);
+        }
+        if (open && sheet) blocks.push([r.top, ih]);
+        blocks.sort((x, y) => x[0] - y[0]);
+        const gaps = []; let cursor = 0;
+        for (const [top, bottom] of blocks) { if (top - cursor > 0) gaps.push([cursor, top]); cursor = Math.max(cursor, bottom); }
+        if (ih - cursor > 0) gaps.push([cursor, ih]);
+        const fits = gaps.filter(g => g[1] - g[0] >= TAB_H + 2 * PAD);
+        const gap = fits.length ? fits[fits.length - 1] : gaps.sort((x, y) => (y[1] - y[0]) - (x[1] - x[0]))[0];
+        if (gap) {
+            bottomPx = Math.max(PAD, Math.round(ih - gap[1] + PAD));
+            maxH = gap[1] - gap[0] - 2 * PAD < TAB_H ? Math.max(64, Math.round(gap[1] - gap[0] - 2 * PAD)) + 'px' : '';
+        }
+    }
     document.documentElement.style.setProperty('--rules-tab-right', right + 'px');
-    document.documentElement.style.setProperty('--rules-tab-bottom', (open && sheet ? Math.round(r.height) + 12 : aboveEdgeControls) + 'px');
+    document.documentElement.style.setProperty('--rules-tab-bottom', bottomPx + 'px');
+    if (tab) tab.style.maxHeight = maxH;
     if (tab) { tab.dataset.offscreen = right + 44 > window.innerWidth ? '1' : '0'; updateRulesTab(); }
 }
 function openRulesPanel({ keep = false } = {}) {
@@ -345,9 +366,12 @@ function updateRulesTab() {
         const mo = new MutationObserver(guard);
         [els.askPanel, els.grammarPanel, els.tooltip, document.getElementById('practice-panel')].forEach(el => el && mo.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'data-mode'] }));
         // Меню зверху показали/сховали (режим читання) або змінили орієнтацію/розмір: перерахувати позицію й відступ тексту.
-        const relayout = () => { layoutRulesPanel(); };
+        const relayout = () => { layoutRulesPanel(); clearTimeout(relayout.t); relayout.t = setTimeout(layoutRulesPanel, 350); };
         new MutationObserver(relayout).observe(document.body, { attributes: true, attributeFilter: ['class'] });
         window.addEventListener('resize', relayout); window.addEventListener('orientationchange', relayout);
+        // Повзунок сторінок з'являється/зникає (відкрили PDF) і міняє розмір без зміни класу на body — стежимо за ним окремо.
+        const scrubber = document.getElementById('pdf-scrubber');
+        if (scrubber) { new MutationObserver(relayout).observe(scrubber, { attributes: true, attributeFilter: ['class', 'style'] }); if (window.ResizeObserver) new ResizeObserver(relayout).observe(scrubber); }
     } catch (e) {}
 })();
 function setRulesStatus(message) { const el = document.getElementById('rules-status'); if (el) el.textContent = message || ''; }
