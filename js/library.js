@@ -1,5 +1,5 @@
-/* Безкоштовна бібліотека (Project Gutenberg через власний проксі /api/library): пошук за назвою/автором, мовою й жанром,
- * завантаження EPUB одним тапом і відкриття в рідері. Каталог і файли ходять лише на свій origin (CSP), див. functions/api/library.js. */
+/* Безкоштовна бібліотека (Project Gutenberg): вбудований каталог library-catalog.json (tools/build_library_catalog.py) фільтрується
+ * локально — пошук за назвою/автором, мова, тема; EPUB і обкладинки йдуть через свій проксі /api/library (CSP: лише свій origin). */
 Object.assign(I18N, {
     wheelLibrary:{ uk: 'Бібліотека', en: 'Library', fr: 'Bibliothèque', ru: 'Библиотека', zh: '图书馆', ko: '도서관', hi: 'पुस्तकालय', ga: 'Leabharlann' },
     tLibrary:    { uk: 'Безкоштовна бібліотека', en: 'Free library', fr: 'Bibliothèque gratuite', ru: 'Бесплатная библиотека' },
@@ -27,13 +27,21 @@ Object.assign(I18N, {
     genChildren: { uk: 'Дітям', en: "Children's", fr: 'Jeunesse', ru: 'Детям' },
     genPhilosophy: { uk: 'Філософія', en: 'Philosophy', fr: 'Philosophie', ru: 'Философия' },
     genHistory: { uk: 'Історія', en: 'History', fr: 'Histoire', ru: 'История' },
+    genHistorical: { uk: 'Історичні романи', en: 'Historical novels', fr: 'Romans historiques', ru: 'Исторические романы' },
+    genStories: { uk: 'Оповідання', en: 'Short stories', fr: 'Nouvelles', ru: 'Рассказы' },
+    genBiography: { uk: 'Біографії та мемуари', en: 'Biographies & memoirs', fr: 'Biographies et mémoires', ru: 'Биографии и мемуары' },
+    genMyth: { uk: 'Міфи та легенди', en: 'Myths & legends', fr: 'Mythes et légendes', ru: 'Мифы и легенды' },
+    genTravel: { uk: 'Подорожі', en: 'Travel', fr: 'Voyages', ru: 'Путешествия' },
     genHumor: { uk: 'Гумор', en: 'Humor', fr: 'Humour', ru: 'Юмор' }
 });
-const LIBRARY_GENRES = [['', 'genAll'], ['fiction', 'genFiction'], ['adventure', 'genAdventure'], ['detective', 'genDetective'], ['science fiction', 'genScifi'],
-    ['love', 'genLove'], ['poetry', 'genPoetry'], ['drama', 'genDrama'], ['children', 'genChildren'], ['philosophy', 'genPhilosophy'], ['history', 'genHistory'], ['humor', 'genHumor']];
-const LIBRARY_LANGS = [['fr', 'Français'], ['en', 'English'], ['uk', 'Українська'], ['ru', 'Русский'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano'], ['', null]];
+// Ключ теми = ключ у library-catalog.json (themes[]); бітова маска книги збігається з порядком там.
+const LIBRARY_GENRES = [['', 'genAll'], ['fiction', 'genFiction'], ['adventure', 'genAdventure'], ['detective', 'genDetective'], ['historical', 'genHistorical'],
+    ['love', 'genLove'], ['scifi', 'genScifi'], ['stories', 'genStories'], ['poetry', 'genPoetry'], ['drama', 'genDrama'], ['children', 'genChildren'],
+    ['humor', 'genHumor'], ['biography', 'genBiography'], ['history', 'genHistory'], ['philosophy', 'genPhilosophy'], ['myth', 'genMyth'], ['travel', 'genTravel']];
+const LIBRARY_LANGS = [['fr', 'Français'], ['en', 'English'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano'], ['', null]];
+const LIBRARY_PAGE = 30;
 
-const libraryState = { page: 1, hasMore: false, abort: null, timer: 0, busy: false };
+const libraryState = { page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
 function libraryEl(id) { return document.getElementById(id); }
 
 function buildLibrary() {
@@ -81,31 +89,37 @@ function openLibrary() {
 }
 function closeLibrary() {
     libraryEl('library-modal')?.classList.remove('open');
-    libraryState.abort?.abort();
+}
+
+function libraryNorm(text) { return String(text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function loadLibraryCatalog() {
+    if (libraryState.catalog) return Promise.resolve(libraryState.catalog);
+    if (!libraryState.loading) {
+        libraryState.loading = fetch('library-catalog.json').then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); }).then(data => {
+            data.books.forEach(b => { b.hay = libraryNorm(b[1] + ' ' + b[2]); });
+            return (libraryState.catalog = data);
+        }).catch(err => { libraryState.loading = null; throw err; });
+    }
+    return libraryState.loading;
 }
 
 async function runLibrarySearch(page) {
-    libraryState.abort?.abort();
-    const abort = libraryState.abort = new AbortController();
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
-    if (page === 1) list.replaceChildren();
-    more.hidden = true; status.textContent = t('libLoading');
-    const params = new URLSearchParams({ op: 'search', q: libraryEl('library-q').value.trim(), lang: libraryEl('library-lang').value, topic: libraryEl('library-genre').value, page: String(page) });
-    try {
-        // Каталог на холодний запит іноді відповідає надто довго й проксі віддає 502; друга спроба зазвичай уже береться з кешу.
-        let res = await fetch('/api/library?' + params, { signal: abort.signal });
-        if (res.status === 502) res = await fetch('/api/library?' + params, { signal: abort.signal });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        if (abort.signal.aborted) return;
-        libraryState.page = page; libraryState.hasMore = !!data.hasMore;
-        for (const book of data.results) list.append(libraryCard(book));
-        status.textContent = list.children.length ? '' : t('libEmpty');
-        more.hidden = !data.hasMore;
-    } catch (e) {
-        if (e.name === 'AbortError') return;
-        status.textContent = t('libError');
+    more.hidden = true;
+    let catalog;
+    try { status.textContent = libraryState.catalog ? '' : t('libLoading'); catalog = await loadLibraryCatalog(); }
+    catch (e) { status.textContent = t('libError'); return; }
+    if (page === 1) {
+        const words = libraryNorm(libraryEl('library-q').value).split(/\s+/).filter(Boolean);
+        const lang = libraryEl('library-lang').value, topic = libraryEl('library-genre').value;
+        const bit = topic ? 1 << catalog.themes.indexOf(topic) : 0;
+        libraryState.matches = catalog.books.filter(b => (!lang || b[3] === lang) && (!bit || (b[4] & bit)) && words.every(w => b.hay.includes(w)));
+        list.replaceChildren();
     }
+    libraryState.page = page;
+    for (const [id, title, author] of libraryState.matches.slice((page - 1) * LIBRARY_PAGE, page * LIBRARY_PAGE)) list.append(libraryCard({ id, title, authors: [author] }));
+    status.textContent = libraryState.matches.length ? '' : t('libEmpty');
+    more.hidden = page * LIBRARY_PAGE >= libraryState.matches.length;
 }
 
 function libraryCard(book) {

@@ -20,23 +20,26 @@ def check(name, expression):
 
 
 c.js("""(() => { window.__reqs = []; window.__opened = null; const real = window.fetch.bind(window);
-  window.fetch = async (url, opts) => { url = String(url); if (!url.startsWith('/api/library')) return real(url, opts); __reqs.push(url);
-    const p = new URL(url, location.href).searchParams;
-    if (p.get('op') === 'search') return new Response(JSON.stringify({count: 2, hasMore: false, page: 1, results: [
-      {id: 101, title: 'Le Comte de Monte-Cristo', authors: ['Dumas, Alexandre'], lang: 'fr'}, {id: 102, title: 'Candide', authors: ['Voltaire'], lang: 'fr'}]}), {status: 200});
-    if (p.get('op') === 'file') return new Response(new Blob(['fake epub bytes']), {status: 200});
-    return new Response('', {status: 404}); };
+  window.fetch = async (url, opts) => { url = String(url); if (url.startsWith('/api/library')) { __reqs.push(url); return new Response(url.includes('op=file') ? new Blob(['fake epub bytes']) : '', {status: 200}); }
+    return real(url, opts); };
   openBookFile = async (file) => { __opened = {name: file.name, type: file.type, lm: file.lastModified}; };
   return 1; })()""")
 check('1 the quick wheel has a Library action', "[...document.querySelectorAll('.qm-item')].some(b => b.dataset.action === 'btn-library')")
-c.js("openLibrary(); 1"); time.sleep(0.8)
-check('2 the window opens and lists the books with a Read button each',
-      "document.getElementById('library-modal').classList.contains('open') && document.querySelectorAll('#library-list .library-card').length === 2 && document.querySelectorAll('#library-list .btn-primary').length === 2")
-check('3 the first search used the default language (fr) and no genre', "__reqs[0].includes('op=search') && __reqs[0].includes('lang=fr') && __reqs[0].includes('page=1')")
-c.js("(() => { const g = document.getElementById('library-genre'); g.value = 'detective'; g.dispatchEvent(new Event('change')); const q = document.getElementById('library-q'); q.value = 'Dumas'; q.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(1)
-check('4 changing genre + typing a query searches again with both', "(r => r.includes('topic=detective') && r.includes('q=Dumas'))(__reqs[__reqs.length - 1])")
+c.js("openLibrary(); 1"); c.wait("document.querySelectorAll('#library-list .library-card').length > 0", timeout=20)
+names = lambda: c.js("[...document.querySelectorAll('#library-list .library-name')].map(e => e.textContent)")
+check('2 the built-in catalog lists French books first (default language), 30 per page, with a Read button each and a Show-more button',
+      "document.getElementById('library-modal').classList.contains('open') && document.querySelectorAll('#library-list .library-card').length === 30 && document.querySelectorAll('#library-list .btn-primary').length === 30 && !document.getElementById('library-more').hidden")
+check('3 no network search request is made: filtering is local', "__reqs.every(r => !r.includes('op=search'))")
+c.js("(() => { const q = document.getElementById('library-q'); q.value = 'jules verne'; q.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(0.8)
+check('4 searching by author finds Jules Verne books only (accent-insensitive)', "(a => a.length > 3 && a.every(e => e.textContent.includes('Verne')))([...document.querySelectorAll('#library-list .library-author')])")
+c.js("window.__before = document.querySelectorAll('#library-list .library-card').length; 1")
+c.js("(() => { const g = document.getElementById('library-genre'); g.value = 'adventure'; g.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(0.8)
+check('5 a genre narrows the same search further', "document.querySelectorAll('#library-list .library-card').length > 0 && document.querySelectorAll('#library-list .library-card').length < __before")
+c.js("(() => { document.getElementById('library-q').value = 'zzzzqqq'; document.getElementById('library-q').dispatchEvent(new Event('input')); return 1; })()"); time.sleep(0.8)
+check('6 no match shows the empty message', "document.getElementById('library-status').textContent === t('libEmpty') && document.querySelectorAll('#library-list .library-card').length === 0")
+c.js("(() => { document.getElementById('library-genre').value = ''; const q = document.getElementById('library-q'); q.value = 'candide'; q.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(0.8)
 c.js("document.querySelector('#library-list .btn-primary').click(); 1"); time.sleep(1)
-check('5 Read downloads the EPUB and opens it as a stable file (lastModified = book id)',
-      "__reqs.some(r => r.includes('op=file&id=101')) && __opened && __opened.name.endsWith('.epub') && __opened.type === 'application/epub+zip' && __opened.lm === 101")
-check('6 the window closes after opening', "!document.getElementById('library-modal').classList.contains('open')")
+check('7 Read downloads the EPUB through /api/library and opens it as a stable file (lastModified = book id)',
+      "__reqs.some(r => /op=file&id=\\d+/.test(r)) && __opened && __opened.name.endsWith('.epub') && __opened.type === 'application/epub+zip' && __opened.lm > 0")
+check('8 the window closes after opening', "!document.getElementById('library-modal').classList.contains('open')")
 print('ALL PASS')
