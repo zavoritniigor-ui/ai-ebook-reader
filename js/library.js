@@ -92,7 +92,9 @@ async function runLibrarySearch(page) {
     more.hidden = true; status.textContent = t('libLoading');
     const params = new URLSearchParams({ op: 'search', q: libraryEl('library-q').value.trim(), lang: libraryEl('library-lang').value, topic: libraryEl('library-genre').value, page: String(page) });
     try {
-        const res = await fetch('/api/library?' + params, { signal: abort.signal });
+        // Каталог на холодний запит іноді відповідає надто довго й проксі віддає 502; друга спроба зазвичай уже береться з кешу.
+        let res = await fetch('/api/library?' + params, { signal: abort.signal });
+        if (res.status === 502) res = await fetch('/api/library?' + params, { signal: abort.signal });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         if (abort.signal.aborted) return;
