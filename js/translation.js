@@ -315,29 +315,70 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
             }).catch(() => {});
         }
-        const ai = await aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000);
+        // Онлайн з двома ключами: Groq (миттєво) і OpenAI (повільніше, ретельніше) питаються ОДНОЧАСНО. Groq показується одразу (⚡),
+        // а коли надходить OpenAI (🧠) — його переклад замінює перший. Якщо швидкий не відповів, чекаємо на повільного.
+        const providers = navigator.onLine && aiAvailable() ? translationProviders() : [];
+        const askProvider = (p) => aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000, p || null);
+        const fastProvider = providers[0] || null, slowProvider = providers[1] || null;
+        const fastPromise = askProvider(fastProvider);   // без ключа aiTranslateText сама повертає null
+        const slowPromise = slowProvider ? askProvider(slowProvider) : null;
+        let ai = await fastPromise;
+        let aiMark = fastProvider === 'openai' ? '🧠' : '⚡';
+        if (!ai && slowPromise) { ai = await slowPromise; aiMark = '🧠'; }
         aiDone = true;
         if (myLookup !== state.lookupToken || !task.current()) return;
+        const renderAi = (result, mark) => {
+            const al = typeof result === 'object' ? result : null;
+            return { al, html: escapeHtml(al ? result.translation : result) +
+                (al?.contextNote ? ` <span class="tt-context">(${escapeHtml(al.contextNote)})</span>` : '') + ` <span class="tt-note">${mark}</span>` };
+        };
         if (ai) {
-            alignmentResult = typeof ai === 'object' ? ai : null;
-            html = escapeHtml(alignmentResult ? ai.translation : ai) +
-                (alignmentResult?.contextNote ? ` <span class="tt-context">(${escapeHtml(alignmentResult.contextNote)})</span>` : '') +
-                ' <span class="tt-note">⚡</span>';
+            let main = renderAi(ai, aiMark), extrasHtml = '';
+            alignmentResult = main.al;
+            html = main.html;
             els.ttTranslation.innerHTML = html;
-            // Для окремого слова додаємо словникові значення: вони не дублюють
-            // переклад, а показують інші можливі значення.
+            // Перемальовує вікно з поточним головним перекладом і словниковими значеннями; викликається і коли надходить повільніший провайдер.
+            const repaint = (reinstall) => {
+                const full = main.html + extrasHtml;
+                els.ttTranslation.innerHTML = full;
+                state.translationCache[cacheKey] = main.al ? { ...main.al, html: full } : full;
+                if (reinstall) {
+                    clearAlignment();
+                    if (main.al) installAlignment(cleanText, main.al, lookupRoot);
+                    if (state.speakSide === 'translation') speakInLang(mainTranslationText(), targetLang, 'tr');
+                }
+                const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+            };
+            // Повільніший провайдер замінює показане, щойно відповість (лише якщо вікно те саме й відповідь придатна).
+            if (slowPromise && aiMark === '⚡') {
+                slowPromise.then(better => {
+                    if (!better || myLookup !== state.lookupToken || !task.current()) return;
+                    const plainOf = r => (typeof r === 'object' ? r.translation : r);
+                    if (plainOf(better) === plainOf(ai)) { main = renderAi(better, '⚡🧠'); repaint(false); return; }
+                    main = renderAi(better, '🧠'); repaint(true);
+                }).catch(() => {});
+            }
+            // Для окремого слова додаємо словникові значення: вони не дублюють переклад, а показують інші можливі значення.
             if (!isMultiWord) {
                 try {
                     const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
                     if (myLookup !== state.lookupToken || !task.current()) return;
-                    if (m.extras) html += m.extras;
+                    if (m.extras) extrasHtml = m.extras;
                 } catch (e) {}
             }
+            alignmentResult = main.al;
+            html = main.html + extrasHtml;
         } else if (isMultiWord) {
-            // Речення й фрази — лише через AI: машинний переклад не бачить контексту й дає неточний результат,
-            // тож без AI (ключ/мережа) чи за його помилки показуємо причину, а не «приблизний» переклад.
-            els.ttTranslation.textContent = !aiAvailable() ? t('sentenceNeedsAi') : (!navigator.onLine ? t('sentenceNeedsOnline') : t('sentenceAiFailed'));
-            translated = false;
+            // Речення й фрази онлайн — лише через AI (машинний переклад Google не бачить контексту). Без AI (офлайн, без ключа чи AI не відповів)
+            // перекладає локальна модель Chrome на пристрої (⌂); якщо її нема — показуємо причину.
+            let local = null;
+            try { local = await waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 20000); } catch (e) { if (e && e.name === 'AbortError') return; }
+            if (myLookup !== state.lookupToken || !task.current()) return;
+            if (local) html = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
+            else {
+                els.ttTranslation.textContent = !aiAvailable() ? t('sentenceNeedsAi') : (!navigator.onLine ? t('sentenceNeedsOnline') : t('sentenceAiFailed'));
+                translated = false;
+            }
         } else {
             try {
                 const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
