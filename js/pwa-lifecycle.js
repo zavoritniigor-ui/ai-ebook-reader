@@ -80,9 +80,17 @@ function persistCriticalState() {
 // і для throttled перевірки оновлень при поверненні з фону.
 let swRegistration = null;
 let lastSwUpdateCheck = 0;
-// Не частіше ніж раз на 15 хв — повернення з фону не повинне щоразу турбувати
-// сервер новим запитом на sw.js.
-const SW_UPDATE_THROTTLE_MS = 15 * 60 * 1000;
+// Не частіше ніж раз на хвилину (sw.js крихітний, запит дешевий) — щоб про нову версію
+// дізнаватись швидко: при поверненні з фону, фокусі, появі мережі й раз на 5 хв, поки застосунок відкритий.
+const SW_UPDATE_THROTTLE_MS = 60 * 1000;
+const SW_UPDATE_INTERVAL_MS = 5 * 60 * 1000;
+function checkForSwUpdate() {
+    if (!swRegistration || document.visibilityState !== 'visible' || navigator.onLine === false) return;
+    const now = Date.now();
+    if (now - lastSwUpdateCheck < SW_UPDATE_THROTTLE_MS) return;
+    lastSwUpdateCheck = now;
+    swRegistration.update().catch(() => {});
+}
 
 // visibilitychange — головний, найнадійніший сигнал "застосунок пішов у фон" і на
 // Android, і на десктопі (на відміну від застарілого й ненадійного на мобільних
@@ -93,11 +101,7 @@ document.addEventListener('visibilitychange', () => {
         // Повернення з фону — нагода дізнатись про оновлення, АЛЕ без примусового
         // reload: якщо нова версія знайдеться й активується, користувач дізнається
         // про це банером (нижче), а не миттєвим непроханим перезавантаженням.
-        const now = Date.now();
-        if (now - lastSwUpdateCheck >= SW_UPDATE_THROTTLE_MS) {
-            lastSwUpdateCheck = now;
-            swRegistration.update().catch(() => {});
-        }
+        checkForSwUpdate();
     }
 });
 // pagehide — "останній шанс" зберегти стан, якщо сторінку зараз вивантажать із
@@ -245,6 +249,10 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then((registration) => {
             swRegistration = registration;
+            checkForSwUpdate();
+            setInterval(checkForSwUpdate, SW_UPDATE_INTERVAL_MS);
+            window.addEventListener('focus', checkForSwUpdate);
+            window.addEventListener('online', checkForSwUpdate);
         }).catch(() => {});
     });
 }

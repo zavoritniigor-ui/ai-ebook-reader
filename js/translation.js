@@ -653,6 +653,13 @@ function translatePanelPoint(e, root, { keepNative = false } = {}) {
 }
 els.askContent.addEventListener('click', e => translatePanelPoint(e, els.askContent));
 els.grammarContent.addEventListener('click', e => translatePanelPoint(e, els.grammarContent));
+// Вікно Правил: тап/клік по слову в теорії чи таблиці відмінювання теж перекладає його (раніше працювало лише виділення).
+// Керуючі елементи (теми, секції, картки збігів) лишаються клікабельними як були.
+const rulesContentEl = document.getElementById('rules-content');
+if (rulesContentEl) rulesContentEl.addEventListener('click', e => {
+    if (e.target.closest('.rules-match, summary, .rules-section-title, .rules-topic, .rules-back')) return;
+    translatePanelPoint(e, rulesContentEl);
+});
 
 // Будь-яка взаємодія з книгою — новий контекст: підказка, відкрита потім, уже не «належить» вікну Правил.
 els.mainArea.addEventListener('pointerdown', () => { state.tooltipFromRules = false; }, true);
