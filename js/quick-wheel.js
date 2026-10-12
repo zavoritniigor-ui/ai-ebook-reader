@@ -71,7 +71,7 @@ const quickMenu = (() => {
     const backdrop = document.getElementById('qm-backdrop');
 
     // 13 real actions, no empty slots
-    // 'btn-print' and 'wheelFull' are virtual actions (no source element, handled specially in click handler)
+    // 'btn-print', 'btn-library' and 'wheelFull' are virtual actions (no source element, handled specially in click handler)
     const allActions = [
         ['wheelOpen', 'file-upload', '📂'],
         ['read', 'btn-tts', '🔊'],
@@ -84,6 +84,7 @@ const quickMenu = (() => {
         ['wheelRegion', 'btn-region', '✂️'],
         ['wheelVoices', 'btn-alt-voices', '🎵'],
         ['wheelLevel', 'btn-lang-level', '📊'],
+        ['wheelLibrary', 'btn-library', '🏛️'],
         ['wheelRules', 'btn-rules', '📚'],
         ['wheelFull', 'wheelFull', '⚙️']
     ];
@@ -151,6 +152,7 @@ const quickMenu = (() => {
 
             close();
             if (id === 'btn-print') { printCurrentReaderPage(); quickWheelContext = null; return; }
+            if (id === 'btn-library') { openLibrary(); quickWheelContext = null; return; }
             if (id === 'wheelFull') { toggleFullMenu(); quickWheelContext = null; return; }
             const target = document.getElementById(id);
             if (id === 'theme-select' || id === 'reading-stats-button') { openFullMenu(); target.focus(); }

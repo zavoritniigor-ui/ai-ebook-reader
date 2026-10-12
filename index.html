@@ -1059,6 +1059,25 @@
         #settings-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index:30000; justify-content:center; align-items:center; }
         #settings-modal .key-remove { display: block; margin: 6px 0 0; padding: 4px 10px; font-size: 13px; }
         #settings-modal .key-remove[hidden] { display: none; }
+        /* Безкоштовна бібліотека */
+        #library-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index: 30000; justify-content: center; align-items: center; padding: 12px; }
+        #library-modal.open { display: flex; }
+        .library-box { position: relative; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 14px; width: min(640px, 100%); max-height: min(88vh, 100%); display: flex; flex-direction: column; padding: 14px; gap: 10px; }
+        .library-head { display: flex; align-items: center; justify-content: space-between; }
+        .library-head h3 { margin: 0; font-size: 17px; }
+        .library-head .close-panel-btn { position: static; }
+        .library-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+        .library-tools input { flex: 1 1 180px; min-width: 0; padding: 8px 10px; font-size: 15px; }
+        .library-tools select { padding: 8px; font-size: 14px; }
+        #library-status { font-size: 13px; color: var(--text-muted); min-height: 1em; }
+        #library-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+        .library-card { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--border-color); border-radius: 10px; }
+        .library-card img { width: 44px; height: 64px; object-fit: cover; border-radius: 4px; background: rgba(128,128,128,.18); flex-shrink: 0; }
+        .library-info { flex: 1; min-width: 0; }
+        .library-name { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+        .library-author { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .library-card .btn-primary { flex-shrink: 0; min-height: 40px; }
+        .library-source { font-size: 11px; color: var(--text-muted); text-align: center; }
         .modal-content {
             position: relative; background: var(--panel-bg); padding: 28px; border-radius: var(--radius-lg);
             width: 90%; max-width: 460px; max-height: 86vh; overflow-y: auto;
@@ -1554,8 +1573,9 @@
     <script src="js/pdf-render.js?v=8904e27d5c39"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/quick-wheel.js?v=2a3208030884"></script>
+    <script src="js/library.js?v=c7986ac409b8"></script>
+    <script src="js/quick-wheel.js?v=838f095142a1"></script>
     <script src="js/main.js?v=d8eabe80cbc4"></script>
-    <script src="js/pwa-lifecycle.js?v=6beff5a63da9"></script>
+    <script src="js/pwa-lifecycle.js?v=3544ff6ed2eb"></script>
 </body>
 </html>
