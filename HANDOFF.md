@@ -1,3 +1,8 @@
+## Status check after the interrupted session (2026-10-12, Claude)
+
+Analysis only, no code changed. Everything from the previous session is MERGED: #175 (Practice topic), #176 (Rules bottom-sheet + translation inside), #177 (practice_sentence_actions flake fix), #178 (Android dictation replay at restart boundaries), #179 ('search this page' green dots), #180 (Rules searches the selected sentence(s)). Main `e9b5660`: CI green on the last 4 runs; production serves main (`grammar-rules.js?v=dd77e501db2a` identical). Working tree clean; no unpushed work in the extra worktrees (`wt-tab`, `AndroidFollowup`, `Instant`).
+Open: drafts #142 (persistent IndexedDB translation cache) and #149 (alternative Android dictation; largely superseded by #178 -- decide close/keep). Stale remote branches: `feat/rules-selection-scan`, `feat/rules-ux`, `feat/grammar-rules-en` (merged via squash, safe to delete after the user agrees). Two old stashes still hold other agents' edits -- review before dropping. Not verified on the physical tablet / real keys: #176-#180 (bottom sheet, selection-scoped Rules, Android dictation boundary fix).
+
 ## Tablet-feedback round + code audit: #158, #166-#174 merged, #175 open (2026-10-11, Claude)
 
 #158 and #166-#174 merged to main (squash), each with exact-SHA PR CI green, main CI green, production serving main's script versions.
