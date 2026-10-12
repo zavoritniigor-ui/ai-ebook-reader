@@ -6,14 +6,15 @@
  * geometry, so page turns and book changes cannot mix records and a font-size
  * reflow can still reconnect a saved tap to the same source word.
  *
- * Data stays in localStorage. CEFR lookup is conservative and synchronous: a
- * small reviewed EN/FR starter lexicon is cached; anything not in it is stored
+ * Data stays in localStorage. CEFR lookup is conservative and synchronous: the
+ * EN/FR lexicon (js/cefr-lexicon-data.js, CEFR-J / FLELex) plus a small reviewed starter list is cached; anything not in it is stored
  * as "unknown". Opening the popover never makes an AI/network request.
  */
 
 const LEARNING_STATS_VERSION = 1;
 const LEARNING_STATS_PREFIX = 'reader_learning_stats_v1:';
-const CEFR_CACHE_KEY = 'reader_cefr_cache_v1';
+// v2: великий словник рівнів (js/cefr-lexicon-data.js) — старий кеш зберігав «unknown» для слів, які тепер відомі.
+const CEFR_CACHE_KEY = 'reader_cefr_cache_v2';
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'unknown'];
 const LEARNING_HELP_SOURCES = new Set(['word_tap', 'phrase_translation', 'sentence_translation', 'paragraph_translation', 'ask_ai', 'grammar']);
 const READING_BLOCK_TAGS = new Set('ADDRESS ARTICLE ASIDE BLOCKQUOTE DIV DL FIELDSET FIGCAPTION FIGURE FOOTER FORM H1 H2 H3 H4 H5 H6 HEADER HR LI MAIN NAV OL P PRE SECTION TABLE TD TH TR UL'.split(' '));
@@ -35,6 +36,12 @@ const CEFR_WORDS = (() => {
     add('fr', 'B2', 'aboutir adapter avantage conséquence considérable contribuer davantage malgré néanmoins objectif permettre perspective preuve produire représenter résoudre spécifique tandis valeur');
     add('fr', 'C1', 'ambigu cohérent contraignant crucial élaborer enjeu faciliter inhérent néanmoins notion pertinent prépondérant renforcer subtil');
     add('fr', 'C2', 'abscons apocryphe circonspect délétère dichotomie éphémère équivoque idiosyncrasique ineffable ubiquitaire');
+    // Великий словник (CEFR-J + Octanove для англійської, FLELex для французької) має пріоритет; вбудований список вище лише
+    // доповнює його словами, яких там нема.
+    if (typeof CEFR_LEXICON === 'object' && CEFR_LEXICON) {
+        for (const lang of ['en', 'fr']) for (const level of ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'])
+            (CEFR_LEXICON[lang]?.[level] || '').split(' ').forEach(word => { if (word) out[lang][word] = level; });
+    }
     return out;
 })();
 
@@ -214,20 +221,54 @@ function currentPageVocabulary() {
 // Рівень слова за локальним словником; проста словозміна (books → book, parlées → parlé) теж знаходиться.
 // Невідоме слово лишається 'unknown' — рівень ніколи не вгадується.
 const CEFR_SUFFIXES = {
-    en: [['ies', 'y'], ['ves', 'f'], ['es', ''], ['s', ''], ['ied', 'y'], ['ed', 'e'], ['ed', ''], ['ing', 'e'], ['ing', ''], ['ly', ''], ["'s", '']],
-    fr: [['es', ''], ['s', ''], ['x', ''], ['e', ''], ['ée', 'er'], ['ées', 'er'], ['és', 'er'], ['é', 'er']]
+    en: [["'s", ''], ['ies', 'y'], ['ves', 'f'], ['ves', 'fe'], ['es', ''], ['s', ''], ['ied', 'y'], ['ed', 'e'], ['ed', ''], ['ing', 'e'], ['ing', ''],
+        ['ier', 'y'], ['iest', 'y'], ['er', ''], ['est', ''], ['ily', 'y'], ['ly', '']],
+    fr: [['issons', 'ir'], ['issez', 'ir'], ['issent', 'ir'], ['issait', 'ir'], ['issaient', 'ir'], ['erons', 'er'], ['eront', 'er'], ['erait', 'er'],
+        ['eraient', 'er'], ['erai', 'er'], ['era', 'er'], ['aient', 'er'], ['ait', 'er'], ['ais', 'er'], ['ais', 'oir'], ['ait', 'oir'], ['aient', 'oir'], ['ais', 're'], ['ait', 're'], ['ons', 'er'], ['ez', 'er'], ['ent', 'er'],
+        ['ées', 'er'], ['és', 'er'], ['ée', 'er'], ['é', 'er'], ['es', 'er'], ['e', 'er'], ['ent', 're'], ['it', 'ir'], ['is', 'ir'], ['ie', 'ir'],
+        ['aux', 'al'], ['euses', 'eux'], ['euse', 'eux'], ['ives', 'if'], ['ive', 'if'], ['ères', 'er'], ['ère', 'er'], ['es', ''], ['s', ''], ['x', ''], ['e', '']]
 };
+const CEFR_IRREGULAR = { en: { children: 'child', men: 'man', women: 'woman', people: 'person', feet: 'foot', teeth: 'tooth', mice: 'mouse',
+    was: 'be', were: 'be', is: 'be', are: 'be', am: 'be', been: 'be', has: 'have', had: 'have', did: 'do', does: 'do', went: 'go', gone: 'go',
+    said: 'say', made: 'make', took: 'take', taken: 'take', came: 'come', saw: 'see', seen: 'see', knew: 'know', known: 'know', got: 'get',
+    gave: 'give', given: 'give', found: 'find', thought: 'think', told: 'tell', became: 'become', left: 'leave', felt: 'feel', brought: 'bring',
+    began: 'begin', begun: 'begin', kept: 'keep', held: 'hold', wrote: 'write', written: 'write', stood: 'stand', heard: 'hear', meant: 'mean',
+    met: 'meet', ran: 'run', paid: 'pay', sat: 'sit', spoke: 'speak', spoken: 'speak', lay: 'lie', led: 'lead', read: 'read', grew: 'grow',
+    lost: 'lose', fell: 'fall', sent: 'send', built: 'build', understood: 'understand', drew: 'draw', broke: 'break', spent: 'spend',
+    better: 'good', best: 'good', worse: 'bad', worst: 'bad' },
+    fr: { est: 'être', suis: 'être', es: 'être', sommes: 'être', êtes: 'être', sont: 'être', était: 'être', étaient: 'être', été: 'être', sera: 'être',
+    ai: 'avoir', as: 'avoir', a: 'avoir', avons: 'avoir', avez: 'avoir', ont: 'avoir', avait: 'avoir', avaient: 'avoir', eu: 'avoir', aura: 'avoir',
+    vais: 'aller', vas: 'aller', va: 'aller', allons: 'aller', allez: 'aller', vont: 'aller', fait: 'faire', fais: 'faire', faisons: 'faire', font: 'faire',
+    peut: 'pouvoir', peux: 'pouvoir', pouvons: 'pouvoir', peuvent: 'pouvoir', pu: 'pouvoir', veut: 'vouloir', veux: 'vouloir', veulent: 'vouloir',
+    voulu: 'vouloir', doit: 'devoir', dois: 'devoir', doivent: 'devoir', dû: 'devoir', dit: 'dire', dis: 'dire', disent: 'dire', vu: 'voir', vois: 'voir',
+    voit: 'voir', voient: 'voir', sait: 'savoir', sais: 'savoir', savent: 'savoir', su: 'savoir', pris: 'prendre', prend: 'prendre', prennent: 'prendre',
+    mis: 'mettre', met: 'mettre', venu: 'venir', vient: 'venir', viens: 'venir', viennent: 'venir', yeux: 'œil', ma: 'mon', mes: 'mon', ta: 'ton', tes: 'ton', sa: 'son', ses: 'son', nos: 'notre', vos: 'votre', leurs: 'leur',
+    avais: 'avoir', avions: 'avoir', aviez: 'avoir', étais: 'être', étions: 'être', étiez: 'être', croyais: 'croire', croyait: 'croire',
+    voyais: 'voir', voyait: 'voir', faisais: 'faire', faisait: 'faire', disais: 'dire', disait: 'dire', belle: 'beau', nouvelle: 'nouveau',
+    vieille: 'vieux', bonne: 'bon', grande: 'grand', petite: 'petit', toute: 'tout', tous: 'tout', toutes: 'tout' }
+};
+// Словоформа отримує найлегший із рівнів: сама форма (якщо вона є в словнику) і її лема (неправильна форма чи перше
+// збіжне закінчення): «times» — B2 як прийменник, але A1 як «time»; «bonne» — B2 як «служниця», але A1 як «bon».
 function lexiconCefrLevel(normalized, lang) {
     const lexicon = CEFR_WORDS[lang];
     if (!lexicon || !normalized) return 'unknown';
-    if (lexicon[normalized]) return lexicon[normalized];
-    for (const [suffix, repl] of CEFR_SUFFIXES[lang] || []) {
-        if (normalized.length > suffix.length + 2 && normalized.endsWith(suffix)) {
+    // Елізія й апостроф: l'amour → amour, qu'il → il, aujourd’hui лишається як є (є в словнику цілим).
+    const plain = normalized.replace(/’/g, "'");
+    if (lang === 'fr' && !lexicon[normalized]) {
+        const m = plain.match(/^(?:l|d|j|m|t|s|n|c|qu|jusqu|lorsqu|puisqu)'(.+)$/);
+        if (m && m[1]) return lexiconCefrLevel(m[1], lang);
+    }
+    const found = [lexicon[normalized]];
+    const irregular = CEFR_IRREGULAR[lang]?.[plain];
+    if (irregular) found.push(lexicon[irregular] || (irregular === 'œil' ? lexicon.oeil : undefined));
+    else for (const [suffix, repl] of CEFR_SUFFIXES[lang] || []) {
+        if (normalized.length > suffix.length + 1 && normalized.endsWith(suffix)) {
             const base = normalized.slice(0, -suffix.length) + repl;
-            if (lexicon[base]) return lexicon[base];
+            if (lexicon[base]) { found.push(lexicon[base]); break; }
         }
     }
-    return 'unknown';
+    const levels = found.filter(Boolean).map(level => CEFR_LEVELS.indexOf(level)).filter(n => n >= 0);
+    return levels.length ? CEFR_LEVELS[Math.min(...levels)] : 'unknown';
 }
 // Без запису в кеш: статистика по рівнях проглядає ВСІ слова сторінки при кожному оновленні.
 function peekCefrLevel(normalized, lang) {
@@ -281,8 +322,9 @@ function statsForOccurrenceIds(scope, occurrenceIds) {
     const levels = Object.fromEntries(CEFR_LEVELS.map(level => [level, { total: 0, helped: 0, readingPercent: 0 }]));
     for (const id of ids) {
         const record = records[id];
-        const level = record?.normalized ? (CEFR_LEVELS.includes(record.cefr) ? record.cefr : 'unknown')
-            : peekCefrLevel(String(id).slice(String(id).indexOf(':') + 1), pageLangCode);
+        // Збережений при натисканні рівень беремо, якщо він відомий; «unknown» (старий малий словник) перевіряємо наново.
+        const stored = record?.normalized && CEFR_LEVELS.includes(record.cefr) && record.cefr !== 'unknown' ? record.cefr : null;
+        const level = stored || peekCefrLevel(String(id).slice(String(id).indexOf(':') + 1), (record?.lang || pageLangCode).slice(0, 2));
         levels[level].total++;
         if (record?.normalized) levels[level].helped++;
     }
