@@ -1173,6 +1173,10 @@ const I18N = {
     aiRoutingHint: { uk: 'Працює лише для провайдерів, чиї ключі збережено; інакше використовується «Активний AI». Вимкніть, щоб усе йшло через один активний провайдер.', en: 'Only applies to providers whose keys are saved; otherwise the active AI is used. Turn off to send everything through the single active provider.', fr: 'Ne s’applique qu’aux fournisseurs dont la clé est enregistrée ; sinon l’IA active est utilisée. Désactivez pour tout envoyer au fournisseur actif.', ru: 'Работает только для провайдеров с сохранёнными ключами; иначе используется «Активный AI». Выключите, чтобы всё шло через один активный провайдер.' },
     // Rules panel: hide / readiness pill / exceptions.
     rulesHide: { uk: 'Сховати вікно (підсвітка лишається)', en: 'Hide window (highlights stay)', fr: 'Masquer la fenêtre (le surlignage reste)', ru: 'Скрыть окно (подсветка остаётся)' },
+    rulesBgStarted: { uk: 'Шукаю правила у виділеному… Коли кнопка «Правила» стане зеленою — натисніть її ще раз.', en: 'Searching the selection for rules… When the Rules button turns green, tap it again.',
+                      fr: 'Recherche des règles dans la sélection… Quand le bouton Règles devient vert, touchez-le à nouveau.', ru: 'Ищу правила в выделенном… Когда кнопка «Правила» станет зелёной, нажмите её ещё раз.' },
+    rulesBgWait:    { uk: 'Ще шукаю правила — зачекайте, поки кнопка стане зеленою.', en: 'Still searching — wait until the Rules button turns green.',
+                      fr: 'Recherche en cours — attendez que le bouton devienne vert.', ru: 'Ещё ищу — подождите, пока кнопка станет зелёной.' },
     rulesPillRunning: { uk: 'Шукаю…', en: 'Searching…', fr: 'Recherche…', ru: 'Ищу…' },
     rulesPillReady: { uk: 'Знайдено: {n}', en: 'Found: {n}', fr: 'Trouvé : {n}', ru: 'Найдено: {n}' },
     rulesPillFailed: { uk: 'Не вдалося', en: 'Failed', fr: 'Échec', ru: 'Не получилось' },

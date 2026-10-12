@@ -1,3 +1,7 @@
+## Rules button: background search, second tap opens (2026-10-12, Claude)
+
+Per the user. With a selected sentence/paragraph (now up to 2500 chars) the Rules button (header, bookmark, quick wheel) FIRST only starts the search in the background: the window does not open, an open translation popup is not interrupted; the header button and `#rules-tab` show running (blink/red) then green; the SECOND tap opens the window (no new search for the same text). A tap while running only toasts. No selection / no AI key / offline: the button opens the window as before. A different selection starts a new background search on the next tap. Test `rules_background_scan_browser.py`. Not verified on a real tablet.
+
 ## Translation rule: words instant, sentences AI-only (2026-10-12, Claude)
 
 Per the user: a single word may show an instant on-device translation (⌂) that Groq then replaces (⚡); a sentence/phrase (2+ words) is translated ONLY by AI because it needs the exact context. `showTooltip` in `js/translation.js`: with no AI key / offline / AI error a multi-word lookup now shows `sentenceNeedsAi` / `sentenceNeedsOnline` / `sentenceAiFailed` instead of falling back to machine translation (single words keep the machine/dictionary fallback). Same PR: single tap on a word in the Rules window translates it; SW update check every ~1-5 min (focus/online/background return). Tests: `sentence_ai_only_browser.py`, `rules_tap_translate_browser.py`; `learning_ux_browser.py` 'malformed alignment' now expects the AI-failure notice. Not verified on a real device.
