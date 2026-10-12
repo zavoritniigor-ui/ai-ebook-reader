@@ -28,8 +28,8 @@ def load(width, height, mobile=True):
 load(820, 1180)
 check('1 every header control has a name: visible text or aria-label/title (>= 2 chars)',
       """[...document.querySelectorAll('#header-controls button, #header-controls select, #header-controls label.btn')].filter(e => e.offsetParent !== null || e.id === 'btn-exit-app').every(e => ((e.textContent || '').trim().length >= 2 && !/^[A-Z]$/.test((e.textContent || '').trim())) || (e.getAttribute('aria-label') || e.title || '').length >= 2 || JSON.stringify(e.outerHTML.slice(0, 80)))""")
-check('2 the two language selects are told apart by visible labels bound to them',
-      """(() => { const lab = id => document.querySelector('label.field-cap[for="' + id + '"]'); const a = lab('target-lang'), b = lab('ui-lang'); return !!a && !!b && a.textContent.trim() !== b.textContent.trim() && a.textContent.trim().length > 3; })()""")
+check('2 the voice, translation-language and menu-language selects are told apart by distinct icons bound to them (no text captions) with titles',
+      """(() => { const lab = id => document.querySelector('label.field-ico[for="' + id + '"]'); const l = ['voice-select', 'target-lang', 'ui-lang'].map(lab); return l.every(x => x && x.offsetParent !== null && x.title.length > 3) && new Set(l.map(x => x.textContent.trim())).size === 3 && !document.querySelector('label.field-cap'); })()""")
 check('3 four+ group captions exist and the previously icon-only buttons have visible text labels',
       """document.querySelectorAll('.group-caption').length >= 5 && ['btn-ink', 'btn-region'].every(id => document.getElementById(id).textContent.trim().length > 4) && document.querySelector('button[onclick="openKeySettings()"]').textContent.trim().length > 4""")
 check('4 tablet portrait: captions hidden, header <= 190px, no horizontal overflow',
@@ -39,6 +39,10 @@ check('4b tablet portrait with wider glyphs (CI fonts): header still <= 190px',
 check('5 tablet portrait: every header control fits inside the viewport',
       "[...document.querySelectorAll('#header-controls button, #header-controls select, #header-controls label.btn')].filter(e => e.offsetParent !== null).every(e => { const r = e.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; })")
 check('6 the learning toggle names what it toggles', "els.translateBtn.textContent.includes('Вивчення слів')")
+check('6b the 🔄 update button is always visible; with no new version it says so (no reload)',
+      """(async () => { const b = document.getElementById('btn-update-app'); if (!b || b.offsetParent === null || b.title.length < 3) return 'no button'; activatePendingSwUpdate = async () => false; updateBannerShown = false; b.click(); await new Promise(r => setTimeout(r, 300)); return document.getElementById('reader-toast').textContent === t('updateLatest') || document.getElementById('reader-toast').textContent; })()""")
+check('6c offline: the 🔄 button shows the "no internet" toast',
+      """(async () => { Object.defineProperty(navigator, 'onLine', {value: false, configurable: true}); try { document.getElementById('btn-update-app').click(); await new Promise(r => setTimeout(r, 300)); return document.getElementById('reader-toast').textContent === t('updateOffline') || document.getElementById('reader-toast').textContent; } finally { delete navigator.onLine; } })()""")
 
 load(1024, 768)
 check('7 tablet landscape: header <= 190px, no overflow, captions hidden',
@@ -55,7 +59,7 @@ for w, caps_shown in ((1200, False), (1366, True)):
         check(f'9 laptop {w}px, {mode} mode: two header rows (<= 100px, was 184px with captions), captions and ✏️ ✂️ 🔑 text hidden, names kept in aria-label',
               """(() => { const h = document.getElementById('app-header').getBoundingClientRect().height; const hidden = x => getComputedStyle(x).display === 'none';
                  return h <= 100 && [...document.querySelectorAll('.group-caption, .btn-text')].every(hidden) && ['btn-ink', 'btn-region'].every(id => document.getElementById(id).getAttribute('aria-label').length > 2)
-                   && document.querySelectorAll('label.field-cap').length === 2 && [...document.querySelectorAll('label.field-cap')].every(x => hidden(x) === %s) || h; })()""" % ('false' if caps_shown else 'true'))
+                   && document.querySelectorAll('label.field-ico').length === 3 && [...document.querySelectorAll('label.field-ico')].every(x => !hidden(x)) || h; })()""")
 
 load(1920, 1080, mobile=False)
 check('9b wide desktop: captions are shown above the groups and the buttons carry their text',
@@ -67,6 +71,6 @@ check('10 every new label exists in all 8 UI languages with its own text (no raw
          for (const k of keys) for (const l of langs) { const v = I18N[k] && I18N[k][l]; if (!v || v === k) bad.push(k + ':' + l); else if (l !== 'en' && v === I18N[k].en && !['grpBook','grpText'].includes(k) && !/^[^a-z]*$/i.test(v)) bad.push('fallback ' + k + ':' + l); }
          return bad.length === 0 || JSON.stringify(bad); })()""")
 check('11 switching the menu language relabels buttons, captions and field labels',
-      """(() => { const out = []; for (const l of ['en','fr','ga','zh']) { state.uiLang = l; applyI18n(); out.push(document.getElementById('btn-ink').textContent.trim() + '|' + document.querySelector('label.field-cap[for="ui-lang"]').textContent + '|' + document.querySelector('.group-caption').textContent); }
-         state.uiLang = 'uk'; applyI18n(); return new Set(out).size === 4 && out[0].includes('Write') && out[0].includes('Menu language') || JSON.stringify(out); })()""")
+      """(() => { const out = []; for (const l of ['en','fr','ga','zh']) { state.uiLang = l; applyI18n(); out.push(document.getElementById('btn-ink').textContent.trim() + '|' + document.querySelector('label.field-ico[for="ui-lang"]').title + '|' + document.querySelector('.group-caption').textContent); }
+         state.uiLang = 'uk'; applyI18n(); return new Set(out).size === 4 && out[0].includes('Write') && out[0].includes('Interface language') || JSON.stringify(out); })()""")
 print('ALL MENU LABEL CHECKS PASSED')

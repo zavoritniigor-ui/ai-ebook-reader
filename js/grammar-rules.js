@@ -320,12 +320,11 @@ function layoutRulesPanel() {
     const inset = sheet && panel.classList.contains('expanded') ? Math.round(panel.getBoundingClientRect().height) : 0;
     document.documentElement.style.setProperty('--rules-inset', inset + 'px');
     document.body.classList.toggle('rules-inset', inset > 0);
-    // Закладка — прямокутна, на ЛІВОМУ краю екрана: найнижчий вільний проміжок по вертикалі між шапкою, кнопкою меню (☰), язичком «Запитай AI»
-    // і нижньою шторкою Правил; якщо проміжку на всю висоту нема — найбільший.
+    // Закладка — вертикальна, довгою стороною вздовж ЛІВОГО краю, на рівні колеса ✦. Якщо там зайнято (шапка, кнопка ☰, язичок
+    // «Запитай AI», шторка Правил) — зсувається до найближчого вільного проміжку; нема жодного — ховається.
     const open = panel.classList.contains('expanded'), r = panel.getBoundingClientRect();
     const tab = document.getElementById('rules-tab');
-    const TAB_H = 40, PAD = 8, ih = window.innerHeight;
-    let bottomPx = 124;
+    const TAB_H = 112, PAD = 8, ih = window.innerHeight;
     const blocks = [[0, hb]];
     for (const id of ['menu-handle', 'ask-tab']) {
         const el = document.getElementById(id), b = el && el.getBoundingClientRect();
@@ -337,9 +336,18 @@ function layoutRulesPanel() {
     for (const [top, bottom] of blocks) { if (top - cursor > 0) gaps.push([cursor, top]); cursor = Math.max(cursor, bottom); }
     if (ih - cursor > 0) gaps.push([cursor, ih]);
     const fits = gaps.filter(g => g[1] - g[0] >= TAB_H + 2 * PAD);
-    const gap = fits.length ? fits[fits.length - 1] : gaps.sort((x, y) => (y[1] - y[0]) - (x[1] - x[0]))[0];
-    if (gap) bottomPx = Math.max(PAD, Math.round(ih - gap[1] + PAD));
-    document.documentElement.style.setProperty('--rules-tab-bottom', bottomPx + 'px');
+    const launcher = document.getElementById('qm-launcher'), lb = launcher && launcher.getBoundingClientRect();
+    const want = lb && lb.height > 0 ? lb.top + lb.height / 2 - TAB_H / 2 : ih * 0.4;
+    let topPx = Math.round(want);
+    if (fits.length) {
+        let best = null;
+        for (const g of fits) {
+            const t = Math.min(Math.max(want, g[0] + PAD), g[1] - PAD - TAB_H);
+            if (!best || Math.abs(t - want) < Math.abs(best - want)) best = t;
+        }
+        topPx = Math.round(best);
+    }
+    document.documentElement.style.setProperty('--rules-tab-top', topPx + 'px');
     // Немає вільного проміжку (напр. відкрите повне меню на телефоні займає весь екран) — закладка ховається: стан видно на кнопці «Правила» в меню.
     if (tab) { tab.dataset.offscreen = fits.length ? '0' : '1'; updateRulesTab(); }
 }

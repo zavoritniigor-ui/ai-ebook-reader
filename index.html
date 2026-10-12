@@ -114,12 +114,16 @@
             display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
             padding: 0 12px; border-right: 1px solid var(--border-color);
         }
-        .toolbar-group:last-child { border-right: none; margin-left: auto; }
+        .toolbar-group:last-child { border-right: none; }
+        /* Симетрія: групи кнопок центруються в рядку (раніше лише остання липла до правого краю). */
+        .header-controls { justify-content: center; }
         /* Підписи груп і полів головного меню: що означає кожна кнопка видно без підказки. */
         .toolbar-group { position: relative; padding-top: 15px; }
         .group-caption { position: absolute; top: 0; left: 12px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; pointer-events: none; }
         .toolbar-group:first-child .group-caption { left: 0; }
         .field-cap { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+        /* Замість текстових підписів («Переклад на», «Мова меню») — значок перед списком: 🗣️ голос, 🌍 мова перекладу, 🖥️ мова меню. */
+        .field-ico { font-size: 18px; line-height: 1; flex: 0 0 auto; min-width: 1.4em; text-align: center; cursor: pointer; }
         /* Ноутбук / планшет в альбомній: заголовки груп і текст на ✏️ ✂️ 🔑 розтягували шапку до трьох рядків (184px),
            тож тут лишаються лише іконки (назва — у aria-label/title). Повністю — на телефоні й на екрані від 1600px. */
         @media (min-width: 641px) and (max-width: 1599px) {
@@ -128,11 +132,19 @@
             .field-cap { font-size: 11.5px; }
             .toolbar-group:first-child { padding-left: 0; }
             .toolbar-group:last-child { padding-right: 0; }
-            #voice-select { max-width: 140px; }
+            #voice-select { max-width: 130px; }
+            .field-ico { font-size: 16px; }
+            .toolbar-group { gap: 3px; }
         }
         /* Вузький ноутбук: у PDF-режимі (+ вибір масштабу) підписи полів знову давали третій рядок; назва лишається в title. */
         @media (min-width: 1181px) and (max-width: 1299px) {
             .field-cap { display: none; }
+            .toolbar-group { padding-left: 3px; padding-right: 3px; }
+            /* Значки 🌍 🖥️ і кнопка 🔄 з'їли запас другого рядка: з ширшими шрифтами (CI) PDF-шапка на 1200px ставала третім рядком (139px). */
+            #target-lang { max-width: 96px; }
+            #theme-select { max-width: 80px; }
+            #ui-lang { max-width: 58px; }
+            #pdf-fit { max-width: 90px; }
         }
         .toolbar-group:first-child { padding-left: 0; }
 
@@ -746,17 +758,17 @@
         #rules-panel.rules-sheet { left: 0; right: 0; top: auto; bottom: 0; margin: 0 auto; width: min(980px, 100vw); height: min(46vh, calc(100dvh - var(--rules-top, 0px) - 12px)); border-radius: 16px 16px 0 0; transform: translateY(105%); box-shadow: 0 -5px 25px rgba(0,0,0,0.22); }
         #rules-panel.rules-sheet.expanded { transform: none; }
         body.rules-inset #reader-pages { padding-bottom: calc(var(--rules-inset, 0px) + 24px); }
-        /* Закладка «Правила»: прямокутна кнопка на ЛІВОМУ краю екрана (праворуч лежать повзунок сторінок, ✦ і язичок Граматики). Колір =
-           стан пошуку: зелений — знайдено, червоний — іде пошук / не вдалося, нейтральний — ще нічого не шукали. Позицію (найнижчий
-           вільний проміжок між шапкою, кнопкою меню ☰, язичком «Запитай AI» та шторкою) рахує layoutRulesPanel(). */
-        .rules-tab { position: fixed; left: 0; bottom: var(--rules-tab-bottom, 124px); z-index: 10004; height: 40px; padding: 0 12px 0 10px; display: flex; flex-direction: row; align-items: center; gap: 6px;
+        /* Закладка «Правила»: прямокутна кнопка на ЛІВОМУ краю екрана, довгою стороною вздовж краю, на рівні колеса ✦ (праворуч лежать повзунок сторінок, ✦ і язичок Граматики). Колір =
+           стан пошуку: зелений — знайдено, червоний — іде пошук / не вдалося, нейтральний — ще нічого не шукали. Позицію (висота колеса ✦, а якщо там зайнято —
+           найближчий вільний проміжок між шапкою, кнопкою ☰, язичком «Запитай AI» та шторкою) рахує layoutRulesPanel(). */
+        .rules-tab { position: fixed; left: 0; top: var(--rules-tab-top, 40vh); z-index: 10004; width: 40px; height: 112px; padding: 8px 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
             border: 1px solid var(--border-color); border-left: 0; border-right: 4px solid var(--accent-color); border-radius: 4px; background: var(--panel-bg); color: var(--text-color); box-shadow: 2px 2px 8px rgba(0,0,0,.2);
-            font-size: 13px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: bottom .4s cubic-bezier(.4,0,.2,1), background-color .5s; }
+            font-size: 13px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: top .4s cubic-bezier(.4,0,.2,1), background-color .5s; }
         .rules-tab[hidden] { display: none; }
         .rules-tab { overflow: hidden; }
         .rules-tab:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
         .rules-tab-icon { font-size: 18px; line-height: 1; }
-        .rules-tab-text { white-space: nowrap; letter-spacing: .02em; }
+        .rules-tab-text { white-space: nowrap; letter-spacing: .02em; writing-mode: vertical-rl; }
         .rules-tab-count { min-width: 22px; padding: 1px 5px; border-radius: 10px; background: #198754; color: #fff; font-size: 11px; text-align: center; }
         .rules-tab-count[hidden] { display: none; }
         .rules-tab[data-state="ready"] { background: rgba(25,135,84,.22); border-color: rgba(25,135,84,.65); border-right-color: #198754; }
@@ -983,9 +995,11 @@
                ховаємо — вони з'їдали б цілий рядок висоти шапки. Вони показуються на телефоні й на великому екрані. */
             .group-caption { display: none; }
             .toolbar-group { padding-top: 0; }
-            #voice-select { max-width: 120px; }
+            /* 96px і відступи 4px: значок 🗣️ перед списком голосів забрав запас першого рядка, і з ширшими шрифтами (CI) шапка
+               планшета ставала третім рядком (211px). */
+            #voice-select { max-width: 96px; }
             .header-controls { row-gap: 6px; }
-            .toolbar-group { padding-left: 8px; padding-right: 8px; }
+            .toolbar-group { padding-left: 4px; padding-right: 4px; }
             .toolbar-group:first-child { padding-left: 0; }
             .toolbar-group:last-child { padding-right: 0; }
             .field-cap { font-size: 11.5px; }
@@ -1267,6 +1281,7 @@
                 <button class="icon-btn" id="btn-tts" data-i18n="read">🔊 Читати</button>
                 <button class="icon-btn compact" id="btn-tts-stop" style="display:none;" data-i18n-title="tStop">⏹</button>
                 <button class="icon-btn" id="btn-alt-voices" data-i18n-title="tAltVoices">👥 Два голоси: ВИМК</button>
+                <label class="field-ico" for="voice-select" data-i18n-title="tVoice" aria-hidden="true">🗣️</label>
                 <select id="voice-select" data-i18n-title="tVoice"><option value="" data-i18n="loading">Завантаження...</option></select>
             </div>
             <!-- STUDY / TRANSLATION / STATISTICS -->
@@ -1274,7 +1289,7 @@
                 <span class="group-caption" data-i18n="grpStudy"></span>
                 <button class="icon-btn" id="btn-translate-mode" data-i18n-title="tStudyMode">🔮 Вивчення: ВИМК</button>
                 <button class="icon-btn" id="btn-rules" data-i18n="btnRules" data-i18n-title="tRules" aria-controls="rules-panel">📚 Правила</button>
-                <label class="field-cap" for="target-lang" data-i18n="lblTranslateTo"></label>
+                <label class="field-ico" for="target-lang" data-i18n-title="tTargetLang" aria-hidden="true">🌍</label>
                 <select id="target-lang" data-i18n-title="tTargetLang">
                     <option value="uk">🇺🇦 Українська</option>
                     <option value="en">🇬🇧 English</option>
@@ -1326,7 +1341,7 @@
                     <option value="sepia" data-i18n="themeSepia">Сепія</option>
                     <option value="dark" data-i18n="themeDark">Темна</option>
                 </select>
-                <label class="field-cap" for="ui-lang" data-i18n="lblUiLang"></label>
+                <label class="field-ico" for="ui-lang" data-i18n-title="tUiLang" aria-hidden="true">🖥️</label>
                 <select id="ui-lang" data-i18n-title="tUiLang">
                     <option value="uk">UA</option>
                     <option value="en">EN</option>
@@ -1340,6 +1355,7 @@
                 <button class="icon-btn" onclick="openKeySettings()" data-i18n-title="tAiKey" data-i18n-aria="tAiKey"><span aria-hidden="true">🔑</span> <span class="btn-text" data-i18n="lblAiKey">AI-ключ</span></button>
                 <!-- Показується лише у встановленому standalone-PWA (вмикається з JS) —
                      у звичайній вкладці браузера ця кнопка не потрібна. -->
+                <button class="icon-btn compact" id="btn-update-app" onclick="updateApp()" data-i18n-title="tUpdateApp" data-i18n-aria="tUpdateApp">🔄</button>
                 <button class="icon-btn compact" id="btn-exit-app" style="display:none;" onclick="exitApp()" data-i18n-title="tExitApp">🚪</button>
             </div>
         </div>
@@ -1542,7 +1558,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=ef5dca8e4d12"></script>
+    <script src="js/core.js?v=64103cbb11a6"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1565,7 +1581,7 @@
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=319e28a2d7b8"></script>
+    <script src="js/grammar-rules.js?v=e601580c9fa8"></script>
     <script src="js/ai-client.js?v=37032de0d74e"></script>
     <script src="js/practice-session.js?v=240bbcb9a08d"></script>
     <script src="js/practice-worksheet.js?v=bbcefde19020"></script>
@@ -1581,6 +1597,6 @@
     <script src="js/library.js?v=c7986ac409b8"></script>
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
     <script src="js/main.js?v=d8eabe80cbc4"></script>
-    <script src="js/pwa-lifecycle.js?v=3544ff6ed2eb"></script>
+    <script src="js/pwa-lifecycle.js?v=6b60a87817d3"></script>
 </body>
 </html>
