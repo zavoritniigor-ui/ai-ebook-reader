@@ -9,7 +9,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
 ```sh
-google-chrome --headless --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank
+google-chrome --headless --lang=uk --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank
 ```
 
 ```sh
