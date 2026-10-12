@@ -83,28 +83,35 @@ c.js("""(()=>{ aiAvailable=()=>true; showToast=()=>{}; window.__calls=[]; window
 c.js("document.getElementById('btn-rules').click()"); time.sleep(0.5)
 check("3 the header button opens the panel; it lists the French sections as foldable groups with topic buttons",
       "document.getElementById('rules-panel').classList.contains('expanded') && document.querySelectorAll('#rules-content .rules-section').length >= 7 && document.querySelectorAll('#rules-content .rules-topic').length >= 6")
-check("4 the language of the page (fr) is preselected; there is no topic search field, a 'Search this page' button instead",
-      "document.querySelector('#rules-content .rules-lang').value === 'fr' && !document.querySelector('#rules-content .rules-search') && !!document.getElementById('rules-scan') && document.getElementById('rules-scan').textContent.includes('Пошук на сторінці')")
+check("4 the language of the page (fr) is preselected; no topic search field; a 'Search the selection' button and a hint to select a sentence",
+      "document.querySelector('#rules-content .rules-lang').value === 'fr' && !document.querySelector('#rules-content .rules-search') && document.getElementById('rules-scan').textContent.includes('Пошук у виділеному') && document.getElementById('rules-scan-status').textContent === t('rulesScanHint')")
+c.js("__calls.length = 0; rulesScan = null; state.lastSelectedRange = null; state.ctxSentenceRange = null; document.getElementById('rules-scan').click(); 1"); time.sleep(0.3)
+check("4a without a selection the button asks for one and sends nothing", "__calls.length === 0 && document.getElementById('rules-scan-status').textContent === t('rulesScanHint')")
 SCAN = json.dumps({"language": "fr", "topics": [
     {"id": "passe-compose", "matches": [{"text": "a mangé", "note": "avoir"}, {"text": "est partie", "note": "être"}, {"text": "avons fini", "note": "avoir"}]},
-    {"id": "present", "matches": [{"text": "dort", "note": "présent"}]},
+    {"id": "present", "matches": [{"text": "dort", "note": "présent -- NOT in the selection"}]},
     {"id": "imparfait", "matches": [{"text": "mangeait", "note": "invented"}]},
-    {"id": "no-such-topic", "matches": [{"text": "chat", "note": "x"}]}]}, ensure_ascii=False)
-c.js("__calls.length = 0; __reply = %s; rulesSearchCache.clear(); rulesScan = null; 1" % json.dumps(SCAN))
-b = center('#rules-scan'); click_xy(b['x'], b['y'])
-check("4b ONE request scans the visible page against the whole catalogue (every topic id + the page text in the prompt)",
-      "__calls.filter(x => x.task === 'rules_search').length === 1 && (p => p.includes('passe-compose:') && p.includes('subjonctif-present:') && p.includes('Marie a mangé') && p.includes('\"topics\"'))(__calls[0].prompt)", timeout=5)
-check("4c topics with real examples get a green dot with their count; invented / unknown ones get none; their sections open",
+    {"id": "no-such-topic", "matches": [{"text": "Marie", "note": "x"}]}]}, ensure_ascii=False)
+# the learner selects the first paragraph (three sentences), then opens Rules: the selection is searched at once
+c.js("""(() => { document.getElementById('rules-min').click(); __calls.length = 0; __reply = %s; rulesSearchCache.clear();
+  const w = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) if (n.nodeValue.includes('Marie a mangé')) break;
+  const r = document.createRange(); r.selectNodeContents(n); state.lastSelectedRange = r; return 1; })()""" % json.dumps(SCAN)); time.sleep(0.3)
+c.js("document.getElementById('btn-rules').click(); 1")
+check("4b opening Rules with a selection searches THAT selection at once: one request with every topic id and only the selected sentences",
+      "__calls.filter(x => x.task === 'rules_search').length === 1 && (p => p.includes('passe-compose:') && p.includes('subjonctif-present:') && p.includes('Marie a mangé') && !p.includes('Le chat dort') && p.includes('\"topics\"'))(__calls[0].prompt)", timeout=5)
+check("4c only topics with real examples IN the selection get a green dot with their count; the status names the selection",
       """(() => { const dot = id => { const b = document.querySelector('#rules-content .rules-topic[data-topic="' + id + '"]'); const d = b && b.querySelector('.rules-dot'); return d ? d.textContent : null; };
-         const open = [...document.querySelectorAll('#rules-content details.rules-section[open]')].length;
-         return dot('passe-compose') === '3' && dot('present') === '1' && dot('imparfait') === null && document.querySelectorAll('#rules-content .rules-topic .rules-dot').length === 2
-           && getComputedStyle(document.querySelector('#rules-content .rules-topic .rules-dot')).backgroundColor === 'rgb(25, 135, 84)' && open >= 1
-           && document.getElementById('rules-scan-status').textContent.includes('2') || JSON.stringify({pc: dot('passe-compose'), pr: dot('present'), open, st: document.getElementById('rules-scan-status').textContent}); })()""", timeout=3)
-check("4d the Rules bookmark turns green after the scan", "document.getElementById('rules-tab').dataset.state === 'ready'")
+         return dot('passe-compose') === '3' && dot('present') === null && dot('imparfait') === null && document.querySelectorAll('#rules-content .rules-topic .rules-dot').length === 1
+           && getComputedStyle(document.querySelector('#rules-content .rules-topic .rules-dot')).backgroundColor === 'rgb(25, 135, 84)'
+           && document.getElementById('rules-scan-status').textContent.includes('Hier, Marie') || JSON.stringify({pc: dot('passe-compose'), pr: dot('present'), st: document.getElementById('rules-scan-status').textContent}); })()""", timeout=3)
+check("4d the Rules bookmark turns green after the search", "document.getElementById('rules-tab').dataset.state === 'ready'")
 c.js("document.querySelector('#rules-content .rules-topic[data-topic=\"passe-compose\"]').click(); 1")
-check("4e choosing a found topic highlights its examples in the text at once -- no second request",
+check("4e choosing a found topic highlights its examples in the selected sentences at once -- no second request",
       "__calls.filter(x => x.task === 'rules_search').length === 1 && CSS.highlights.has('rule-match') && [...CSS.highlights.get('rule-match')].map(r => r.toString()).join('|') === 'a mangé|est partie|avons fini' && document.querySelectorAll('#rules-content .rules-match').length === 3", timeout=5)
-c.js("document.querySelector('#rules-content .rules-back').click(); rulesScan = null; 1"); time.sleep(0.3)
+c.js("document.querySelector('#rules-content .rules-back').click(); document.getElementById('rules-min').click(); 1"); time.sleep(0.3)
+c.js("document.getElementById('btn-rules').click(); 1"); time.sleep(0.5)
+check("4f reopening Rules with the SAME selection does not search again", "__calls.filter(x => x.task === 'rules_search').length === 1")
+c.js("rulesScan = null; state.lastSelectedRange = null; clearRuleHighlights(); renderRulesTree(); 1"); time.sleep(0.3)
 check("5 the English catalogue lists English topics with English headings (UI-language name under it)",
       """(() => { const sel = document.querySelector('#rules-content .rules-lang'); sel.value = 'en'; sel.dispatchEvent(new Event('change')); const first = document.querySelector('#rules-content .rules-topic'); const ok = !!first && first.querySelector('b').textContent === 'Present simple' && first.querySelector('.rules-topic-sub').textContent.includes('Present Simple') && !document.querySelector('#rules-content .rules-note'); const s2 = document.querySelector('#rules-content .rules-lang'); s2.value = 'fr'; s2.dispatchEvent(new Event('change')); return ok || first && first.textContent; })()""")
 

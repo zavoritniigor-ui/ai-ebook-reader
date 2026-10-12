@@ -17,10 +17,11 @@ const RULES_LANGS = ['fr', 'en'];
 
 const rulesState = { lang: 'fr', topic: null, matches: [], ranges: [], active: -1, token: 0, text: '', watching: false, status: 'idle', remapTimer: 0, failSince: 0, layoutAt: 0 };
 const rulesSearchCache = new Map(), rulesExplainCache = new Map();
-// "Search the page": ONE request over the whole catalogue -> which topics occur in the visible text, with their examples.
+// Search the SELECTION (one or two sentences the learner selected in the book): ONE request over the whole catalogue ->
+// every topic that occurs in those sentences, with its examples. A whole page was too much for one reliable answer.
 // Topics with examples get a green dot in the tree; opening one paints those examples without a new request.
-const RULES_SCAN_MAX_PER_TOPIC = 6;
-let rulesScan = null;   // { lang, targetLang, hash, status: 'running'|'ready'|'none'|'failed', found: Map(topicId -> matches result) }
+const RULES_SCAN_MAX_PER_TOPIC = 6, RULES_SCAN_MAX_CHARS = 1200;
+let rulesScan = null;   // { lang, targetLang, sourceText, flat, status: 'running'|'ready'|'none'|'failed', found: Map(topicId -> matches result) }
 const RULES_CACHE_MAX = 60;
 
 function rulesPick(obj) { return (obj && (obj[state.uiLang] || obj.en || obj.uk || obj.fr)) || ''; }
@@ -367,6 +368,7 @@ function openRulesPanel({ keep = false } = {}) {
     panel.classList.add('expanded');
     layoutRulesPanel();
     updateRulesTab();
+    maybeAutoScanSelection();
 }
 // «Сховати»: вікно йде з екрана, а підсвітка, результати й індикатор готовності лишаються (плашка внизу).
 function minimizeRulesPanel() { rulesEls().panel.classList.remove('expanded'); layoutRulesPanel(); updateRulesTab(); }
@@ -431,14 +433,15 @@ function renderRulesTree() {
     langSel.onchange = () => { rulesState.lang = langSel.value; renderRulesTree(); };
     const scanBtn = ruleEl('button', 'rules-scan', '🔍 ' + t('rulesScan'));
     scanBtn.type = 'button'; scanBtn.id = 'rules-scan';
-    scanBtn.onclick = () => runRulePageScan();
+    scanBtn.onclick = () => runRuleSelectionScan();
     bar.append(langSel, scanBtn);
     content.appendChild(bar);
     const scan = currentRuleScan();
     const scanStatus = ruleEl('p', 'rules-status rules-scan-status'); scanStatus.id = 'rules-scan-status'; scanStatus.setAttribute('role', 'status'); scanStatus.setAttribute('aria-live', 'polite');
     if (rulesScan && rulesScan.lang === rulesState.lang && rulesScan.status === 'running') { scanStatus.textContent = t('rulesRunning'); scanBtn.disabled = true; }
     else if (rulesScan && rulesScan.lang === rulesState.lang && rulesScan.status === 'failed') scanStatus.textContent = t('rulesFailed');
-    else if (scan) scanStatus.textContent = scan.found.size ? t('rulesScanFound').replace('{n}', scan.found.size) : t('rulesScanNone');
+    else if (scan) scanStatus.textContent = (scan.found.size ? t('rulesScanFound').replace('{n}', scan.found.size) : t('rulesScanNone')) + ' «' + scan.sourceText.slice(0, 90) + (scan.sourceText.length > 90 ? '…' : '') + '»';
+    else scanStatus.textContent = t('rulesScanHint');
     content.appendChild(scanStatus);
 
     const cat = rulesCatalogue(rulesState.lang);
@@ -500,39 +503,75 @@ function renderRuleDetailsText(container, text) {
         container.appendChild(ruleEl(line.endsWith(':') ? 'h5' : 'p', line.endsWith(':') ? 'rules-details-head' : '', line));
     }
 }
-// The scan result for the CURRENT visible page text (same catalogue language and explanation language), or null.
+// The scan result to show in the tree (same catalogue language and explanation language), or null.
 function currentRuleScan() {
     if (!rulesScan || rulesScan.status !== 'ready' && rulesScan.status !== 'none' || rulesScan.lang !== rulesState.lang || rulesScan.targetLang !== state.targetLang) return null;
-    return rulesHash(collectVisibleText().text) === rulesScan.hash ? rulesScan : null;
+    return rulesScan;
 }
-async function runRulePageScan() {
-    if (!aiAvailable() || !navigator.onLine) { const st = document.getElementById('rules-scan-status'); if (st) st.textContent = t('needKey'); return; }
-    const flat = collectVisibleText();
-    if (!flat.text.trim()) { const st = document.getElementById('rules-scan-status'); if (st) st.textContent = t('rulesNoText'); return; }
-    const langCode = rulesState.lang, scan = { lang: langCode, targetLang: state.targetLang, hash: rulesHash(flat.text), status: 'running', found: new Map() };
+// The learner's current selection in the book (several words … two sentences), or (button only) the sentence of a tapped word; null when
+// there is none or it belongs to a page that is no longer on screen.
+function rulesSelectionSource({ selectionOnly = false } = {}) {
+    const range = state.lastSelectedRange || (selectionOnly ? null : state.ctxSentenceRange);
+    if (!range || !range.startContainer || !range.startContainer.isConnected || !els.pages.contains(range.commonAncestorContainer)) return null;
+    const flat = flattenRange(range);
+    if (!flat.text.trim()) return null;
+    if (flat.text.length > RULES_SCAN_MAX_CHARS) { flat.text = flat.text.slice(0, RULES_SCAN_MAX_CHARS); flat.segs = flat.segs.filter(sg => sg.textStart < RULES_SCAN_MAX_CHARS); }
+    return flat;
+}
+async function runRuleSelectionScan() {
+    const status = msg => { const st = document.getElementById('rules-scan-status'); if (st) st.textContent = msg; };
+    if (!aiAvailable() || !navigator.onLine) { status(t('needKey')); return; }
+    const flat = rulesSelectionSource();
+    if (!flat) { status(t('rulesScanHint')); return; }
+    const detected = typeof langForText === 'function' ? langForText(flat.text).slice(0, 2) : '';
+    if (RULES_LANGS.includes(detected)) rulesState.lang = detected;
+    const langCode = rulesState.lang, sourceText = flat.text.replace(/\s+/g, ' ').trim();
+    const scan = { lang: langCode, targetLang: state.targetLang, sourceText, flat, status: 'running', found: new Map() };
     rulesScan = scan; rulesState.status = 'running';
-    if (!rulesState.topic) renderRulesTree();
+    if (rulesState.topic) { rulesState.token++; rulesState.topic = null; rulesState.matches = []; clearRuleHighlights(); }
+    renderRulesTree();
     updateRulesTab();
     let result;
     try {
         let out;
-        try { out = await callAI(buildRuleScanPrompt(langCode, flat.text, LANG_NAMES[state.targetLang] || 'English'), undefined, 'rules_search', undefined, { maxOutputTokens: 4000, timeoutMs: 120000 }); }
+        try { out = await callAI(buildRuleScanPrompt(langCode, flat.text, LANG_NAMES[state.targetLang] || 'English'), undefined, 'rules_search', undefined, { maxOutputTokens: 3000, timeoutMs: 90000 }); }
         catch (err) { if (err && err.reason === 'truncated' && err.partial) out = err.partial; else throw err; }
         result = normalizeRuleScan(out, langCode, flat.text);
     } catch (err) { result = { ok: false, found: new Map() }; }
     if (rulesScan !== scan) return;   // a newer scan replaced this one
     scan.status = !result.ok ? 'failed' : result.found.size ? 'ready' : 'none';
     scan.found = result.found;
-    // Seed the per-topic cache: opening a found topic paints its examples at once, no second request.
-    for (const [id, r] of result.found) rulesBounded(rulesSearchCache, [langCode, id, scan.targetLang, scan.hash].join('|'), r);
     if (!rulesState.topic) { rulesState.status = scan.status === 'failed' ? 'failed' : scan.status === 'ready' ? 'ready' : 'idle'; renderRulesTree(); }
     updateRulesTab();
+}
+// Opening the Rules window with a NEW selection searches it at once (the selection is what the learner wants explained).
+function maybeAutoScanSelection() {
+    if (!aiAvailable() || !navigator.onLine) return;
+    // Only a real selection (words, a sentence or two) starts a search by itself; a tapped word's sentence needs the button.
+    const flat = rulesSelectionSource({ selectionOnly: true });
+    if (!flat) return;
+    const text = flat.text.replace(/\s+/g, ' ').trim();
+    if (rulesScan && rulesScan.sourceText === text && rulesScan.status !== 'failed') return;
+    runRuleSelectionScan();
 }
 function openRuleTopic(topic) {
     rulesState.topic = topic;
     rulesState.matches = []; rulesState.token++; rulesState.status = 'idle';
     clearRuleHighlights();
     renderRuleTopic();
+    // Found by the selection scan: show exactly those examples (in the selected sentences), no new request.
+    const scan = currentRuleScan(), hit = scan && scan.found.get(topic.id);
+    if (hit && scan.flat.segs.every(sg => sg.node.isConnected)) {
+        rulesState.text = scan.flat.text;
+        rulesState.matches = hit.matches;
+        paintRuleMatches(scan.flat, hit.matches);
+        renderRuleMatches();
+        rulesState.status = 'ready';
+        const exc = hit.matches.filter(m => m.exception).length;
+        setRulesStatus(t('rulesFound').replace('{n}', hit.matches.length) + (exc ? ' · ' + t('rulesExceptionsCount').replace('{n}', exc) : ''));
+        updateRulesTab();
+        return;
+    }
     runRuleSearch();
 }
 function renderRuleTopic() {
