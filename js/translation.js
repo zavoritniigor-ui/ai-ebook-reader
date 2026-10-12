@@ -333,6 +333,11 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                     if (m.extras) html += m.extras;
                 } catch (e) {}
             }
+        } else if (isMultiWord) {
+            // Речення й фрази — лише через AI: машинний переклад не бачить контексту й дає неточний результат,
+            // тож без AI (ключ/мережа) чи за його помилки показуємо причину, а не «приблизний» переклад.
+            els.ttTranslation.textContent = !aiAvailable() ? t('sentenceNeedsAi') : (!navigator.onLine ? t('sentenceNeedsOnline') : t('sentenceAiFailed'));
+            translated = false;
         } else {
             try {
                 const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);

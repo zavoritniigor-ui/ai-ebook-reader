@@ -1,3 +1,7 @@
+## Translation rule: words instant, sentences AI-only (2026-10-12, Claude)
+
+Per the user: a single word may show an instant on-device translation (⌂) that Groq then replaces (⚡); a sentence/phrase (2+ words) is translated ONLY by AI because it needs the exact context. `showTooltip` in `js/translation.js`: with no AI key / offline / AI error a multi-word lookup now shows `sentenceNeedsAi` / `sentenceNeedsOnline` / `sentenceAiFailed` instead of falling back to machine translation (single words keep the machine/dictionary fallback). Same PR: single tap on a word in the Rules window translates it; SW update check every ~1-5 min (focus/online/background return). Tests: `sentence_ai_only_browser.py`, `rules_tap_translate_browser.py`; `learning_ux_browser.py` 'malformed alignment' now expects the AI-failure notice. Not verified on a real device.
+
 ## Status check after the interrupted session (2026-10-12, Claude)
 
 Analysis only, no code changed. Everything from the previous session is MERGED: #175 (Practice topic), #176 (Rules bottom-sheet + translation inside), #177 (practice_sentence_actions flake fix), #178 (Android dictation replay at restart boundaries), #179 ('search this page' green dots), #180 (Rules searches the selected sentence(s)). Main `e9b5660`: CI green on the last 4 runs; production serves main (`grammar-rules.js?v=dd77e501db2a` identical). Working tree clean; no unpushed work in the extra worktrees (`wt-tab`, `AndroidFollowup`, `Instant`).
