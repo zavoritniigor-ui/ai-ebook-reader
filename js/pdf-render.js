@@ -245,7 +245,29 @@ pdfPageRange.addEventListener('input', () => {
         pdfPageRange.setAttribute('aria-valuetext', `${val} / ${state.totalPages}`);
     }
 });
-pdfPageRange.addEventListener('pointerup', () => { scrubDragging = false; commitPdfScrub(); });
+// Повзунок сторінок сам згортається в овальну кнопку з номером сторінки після SCRUBBER_IDLE_MS простою; тап по ній розгортає його.
+const SCRUBBER_IDLE_MS = 3000;
+const pdfScrubberEl = document.getElementById('pdf-scrubber');
+let scrubCollapseTimer = 0;
+function armScrubberCollapse() {
+    clearTimeout(scrubCollapseTimer);
+    scrubCollapseTimer = setTimeout(() => {
+        if (scrubDragging) { armScrubberCollapse(); return; }
+        if (document.activeElement === pdfPageRange) pdfPageRange.blur();
+        pdfScrubberEl.classList.add('collapsed');
+    }, SCRUBBER_IDLE_MS);
+}
+function expandPdfScrubber() { pdfScrubberEl.classList.remove('collapsed'); armScrubberCollapse(); }
+pdfScrubberEl.addEventListener('pointerdown', e => {
+    if (pdfScrubberEl.classList.contains('collapsed')) { e.preventDefault(); expandPdfScrubber(); }
+    else armScrubberCollapse();
+});
+pdfScrubberEl.addEventListener('keydown', e => {
+    if (pdfScrubberEl.classList.contains('collapsed') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); expandPdfScrubber(); }
+    else armScrubberCollapse();
+});
+pdfPageRange.addEventListener('input', armScrubberCollapse);
+pdfPageRange.addEventListener('pointerup', () => { scrubDragging = false; commitPdfScrub(); armScrubberCollapse(); });
 pdfPageRange.addEventListener('pointercancel', () => { scrubDragging = false; clearTimeout(scrubTimer); updatePdfScrubber(); });
 pdfPageRange.addEventListener('change', () => {
     if (!scrubDragging) { clearTimeout(scrubTimer); scrubTimer = setTimeout(commitPdfScrub, 180); }

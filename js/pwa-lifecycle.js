@@ -124,9 +124,38 @@ if ('onfreeze' in document) {
 // екрані, Android/Chrome це свідомо забороняють — жодного легального обхідного
 // шляху не існує. Тому: чесно пробуємо, а якщо за секунду сторінка й далі видима —
 // прямо кажемо, що закрити застосунок може лише сама система.
-function exitApp() {
+// Закрити встановлений PWA з коду не можна, але мета кнопки — щоб наступне відкриття було вже НОВОЮ версією. Тому «Вихід»
+// спершу перевіряє оновлення: якщо воно є (чи вже скачане), застосунок одразу перезавантажується в нову версію — виходити
+// «в диспетчер вікон» заради оновлення не треба. Якщо оновлень нема — зберігаємо стан і пробуємо window.close().
+function activatePendingSwUpdate(timeoutMs = 8000) {
+    return new Promise(resolve => {
+        if (!swRegistration || navigator.onLine === false) { resolve(false); return; }
+        let done = false;
+        const finish = (v) => { if (done) return; done = true; navigator.serviceWorker.removeEventListener('controllerchange', onChange); clearTimeout(timer); resolve(v); };
+        const onChange = () => finish(true);
+        navigator.serviceWorker.addEventListener('controllerchange', onChange);
+        const timer = setTimeout(() => finish(false), timeoutMs);
+        swRegistration.update().then(() => { if (!swRegistration.installing && !swRegistration.waiting) finish(false); }).catch(() => finish(false));
+    });
+}
+let exitInProgress = false;
+async function exitApp() {
+    if (exitInProgress) return;
+    exitInProgress = true;
     persistCriticalState();
     stopBackgroundActivity();
+    let updated = updateBannerShown;      // нова версія вже скачана й чекає на перезавантаження
+    if (!updated) {
+        showToast(t('exitChecking'));
+        try { updated = await activatePendingSwUpdate(); } catch (e) {}
+    }
+    if (updated) {
+        showToast(t('exitUpdated'));
+        persistCriticalState();
+        setTimeout(() => location.reload(), 700);
+        return;
+    }
+    exitInProgress = false;
     try { window.close(); } catch (e) {}
     setTimeout(() => {
         if (document.visibilityState !== 'hidden') showToast(t('exitFallback'));
