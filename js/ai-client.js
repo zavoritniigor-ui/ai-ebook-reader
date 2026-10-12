@@ -557,6 +557,8 @@ const TRANSLATION_SCRIPT_RULES = {
     en: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
     fr: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
     ga: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    de: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    es: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
     zh: { primary: /\p{Script=Han}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Cyrillic}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
     ko: { primary: /[\p{Script=Hangul}\p{Script=Han}]/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Cyrillic}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
     hi: { primary: /\p{Script=Devanagari}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u }

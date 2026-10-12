@@ -249,6 +249,9 @@ jobs:
           echo "Running rules_background_scan_browser.py..."
           python3 -u tests/rules_background_scan_browser.py
 
+          echo "Running target_langs_de_es_browser.py..."
+          python3 -u tests/target_langs_de_es_browser.py
+
           echo "Running menu_labels_browser.py..."
           python3 -u tests/menu_labels_browser.py
 

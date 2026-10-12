@@ -204,9 +204,16 @@ const LANGUAGE_CONFIG = {
     zh: { locale: 'zh-CN', aiName: 'китайською (спрощеною)', promptName: 'Simplified Chinese' },
     ko: { locale: 'ko-KR', aiName: 'корейською', promptName: 'Korean' },
     hi: { locale: 'hi-IN', aiName: 'гінді', promptName: 'Hindi' },
-    ga: { locale: 'ga-IE', aiName: 'ірландською', promptName: 'Irish' }
+    ga: { locale: 'ga-IE', aiName: 'ірландською', promptName: 'Irish' },
+    // Лише МОВИ ПЕРЕКЛАДУ та озвучення (targetOnly): застосунок заточений під вивчення англійської та французької, тож німецька й
+    // іспанська не стають мовами меню, граматичного розбору чи правил.
+    de: { locale: 'de-DE', aiName: 'німецькою', promptName: 'German', targetOnly: true },
+    es: { locale: 'es-ES', aiName: 'іспанською', promptName: 'Spanish', targetOnly: true }
 };
-const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG);
+// Мови меню / вивчення (мають повний набір рядків і граматичні налаштування).
+const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG).filter(code => !LANGUAGE_CONFIG[code].targetOnly);
+// Мови, якими можна перекладати й озвучувати переклад (+ німецька та іспанська); голоси для них теж підбираються й запам'ятовуються.
+const TARGET_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG);
 
 // Language-aware grammar configuration for the redesigned Grammar panel
 // (Verbs/Adjectives contextual-learning modes). One entry per SUPPORTED_LANGUAGE_CODES
@@ -638,9 +645,9 @@ function lemmaScriptMatchesSurface(lemma, surface) {
     return Array.from(lemma).map(scriptOf).filter(Boolean).every(sc => surfaceScripts.has(sc));
 }
 
-function storedLanguage(key, fallback) {
+function storedLanguage(key, fallback, codes = SUPPORTED_LANGUAGE_CODES) {
     const value = readStored(key);
-    return SUPPORTED_LANGUAGE_CODES.includes(value) ? value : fallback;
+    return codes.includes(value) ? value : fallback;
 }
 // Перший запуск (мови ще не збережено): мова меню — перша з мов системи (navigator.languages,
 // за пріоритетом), що є серед підтримуваних; якщо жодної немає — англійська.
@@ -667,8 +674,8 @@ const state = {
     selectedVoiceURIByLang: (() => {
         // Голоси, обрані користувачем, зберігаються між сеансами — раніше вибір
         // жив лише до перезавантаження сторінки.
-        try { return Object.assign(Object.fromEntries(SUPPORTED_LANGUAGE_CODES.map(code => [code, null])), JSON.parse(readStored('reader_voices') || '{}')); }
-        catch (e) { return Object.fromEntries(SUPPORTED_LANGUAGE_CODES.map(code => [code, null])); }
+        try { return Object.assign(Object.fromEntries(TARGET_LANGUAGE_CODES.map(code => [code, null])), JSON.parse(readStored('reader_voices') || '{}')); }
+        catch (e) { return Object.fromEntries(TARGET_LANGUAGE_CODES.map(code => [code, null])); }
     })(),
     voiceChosenByUser: (() => {
         try { const value = JSON.parse(readStored('reader_voices_manual') || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch (e) { return {}; }
@@ -689,7 +696,7 @@ const state = {
     translationCache: {}, lastAskContext: "",
     pageInChapter: 0, totalPagesInChapter: 1, bookKey: null, suppressNextClick: false,
     ttsQueue: [], ttsIndex: 0, ttsPaused: false, ttsGen: 0, pdfZoom: 1, lastTapPoint: null, expandLevel: 0, lastWordNode: null,
-    targetLang: storedLanguage('reader_target_lang', 'uk'),
+    targetLang: storedLanguage('reader_target_lang', 'uk', TARGET_LANGUAGE_CODES),
     uiLang: storedLanguage('reader_ui_lang', systemUiLanguage()),
     speakSide: readStored('reader_speak_side') || 'original',
     lastGrammarSentence: '', lastAskParagraph: '', docChapters: null,
@@ -830,7 +837,7 @@ function loadVoices() {
     window.voicesRetryCount = 0;
     els.voiceSelect.innerHTML = '';
     // Показуємо мови книги (англійська/французька) + українську для озвучення перекладу.
-    const groups = Object.fromEntries(SUPPORTED_LANGUAGE_CODES.map(code => [code, t('voices' + code[0].toUpperCase() + code.slice(1))]));
+    const groups = Object.fromEntries(TARGET_LANGUAGE_CODES.map(code => [code, t('voices' + code[0].toUpperCase() + code.slice(1))]));
     for (const [code, title] of Object.entries(groups)) {
         const list = voices.filter(v => v.lang.toLowerCase().startsWith(code))
                            .sort((a, b) => voiceQualityScore(b) - voiceQualityScore(a));
@@ -853,7 +860,7 @@ function loadVoices() {
     // Автовибір найкращого голосу для кожної мови. Система часто підвантажує
     // якісні (серверні) голоси із запізненням, тому автовибір ПЕРЕГЛЯДАЄТЬСЯ, поки
     // користувач не зробив власний вибір: якщо з'явився кращий — беремо його.
-    SUPPORTED_LANGUAGE_CODES.forEach(code => {
+    TARGET_LANGUAGE_CODES.forEach(code => {
         if (state.voiceChosenByUser[code]) return;      // ручний вибір не чіпаємо
         const best = pickBestVoice(code, voices);
         if (!best) return;
@@ -1063,6 +1070,8 @@ const I18N = {
     voicesZh:       { uk: 'Китайська (спрощена)', en: 'Chinese (Simplified)', fr: 'Chinois (simplifié)', ru: 'Китайский (упрощённый)' },
     voicesKo:       { uk: 'Корейська',       en: 'Korean',         fr: 'Coréen',          ru: 'Корейский' },
     voicesHi:       { uk: 'Гінді',           en: 'Hindi',          fr: 'Hindi',           ru: 'Хинди' },
+    voicesDe:       { uk: 'Німецька',        en: 'German',         fr: 'Allemand',        ru: 'Немецкий' },
+    voicesEs:       { uk: 'Іспанська',       en: 'Spanish',        fr: 'Espagnol',        ru: 'Испанский' },
     voicesGa:       { uk: 'Ірландська',      en: 'Irish',          fr: 'Irlandais',       ru: 'Ирландский' },
     statsTitle:     { uk: 'Допомога під час читання', en: 'Reading help', fr: 'Aide à la lecture', ru: 'Помощь при чтении' },
     statsReading:   { uk: 'Прочитано без допомоги', en: 'Read without help', fr: 'Lu sans aide', ru: 'Прочитано без помощи' },
