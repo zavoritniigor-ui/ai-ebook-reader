@@ -280,6 +280,30 @@ c.js("recognition.final('one two'); els.askInput.value += ' (edited)'; recogniti
 check('20d a manual edit between cumulative finals is not destroyed (only the new words are added)',
       "els.askInput.value === 'Q: one two (edited) three'")
 
+# 21: restart-boundary replay. The next single-utterance session can hand back the tail of the previous utterance
+# (or the whole phrase) -- the reported "words are duplicated" on the tablet. Only overlaps of 2+ words right after a
+# session ended are dropped; single-word repeats (case 18/20c) and later deliberate repeats stay.
+reset(); open_ask(); tap('#mic-btn', True)
+say_final('пошукай в інтернеті'); pause(.1)
+say_final('в інтернеті яка сьогодні погода'); pause(.1)
+check('21 a new utterance that starts by replaying the end of the previous one is joined without the repeat',
+      "els.askInput.value === 'пошукай в інтернеті яка сьогодні погода' || els.askInput.value")
+say_final('Яка сьогодні погода.'); pause(.1)
+check('21b the whole previous phrase handed back again is dropped', "els.askInput.value === 'пошукай в інтернеті яка сьогодні погода' || els.askInput.value")
+reset(); open_ask(); tap('#mic-btn', True)
+say_final('пошукай в інтернеті'); pause(.1)
+wait_listening(); c.js("recognition.final('в інтернеті яка'); recognition.final('в інтернеті яка погода'); 1"); pause(.2)
+check('21c a replayed start is also kept out of the SAME session\'s later cumulative final',
+      "els.askInput.value === 'пошукай в інтернеті яка погода' || els.askInput.value")
+reset(); open_ask(); tap('#mic-btn', True)
+say_final('дуже добре'); pause(2.9)
+say_final('дуже добре'); pause(.1)
+check('21d the same phrase said again after a real pause (> 2.5 s) is kept', "els.askInput.value === 'дуже добре дуже добре' || els.askInput.value")
+c.js("stopDictation(); 1"); pause(.1); c.js("els.askInput.value = ''; 1"); tap('#mic-btn', True)
+say_final('дуже добре'); pause(.1)
+check('21e a NEW dictation never trims against the previous one', "els.askInput.value === 'дуже добре' || els.askInput.value")
+check('21f the trace names the dropped replay for on-device diagnosis', "sttTrace.some(x => x.event === 'skip-boundary-replay') || JSON.stringify(sttTrace.slice(-5))")
+
 # ===================== DESKTOP (mouse) =====================
 load(DESKTOP_UA, False)
 open_ask()
