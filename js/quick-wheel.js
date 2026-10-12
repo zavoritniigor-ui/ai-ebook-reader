@@ -73,19 +73,19 @@ const quickMenu = (() => {
     // 13 real actions, no empty slots
     // 'btn-print' and 'wheelFull' are virtual actions (no source element, handled specially in click handler)
     const allActions = [
-        ['wheelOpen', 'file-upload', '⌑'],
-        ['read', 'btn-tts', '▷'],
-        ['wheelStudy', 'btn-translate-mode', '文'],
-        ['wheelStats', 'reading-stats-button', '◴'],
-        ['tTheme', 'theme-select', '◐'],
-        ['tToc', 'toggle-toc-desktop', '☷'],
-        ['printPage', 'btn-print', '🖨'],
-        ['wheelInk', 'btn-ink', '✏'],
-        ['wheelRegion', 'btn-region', '◻'],
-        ['wheelVoices', 'btn-alt-voices', '♪'],
+        ['wheelOpen', 'file-upload', '📂'],
+        ['read', 'btn-tts', '🔊'],
+        ['wheelStudy', 'btn-translate-mode', '🎓'],
+        ['wheelStats', 'reading-stats-button', '📈'],
+        ['tTheme', 'theme-select', '🎨'],
+        ['tToc', 'toggle-toc-desktop', '📑'],
+        ['printPage', 'btn-print', '🖨️'],
+        ['wheelInk', 'btn-ink', '✏️'],
+        ['wheelRegion', 'btn-region', '✂️'],
+        ['wheelVoices', 'btn-alt-voices', '🎵'],
         ['wheelLevel', 'btn-lang-level', '📊'],
         ['wheelRules', 'btn-rules', '📚'],
-        ['wheelFull', 'wheelFull', '☰']
+        ['wheelFull', 'wheelFull', '⚙️']
     ];
 
     let wheelPosition = 2, velocity = 0, isDragging = false;
