@@ -777,7 +777,12 @@
         #rules-content { font-size: 15px; line-height: 1.5; }
         .rules-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
         .rules-toolbar select, .rules-search { min-height: 40px; font-size: 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--panel-bg); color: var(--text-color); padding: 0 8px; }
-        .rules-search { flex: 1; min-width: 0; }
+        .rules-scan { flex: 1; min-width: 0; min-height: 40px; font-size: 14px; font-weight: 600; border: 1px solid #198754; border-radius: 8px; background: rgba(25,135,84,.12); color: var(--text-color); cursor: pointer; }
+        .rules-scan:disabled { opacity: .6; cursor: progress; }
+        .rules-dot { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 8px; border-radius: 11px; background: #198754; color: #fff; font-size: 12px; font-weight: 700; vertical-align: middle; flex: none; }
+        .rules-topic { position: relative; }
+        .rules-topic .rules-dot { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin: 0; }
+        .rules-topic-found { padding-right: 44px; border-color: rgba(25,135,84,.55); }
         .rules-section { border: 1px solid var(--border-color); border-radius: 10px; margin: 8px 0; padding: 0 10px; }
         .rules-section > summary { cursor: pointer; font-weight: 600; padding: 10px 0; min-height: 24px; }
         .rules-topic { display: flex; flex-direction: column; align-items: flex-start; width: 100%; height: auto; box-sizing: border-box; text-align: left; background: transparent; border: none; border-top: 1px solid var(--border-color); padding: 10px 4px; min-height: 44px; color: var(--text-color); cursor: pointer; font-size: 15px; }
@@ -1508,7 +1513,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=d3e80fde852c"></script>
+    <script src="js/core.js?v=de3a747dcac4"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1531,7 +1536,7 @@
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=623c48f208b5"></script>
+    <script src="js/grammar-rules.js?v=380b1e6635a9"></script>
     <script src="js/ai-client.js?v=fc1b5ff27948"></script>
     <script src="js/practice-session.js?v=240bbcb9a08d"></script>
     <script src="js/practice-worksheet.js?v=bbcefde19020"></script>
