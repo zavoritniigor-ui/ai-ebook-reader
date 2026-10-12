@@ -140,9 +140,11 @@
         @media (min-width: 1181px) and (max-width: 1299px) {
             .field-cap { display: none; }
             .toolbar-group { padding-left: 3px; padding-right: 3px; }
-            #target-lang { max-width: 112px; }
+            /* Значки 🌍 🖥️ і кнопка 🔄 з'їли запас другого рядка: з ширшими шрифтами (CI) PDF-шапка на 1200px ставала третім рядком (139px). */
+            #target-lang { max-width: 96px; }
             #theme-select { max-width: 80px; }
-            #ui-lang { max-width: 64px; }
+            #ui-lang { max-width: 58px; }
+            #pdf-fit { max-width: 90px; }
         }
         .toolbar-group:first-child { padding-left: 0; }
 
