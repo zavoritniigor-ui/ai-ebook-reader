@@ -333,6 +333,11 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                     if (m.extras) html += m.extras;
                 } catch (e) {}
             }
+        } else if (isMultiWord) {
+            // Речення й фрази — лише через AI: машинний переклад не бачить контексту й дає неточний результат,
+            // тож без AI (ключ/мережа) чи за його помилки показуємо причину, а не «приблизний» переклад.
+            els.ttTranslation.textContent = !aiAvailable() ? t('sentenceNeedsAi') : (!navigator.onLine ? t('sentenceNeedsOnline') : t('sentenceAiFailed'));
+            translated = false;
         } else {
             try {
                 const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
@@ -653,6 +658,13 @@ function translatePanelPoint(e, root, { keepNative = false } = {}) {
 }
 els.askContent.addEventListener('click', e => translatePanelPoint(e, els.askContent));
 els.grammarContent.addEventListener('click', e => translatePanelPoint(e, els.grammarContent));
+// Вікно Правил: тап/клік по слову в теорії чи таблиці відмінювання теж перекладає його (раніше працювало лише виділення).
+// Керуючі елементи (теми, секції, картки збігів) лишаються клікабельними як були.
+const rulesContentEl = document.getElementById('rules-content');
+if (rulesContentEl) rulesContentEl.addEventListener('click', e => {
+    if (e.target.closest('.rules-match, summary, .rules-section-title, .rules-topic, .rules-back')) return;
+    translatePanelPoint(e, rulesContentEl);
+});
 
 // Будь-яка взаємодія з книгою — новий контекст: підказка, відкрита потім, уже не «належить» вікну Правил.
 els.mainArea.addEventListener('pointerdown', () => { state.tooltipFromRules = false; }, true);
