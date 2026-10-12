@@ -993,9 +993,11 @@
                ховаємо — вони з'їдали б цілий рядок висоти шапки. Вони показуються на телефоні й на великому екрані. */
             .group-caption { display: none; }
             .toolbar-group { padding-top: 0; }
-            #voice-select { max-width: 120px; }
+            /* 96px і відступи 4px: значок 🗣️ перед списком голосів забрав запас першого рядка, і з ширшими шрифтами (CI) шапка
+               планшета ставала третім рядком (211px). */
+            #voice-select { max-width: 96px; }
             .header-controls { row-gap: 6px; }
-            .toolbar-group { padding-left: 8px; padding-right: 8px; }
+            .toolbar-group { padding-left: 4px; padding-right: 4px; }
             .toolbar-group:first-child { padding-left: 0; }
             .toolbar-group:last-child { padding-right: 0; }
             .field-cap { font-size: 11.5px; }
