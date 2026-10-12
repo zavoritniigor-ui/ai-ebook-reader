@@ -161,6 +161,25 @@ async function exitApp() {
         if (document.visibilityState !== 'hidden') showToast(t('exitFallback'));
     }, 400);
 }
+// Кнопка 🔄 у шапці: перевіряє оновлення й, якщо воно є (чи вже скачане), одразу перезапускає застосунок у новій версії.
+let updateInProgress = false;
+async function updateApp() {
+    if (updateInProgress) return;
+    if (navigator.onLine === false) { showToast(t('updateOffline')); return; }
+    updateInProgress = true;
+    persistCriticalState();
+    let updated = updateBannerShown;
+    if (!updated) {
+        showToast(t('exitChecking'));
+        try { updated = await activatePendingSwUpdate(); } catch (e) {}
+    }
+    updateInProgress = false;
+    if (updated) {
+        showToast(t('exitUpdated'));
+        persistCriticalState();
+        setTimeout(() => location.reload(), 700);
+    } else showToast(t('updateLatest'));
+}
 function showToast(msg) {
     let toast = document.getElementById('reader-toast');
     if (!toast) { toast = document.createElement('div'); toast.id = 'reader-toast'; document.body.appendChild(toast); }
