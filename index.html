@@ -746,21 +746,21 @@
         #rules-panel.rules-sheet { left: 0; right: 0; top: auto; bottom: 0; margin: 0 auto; width: min(980px, 100vw); height: min(46vh, calc(100dvh - var(--rules-top, 0px) - 12px)); border-radius: 16px 16px 0 0; transform: translateY(105%); box-shadow: 0 -5px 25px rgba(0,0,0,0.22); }
         #rules-panel.rules-sheet.expanded { transform: none; }
         body.rules-inset #reader-pages { padding-bottom: calc(var(--rules-inset, 0px) + 24px); }
-        /* Закладка «Правила»: прикріплена до ПРАВОГО краю екрана (як закладка Practice), над язичком Граматики. Колір = стан пошуку:
-           зелений — знайдено, червоний — іде пошук / не вдалося, нейтральний — ще нічого не шукали. Відкрите вікно «підхоплює» її
-           за свій лівий край (--rules-tab-right), а натискання на неї швидко згортає вікно. Позицію рахує layoutRulesPanel(). */
-        .rules-tab { position: fixed; right: var(--rules-tab-right, 0px); bottom: var(--rules-tab-bottom, 124px); z-index: 10004; width: 44px; min-height: 112px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 6px;
-            border: 1px solid var(--border-color); border-right: 0; border-left: 3px solid var(--accent-color); border-radius: 14px 0 0 14px; background: var(--panel-bg); color: var(--text-color); box-shadow: -2px 2px 8px rgba(0,0,0,.2);
-            font-size: 12px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: right .4s cubic-bezier(.4,0,.2,1), bottom .4s cubic-bezier(.4,0,.2,1), background-color .5s; }
+        /* Закладка «Правила»: прямокутна кнопка на ЛІВОМУ краю екрана (праворуч лежать повзунок сторінок, ✦ і язичок Граматики). Колір =
+           стан пошуку: зелений — знайдено, червоний — іде пошук / не вдалося, нейтральний — ще нічого не шукали. Позицію (найнижчий
+           вільний проміжок між шапкою, кнопкою меню ☰, язичком «Запитай AI» та шторкою) рахує layoutRulesPanel(). */
+        .rules-tab { position: fixed; left: 0; bottom: var(--rules-tab-bottom, 124px); z-index: 10004; height: 40px; padding: 0 12px 0 10px; display: flex; flex-direction: row; align-items: center; gap: 6px;
+            border: 1px solid var(--border-color); border-left: 0; border-right: 4px solid var(--accent-color); border-radius: 4px; background: var(--panel-bg); color: var(--text-color); box-shadow: 2px 2px 8px rgba(0,0,0,.2);
+            font-size: 13px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: bottom .4s cubic-bezier(.4,0,.2,1), background-color .5s; }
         .rules-tab[hidden] { display: none; }
         .rules-tab { overflow: hidden; }
         .rules-tab:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
         .rules-tab-icon { font-size: 18px; line-height: 1; }
-        .rules-tab-text { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: .02em; }
+        .rules-tab-text { white-space: nowrap; letter-spacing: .02em; }
         .rules-tab-count { min-width: 22px; padding: 1px 5px; border-radius: 10px; background: #198754; color: #fff; font-size: 11px; text-align: center; }
         .rules-tab-count[hidden] { display: none; }
-        .rules-tab[data-state="ready"] { background: rgba(25,135,84,.22); border-color: rgba(25,135,84,.65); border-left-color: #198754; }
-        .rules-tab[data-state="running"], .rules-tab[data-state="failed"] { background: rgba(220,53,69,.18); border-color: rgba(220,53,69,.65); border-left-color: #dc3545; }
+        .rules-tab[data-state="ready"] { background: rgba(25,135,84,.22); border-color: rgba(25,135,84,.65); border-right-color: #198754; }
+        .rules-tab[data-state="running"], .rules-tab[data-state="failed"] { background: rgba(220,53,69,.18); border-color: rgba(220,53,69,.65); border-right-color: #dc3545; }
         #btn-rules[data-state="ready"] { background: rgba(25,135,84,.22); border-color: rgba(25,135,84,.65); }
         #btn-rules[data-state="running"] { animation: rules-blink 1s ease-in-out infinite; }
         @keyframes rules-blink { 50% { opacity: .45; } }
@@ -1563,7 +1563,7 @@
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=123e02998b40"></script>
+    <script src="js/grammar-rules.js?v=319e28a2d7b8"></script>
     <script src="js/ai-client.js?v=9e13a0174257"></script>
     <script src="js/practice-session.js?v=240bbcb9a08d"></script>
     <script src="js/practice-worksheet.js?v=bbcefde19020"></script>

@@ -233,7 +233,7 @@ check("39 the bookmark brings the same window back (same topic, same results) an
       "document.getElementById('rules-panel').classList.contains('expanded') && !document.getElementById('rules-tab').hidden && document.getElementById('rules-tab').getAttribute('aria-expanded') === 'true' && document.querySelectorAll('#rules-content .rules-match').length === 3")
 check("39b open window, portrait-width side panel: the bookmark is docked on the window's LEFT edge and the window is not covered",
       """(() => { const tb = document.getElementById('rules-tab').getBoundingClientRect(), p = document.getElementById('rules-panel').getBoundingClientRect();
-         return document.getElementById('rules-panel').classList.contains('rules-sheet') ? tb.right >= innerWidth - 1 : (Math.abs(tb.right - p.left) <= 2 || JSON.stringify({tb: tb.right, p: p.left})); })()""", timeout=3)
+         return document.getElementById('rules-panel').classList.contains('rules-sheet') ? (tb.left <= 1 && tb.bottom <= p.top + 1 || JSON.stringify({tl: tb.left, tb: tb.bottom, pt: p.top})) : (Math.abs(tb.right - p.left) <= 2 || JSON.stringify({tb: tb.right, p: p.left})); })()""", timeout=3)
 # translating FROM the rules window: a long-press selection in an example opens the popup; the window, its results and the
 # book highlights stay; a tap on the example still jumps to it in the book
 c.js("""(() => { window.__lookups = []; if (!window.__origHWS) { window.__origHWS = handleWordOrSelection; handleWordOrSelection = (t, ...r) => { __lookups.push(t); return __origHWS(t, ...r); }; }
@@ -247,10 +247,10 @@ check("39-tr2 ... and the rules window stays open with its results and the highl
 c.js("els.ttCloseBtn.click(); getSelection().removeAllRanges(); document.querySelectorAll('#rules-content .rules-match')[2].click(); 1"); time.sleep(0.4)
 check("39-tr3 a tap on an example still makes it the active one (jump to it in the book)", "document.querySelectorAll('#rules-content .rules-match')[2].classList.contains('active') && document.querySelectorAll('#rules-content .rules-match')[2].getAttribute('role') === 'button'")
 c.js("document.getElementById('rules-tab').click(); 1"); time.sleep(0.6)
-check("39c pressing the bookmark collapses the window at once (highlights and results stay); it sits on the right screen edge, green, above the Grammar handle and the ✦ launcher",
-      """(() => { const tab = document.getElementById('rules-tab'), r = tab.getBoundingClientRect(), g = document.getElementById('grammar-tab').getBoundingClientRect(), q = document.getElementById('qm-launcher').getBoundingClientRect(); const bg = getComputedStyle(tab).backgroundColor;
-         return !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && Math.abs(r.right - innerWidth) <= 1 && r.bottom <= g.top + 1 && r.bottom <= q.top + 1 && bg.includes('25, 135, 84') && !tab.hidden && tab.getAttribute('aria-expanded') === 'false'
-           || JSON.stringify({right: r.right, iw: innerWidth, bottom: r.bottom, gTop: g.top, bg}); })()""", timeout=3)
+check("39c pressing the bookmark collapses the window at once (highlights and results stay); it is a green rectangle on the LEFT screen edge, clear of the ☰ menu button and the Ask AI handle",
+      """(() => { const tab = document.getElementById('rules-tab'), r = tab.getBoundingClientRect(), m = document.getElementById('menu-handle').getBoundingClientRect(), a = document.getElementById('ask-tab').getBoundingClientRect(); const bg = getComputedStyle(tab).backgroundColor; const rad = parseFloat(getComputedStyle(tab).borderTopLeftRadius);
+         return !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && r.left <= 1 && r.width > r.height && rad <= 6 && (r.bottom <= a.top + 1 || r.top >= a.bottom - 1 || a.width === 0) && (r.top >= m.bottom - 1 || r.bottom <= m.top + 1) && bg.includes('25, 135, 84') && !tab.hidden && tab.getAttribute('aria-expanded') === 'false'
+           || JSON.stringify({left: r.left, w: r.width, h: r.height, rad, bottom: r.bottom, aTop: a.top, bg}); })()""", timeout=3)
 c.js("document.getElementById('rules-tab').click(); 1"); time.sleep(0.5)
 c.js("window.__slow = true; document.getElementById('rules-find').click(); 1")
 c.js("document.getElementById('rules-min').click(); 1")
@@ -261,10 +261,10 @@ check("41 ... which turns green when the answer arrives", "(() => { const p = do
 for (w, h, mobile) in ((820, 1180, True), (1180, 820, True), (1024, 768, True), (1000, 900, False)):
     c.call('Emulation.setDeviceMetricsOverride', width=w, height=h, deviceScaleFactor=1, mobile=mobile); time.sleep(0.8)
     c.js("(() => { document.getElementById('rules-panel').classList.remove('expanded'); document.body.classList.add('pdf-mode'); const sc = document.getElementById('pdf-scrubber'); sc.classList.add('available'); sc.style.height = '340px'; layoutRulesPanel(); return 1; })()"); time.sleep(0.8)
-    check("42-pre %dx%d: the Rules bookmark overlaps none of: page scrubber, ✦ launcher, Grammar handle, main menu" % (w, h),
+    check("42-pre %dx%d: the Rules bookmark (left edge) overlaps none of: ☰ menu button, Ask AI handle, main menu" % (w, h),
           """(() => { const t = document.getElementById('rules-tab').getBoundingClientRect(); const hit = id => { const e = document.getElementById(id), b = e && e.getBoundingClientRect(); return !!b && b.width > 0 && b.height > 0 && b.left < t.right && b.right > t.left && b.top < t.bottom && b.bottom > t.top; };
              const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
-             const bad = ['pdf-scrubber', 'qm-launcher', 'grammar-tab'].filter(hit); return (bad.length === 0 && t.top >= hb - 1 && t.bottom <= innerHeight + 1) || JSON.stringify({bad, t: [t.top, t.bottom], hb, ih: innerHeight}); })()""", timeout=3)
+             const bad = ['menu-handle', 'ask-tab'].filter(hit); return (bad.length === 0 && t.top >= hb - 1 && t.bottom <= innerHeight + 1) || JSON.stringify({bad, t: [t.top, t.bottom], hb, ih: innerHeight}); })()""", timeout=3)
     c.js("(() => { document.body.classList.remove('pdf-mode'); const sc = document.getElementById('pdf-scrubber'); sc.classList.remove('available'); sc.style.height = ''; layoutRulesPanel(); return 1; })()")
 c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False); time.sleep(0.8)
 
@@ -282,11 +282,12 @@ c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScale
 
 # interplay
 c.js("els.askPanel.classList.add('expanded'); 1"); time.sleep(0.5)
+check("44 opening 'Ask AI' hides the rules window and its bookmark (Ask slides over the left edge) but keeps the highlights", "!document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && document.getElementById('rules-tab').hidden")
+c.js("els.askPanel.classList.remove('expanded'); 1"); time.sleep(0.5)
+check("44c the bookmark is back after Ask AI closes", "!document.getElementById('rules-tab').hidden")
 c.js("els.grammarPanel.classList.add('expanded'); 1"); time.sleep(0.5)
-check("44b opening Grammar hides the rules bookmark (they share the right edge)", "document.getElementById('rules-tab').hidden")
+check("44b Grammar slides over the RIGHT edge and does not hide the left-edge bookmark", "!document.getElementById('rules-tab').hidden")
 c.js("els.grammarPanel.classList.remove('expanded'); 1"); time.sleep(0.5)
-check("44c the bookmark is back after Grammar closes", "!document.getElementById('rules-tab').hidden")
-check("44 opening 'Ask AI' hides the rules window but keeps its highlights and the pill", "!document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && !document.getElementById('rules-tab').hidden")
 c.js("els.askPanel.classList.remove('expanded'); document.getElementById('btn-rules').click(); 1"); time.sleep(0.5)
 c.js("els.grammarPanel.classList.add('expanded'); 1"); time.sleep(0.5)
 check("45 opening 'Grammar' hides the rules window too; opening rules closes Grammar and Ask", "!document.getElementById('rules-panel').classList.contains('expanded')")
