@@ -34,6 +34,32 @@ function traceStt(event, data) {
     sttTrace.push(Object.assign({ t: Math.round(performance.now()), event }, data || {}));
     if (sttTrace.length > 80) sttTrace.shift();
 }
+// Restart-boundary replay (Android): every utterance is its own session and the next session starts at once, but the
+// recognizer can hand the tail of the PREVIOUS utterance back as the start of the new one ("пошукай в інтернеті" ->
+// "в інтернеті яка погода"), or the whole phrase again. Decided on a session's FIRST final, shortly after the previous
+// session ended: the longest exact overlap (>= 2 words, <= 32) between what earlier sessions typed and the start of the
+// new result is dropped -- from that final and from the session's later (cumulative) finals alike; a whole repeated
+// phrase of 2+ words too. A single repeated word across utterances ("ні" … "ні") is kept: it is ordinary speech, and
+// repetition INSIDE one utterance ("дуже дуже добре") never reaches this check.
+const DICTATION_REPLAY_WINDOW_MS = 2500, DICTATION_REPLAY_MAX_WORDS = 32;
+const dictationBoundary = { heard: '', endedAt: 0 };
+const dictationNorm = s => s.toLocaleLowerCase().replace(/[\s.,!?;:…"'«»-]+/g, ' ').trim();
+function dictationWords(text) { return text.split(/\s+/).filter(Boolean).map(w => ({ w, n: dictationNorm(w) })).filter(x => x.n); }
+// How many leading words of `text` replay the end of `base` (0 = none).
+function dictationReplayWords(base, text) {
+    const prev = dictationWords(base).slice(-DICTATION_REPLAY_MAX_WORDS), next = dictationWords(text);
+    for (let k = Math.min(prev.length, next.length); k >= 1; k--) {
+        let same = true;
+        for (let j = 0; j < k && same; j++) same = prev[prev.length - k + j].n === next[j].n;
+        if (same) return k >= 2 ? k : 0;   // one shared word ("ні" … "ні") is ordinary speech, not a replay
+    }
+    return 0;
+}
+function dictationDropWords(base, text, k) {
+    const next = dictationWords(text), prev = dictationWords(base).slice(-k);
+    if (next.length < k || prev.length < k || next.slice(0, k).some((x, j) => x.n !== prev[j].n)) return text;
+    return next.slice(k).map(x => x.w).join(' ');
+}
 function updateDictationUI(interim = '') {
     els.micBtn.classList.toggle('recording', dictation.wanted);
     els.micBtn.textContent = dictation.wanted ? '■' : '🎤';
@@ -95,11 +121,16 @@ function startDictationSession() {
     const current = () => generation === dictation.generation && recognition === session && (dictation.wanted || dictation.finishing) && !document.hidden;
     session.lang = els.micLang.value; session.continuous = !dictationSingleUtterance; session.interimResults = true;
     const committed = new Set(); let hadFinal = false;
+    let dictationSessionHeard = '';
     // Single-utterance sessions: the engine can still emit a SECOND final in the same session whose text repeats or
     // extends the first (cumulative "пошукай" -> "пошукай в інтернеті"). One session = one utterance, so such a
     // result REPLACES what this session already typed instead of being appended. Desktop (continuous) sessions
     // legitimately produce separate finals, so this only applies to dictationSingleUtterance.
     let sessionTyped = null;   // { heard, inserted }
+    // What EARLIER sessions of this dictation typed, frozen for this session (see dictationReplayWords above).
+    // The time check happens when the FIRST final arrives (the session itself starts immediately after the previous one).
+    const replayBase = dictationBoundary.heard, replayEndedAt = dictationBoundary.endedAt;
+    let replayK = null;
     const cmp = s => s.toLocaleLowerCase().replace(/[\s.,!?;:…"'«»-]+/g, ' ').trim();
     session.onresult = e => {
         traceStt('result', { session: id, stale: !current(), resultIndex: e.resultIndex,
@@ -107,8 +138,18 @@ function startDictationSession() {
         if (!current()) return;
         let interim = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
-            const result = e.results[i], text = result[0]?.transcript?.trim();
+            const result = e.results[i];
+            let text = result[0]?.transcript?.trim();
             if (!text) continue;
+            if (result.isFinal && dictationSingleUtterance && replayBase) {
+                if (replayK === null) replayK = performance.now() - replayEndedAt <= DICTATION_REPLAY_WINDOW_MS ? dictationReplayWords(replayBase, text) : 0;
+                if (replayK) {
+                    const fresh = dictationDropWords(replayBase, text, replayK);
+                    if (fresh !== text) traceStt('skip-boundary-replay', { session: id, i, text, kept: fresh });
+                    text = fresh;
+                    if (!text) { committed.add(i); hadFinal = true; dictation.emptyEnds = 0; continue; }
+                }
+            }
             if (result.isFinal) {
                 if (committed.has(i)) continue;
                 committed.add(i); hadFinal = true; dictation.emptyEnds = 0;
@@ -129,6 +170,7 @@ function startDictationSession() {
                 const inserted = (value && !/\s$/.test(value) ? ' ' : '') + add;
                 els.askInput.value = value + inserted;
                 sessionTyped = { heard: text, inserted };
+                dictationSessionHeard = text;
                 els.askInput.dispatchEvent(new Event('input', { bubbles: true }));
             } else interim += (interim ? ' ' : '') + text;
         }
@@ -148,6 +190,8 @@ function startDictationSession() {
         traceStt('end', { session: id, stale: !current() });
         if (!current()) return;
         recognition = null;
+        if (dictationSessionHeard) dictationBoundary.heard = (dictationBoundary.heard + ' ' + dictationSessionHeard).trim().split(/\s+/).slice(-DICTATION_REPLAY_MAX_WORDS).join(' ');
+        if (hadFinal) dictationBoundary.endedAt = performance.now();
         if (!dictation.wanted) { dictation.finishing = false; clearTimeout(dictation.finishTimer); settleDictationFinish(); updateDictationUI(); return; }
         dictation.emptyEnds = hadFinal ? 0 : dictation.emptyEnds + 1;
         // Broken engines must not produce an endless permission/start loop.
@@ -171,7 +215,9 @@ function toggleDictation(e) {
     if (dictation.wanted) { stopDictation(true); return; }
     if (!SpeechRecognitionCtor || !micSecureOk || document.hidden) return;
     if (dictation.finishing) stopDictation();
-    dictation.wanted = true; dictation.emptyEnds = 0; startDictationSession();
+    dictation.wanted = true; dictation.emptyEnds = 0;
+    dictationBoundary.heard = ''; dictationBoundary.endedAt = 0;   // a new dictation never trims against an old one
+    startDictationSession();
 }
 if (!SpeechRecognitionCtor || !micSecureOk) els.micBtn.style.display = 'none';
 els.micLang.addEventListener('change', () => stopDictation());
