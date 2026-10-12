@@ -85,7 +85,17 @@ def center(selector, index=0):
 
 
 def click(selector, index=0):
+    # Root cause of this suite's rare CI failures: right after Practice opens, its panel is still sliding ~80px down for
+    # ~300ms (it follows the main menu as the menu reappears), so a click measured at T0 pressed the button and released
+    # over the row below it -- the click then landed on .practice-section. Wait until the control has stopped moving.
     pos = center(selector, index)
+    deadline = time.time() + 3
+    while time.time() < deadline:
+        time.sleep(0.08)
+        again = center(selector, index)
+        if again and pos and abs(again['x'] - pos['x']) < 0.5 and abs(again['y'] - pos['y']) < 0.5:
+            break
+        pos = again
     assert pos and pos['w'] > 0, ('not visible', selector, pos)
     mouse_click(pos['x'], pos['y'])
     return pos
