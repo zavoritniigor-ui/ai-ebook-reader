@@ -240,6 +240,9 @@ jobs:
           echo "Running exit_update_browser.py..."
           python3 -u tests/exit_update_browser.py
 
+          echo "Running pdf_scrubber_collapse_browser.py..."
+          python3 -u tests/pdf_scrubber_collapse_browser.py
+
           echo "Running menu_labels_browser.py..."
           python3 -u tests/menu_labels_browser.py
 

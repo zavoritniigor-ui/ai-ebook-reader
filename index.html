@@ -1128,6 +1128,11 @@
         body.pdf-mode #pdf-scrubber.available { display: block; }
         body.ink-mode #pdf-scrubber, body.region-mode #pdf-scrubber { transition: right 0.3s, opacity 0.3s;  display: none; }
         #pdf-scrubber:hover, #pdf-scrubber:focus-within { opacity: 1; }
+        /* Згорнутий стан: лише овальна «пігулка» з номером сторінки — повзунок прихований, тож випадковий дотик чи скрол не
+           перекине читача на сотню сторінок уперед. Тап по пігулці розгортає повзунок; за кілька секунд простою він згортається знову. */
+        #pdf-scrubber.collapsed { padding: 6px 2px; cursor: pointer; }
+        #pdf-scrubber.collapsed #pdf-page-range { display: none; }
+        #pdf-scrubber.collapsed output { padding: 2px 0; }
         #pdf-scrubber output { font-size: 12px; display: block; }
         #pdf-page-range { writing-mode: vertical-lr; direction: ltr; width: 44px; height: min(42vh, 360px); touch-action: none; }
         #crop-dialog { position: fixed; inset: 0; margin: auto; width: min(680px, calc(100vw - 24px));
@@ -1334,7 +1339,7 @@
                 <p data-i18n="welcome">Натисніть «Відкрити», щоб завантажити книгу (EPUB, PDF або TXT).</p>
             </div></div>
             
-            <div id="pdf-scrubber"><output id="pdf-page-preview">1</output><input id="pdf-page-range" aria-label="Сторінка PDF" type="range" min="1" max="1" value="1" step="1"></div>
+            <div id="pdf-scrubber" class="collapsed" role="group" tabindex="0" aria-label="Сторінка PDF"><output id="pdf-page-preview">1</output><input id="pdf-page-range" aria-label="Сторінка PDF" type="range" min="1" max="1" value="1" step="1"></div>
             <div id="word-tooltip">
                 <div class="tt-header">
                     <div class="tt-original-row">
@@ -1546,7 +1551,7 @@
     <script src="js/pdf-outline.js?v=97d934db97c6"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
     <script src="js/pdf-continuous.js?v=ee42c36e7287"></script>
-    <script src="js/pdf-render.js?v=7bc44e26dd09"></script>
+    <script src="js/pdf-render.js?v=8904e27d5c39"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/quick-wheel.js?v=2a3208030884"></script>
