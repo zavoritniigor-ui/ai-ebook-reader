@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: /api/library
-// Тонкий проксі до безкоштовної бібліотеки Project Gutenberg (через каталог Gutendex), бо gutenberg.org не віддає CORS-заголовків,
-// а CSP застосунку дозволяє лише власний origin. НЕ відкритий проксі: сервер сам складає адреси лише до двох фіксованих хостів
+// Тонкий проксі до безкоштовної бібліотеки Project Gutenberg (каталог Gutendex + офіційне дзеркало gutenberg.pglaf.org), бо вони не віддають CORS,
+// а CSP застосунку дозволяє лише власний origin. НЕ відкритий проксі: сервер сам складає адреси лише до двох фіксованих хостів (gutendex.com, gutenberg.pglaf.org)
 // із числових id та дозволених параметрів пошуку.
 //   ?op=search&q=<text>&lang=<fr|en|uk|ru|...>&topic=<word>&page=<n>  -> стислий JSON каталогу
 //   ?op=file&id=<number>                                              -> EPUB книги
@@ -23,7 +23,8 @@ async function upstream(url, accept, signal) {
 export async function onRequestGet({ request }) {
     const url = new URL(request.url);
     const op = url.searchParams.get('op');
-    const signal = AbortSignal.timeout(25000);
+    // Каталог Gutendex на холодний (ще не кешований) запит іноді відповідає майже хвилину — даємо йому час; далі відповідь кешується.
+    const signal = AbortSignal.timeout(55000);
     try {
         if (op === 'search') {
             const q = new URL('https://gutendex.com/books/');
@@ -46,9 +47,16 @@ export async function onRequestGet({ request }) {
         if (op === 'file' || op === 'cover') {
             const id = url.searchParams.get('id') || '';
             if (!/^\d{1,8}$/.test(id)) return json({ error: 'bad id' }, 400);
-            const target = op === 'file' ? `https://www.gutenberg.org/ebooks/${id}.epub3.images` : `https://www.gutenberg.org/cache/epub/${id}/pg${id}.cover.medium.jpg`;
-            const res = await upstream(target, op === 'file' ? 'application/epub+zip' : 'image/jpeg', signal);
-            if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
+            // Офіційне дзеркало Gutenberg: www.gutenberg.org з хмарних IP часто віддає 504, дзеркало відповідає за секунди.
+            const targets = op === 'file'
+                ? [`https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}-images-3.epub`, `https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.epub`]
+                : [`https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.cover.medium.jpg`];
+            let res = null;
+            for (const target of targets) {
+                res = await upstream(target, op === 'file' ? 'application/epub+zip' : 'image/jpeg', signal);
+                if (res.ok) break;
+            }
+            if (!res || !res.ok) return json({ error: 'upstream', status: res ? res.status : 0 }, 502);
             return new Response(res.body, { status: 200, headers: {
                 'content-type': op === 'file' ? 'application/epub+zip' : 'image/jpeg',
                 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
