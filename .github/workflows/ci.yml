@@ -237,6 +237,9 @@ jobs:
           echo "Running sentence_ai_only_browser.py..."
           python3 -u tests/sentence_ai_only_browser.py
 
+          echo "Running library_browser.py..."
+          python3 -u tests/library_browser.py
+
           echo "Running exit_update_browser.py..."
           python3 -u tests/exit_update_browser.py
 

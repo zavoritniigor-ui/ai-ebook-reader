@@ -97,8 +97,9 @@ check('overlapping target links rejected',"validateAlignment('a cat sleeps','к�
 check('panel translation retains string contract',"(async()=>{const old=callAI;callAI=async()=> 'Bonjour';const r=await aiTranslateText('Hello','en');callAI=old;return r==='Bonjour'})()")
 # No alignment payload => plain translation; rejected JSON uses existing fallback.
 js("clearAlignment();state.translationCache={};callAI=async()=>'{broken';handleWordOrSelection('A new sentence. ',100,200)");settle()
-# A sentence is translated by AI only (no machine fallback: it has no context), so a broken reply shows the AI-failure notice.
-check('malformed alignment falls back safely',"activeAlignment===null && els.ttTranslation.textContent===t('sentenceAiFailed')")
+# A sentence is translated by AI only online (no machine fallback: it has no context); after a broken reply the on-device translator
+# answers, and without it the AI-failure notice is shown.
+check('malformed alignment falls back safely',"activeAlignment===null && [t('sentenceAiFailed'), '⌂'].some(x => els.ttTranslation.textContent.includes(x))")
 # The same mapping resolves live PDF text ranges after a 300% render.
 pdf=base64.b64encode(pdf_bytes()).decode()
 js(f"(async()=>{{state.format='pdf';state.bookKey='learning-pdf';state.pdfScale=3;state.pdfFit='free';document.body.classList.add('pdf-mode');await initPdf(new File([Uint8Array.from(atob('{pdf}'),c=>c.charCodeAt(0))],'fixture.pdf'))}})()")
