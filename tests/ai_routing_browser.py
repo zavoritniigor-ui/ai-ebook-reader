@@ -24,7 +24,7 @@ window.fetch = async (url, options = {}) => {
   const provider = a.includes('api.openai.com') ? 'openai' : a.includes('api.groq.com') ? 'groq' : a.includes('generativelanguage.googleapis.com') ? 'gemini' : null;
   if (!provider) return originalFetch(url, options);
   __calls.push(provider);
-  const text = String(options.body || '').includes('alignment') ? '{"translation":"зелене яблуко","alignment":[]}' : '{"direct":"груша","context":null}';
+  const text = String(options.body || '').includes('alignment') ? '{"translation":"зелене яблуко","alignment":[]}' : (provider === 'openai' ? '{"direct":"груша точна","context":null}' : '{"direct":"груша","context":null}');
   return new Response(JSON.stringify(provider === 'openai' ? {status:'completed', output:[{type:'message', role:'assistant', content:[{type:'output_text', text}]}]}
     : provider === 'groq' ? {choices:[{message:{content:text}}]} : {candidates:[{content:{parts:[{text}]}}]}));
 };
@@ -104,11 +104,12 @@ for kind in ('mousePressed', 'mouseReleased'):
 check("11 a tapped word shows the on-device translation at once (before the AI answers), marked ⌂",
       "els.ttTranslation.textContent.includes('ЛОКАЛЬНО pomme') && els.ttTranslation.textContent.includes('⌂')", timeout=3)
 check("12 the local model was created inside the tap's user activation (what 'downloadable' requires)", "__local.created === 1 && __local.activeAtCreate === true")
-check("13 the AI (Groq by routing) answer then REPLACES it: translation + ⚡, no ⌂ left",
-      "els.ttTranslation.textContent.includes('груша') && els.ttTranslation.textContent.includes('⚡') && !els.ttTranslation.textContent.includes('ЛОКАЛЬНО')", timeout=8)
+check("13 the AI answer (Groq ⚡, then OpenAI 🧠) then REPLACES it: translation + an AI mark, no ⌂ left",
+      "els.ttTranslation.textContent.includes('груша') && /⚡|🧠/.test(els.ttTranslation.textContent) && !els.ttTranslation.textContent.includes('ЛОКАЛЬНО')", timeout=8)
 check("14 the instant layer really came first: local shown, then AI, in that order, with a clear gap",
       "(() => { const tl = __timeline; const li = tl.findIndex(x => x[1].includes('ЛОКАЛЬНО')); const ai = tl.findIndex(x => x[1].includes('груша')); return li !== -1 && ai > li && tl[ai][0] - tl[li][0] >= 300 || JSON.stringify(tl); })()")
-check("15 the request went to Groq (routing), not to the active Gemini", "JSON.stringify(__calls) === JSON.stringify(['groq']) || JSON.stringify(__calls)")
+check("15 translation asked Groq (fast) AND OpenAI (careful) at once, never the active Gemini", "JSON.stringify([...__calls].sort()) === JSON.stringify(['groq', 'openai']) || JSON.stringify(__calls)")
+check("15b OpenAI's careful answer replaced Groq's (🧠), the word shows the OpenAI translation", "els.ttTranslation.textContent.includes('груша точна') && els.ttTranslation.textContent.includes('🧠') || els.ttTranslation.textContent", timeout=6)
 
 # sentence/multi-word: no local translator
 c.js("els.ttCloseBtn.click(); __local.created = 0; __local.translated.length = 0; state.translationCache = {}; handleWordOrSelection('une pomme verte', 300, 300, null); 1")
