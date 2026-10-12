@@ -55,6 +55,6 @@ export async function onRequestGet({ request }) {
         }
         return json({ error: 'unknown op' }, 400);
     } catch (e) {
-        return json({ error: 'fetch failed' }, 502);
+        return json({ error: 'fetch failed', detail: String(e && e.name || 'error') + ': ' + String(e && e.message || '').slice(0, 120) }, 502);
     }
 }
