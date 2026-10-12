@@ -642,6 +642,18 @@ function storedLanguage(key, fallback) {
     const value = readStored(key);
     return SUPPORTED_LANGUAGE_CODES.includes(value) ? value : fallback;
 }
+// Перший запуск (мови ще не збережено): мова меню — перша з мов системи (navigator.languages,
+// за пріоритетом), що є серед підтримуваних; якщо жодної немає — англійська.
+function systemUiLanguage() {
+    try {
+        const prefs = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language];
+        for (const tag of prefs) {
+            const code = String(tag || '').toLowerCase().split(/[-_]/)[0];
+            if (SUPPORTED_LANGUAGE_CODES.includes(code)) return code;
+        }
+    } catch (e) { /* navigator недоступний — типова мова */ }
+    return 'en';
+}
 const state = {
     format: null, currentIndex: 0, totalPages: 0,
     // Масштаб PDF, розмір шрифту й режим "Вивчення" переживають перезапуск застосунку —
@@ -678,7 +690,7 @@ const state = {
     pageInChapter: 0, totalPagesInChapter: 1, bookKey: null, suppressNextClick: false,
     ttsQueue: [], ttsIndex: 0, ttsPaused: false, ttsGen: 0, pdfZoom: 1, lastTapPoint: null, expandLevel: 0, lastWordNode: null,
     targetLang: storedLanguage('reader_target_lang', 'uk'),
-    uiLang: storedLanguage('reader_ui_lang', 'uk'),
+    uiLang: storedLanguage('reader_ui_lang', systemUiLanguage()),
     speakSide: readStored('reader_speak_side') || 'original',
     lastGrammarSentence: '', lastAskParagraph: '', docChapters: null,
     // One-shot: set only by a PDF drag that spans a bilingual page's two columns, consumed (and
