@@ -761,6 +761,9 @@
         .rules-tab-count[hidden] { display: none; }
         .rules-tab[data-state="ready"] { background: rgba(25,135,84,.22); border-color: rgba(25,135,84,.65); border-left-color: #198754; }
         .rules-tab[data-state="running"], .rules-tab[data-state="failed"] { background: rgba(220,53,69,.18); border-color: rgba(220,53,69,.65); border-left-color: #dc3545; }
+        #btn-rules[data-state="ready"] { background: rgba(25,135,84,.22); border-color: rgba(25,135,84,.65); }
+        #btn-rules[data-state="running"] { animation: rules-blink 1s ease-in-out infinite; }
+        @keyframes rules-blink { 50% { opacity: .45; } }
         .rules-tab[data-state="running"] .rules-tab-icon { animation: rules-pulse 1s ease-in-out infinite; }
         @keyframes rules-pulse { 50% { opacity: .35; transform: scale(.8); } }
         .rules-table-wrap { overflow-x: auto; margin: 6px 0 10px; }
@@ -1537,7 +1540,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=157d5ca28dbd"></script>
+    <script src="js/core.js?v=6276be51e98d"></script>
     <script src="js/lang-detect.js?v=4c411a17b2b8"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1560,7 +1563,7 @@
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=dd77e501db2a"></script>
+    <script src="js/grammar-rules.js?v=123e02998b40"></script>
     <script src="js/ai-client.js?v=9e13a0174257"></script>
     <script src="js/practice-session.js?v=240bbcb9a08d"></script>
     <script src="js/practice-worksheet.js?v=bbcefde19020"></script>

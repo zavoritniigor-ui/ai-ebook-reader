@@ -246,6 +246,9 @@ jobs:
           echo "Running pdf_scrubber_collapse_browser.py..."
           python3 -u tests/pdf_scrubber_collapse_browser.py
 
+          echo "Running rules_background_scan_browser.py..."
+          python3 -u tests/rules_background_scan_browser.py
+
           echo "Running menu_labels_browser.py..."
           python3 -u tests/menu_labels_browser.py
 

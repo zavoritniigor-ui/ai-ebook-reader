@@ -20,7 +20,7 @@ const rulesSearchCache = new Map(), rulesExplainCache = new Map();
 // Search the SELECTION (one or two sentences the learner selected in the book): ONE request over the whole catalogue ->
 // every topic that occurs in those sentences, with its examples. A whole page was too much for one reliable answer.
 // Topics with examples get a green dot in the tree; opening one paints those examples without a new request.
-const RULES_SCAN_MAX_PER_TOPIC = 6, RULES_SCAN_MAX_CHARS = 1200;
+const RULES_SCAN_MAX_PER_TOPIC = 6, RULES_SCAN_MAX_CHARS = 2500;   // a long sentence or a whole paragraph
 let rulesScan = null;   // { lang, targetLang, sourceText, flat, status: 'running'|'ready'|'none'|'failed', found: Map(topicId -> matches result) }
 const RULES_CACHE_MAX = 60;
 
@@ -389,6 +389,7 @@ function updateRulesTab() {
     const n = rulesState.matches.length;
     const open = rulesOpen();
     tab.dataset.state = st;
+    const headerBtn = document.getElementById('btn-rules'); if (headerBtn) headerBtn.dataset.state = st;
     tab.setAttribute('aria-expanded', String(open));
     // Граматика/Практика лежать на тому самому краї; відкрите вікно на вузькому екрані не лишає місця збоку — там є ⌄ у заголовку.
     tab.hidden = els.grammarPanel.classList.contains('expanded') || !!(practice && !practice.hidden && practice.dataset.mode === 'expanded') || tab.dataset.offscreen === '1';
@@ -726,8 +727,24 @@ async function explainRuleMatch(m, topic, question, out, isCurrent) {
     } catch (err) { if (isCurrent()) out.textContent = t('rulesFailed'); }
 }
 
-document.getElementById('btn-rules').onclick = () => { if (rulesOpen()) minimizeRulesPanel(); else openRulesPanel({ keep: true }); };
+// Кнопка «Правила» (шапка, закладка, колесо) з виділеним реченням/абзацом: ПЕРШИЙ тап лише запускає пошук у фоні — вікно не відкривається,
+// відкрите вікно перекладу не переривається; коли кнопка/закладка стає зеленою, ДРУГИМ тапом користувач сам відкриває вікно.
+function rulesButtonPress() {
+    if (rulesOpen()) { minimizeRulesPanel(); return; }
+    const flat = aiAvailable() && navigator.onLine ? rulesSelectionSource({ selectionOnly: true }) : null;
+    if (flat) {
+        const text = flat.text.replace(/\s+/g, ' ').trim();
+        if (rulesScan && rulesScan.sourceText === text && rulesScan.status === 'running') { showToast(t('rulesBgWait')); return; }
+        if (!rulesScan || rulesScan.sourceText !== text) {
+            runRuleSelectionScan();
+            showToast(t('rulesBgStarted'));
+            return;
+        }
+    }
+    openRulesPanel({ keep: true });
+}
+document.getElementById('btn-rules').onclick = rulesButtonPress;
 document.getElementById('rules-close').onclick = closeRulesPanel;
 document.getElementById('rules-min').onclick = minimizeRulesPanel;
-document.getElementById('rules-tab').onclick = () => { if (rulesOpen()) minimizeRulesPanel(); else openRulesPanel({ keep: true }); };
+document.getElementById('rules-tab').onclick = rulesButtonPress;
 layoutRulesPanel();
