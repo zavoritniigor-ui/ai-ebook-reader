@@ -113,7 +113,7 @@ jobs:
           sudo -n sysctl -q -w kernel.core_pattern=core || true
           ulimit -c 0
           mkdir -p /tmp/pdf-ux-test-profile
-          $CHROME_BIN --headless --enable-logging=stderr --v=0 --lang=uk --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
+          $CHROME_BIN --headless --enable-logging=stderr --v=0 --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
           CHROME_PID=$!
           
           # Ensure cleanup of background processes when this step exits (success or failure)

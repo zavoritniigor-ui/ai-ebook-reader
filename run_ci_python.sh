@@ -5,7 +5,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 > http_server.log 2>&1 &
 SERVER_PID=$!
 
 mkdir -p /tmp/pdf-ux-test-profile
-google-chrome --headless --lang=uk --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
+google-chrome --headless --remote-debugging-port=9222 --user-data-dir=/tmp/pdf-ux-test-profile about:blank > chrome.log 2>&1 &
 CHROME_PID=$!
 
 trap "kill $SERVER_PID $CHROME_PID 2>/dev/null || true" EXIT

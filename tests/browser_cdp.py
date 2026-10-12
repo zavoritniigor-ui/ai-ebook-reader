@@ -13,6 +13,10 @@ class CDP:
                 self.call('Runtime.evaluate', expression='1')
                 time.sleep(0.25)
                 self.call('Runtime.evaluate', expression='1')
+                # The app now picks its menu language from navigator.languages; the suites assert the Ukrainian
+                # UI, so every test browser reports a Ukrainian system language regardless of the Chrome flags/host.
+                ua = self.call('Runtime.evaluate', expression='navigator.userAgent', returnByValue=True)['result']['value']
+                self.call('Emulation.setUserAgentOverride', userAgent=ua, acceptLanguage='uk-UA,uk')
                 return
             except (ConnectionError, OSError) as e:
                 last = e
