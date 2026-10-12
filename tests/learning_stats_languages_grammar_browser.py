@@ -68,6 +68,21 @@ check('tokenization handles punctuation, compounds, contractions, and OCR noise'
  return vocabularyTokens(text,'fr').map(token=>token.word).join('|')===`Hello|state-of-the-art|l'amour|aujourd’hui|porte-monnaie`;
 })()""")
 check('known and unknown CEFR values remain conservative', "cachedCefrLevel('cat','en')==='A1'&&cachedCefrLevel('xylophonic','en')==='unknown'")
+check('simple inflections find the lexicon level (cats -> cat, books -> book), unknown words stay unknown', "lexiconCefrLevel('cats','en')==='A1'&&lexiconCefrLevel('books','en')==='A1'&&lexiconCefrLevel('xylophonics','en')==='unknown'")
+check('understanding by level: every page word is counted under its level, help lowers that level only', """(()=>{
+ state.currentIndex=9;els.pages.innerHTML='<div class="pdf-text-layer"><span>cat book cats although ambiguous xylophonic</span></div>';
+ delete learningStatsBook.scopes['pdf:9'];
+ recordHelpForSpan(__wordRange(0,1),'word_tap');
+ const L=calculateCurrentPageStats().levels;
+ return L.A1.total===3&&L.A1.helped===1&&Math.round(L.A1.readingPercent)===67&&L.B1.total===1&&L.B1.readingPercent===100
+   &&L.C1.total===1&&L.unknown.total===1&&L.A2.total===0||JSON.stringify(L);
+})()""")
+check('the popover lists A1..C2 rows with % and word count, empty levels as a dash', """(()=>{
+ updateReadingStatsNow();const rows=[...document.querySelectorAll('#reading-stats-cefr-list .cefr-row')];
+ const row=l=>rows.find(r=>r.dataset.level===l);
+ return rows.length===7&&row('A1').querySelector('.cefr-pct').textContent==='67%'&&row('A1').querySelector('.cefr-count').textContent.startsWith('3 ')
+   &&row('A2').querySelector('.cefr-pct').textContent==='—'&&row('B1').querySelector('.cefr-pct').textContent==='100%'||rows.map(r=>r.textContent).join('|');
+})()""")
 check('independent percentage follows its own occurrence formula', """(()=>{
  __showStatsPage(8,8,'eight');delete learningStatsBook.scopes['pdf:8'];__help(0,1,'word_tap');
  const s=calculateCurrentPageStats();return s.helpPercent===12.5&&s.readingPercent===87.5&&s.independent===7;

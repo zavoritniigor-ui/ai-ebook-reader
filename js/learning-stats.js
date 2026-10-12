@@ -211,11 +211,34 @@ function currentPageVocabulary() {
     return { model, scope, words };
 }
 
+// Рівень слова за локальним словником; проста словозміна (books → book, parlées → parlé) теж знаходиться.
+// Невідоме слово лишається 'unknown' — рівень ніколи не вгадується.
+const CEFR_SUFFIXES = {
+    en: [['ies', 'y'], ['ves', 'f'], ['es', ''], ['s', ''], ['ied', 'y'], ['ed', 'e'], ['ed', ''], ['ing', 'e'], ['ing', ''], ['ly', ''], ["'s", '']],
+    fr: [['es', ''], ['s', ''], ['x', ''], ['e', ''], ['ée', 'er'], ['ées', 'er'], ['és', 'er'], ['é', 'er']]
+};
+function lexiconCefrLevel(normalized, lang) {
+    const lexicon = CEFR_WORDS[lang];
+    if (!lexicon || !normalized) return 'unknown';
+    if (lexicon[normalized]) return lexicon[normalized];
+    for (const [suffix, repl] of CEFR_SUFFIXES[lang] || []) {
+        if (normalized.length > suffix.length + 2 && normalized.endsWith(suffix)) {
+            const base = normalized.slice(0, -suffix.length) + repl;
+            if (lexicon[base]) return lexicon[base];
+        }
+    }
+    return 'unknown';
+}
+// Без запису в кеш: статистика по рівнях проглядає ВСІ слова сторінки при кожному оновленні.
+function peekCefrLevel(normalized, lang) {
+    const cached = cefrCache[`${lang}:${normalized}`];
+    return CEFR_LEVELS.includes(cached) ? cached : lexiconCefrLevel(normalized, lang);
+}
 function cachedCefrLevel(word, lang) {
     const normalized = normalizedLearningWord(word);
     const key = `${lang}:${normalized}`;
     if (Object.prototype.hasOwnProperty.call(cefrCache, key)) return CEFR_LEVELS.includes(cefrCache[key]) ? cefrCache[key] : 'unknown';
-    const level = CEFR_WORDS[lang]?.[normalized] || 'unknown';
+    const level = lexiconCefrLevel(normalized, lang);
     cefrCache[key] = level;
     const entries = Object.entries(cefrCache);
     if (entries.length > 2000) cefrCache = Object.fromEntries(entries.slice(-2000));
@@ -253,8 +276,22 @@ function statsForOccurrenceIds(scope, occurrenceIds) {
     const independent = Math.max(0, total - helped);
     const distribution = Object.fromEntries(CEFR_LEVELS.map(level => [level, 0]));
     for (const record of tapped) distribution[record.cefr || 'unknown']++;
+    // Розуміння за рівнями: для кожного рівня — скільки слів сторінки до нього належить і скільки з них прочитано без допомоги.
+    const pageLangCode = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2);
+    const levels = Object.fromEntries(CEFR_LEVELS.map(level => [level, { total: 0, helped: 0, readingPercent: 0 }]));
+    for (const id of ids) {
+        const record = records[id];
+        const level = record?.normalized ? (CEFR_LEVELS.includes(record.cefr) ? record.cefr : 'unknown')
+            : peekCefrLevel(String(id).slice(String(id).indexOf(':') + 1), pageLangCode);
+        levels[level].total++;
+        if (record?.normalized) levels[level].helped++;
+    }
+    for (const level of CEFR_LEVELS) {
+        const l = levels[level];
+        l.readingPercent = l.total ? (l.total - l.helped) * 100 / l.total : 0;
+    }
     return { total, helped, independent, helpPercent,
-        readingPercent: total ? independent * 100 / total : 0, distribution, tapped };
+        readingPercent: total ? independent * 100 / total : 0, distribution, levels, tapped };
 }
 
 // The only write API for learning help. `span` may be a reader DOM Range/node or
@@ -311,28 +348,34 @@ function calculateCurrentPageStats() {
     return statsForOccurrenceIds(page.scope, page.words.map(word => word.id));
 }
 
+// Розуміння за рівнями A1–C2 (+ «Інше» — слова, яких нема в словнику рівнів): рядок на рівень зі смужкою «% без допомоги»
+// і кількістю слів цього рівня на сторінці. Рівень без жодного слова показується рискою.
 function renderCefrDistribution(stats) {
     const bar = document.getElementById('reading-stats-cefr-bar');
     const list = document.getElementById('reading-stats-cefr-list');
     if (!bar || !list) return;
     bar.replaceChildren(); list.replaceChildren();
-    const total = stats.tapped.length;
     for (const level of CEFR_LEVELS) {
-        const count = stats.distribution[level];
-        if (!count) continue;
-        const pct = total ? Math.round(count * 100 / total) : 0;
-        const segment = document.createElement('span');
-        segment.className = `cefr-segment cefr-${level.toLowerCase()}`;
-        segment.style.width = `${pct}%`; segment.title = `${level === 'unknown' ? t('statsUnknown') : level}: ${pct}%`;
-        bar.appendChild(segment);
-        const item = document.createElement('span');
-        item.innerHTML = `<b>${level === 'unknown' ? t('statsUnknownShort') : level}</b> ${pct}%`;
-        list.appendChild(item);
+        const l = stats.levels[level];
+        if (level === 'unknown' && !l.total) continue;
+        const row = document.createElement('div');
+        row.className = 'cefr-row'; row.dataset.level = level;
+        const name = document.createElement('b');
+        name.textContent = level === 'unknown' ? t('statsUnknownShort') : level;
+        if (level === 'unknown') name.title = t('statsUnknown');
+        const track = document.createElement('span'); track.className = 'cefr-track';
+        const fill = document.createElement('span'); fill.className = `cefr-fill cefr-${level.toLowerCase()}`;
+        fill.style.width = l.total ? `${l.readingPercent}%` : '0%';
+        track.appendChild(fill);
+        const pct = document.createElement('span'); pct.className = 'cefr-pct';
+        pct.textContent = l.total ? `${Math.round(l.readingPercent)}%` : '—';
+        const count = document.createElement('span'); count.className = 'cefr-count';
+        count.textContent = `${l.total} ${t('statsWordsShort')}`;
+        row.append(name, track, pct, count);
+        if (l.helped) row.title = `${t('statsHelpRequested')}: ${l.helped}`;
+        list.appendChild(row);
     }
-    bar.classList.toggle('empty', !total);
-    if (!total) {
-        const empty = document.createElement('span'); empty.className = 'stats-empty'; empty.textContent = t('statsNoHelp'); list.appendChild(empty);
-    }
+    bar.classList.add('empty'); bar.hidden = true;
 }
 function displayedLearningPercent(value) {
     return `${Math.round(value * 10) / 10}%`;
