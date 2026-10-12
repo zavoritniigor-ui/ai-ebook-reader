@@ -41,6 +41,29 @@ function toggleFullMenu() { isFullMenuOpen() ? closeFullMenu() : openFullMenu();
 els.menuHandle.addEventListener('click', toggleFullMenu);
 syncFullMenuControls();
 
+// Верхнє меню саме "засуває завісу" після кількох секунд бездіяльності. Будь-яка взаємодія з меню
+// (курсор над ним, дотик, клавіша, фокус у списку/полі) відкладає закриття; відкрите меню на стартовому
+// екрані (книги ще немає) не чіпаємо. Вимкнути: localStorage reader_menu_autohide = 'off'.
+const MENU_AUTOHIDE_MS = 4000;
+let menuIdleTimer = 0;
+function menuAutoHideEnabled() { return readStored('reader_menu_autohide') !== 'off'; }
+function scheduleMenuAutoHide() {
+    clearTimeout(menuIdleTimer); menuIdleTimer = 0;
+    if (!isFullMenuOpen() || !menuAutoHideEnabled()) return;
+    menuIdleTimer = setTimeout(() => {
+        const header = document.getElementById('app-header');
+        const a = document.activeElement;
+        const busy = !header || !state.format || header.matches(':hover') || document.getElementById('quick-menu')?.hidden === false
+            || (a && header.contains(a) && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName));
+        if (busy) { scheduleMenuAutoHide(); return; }
+        closeFullMenu();
+    }, MENU_AUTOHIDE_MS);
+}
+new MutationObserver(scheduleMenuAutoHide).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+['pointerdown', 'pointermove', 'keydown', 'focusin', 'touchstart', 'wheel'].forEach(type =>
+    document.getElementById('app-header')?.addEventListener(type, scheduleMenuAutoHide, { passive: true }));
+scheduleMenuAutoHide();
+
 // ========== LOWER-RIGHT CURVED SCROLLABLE QUICK WHEEL ==========
 const quickMenu = (() => {
     const launcher = document.getElementById('qm-launcher');
