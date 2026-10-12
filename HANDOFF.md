@@ -1,3 +1,7 @@
+## Rules bookmark: left edge, rectangular (2026-10-12, Claude)
+
+Per the user's phone screenshot (the right-edge rounded tab sat on top of the language select and the ✦ button). `#rules-tab` is now a horizontal green/red/neutral RECTANGLE (radius 4px, 40px high, 📚 Правила + count) on the LEFT screen edge; `layoutRulesPanel` puts it in the lowest free vertical gap between the header, ☰ menu button, the Ask AI handle and the open sheet; with no free gap (full menu filling a phone screen) it hides and the state stays visible on the menu's own Rules button. Hidden while Ask AI / expanded Practice cover the left edge; Grammar (right edge) no longer hides it. `grammar_rules_browser.py` 39b/39c/42-pre/44* rewritten for the left edge. Not verified on the real tablet.
+
 ## Rules button: background search, second tap opens (2026-10-12, Claude)
 
 Per the user. With a selected sentence/paragraph (now up to 2500 chars) the Rules button (header, bookmark, quick wheel) FIRST only starts the search in the background: the window does not open, an open translation popup is not interrupted; the header button and `#rules-tab` show running (blink/red) then green; the SECOND tap opens the window (no new search for the same text). A tap while running only toasts. No selection / no AI key / offline: the button opens the window as before. A different selection starts a new background search on the next tap. Test `rules_background_scan_browser.py`. Not verified on a real tablet.
