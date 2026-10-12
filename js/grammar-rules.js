@@ -320,37 +320,28 @@ function layoutRulesPanel() {
     const inset = sheet && panel.classList.contains('expanded') ? Math.round(panel.getBoundingClientRect().height) : 0;
     document.documentElement.style.setProperty('--rules-inset', inset + 'px');
     document.body.classList.toggle('rules-inset', inset > 0);
-    // Закладка: збоку відкритого вікна — на його лівому краї; над шторкою — над нею; інакше — на краю екрана над язичком Граматики.
+    // Закладка — прямокутна, на ЛІВОМУ краю екрана: найнижчий вільний проміжок по вертикалі між шапкою, кнопкою меню (☰), язичком «Запитай AI»
+    // і нижньою шторкою Правил; якщо проміжку на всю висоту нема — найбільший.
     const open = panel.classList.contains('expanded'), r = panel.getBoundingClientRect();
     const tab = document.getElementById('rules-tab');
-    const right = open && !sheet ? Math.round(r.width) : 0;
-    // Закладка не лягає на те, що живе на тому ж правому краї: повзунок сторінок (#pdf-scrubber, «лінія перегортання»), кругла
-    // кнопка швидкого меню (✦), язичок Граматики, шапка і нижня шторка. Шукаємо найнижчий вільний проміжок по вертикалі,
-    // куди закладка влізає; якщо такого нема — найбільший, а закладка стискається по висоті.
-    const TAB_H = 112, PAD = 8, ih = window.innerHeight;
-    let bottomPx = 124, maxH = '';
-    if (right === 0) {
-        const blocks = [[0, hb]];
-        for (const id of ['pdf-scrubber', 'qm-launcher', 'grammar-tab']) {
-            const el = document.getElementById(id), b = el && el.getBoundingClientRect();
-            if (b && b.width > 0 && b.height > 0 && b.right > window.innerWidth - 110 && b.left < window.innerWidth) blocks.push([b.top, b.bottom]);
-        }
-        if (open && sheet) blocks.push([r.top, ih]);
-        blocks.sort((x, y) => x[0] - y[0]);
-        const gaps = []; let cursor = 0;
-        for (const [top, bottom] of blocks) { if (top - cursor > 0) gaps.push([cursor, top]); cursor = Math.max(cursor, bottom); }
-        if (ih - cursor > 0) gaps.push([cursor, ih]);
-        const fits = gaps.filter(g => g[1] - g[0] >= TAB_H + 2 * PAD);
-        const gap = fits.length ? fits[fits.length - 1] : gaps.sort((x, y) => (y[1] - y[0]) - (x[1] - x[0]))[0];
-        if (gap) {
-            bottomPx = Math.max(PAD, Math.round(ih - gap[1] + PAD));
-            maxH = gap[1] - gap[0] - 2 * PAD < TAB_H ? Math.max(64, Math.round(gap[1] - gap[0] - 2 * PAD)) + 'px' : '';
-        }
+    const TAB_H = 40, PAD = 8, ih = window.innerHeight;
+    let bottomPx = 124;
+    const blocks = [[0, hb]];
+    for (const id of ['menu-handle', 'ask-tab']) {
+        const el = document.getElementById(id), b = el && el.getBoundingClientRect();
+        if (b && b.width > 0 && b.height > 0 && b.left < 110 && b.right > 0) blocks.push([b.top, b.bottom]);
     }
-    document.documentElement.style.setProperty('--rules-tab-right', right + 'px');
+    if (open && sheet) blocks.push([r.top, ih]);
+    blocks.sort((x, y) => x[0] - y[0]);
+    const gaps = []; let cursor = 0;
+    for (const [top, bottom] of blocks) { if (top - cursor > 0) gaps.push([cursor, top]); cursor = Math.max(cursor, bottom); }
+    if (ih - cursor > 0) gaps.push([cursor, ih]);
+    const fits = gaps.filter(g => g[1] - g[0] >= TAB_H + 2 * PAD);
+    const gap = fits.length ? fits[fits.length - 1] : gaps.sort((x, y) => (y[1] - y[0]) - (x[1] - x[0]))[0];
+    if (gap) bottomPx = Math.max(PAD, Math.round(ih - gap[1] + PAD));
     document.documentElement.style.setProperty('--rules-tab-bottom', bottomPx + 'px');
-    if (tab) tab.style.maxHeight = maxH;
-    if (tab) { tab.dataset.offscreen = right + 44 > window.innerWidth ? '1' : '0'; updateRulesTab(); }
+    // Немає вільного проміжку (напр. відкрите повне меню на телефоні займає весь екран) — закладка ховається: стан видно на кнопці «Правила» в меню.
+    if (tab) { tab.dataset.offscreen = fits.length ? '0' : '1'; updateRulesTab(); }
 }
 function openRulesPanel({ keep = false } = {}) {
     const { panel } = rulesEls();
@@ -392,7 +383,8 @@ function updateRulesTab() {
     const headerBtn = document.getElementById('btn-rules'); if (headerBtn) headerBtn.dataset.state = st;
     tab.setAttribute('aria-expanded', String(open));
     // Граматика/Практика лежать на тому самому краї; відкрите вікно на вузькому екрані не лишає місця збоку — там є ⌄ у заголовку.
-    tab.hidden = els.grammarPanel.classList.contains('expanded') || !!(practice && !practice.hidden && practice.dataset.mode === 'expanded') || tab.dataset.offscreen === '1';
+    // «Запитай AI» і Практика виїжджають із лівого краю й закривають закладку; Граматика — з правого, тож закладці не заважає.
+    tab.hidden = els.askPanel.classList.contains('expanded') || !!(practice && !practice.hidden && practice.dataset.mode === 'expanded') || tab.dataset.offscreen === '1';
     const count = document.getElementById('rules-tab-count');
     count.hidden = !(st === 'ready' && n > 0);
     count.textContent = String(n);
