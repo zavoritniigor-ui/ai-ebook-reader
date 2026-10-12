@@ -41,6 +41,8 @@ check('5 tablet portrait: every header control fits inside the viewport',
 check('6 the learning toggle names what it toggles', "els.translateBtn.textContent.includes('Вивчення слів')")
 check('6b the 🔄 update button is always visible; with no new version it says so (no reload)',
       """(async () => { const b = document.getElementById('btn-update-app'); if (!b || b.offsetParent === null || b.title.length < 3) return 'no button'; activatePendingSwUpdate = async () => false; updateBannerShown = false; b.click(); await new Promise(r => setTimeout(r, 300)); return document.getElementById('reader-toast').textContent === t('updateLatest') || document.getElementById('reader-toast').textContent; })()""")
+check('6c offline: the 🔄 button shows the "no internet" toast',
+      """(async () => { Object.defineProperty(navigator, 'onLine', {value: false, configurable: true}); try { document.getElementById('btn-update-app').click(); await new Promise(r => setTimeout(r, 300)); return document.getElementById('reader-toast').textContent === t('updateOffline') || document.getElementById('reader-toast').textContent; } finally { delete navigator.onLine; } })()""")
 
 load(1024, 768)
 check('7 tablet landscape: header <= 190px, no overflow, captions hidden',
