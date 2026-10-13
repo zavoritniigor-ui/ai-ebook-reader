@@ -9,6 +9,7 @@
 //   ?op=ws-subpages&lang=<…>&title=<title>                            -> список підсторінок-розділів твору (JSON)
 // Wikisource: лише хост <lang>.wikisource.org з білого списку мов, назва сторінки — звичайний рядок, кодується тут.
 const UA = 'AI-Ebook-Reader/1.0 (+https://ai-ebook-reader.pages.dev)';
+const MAX_ILLUSTRATED_BYTES = 6 * 1024 * 1024;
 const WS_LANGS = new Set(['uk', 'fr', 'en', 'de', 'es', 'it']);
 
 function json(body, status = 200, maxAge = 0) {
@@ -35,9 +36,19 @@ export async function onRequestGet({ request }) {
             const id = url.searchParams.get('id') || '';
             if (!/^\d{1,8}$/.test(id)) return json({ error: 'bad id' }, 400);
             // Офіційне дзеркало Gutenberg: www.gutenberg.org з хмарних IP часто віддає 504, дзеркало відповідає за секунди.
-            const targets = op === 'file'
+            let targets = op === 'file'
                 ? [`https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}-images-3.epub`, `https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.epub`]
                 : [`https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.cover.medium.jpg`];
+            // Версія з ілюстраціями буває 15–25 МБ і з дзеркала тягнеться хвилинами (14 МБ — ~3 хв); тоді беремо версію без
+            // ілюстрацій (той самий текст, ~0,5 МБ).
+            if (op === 'file') {
+                try {
+                    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 10000);
+                    const head = await fetch(targets[0], { method: 'HEAD', headers: { 'user-agent': UA }, signal: ctrl.signal });
+                    clearTimeout(timer);
+                    if (Number(head.headers.get('content-length') || 0) > MAX_ILLUSTRATED_BYTES) targets = [targets[1], targets[0]];
+                } catch (e) { /* без розміру — як і раніше */ }
+            }
             let res = null;
             for (const target of targets) {
                 res = await upstream(target, op === 'file' ? 'application/epub+zip' : 'image/jpeg');
