@@ -66,4 +66,18 @@ c.js("state.openaiKey = ''; 1")
 c.js("window.__shared = {groq: true, openai: true, format: {groq: false, openai: true}}; 1")
 c.js("window.__done = false; loadSharedAiProviders().then(() => __done = true); 1")
 check('12 a shared Groq key with the wrong format is skipped: translation asks OpenAI directly', "__done && sharedAiProviders.groq === false && sharedAiProviders.openai === true && JSON.stringify(translationProviders()) === '[\"openai\"]'", timeout=5)
+# ---- key dialog: 'Use the site's key' ----
+c.js("sharedAiProviders.groq = true; sharedAiProviders.openai = true; state.groqKey = 'gsk-old'; state.openaiKey = 'sk-old'; localStorage.setItem('reader_groq_key', 'gsk-old'); localStorage.setItem('reader_openai_key', 'sk-old'); openKeySettings(); 1")
+check('13 own keys saved + a site key: the dialog says own keys win and offers the button',
+      "(() => { const b = document.getElementById('site-key-box'), btn = document.getElementById('btn-use-site-key'); return !b.hidden && getComputedStyle(b).display !== 'none' && !btn.hidden && getComputedStyle(btn).display !== 'none' && document.getElementById('site-key-status').textContent === t('aiSiteKeyOwnSaved'); })()")
+c.js("document.getElementById('btn-use-site-key').click(); 1")
+check('14 one tap drops ALL own keys (state + storage), closes the dialog and routes AI to the site key',
+      "!state.groqKey && !state.openaiKey && !localStorage.getItem('reader_groq_key') && !localStorage.getItem('reader_openai_key') && document.getElementById('settings-modal').style.display === 'none' && aiEffectiveKey('groq') === SHARED_AI_KEY && JSON.stringify(translationProviders()) === '[\"groq\"]'")
+c.js("openKeySettings(); 1")
+check('15 reopened: it says AI works through the site key, no button, fields empty',
+      "document.getElementById('site-key-status').textContent === t('aiSiteKeyActive') && document.getElementById('btn-use-site-key').hidden && getComputedStyle(document.getElementById('btn-use-site-key')).display === 'none' && document.getElementById('groq-key-input').value === '' && document.getElementById('openai-key-input').value === ''")
+c.js("closeKeySettings(); sharedAiProviders.groq = false; sharedAiProviders.openai = false; openKeySettings(); 1")
+check('16 no site key: the box is not shown', "document.getElementById('site-key-box').hidden")
+c.js("closeKeySettings(); 1")
+check('17 the new texts exist in all 8 UI languages', "['aiSiteKeyActive','aiSiteKeyOwnSaved','aiUseSiteKey','aiSiteKeyNow'].every(k => ['uk','en','fr','ru','zh','ko','hi','ga'].every(l => I18N[k] && I18N[k][l]))")
 print('ALL SHARED AI KEY CHECKS PASSED')

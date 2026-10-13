@@ -1734,6 +1734,46 @@ Object.assign(I18N, {
         "hi": "सहेजें दबाने पर कुंजी हटा दी जाएगी।",
         "ga": "Bainfear an eochair nuair a bhrúnn tú Sábháil."
     },
+    "aiSiteKeyActive": {
+        "en": "✅ AI works through the site's key — you don't need your own.",
+        "uk": "✅ AI працює через ключ сайту — власний вводити не потрібно.",
+        "fr": "✅ L'IA fonctionne avec la clé du site — inutile d'avoir la vôtre.",
+        "ru": "✅ AI работает через ключ сайта — свой вводить не нужно.",
+        "zh": "✅ AI 使用网站的密钥运行——无需自己的密钥。",
+        "ko": "✅ AI가 사이트 키로 작동합니다 — 직접 키를 넣을 필요가 없습니다.",
+        "hi": "✅ AI साइट की कुंजी से चलता है — अपनी कुंजी की ज़रूरत नहीं।",
+        "ga": "✅ Oibríonn AI le heochair an tsuímh — níl d'eochair féin de dhíth."
+    },
+    "aiSiteKeyOwnSaved": {
+        "en": "Your own keys are saved and are used instead of the site's key. If they don't work, switch to the site's key.",
+        "uk": "Збережено ваші власні ключі — вони використовуються замість ключа сайту. Якщо вони не працюють, перейдіть на ключ сайту.",
+        "fr": "Vos propres clés sont enregistrées et remplacent la clé du site. Si elles ne fonctionnent pas, passez à la clé du site.",
+        "ru": "Сохранены ваши собственные ключи — они используются вместо ключа сайта. Если они не работают, перейдите на ключ сайта.",
+        "zh": "已保存您自己的密钥，将代替网站密钥使用。如果它们无效，请改用网站密钥。",
+        "ko": "직접 입력한 키가 저장되어 사이트 키 대신 사용됩니다. 작동하지 않으면 사이트 키로 전환하세요.",
+        "hi": "आपकी अपनी कुंजियाँ सहेजी हैं और साइट की कुंजी की जगह इस्तेमाल होती हैं। काम न करें तो साइट की कुंजी पर जाएँ।",
+        "ga": "Tá d'eochracha féin sábháilte agus úsáidtear iad in ionad eochair an tsuímh. Mura n-oibríonn siad, athraigh go heochair an tsuímh."
+    },
+    "aiUseSiteKey": {
+        "en": "Use the site's key",
+        "uk": "Використовувати ключ сайту",
+        "fr": "Utiliser la clé du site",
+        "ru": "Использовать ключ сайта",
+        "zh": "使用网站密钥",
+        "ko": "사이트 키 사용",
+        "hi": "साइट की कुंजी इस्तेमाल करें",
+        "ga": "Úsáid eochair an tsuímh"
+    },
+    "aiSiteKeyNow": {
+        "en": "Your keys were removed — AI now works through the site's key.",
+        "uk": "Власні ключі видалено — тепер AI працює через ключ сайту.",
+        "fr": "Vos clés ont été supprimées — l'IA utilise maintenant la clé du site.",
+        "ru": "Собственные ключи удалены — теперь AI работает через ключ сайта.",
+        "zh": "已删除您的密钥——AI 现在使用网站密钥。",
+        "ko": "직접 입력한 키를 삭제했습니다 — 이제 AI가 사이트 키로 작동합니다.",
+        "hi": "आपकी कुंजियाँ हटा दी गईं — अब AI साइट की कुंजी से चलता है।",
+        "ga": "Baineadh d'eochracha — oibríonn AI anois le heochair an tsuímh."
+    },
     "aiKeySavedHint": {
         "en": "Key saved — type a new key to replace it.",
         "uk": "Ключ збережено — введіть новий, щоб замінити.",

@@ -1133,6 +1133,10 @@
         .ai-provider-options input:checked + span { background: var(--accent-color); color: var(--accent-contrast); border-color: var(--accent-color); }
         .ai-provider-options input:focus-visible + span { outline: 3px solid var(--accent-color); outline-offset: 3px; }
         #ai-provider-error { font-size: 13px; color: var(--text-color); border-left: 3px solid var(--accent-color); padding-left: 8px; }
+        .site-key-box { margin: 0 0 14px; padding: 10px 12px; border: 1px solid rgba(25,135,84,.55); border-radius: 8px; background: rgba(25,135,84,.10); }
+        .site-key-box p { margin: 0 0 8px; font-size: 14px; }
+        .site-key-box[data-own="0"] p { margin: 0; }
+        .site-key-box [hidden] { display: none; }
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
         .key-link { display: inline-block; font-size: 13px; color: var(--accent-color); text-decoration: none; }
         .key-link:hover { text-decoration: underline; }
@@ -1550,6 +1554,10 @@
         <div class="modal-content">
             <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" onclick="closeKeySettings()" data-i18n="close" data-i18n-title="tClose">✕</button>
             <form id="api-keys-form" autocomplete="off" onsubmit="event.preventDefault(); saveApiKey();">
+                <div id="site-key-box" class="site-key-box" hidden>
+                    <p id="site-key-status" role="status"></p>
+                    <button type="button" id="btn-use-site-key" class="btn-secondary" data-i18n="aiUseSiteKey" onclick="useSiteAiKey()">Використовувати ключ сайту</button>
+                </div>
                 <h3 id="gemini-key-label" data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
                 <input type="password" id="api-key-input" name="gemini_api_key" placeholder="AIza..." aria-labelledby="gemini-key-label" autocomplete="new-password" spellcheck="false">
                 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="key-link">aistudio.google.com/apikey</a>
@@ -1581,7 +1589,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=82290537d382"></script>
+    <script src="js/core.js?v=dc6951f7203c"></script>
     <script src="js/lang-detect.js?v=fc9f3e92a3ee"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
@@ -1598,7 +1606,7 @@
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/navigation.js?v=b6b82880ee8a"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
-    <script src="js/ui-tooltip.js?v=4c4755fb447a"></script>
+    <script src="js/ui-tooltip.js?v=04f9affacb92"></script>
     <script src="js/translation.js?v=11212fae30f7"></script>
     <script src="js/sentence-structure.js?v=e0e7035fe6c4"></script>
     <script src="js/grammar-svo.js?v=b54e17433631"></script>
