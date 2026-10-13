@@ -300,6 +300,43 @@ function wrapParenSegments(segs, open, close, fallbackLang) {
     wrapped[wrapped.length - 1].text += close;
     return wrapped;
 }
+// Інші мови латиницею (німецька, іспанська, італійська, португальська, нідерландська, польська). Решта евристики вміє
+// лише «французька чи англійська», тож німецька книга читалась французьким або англійським голосом. Тут — визначення
+// за найчастішими службовими словами (у будь-якому тексті вони становлять чверть-третину слів) і характерними літерами.
+// Спрацьовує лише за явної переваги: короткий фрагмент без ознак (одне слово) успадковує мову книги.
+const LATIN_LANG_LOCALES = { en: 'en-US', fr: 'fr-FR', de: 'de-DE', es: 'es-ES', it: 'it-IT', pt: 'pt-PT', nl: 'nl-NL', pl: 'pl-PL' };
+const OTHER_LATIN_LANGS = ['de', 'es', 'it', 'pt', 'nl', 'pl'];
+const LATIN_STOPWORDS = Object.fromEntries(Object.entries({
+    en: 'the and of to a in is it that was he for on are as with his they at be this have from or one had by but not what all were we when your can said there an which she do their if will up other about out many then them these so some her would make like him into has two more no way could my than been who its now people did',
+    fr: 'le la les de des du et est un une en dans que qui pour pas sur au aux avec il elle ils elles nous vous je ne se ce son sa ses mais ou par plus été était sont cette tout comme on leur lui fait bien aussi même très',
+    de: 'der die das und ist nicht ein eine einen einem einer zu den von mit sich des auf für im dem es ich sie er wir ihr auch als an war wird werden bei noch nach wie aus aber hat oder wenn nur doch so schon mir mich ihn uns dass sind zum zur über vor dann kann',
+    es: 'el la los las de del y que en un una es por con no para se lo le su sus al más pero como este esta está son fue ha muy sin sobre también hay ya yo todo cuando entre porque qué él ella hasta desde nos',
+    it: 'il lo la gli le di del della dei delle e che è un una per non in con si da al alla ma come più sono anche ci questo questa ha ho mi ti del nel nella io lui lei loro tutto quando perché già',
+    pt: 'o a os as de do da dos das e que em um uma é não para com por se no na nos mais mas como ao foi ele ela seu sua são está também já eu muito isso quando sem pelo pela você então',
+    nl: 'de het een en van in is dat op te zijn met voor niet aan er die maar om ook als bij of uit wat hij zij ze wij we ik je naar dan nog wel kan door over dit deze heeft hebben werd geen',
+    pl: 'i w nie na się z że do to jest jak o a co po ale tak za od przez jego jej ich go już tylko być był była było są mnie mi ty ja on ona może dla czy też pan'
+}).map(([lang, list]) => [lang, new Set(list.split(' '))]));
+// Лише літери, яких нема ні в англійській, ні у французькій (è/à є і в італійській, і у французькій — не ознака).
+const LATIN_LETTER_HINTS = { de: /[äöüß]/, es: /[ñ¿¡]/, pt: /[ãõ]/, pl: /[ąćęłńśźż]/ };
+function identifyLatinLanguage(text) {
+    const words = String(text || '').toLocaleLowerCase().match(/[\p{L}']+/gu) || [];
+    if (words.length < 5) return null;
+    const scores = {};
+    for (const lang of Object.keys(LATIN_STOPWORDS)) {
+        const set = LATIN_STOPWORDS[lang];
+        scores[lang] = words.reduce((n, w) => n + (set.has(w) ? 1 : 0), 0);
+    }
+    const lower = String(text).toLocaleLowerCase();
+    for (const [lang, re] of Object.entries(LATIN_LETTER_HINTS)) if (scores[lang] >= 1 && re.test(lower)) scores[lang] += 1;
+    const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const [best, top] = ranked[0], second = ranked[1][1];
+    // Явна перевага: щонайменше 2 службові слова, не менше ~12% слів, і на третину більше за другу мову.
+    if (top < 2 || top < words.length * 0.12 || top < second * 1.34) return null;
+    return best;
+}
+// Книга іншою латинською мовою (не en/fr): вся текстова евристика en/fr для неї не підходить.
+function isOtherLatinLang(lang2) { return OTHER_LATIN_LANGS.includes(lang2); }
+
 // Головна функція: ділить довільний текст на впорядковані мовні відрізки. Текст у
 // дужках у навчальних книгах зазвичай є ПЕРЕКЛАДОМ сусіднього слова/фрази —
 // "bonjour (hello)", "hello (bonjour)" — а не продовженням тієї самої мови. Плоский
@@ -312,6 +349,11 @@ function wrapParenSegments(segs, open, close, fallbackLang) {
 function buildLanguageSegments(text, priorLang2) {
     const special = specialLanguage(text);
     if (special) return [{ lang: special.slice(0, 2), text }];
+    // Німецька/іспанська/… — увесь текст однією мовою; у книзі такою мовою текст без явних ознак англійської чи французької
+    // (коротке речення, одне слово) теж читається мовою книги, а не вгадується між en і fr.
+    const latin = identifyLatinLanguage(text);
+    if (latin && isOtherLatinLang(latin)) return [{ lang: latin, text }];
+    if (isOtherLatinLang(priorLang2) && latin !== 'en' && latin !== 'fr') return [{ lang: priorLang2, text }];
     const parts = splitTopLevelParens(text);
     if (parts.length === 1 && !parts[0].paren) return buildFlatSegments(text, priorLang2);
     const out = [];
@@ -358,10 +400,13 @@ function detectLang(text) {
     const cyr = cyrillicLang(text);
     if (cyr) return cyr;
     const segs = buildLanguageSegments(text, pageLang().slice(0, 2));
-    let fr = 0, en = 0;
-    for (const s of segs) { if (s.lang === 'fr') fr += s.text.trim().length; else en += s.text.trim().length; }
-    if (!fr && !en) return pageLang();
-    return fr > en ? 'fr-FR' : 'en-US';
+    const tally = {};
+    for (const s of segs) { const lang = LATIN_LANG_LOCALES[s.lang] ? s.lang : 'en'; tally[lang] = (tally[lang] || 0) + s.text.trim().length; }
+    const ranked = Object.entries(tally).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+    if (!ranked.length) return pageLang();
+    // Нічия en/fr лишається як раніше — на користь англійської.
+    if (ranked.length > 1 && ranked[0][1] === ranked[1][1] && ranked.some(([l]) => l === 'en')) return 'en-US';
+    return LATIN_LANG_LOCALES[ranked[0][0]];
 }
 
 // Мова книги. Визначається ОДИН РАЗ на сторінку/розділ і далі використовується як
@@ -420,12 +465,13 @@ function langForText(text) {
     const clean = text.trim();
     if (!clean) return pageLang();
     const found = fragmentLangInContext(clean, state.ctxSentence);
-    if (found === 'fr' || found === 'en') return found === 'fr' ? 'fr-FR' : 'en-US';
-    if (found) return found; // код кирилиці (uk-UA/ru-RU)
+    if (found && LATIN_LANG_LOCALES[found]) return LATIN_LANG_LOCALES[found];
+    if (found) return found; // код кирилиці (uk-UA/ru-RU) чи zh/ko/hi/ga
     return detectLang(clean);
 }
 function voiceForLangCode(lang2) {
-    const fullLang = LANGUAGE_CONFIG[lang2]?.locale || LANGUAGE_CONFIG.en.locale;
+    // Мова без власного налаштування (італійська, польська…) — голос просто за її кодом, а не англійський.
+    const fullLang = LANGUAGE_CONFIG[lang2]?.locale || LATIN_LANG_LOCALES[lang2] || LANGUAGE_CONFIG.en.locale;
     const uri = state.selectedVoiceURIByLang[lang2];
     // Запасний варіант — НАЙКРАЩИЙ голос мови, а не перший-ліпший зі списку:
     // першим у системі часто стоїть старий низькоякісний голос, через що англійська
@@ -435,7 +481,7 @@ function voiceForLangCode(lang2) {
 function voiceForText(text) {
     const lang = langForText(text);
     const detected = lang.slice(0, 2).toLowerCase();
-    const key = LANGUAGE_CONFIG[detected] ? detected : 'en';
+    const key = LANGUAGE_CONFIG[detected] || LATIN_LANG_LOCALES[detected] ? detected : 'en';
     return { lang, voice: voiceForLangCode(key).voice };
 }
 
