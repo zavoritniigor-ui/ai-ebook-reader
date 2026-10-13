@@ -242,7 +242,29 @@ function openKeySettings() {
     updateProviderRadios();
     document.getElementById('ai-routing-input').checked = state.aiRouting !== 'off';
     document.getElementById('ai-provider-error').hidden = true;
+    updateSiteKeyBox();
     document.getElementById('settings-modal').style.display = 'flex';
+}
+// The site's shared key (js/ai-client.js sharedAiProviders): say when AI already works without an own key, and offer ONE
+// button that drops saved own keys -- they win over the site's key, and old/invalid ones made AI fail for this learner.
+function updateSiteKeyBox() {
+    const box = document.getElementById('site-key-box');
+    if (!box) return;
+    const shared = typeof sharedAiProviders !== 'undefined' && Object.values(sharedAiProviders).some(Boolean);
+    const own = Object.keys(AI_PROVIDERS).some(p => aiProviderKey(p));
+    box.hidden = !shared;
+    box.dataset.own = own ? '1' : '0';
+    document.getElementById('site-key-status').textContent = t(own ? 'aiSiteKeyOwnSaved' : 'aiSiteKeyActive');
+    document.getElementById('btn-use-site-key').hidden = !own;
+}
+function useSiteAiKey() {
+    cancelAIRequests();
+    for (const config of Object.values(AI_PROVIDERS)) {
+        state[config.key] = '';
+        try { localStorage.removeItem(config.storage); } catch (e) { /* storage unavailable: state is still cleared */ }
+    }
+    closeKeySettings();   // closing also empties the fields, so a browser autofill cannot save the old keys back
+    showToast(t('aiSiteKeyNow'));
 }
 function closeKeySettings() {
     document.getElementById('settings-modal').style.display = 'none';
