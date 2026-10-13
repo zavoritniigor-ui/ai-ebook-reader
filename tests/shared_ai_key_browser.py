@@ -52,4 +52,18 @@ c.js("state.groqKey = 'gsk-own'; window.__out = null; callAI('Translate: pear', 
 check('7 an own key wins: the request goes straight to the provider with the own key', "__out !== null && __calls.length === 3 && !__calls[2].viaServer && __calls[2].auth === 'Bearer gsk-own'", timeout=5)
 c.js("state.groqKey = ''; sharedAiProviders.groq = false; sharedAiProviders.openai = false; 1")
 check('8 no own and no shared key: AI is unavailable as before', "!aiAvailable() && translationProviders().length === 0")
+# ---- the shared Groq key is refused: one retry on shared OpenAI; later requests skip Groq ----
+c.js("sharedAiProviders.groq = true; sharedAiProviders.openai = true; window.__groqStatus = 401; __calls.length = 0; 1")
+c.js("""(() => { const f = window.fetch; window.fetch = async (url, o = {}) => { if (String(url) === '/api/ai?provider=groq' && window.__groqStatus) { __calls.push({provider: 'groq', viaServer: true, auth: null, status: __groqStatus});
+  return new Response(JSON.stringify({error: 'upstream', status: __groqStatus}), {status: __groqStatus}); } return f(url, o); }; return 1; })()""")
+c.js("window.__out = null; callAI('Translate: pear', new AbortController().signal, 'translation', undefined, {provider: 'groq'}).then(r => __out = r, e => __out = 'ERR ' + e.message); 1")
+check('9 shared Groq refused (401): the same request is answered by shared OpenAI', "__out === '{\"direct\":\"груша\",\"context\":null}' && __calls.length === 2 && __calls[0].provider === 'groq' && __calls[1].provider === 'openai' && __calls[1].viaServer", timeout=5)
+check('10 ... and the refused shared Groq is no longer used (translation goes to OpenAI)', "sharedAiProviders.groq === false && JSON.stringify(translationProviders()) === '[\"openai\"]'")
+c.js("sharedAiProviders.groq = true; state.openaiKey = 'sk-own'; __calls.length = 0; window.__out = null; callAI('x', new AbortController().signal, 'translation', undefined, {provider: 'groq'}).then(r => __out = r, e => __out = 'ERR ' + e.message); 1")
+check('11 no fallback onto an OWN key: the shared failure is shown', "typeof __out === 'string' && __out.startsWith('ERR') && __calls.length === 1", timeout=5)
+c.js("state.openaiKey = ''; 1")
+# ---- the site reports the Groq secret has the wrong format: Groq is not used at all ----
+c.js("window.__shared = {groq: true, openai: true, format: {groq: false, openai: true}}; 1")
+c.js("window.__done = false; loadSharedAiProviders().then(() => __done = true); 1")
+check('12 a shared Groq key with the wrong format is skipped: translation asks OpenAI directly', "__done && sharedAiProviders.groq === false && sharedAiProviders.openai === true && JSON.stringify(translationProviders()) === '[\"openai\"]'", timeout=5)
 print('ALL SHARED AI KEY CHECKS PASSED')

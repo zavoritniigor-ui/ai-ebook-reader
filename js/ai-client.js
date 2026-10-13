@@ -143,8 +143,11 @@ async function loadSharedAiProviders() {
         const res = await fetch('/api/ai', { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
-        sharedAiProviders.groq = !!data && data.groq === true;
-        sharedAiProviders.openai = !!data && data.openai === true;
+        // format === false: the site's secret does not even look like that provider's key (e.g. an OpenAI key stored as
+        // GROQ_API_KEY) -- every request would fail, so that shared provider is not used at all.
+        const usable = p => !!data && data[p] === true && !(data.format && data.format[p] === false);
+        sharedAiProviders.groq = usable('groq');
+        sharedAiProviders.openai = usable('openai');
     } catch (e) { /* offline / no server function (local test server): own keys only */ }
 }
 function sharedAiProvider(preferred) {
@@ -458,7 +461,24 @@ async function callGroq(prompt, dataUrl, key, signal, task = 'default', options 
 // options (all optional): { maxOutputTokens, timeoutMs, meta } — meta is filled with { provider, model, finish, usage, elapsedMs, rawChars }.
 function callAI(prompt, signal, task = 'default', onDelta, options) { return requestAI(prompt, null, signal, task, onDelta, options); }
 function callAIVision(prompt, dataUrl, signal, options) { return requestAI(prompt, dataUrl, signal, 'vision', undefined, options); }
+// Shared key only: when the shared provider refuses (bad key, quota, provider outage), the request is repeated ONCE on the
+// other shared provider, so visitors keep working. Own keys never fall back (a failure there is the learner's to see/fix).
+const SHARED_FALLBACK_STATUS = s => s === 401 || s === 403 || s === 429 || s >= 500;
 async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
+    const forced = options.provider && Object.hasOwn(AI_PROVIDERS, options.provider) ? options.provider : null;
+    const provider = forced || aiProviderForTask(task);
+    try { return await requestAIOnce(prompt, dataUrl, signal, task, onDelta, options); }
+    catch (err) {
+        const other = provider === 'groq' ? 'openai' : provider === 'openai' ? 'groq' : null;
+        const fallback = err && err.reason === 'http' && SHARED_FALLBACK_STATUS(Number(err.status)) && !signal?.aborted
+            && aiEffectiveKey(provider) === SHARED_AI_KEY && other && aiEffectiveKey(other) === SHARED_AI_KEY;
+        if (!fallback) throw err;
+        // A refused key stays refused: later requests go straight to the other provider for this session.
+        if (err.status === 401 || err.status === 403) sharedAiProviders[provider] = false;
+        return requestAIOnce(prompt, dataUrl, signal, task, onDelta, Object.assign({}, options, { provider: other }));
+    }
+}
+async function requestAIOnce(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
     // options.provider: a caller-chosen provider (translation asks Groq and OpenAI separately); otherwise the task routing decides.
     const forced = options.provider && Object.hasOwn(AI_PROVIDERS, options.provider) ? options.provider : null;
