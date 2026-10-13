@@ -266,6 +266,12 @@ for (w, h, mobile) in ((820, 1180, True), (1180, 820, True), (1024, 768, True), 
              const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
              const bad = ['menu-handle', 'ask-tab'].filter(hit); return (bad.length === 0 && t.top >= hb - 1 && t.bottom <= innerHeight + 1) || JSON.stringify({bad, t: [t.top, t.bottom], hb, ih: innerHeight}); })()""", timeout=3)
     c.js("(() => { document.body.classList.remove('pdf-mode'); const sc = document.getElementById('pdf-scrubber'); sc.classList.remove('available'); sc.style.height = ''; layoutRulesPanel(); return 1; })()")
+# phones (portrait and landscape): no bookmark on the screen at all (user: it covers the text); tablets keep it
+for (w, h) in ((390, 844), (844, 390), (360, 640)):
+    c.call('Emulation.setDeviceMetricsOverride', width=w, height=h, deviceScaleFactor=2, mobile=True); time.sleep(0.8)
+    check("42-phone %dx%d: no Rules bookmark on a phone" % (w, h), "(t => t.hidden && t.getBoundingClientRect().width === 0)(document.getElementById('rules-tab'))", timeout=3)
+c.call('Emulation.setDeviceMetricsOverride', width=820, height=1180, deviceScaleFactor=1, mobile=True); time.sleep(0.8)
+check("42-tablet the bookmark is back on a tablet", "!document.getElementById('rules-tab').hidden", timeout=3)
 c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False); time.sleep(0.8)
 
 # layout

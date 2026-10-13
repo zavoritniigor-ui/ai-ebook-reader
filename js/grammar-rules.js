@@ -399,6 +399,8 @@ function closeRulesPanel() {
     setRulesStatus('');
     layoutRulesPanel(); updateRulesTab();
 }
+const PHONE_SCREEN_QUERY = '(max-width: 640px), (max-height: 500px)';
+function isPhoneScreen() { return !!(window.matchMedia && matchMedia(PHONE_SCREEN_QUERY).matches); }
 // Плашка-індикатор: коли вікно сховане, показує, що пошук іде / готовий (скільки знайдено) / не вдався.
 function updateRulesTab() {
     const tab = document.getElementById('rules-tab');
@@ -412,7 +414,9 @@ function updateRulesTab() {
     tab.setAttribute('aria-expanded', String(open));
     // Граматика/Практика лежать на тому самому краї; відкрите вікно на вузькому екрані не лишає місця збоку — там є ⌄ у заголовку.
     // «Запитай AI» і Практика виїжджають із лівого краю й закривають закладку; Граматика — з правого, тож закладці не заважає.
-    tab.hidden = els.askPanel.classList.contains('expanded') || !!(practice && !practice.hidden && practice.dataset.mode === 'expanded') || tab.dataset.offscreen === '1';
+    // На телефоні (вузький екран або низький — альбомна орієнтація) закладки немає взагалі: вона закривала текст. «Правила» —
+    // з меню ☰ і колеса ✦; стан пошуку видно на кнопці «Правила» в меню.
+    tab.hidden = isPhoneScreen() || els.askPanel.classList.contains('expanded') || !!(practice && !practice.hidden && practice.dataset.mode === 'expanded') || tab.dataset.offscreen === '1';
     const count = document.getElementById('rules-tab-count');
     count.hidden = !(st === 'ready' && n > 0);
     count.textContent = String(n);
