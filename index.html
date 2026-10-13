@@ -765,6 +765,11 @@
         #rules-panel.expanded { transform: none; visibility: visible; }
         #rules-panel.rules-sheet { left: 0; right: 0; top: auto; bottom: 0; margin: 0 auto; width: min(980px, 100vw); height: min(46vh, calc(100dvh - var(--rules-top, 0px) - 12px)); border-radius: 16px 16px 0 0; transform: translateY(105%); box-shadow: 0 -5px 25px rgba(0,0,0,0.22); }
         #rules-panel.rules-sheet.expanded { transform: none; }
+        /* Стрічка «місце читання» (js/reading-ribbon.js): риска на лівому полі навпроти речення, де читач зупинився. */
+        .reading-ribbon { position: absolute; z-index: 5; width: 5px; border-radius: 3px; background: #e8833a; box-shadow: 0 0 0 1px rgba(232,131,58,.25);
+            pointer-events: none; transition: top .25s ease, height .25s ease; }
+        .reading-ribbon.pdf { left: 3px; z-index: 6; }
+        .reading-ribbon[hidden] { display: none; }
         body.rules-inset #reader-pages { padding-bottom: calc(var(--rules-inset, 0px) + 24px); }
         /* Закладка «Правила»: прямокутна кнопка на ЛІВОМУ краю екрана, довгою стороною вздовж краю, на рівні колеса ✦ (праворуч лежать повзунок сторінок, ✦ і язичок Граматики). Колір =
            стан пошуку: зелений — знайдено, червоний — іде пошук / не вдалося, нейтральний — ще нічого не шукали. Позицію (висота колеса ✦, а якщо там зайнято —
@@ -1102,6 +1107,8 @@
         .library-name { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
         .library-author { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
         .library-card .btn-primary { flex-shrink: 0; min-height: 40px; }
+        .library-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+        .library-save { min-height: 34px; font-size: 13px; }
         .library-source { font-size: 11px; color: var(--text-muted); text-align: center; }
         .modal-content {
             position: relative; background: var(--panel-bg); padding: 28px; border-radius: var(--radius-lg);
@@ -1169,7 +1176,8 @@
         #pdf-scrubber { transition: right 0.3s, opacity 0.3s; display: none; position: absolute; right: calc(var(--ws-right, 0px) + 4px); top: 50%; transform: translateY(-50%); z-index: 9000;
             background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 22px;
             padding: 6px 0; width: 46px; text-align: center; opacity: .65; }
-        body.pdf-mode #pdf-scrubber.available { display: block; }
+        /* Повзунок і для текстових форматів (по всій книзі, js/navigation.js updateTextScrubber). */
+        #pdf-scrubber.available { display: block; }
         body.ink-mode #pdf-scrubber, body.region-mode #pdf-scrubber { transition: right 0.3s, opacity 0.3s;  display: none; }
         #pdf-scrubber:hover, #pdf-scrubber:focus-within { opacity: 1; }
         /* Згорнутий стан: лише овальна «пігулка» з номером сторінки — повзунок прихований, тож випадковий дотик чи скрол не
@@ -1576,11 +1584,12 @@
         // вище вже завантажений і виконаний, тож тут виклик безпечний.
         if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
     </script>
-    <script src="js/tts.js?v=4ebdfe8af2bb"></script>
-    <script src="js/selection.js?v=137809b4b4f3"></script>
+    <script src="js/tts.js?v=c4cc1badfcfb"></script>
+    <script src="js/selection.js?v=8fc476b43b2a"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=12af821a5e1b"></script>
-    <script src="js/navigation.js?v=f9b3e52acfc7"></script>
+    <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
+    <script src="js/navigation.js?v=9d6692a6927e"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=4c4755fb447a"></script>
     <script src="js/translation.js?v=11212fae30f7"></script>
@@ -1599,11 +1608,11 @@
     <script src="js/pdf-crop.js?v=74f9702b939e"></script>
     <script src="js/pdf-outline.js?v=97d934db97c6"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
-    <script src="js/pdf-continuous.js?v=ee42c36e7287"></script>
-    <script src="js/pdf-render.js?v=8904e27d5c39"></script>
+    <script src="js/pdf-continuous.js?v=9746d5291070"></script>
+    <script src="js/pdf-render.js?v=190a67b22cc5"></script>
     <script src="js/formats.js?v=590fbe43ebc9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=c7986ac409b8"></script>
+    <script src="js/library.js?v=287a4798dca1"></script>
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
     <script src="js/main.js?v=d8eabe80cbc4"></script>
     <script src="js/pwa-lifecycle.js?v=6b60a87817d3"></script>

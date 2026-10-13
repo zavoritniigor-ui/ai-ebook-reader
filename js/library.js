@@ -7,6 +7,20 @@ Object.assign(I18N, {
     libSearch:   { uk: 'Назва або автор…', en: 'Title or author…', fr: 'Titre ou auteur…', ru: 'Название или автор…' },
     libAllLangs: { uk: 'Усі мови', en: 'All languages', fr: 'Toutes les langues', ru: 'Все языки' },
     libRead:     { uk: 'Читати', en: 'Read', fr: 'Lire', ru: 'Читать' },
+    libSave:     { uk: '⬇ Зберегти', en: '⬇ Save', fr: '⬇ Enregistrer', ru: '⬇ Сохранить' },
+    libSaveTitle:{ uk: 'Зберегти книгу на пристрій (вибрана тека або «Завантаження»)', en: 'Save the book to the device (chosen folder or Downloads)',
+                   fr: "Enregistrer le livre sur l'appareil (dossier choisi ou Téléchargements)", ru: 'Сохранить книгу на устройство (выбранная папка или «Загрузки»)' },
+    libSaved:    { uk: 'Книгу збережено.', en: 'Book saved.', fr: 'Livre enregistré.', ru: 'Книга сохранена.' },
+    libSavedDownloads: { uk: 'Книгу збережено в «Завантаження».', en: 'Book saved to Downloads.', fr: 'Livre enregistré dans Téléchargements.', ru: 'Книга сохранена в «Загрузки».' },
+    libSourceGutenberg: { uk: 'Project Gutenberg', en: 'Project Gutenberg', fr: 'Project Gutenberg', ru: 'Project Gutenberg' },
+    libSourceWikisource:{ uk: 'Вікіджерела (Wikisource)', en: 'Wikisource', fr: 'Wikisource', ru: 'Викитека (Wikisource)' },
+    libSourceLabel: { uk: 'Джерело книг', en: 'Book source', fr: 'Source des livres', ru: 'Источник книг' },
+    libWsHint:   { uk: 'Введіть назву твору або автора — пошук у Вікіджерелах.', en: 'Type a title or an author to search Wikisource.',
+                   fr: 'Saisissez un titre ou un auteur pour chercher dans Wikisource.', ru: 'Введите название или автора — поиск в Викитеке.' },
+    libWsChapters: { uk: 'Завантаження розділів: {n} / {total}…', en: 'Loading chapters: {n} / {total}…', fr: 'Chargement des chapitres : {n} / {total}…', ru: 'Загрузка глав: {n} / {total}…' },
+    libWsWords:  { uk: 'слів у першій частині: {n}', en: 'words in the first part: {n}', fr: 'mots dans la première partie : {n}', ru: 'слов в первой части: {n}' },
+    libWsSource: { uk: 'Тексти з Вікіджерел — вільне надбання або вільні ліцензії; укладачі — волонтери Вікімедіа.', en: 'Texts from Wikisource — public domain or free licences, prepared by Wikimedia volunteers.',
+                   fr: 'Textes de Wikisource — domaine public ou licences libres, préparés par des bénévoles de Wikimédia.', ru: 'Тексты из Викитеки — общественное достояние или свободные лицензии; составители — волонтёры Викимедиа.' },
     libMore:     { uk: 'Показати ще', en: 'Show more', fr: 'Afficher plus', ru: 'Показать ещё' },
     libLoading:  { uk: 'Завантаження…', en: 'Loading…', fr: 'Chargement…', ru: 'Загрузка…' },
     libEmpty:    { uk: 'Нічого не знайдено.', en: 'Nothing found.', fr: 'Aucun résultat.', ru: 'Ничего не найдено.' },
@@ -40,8 +54,11 @@ const LIBRARY_GENRES = [['', 'genAll'], ['fiction', 'genFiction'], ['adventure',
     ['humor', 'genHumor'], ['biography', 'genBiography'], ['history', 'genHistory'], ['philosophy', 'genPhilosophy'], ['myth', 'genMyth'], ['travel', 'genTravel']];
 const LIBRARY_LANGS = [['fr', 'Français'], ['en', 'English'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano'], ['', null]];
 const LIBRARY_PAGE = 30;
+// Вікіджерела (Wikisource): живий пошук через свій проксі; твір збирається з розділів-підсторінок в одну HTML-книгу.
+const LIBRARY_WS_LANGS = [['uk', 'Українська'], ['fr', 'Français'], ['en', 'English'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano']];
+const WS_MAX_CHAPTERS = 150, WS_CONCURRENCY = 6;
 
-const libraryState = { page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
+const libraryState = { source: 'gutenberg', wsToken: 0, page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
 function libraryEl(id) { return document.getElementById(id); }
 
 function buildLibrary() {
@@ -56,12 +73,14 @@ function buildLibrary() {
     close.dataset.i18nTitle = 'tClose'; close.addEventListener('click', closeLibrary);
     head.append(title, close);
     const tools = document.createElement('div'); tools.className = 'library-tools';
+    const src = document.createElement('select'); src.id = 'library-source'; src.dataset.i18nTitle = 'libSourceLabel';
+    for (const [value, key] of [['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
     const q = document.createElement('input'); q.type = 'search'; q.id = 'library-q'; q.autocomplete = 'off'; q.spellcheck = false;
     const lang = document.createElement('select'); lang.id = 'library-lang';
     for (const [code, label] of LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else o.dataset.i18n = 'libAllLangs'; lang.append(o); }
     const genre = document.createElement('select'); genre.id = 'library-genre';
     for (const [topic, key] of LIBRARY_GENRES) { const o = document.createElement('option'); o.value = topic; o.dataset.i18n = key; genre.append(o); }
-    tools.append(q, lang, genre);
+    tools.append(src, q, lang, genre);
     const status = document.createElement('div'); status.id = 'library-status'; status.setAttribute('aria-live', 'polite');
     const list = document.createElement('div'); list.id = 'library-list';
     const more = document.createElement('button'); more.type = 'button'; more.id = 'library-more'; more.className = 'btn'; more.hidden = true; more.dataset.i18n = 'libMore';
@@ -69,15 +88,33 @@ function buildLibrary() {
     const source = document.createElement('div'); source.className = 'library-source'; source.dataset.i18n = 'libSource';
     box.append(head, tools, status, list, more, source); modal.append(box); document.body.append(modal);
     const saved = (() => { try { return JSON.parse(localStorage.getItem('reader_library_filters') || '{}'); } catch (e) { return {}; } })();
-    lang.value = saved.lang !== undefined && [...lang.options].some(o => o.value === saved.lang) ? saved.lang : 'fr';
+    libraryState.source = saved.source === 'wikisource' ? 'wikisource' : 'gutenberg';
+    libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk' };
+    src.value = libraryState.source;
+    fillLibraryLangs();
     genre.value = saved.topic && [...genre.options].some(o => o.value === saved.topic) ? saved.topic : '';
+    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, topic: genre.value })); } catch (e) {} };
     const restart = () => {
-        try { localStorage.setItem('reader_library_filters', JSON.stringify({ lang: lang.value, topic: genre.value })); } catch (e) {}
-        clearTimeout(libraryState.timer); libraryState.timer = setTimeout(() => runLibrarySearch(1), 350);
+        libraryState.langBySource[libraryState.source] = lang.value;
+        persist();
+        clearTimeout(libraryState.timer); libraryState.timer = setTimeout(() => runLibrarySearch(1), libraryState.source === 'wikisource' ? 600 : 350);
     };
+    src.addEventListener('change', () => { libraryState.source = src.value; fillLibraryLangs(); persist(); libraryEl('library-list').replaceChildren(); runLibrarySearch(1); });
     q.addEventListener('input', restart); lang.addEventListener('change', restart); genre.addEventListener('change', restart);
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && libraryEl('library-modal')?.classList.contains('open')) closeLibrary(); });
     applyI18n(); q.placeholder = t('libSearch');
+}
+
+// Список мов і видимість тем — за джерелом (у Вікіджерел немає тем, а мови інші).
+function fillLibraryLangs() {
+    const lang = libraryEl('library-lang'), genre = libraryEl('library-genre'), ws = libraryState.source === 'wikisource';
+    lang.replaceChildren();
+    for (const [code, label] of ws ? LIBRARY_WS_LANGS : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
+    const want = libraryState.langBySource[libraryState.source];
+    lang.value = [...lang.options].some(o => o.value === want) ? want : lang.options[0].value;
+    genre.hidden = ws;
+    const source = document.querySelector('#library-modal .library-source');
+    if (source) { source.dataset.i18n = ws ? 'libWsSource' : 'libSource'; source.textContent = t(source.dataset.i18n); }
 }
 
 function openLibrary() {
@@ -106,9 +143,11 @@ function loadLibraryCatalog() {
 async function runLibrarySearch(page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
     more.hidden = true;
+    if (libraryState.source === 'wikisource') { await runWikisourceSearch(); return; }
     let catalog;
     try { status.textContent = libraryState.catalog ? '' : t('libLoading'); catalog = await loadLibraryCatalog(); }
     catch (e) { status.textContent = t('libError'); return; }
+    if (libraryState.source !== 'gutenberg') return;   // поки вантажився каталог, читач перемкнувся на інше джерело
     if (page === 1) {
         const words = libraryNorm(libraryEl('library-q').value).split(/\s+/).filter(Boolean);
         const lang = libraryEl('library-lang').value, topic = libraryEl('library-genre').value;
@@ -124,27 +163,80 @@ async function runLibrarySearch(page) {
 
 function libraryCard(book) {
     const card = document.createElement('div'); card.className = 'library-card';
-    const cover = document.createElement('img'); cover.loading = 'lazy'; cover.alt = ''; cover.src = '/api/library?op=cover&id=' + book.id;
+    const cover = document.createElement('img'); cover.loading = 'lazy'; cover.alt = '';
+    if (book.ws) { cover.className = 'library-ws-cover'; cover.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="64"><rect width="44" height="64" rx="4" fill="#6b7a8f"/><text x="22" y="40" font-size="22" text-anchor="middle" fill="#fff">W</text></svg>'); }
+    else cover.src = '/api/library?op=cover&id=' + book.id;
     cover.addEventListener('error', () => cover.style.visibility = 'hidden');
     const info = document.createElement('div'); info.className = 'library-info';
     const name = document.createElement('div'); name.className = 'library-name'; name.textContent = book.title;
-    const by = document.createElement('div'); by.className = 'library-author'; by.textContent = (book.authors || []).join(', ');
+    const by = document.createElement('div'); by.className = 'library-author';
+    by.textContent = book.ws ? 'Wikisource · ' + book.lang.toUpperCase() : (book.authors || []).join(', ');
     info.append(name, by);
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-primary'; btn.textContent = t('libRead');
     btn.addEventListener('click', () => downloadLibraryBook(book, btn));
-    card.append(cover, info, btn);
+    const save = document.createElement('button'); save.type = 'button'; save.className = 'library-save'; save.textContent = t('libSave'); save.title = t('libSaveTitle');
+    save.addEventListener('click', () => saveLibraryBook(book, save));
+    const actions = document.createElement('div'); actions.className = 'library-actions'; actions.append(btn, save);
+    card.append(cover, info, actions);
     return card;
+}
+
+// Файл книги: завантажується один раз за сеанс (і для читання, і для збереження).
+const libraryFiles = new Map();
+const wsProgress = book => (n, total) => { libraryEl('library-status').textContent = t('libWsChapters').replace('{n}', n).replace('{total}', total); };
+function libraryFileName(book) { return book.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.epub'; }
+async function fetchLibraryFile(book, onProgress = () => {}) {
+    const cacheKey = book.ws ? 'ws:' + book.lang + ':' + book.title : book.id;
+    if (libraryFiles.has(cacheKey)) return libraryFiles.get(cacheKey);
+    if (book.ws) {
+        const file = await buildWikisourceBook(book, onProgress);
+        libraryFiles.set(cacheKey, file);
+        if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+        return file;
+    }
+    const res = await fetch('/api/library?op=file&id=' + encodeURIComponent(book.id));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    // Той самий id → той самий «ключ книги» (назва+розмір+lastModified): позиція читання переживає повторне завантаження.
+    const file = new File([blob], libraryFileName(book), { type: 'application/epub+zip', lastModified: book.id });
+    libraryFiles.set(book.id, file);
+    if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+    return file;
+}
+// Зберегти книгу на пристрій: де браузер уміє (комп'ютер) — у теку, яку читач вибере сам; інакше (Android) — звичайним
+// завантаженням у теку «Завантаження».
+async function saveLibraryBook(book, btn) {
+    if (btn.disabled) return;
+    btn.disabled = true; const label = btn.textContent; btn.textContent = t('libLoading');
+    const status = libraryEl('library-status');
+    try {
+        const file = await fetchLibraryFile(book, wsProgress(book));
+        if (typeof window.showSaveFilePicker === 'function') {
+            let handle;
+            try { handle = await window.showSaveFilePicker({ suggestedName: file.name, types: book.ws ? [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] : [{ description: 'EPUB', accept: { 'application/epub+zip': ['.epub'] } }] }); }
+            catch (e) { if (e && e.name === 'AbortError') return; handle = null; }
+            if (handle) {
+                const w = await handle.createWritable(); await w.write(file); await w.close();
+                status.textContent = t('libSaved'); return;
+            }
+        }
+        const url = URL.createObjectURL(file), a = document.createElement('a');
+        a.href = url; a.download = file.name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        status.textContent = t('libSavedDownloads');
+    } catch (e) {
+        status.textContent = t('libBookError');
+    } finally {
+        btn.disabled = false; btn.textContent = label;
+    }
 }
 
 async function downloadLibraryBook(book, btn) {
     if (libraryState.busy) return;
     libraryState.busy = true; btn.disabled = true; btn.textContent = t('libLoading');
     try {
-        const res = await fetch('/api/library?op=file&id=' + encodeURIComponent(book.id));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const blob = await res.blob();
-        // Той самий id → той самий «ключ книги» (назва+розмір+lastModified): позиція читання переживає повторне завантаження.
-        const file = new File([blob], book.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.epub', { type: 'application/epub+zip', lastModified: book.id });
+        const file = await fetchLibraryFile(book, wsProgress(book));
+        libraryEl('library-status').textContent = '';
         closeLibrary();
         await openBookFile(file);
     } catch (e) {
@@ -153,4 +245,106 @@ async function downloadLibraryBook(book, btn) {
         libraryState.busy = false; btn.disabled = false; btn.textContent = t('libRead');
     }
 }
+// ---------- Вікіджерела ----------
+// Результати пошуку часто є розділами («Твір/II»): показуємо сам твір (корінь назви) один раз, у порядку релевантності.
+async function runWikisourceSearch() {
+    const status = libraryEl('library-status'), list = libraryEl('library-list');
+    const q = libraryEl('library-q').value.trim(), lang = libraryEl('library-lang').value;
+    const token = ++libraryState.wsToken;
+    list.replaceChildren();
+    if (!q) { status.textContent = t('libWsHint'); return; }
+    status.textContent = t('libLoading');
+    let data;
+    try {
+        const res = await fetch(`/api/library?op=ws-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        data = await res.json();
+    } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
+    if (token !== libraryState.wsToken) return;
+    const seen = new Map();
+    for (const r of data.results || []) {
+        const root = String(r.title || '').split('/')[0];
+        if (!root || seen.has(root)) continue;
+        seen.set(root, { ws: true, lang, title: root, words: r.title === root ? r.words : 0 });
+    }
+    for (const book of [...seen.values()].slice(0, 30)) list.append(libraryCard(book));
+    status.textContent = seen.size ? '' : t('libEmpty');
+}
+async function wsPage(lang, title) {
+    const res = await fetch(`/api/library?op=ws-page&lang=${encodeURIComponent(lang)}&title=${encodeURIComponent(title)}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return new DOMParser().parseFromString(await res.text(), 'text/html');
+}
+// Посилання сторінки на її власні підсторінки (розділи) — у порядку тексту.
+function wsSubpageLinks(doc, title) {
+    const prefix = title.replace(/ /g, '_') + '/', out = [];
+    for (const a of doc.querySelectorAll('a[href^="./"]')) {
+        let target = decodeURIComponent(a.getAttribute('href').slice(2).split('#')[0]);
+        if (target.startsWith(prefix) && !out.includes(target.replace(/_/g, ' '))) out.push(target.replace(/_/g, ' '));
+    }
+    return out;
+}
+// Чистий текст розділу: без шапки-навігації Вікіджерел, номерів сторінок, посилань для редагування, зображень і скриптів.
+function wsCleanBody(doc) {
+    const body = doc.body.cloneNode(true);
+    body.querySelectorAll('script, style, link, meta, img, figure, .ws-noexport, .noprint, .wst-header, .ws-header, #headertemplate, .headertemplate, .mw-editsection, .pagenum, .ws-pagenum, .mw-cite-backlink, .navbox, .metadata').forEach(n => n.remove());
+    body.querySelectorAll('a').forEach(a => a.replaceWith(...a.childNodes));
+    body.querySelectorAll('[style]').forEach(n => n.removeAttribute('style'));
+    body.querySelectorAll('section, div').forEach(n => { if (!n.textContent.trim()) n.remove(); });
+    return body.innerHTML;
+}
+// Список підсторінок від API іде за абеткою («Chapter 1, Chapter 10, Chapter 11…»): впорядковуємо за числом, римські — за значенням.
+function wsRoman(s) { const v = { i: 1, v: 5, x: 10, l: 50, c: 100, d: 500, m: 1000 }; let n = 0; s = s.toLowerCase(); for (let i = 0; i < s.length; i++) { const a = v[s[i]], b = v[s[i + 1]] || 0; n += a < b ? -a : a; } return n; }
+function wsNaturalOrder(pages, title) {
+    const key = p => p.slice(title.length + 1);
+    if (pages.length && pages.every(p => /^[ivxlcdm]+\.?$/i.test(key(p)))) return pages.slice().sort((a, b) => wsRoman(key(a).replace('.', '')) - wsRoman(key(b).replace('.', '')));
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return pages.slice().sort((a, b) => collator.compare(key(a), key(b)));
+}
+const wsEscape = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+// Збирає твір: сторінка-зміст → її розділи (до 2 рівнів вкладеності, не більше WS_MAX_CHAPTERS) → одна HTML-книга з <h1> на розділ.
+async function buildWikisourceBook(book, onProgress) {
+    const root = await wsPage(book.lang, book.title);
+    let chapters = wsSubpageLinks(root, book.title);
+    if (!chapters.length) {
+        try { const r = await fetch(`/api/library?op=ws-subpages&lang=${encodeURIComponent(book.lang)}&title=${encodeURIComponent(book.title)}`); if (r.ok) chapters = wsNaturalOrder((await r.json()).pages || [], book.title); } catch (e) {}
+    }
+    // Сторінка версій: підсторінки — це різні ВИДАННЯ того самого твору («Beuchot 1829», «Garnier 1877»), а не томи. Беремо
+    // одне видання (останнє — зазвичай повніше вичитане), інакше книга містила б той самий текст двічі.
+    if (chapters.length >= 2 && chapters.length <= 6 && chapters.every(c => /\b(1[5-9]|20)\d\d\b/.test(c.slice(book.title.length + 1)))) chapters = [chapters[chapters.length - 1]];
+    const parts = [];
+    if (!chapters.length) parts.push({ title: '', html: wsCleanBody(root) });
+    else {
+        const queue = chapters.slice(0, WS_MAX_CHAPTERS).map(title => ({ title, depth: 1 }));
+        const results = new Map();
+        let done = 0, i = 0;
+        const worker = async () => {
+            while (i < queue.length) {
+                const item = queue[i++];
+                try {
+                    const doc = await wsPage(book.lang, item.title);
+                    const subs = item.depth < 3 ? wsSubpageLinks(doc, item.title) : [];
+                    // Сторінка-зміст тому («Том 1» зі списком книг) — замість неї її власні розділи.
+                    if ((subs.length >= 3 || (subs.length && doc.body.textContent.trim().length < 3000)) && queue.length < WS_MAX_CHAPTERS) {
+                        const at = queue.indexOf(item);
+                        queue.splice(at + 1, 0, ...subs.slice(0, WS_MAX_CHAPTERS - queue.length).map(title => ({ title, depth: item.depth + 1 })));
+                        results.set(item, null);
+                    } else results.set(item, wsCleanBody(doc));
+                } catch (e) { results.set(item, null); }
+                done++; onProgress(done, queue.length);
+            }
+        };
+        await Promise.all(Array.from({ length: WS_CONCURRENCY }, worker));
+        for (const item of queue) {
+            const html = results.get(item);
+            if (html) parts.push({ title: item.title.split('/').pop(), html });
+        }
+    }
+    if (!parts.some(p => p.html.replace(/<[^>]+>/g, '').trim().length > 40)) throw new Error('empty');
+    const body = parts.map(p => (p.title ? `<h1>${wsEscape(p.title)}</h1>\n` : '') + p.html).join('\n');
+    const html = `<!DOCTYPE html><html lang="${wsEscape(book.lang)}"><head><meta charset="utf-8"><title>${wsEscape(book.title)}</title></head><body>${body}</body></html>`;
+    let h = 0; for (const ch of book.lang + ':' + book.title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    return new File([html], libraryFileName(book).replace(/\.epub$/, '.html'), { type: 'text/html', lastModified: h });
+}
+
 buildLibrary();
