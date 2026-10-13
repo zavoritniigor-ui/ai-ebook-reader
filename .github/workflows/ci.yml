@@ -234,6 +234,9 @@ jobs:
           echo "Running rules_tap_translate_browser.py..."
           python3 -u tests/rules_tap_translate_browser.py
 
+          echo "Running translation_robust_browser.py..."
+          python3 -u tests/translation_robust_browser.py
+
           echo "Running sentence_ai_only_browser.py..."
           python3 -u tests/sentence_ai_only_browser.py
 
