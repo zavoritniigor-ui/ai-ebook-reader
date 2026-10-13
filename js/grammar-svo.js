@@ -216,11 +216,21 @@ function flattenRange(range) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
         acceptNode(n) { return n.nodeValue && range.intersectsNode(n) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; }
     });
-    let text = '', segs = [], n;
+    // Текстовий шар PDF не має пробілів між елементами (кінець рядка, сусідня клітинка): без роздільника слова з різних
+    // рядків склеювались («headles cheveux»), і AI-пошук Правил та граматика отримували текст, у якому знайдені фрагменти
+    // з пробілами вже не збігались. Пробіл ставиться за тим самим правилом, що й у pdfRangeText (pdfSpansContinueWord).
+    const pdfLayer = root.closest && root.closest('.pdf-text-layer') || (root.querySelector && root.querySelector('.pdf-text-layer'));
+    let text = '', segs = [], n, prevSpan = null;
     while (n = walker.nextNode()) {
         const from = (n === range.startContainer) ? range.startOffset : 0;
         const to = (n === range.endContainer) ? range.endOffset : n.nodeValue.length;
         if (to <= from) continue;
+        if (pdfLayer) {
+            const span = n.parentElement && n.parentElement.closest('span') || null;
+            if (text && !/\s$/.test(text) && !/^\s/.test(n.nodeValue.slice(from, to)) && span !== prevSpan
+                && !(typeof pdfSpansContinueWord === 'function' && pdfSpansContinueWord(prevSpan, span))) text += ' ';
+            prevSpan = span || prevSpan;
+        }
         segs.push({ node: n, nodeStart: from, textStart: text.length, len: to - from });
         text += n.nodeValue.slice(from, to);
     }
