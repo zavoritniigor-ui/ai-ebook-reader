@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: /api/library
 // Тонкий проксі до безкоштовної бібліотеки Project Gutenberg (офіційне дзеркало gutenberg.pglaf.org; сам каталог — статичний library-catalog.json), бо вони не віддають CORS,
-// а CSP застосунку дозволяє лише власний origin. НЕ відкритий проксі: сервер сам складає адреси лише до одного фіксованого хоста (gutenberg.pglaf.org)
+// а CSP застосунку дозволяє лише власний origin. НЕ відкритий проксі: сервер сам складає адреси лише до фіксованих хостів (дзеркала Gutenberg gutenberg.nabasny.com і gutenberg.pglaf.org)
 // із числових id.
 //   ?op=file&id=<number>                                              -> EPUB книги
 //   ?op=cover&id=<number>                                             -> обкладинка (jpg)
@@ -34,13 +34,18 @@ export async function onRequestGet({ request }) {
         if (op === 'file' || op === 'cover') {
             const id = url.searchParams.get('id') || '';
             if (!/^\d{1,8}$/.test(id)) return json({ error: 'bad id' }, 400);
-            // Офіційне дзеркало Gutenberg: www.gutenberg.org з хмарних IP часто віддає 504, дзеркало відповідає за секунди.
+            // www.gutenberg.org з хмарних IP часто віддає 504. Офіційне дзеркало gutenberg.pglaf.org повне, але повільне
+            // (~90 КБ/с: ілюстрована «Pride and Prejudice», 25 МБ, — хвилини), а дзеркало gutenberg.nabasny.com віддає ті самі
+            // 25 МБ за кілька секунд, проте оновлюється рідше (нових книг може не мати). Тому: nabasny → pglaf з ілюстраціями →
+            // версія без ілюстрацій як остання можливість. Ілюстрації залишаємо завжди, коли їх можна дістати.
+            const mirrors = ['https://gutenberg.nabasny.com', 'https://gutenberg.pglaf.org'];
             const targets = op === 'file'
-                ? [`https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}-images-3.epub`, `https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.epub`]
-                : [`https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.cover.medium.jpg`];
+                ? [...mirrors.map(m => `${m}/cache/epub/${id}/pg${id}-images-3.epub`), `https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.epub`]
+                : mirrors.map(m => `${m}/cache/epub/${id}/pg${id}.cover.medium.jpg`);
             let res = null;
             for (const target of targets) {
-                res = await upstream(target, op === 'file' ? 'application/epub+zip' : 'image/jpeg');
+                try { res = await upstream(target, op === 'file' ? 'application/epub+zip' : 'image/jpeg'); }
+                catch (e) { res = null; continue; }
                 if (res.ok) break;
             }
             if (!res || !res.ok) return json({ error: 'upstream', status: res ? res.status : 0 }, 502);
