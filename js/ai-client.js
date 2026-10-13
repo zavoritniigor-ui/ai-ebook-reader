@@ -124,7 +124,33 @@ const aiRequests = new Set();
 function aiProviderKey(provider = state.activeAiProvider) {
     return Object.hasOwn(AI_PROVIDERS, provider) ? state[AI_PROVIDERS[provider].key] : '';
 }
-function aiAvailable() { return !!aiProviderKey(); }
+// ---- Shared key (functions/api/ai.js) --------------------------------------------------------------------------------
+// For people without their own key: when the site has a shared key configured (Cloudflare Pages secret GROQ_API_KEY /
+// OPENAI_API_KEY), the request goes to /api/ai and the SERVER adds the key -- it never reaches the browser. SHARED_AI_KEY is
+// only a marker "via the server", not a key. An own key always wins; the key dialog shows only own keys (aiProviderKey).
+const SHARED_AI_KEY = '\u0000shared';
+const sharedAiProviders = { groq: false, openai: false };
+function aiEffectiveKey(provider) {
+    return aiProviderKey(provider) || (sharedAiProviders[provider] === true ? SHARED_AI_KEY : '');
+}
+function aiEndpoint(provider, key, url) { return key === SHARED_AI_KEY ? `/api/ai?provider=${provider}` : url; }
+function aiAuthHeaders(provider, key) {
+    if (key === SHARED_AI_KEY) return {};
+    return provider === 'gemini' ? { 'x-goog-api-key': key } : { Authorization: `Bearer ${key}` };
+}
+async function loadSharedAiProviders() {
+    try {
+        const res = await fetch('/api/ai', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        sharedAiProviders.groq = !!data && data.groq === true;
+        sharedAiProviders.openai = !!data && data.openai === true;
+    } catch (e) { /* offline / no server function (local test server): own keys only */ }
+}
+function sharedAiProvider(preferred) {
+    return [preferred, 'openai', 'groq'].find(p => p && sharedAiProviders[p] === true) || null;
+}
+function aiAvailable() { return !!aiEffectiveKey(aiProviderForTask('default')); }
 // ---- Task routing --------------------------------------------------------------------------------------------------
 // With routing 'auto' (default) each task goes to the provider that suits it, IF that provider's key is stored:
 //   translation  -> Groq   (near-instant answers while the learner waits at a tapped word)
@@ -136,17 +162,21 @@ const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_p
     'rules_search', 'rules_explain', 'language_level', 'ask']);
 function aiProviderForTask(task) {
     const active = state.activeAiProvider;
-    if (state.aiRouting === 'off') return active;
+    if (state.aiRouting === 'off') return aiProviderKey(active) ? active : sharedAiProvider(active) || active;
     const wanted = AI_ROUTE_GROQ_TASKS.has(task) ? 'groq' : AI_ROUTE_OPENAI_TASKS.has(task) ? 'openai' : null;
-    return wanted && aiProviderKey(wanted) ? wanted : active;
+    const own = wanted && aiProviderKey(wanted) ? wanted : active;
+    // No own key for it: the shared server key, preferring the task's routed provider; none -> the active one (asks for a key).
+    return aiProviderKey(own) ? own : sharedAiProvider(wanted || active) || own;
 }
 // Which providers translate a tapped fragment, fastest first. Routing 'auto': Groq (near-instant) and OpenAI (slower, more careful) are BOTH asked
 // when both keys are stored -- the UI shows Groq at once and OpenAI's answer replaces it when it arrives. Routing off / a single key: one provider.
 function translationProviders() {
     const active = state.activeAiProvider;
-    if (state.aiRouting === 'off') return aiProviderKey(active) ? [active] : [];
+    if (state.aiRouting === 'off') { const p = aiProviderForTask('translation'); return aiEffectiveKey(p) ? [p] : []; }
     const list = ['groq', 'openai'].filter(p => aiProviderKey(p));
     if (!list.length && aiProviderKey(active)) list.push(active);
+    // Only the shared key: ONE provider per tap (Groq when the site has it -- fast and cheap), not two paid requests.
+    if (!list.length) { const shared = sharedAiProvider('groq'); if (shared) list.push(shared); }
     return list;
 }
 function missingAiKey(provider = state.activeAiProvider) {
@@ -163,8 +193,8 @@ function aiHttpError(provider, status, providerMessage = '') {
     return new AiRequestError(t(key).replace('{provider}', AI_PROVIDERS[provider].name), 'http', { status, providerMessage });
 }
 async function aiJsonRequest(provider, key, url, body, signal, timeoutMs) {
-    const headers = { 'Content-Type': 'application/json' };
-    headers[provider === 'gemini' ? 'x-goog-api-key' : 'Authorization'] = provider === 'gemini' ? key : `Bearer ${key}`;
+    const headers = Object.assign({ 'Content-Type': 'application/json' }, aiAuthHeaders(provider, key));
+    url = aiEndpoint(provider, key, url);
     let res;
     try { res = await fetchWithTimeout(url, { method: 'POST', headers, body: JSON.stringify(body), signal }, timeoutMs); }
     catch (err) {
@@ -319,9 +349,9 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
             model: OPENAI_MODEL, input, store: false, max_output_tokens: profile.max_output_tokens,
             reasoning: { effort: profile.reasoning }, stream: true
         };
-        const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` };
+        const headers = Object.assign({ 'Content-Type': 'application/json' }, aiAuthHeaders('openai', key));
         try {
-            const res = await fetchStreamingWithTimeout('https://api.openai.com/v1/responses',
+            const res = await fetchStreamingWithTimeout(aiEndpoint('openai', key, 'https://api.openai.com/v1/responses'),
                 { method: 'POST', headers, body: JSON.stringify(body), signal }, 30000);
             if (!res.ok) throw aiHttpError('openai', res.status);
 
@@ -432,7 +462,7 @@ async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, opt
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
     // options.provider: a caller-chosen provider (translation asks Groq and OpenAI separately); otherwise the task routing decides.
     const forced = options.provider && Object.hasOwn(AI_PROVIDERS, options.provider) ? options.provider : null;
-    const provider = forced || aiProviderForTask(task), key = aiProviderKey(provider);
+    const provider = forced || aiProviderForTask(task), key = aiEffectiveKey(provider);
     if (!key) throw new Error(missingAiKey(provider));
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -442,7 +472,7 @@ async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, opt
     const startedAt = position();
     // options.anyPosition: the answer is about data captured with the request (a page crop), not about the page the
     // reader is on now -- scrolling meanwhile must not discard it.
-    const current = () => !controller.signal.aborted && provider === (forced || aiProviderForTask(task)) && key === aiProviderKey(provider) && (options.anyPosition || startedAt === position());
+    const current = () => !controller.signal.aborted && provider === (forced || aiProviderForTask(task)) && key === aiEffectiveKey(provider) && (options.anyPosition || startedAt === position());
     const meta = options.meta || (options.meta = {});
     meta.provider = provider; meta.task = task;
     meta.maxOutputTokens = options.maxOutputTokens || (provider === 'openai' ? (OPENAI_TASK_PROFILES[task] || OPENAI_TASK_PROFILES.default).max_output_tokens : null);
@@ -508,7 +538,7 @@ async function machineTranslate(text, srcCode, isMultiWord, signal, targetLang =
 
 // Переклад через вибраний AI-провайдер. Повертає лише сам переклад.
 async function aiTranslateText(text, srcCode, signal, targetLang = state.targetLang, contextSentence = state.ctxSentence, withAlignment = false, provider = null) {
-    if (!(provider ? aiProviderKey(provider) : aiAvailable()) || !navigator.onLine) return null;
+    if (!(provider ? aiEffectiveKey(provider) : aiAvailable()) || !navigator.onLine) return null;
     const langName = LANG_NAMES[targetLang] || 'українською';
     const isWord = text.trim().split(/\s+/).length === 1;
     // Речення обов'язкове й для ОКРЕМОГО слова: без нього "fait" у "a fait de
@@ -647,3 +677,4 @@ function sanitizeAI(text) {
     s = s.replace(/^\s*analysis[\s\S]*?(?=final\b)/i, '').replace(/^\s*final\b[:.]?\s*/i, '');
     return s.replace(/```html|```/g, '').trim();
 }
+loadSharedAiProviders();
