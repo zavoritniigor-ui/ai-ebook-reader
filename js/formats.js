@@ -213,6 +213,7 @@ async function initEpub(file, epoch = readerEpoch.book) {
     if(state.spine.length === 0) throw new Error(t('noChapters'));
     state.totalPages = state.spine.length; 
     
+    computeBookWeights(epoch);
     buildToc(state.totalPages, "Розділ", (i) => { loadEpubChapter(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'epub' && bm.currentIndex >= 0 && bm.currentIndex < state.spine.length) ? bm.currentIndex : 0;
@@ -333,6 +334,7 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
     if (!bookContentPresent(holder)) throw new Error(t('emptyDoc'));
     state.docChapters = splitIntoChapters(holder);
     state.totalPages = state.docChapters.length;
+    computeBookWeights(epoch);
 
     buildToc(state.totalPages, t('chapter'), i => {
         renderDocChapter(i);
@@ -480,6 +482,7 @@ async function initTxt(file, epoch = readerEpoch.book) {
     // instead of the clear error every other empty/unusable file gets.
     if (!text.trim()) throw new Error(t('emptyDoc'));
     state.txtLines = text.split(/\r?\n/); state.totalPages = Math.ceil(state.txtLines.length / 50);
+    computeBookWeights(epoch);
     buildToc(state.totalPages, "Блок", i => { renderTxtPage(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'txt' && bm.currentIndex >= 0 && bm.currentIndex < state.totalPages) ? bm.currentIndex : 0;
