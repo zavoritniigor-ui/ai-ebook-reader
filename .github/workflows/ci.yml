@@ -252,6 +252,9 @@ jobs:
           echo "Running target_langs_de_es_browser.py..."
           python3 -u tests/target_langs_de_es_browser.py
 
+          echo "Running text_scrubber_ribbon_browser.py..."
+          python3 -u tests/text_scrubber_ribbon_browser.py
+
           echo "Running rules_study_lang_browser.py..."
           python3 -u tests/rules_study_lang_browser.py
 

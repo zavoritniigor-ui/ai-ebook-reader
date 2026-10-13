@@ -1465,6 +1465,7 @@ els.mainArea.addEventListener('click', (e) => {
                 const sr = sentenceRangeAt(e.clientX, e.clientY);
                 state.ctxSentence = sr ? sr.toString().trim().slice(0, 400) : '';
                 state.ctxSentenceRange = sr ? sr.cloneRange() : null;   // для розбору речення прямо в тексті (js/sentence-structure.js)
+                if (sr && typeof markReadingPoint === 'function') markReadingPoint(sr);   // стрічка «місце читання»
                 if (state.ctxSentence && detectLang(state.ctxSentence).startsWith('en')) {
                     const phrasal = detectPhrasalVerb(word, state.ctxSentence);
                     if (phrasal) lookup = phrasal;

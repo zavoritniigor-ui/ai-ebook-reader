@@ -131,6 +131,7 @@ function pdfWrapperEstimate(doc) {
 }
 
 function updatePdfProgressText(pageIndex) {
+    if (typeof renderReadingRibbon === 'function') renderReadingRibbon();
     if (state.format !== 'pdf') return;
     const bookLabel = typeof pdfBookPageLabel === 'function' ? pdfBookPageLabel(pageIndex) : null;
     const hasBookScheme = state.pdfPageLabels || (state.pdfLabelToPhysical && state.pdfLabelToPhysical.size > 0);
