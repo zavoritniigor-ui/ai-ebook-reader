@@ -1,6 +1,6 @@
-## Library: big Gutenberg books load fast (2026-10-13, Claude)
+## Library: big illustrated Gutenberg books load fast, WITH illustrations (2026-10-13, Claude)
 
-After #199 a 14 MB illustrated EPUB arrived whole but took ~173 s through the pglaf mirror (1342 still came truncated — most likely a truncated copy cached at the Cloudflare edge from before #199; it expires within a day). `functions/api/library.js` now HEADs the illustrated `-images-3.epub` and, above 6 MB, serves the no-images `pg<id>.epub` first (same text; 1342: 561 KB in ~4 s instead of 24.8 MB). Not covered by browser tests (server-side; checked with a local node call).
+After #199 a 14 MB illustrated EPUB arrived whole but took ~3 min: the official mirror gutenberg.pglaf.org serves ~90 KB/s (www.gutenberg.org answers 504 from cloud IPs). A first version of this PR served the no-images `pg<id>.epub` above 6 MB; the user wants the illustrations, so that was dropped. `functions/api/library.js` now tries `gutenberg.nabasny.com` first (the same `-images-3.epub`, 25 MB 1342 in ~2.4 s, 1400 14 MB in ~3 s), then pglaf with images, then the no-images edition as the last resort; a network error on one mirror moves on to the next. nabasny's copies are older (1342: Jan 2023) and it may lack books added later — the whole catalog (max id 44238) is there. Covers use the same order. Not covered by browser tests (server-side; checked with a local node call of `onRequestGet`: 1342, 1400, 44238, cover, bad id → 502). Speed from Cloudflare's network not yet measured — check on the preview/production.
 
 ## AI translation «не зміг перекласти» — answer budget (2026-10-13, Claude)
 
