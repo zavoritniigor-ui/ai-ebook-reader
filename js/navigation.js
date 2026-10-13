@@ -129,8 +129,69 @@ function goToPageInChapter(p, animate = true) {
     updateProgressText();
     refreshReadingStats();
     saveBookmark();
+    if (typeof renderReadingRibbon === 'function') renderReadingRibbon();
 }
+// ========== ШВИДКЕ ГОРТАННЯ ДЛЯ ТЕКСТОВИХ ФОРМАТІВ ==========
+// Той самий повзунок, що й у PDF (#pdf-scrubber, js/pdf-render.js), але позиція — частка ВСІЄЇ книги: кожен розділ/блок
+// займає рівну частину шкали, усередині — пропорційно сторінкам. Кількість сторінок інших розділів наперед невідома
+// (вони не розкладені), тому при переході в інший розділ сторінка в ньому обирається за тією ж часткою.
+const TEXT_SCRUB_MAX = 1000;
+function textScrubPosition() {
+    const blocks = Math.max(1, state.totalPages || 1), pages = Math.max(1, state.totalPagesInChapter || 1);
+    return Math.round(((state.currentIndex || 0) + (state.pageInChapter || 0) / pages) / blocks * TEXT_SCRUB_MAX);
+}
+function textScrubTarget(value) {
+    const blocks = Math.max(1, state.totalPages || 1);
+    const g = Math.max(0, Math.min(TEXT_SCRUB_MAX, value)) / TEXT_SCRUB_MAX * blocks;
+    const block = Math.min(blocks - 1, Math.floor(g));
+    return { block, frac: Math.min(0.9999, g - block) };
+}
+function textScrubLabel(value) {
+    const { block, frac } = textScrubTarget(value);
+    if (block === state.currentIndex) {
+        const pages = Math.max(1, state.totalPagesInChapter || 1);
+        const page = Math.min(pages - 1, Math.floor(frac * pages));
+        return state.totalPages > 1 ? `${block + 1}·${page + 1}/${pages}` : `${page + 1}/${pages}`;
+    }
+    return `${t(state.format === 'epub' ? 'chapter' : 'block')} ${block + 1}`;
+}
+function updateTextScrubber() {
+    const scrubber = document.getElementById('pdf-scrubber'), range = document.getElementById('pdf-page-range');
+    if (!scrubber || !range) return;
+    const total = (state.totalPages || 0) > 1 || (state.totalPagesInChapter || 0) > 1;
+    scrubber.classList.toggle('available', !!state.bookKey && total);
+    if (typeof scrubDragging !== 'undefined' && scrubDragging) return;
+    range.min = 0; range.max = TEXT_SCRUB_MAX; range.step = 1;
+    const value = textScrubPosition();
+    range.value = value;
+    const preview = document.getElementById('pdf-page-preview');
+    if (preview) preview.value = `${Math.round(value / TEXT_SCRUB_MAX * 100)}%`;
+    range.setAttribute('aria-valuetext', textScrubLabel(value));
+}
+function previewTextScrub(value) {
+    const preview = document.getElementById('pdf-page-preview');
+    if (preview) preview.value = textScrubLabel(value);
+    document.getElementById('pdf-page-range')?.setAttribute('aria-valuetext', textScrubLabel(value));
+}
+let textScrubToken = 0;
+async function commitTextScrub(value) {
+    if (state.format === 'pdf' || !state.bookKey) return;
+    const { block, frac } = textScrubTarget(value);
+    const token = ++textScrubToken;
+    invalidateSelection();
+    if (isSpeakingGlobal) stopGlobalTTS();
+    if (block !== state.currentIndex) {
+        if (state.format === 'epub') await loadEpubChapter(block, false, 0);
+        else if (state.docChapters) await renderDocChapter(block, false, 0);
+        else await renderTxtPage(block, false, 0);
+        if (token !== textScrubToken) return;
+    }
+    const pages = Math.max(1, state.totalPagesInChapter || 1);
+    goToPageInChapter(Math.min(pages - 1, Math.floor(frac * pages)), false);
+}
+
 function updateProgressText() {
+    if (typeof updateTextScrubber === 'function' && state.format !== 'pdf') updateTextScrubber();
     if (state.format === 'pdf') {
         if (typeof updatePdfProgressText === 'function') updatePdfProgressText(state.currentIndex);
         else els.progress.textContent = `${state.currentIndex} ${t('of')} ${state.totalPages}`;

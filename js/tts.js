@@ -340,6 +340,7 @@ function speakCurrentSentence() {
         const targetPage = pageIndexForRange(item.range);
         if (targetPage !== state.pageInChapter) goToPageInChapter(targetPage);
     }
+    if (typeof markReadingPoint === 'function') markReadingPoint(item.range);
     // Речення саме собі контекст: у двомовній книзі сусідні речення можуть бути
     // різними мовами, тому кожне озвучується власною.
     state.ctxSentence = item.text;

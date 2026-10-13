@@ -196,8 +196,10 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
 const pdfPageRange = document.getElementById('pdf-page-range');
 let scrubDragging = false, scrubTimer, scrubPendingPage = null;
 function updatePdfScrubber() {
+    // Текстові формати (EPUB/FB2/DOCX/TXT/MD/HTML) мають той самий повзунок, але по всій книзі (js/navigation.js).
+    if (state.format !== 'pdf') { if (typeof updateTextScrubber === 'function') updateTextScrubber(); return; }
     document.getElementById('pdf-scrubber').classList.toggle('available', state.totalPages > 1);
-    pdfPageRange.max = state.totalPages; pdfPageRange.value = state.currentIndex;
+    pdfPageRange.min = 1; pdfPageRange.step = 1; pdfPageRange.max = state.totalPages; pdfPageRange.value = state.currentIndex;
     const bookLabel = typeof pdfBookPageLabel === 'function' ? pdfBookPageLabel(state.currentIndex) : null;
     const hasBookScheme = state.pdfPageLabels || (state.pdfLabelToPhysical && state.pdfLabelToPhysical.size > 0);
     const preview = document.getElementById('pdf-page-preview');
@@ -214,6 +216,7 @@ function updatePdfScrubber() {
 }
 function commitPdfScrub() {
     clearTimeout(scrubTimer);
+    if (state.format !== 'pdf') { if (typeof commitTextScrub === 'function') commitTextScrub(Number(pdfPageRange.value)); return; }
     const page = Number(pdfPageRange.value);
     if (!document.hidden && state.format === 'pdf' && page !== state.currentIndex && page !== scrubPendingPage) {
         scrubPendingPage = page;
@@ -230,6 +233,7 @@ pdfPageRange.addEventListener('pointerdown', e => {
     scrubDragging = true; clearTimeout(scrubTimer); pdfPageRange.setPointerCapture(e.pointerId);
 });
 pdfPageRange.addEventListener('input', () => {
+    if (state.format !== 'pdf') { if (typeof previewTextScrub === 'function') previewTextScrub(Number(pdfPageRange.value)); return; }
     const val = Number(pdfPageRange.value);
     const bookLabel = typeof pdfBookPageLabel === 'function' ? pdfBookPageLabel(val) : null;
     const hasBookScheme = state.pdfPageLabels || (state.pdfLabelToPhysical && state.pdfLabelToPhysical.size > 0);
