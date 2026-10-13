@@ -557,6 +557,8 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
             if (!translation) return null;
             return typeof parsed === 'string' ? translation : { ...parsed, translation };
         }
+        // Уламок JSON («{broken», обірвана розмітка) — не переклад; показувати його як текст не можна.
+        if (/^\s*(?:```|[\[{])/.test(String(out || ''))) return null;
         return normalizeTranslation(out, targetLang, false);
     } catch (e) { return null; }
 }
