@@ -1,7 +1,8 @@
 // Cloudflare Pages Function: /api/ai — спільний ключ AI для тих, хто не ввів власного (js/ai-client.js, SHARED_AI_KEY).
 // Ключі лежать ЛИШЕ в секретах Cloudflare Pages (Settings → Variables and Secrets: GROQ_API_KEY, OPENAI_API_KEY) і ніколи
 // не потрапляють у браузер, у репозиторій чи в код застосунку.
-//   GET                          -> {"groq":bool,"openai":bool} — які спільні ключі налаштовані
+//   GET                          -> {"groq":bool,"openai":bool,"format":{"groq":bool,"openai":bool}} — які спільні ключі налаштовані
+//                                   і чи вони схожі на ключ свого провайдера (gsk_… / sk-…); самих ключів не розкриває
 //   POST ?provider=groq|openai   -> тіло запиту провайдера (те саме, що застосунок надсилає напряму з власним ключем);
 //                                   відповідь провайдера (JSON або потік SSE) передається як є
 // НЕ відкритий проксі: лише запити зі сторінок самого застосунку (Origin), лише моделі застосунку, обмежені розмір запиту й
@@ -15,6 +16,9 @@ const MAX_BODY_BYTES = 6 * 1024 * 1024;   // запит із вирізаним 
 const MAX_OUTPUT_TOKENS = 16000;
 const RATE_WINDOW_MS = 60000, RATE_MAX = 40;
 const hits = new Map();
+// Ключ, вставлений із телефона, часто має пробіл чи перенесення рядка на краю — провайдер тоді відповідає 401.
+const secret = (env, provider) => String(env[SECRETS[provider]] || '').trim();
+const KEY_FORMAT = { groq: /^gsk_[A-Za-z0-9]{20,}$/, openai: /^sk-[A-Za-z0-9_-]{20,}$/ };
 
 function json(body, status = 200) {
     return new Response(JSON.stringify(body), { status, headers: {
@@ -36,14 +40,15 @@ function rateLimited(ip) {
 }
 
 export async function onRequestGet({ env }) {
-    return json({ groq: !!env.GROQ_API_KEY, openai: !!env.OPENAI_API_KEY });
+    const groq = secret(env, 'groq'), openai = secret(env, 'openai');
+    return json({ groq: !!groq, openai: !!openai, format: { groq: KEY_FORMAT.groq.test(groq), openai: KEY_FORMAT.openai.test(openai) } });
 }
 
 export async function onRequestPost({ request, env }) {
     const url = new URL(request.url);
     const provider = url.searchParams.get('provider') || '';
     if (!Object.hasOwn(URLS, provider)) return json({ error: 'bad provider' }, 400);
-    const key = env[SECRETS[provider]];
+    const key = secret(env, provider);
     if (!key) return json({ error: 'no shared key' }, 503);
     if (!sameOrigin(request, url)) return json({ error: 'forbidden' }, 403);
     if (rateLimited(request.headers.get('cf-connecting-ip') || 'unknown')) return json({ error: 'rate limited' }, 429);
