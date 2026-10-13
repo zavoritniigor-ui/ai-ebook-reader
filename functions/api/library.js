@@ -13,14 +13,18 @@ function json(body, status = 200, maxAge = 0) {
         'x-content-type-options': 'nosniff' } });
 }
 
-async function upstream(url, accept, signal) {
-    return fetch(url, { headers: { 'user-agent': UA, accept }, redirect: 'follow', signal, cf: { cacheTtl: 86400, cacheEverything: true } });
+// Тайм-аут лише на ОЧІКУВАННЯ відповіді (заголовків): раніше AbortSignal.timeout(30000) діяв і на передавання тіла, тож
+// велика книга (напр. «Pride and Prejudice» з ілюстраціями, 25 МБ) обривалась на 30-й секунді й відкривалась як «зіпсований ZIP».
+async function upstream(url, accept) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    try { return await fetch(url, { headers: { 'user-agent': UA, accept }, redirect: 'follow', signal: ctrl.signal, cf: { cacheTtl: 86400, cacheEverything: true } }); }
+    finally { clearTimeout(timer); }
 }
 
 export async function onRequestGet({ request }) {
     const url = new URL(request.url);
     const op = url.searchParams.get('op');
-    const signal = AbortSignal.timeout(30000);
     try {
         if (op === 'file' || op === 'cover') {
             const id = url.searchParams.get('id') || '';
@@ -31,7 +35,7 @@ export async function onRequestGet({ request }) {
                 : [`https://gutenberg.pglaf.org/cache/epub/${id}/pg${id}.cover.medium.jpg`];
             let res = null;
             for (const target of targets) {
-                res = await upstream(target, op === 'file' ? 'application/epub+zip' : 'image/jpeg', signal);
+                res = await upstream(target, op === 'file' ? 'application/epub+zip' : 'image/jpeg');
                 if (res.ok) break;
             }
             if (!res || !res.ok) return json({ error: 'upstream', status: res ? res.status : 0 }, 502);

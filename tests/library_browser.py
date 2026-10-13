@@ -42,4 +42,16 @@ c.js("document.querySelector('#library-list .btn-primary').click(); 1"); time.sl
 check('7 Read downloads the EPUB through /api/library and opens it as a stable file (lastModified = book id)',
       "__reqs.some(r => /op=file&id=\\d+/.test(r)) && __opened && __opened.name.endsWith('.epub') && __opened.type === 'application/epub+zip' && __opened.lm > 0")
 check('8 the window closes after opening', "!document.getElementById('library-modal').classList.contains('open')")
+
+c.js("openLibrary(); 1"); time.sleep(0.5)
+c.js("""(() => { window.__written = null; window.__picker = null;
+  window.showSaveFilePicker = async (opts) => { __picker = opts; return { createWritable: async () => ({ write: async f => { __written = f; }, close: async () => {} }) }; };
+  document.querySelector('#library-list .library-save').click(); return 1; })()"""); time.sleep(1)
+check('9 Save asks for a folder/file name (showSaveFilePicker) and writes the EPUB there',
+      "!!__picker && __picker.suggestedName.endsWith('.epub') && !!__written && __written.type === 'application/epub+zip' && document.getElementById('library-status').textContent === t('libSaved')")
+c.js("""(() => { delete window.showSaveFilePicker; window.__dl = null; const orig = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function () { if (this.download) { __dl = { name: this.download, href: this.href }; return; } return orig.call(this); };
+  document.querySelector('#library-list .library-save').click(); return 1; })()"""); time.sleep(1)
+check('10 without a folder picker (Android) Save downloads the file into Downloads', "!!__dl && __dl.name.endsWith('.epub') && __dl.href.startsWith('blob:') && document.getElementById('library-status').textContent === t('libSavedDownloads')")
+check('11 the second save reused the downloaded file (no new request)', "__reqs.filter(r => r.includes('op=file')).length <= 2")
 print('ALL PASS')

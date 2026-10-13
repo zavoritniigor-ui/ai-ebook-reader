@@ -23,13 +23,19 @@
 // однієї сторінки. Нумерація рахується в межах поточного розділу (Розділ N, стор. X з Y),
 // оскільки порахувати абсолютний номер сторінки по всій книзі наперед без завантаження
 // й розкладки взагалі всіх розділів одразу неможливо.
-const PAGE_GAP = 48; // px — відстань між "сторінками"-колонками, єдине джерело правди
+const PAGE_GAP = 48; // px — найменша відстань між "сторінками"-колонками
+// Проміжок між колонками має бути не меншим за бічні поля контейнера: інакше сусідня сторінка заходить у поле й її край
+// видно збоку (планшет горизонтально: поле 56px > 48px — читач бачив обрізані рядки попередньої й наступної сторінок).
+function pageGap() {
+    const cs = getComputedStyle(els.container);
+    return Math.max(PAGE_GAP, Math.ceil(parseFloat(cs.paddingLeft) || 0), Math.ceil(parseFloat(cs.paddingRight) || 0)) + 8;
+}
 function columnStep() {
     // Крок беремо ВИМІРЯНИЙ, а не обчислений з ширини елемента: браузер просуває
     // колонку на дробову величину, і різниця накопичувалась з кожним гортанням,
     // аж поки зсув не ставав на частину колонки — тоді дві сторінки накладались.
     if (state.measuredStep > 0) return state.measuredStep;
-    return Math.round(els.pages.clientWidth) + PAGE_GAP;
+    return Math.round(els.pages.clientWidth) + pageGap();
 }
 
 // Character offsets are stable across font/viewport changes and highlight spans.
@@ -91,15 +97,15 @@ function paginateContainer() {
     els.pages.style.width = '';
 
     els.pages.style.transform = 'none'; els.pages.classList.add('no-anim'); // не міряємо "на льоту" зі зсувом
-    els.pages.style.columnGap = PAGE_GAP + 'px';
+    els.pages.style.columnGap = pageGap() + 'px';
     els.pages.style.columnWidth = els.pages.clientWidth + 'px';
     els.pages.style.height = '100%';
 
-    const rough = Math.round(els.pages.clientWidth) + PAGE_GAP;
+    const rough = Math.round(els.pages.clientWidth) + pageGap();
     const total = Math.max(1, Math.round(els.pages.scrollWidth / rough));
     state.totalPagesInChapter = total;
     // Точний крок, узгоджений із реальною шириною розкладки.
-    state.measuredStep = total > 1 ? (els.pages.scrollWidth + PAGE_GAP) / total : rough;
+    state.measuredStep = total > 1 ? (els.pages.scrollWidth + pageGap()) / total : rough;
 }
 function goToPageInChapter(p, animate = true) {
     p = Number.isFinite(p) ? Math.trunc(p) : 0;

@@ -7,6 +7,11 @@ Object.assign(I18N, {
     libSearch:   { uk: 'Назва або автор…', en: 'Title or author…', fr: 'Titre ou auteur…', ru: 'Название или автор…' },
     libAllLangs: { uk: 'Усі мови', en: 'All languages', fr: 'Toutes les langues', ru: 'Все языки' },
     libRead:     { uk: 'Читати', en: 'Read', fr: 'Lire', ru: 'Читать' },
+    libSave:     { uk: '⬇ Зберегти', en: '⬇ Save', fr: '⬇ Enregistrer', ru: '⬇ Сохранить' },
+    libSaveTitle:{ uk: 'Зберегти книгу на пристрій (вибрана тека або «Завантаження»)', en: 'Save the book to the device (chosen folder or Downloads)',
+                   fr: "Enregistrer le livre sur l'appareil (dossier choisi ou Téléchargements)", ru: 'Сохранить книгу на устройство (выбранная папка или «Загрузки»)' },
+    libSaved:    { uk: 'Книгу збережено.', en: 'Book saved.', fr: 'Livre enregistré.', ru: 'Книга сохранена.' },
+    libSavedDownloads: { uk: 'Книгу збережено в «Завантаження».', en: 'Book saved to Downloads.', fr: 'Livre enregistré dans Téléchargements.', ru: 'Книга сохранена в «Загрузки».' },
     libMore:     { uk: 'Показати ще', en: 'Show more', fr: 'Afficher plus', ru: 'Показать ещё' },
     libLoading:  { uk: 'Завантаження…', en: 'Loading…', fr: 'Chargement…', ru: 'Загрузка…' },
     libEmpty:    { uk: 'Нічого не знайдено.', en: 'Nothing found.', fr: 'Aucun résultat.', ru: 'Ничего не найдено.' },
@@ -132,19 +137,60 @@ function libraryCard(book) {
     info.append(name, by);
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-primary'; btn.textContent = t('libRead');
     btn.addEventListener('click', () => downloadLibraryBook(book, btn));
-    card.append(cover, info, btn);
+    const save = document.createElement('button'); save.type = 'button'; save.className = 'library-save'; save.textContent = t('libSave'); save.title = t('libSaveTitle');
+    save.addEventListener('click', () => saveLibraryBook(book, save));
+    const actions = document.createElement('div'); actions.className = 'library-actions'; actions.append(btn, save);
+    card.append(cover, info, actions);
     return card;
+}
+
+// Файл книги: завантажується один раз за сеанс (і для читання, і для збереження).
+const libraryFiles = new Map();
+function libraryFileName(book) { return book.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.epub'; }
+async function fetchLibraryFile(book) {
+    if (libraryFiles.has(book.id)) return libraryFiles.get(book.id);
+    const res = await fetch('/api/library?op=file&id=' + encodeURIComponent(book.id));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    // Той самий id → той самий «ключ книги» (назва+розмір+lastModified): позиція читання переживає повторне завантаження.
+    const file = new File([blob], libraryFileName(book), { type: 'application/epub+zip', lastModified: book.id });
+    libraryFiles.set(book.id, file);
+    if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+    return file;
+}
+// Зберегти книгу на пристрій: де браузер уміє (комп'ютер) — у теку, яку читач вибере сам; інакше (Android) — звичайним
+// завантаженням у теку «Завантаження».
+async function saveLibraryBook(book, btn) {
+    if (btn.disabled) return;
+    btn.disabled = true; const label = btn.textContent; btn.textContent = t('libLoading');
+    const status = libraryEl('library-status');
+    try {
+        const file = await fetchLibraryFile(book);
+        if (typeof window.showSaveFilePicker === 'function') {
+            let handle;
+            try { handle = await window.showSaveFilePicker({ suggestedName: file.name, types: [{ description: 'EPUB', accept: { 'application/epub+zip': ['.epub'] } }] }); }
+            catch (e) { if (e && e.name === 'AbortError') return; handle = null; }
+            if (handle) {
+                const w = await handle.createWritable(); await w.write(file); await w.close();
+                status.textContent = t('libSaved'); return;
+            }
+        }
+        const url = URL.createObjectURL(file), a = document.createElement('a');
+        a.href = url; a.download = file.name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        status.textContent = t('libSavedDownloads');
+    } catch (e) {
+        status.textContent = t('libBookError');
+    } finally {
+        btn.disabled = false; btn.textContent = label;
+    }
 }
 
 async function downloadLibraryBook(book, btn) {
     if (libraryState.busy) return;
     libraryState.busy = true; btn.disabled = true; btn.textContent = t('libLoading');
     try {
-        const res = await fetch('/api/library?op=file&id=' + encodeURIComponent(book.id));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const blob = await res.blob();
-        // Той самий id → той самий «ключ книги» (назва+розмір+lastModified): позиція читання переживає повторне завантаження.
-        const file = new File([blob], book.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.epub', { type: 'application/epub+zip', lastModified: book.id });
+        const file = await fetchLibraryFile(book);
         closeLibrary();
         await openBookFile(file);
     } catch (e) {
