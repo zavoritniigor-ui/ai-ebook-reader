@@ -34,6 +34,26 @@ function rulesAllTopics(lang) {
     const cat = rulesCatalogue(lang);
     return cat ? cat.sections.flatMap(s => s.topics.map(topic => Object.assign({ section: s }, { topic }))) : [];
 }
+// Мова, ГРАМАТИКУ якої шукаємо: підручник французької англійською (пояснення англійською, приклади французькою) за більшістю
+// тексту — «англійський», і Правила відкривали англійський каталог, шукаючи англійську граматику у французьких прикладах.
+// Тому французька обирається, щойно французький текст становить помітну частку (≥ 20% літер) сторінки чи виділення
+// або французькі приклади (відрізки з 3+ слів) разом мають щонайменше 8 слів.
+function rulesStudyLang(text) {
+    if (!text || !text.trim() || typeof buildLanguageSegments !== 'function') return '';
+    const count = { fr: 0, en: 0 };
+    let frExampleWords = 0;   // слова французьких відрізків щонайменше з 3 слів — приклади підручника, а не окреме «bonjour» у романі
+    for (const seg of buildLanguageSegments(text, pageLang().slice(0, 2))) {
+        if (!(seg.lang in count)) continue;
+        count[seg.lang] += (seg.text.match(/\p{L}/gu) || []).length;
+        const words = (seg.text.match(/\p{L}+/gu) || []).length;
+        if (seg.lang === 'fr' && words >= 3) frExampleWords += words;
+    }
+    const total = count.fr + count.en;
+    if (!total) return '';
+    return count.fr >= total * 0.2 || frExampleWords >= 8 ? 'fr' : 'en';
+}
+// Ручний вибір мови у вікні Правил діє в межах тієї самої книги; нова книга знову визначає мову сама.
+function rulesLangPinned() { return !!rulesState.langPinned && rulesState.langPinned === (state.bookKey || true); }
 function rulesBounded(map, key, value) {
     map.set(key, value);
     if (map.size > RULES_CACHE_MAX) map.delete(map.keys().next().value);
@@ -359,8 +379,8 @@ function openRulesPanel({ keep = false } = {}) {
     if (typeof closePractice === 'function' && practice && !practice.hidden) closePractice();
     cancelTooltipHide(); els.tooltip.style.display = 'none';
     if (!keep || !panel.dataset.ready) {
-        const page = pageLang().slice(0, 2);
-        if (!rulesState.topic && RULES_LANGS.includes(page)) rulesState.lang = page;
+        const page = rulesStudyLang(collectVisibleText().text) || pageLang().slice(0, 2);
+        if (!rulesState.topic && !rulesLangPinned() && RULES_LANGS.includes(page)) rulesState.lang = page;
         panel.dataset.ready = '1';
         if (rulesState.topic) renderRuleTopic(); else renderRulesTree();
     }
@@ -431,7 +451,7 @@ function renderRulesTree() {
     langSel.setAttribute('aria-label', t('rulesLangLabel'));
     for (const l of RULES_LANGS) { const o = ruleEl('option', '', l === 'fr' ? 'Français' : 'English'); o.value = l; langSel.appendChild(o); }
     langSel.value = rulesState.lang;
-    langSel.onchange = () => { rulesState.lang = langSel.value; renderRulesTree(); };
+    langSel.onchange = () => { rulesState.lang = langSel.value; rulesState.langPinned = state.bookKey || true; renderRulesTree(); };
     const scanBtn = ruleEl('button', 'rules-scan', '🔍 ' + t('rulesScan'));
     scanBtn.type = 'button'; scanBtn.id = 'rules-scan';
     scanBtn.onclick = () => runRuleSelectionScan();
@@ -524,8 +544,9 @@ async function runRuleSelectionScan() {
     if (!aiAvailable() || !navigator.onLine) { status(t('needKey')); return; }
     const flat = rulesSelectionSource();
     if (!flat) { status(t('rulesScanHint')); return; }
-    const detected = typeof langForText === 'function' ? langForText(flat.text).slice(0, 2) : '';
-    if (RULES_LANGS.includes(detected)) rulesState.lang = detected;
+    const detected = rulesStudyLang(flat.text) || (typeof langForText === 'function' ? langForText(flat.text).slice(0, 2) : '');
+    // Мову, обрану вручну в списку вікна, автовизначення більше не перебиває.
+    if (!rulesLangPinned() && RULES_LANGS.includes(detected)) rulesState.lang = detected;
     const langCode = rulesState.lang, sourceText = flat.text.replace(/\s+/g, ' ').trim();
     const scan = { lang: langCode, targetLang: state.targetLang, sourceText, flat, status: 'running', found: new Map() };
     rulesScan = scan; rulesState.status = 'running';
