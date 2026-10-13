@@ -830,10 +830,19 @@ function buildLanguageLevelPrompt(fragment, sentence, langName) {
     const found = fragmentLangInContext(fragment, sentence || fragment);
     const src = found === 'fr' ? 'fr-FR' : found === 'en' ? 'en-US' : detectLang(sentence || fragment);
     const srcName = src.startsWith('fr') ? 'французькою' : 'англійською';
+    // Англійський фрагмент у підручнику ФРАНЦУЗЬКОЇ (пояснення чи завдання англійською, як у «Complete French All-in-One»):
+    // учень вивчає французьку, тож варіанти A2/B1 — французькою (той самий зміст), а не англійською (скарга користувача).
+    // Мову навчання сторінки визначає та сама rulesStudyLang, що й у вікні «Правила» (js/grammar-rules.js).
+    const pageText = typeof collectVisibleText === 'function' ? collectVisibleText().text : '';
+    const studyFr = !src.startsWith('fr') && typeof rulesStudyLang === 'function' && rulesStudyLang(pageText) === 'fr';
+    const exName = studyFr ? 'французькою' : srcName;
+    const sameLang = studyFr
+        ? `ВАЖЛИВО: це текст із підручника ФРАНЦУЗЬКОЇ мови, читач вивчає французьку. Рівень і «що складного» оціни для того, як цей зміст звучить ФРАНЦУЗЬКОЮ; спрощені варіанти A2 і B1 пиши ФРАНЦУЗЬКОЮ — той самий зміст, переданий французькою, — а не ${srcName}.`
+        : `ВАЖЛИВО: спрощені варіанти мають бути ТІЄЮ САМОЮ мовою, що й оригінал — ${srcName}. Не перекладай сам фрагмент іншою мовою.`;
     return `Мовний розбір фрагмента ${srcName}: "${fragment}".${ctx}
 Пояснення давай ВИКЛЮЧНО ${langName}, у форматі HTML (без markdown, без \`\`\`). Усі заголовки тексту також переклади ${langName}. Стисло, без води.
 
-ВАЖЛИВО: спрощені варіанти мають бути ТІЄЮ САМОЮ мовою, що й оригінал — ${srcName}. Не перекладай сам фрагмент іншою мовою.
+${sameLang}
 
 РОЗМІТКА (обов'язково саме така, вона потрібна для кольорового виділення):
 • позначку рівня став як <span class="lvl" data-l="B1">B1</span>, підставляючи потрібний рівень;
@@ -842,8 +851,8 @@ function buildLanguageLevelPrompt(fragment, sentence, langName) {
 Дай саме цю структуру (але слова "Рівень" та "Що складного" обов'язково переклади ${langName}):
 1. <b>Рівень:</b> <span class="lvl" data-l="…">…</span> — і <b>чому</b> саме такий: назви конкретно, що піднімає рівень (час дієслова, спосіб, конструкція, лексика).
 2. <b>Що складного</b> — 1–3 конкретні місця, які ускладнюють розуміння.
-3. <div class="lvl-block" data-l="A2"> спрощення до A2 ${srcName}, а поруч у дужках переклад ${langName} </div>
-4. <div class="lvl-block" data-l="B1"> те саме на рівні B1, так само ${srcName} з перекладом </div>
+3. <div class="lvl-block" data-l="A2"> спрощення до A2 ${exName}, а поруч у дужках переклад ${langName} </div>
+4. <div class="lvl-block" data-l="B1"> те саме на рівні B1, так само ${exName} з перекладом </div>
 Зміст у спрощеннях має лишитись тим самим — міняється лише складність мови.`;
 }
 
