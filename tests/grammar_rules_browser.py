@@ -270,6 +270,8 @@ for (w, h, mobile) in ((820, 1180, True), (1180, 820, True), (1024, 768, True), 
 for (w, h) in ((390, 844), (844, 390), (360, 640)):
     c.call('Emulation.setDeviceMetricsOverride', width=w, height=h, deviceScaleFactor=2, mobile=True); time.sleep(0.8)
     check("42-phone %dx%d: no Rules bookmark on a phone" % (w, h), "(t => t.hidden && t.getBoundingClientRect().width === 0)(document.getElementById('rules-tab'))", timeout=3)
+    check("42-phone-scrubber %dx%d: the page slider sits flush against the right screen edge" % (w, h),
+          "(() => { const sc = document.getElementById('pdf-scrubber'); sc.classList.add('available'); const r = sc.getBoundingClientRect(); sc.classList.remove('available'); return (Math.abs(r.right - innerWidth) <= 1 && r.width <= 37) || JSON.stringify([r.right, r.width, innerWidth]); })()")
 c.call('Emulation.setDeviceMetricsOverride', width=820, height=1180, deviceScaleFactor=1, mobile=True); time.sleep(0.8)
 check("42-tablet the bookmark is back on a tablet", "!document.getElementById('rules-tab').hidden", timeout=3)
 c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False); time.sleep(0.8)
