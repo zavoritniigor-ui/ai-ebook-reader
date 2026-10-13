@@ -106,6 +106,7 @@ function paginateContainer() {
     state.totalPagesInChapter = total;
     // Точний крок, узгоджений із реальною шириною розкладки.
     state.measuredStep = total > 1 ? (els.pages.scrollWidth + pageGap()) / total : rough;
+    noteCharsPerPage(total);
 }
 function goToPageInChapter(p, animate = true) {
     p = Number.isFinite(p) ? Math.trunc(p) : 0;
@@ -131,23 +132,97 @@ function goToPageInChapter(p, animate = true) {
     saveBookmark();
     if (typeof renderReadingRibbon === 'function') renderReadingRibbon();
 }
+// ========== СТОРІНКИ ВСІЄЇ КНИГИ (оцінка) ==========
+// Розкладено лише поточний розділ, тож сторінки інших оцінюємо: літери розділу / літери на сторінку + ілюстрації (≈ пів
+// сторінки кожна). Літери розділів рахуються у фоні після відкриття книги (computeBookWeights), «літер на сторінку» —
+// на найбільшому з уже показаних розділів за поточних шрифту й розміру екрана (до першого виміру — оцінка з площі).
+const BOOK_IMG_PAGE = 0.5;
+const textLength = s => String(s || '').replace(/\s+/g, ' ').trim().length;
+function blockWeightFromHtml(html) {
+    const body = String(html || '').replace(/<(head|script|style)\b[\s\S]*?<\/\1>/gi, '').replace(/^[\s\S]*?<body\b[^>]*>/i, '');
+    const imgs = (body.match(/<(img|image)\b/gi) || []).length;
+    const text = body.replace(/<\/?(p|div|h\d|li|br|tr|td|th|blockquote|section|dd|dt|pre|hr)\b[^>]*>/gi, ' ')
+        .replace(/<[^>]*>/g, '').replace(/&[#\w]+;/g, 'x');
+    return { chars: textLength(text), imgs };
+}
+async function computeBookWeights(epoch) {
+    state.blockWeights = null;
+    try {
+        let weights;
+        if (state.format === 'epub' && state.epubZip) {
+            weights = [];
+            for (const path of state.spine) {
+                const file = state.epubZip.file(path);
+                weights.push(file ? blockWeightFromHtml(await file.async('text')) : { chars: 0, imgs: 0 });
+                if (epoch !== readerEpoch.book) return;
+            }
+        } else if (state.docChapters) {
+            weights = state.docChapters.map(blockWeightFromHtml);
+        } else if (state.txtLines && state.txtLines.length) {
+            weights = [];
+            for (let i = 0; i < state.totalPages; i++) weights.push({ chars: textLength(state.txtLines.slice(i * 50, (i + 1) * 50).join('\n')), imgs: 0 });
+        } else return;
+        if (epoch !== readerEpoch.book) return;
+        state.blockWeights = weights;
+        updateProgressText();
+    } catch (e) { /* без оцінки — лишаються відсотки */ }
+}
+function noteCharsPerPage(pages) {
+    const cs = getComputedStyle(els.pages);
+    const key = `${els.pages.clientWidth}x${els.pages.clientHeight}|${cs.fontSize}|${cs.lineHeight}|${cs.fontFamily}`;
+    if (state.cppKey !== key) { state.cppKey = key; state.charsPerPage = 0; state.cppChars = 0; }
+    const chars = textLength(els.pages.textContent);
+    const textPages = pages - els.pages.querySelectorAll('img').length * BOOK_IMG_PAGE;
+    // >= : той самий розділ після довантаження ілюстрацій перерозкладається — новий вимір точніший.
+    if (pages >= 2 && textPages >= 1 && chars >= (state.cppChars || 0)) { state.cppChars = chars; state.charsPerPage = chars / textPages; }
+}
+function fallbackCharsPerPage() {
+    const cs = getComputedStyle(els.pages), fs = parseFloat(cs.fontSize) || 18;
+    const lh = parseFloat(cs.lineHeight) || fs * 1.5;
+    return Math.max(200, (els.pages.clientWidth / (fs * 0.5)) * (els.pages.clientHeight / lh) * 0.85);
+}
+function bookPageModel() {
+    const weights = state.blockWeights, cur = state.currentIndex || 0;
+    if (state.format === 'pdf' || !weights || weights.length !== state.totalPages) return null;
+    const cpp = state.charsPerPage || fallbackCharsPerPage();
+    const pages = weights.map((w, i) => i === cur ? Math.max(1, state.totalPagesInChapter || 1)
+        : (w.chars || w.imgs ? Math.max(1, Math.ceil(w.chars / cpp + w.imgs * BOOK_IMG_PAGE)) : 0));
+    const before = []; let sum = 0;
+    for (const n of pages) { before.push(sum); sum += n; }
+    return { pages, before, total: Math.max(1, sum), page: before[cur] + (state.pageInChapter || 0) };
+}
+
 // ========== ШВИДКЕ ГОРТАННЯ ДЛЯ ТЕКСТОВИХ ФОРМАТІВ ==========
-// Той самий повзунок, що й у PDF (#pdf-scrubber, js/pdf-render.js), але позиція — частка ВСІЄЇ книги: кожен розділ/блок
-// займає рівну частину шкали, усередині — пропорційно сторінкам. Кількість сторінок інших розділів наперед невідома
-// (вони не розкладені), тому при переході в інший розділ сторінка в ньому обирається за тією ж часткою.
+// Той самий повзунок, що й у PDF (#pdf-scrubber, js/pdf-render.js), але позиція — частка ВСІЄЇ книги. Коли відомі обсяги
+// розділів (bookPageModel), шкала пропорційна оціненим сторінкам; до того кожен розділ/блок займає рівну частину шкали.
+// Сторінки іншого розділу наперед невідомі (він не розкладений), тому при переході в нього сторінка обирається за часткою.
 const TEXT_SCRUB_MAX = 1000;
 function textScrubPosition() {
+    const model = bookPageModel();
+    if (model) return model.total > 1 ? Math.round(model.page / (model.total - 1) * TEXT_SCRUB_MAX) : 0;
     const blocks = Math.max(1, state.totalPages || 1), pages = Math.max(1, state.totalPagesInChapter || 1);
     return Math.round(((state.currentIndex || 0) + (state.pageInChapter || 0) / pages) / blocks * TEXT_SCRUB_MAX);
 }
 function textScrubTarget(value) {
+    const v = Math.max(0, Math.min(TEXT_SCRUB_MAX, value)) / TEXT_SCRUB_MAX;
+    const model = bookPageModel();
+    if (model) {
+        const page = Math.round(v * (model.total - 1));
+        let block = model.pages.length - 1;
+        for (let i = 0; i < model.pages.length; i++) if (model.pages[i] && page < model.before[i] + model.pages[i]) { block = i; break; }
+        const n = Math.max(1, model.pages[block]);
+        // Кінець шкали — завжди остання сторінка: справжня кількість сторінок розділу може бути більшою за оцінку.
+        const frac = v >= 1 ? 0.9999 : Math.min(0.9999, (page - model.before[block] + 0.5) / n);
+        return { block, frac, page, total: model.total };
+    }
     const blocks = Math.max(1, state.totalPages || 1);
-    const g = Math.max(0, Math.min(TEXT_SCRUB_MAX, value)) / TEXT_SCRUB_MAX * blocks;
+    const g = v * blocks;
     const block = Math.min(blocks - 1, Math.floor(g));
     return { block, frac: Math.min(0.9999, g - block) };
 }
 function textScrubLabel(value) {
-    const { block, frac } = textScrubTarget(value);
+    const { block, frac, page, total } = textScrubTarget(value);
+    if (total) return `${page + 1}\n/${total}`;
     if (block === state.currentIndex) {
         const pages = Math.max(1, state.totalPagesInChapter || 1);
         const page = Math.min(pages - 1, Math.floor(frac * pages));
@@ -164,14 +239,15 @@ function updateTextScrubber() {
     range.min = 0; range.max = TEXT_SCRUB_MAX; range.step = 1;
     const value = textScrubPosition();
     range.value = value;
+    const model = bookPageModel();
     const preview = document.getElementById('pdf-page-preview');
-    if (preview) preview.value = `${Math.round(value / TEXT_SCRUB_MAX * 100)}%`;
-    range.setAttribute('aria-valuetext', textScrubLabel(value));
+    if (preview) preview.value = model ? `${model.page + 1}\n/${model.total}` : `${Math.round(value / TEXT_SCRUB_MAX * 100)}%`;
+    range.setAttribute('aria-valuetext', model ? `${model.page + 1} / ${model.total}` : textScrubLabel(value));
 }
 function previewTextScrub(value) {
     const preview = document.getElementById('pdf-page-preview');
     if (preview) preview.value = textScrubLabel(value);
-    document.getElementById('pdf-page-range')?.setAttribute('aria-valuetext', textScrubLabel(value));
+    document.getElementById('pdf-page-range')?.setAttribute('aria-valuetext', textScrubLabel(value).replace('\n', ' '));
 }
 let textScrubToken = 0;
 async function commitTextScrub(value) {
@@ -198,7 +274,9 @@ function updateProgressText() {
         return;
     }
     const label = t(state.format === 'epub' ? 'chapter' : 'block');
-    els.progress.textContent = `${label} ${state.currentIndex + 1}/${state.totalPages} · ${t('page')} ${state.pageInChapter + 1} ${t('of')} ${state.totalPagesInChapter}`;
+    const model = bookPageModel();
+    els.progress.textContent = `${label} ${state.currentIndex + 1}/${state.totalPages} · ${t('page')} ${state.pageInChapter + 1} ${t('of')} ${state.totalPagesInChapter}`
+        + (model ? ` · ≈${model.page + 1}/${model.total}` : '');
 }
 
 // ========== ЗАКЛАДКА (запам'ятовує місце в книзі) ==========

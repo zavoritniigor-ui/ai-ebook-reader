@@ -31,15 +31,20 @@ def upload(name, data, stamp=7):
 para = lambda i: f'Paragraph {i}. ' + 'A readable sentence with several words in it. ' * 10
 MD = '\n\n'.join(f'# Chapter {k}\n\n' + '\n\n'.join(para(i) for i in range(25)) for k in range(4))
 upload('scrub.md', MD)
-check('1 a text book shows the page slider (collapsed pill with % of the book)',
-      "(s => s.classList.contains('available') && getComputedStyle(s).display !== 'none' && document.getElementById('pdf-page-preview').value === '0%')(document.getElementById('pdf-scrubber'))")
+check('1 a text book shows the page slider (collapsed pill: page / pages of the WHOLE book)',
+      "(s => s.classList.contains('available') && getComputedStyle(s).display !== 'none' && document.getElementById('pdf-page-preview').value === '1\\n/' + bookPageModel().total)(document.getElementById('pdf-scrubber'))", timeout=5)
+check('1b the whole-book estimate is close to 4 chapters x the real pages of one (equal chapters)',
+      "(m => m.total >= 4 * state.totalPagesInChapter - 2 && m.total <= 4 * state.totalPagesInChapter + 2 && m.total > 4)(bookPageModel())")
+check('1c the footer shows the book page too', "/≈1\\/\\d+$/.test(els.progress.textContent)")
 c.js("commitTextScrub(620); 1")
-check('2 the slider jumps across blocks: 62% of a 4-block book is block 3, its 2nd page', "state.currentIndex === 2 && state.pageInChapter === Math.floor(0.48 * state.totalPagesInChapter)", timeout=6)
-check('3 the slider value follows the position', "Number(document.getElementById('pdf-page-range').value) === textScrubPosition()")
+check('2 the slider jumps across blocks: 62% of 4 equal blocks is block 3, its page by the same fraction',
+      "(m => state.currentIndex === 2 && Math.abs(m.page - Math.round(0.62 * (m.total - 1))) <= 2)(bookPageModel())", timeout=6)
+check('3 the slider value follows the position', "Number(document.getElementById('pdf-page-range').value) === textScrubPosition()", timeout=3)
 c.js("previewTextScrub(100); 1")
-check('4 dragging previews the target (another block is named)', "document.getElementById('pdf-page-preview').value.includes('1')")
+check('4 dragging previews the target page of the book', "(v => v === `${Math.round(0.1 * (bookPageModel().total - 1)) + 1}\\n/${bookPageModel().total}`)(document.getElementById('pdf-page-preview').value)")
 c.js("commitTextScrub(1000); 1")
 check('5 the end of the slider is the last page of the last block', "state.currentIndex === 3 && state.pageInChapter === state.totalPagesInChapter - 1", timeout=6)
+check('5b ... and the book page shown is the last one', "(m => m.page + 1 === m.total)(bookPageModel())")
 
 def arch(files):
     o = io.BytesIO()
@@ -52,6 +57,7 @@ EPUB = arch({'META-INF/container.xml': '<container><rootfiles><rootfile full-pat
 upload('scrub.epub', EPUB)
 c.js("commitTextScrub(700); 1")
 check('6 EPUB: the slider loads another chapter', "state.format === 'epub' && state.currentIndex === 2", timeout=8)
+check('6b EPUB: chapter sizes are known, the pill shows page / pages', "!!state.blockWeights && state.blockWeights.length === 3 && /^\\d+\\n\\/\\d+$/.test(document.getElementById('pdf-page-preview').value)", timeout=5)
 
 # ---- reading ribbon, text ----
 upload('ribbon.md', MD, stamp=9)
