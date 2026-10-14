@@ -217,14 +217,19 @@
         .cefr-b1 { background: #f9a825; } .cefr-b2 { background: #fb8c00; }
         .cefr-c1 { background: #e53935; } .cefr-c2 { background: #8e24aa; }
         .cefr-unknown { background: #8a8f98; }
-        /* Розуміння за рівнями: рівень | смужка «% без допомоги» | % | кількість слів рівня на сторінці. */
-        .stats-cefr-list.stats-cefr-list { display: grid; grid-template-columns: auto 1fr auto auto; gap: 5px 8px; align-items: center; }
+        /* Розуміння за рівнями: рівень | смужка «частка слів, які знали самі» | «N з M». */
+        .stats-cefr-list.stats-cefr-list { display: grid; grid-template-columns: auto 1fr auto; gap: 5px 8px; align-items: center; }
+        .stats-tapped { margin: 12px 0 0; padding-top: 11px; border-top: 1px solid var(--border-color); }
+        .stats-tapped-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 92px; overflow-y: auto; }
+        .stats-word { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); font-size: 12.5px; }
+        .stats-word i { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; }
+        .stats-levels-title { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border-color); }
         .cefr-row { display: contents; }
         .stats-cefr-bar[hidden] { display: none; }
         .cefr-track { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
         .cefr-fill { display: block; height: 100%; border-radius: 999px; }
         .cefr-pct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-        .cefr-count { text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+        .cefr-count { text-align: right; color: var(--text-color); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .stats-cefr-list { display: flex; gap: 5px 11px; flex-wrap: wrap; margin-top: 8px; font-size: 11.5px; }
         .stats-empty { color: var(--text-muted); }
         button.active-mode {
@@ -1336,16 +1341,15 @@
                         <div class="stats-overview">
                             <div class="stats-ring" id="reading-stats-ring"><strong id="stats-reading-pct">0%</strong></div>
                             <div class="stats-summary">
-                                <div><span data-i18n="statsReadWithoutHelp">Прочитано без допомоги</span><b id="stats-reading-pct-label"></b></div>
-                                <div><span data-i18n="statsHelpRequested">Запитано допомогу</span><b id="stats-help-pct">0%</b></div>
+                                <div><span data-i18n="statsKnownSelf">Знали самі</span><b id="stats-known-of">0</b></div>
+                                <div><span data-i18n="statsTranslated">Перекладали</span><b id="stats-helped">0</b></div>
                             </div>
                         </div>
-                        <div class="stats-counts">
-                            <div><span data-i18n="statsPageWords">Слів на сторінці</span><b id="stats-total">0</b></div>
-                            <div><span data-i18n="statsIndependentWords">Без допомоги</span><b id="stats-independent">0</b></div>
-                            <div><span data-i18n="statsHelpRequested">Слів із допомогою</span><b id="stats-helped">0</b></div>
+                        <div class="stats-tapped" id="stats-tapped-box" hidden>
+                            <div class="stats-cefr-title" data-i18n="statsTranslatedWords">Перекладені слова</div>
+                            <div class="stats-tapped-list" id="stats-tapped-list"></div>
                         </div>
-                        <div class="stats-cefr-title" data-i18n="statsTappedVocabulary">Лексика із запитом</div>
+                        <div class="stats-cefr-title stats-levels-title" data-i18n="statsByLevel">За рівнями — скільки слів знали самі</div>
                         <div class="stats-cefr-bar empty" id="reading-stats-cefr-bar"></div>
                         <div class="stats-cefr-list" id="reading-stats-cefr-list"></div>
                     </section>
@@ -1602,7 +1606,7 @@
     <script src="js/tts.js?v=c4cc1badfcfb"></script>
     <script src="js/selection.js?v=8fc476b43b2a"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
-    <script src="js/learning-stats.js?v=12af821a5e1b"></script>
+    <script src="js/learning-stats.js?v=b8187941a608"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/navigation.js?v=b6b82880ee8a"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
@@ -1614,7 +1618,7 @@
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=601c9cc83734"></script>
+    <script src="js/grammar-rules.js?v=1ff1b73a236f"></script>
     <script src="js/ai-client.js?v=2b913809fb8e"></script>
     <script src="js/practice-session.js?v=240bbcb9a08d"></script>
     <script src="js/practice-worksheet.js?v=bbcefde19020"></script>

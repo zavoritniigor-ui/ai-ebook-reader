@@ -391,12 +391,14 @@ function openRulesPanel({ keep = false } = {}) {
 }
 // «Сховати»: вікно йде з екрана, а підсвітка, результати й індикатор готовності лишаються (плашка внизу).
 function minimizeRulesPanel() { rulesEls().panel.classList.remove('expanded'); layoutRulesPanel(); updateRulesTab(); }
-// «Закрити»: вікно й підсвітка зникають повністю.
+// «Закрити» ✕ — СКИДАННЯ для нового пошуку (користувач): вікно, підсвітка, відкрита тема й результат пошуку виділення зникають;
+// наступне відкриття — чистий список тем, а та сама виділена фраза шукається заново.
 function closeRulesPanel() {
     rulesEls().panel.classList.remove('expanded');
     rulesState.token++; clearRuleHighlights(); rulesState.matches = []; rulesState.status = 'idle';
-    document.querySelectorAll('#rules-content .rules-matches, #rules-content .rules-detail').forEach(n => n.replaceChildren());
+    rulesState.topic = null; rulesScan = null;
     setRulesStatus('');
+    renderRulesTree();
     layoutRulesPanel(); updateRulesTab();
 }
 const PHONE_SCREEN_QUERY = '(max-width: 640px), (max-height: 500px)';
@@ -423,14 +425,14 @@ function updateRulesTab() {
     const status = st === 'running' ? t('rulesPillRunning') : st === 'failed' ? t('rulesPillFailed') : st === 'ready' ? t('rulesPillReady').replace('{n}', n) : '';
     tab.setAttribute('aria-label', [t('wheelRules'), rulesState.topic ? ruleTitle(rulesState.topic) : '', status].filter(Boolean).join(': '));
 }
-// Взаємодія з іншими вікнами: відкрилась «Граматика»/«Запитай AI»/Практика/підказка слова/швидке колесо — «Правила» ховаються.
+// Взаємодія з іншими вікнами: відкрилась «Граматика»/«Запитай AI»/Практика — «Правила» ховаються. Переклад слова — НІ (користувач:
+// клік у знайденому реченні не має прибирати результат пошуку): вікно лишається відкритим разом зі спливаючим перекладом.
 (function wireRulesInteraction() {
     const guard = () => {
         updateRulesTab();
         if (!rulesOpen()) return;
         const practice = document.getElementById('practice-panel');
-        // A translation popup opened FROM the rules window (selected text in it) keeps the window open.
-        if (els.askPanel.classList.contains('expanded') || els.grammarPanel.classList.contains('expanded') || (practice && !practice.hidden) || (els.tooltip.style.display === 'flex' && !state.tooltipFromRules)) minimizeRulesPanel();
+        if (els.askPanel.classList.contains('expanded') || els.grammarPanel.classList.contains('expanded') || (practice && !practice.hidden)) minimizeRulesPanel();
     };
     try {
         const mo = new MutationObserver(guard);

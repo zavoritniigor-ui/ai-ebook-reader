@@ -78,11 +78,17 @@ check('understanding by level: every page word is counted under its level, help 
  return L.A1.total===3&&L.A1.helped===1&&Math.round(L.A1.readingPercent)===67&&L.A2.total===1&&L.A2.readingPercent===100
    &&L.C2.total===1&&L.unknown.total===1&&L.B1.total===0||JSON.stringify(L);
 })()""")
-check('the popover lists A1..C2 rows with % and word count, empty levels as a dash', """(()=>{
+check('the popover lists only levels present on the page, each as «known yourself of all» (user: «88% 8 сл.» / «0% 1 сл.» read as nonsense)', """(()=>{
  updateReadingStatsNow();const rows=[...document.querySelectorAll('#reading-stats-cefr-list .cefr-row')];
- const row=l=>rows.find(r=>r.dataset.level===l);
- return rows.length===7&&row('A1').querySelector('.cefr-pct').textContent==='67%'&&row('A1').querySelector('.cefr-count').textContent.startsWith('3 ')
-   &&row('B1').querySelector('.cefr-pct').textContent==='—'&&row('A2').querySelector('.cefr-pct').textContent==='100%'||rows.map(r=>r.textContent).join('|');
+ const row=l=>rows.find(r=>r.dataset.level===l), n=l=>row(l).querySelector('.cefr-count').textContent;
+ return rows.map(r=>r.dataset.level).join(',')==='A1,A2,C2,unknown'&&/^2\\D+3$/.test(n('A1'))&&/^1\\D+1$/.test(n('A2'))
+   &&!row('B1')&&row('A1').title.includes('67')||rows.map(r=>r.dataset.level+':'+r.textContent).join('|');
+})()""")
+check('the popover lists the looked-up words (once each, with their level) and whole-number percentages', """(()=>{
+ const chips=[...document.querySelectorAll('#stats-tapped-list .stats-word')];
+ return !document.getElementById('stats-tapped-box').hidden&&chips.length===1&&chips[0].textContent==='cat'&&chips[0].title==='A1'
+   &&!/\\./.test(document.getElementById('stats-reading-pct').textContent)&&/^5\\D+6\\D/.test(document.getElementById('stats-known-of').textContent)&&document.getElementById('stats-helped').textContent==='1'
+   ||JSON.stringify([chips.map(c=>c.textContent+'/'+c.title),document.getElementById('stats-reading-pct').textContent,document.getElementById('stats-known-of').textContent]);
 })()""")
 check('independent percentage follows its own occurrence formula', """(()=>{
  __showStatsPage(8,8,'eight');delete learningStatsBook.scopes['pdf:8'];__help(0,1,'word_tap');
