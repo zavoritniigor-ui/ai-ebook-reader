@@ -1,5 +1,6 @@
 """Free library window: the header button opens it, a search request carries the query/language/genre, results are listed with a
-Read button, Read downloads the EPUB through /api/library and opens it in the reader. The network is mocked. No network."""
+Read button, Read downloads the EPUB through /api/library and opens it in the reader; Wikisource and Internet Archive (PDF/EPUB) as
+further sources. The network is mocked. No network."""
 import json, os, time
 from browser_cdp import CDP
 
@@ -81,4 +82,36 @@ check('13 Read builds ONE HTML book from the chapters in order, without Wikisour
          const i1 = html.indexOf('Перший розділ'), i2 = html.indexOf('Другий розділ');
          return __opened.name === 'Твір.html' && __opened.type === 'text/html' && i1 > 0 && i2 > i1 && !/НАВІГАЦІЯ|шапка|\\[12\\]|<a |<img/.test(html) && /<h1>I<\\/h1>/.test(html) || html.slice(0, 400); })()""")
 check('14 the choice of source is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).source === 'wikisource'")
+
+# ---- Internet Archive (third source: PDF / EPUB) ----
+c.js("""(() => { window.__iaReqs = []; window.__opened = null; const prev = window.fetch;
+  const files = { kobzar_1889: {scan: true, files: [{name: 'kobzar_1889.epub', format: 'EPUB', size: 31e6}, {name: 'kobzar_1889_text.pdf', format: 'Additional Text PDF', size: 2000}]},
+                  modern_book: {scan: false, files: [{name: 'modern.pdf', format: 'Text PDF', size: 900}, {name: 'modern.epub', format: 'EPUB', size: 1200}]},
+                  huge_scan: {scan: true, files: [{name: 'huge.pdf', format: 'Text PDF', size: 400 * 1048576}]} };
+  window.fetch = async (url, opts) => { url = String(url);
+    if (url.includes('op=ia-')) { __iaReqs.push(decodeURIComponent(url));
+      if (url.includes('op=ia-search')) return new Response(JSON.stringify({total: 3, results: [
+        {id: 'kobzar_1889', title: 'Кобзар', creator: ['Шевченко, Тарас'], year: '1889', lang: 'ukr', pdf: true, epub: true},
+        {id: 'modern_book', title: 'Modern', creator: [], year: '2015', lang: 'ukr', pdf: true, epub: true},
+        {id: 'huge_scan', title: 'Huge', creator: [], year: '1900', lang: 'ukr', pdf: true, epub: false}]}), {status: 200});
+      if (url.includes('op=ia-files')) return new Response(JSON.stringify(files[url.split('id=')[1]]), {status: 200});
+      if (url.includes('op=ia-file')) return new Response(new Blob([url.includes('.pdf') ? '%PDF-1.4 fake' : 'PK fake epub']), {status: 200});
+      if (url.includes('op=ia-cover')) return new Response('', {status: 404});
+    }
+    return prev(url, opts); };
+  document.getElementById('library-q').value = ''; const s = document.getElementById('library-source'); s.value = 'archive'; s.dispatchEvent(new Event('change')); return 1; })()"""); time.sleep(0.5)
+check('15 Internet Archive: its languages (Ukrainian first), no genres, and a hint until something is typed',
+      "document.getElementById('library-lang').value === 'ukr' && document.getElementById('library-genre').hidden && document.getElementById('library-status').textContent === t('libIaHint') && !__iaReqs.length")
+c.js("const q = document.getElementById('library-q'); q.value = 'кобзар'; q.dispatchEvent(new Event('input')); 1"); time.sleep(1.5)
+check('16 search goes through the proxy with the language and lists author · year · formats',
+      """__iaReqs.some(r => r.includes('op=ia-search&lang=ukr&q=кобзар&page=1'))
+         && document.querySelector('#library-list .library-author').textContent === 'Шевченко, Тарас · 1889 · PDF · EPUB'
+         && document.querySelectorAll('#library-list .library-card').length === 3""")
+c.js("document.querySelectorAll('#library-list .library-card')[0].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
+check('17 a scanned book opens as its text PDF (not the OCR EPUB)', "!!__opened && __opened.name === 'Кобзар.pdf' && __opened.type === 'application/pdf' && __iaReqs.some(r => r.includes('op=ia-file&id=kobzar_1889&name=kobzar_1889_text.pdf'))")
+c.js("window.__opened = null; document.querySelectorAll('#library-list .library-card')[1].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
+check('18 a born-digital book opens as EPUB', "!!__opened && __opened.name === 'Modern.epub' && __opened.type === 'application/epub+zip'")
+c.js("window.__opened = null; openLibrary(); document.querySelectorAll('#library-list .library-card')[2].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
+check('19 a file over 300 MB is not downloaded; the reader is told why', "__opened === null && !__iaReqs.some(r => r.includes('name=huge.pdf')) && document.getElementById('library-status').textContent.includes('400')")
+check('20 the Internet Archive choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'archive' && f.iaLang === 'ukr'; })()")
 print('ALL PASS')

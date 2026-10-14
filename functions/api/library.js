@@ -8,8 +8,22 @@
 //   ?op=ws-page&lang=<…>&title=<title>                                -> HTML сторінки Wikisource (REST API; твір або його розділ)
 //   ?op=ws-subpages&lang=<…>&title=<title>                            -> список підсторінок-розділів твору (JSON)
 // Wikisource: лише хост <lang>.wikisource.org з білого списку мов, назва сторінки — звичайний рядок, кодується тут.
+//   ?op=ia-search&lang=<ukr|eng|fre|…|>&q=<text>&page=<n>             -> пошук книг Internet Archive (лише вільне надбання / вільні ліцензії)
+//   ?op=ia-files&id=<identifier>                                      -> PDF/EPUB файли книги (JSON)
+//   ?op=ia-file&id=<identifier>&name=<file.pdf|file.epub>             -> сам файл
+//   ?op=ia-cover&id=<identifier>                                      -> обкладинка
+// Internet Archive: лише archive.org, ідентифікатор і назва файлу перевіряються тут; позичальні книги (access-restricted) відкинуто.
 const UA = 'AI-Ebook-Reader/1.0 (+https://ai-ebook-reader.pages.dev)';
 const WS_LANGS = new Set(['uk', 'fr', 'en', 'de', 'es', 'it']);
+// Мови Internet Archive: поле language містить то код MARC (fre), то назву (French).
+const IA_LANGS = { ukr: 'Ukrainian', eng: 'English', fre: 'French', ger: 'German', spa: 'Spanish', ita: 'Italian', rus: 'Russian', pol: 'Polish' };
+const IA_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+// Вільне надбання (видання до 1930 р.) або явна вільна ліцензія; лише тексти, що мають PDF з текстовим шаром чи EPUB.
+const IA_FREE = 'mediatype:texts AND NOT access-restricted-item:true AND format:("Text PDF" OR "Additional Text PDF" OR EPUB)'
+    + ' AND (year:[1 TO 1929] OR licenseurl:*creativecommons* OR licenseurl:*publicdomain*)';
+const IA_SCAN_FORMATS = new Set(['Scandata', 'Abbyy GZ', 'Single Page Processed JP2 ZIP', 'Single Page Original JP2 Tar']);
+const IA_BOOK_FORMATS = new Set(['Text PDF', 'Additional Text PDF', 'EPUB']);
+const iaQuote = s => s.replace(/[\\"():\[\]{}^~*?!+\-&|\/]/g, ' ').trim();
 
 function json(body, status = 200, maxAge = 0) {
     return new Response(JSON.stringify(body), { status, headers: {
@@ -82,6 +96,63 @@ export async function onRequestGet({ request }) {
             return new Response(res.body, { status: 200, headers: {
                 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff',
                 'content-security-policy': "default-src 'none'; sandbox" } });
+        }
+        if (op === 'ia-search') {
+            const q = iaQuote((url.searchParams.get('q') || '').slice(0, 200));
+            const lang = url.searchParams.get('lang') || '';
+            const page = Math.min(50, Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1));
+            if (!q) return json({ error: 'bad query' }, 400);
+            if (lang && !IA_LANGS[lang]) return json({ error: 'bad lang' }, 400);
+            const words = q.split(/\s+/).filter(Boolean).slice(0, 8).join(' ');
+            let query = `${IA_FREE} AND (title:(${words}) OR creator:(${words}))`;
+            if (lang) query += ` AND language:(${lang} OR ${IA_LANGS[lang]})`;
+            const api = new URL('https://archive.org/advancedsearch.php');
+            api.searchParams.set('q', query);
+            for (const f of ['identifier', 'title', 'creator', 'year', 'language', 'format']) api.searchParams.append('fl[]', f);
+            api.searchParams.append('sort[]', 'downloads desc');
+            api.searchParams.set('rows', '30'); api.searchParams.set('page', String(page)); api.searchParams.set('output', 'json');
+            const res = await upstream(api.toString(), 'application/json');
+            if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
+            const data = await res.json();
+            const one = v => Array.isArray(v) ? v[0] : v;
+            const results = ((data.response && data.response.docs) || []).filter(d => IA_ID.test(d.identifier || '')).map(d => {
+                const formats = [].concat(d.format || []);
+                return { id: d.identifier, title: String(one(d.title) || d.identifier).slice(0, 300), creator: [].concat(d.creator || []).slice(0, 3).map(String),
+                    year: String(one(d.year) || ''), lang: String(one(d.language) || ''),
+                    pdf: formats.includes('Text PDF') || formats.includes('Additional Text PDF'), epub: formats.includes('EPUB') };
+            });
+            return json({ results, total: (data.response && data.response.numFound) || 0 }, 200, 3600);
+        }
+        if (op === 'ia-files' || op === 'ia-file' || op === 'ia-cover') {
+            const id = url.searchParams.get('id') || '';
+            if (!IA_ID.test(id)) return json({ error: 'bad id' }, 400);
+            if (op === 'ia-cover') {
+                const res = await upstream(`https://archive.org/services/img/${id}`, 'image/*');
+                if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
+                const type = res.headers.get('content-type') || '';
+                return new Response(res.body, { status: 200, headers: { 'content-type': /^image\/(jpeg|png|gif|webp)$/.test(type) ? type : 'image/jpeg',
+                    'cache-control': 'public, max-age=604800', 'x-content-type-options': 'nosniff' } });
+            }
+            if (op === 'ia-files') {
+                const res = await upstream(`https://archive.org/metadata/${id}`, 'application/json');
+                if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
+                const data = await res.json();
+                const meta = data.metadata || {};
+                if (String(meta['access-restricted-item']) === 'true') return json({ error: 'restricted' }, 403);
+                const all = data.files || [];
+                const files = all.filter(f => IA_BOOK_FORMATS.has(f.format) && /\.(pdf|epub)$/i.test(f.name || '') && !String(f.name).includes('..'))
+                    .map(f => ({ name: String(f.name), format: f.format, size: Number(f.size) || 0 }));
+                return json({ scan: all.some(f => IA_SCAN_FORMATS.has(f.format)), files }, 200, 3600);
+            }
+            const name = url.searchParams.get('name') || '';
+            if (!/\.(pdf|epub)$/i.test(name) || name.length > 300 || name.includes('..') || /[\u0000-\u001f\\]/.test(name)) return json({ error: 'bad name' }, 400);
+            const isPdf = /\.pdf$/i.test(name);
+            const res = await upstream(`https://archive.org/download/${id}/${name.split('/').map(encodeURIComponent).join('/')}`, isPdf ? 'application/pdf' : 'application/epub+zip');
+            if (!res.ok) return json({ error: 'upstream', status: res.status }, res.status === 404 ? 404 : 502);
+            const headers = { 'content-type': isPdf ? 'application/pdf' : 'application/epub+zip', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' };
+            const length = res.headers.get('content-length');
+            if (length) headers['content-length'] = length;
+            return new Response(res.body, { status: 200, headers });
         }
         return json({ error: 'unknown op' }, 400);
     } catch (e) {

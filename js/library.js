@@ -46,7 +46,17 @@ Object.assign(I18N, {
     genBiography: { uk: 'Біографії та мемуари', en: 'Biographies & memoirs', fr: 'Biographies et mémoires', ru: 'Биографии и мемуары' },
     genMyth: { uk: 'Міфи та легенди', en: 'Myths & legends', fr: 'Mythes et légendes', ru: 'Мифы и легенды' },
     genTravel: { uk: 'Подорожі', en: 'Travel', fr: 'Voyages', ru: 'Путешествия' },
-    genHumor: { uk: 'Гумор', en: 'Humor', fr: 'Humour', ru: 'Юмор' }
+    genHumor: { uk: 'Гумор', en: 'Humor', fr: 'Humour', ru: 'Юмор' },
+    libSourceArchive: { uk: 'Internet Archive (PDF, EPUB)', en: 'Internet Archive (PDF, EPUB)', fr: 'Internet Archive (PDF, EPUB)', ru: 'Internet Archive (PDF, EPUB)' },
+    libIaHint: { uk: 'Введіть назву або автора — пошук у Internet Archive (скани старих видань і вільні книги).', en: 'Type a title or an author to search Internet Archive (scans of old editions and free books).',
+                 fr: "Saisissez un titre ou un auteur pour chercher dans Internet Archive (scans d'éditions anciennes et livres libres).", ru: 'Введите название или автора — поиск в Internet Archive (сканы старых изданий и свободные книги).' },
+    libIaSource: { uk: 'Книги з Internet Archive: видання до 1930 року (вільне надбання) і книги з вільними ліцензіями. Скановані книги відкриваються як PDF.',
+                   en: 'Books from Internet Archive: editions before 1930 (public domain) and books under free licences. Scanned books open as PDF.',
+                   fr: 'Livres d’Internet Archive : éditions antérieures à 1930 (domaine public) et livres sous licence libre. Les livres numérisés s’ouvrent en PDF.',
+                   ru: 'Книги из Internet Archive: издания до 1930 года (общественное достояние) и книги со свободными лицензиями. Сканы открываются как PDF.' },
+    libDownloading: { uk: 'Завантаження книги: {n} з {total} МБ…', en: 'Downloading the book: {n} of {total} MB…', fr: 'Téléchargement du livre : {n} sur {total} Mo…', ru: 'Загрузка книги: {n} из {total} МБ…' },
+    libTooBig: { uk: 'Книга завелика для застосунку ({n} МБ, найбільше 300 МБ).', en: 'The book is too large for the app ({n} MB, 300 MB maximum).',
+                 fr: 'Le livre est trop volumineux pour l’application ({n} Mo, 300 Mo maximum).', ru: 'Книга слишком большая для приложения ({n} МБ, максимум 300 МБ).' }
 });
 // Ключ теми = ключ у library-catalog.json (themes[]); бітова маска книги збігається з порядком там.
 const LIBRARY_GENRES = [['', 'genAll'], ['fiction', 'genFiction'], ['adventure', 'genAdventure'], ['detective', 'genDetective'], ['historical', 'genHistorical'],
@@ -57,6 +67,10 @@ const LIBRARY_PAGE = 30;
 // Вікіджерела (Wikisource): живий пошук через свій проксі; твір збирається з розділів-підсторінок в одну HTML-книгу.
 const LIBRARY_WS_LANGS = [['uk', 'Українська'], ['fr', 'Français'], ['en', 'English'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano']];
 const WS_MAX_CHAPTERS = 150, WS_CONCURRENCY = 6;
+// Internet Archive: живий пошук через свій проксі; коди мов — як у самому архіві (MARC).
+const LIBRARY_IA_LANGS = [['ukr', 'Українська'], ['eng', 'English'], ['fre', 'Français'], ['ger', 'Deutsch'], ['spa', 'Español'], ['ita', 'Italiano'], ['pol', 'Polski'], ['rus', 'Русский'], ['', null]];
+const LIBRARY_MAX_BYTES = 300 * 1024 * 1024;
+const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive'];
 
 const libraryState = { source: 'gutenberg', wsToken: 0, page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
 function libraryEl(id) { return document.getElementById(id); }
@@ -74,7 +88,7 @@ function buildLibrary() {
     head.append(title, close);
     const tools = document.createElement('div'); tools.className = 'library-tools';
     const src = document.createElement('select'); src.id = 'library-source'; src.dataset.i18nTitle = 'libSourceLabel';
-    for (const [value, key] of [['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
+    for (const [value, key] of [['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
     const q = document.createElement('input'); q.type = 'search'; q.id = 'library-q'; q.autocomplete = 'off'; q.spellcheck = false;
     const lang = document.createElement('select'); lang.id = 'library-lang';
     for (const [code, label] of LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else o.dataset.i18n = 'libAllLangs'; lang.append(o); }
@@ -88,16 +102,16 @@ function buildLibrary() {
     const source = document.createElement('div'); source.className = 'library-source'; source.dataset.i18n = 'libSource';
     box.append(head, tools, status, list, more, source); modal.append(box); document.body.append(modal);
     const saved = (() => { try { return JSON.parse(localStorage.getItem('reader_library_filters') || '{}'); } catch (e) { return {}; } })();
-    libraryState.source = saved.source === 'wikisource' ? 'wikisource' : 'gutenberg';
-    libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk' };
+    libraryState.source = LIBRARY_SOURCES.includes(saved.source) ? saved.source : 'gutenberg';
+    libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr' };
     src.value = libraryState.source;
     fillLibraryLangs();
     genre.value = saved.topic && [...genre.options].some(o => o.value === saved.topic) ? saved.topic : '';
-    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, topic: genre.value })); } catch (e) {} };
+    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, iaLang: libraryState.langBySource.archive, topic: genre.value })); } catch (e) {} };
     const restart = () => {
         libraryState.langBySource[libraryState.source] = lang.value;
         persist();
-        clearTimeout(libraryState.timer); libraryState.timer = setTimeout(() => runLibrarySearch(1), libraryState.source === 'wikisource' ? 600 : 350);
+        clearTimeout(libraryState.timer); libraryState.timer = setTimeout(() => runLibrarySearch(1), libraryState.source === 'gutenberg' ? 350 : 600);
     };
     src.addEventListener('change', () => { libraryState.source = src.value; fillLibraryLangs(); persist(); libraryEl('library-list').replaceChildren(); runLibrarySearch(1); });
     q.addEventListener('input', restart); lang.addEventListener('change', restart); genre.addEventListener('change', restart);
@@ -105,16 +119,16 @@ function buildLibrary() {
     applyI18n(); q.placeholder = t('libSearch');
 }
 
-// Список мов і видимість тем — за джерелом (у Вікіджерел немає тем, а мови інші).
+// Список мов і видимість тем — за джерелом (теми є лише в каталозі Gutenberg, мови в кожного джерела свої).
 function fillLibraryLangs() {
-    const lang = libraryEl('library-lang'), genre = libraryEl('library-genre'), ws = libraryState.source === 'wikisource';
+    const lang = libraryEl('library-lang'), genre = libraryEl('library-genre'), src = libraryState.source;
     lang.replaceChildren();
-    for (const [code, label] of ws ? LIBRARY_WS_LANGS : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
+    for (const [code, label] of src === 'wikisource' ? LIBRARY_WS_LANGS : src === 'archive' ? LIBRARY_IA_LANGS : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
     const want = libraryState.langBySource[libraryState.source];
     lang.value = [...lang.options].some(o => o.value === want) ? want : lang.options[0].value;
-    genre.hidden = ws;
+    genre.hidden = src !== 'gutenberg';
     const source = document.querySelector('#library-modal .library-source');
-    if (source) { source.dataset.i18n = ws ? 'libWsSource' : 'libSource'; source.textContent = t(source.dataset.i18n); }
+    if (source) { source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : 'libSource'; source.textContent = t(source.dataset.i18n); }
 }
 
 function openLibrary() {
@@ -144,6 +158,7 @@ async function runLibrarySearch(page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
     more.hidden = true;
     if (libraryState.source === 'wikisource') { await runWikisourceSearch(); return; }
+    if (libraryState.source === 'archive') { await runArchiveSearch(page); return; }
     let catalog;
     try { status.textContent = libraryState.catalog ? '' : t('libLoading'); catalog = await loadLibraryCatalog(); }
     catch (e) { status.textContent = t('libError'); return; }
@@ -164,13 +179,16 @@ async function runLibrarySearch(page) {
 function libraryCard(book) {
     const card = document.createElement('div'); card.className = 'library-card';
     const cover = document.createElement('img'); cover.loading = 'lazy'; cover.alt = '';
-    if (book.ws) { cover.className = 'library-ws-cover'; cover.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="64"><rect width="44" height="64" rx="4" fill="#6b7a8f"/><text x="22" y="40" font-size="22" text-anchor="middle" fill="#fff">W</text></svg>'); }
+    if (book.ia) cover.src = '/api/library?op=ia-cover&id=' + encodeURIComponent(book.id);
+    else if (book.ws) { cover.className = 'library-ws-cover'; cover.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="64"><rect width="44" height="64" rx="4" fill="#6b7a8f"/><text x="22" y="40" font-size="22" text-anchor="middle" fill="#fff">W</text></svg>'); }
     else cover.src = '/api/library?op=cover&id=' + book.id;
     cover.addEventListener('error', () => cover.style.visibility = 'hidden');
     const info = document.createElement('div'); info.className = 'library-info';
     const name = document.createElement('div'); name.className = 'library-name'; name.textContent = book.title;
     const by = document.createElement('div'); by.className = 'library-author';
-    by.textContent = book.ws ? 'Wikisource · ' + book.lang.toUpperCase() : (book.authors || []).join(', ');
+    by.textContent = book.ws ? 'Wikisource · ' + book.lang.toUpperCase()
+        : book.ia ? [(book.authors || []).join('; '), book.year, [book.pdf && 'PDF', book.epub && 'EPUB'].filter(Boolean).join(' · ')].filter(Boolean).join(' · ')
+        : (book.authors || []).join(', ');
     info.append(name, by);
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-primary'; btn.textContent = t('libRead');
     btn.addEventListener('click', () => downloadLibraryBook(book, btn));
@@ -184,10 +202,16 @@ function libraryCard(book) {
 // Файл книги: завантажується один раз за сеанс (і для читання, і для збереження).
 const libraryFiles = new Map();
 const wsProgress = book => (n, total) => { libraryEl('library-status').textContent = t('libWsChapters').replace('{n}', n).replace('{total}', total); };
-function libraryFileName(book) { return book.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.epub'; }
+function libraryFileName(book, ext = 'epub') { return book.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.' + ext; }
 async function fetchLibraryFile(book, onProgress = () => {}) {
-    const cacheKey = book.ws ? 'ws:' + book.lang + ':' + book.title : book.id;
+    const cacheKey = book.ws ? 'ws:' + book.lang + ':' + book.title : book.ia ? 'ia:' + book.id : book.id;
     if (libraryFiles.has(cacheKey)) return libraryFiles.get(cacheKey);
+    if (book.ia) {
+        const file = await fetchArchiveBook(book);
+        libraryFiles.set(cacheKey, file);
+        if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+        return file;
+    }
     if (book.ws) {
         const file = await buildWikisourceBook(book, onProgress);
         libraryFiles.set(cacheKey, file);
@@ -213,7 +237,9 @@ async function saveLibraryBook(book, btn) {
         const file = await fetchLibraryFile(book, wsProgress(book));
         if (typeof window.showSaveFilePicker === 'function') {
             let handle;
-            try { handle = await window.showSaveFilePicker({ suggestedName: file.name, types: book.ws ? [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] : [{ description: 'EPUB', accept: { 'application/epub+zip': ['.epub'] } }] }); }
+            const types = book.ws ? [{ description: 'HTML', accept: { 'text/html': ['.html'] } }]
+                : /\.pdf$/i.test(file.name) ? [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] : [{ description: 'EPUB', accept: { 'application/epub+zip': ['.epub'] } }];
+            try { handle = await window.showSaveFilePicker({ suggestedName: file.name, types }); }
             catch (e) { if (e && e.name === 'AbortError') return; handle = null; }
             if (handle) {
                 const w = await handle.createWritable(); await w.write(file); await w.close();
@@ -225,7 +251,7 @@ async function saveLibraryBook(book, btn) {
         setTimeout(() => URL.revokeObjectURL(url), 60000);
         status.textContent = t('libSavedDownloads');
     } catch (e) {
-        status.textContent = t('libBookError');
+        status.textContent = e && e.libraryMessage || t('libBookError');
     } finally {
         btn.disabled = false; btn.textContent = label;
     }
@@ -240,7 +266,7 @@ async function downloadLibraryBook(book, btn) {
         closeLibrary();
         await openBookFile(file);
     } catch (e) {
-        libraryEl('library-status').textContent = t('libBookError');
+        libraryEl('library-status').textContent = e && e.libraryMessage || t('libBookError');
     } finally {
         libraryState.busy = false; btn.disabled = false; btn.textContent = t('libRead');
     }
@@ -345,6 +371,59 @@ async function buildWikisourceBook(book, onProgress) {
     const html = `<!DOCTYPE html><html lang="${wsEscape(book.lang)}"><head><meta charset="utf-8"><title>${wsEscape(book.title)}</title></head><body>${body}</body></html>`;
     let h = 0; for (const ch of book.lang + ':' + book.title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
     return new File([html], libraryFileName(book).replace(/\.epub$/, '.html'), { type: 'text/html', lastModified: h });
+}
+
+// ---------- Internet Archive ----------
+async function runArchiveSearch(page) {
+    const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
+    const q = libraryEl('library-q').value.trim(), lang = libraryEl('library-lang').value;
+    const token = ++libraryState.wsToken;
+    if (page === 1) list.replaceChildren();
+    if (!q) { status.textContent = t('libIaHint'); return; }
+    status.textContent = t('libLoading');
+    let data;
+    try {
+        const res = await fetch(`/api/library?op=ia-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}&page=${page}`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        data = await res.json();
+    } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
+    if (token !== libraryState.wsToken || libraryState.source !== 'archive') return;
+    libraryState.page = page;
+    for (const r of data.results || []) list.append(libraryCard({ ia: true, id: r.id, title: r.title, authors: r.creator, year: r.year, pdf: r.pdf, epub: r.epub }));
+    status.textContent = list.children.length ? '' : t('libEmpty');
+    more.hidden = page * 30 >= (data.total || 0);
+}
+// Скановані книги — «Text PDF» (сторінки як в оригіналі + текстовий шар, тож слова можна торкати), бо EPUB архіву для них —
+// автоматичний OCR зі зламаною версткою. Книги, що від початку електронні, — EPUB.
+function pickArchiveFile(info) {
+    const files = (info.files || []).filter(f => f.size > 0);
+    const pdf = files.filter(f => f.format === 'Text PDF' || f.format === 'Additional Text PDF').sort((a, b) => a.size - b.size)[0];
+    const epub = files.filter(f => f.format === 'EPUB').sort((a, b) => a.size - b.size)[0];
+    return info.scan ? (pdf || epub) : (epub || pdf);
+}
+async function fetchArchiveBook(book) {
+    const status = libraryEl('library-status');
+    const infoRes = await fetch('/api/library?op=ia-files&id=' + encodeURIComponent(book.id));
+    if (!infoRes.ok) throw new Error('HTTP ' + infoRes.status);
+    const chosen = pickArchiveFile(await infoRes.json());
+    if (!chosen) throw new Error('no file');
+    const mb = n => (n / 1048576).toFixed(n < 10485760 ? 1 : 0);
+    if (chosen.size > LIBRARY_MAX_BYTES) throw Object.assign(new Error('too big'), { libraryMessage: t('libTooBig').replace('{n}', mb(chosen.size)) });
+    const res = await fetch(`/api/library?op=ia-file&id=${encodeURIComponent(book.id)}&name=${encodeURIComponent(chosen.name)}`);
+    if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+    // Скани бувають десятки мегабайтів: показуємо, скільки вже завантажено.
+    const reader = res.body.getReader(), chunks = [];
+    let got = 0, shown = 0;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); got += value.length;
+        if (got - shown > 262144) { shown = got; status.textContent = t('libDownloading').replace('{n}', mb(got)).replace('{total}', mb(chosen.size)); }
+    }
+    const isPdf = /\.pdf$/i.test(chosen.name);
+    let h = 0; for (const ch of 'ia:' + book.id) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    // Той самий id → той самий «ключ книги»: позиція читання переживає повторне завантаження.
+    return new File(chunks, libraryFileName(book, isPdf ? 'pdf' : 'epub'), { type: isPdf ? 'application/pdf' : 'application/epub+zip', lastModified: h });
 }
 
 buildLibrary();
