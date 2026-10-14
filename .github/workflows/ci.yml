@@ -295,6 +295,8 @@ jobs:
           python3 -u tests/shared_ai_key_browser.py
           echo "Running page_arrows_browser.py..."
           python3 -u tests/page_arrows_browser.py
+          echo "Running update_button_browser.py..."
+          python3 -u tests/update_button_browser.py
 
           echo "Running tts_double_voice_browser.py..."
           python3 -u tests/tts_double_voice_browser.py
