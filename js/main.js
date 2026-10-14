@@ -195,7 +195,7 @@ async function openBookFile(file) {
             await initRichDoc(file, ext, epoch);
         }
         else throw new Error(t('unsupportedFormat'));
-        if (epoch === readerEpoch.book) setPageArrows(true);
+        if (epoch === readerEpoch.book) { setPageArrows(true); scheduleShelveBook(file); }   // «Мої книги» (js/book-shelf.js): книга не губиться після закриття
     } catch (err) {
         if (epoch !== readerEpoch.book) return;
         state.format = null; state.totalPages = 0; els.toc.replaceChildren();

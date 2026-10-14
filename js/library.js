@@ -70,7 +70,7 @@ const WS_MAX_CHAPTERS = 150, WS_CONCURRENCY = 6;
 // Internet Archive: живий пошук через свій проксі; коди мов — як у самому архіві (MARC).
 const LIBRARY_IA_LANGS = [['ukr', 'Українська'], ['eng', 'English'], ['fre', 'Français'], ['ger', 'Deutsch'], ['spa', 'Español'], ['ita', 'Italiano'], ['pol', 'Polski'], ['rus', 'Русский'], ['', null]];
 const LIBRARY_MAX_BYTES = 300 * 1024 * 1024;
-const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive'];
+const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'shelf'];
 
 const libraryState = { source: 'gutenberg', wsToken: 0, page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
 function libraryEl(id) { return document.getElementById(id); }
@@ -88,7 +88,7 @@ function buildLibrary() {
     head.append(title, close);
     const tools = document.createElement('div'); tools.className = 'library-tools';
     const src = document.createElement('select'); src.id = 'library-source'; src.dataset.i18nTitle = 'libSourceLabel';
-    for (const [value, key] of [['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
+    for (const [value, key] of [['shelf', 'shelfSource'], ['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
     const q = document.createElement('input'); q.type = 'search'; q.id = 'library-q'; q.autocomplete = 'off'; q.spellcheck = false;
     const lang = document.createElement('select'); lang.id = 'library-lang';
     for (const [code, label] of LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else o.dataset.i18n = 'libAllLangs'; lang.append(o); }
@@ -127,15 +127,17 @@ function fillLibraryLangs() {
     const want = libraryState.langBySource[libraryState.source];
     lang.value = [...lang.options].some(o => o.value === want) ? want : lang.options[0].value;
     genre.hidden = src !== 'gutenberg';
+    // «Мої книги» — збережені на пристрої книги: без пошуку, мов і підпису джерела.
+    lang.hidden = src === 'shelf'; libraryEl('library-q').hidden = src === 'shelf';
     const source = document.querySelector('#library-modal .library-source');
-    if (source) { source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : 'libSource'; source.textContent = t(source.dataset.i18n); }
+    if (source) { source.hidden = src === 'shelf'; source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : 'libSource'; source.textContent = t(source.dataset.i18n); }
 }
 
 function openLibrary() {
     buildLibrary();
     libraryEl('library-modal').classList.add('open');
     libraryEl('library-q').placeholder = t('libSearch');
-    if (!libraryEl('library-list').children.length) runLibrarySearch(1);
+    if (!libraryEl('library-list').children.length || libraryState.source === 'shelf') runLibrarySearch(1);
     libraryEl('library-q').focus({ preventScroll: true });
 }
 function closeLibrary() {
@@ -159,6 +161,7 @@ async function runLibrarySearch(page) {
     more.hidden = true;
     if (libraryState.source === 'wikisource') { await runWikisourceSearch(); return; }
     if (libraryState.source === 'archive') { await runArchiveSearch(page); return; }
+    if (libraryState.source === 'shelf') { await runShelfList(); return; }
     let catalog;
     try { status.textContent = libraryState.catalog ? '' : t('libLoading'); catalog = await loadLibraryCatalog(); }
     catch (e) { status.textContent = t('libError'); return; }

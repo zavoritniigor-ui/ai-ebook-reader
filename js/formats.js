@@ -78,7 +78,7 @@ async function settleBookLayout(current, target, textOffset = null) {
         const offset = ready ? state.bookTextOffset : textOffset;
         const page = ready ? state.pageInChapter : target;
         paginateContainer();
-        goToPageInChapter(page === -1 ? state.totalPagesInChapter - 1 : (pageForBookTextOffset(offset) ?? page), false);
+        goToPageInChapter(page === -1 ? state.totalPagesInChapter - 1 : (pageForBookTextOffset(offset) ?? page), false, page === -1 ? null : offset);
     };
     const images = Array.from(els.pages.querySelectorAll('img'));
     const pending = images.map(img => {
