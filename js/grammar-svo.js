@@ -168,7 +168,7 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     panel.classList.remove('ready'); panel.classList.add('loading'); // Вмикаємо червоний неон
     content.replaceChildren(askRequestView(requestId, `<div style="text-align:center;margin-top:50px;"><div class="spinner-large"></div><p style="margin-top:20px;color:gray;">${t('generating')}<br><b style="color:var(--text-color);">${escapeHtml(contextText.length>40?contextText.substring(0,40)+'...':contextText)}</b></p></div>`));
 
-    const langName = LANG_NAMES[state.targetLang] || 'українською';
+    const langName = explainLangName();
     const prompt = mode === 'level'
         ? buildLanguageLevelPrompt(contextText, state.lastGrammarSentence, langName)
         : buildAskPrompt(contextText, state.lastGrammarSentence, userPrompt, langName);
@@ -1445,7 +1445,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     }
     const analysisText = (sentence && sentence !== context && sentence.includes(context)) ? sentence : context;
     const sourceLang = grammarSourceLanguageFor(context, analysisText);
-    const key = grammarAnalysisCacheKey(analysisText + '\u0000' + context, sourceLang, state.targetLang);
+    const key = grammarAnalysisCacheKey(analysisText + '\u0000' + context, sourceLang, state.uiLang);
     // Retry re-sends the ALREADY RESOLVED sentence: a later tap (which rewrites
     // state.lastGrammarSentence / lastTapPoint) can never swap the context under a Retry button.
     const retry = () => runGrammarAnalysis(context, analysisText);
@@ -1495,7 +1495,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     content.appendChild(spinner);
     renderGrammarControlsBar(sourceLang);
 
-    const langName = LANG_NAMES[state.targetLang] || 'English';
+    const langName = explainLangName();
     // The bounded text actually analysed (whole sentences, capped). A tapped word inside a sentence is unaffected.
     let attemptText = analysisText;
     let focus = context;

@@ -232,7 +232,7 @@ async function checkExerciseImage(dataUrl, question = '') {
     };
     cancelAsyncTasks(['panelTranslate']);
     els.askPanel.classList.remove('loading', 'ready');
-    const langName = LANG_NAMES[state.targetLang] || 'українською';
+    const langName = explainLangName();
     els.askPanel.classList.add('expanded', 'loading');
     els.askContent.replaceChildren(askRequestView(requestId, `<div style="text-align:center;margin-top:40px;"><div class="spinner-large"></div><p class="tt-note">${t(question ? 'generating' : 'checking')}</p>${question ? `<p><b>${escapeHtml(question)}</b></p>` : ''}</div>`));
     // Запит навмисно короткий: кожен зайвий рядок інструкції — це витрачені токени,

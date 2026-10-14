@@ -683,6 +683,19 @@ function systemUiLanguage() {
     } catch (e) { /* navigator недоступний — типова мова */ }
     return 'en';
 }
+// Мова перекладу при першому запуску — мова системи, якщо це не мова, яку тут вивчають (англійська, французька): на
+// російському телефоні переклад одразу російською, а не завжди українською. Інакше — українська, як і раніше.
+function systemTargetLanguage() {
+    try {
+        const prefs = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language];
+        for (const tag of prefs) {
+            const code = String(tag || '').toLowerCase().split(/[-_]/)[0];
+            if (code === 'en' || code === 'fr') return 'uk';
+            if (TARGET_LANGUAGE_CODES.includes(code)) return code;
+        }
+    } catch (e) {}
+    return 'uk';
+}
 const state = {
     format: null, currentIndex: 0, totalPages: 0,
     // Масштаб PDF, розмір шрифту й режим "Вивчення" переживають перезапуск застосунку —
@@ -718,7 +731,7 @@ const state = {
     translationCache: {}, lastAskContext: "",
     pageInChapter: 0, totalPagesInChapter: 1, bookKey: null, suppressNextClick: false,
     ttsQueue: [], ttsIndex: 0, ttsPaused: false, ttsGen: 0, pdfZoom: 1, lastTapPoint: null, expandLevel: 0, lastWordNode: null,
-    targetLang: storedLanguage('reader_target_lang', 'uk', TARGET_LANGUAGE_CODES),
+    targetLang: storedLanguage('reader_target_lang', systemTargetLanguage(), TARGET_LANGUAGE_CODES),
     uiLang: storedLanguage('reader_ui_lang', systemUiLanguage()),
     speakSide: readStored('reader_speak_side') || 'original',
     lastGrammarSentence: '', lastAskParagraph: '', docChapters: null,
@@ -1916,6 +1929,9 @@ function applyI18n() {
 
 // Обрана мова застосовується скрізь: і до перекладу слів/речень, і до відповідей AI.
 const LANG_NAMES = Object.fromEntries(Object.entries(LANGUAGE_CONFIG).map(([code, config]) => [code, config.aiName]));
+// Мова ПОЯСНЕНЬ AI («Запитай AI», мовний розбір, граматика, правила, розбір речення) — мова меню: на телефоні з російським
+// меню пояснення йшли українською, бо брались за мовою ПЕРЕКЛАДУ (типово українська). Самі переклади — як і раніше мовою перекладу.
+function explainLangName() { return LANG_NAMES[state.uiLang] || LANG_NAMES[state.targetLang] || 'українською'; }
 
 // escapeHtml перенесено сюди з мовно-нейтральної секції нижче в основному
 // файлі (raw HTML-екранування для довіреного тексту в innerHTML) — суто
