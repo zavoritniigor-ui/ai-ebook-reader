@@ -1,6 +1,6 @@
-"""German and Spanish are available as TRANSLATION (target) languages with working voices, but stay out of the menu-language list:
-the selector offers them, the choice persists, the AI prompts name them, voices for them are listed/auto-picked and used to speak the
-translation; neither becomes a UI language (a German system still gets the English menu). No network."""
+"""German and Spanish are available as TRANSLATION (target) languages with working voices: the selector offers them, the choice
+persists, the AI prompts name them, voices for them are listed/auto-picked and used to speak the translation. German stays out of the
+menu-language list (a German system still gets another menu); Spanish IS a menu language (its strings live in js/i18n-es.js). No network."""
 import json, os, time
 from browser_cdp import CDP
 
@@ -10,7 +10,7 @@ c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServic
 c.call('Page.addScriptToEvaluateOnNewDocument', source="Object.defineProperty(navigator,'languages',{get:()=>['de-DE','uk'],configurable:true});")
 c.call('Page.navigate', url=URL)
 c.wait("document.readyState==='complete' && !document.body.inert && typeof loadVoices==='function'", timeout=30)
-c.js("localStorage.clear(); localStorage.setItem('reader_target_lang','de'); localStorage.setItem('reader_ui_lang','es'); 1")
+c.js("localStorage.clear(); localStorage.setItem('reader_target_lang','de'); localStorage.setItem('reader_ui_lang','de'); 1")
 c.call('Page.reload')
 c.wait("document.readyState==='complete' && !document.body.inert && typeof loadVoices==='function'", timeout=30)
 
@@ -23,8 +23,8 @@ def check(name, expression):
 
 check('1 the translation-language selector offers German and Spanish', "['de', 'es'].every(v => [...document.getElementById('target-lang').options].some(o => o.value === v))")
 check('2 a stored German target language is accepted (selector shows it)', "state.targetLang === 'de' && document.getElementById('target-lang').value === 'de'")
-check('3 neither becomes a menu language: a stored UI language "es" is rejected, a German system gets the first supported entry (uk here), not de',
-      "state.uiLang !== 'es' && state.uiLang !== 'de' && ![...document.getElementById('ui-lang').options].some(o => ['de', 'es'].includes(o.value)) && ['uk', 'en'].includes(state.uiLang)")
+check('3 German is not a menu language: a stored UI language "de" is rejected, a German system gets the first supported entry (uk here); Spanish is offered as a menu language',
+      "state.uiLang !== 'de' && ![...document.getElementById('ui-lang').options].some(o => o.value === 'de') && [...document.getElementById('ui-lang').options].some(o => o.value === 'es') && ['uk', 'en'].includes(state.uiLang)")
 check('4 prompts and speech know both languages', "LANG_NAMES.de.length > 3 && LANG_NAMES.es.length > 3 && LANG_TAGS.de === 'de-DE' && LANG_TAGS.es === 'es-ES'")
 c.js("""(() => { window.__spoken = []; window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; this.voice = null; this.lang = ''; } };
   const mk = (name, lang, uri, local) => ({name, lang, voiceURI: uri, localService: local, default: false});
