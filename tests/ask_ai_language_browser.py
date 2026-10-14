@@ -79,4 +79,17 @@ assert result['addedCount'] == 1, result
 assert 'англійською' in result['lastLine'], result
 print('PASS end-to-end tap -> Запитай AI names the tapped fragment\'s own language', flush=True)
 
+# ---- 3. An English passage in a FRENCH textbook (user: «приклади мають бути на французькій мові») ----
+# The page mixes English instructions with French examples (Complete French All-in-One): A2/B1 variants must be French.
+page = ('Christian talks about his holiday with his son, Thomas. Listen and answer the questions. '
+        'Nous allons à la plage la semaine prochaine. Je vais visiter le musée avec mon fils. Il fait très beau aujourd\'hui.')
+textbook = c.js('''(()=>{ els.pages.replaceChildren(Object.assign(document.createElement('p'),{textContent:''' + json.dumps(page) + '''}));
+    els.pages.style.transform='none'; return buildLanguageLevelPrompt('Christian talks about his holiday with his son, Thomas.', 'Christian talks about his holiday with his son, Thomas.', 'українською'); })()''')
+assert 'англійською' in textbook.splitlines()[0], textbook.splitlines()[0]
+assert 'підручника ФРАНЦУЗЬКОЇ' in textbook and 'спрощення до A2 французькою' in textbook and 'B1, так само французькою' in textbook, textbook
+print('PASS an English passage in a French textbook: the A2/B1 variants are asked in FRENCH', flush=True)
+novel = c.js('''(()=>{ els.pages.replaceChildren(Object.assign(document.createElement('p'),{textContent:'Christian talks about his holiday with his son, Thomas. They will go to the beach next week and then visit the old museum in town.'}));
+    return buildLanguageLevelPrompt('Christian talks about his holiday with his son, Thomas.', 'Christian talks about his holiday with his son, Thomas.', 'українською'); })()''')
+assert 'підручника ФРАНЦУЗЬКОЇ' not in novel and 'спрощення до A2 англійською' in novel, novel
+print('PASS an English book keeps English variants', flush=True)
 print('ALL ASK-AI LANGUAGE CHECKS PASSED')
