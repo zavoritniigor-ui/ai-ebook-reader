@@ -210,9 +210,13 @@ for extension, wrap in [('fb2', lambda value:value), ('fb2.zip', fb2_zip)]:
             # fallback) as the EPUB case above -- see that comment for why.
             saved_bookmark = c.js('(({textOffset,pageInChapter})=>({textOffset,pageInChapter}))(loadBookmark())')
             upload(filename, data)
-            check(extension+' '+label+' reopen restores page',
-                  f'state.pageInChapter===(pageForBookTextOffset({json.dumps(saved_bookmark["textOffset"])})'
-                  f' ?? {json.dumps(saved_bookmark["pageInChapter"])})')
+            # About a second after a book opens the menu hides itself (immersive mode): the page grows taller, the text reflows
+            # and the reader repaginates once the transition ends — keeping the saved character on screen. Checking in the middle
+            # of that transition saw the old page against the new geometry; wait (up to 5 s) for the settled state instead.
+            reopen_ok = (f'state.pageInChapter===(pageForBookTextOffset({json.dumps(saved_bookmark["textOffset"])})'
+                         f' ?? {json.dumps(saved_bookmark["pageInChapter"])})')
+            c.js(f'new Promise(r => {{ const t0 = performance.now(); (function poll() {{ if ({reopen_ok} || performance.now() - t0 > 5000) r(1); else setTimeout(poll, 100); }})(); }})')
+            check(extension+' '+label+' reopen restores page', reopen_ok)
         if label == 'sections':
             check(extension+' multiple sections retained', "state.docChapters.join('').includes('Second body') && state.docChapters.join('').includes('Poem line')")
 

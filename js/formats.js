@@ -77,6 +77,9 @@ async function settleBookLayout(current, target, textOffset = null) {
         if (!current()) return;
         const offset = ready ? state.bookTextOffset : textOffset;
         const page = ready ? state.pageInChapter : target;
+        // Перша розкладка відкритої книги — це і є відновлення місця: відтепер закладку знову можна записувати (js/main.js
+        // вмикає state.bookOpening на час розпакування; гортання після появи сторінок мусить зберігатись одразу).
+        if (!ready) state.bookOpening = false;
         paginateContainer();
         goToPageInChapter(page === -1 ? state.totalPagesInChapter - 1 : (pageForBookTextOffset(offset) ?? page), false, page === -1 ? null : offset);
     };

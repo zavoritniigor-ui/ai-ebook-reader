@@ -286,7 +286,10 @@ function updateProgressText() {
 function bookKeyFor(file) { return 'reader_bookmark_' + file.name + '_' + file.size + '_' + (file.lastModified || 0); }
 function oldBookKeyFor(file) { return 'reader_bookmark_' + file.name + '_' + file.size; }
 function saveBookmark() {
-    if (!state.bookKey) return;
+    // Поки книга відкривається, її місце ще не відновлено: велика EPUB (25 МБ) розпаковується секунди, а тим часом на планшеті
+    // ховається меню → переразбиття → goToPageInChapter(0) затирав справжню закладку «розділ 0, сторінка 0». Тоді книга
+    // відкривалась з початку.
+    if (!state.bookKey || state.bookOpening) return;
     scheduleReaderOnboarding();
     try { writeStored(state.bookKey, JSON.stringify({ format: state.format, currentIndex: state.currentIndex, pageInChapter: state.pageInChapter, textOffset: state.format !== 'pdf' ? state.bookTextOffset : undefined, pdfFocus: state.format === 'pdf' ? pdfAnchor() : undefined })); } catch (e) {}
 }

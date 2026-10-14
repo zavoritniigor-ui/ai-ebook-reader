@@ -185,6 +185,7 @@ async function openBookFile(file) {
     state.docChapters = null;
     loadInk();
     const ext = /\.fb2\.zip$/i.test(file.name) ? 'fb2.zip' : file.name.split('.').pop().toLowerCase();
+    state.bookOpening = true;   // saveBookmark мовчить, доки місце читання не відновлено (js/navigation.js)
     try {
         if (ext === 'epub') { state.format = 'epub'; document.body.classList.remove('pdf-mode'); await initEpub(file, epoch); }
         else if (ext === 'pdf') { state.format = 'pdf'; document.body.classList.add('pdf-mode'); await initPdf(file, epoch); }
@@ -195,9 +196,11 @@ async function openBookFile(file) {
             await initRichDoc(file, ext, epoch);
         }
         else throw new Error(t('unsupportedFormat'));
+        if (epoch === readerEpoch.book) { state.bookOpening = false; saveBookmark(); }
         if (epoch === readerEpoch.book) { setPageArrows(true); scheduleShelveBook(file); }   // «Мої книги» (js/book-shelf.js): книга не губиться після закриття
     } catch (err) {
         if (epoch !== readerEpoch.book) return;
+        state.bookOpening = false;
         state.format = null; state.totalPages = 0; els.toc.replaceChildren();
         setPageArrows(false);
         showReaderError(err);
