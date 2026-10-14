@@ -40,6 +40,15 @@ for (w, h, mobile) in ((390, 844, True), (844, 390, True), (820, 1180, True), (1
     c.js("document.body.classList.add('immersive-mode'); document.body.classList.remove('footer-open'); 1"); time.sleep(0.4)
     check('%dx%d: footer hidden (menu-less mode) -> both arrows are on screen' % (w, h), "%s('page-arrow-prev') && %s('page-arrow-next')" % (VISIBLE, VISIBLE))
     check('%dx%d: they cover none of the edge tabs, the ✦ launcher, the footer handle' % (w, h), NO_OVERLAP)
+    check('%dx%d: no line of the book text lies under ☰ (top) or under the arrows (bottom)' % (w, h), """(() => {
+      const c = els.container.getBoundingClientRect(), menu = document.getElementById('menu-handle').getBoundingClientRect();
+      const arrows = ['page-arrow-prev', 'page-arrow-next'].map(id => document.getElementById(id).getBoundingClientRect());
+      const hit = (a, b) => a.width && b.width && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      const w = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT); let n;
+      while ((n = w.nextNode())) { const r = document.createRange(); r.selectNodeContents(n);
+        for (const b of r.getClientRects()) { if (!b.width || b.left < c.left - 1 || b.right > c.right + 1) continue;
+          if (hit(b, menu) || arrows.some(a => hit(b, a))) return 'covered: ' + n.nodeValue.trim().slice(0, 30); } }
+      return true; })()""", timeout=3)
     c.js("goToPageInChapter(1, false); 1")
     c.js("document.getElementById('page-arrow-next').click(); 1"); time.sleep(0.3)
     check('%dx%d: › turns ONE page forward' % (w, h), "state.pageInChapter === 2", timeout=2)
