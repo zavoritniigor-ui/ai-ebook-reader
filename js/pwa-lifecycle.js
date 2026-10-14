@@ -45,6 +45,7 @@ function stopBackgroundActivity() {
         ++readerEpoch.book;
         pdfTasks.loading.destroy().catch(() => {}); pdfTasks.loading = null;
         state.format = null; state.totalPages = 0;
+        if (typeof setPageArrows === 'function') setPageArrows(false);
         els.pages.textContent = 'Відкриття PDF скасовано. Відкрийте файл повторно.';
     }
     cancelPdfInteraction(); cancelPdfRender();

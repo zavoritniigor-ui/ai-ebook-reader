@@ -544,6 +544,17 @@
                        background: rgba(33,37,41,0.92); color: #fff; padding: 8px 16px;
                        border-radius: 18px; font-size: 14px; pointer-events: none; }
         #footer-handle { display: none; }
+        /* Стрілки ‹ › у нижніх кутах: гортання по одній сторінці завжди під рукою, коли смуга «◀ сторінка ▶» схована
+           (режим без меню; на 641–1180px до неї не було навіть ручки). Відступ 56px від країв — щоб не лягати на язички
+           «Запитай AI»/«Граматика» біля самих країв; центр знизу лишається кнопці ✦. */
+        .page-arrow { display: none; position: fixed; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 95;
+            width: 44px; height: 44px; padding: 0 0 3px; border-radius: 50%; align-items: center; justify-content: center;
+            background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-color);
+            font-size: 28px; line-height: 1; opacity: .6; box-shadow: 0 2px 8px rgba(0,0,0,.18); cursor: pointer; }
+        .page-arrow:hover, .page-arrow:active, .page-arrow:focus-visible { opacity: 1; }
+        #page-arrow-prev { left: 56px; }
+        #page-arrow-next { right: 56px; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow { display: flex; }
 
         /* ОНОВЛЕНИЙ Tooltip (Захист від виходу за межі екрана)
            Спливаюче вікно навмисно темне на будь-якій темі сторінки — як окрема "картка"
@@ -1553,6 +1564,10 @@
             <button id="next-btn" data-i18n="next">Вперед ▶</button>
         </div>
     </footer>
+    <div id="page-arrows" hidden>
+        <button type="button" id="page-arrow-prev" class="page-arrow" data-i18n-aria="prev" data-i18n-title="prev" aria-label="◀ Назад" title="◀ Назад">‹</button>
+        <button type="button" id="page-arrow-next" class="page-arrow" data-i18n-aria="next" data-i18n-title="next" aria-label="Вперед ▶" title="Вперед ▶">›</button>
+    </div>
 
     <div id="settings-modal" onclick="if (event.target === this) closeKeySettings()">
         <div class="modal-content">
@@ -1633,7 +1648,7 @@
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=287a4798dca1"></script>
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
-    <script src="js/main.js?v=ace8487bcc5d"></script>
-    <script src="js/pwa-lifecycle.js?v=6b60a87817d3"></script>
+    <script src="js/main.js?v=d253b9ea6cf6"></script>
+    <script src="js/pwa-lifecycle.js?v=debe0693544e"></script>
 </body>
 </html>
