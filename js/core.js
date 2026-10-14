@@ -1872,6 +1872,7 @@ function applyI18n() {
     updateDictationUI();
     els.askTab.setAttribute('aria-label', t('tAskPanel'));
     els.grammarTab.setAttribute('aria-label', t('tGrammarPanel'));
+    if (typeof syncBookLangSelect === 'function') syncBookLangSelect();
     const practiceRestore = document.getElementById('practice-restore');
     if (practiceRestore) {
         const span = practiceRestore.querySelector('span');
