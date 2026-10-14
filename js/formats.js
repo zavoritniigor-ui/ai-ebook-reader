@@ -246,7 +246,7 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null, textOffset 
             
             const zip = state.epubZip;
             const chapterDir = fileObj.name.includes('/') ? fileObj.name.substring(0, fileObj.name.lastIndexOf('/') + 1) : "";
-            const tempDoc = new DOMParser().parseFromString(data, "text/html");
+            const tempDoc = new DOMParser().parseFromString(expandSelfClosingTags(data), "text/html");
             // Common EPUB covers wrap a raster image in SVG. Resolve that image
             // through the archive; standalone vector art uses the inert subset.
             for (const svg of Array.from(tempDoc.querySelectorAll('svg'))) {
@@ -281,6 +281,17 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null, textOffset 
         els.pages.innerHTML = `<div style="color:red;text-align:center;padding:50px;">Помилка завантаження розділу: ${escapeHtml(err.message)}</div>`;
         els.progress.textContent = `${idx + 1} із ${state.totalPages}`;
     }
+}
+
+// Розділи EPUB — це XHTML, а розбираємо їх як HTML. У XHTML «<pre/>» чи «<a id="x"/>» — порожній елемент, а HTML-розбір
+// бачить у них ВІДКРИТИЙ тег: у книгах Gutenberg (Les Misérables) після «<pre/>» увесь розділ ставав неперенесеним
+// текстом і вилазив за сторінку, а «<a id/>» загортав у посилання все до кінця блоку. Тому самозакриті НЕ порожні
+// за природою теги розгортаються в пару; br/img/hr та інші порожні лишаються як є. Тег з «>» усередині атрибута
+// регулярний вираз не зачепить — він лишається без змін, як і раніше.
+const VOID_HTML_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
+function expandSelfClosingTags(markup) {
+    return String(markup).replace(/<([A-Za-z][\w:-]*)(\s[^<>]*?)?\s*\/>/g,
+        (whole, tag, attrs = '') => VOID_HTML_TAGS.has(tag.toLowerCase()) ? whole : `<${tag}${attrs}></${tag}>`);
 }
 
 // ========== ІНШІ ФОРМАТИ КНИЖОК ==========
@@ -320,7 +331,7 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
         // content, since splitIntoChapters() below starts a new chapter at the
         // next heading — the reader opened on a near-empty page showing only the
         // leaked title, with the actual content one chapter further in.
-        const page = new DOMParser().parseFromString(await file.text(), 'text/html');
+        const page = new DOMParser().parseFromString(expandSelfClosingTags(await file.text()), 'text/html');
         state.bookLangMeta = normalizeBookLang(page.documentElement.getAttribute('lang'));   // книги Wikisource з бібліотеки мають <html lang>
         bodyHtml = page.body.innerHTML;
     } else if (ext === 'rtf') {
