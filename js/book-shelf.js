@@ -60,7 +60,16 @@ async function shelveBook(file, key = state.bookKey) {
         renderRecentBooks();
     } catch (e) { /* немає місця чи IndexedDB заборонено — книга просто не збережеться, читання не страждає */ }
 }
+// Запис великого файлу (PDF на десятки МБ) не має змагатися з першим відмальовуванням книги: зберігаємо за кілька секунд,
+// коли браузер вільний, і лише якщо ця книга досі відкрита.
+let shelfPendingKey = null;
+function scheduleShelveBook(file) {
+    const key = shelfPendingKey = state.bookKey;
+    const run = () => { if (shelfPendingKey === key && state.bookKey === key) { shelfPendingKey = null; shelveBook(file, key); } };
+    setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(run, { timeout: 5000 }) : run()), 2500);
+}
 async function removeShelfBook(key) {
+    if (shelfPendingKey === key) shelfPendingKey = null;   // щойно видалену книгу відкладене збереження не повертає
     try { await shelfTx('readwrite', store => { store.delete(key); }); } catch (e) {}
     renderRecentBooks();
 }
