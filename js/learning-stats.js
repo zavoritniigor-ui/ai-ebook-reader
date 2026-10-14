@@ -121,16 +121,19 @@ function readableTextModel() {
             return NodeFilter.FILTER_ACCEPT;
         }
     });
-    let text = '', previous = null, node;
+    let text = '', lastChar = '', previous = null, node;
     const segments = [];
     while ((node = walker.nextNode())) {
         const value = node.nodeValue || '';
         const itemBoundary = state.format === 'pdf'
             ? previous && pdfTextItem(previous, root) !== pdfTextItem(node, root)
             : previous && textNodeBlock(previous) !== textNodeBlock(node);
-        if (itemBoundary && !/\s$/u.test(text) && !/^\s/u.test(value)) text += ' ';
+        // Останній символ — з окремої змінної: /\s$/ чи slice(-1) на тексті, що росте, щоразу склеює весь розділ
+        // (квадратичний час: 80 мс на кожен тап у великому розділі бібліотечної книги).
+        if (itemBoundary && !/\s/u.test(lastChar) && !/^\s/u.test(value)) text += ' ';
         const start = text.length;
         text += value;
+        if (value) lastChar = value[value.length - 1];
         segments.push({ node, start, end: text.length });
         previous = node;
     }
@@ -172,14 +175,6 @@ function vocabularyTokens(text, lang = pageLang().slice(0, 2)) {
             /^[\p{L}\p{M}]+(?:['’ʼ-][\p{L}\p{M}]+)*$/u.test(word);
     });
 }
-function modelPiecesForToken(model, token) {
-    const pieces = [];
-    for (const seg of model.segments) {
-        const from = Math.max(token.start, seg.start), to = Math.min(token.end, seg.end);
-        if (to > from) pieces.push({ node: seg.node, start: from - seg.start, end: to - seg.start });
-    }
-    return pieces;
-}
 // НАВМИСНО не за перетином з els.container.getBoundingClientRect() (поточним
 // видимим вікном): "поточна сторінка" для нерозгорнутих форматів (EPUB/DOCX/TXT) —
 // це CSS-колонка з фіксованим горизонтальним зсувом (state.pageInChapter *
@@ -205,12 +200,67 @@ function tokenIsOnCurrentPage(pieces) {
     }
     return false;
 }
-function currentPageVocabulary() {
+// Розбір розділу на слова кешується: великий розділ бібліотечної книги (Pride and Prejudice — 130 тис. знаків, ~23 тис. слів)
+// розбирався заново при КОЖНОМУ тапі й гортанні, а ще кожне слово міряло своє положення на екрані — вікно перекладу
+// з'являлося через 0,5 с на комп'ютері й через кілька секунд на планшеті. Кеш дійсний, доки текстові вузли розділу ті самі.
+let vocabularyModelCache = null;
+function cachedVocabularyModel() {
+    const root = state.format === 'pdf' ? null : els.pages;
+    const c = vocabularyModelCache;
+    if (root && c && c.root === root && c.bookKey === state.bookKey && c.lang === pageLang().slice(0, 2) &&
+        c.textLength === root.textContent.length && c.model.segments.every(s => s.node.isConnected && s.node.nodeValue.length === s.end - s.start)) return c;
     const model = readableTextModel();
+    const lang = pageLang().slice(0, 2);
+    // Тап обгортає слово в <span> — вузли інші, а текст той самий: тоді розбиття на слова береться з кешу.
+    const tokens = c && c.root === root && c.lang === lang && c.model.text === model.text ? c.tokens : vocabularyTokens(model.text, lang);
+    const fresh = { root, bookKey: state.bookKey, lang, textLength: root ? root.textContent.length : 0, model, tokens };
+    vocabularyModelCache = root ? fresh : null;
+    return fresh;
+}
+// Шматки тексту слова — двійковим пошуком по сегментах (вони йдуть за зростанням start), а не перебором усіх.
+function piecesForTokenFast(model, token) {
+    const segs = model.segments;
+    let lo = 0, hi = segs.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (segs[mid].end <= token.start) lo = mid + 1; else hi = mid; }
+    const pieces = [];
+    for (let i = lo; i < segs.length && segs[i].start < token.end; i++) {
+        const seg = segs[i], from = Math.max(token.start, seg.start), to = Math.min(token.end, seg.end);
+        if (to > from) pieces.push({ node: seg.node, start: from - seg.start, end: to - seg.start });
+    }
+    return pieces;
+}
+// Текстові вузли, частина яких може бути на поточній сторінці: колонки, які займають рядки вузла (getClientRects),
+// перетинають поточну. Вузлів у розділі в десятки разів менше, ніж слів, тож точна перевірка кожного слова
+// (tokenIsOnCurrentPage) лишається лише для слів цих вузлів. Вузол без розміру лишається: його слова тоді
+// перевіряються як і раніше.
+function segmentsTouchingCurrentPage(model) {
+    const page = state.pageInChapter, step = columnStep();
+    if (!(step > 0)) return null;
+    const originX = els.container.getBoundingClientRect().left - page * step;
+    const columnOf = x => Math.max(0, Math.floor((x - originX) / step));
+    const range = document.createRange();
+    return model.segments.map(seg => {
+        try {
+            range.selectNodeContents(seg.node);
+            const rects = [...range.getClientRects()].filter(b => b.width || b.height);
+            return !rects.length || rects.some(b => columnOf(b.left) <= page && columnOf(b.right) >= page);
+        } catch (e) { return true; }
+    });
+}
+function currentPageVocabulary() {
+    const { model, tokens } = cachedVocabularyModel();
     const scope = learningSourceScope();
+    const touching = state.format !== 'pdf' && tokens.length > 200 && typeof columnStep === 'function' ? segmentsTouchingCurrentPage(model) : null;
     const words = [];
-    for (const token of vocabularyTokens(model.text)) {
-        const pieces = modelPiecesForToken(model, token);
+    let seg = 0;
+    for (const token of tokens) {
+        if (touching) {
+            while (seg < model.segments.length && model.segments[seg].end <= token.start) seg++;
+            let near = false;
+            for (let i = seg; i < model.segments.length && model.segments[i].start < token.end; i++) if (touching[i]) { near = true; break; }
+            if (!near) continue;
+        }
+        const pieces = piecesForTokenFast(model, token);
         if (!tokenIsOnCurrentPage(pieces)) continue;
         const normalized = normalizedLearningWord(token.word);
         words.push({ ...token, normalized, id: `${token.start}:${normalized}`, pieces });
