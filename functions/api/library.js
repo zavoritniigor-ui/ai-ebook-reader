@@ -103,8 +103,10 @@ export async function onRequestGet({ request }) {
             const page = Math.min(50, Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1));
             if (!q) return json({ error: 'bad query' }, 400);
             if (lang && !IA_LANGS[lang]) return json({ error: 'bad lang' }, 400);
-            const words = q.split(/\s+/).filter(Boolean).slice(0, 8).join(' ');
-            let query = `${IA_FREE} AND (title:(${words}) OR creator:(${words}))`;
+            // Кожне слово — або в назві, або в автора: «voltaire candide» знаходить «Candide» Вольтера (раніше обидва слова мали бути
+            // в одному полі, і таких книг майже не було).
+            const words = q.split(/\s+/).filter(Boolean).slice(0, 8);
+            let query = `${IA_FREE} AND ` + words.map(w => `(title:(${w}) OR creator:(${w}))`).join(' AND ');
             if (lang) query += ` AND language:(${lang} OR ${IA_LANGS[lang]})`;
             const api = new URL('https://archive.org/advancedsearch.php');
             api.searchParams.set('q', query);
