@@ -167,7 +167,7 @@ async function openBookFile(file) {
     state.bookTextOffset = null; state.blockWeights = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
     state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = ''; state.lastGrammarSourceText = null;
-    state.inkMode = false;
+    state.inkMode = false; setPageArrows(false);
     document.body.classList.remove('ink-mode', 'region-mode', 'pdf-pannable', 'pdf-dragging');
     els.askPanel.classList.remove('loading', 'ready'); els.grammarPanel.classList.remove('loading', 'ready');
     els.askContent.textContent = t('askHint'); els.grammarContent.textContent = t('grammarHint');
@@ -192,12 +192,18 @@ async function openBookFile(file) {
             await initRichDoc(file, ext, epoch);
         }
         else throw new Error(t('unsupportedFormat'));
+        if (epoch === readerEpoch.book) setPageArrows(true);
     } catch (err) {
         if (epoch !== readerEpoch.book) return;
         state.format = null; state.totalPages = 0; els.toc.replaceChildren();
+        setPageArrows(false);
         showReaderError(err);
     }
 }
+// Стрілки ‹ › у нижніх кутах (index.html .page-arrow): є лише з відкритою книгою; видно — коли сховано смугу «◀ сторінка ▶».
+function setPageArrows(on) { document.getElementById('page-arrows').hidden = !on; }
+document.getElementById('page-arrow-prev').onclick = (e) => { e.stopPropagation(); goPrev(); };
+document.getElementById('page-arrow-next').onclick = (e) => { e.stopPropagation(); goNext(); };
 els.upload.addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return;
     e.target.value = ''; // Permit retrying the same file after an error.
