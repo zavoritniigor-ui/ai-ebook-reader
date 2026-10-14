@@ -205,10 +205,10 @@ const LANGUAGE_CONFIG = {
     ko: { locale: 'ko-KR', aiName: 'корейською', promptName: 'Korean' },
     hi: { locale: 'hi-IN', aiName: 'гінді', promptName: 'Hindi' },
     ga: { locale: 'ga-IE', aiName: 'ірландською', promptName: 'Irish' },
-    // Лише МОВИ ПЕРЕКЛАДУ та озвучення (targetOnly): застосунок заточений під вивчення англійської та французької, тож німецька й
-    // іспанська не стають мовами меню, граматичного розбору чи правил.
+    // Німецька — лише МОВА ПЕРЕКЛАДУ та озвучення (targetOnly): не стає мовою меню, граматичного розбору чи правил.
     de: { locale: 'de-DE', aiName: 'німецькою', promptName: 'German', targetOnly: true },
-    es: { locale: 'es-ES', aiName: 'іспанською', promptName: 'Spanish', targetOnly: true }
+    // Іспанська — і мова перекладу, і мова меню (рядки меню — js/i18n-es.js).
+    es: { locale: 'es-ES', aiName: 'іспанською', promptName: 'Spanish' }
 };
 // Мови меню / вивчення (мають повний набір рядків і граматичні налаштування).
 const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG).filter(code => !LANGUAGE_CONFIG[code].targetOnly);
@@ -413,6 +413,28 @@ const GRAMMAR_LANG_CONFIG = {
             forms: [
                 { id: 'ms', label: 'पुल्लिंग एकवचन' }, { id: 'fs', label: 'स्त्रीलिंग एकवचन' },
                 { id: 'mp', label: 'पुल्लिंग बहुवचन' }, { id: 'fp', label: 'स्त्रीलिंग बहुवचन' }
+            ]
+        }
+    },
+    es: {
+        lemmaCase: 'lower',
+        labels: { verbs: 'Verbos', adjectives: 'Adjetivos' },
+        verb: {
+            features: ['tense', 'mood', 'person', 'number'],
+            tenses: [
+                { id: 'presente', label: 'Presente' }, { id: 'preterito_indefinido', label: 'Pretérito indefinido' },
+                { id: 'preterito_imperfecto', label: 'Pretérito imperfecto' }, { id: 'preterito_perfecto', label: 'Pretérito perfecto' },
+                { id: 'futuro', label: 'Futuro' }, { id: 'condicional', label: 'Condicional' },
+                { id: 'subjuntivo_presente', label: 'Presente de subjuntivo' }, { id: 'imperativo', label: 'Imperativo' }
+            ],
+            persons: ['yo', 'tú', 'él / ella / usted', 'nosotros', 'vosotros', 'ellos / ellas / ustedes'],
+            promptNote: 'Spanish: the lemma is the infinitive (-ar, -er, -ir, optionally reflexive: levantarse). A compound tense (he comido, había dicho) or a periphrasis written together (voy a ir, estoy leyendo) uses the whole contiguous group as "surface".'
+        },
+        adjective: {
+            features: ['gender', 'number', 'degree'],
+            forms: [
+                { id: 'ms', label: 'masculino singular' }, { id: 'fs', label: 'femenino singular' },
+                { id: 'mp', label: 'masculino plural' }, { id: 'fp', label: 'femenino plural' }
             ]
         }
     },
