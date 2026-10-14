@@ -81,7 +81,7 @@ function pageForBookTextOffset(offset) {
 function repaginateBook() {
     const offset = state.bookTextOffset;
     paginateContainer();
-    goToPageInChapter(pageForBookTextOffset(offset) ?? state.pageInChapter, false);
+    goToPageInChapter(pageForBookTextOffset(offset) ?? state.pageInChapter, false, offset);
 }
 
 function paginateContainer() {
@@ -108,7 +108,10 @@ function paginateContainer() {
     state.measuredStep = total > 1 ? (els.pages.scrollWidth + pageGap()) / total : rough;
     noteCharsPerPage(total);
 }
-function goToPageInChapter(p, animate = true) {
+// anchor — символ, за яким сторінку щойно знайдено (відкриття книги, зміна розміру): він і лишається місцем читання, якщо
+// стоїть на цій сторінці. Інакше місцем ставав початок сторінки, і кожне переразбиття (на планшеті меню ховається одразу
+// після відкриття книги) відсувало закладку на сторінку назад: збережено 2-гу, відкривалась 1-ша.
+function goToPageInChapter(p, animate = true, anchor = null) {
     p = Number.isFinite(p) ? Math.trunc(p) : 0;
     p = Math.max(0, Math.min(p, state.totalPagesInChapter - 1));
     state.pageInChapter = p;
@@ -126,7 +129,7 @@ function goToPageInChapter(p, animate = true) {
         els.pages.classList.remove('anim');
     }
     els.pages.style.transform = `translate3d(${-(p * columnStep())}px, 0, 0)`;
-    state.bookTextOffset = bookTextOffsetAtPage();
+    state.bookTextOffset = Number.isInteger(anchor) && pageForBookTextOffset(anchor) === p ? anchor : bookTextOffsetAtPage();
     updateProgressText();
     refreshReadingStats();
     saveBookmark();

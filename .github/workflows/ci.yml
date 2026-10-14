@@ -178,6 +178,8 @@ jobs:
           python3 -u tests/page_vocabulary_speed_browser.py
           echo "Running xhtml_self_closing_browser.py..."
           python3 -u tests/xhtml_self_closing_browser.py
+          echo "Running book_shelf_browser.py..."
+          python3 -u tests/book_shelf_browser.py
 
           echo "Running reader_resize_sync_browser.py..."
           python3 -u tests/reader_resize_sync_browser.py
