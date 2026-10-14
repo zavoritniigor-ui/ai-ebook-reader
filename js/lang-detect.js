@@ -101,6 +101,13 @@ function specialLanguage(text) {
     if (dominant) return dominant[0];
     const words = (text.toLocaleLowerCase().match(/[a-záéíóú]+/gu) || []);
     const gaHits = words.filter(word => GA_STRONG_WORDS.has(word)).length;
+    if (!gaHits) return null;
+    // Іспанська теж має «sin» і á/í/ó/ú: раніше одного «sin» з наголосом вистачало, щоб іспанський розділ став ірландським
+    // (і читався англійським/французьким голосом). Тепер ірландська — лише коли її слова переважають службові слова інших
+    // латинських мов і (у довшому тексті) становлять помітну частку слів.
+    const otherHits = Math.max(...Object.values(latinStopwordScores(words)));
+    if (gaHits <= otherHits || /[ñ¿¡]/.test(text)) return null;
+    if (words.length > 8 && gaHits < words.length * 0.08) return null;
     if (gaHits >= 2 || (gaHits >= 1 && /[áíóú]/iu.test(text))) return 'ga-IE';
     return null;
 }
@@ -310,29 +317,44 @@ const LATIN_STOPWORDS = Object.fromEntries(Object.entries({
     en: 'the and of to a in is it that was he for on are as with his they at be this have from or one had by but not what all were we when your can said there an which she do their if will up other about out many then them these so some her would make like him into has two more no way could my than been who its now people did',
     fr: 'le la les de des du et est un une en dans que qui pour pas sur au aux avec il elle ils elles nous vous je ne se ce son sa ses mais ou par plus été était sont cette tout comme on leur lui fait bien aussi même très',
     de: 'der die das und ist nicht ein eine einen einem einer zu den von mit sich des auf für im dem es ich sie er wir ihr auch als an war wird werden bei noch nach wie aus aber hat oder wenn nur doch so schon mir mich ihn uns dass sind zum zur über vor dann kann',
-    es: 'el la los las de del y que en un una es por con no para se lo le su sus al más pero como este esta está son fue ha muy sin sobre también hay ya yo todo cuando entre porque qué él ella hasta desde nos',
-    it: 'il lo la gli le di del della dei delle e che è un una per non in con si da al alla ma come più sono anche ci questo questa ha ho mi ti del nel nella io lui lei loro tutto quando perché già',
+    es: 'el la los las de del y que en un una es por con no para se lo le su sus al más pero como este esta está son fue ha muy sin sobre también hay ya yo todo cuando entre porque qué él ella hasta desde nos a me mi te había era eso esto así otro otra pues donde mismo después',
+    it: 'il lo la gli le di del della dei delle e che è un una per non in con si da al alla ma come più sono anche ci questo questa ha ho mi ti del nel nella io lui lei loro tutto quando perché già a ne se tutti tutta era erano dopo poi così ancora sempre ogni quello quella quel suo sua cosa qui gli',
     pt: 'o a os as de do da dos das e que em um uma é não para com por se no na nos mais mas como ao foi ele ela seu sua são está também já eu muito isso quando sem pelo pela você então',
     nl: 'de het een en van in is dat op te zijn met voor niet aan er die maar om ook als bij of uit wat hij zij ze wij we ik je naar dan nog wel kan door over dit deze heeft hebben werd geen',
     pl: 'i w nie na się z że do to jest jak o a co po ale tak za od przez jego jej ich go już tylko być był była było są mnie mi ty ja on ona może dla czy też pan'
 }).map(([lang, list]) => [lang, new Set(list.split(' '))]));
 // Лише літери, яких нема ні в англійській, ні у французькій (è/à є і в італійській, і у французькій — не ознака).
 const LATIN_LETTER_HINTS = { de: /[äöüß]/, es: /[ñ¿¡]/, pt: /[ãõ]/, pl: /[ąćęłńśźż]/ };
-function identifyLatinLanguage(text) {
-    const words = String(text || '').toLocaleLowerCase().match(/[\p{L}']+/gu) || [];
-    if (words.length < 5) return null;
+function latinStopwordScores(words) {
     const scores = {};
     for (const lang of Object.keys(LATIN_STOPWORDS)) {
         const set = LATIN_STOPWORDS[lang];
         scores[lang] = words.reduce((n, w) => n + (set.has(w) ? 1 : 0), 0);
     }
+    return scores;
+}
+function latinLanguageScores(text) {
+    const words = String(text || '').toLocaleLowerCase().match(/[\p{L}']+/gu) || [];
+    const scores = latinStopwordScores(words);
     const lower = String(text).toLocaleLowerCase();
     for (const [lang, re] of Object.entries(LATIN_LETTER_HINTS)) if (scores[lang] >= 1 && re.test(lower)) scores[lang] += 1;
+    return { words, scores };
+}
+function identifyLatinLanguage(text) {
+    const { words, scores } = latinLanguageScores(text);
+    if (words.length < 5) return null;
     const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const [best, top] = ranked[0], second = ranked[1][1];
     // Явна перевага: щонайменше 2 службові слова, не менше ~12% слів, і на третину більше за другу мову.
     if (top < 2 || top < words.length * 0.12 || top < second * 1.34) return null;
     return best;
+}
+// Речення в книзі відомою мовою (не en/fr): інша мова — лише коли вона ЯВНО переважає мову книги. Коротке італійське речення
+// «A poco a poco tutti se ne andarono» має спільні службові слова з португальською/іспанською і раніше читалось чужим голосом.
+function sentenceBeatsBookLang(text, guess, bookLang2) {
+    if (!guess || guess === bookLang2) return false;
+    const { scores } = latinLanguageScores(text);
+    return scores[guess] >= 3 && scores[guess] >= (scores[bookLang2] || 0) * 2;
 }
 // Книга іншою латинською мовою (не en/fr): вся текстова евристика en/fr для неї не підходить.
 function isOtherLatinLang(lang2) { return OTHER_LATIN_LANGS.includes(lang2); }
@@ -352,8 +374,11 @@ function buildLanguageSegments(text, priorLang2) {
     // Німецька/іспанська/… — увесь текст однією мовою; у книзі такою мовою текст без явних ознак англійської чи французької
     // (коротке речення, одне слово) теж читається мовою книги, а не вгадується між en і fr.
     const latin = identifyLatinLanguage(text);
-    if (latin && isOtherLatinLang(latin)) return [{ lang: latin, text }];
-    if (isOtherLatinLang(priorLang2) && latin !== 'en' && latin !== 'fr') return [{ lang: priorLang2, text }];
+    // Книга німецькою/іспанською/…: речення лишається мовою книги, якщо інша мова його явно не переважає (англійський
+    // службовий текст Gutenberg переважає — і читається англійською).
+    if (isOtherLatinLang(priorLang2) && !sentenceBeatsBookLang(text, latin, priorLang2)) return [{ lang: priorLang2, text }];
+    // Англійська/французька книга: речення іншою мовою — лише коли та мова явно переважає (у французькій теж є «a», «se», «ne»).
+    if (latin && isOtherLatinLang(latin) && (!LATIN_STOPWORDS[priorLang2] || sentenceBeatsBookLang(text, latin, priorLang2))) return [{ lang: latin, text }];
     const parts = splitTopLevelParens(text);
     if (parts.length === 1 && !parts[0].paren) return buildFlatSegments(text, priorLang2);
     const out = [];
@@ -412,9 +437,51 @@ function detectLang(text) {
 // Мова книги. Визначається ОДИН РАЗ на сторінку/розділ і далі використовується як
 // ПІДКАЗКА (не остаточна відповідь!) для перекладу й вибору голосу — конкретний
 // фрагмент завжди має пріоритет над нею, якщо в ньому є власні надійні ознаки.
+// Мова книги, задана явно: вибір користувача в меню (на книгу) або метадані файлу (dc:language в EPUB, lang у HTML/FB2 —
+// у книжках бібліотеки вони завжди є). '' — визначати автоматично.
+const BOOK_LANG_CHOICES = ['en', 'fr', 'es', 'de', 'it', 'pt', 'nl', 'pl'];
+function normalizeBookLang(value) {
+    const code = String(value || '').trim().toLowerCase().slice(0, 2);
+    return BOOK_LANG_CHOICES.includes(code) ? code : '';
+}
+function explicitBookLang() { return state.bookLangManual || state.bookLangMeta || ''; }
+const BOOK_LANG_STORE = 'reader_book_lang:';
+const BOOK_LANG_NAMES = { en: 'English', fr: 'Français', es: 'Español', de: 'Deutsch', it: 'Italiano', pt: 'Português', nl: 'Nederlands', pl: 'Polski' };
+Object.assign(I18N, {
+    bookLangLabel: { uk: '📖 Мова книги', en: '📖 Book language', fr: '📖 Langue du livre', ru: '📖 Язык книги', zh: '📖 书籍语言', ko: '📖 책 언어', hi: '📖 पुस्तक की भाषा', ga: '📖 Teanga an leabhair' },
+    bookLangAuto: { uk: 'Автоматично', en: 'Automatic', fr: 'Automatique', ru: 'Автоматически', zh: '自动', ko: '자동', hi: 'स्वचालित', ga: 'Uathoibríoch' },
+});
+// Поле «Мова книги» у бічній панелі (змісті): «Автоматично (мова з файлу)» або явна мова; вибір пам'ятається для кожної книги.
+function syncBookLangSelect() {
+    const sel = document.getElementById('book-lang-select');
+    if (!sel) return;
+    sel.disabled = !state.bookKey;
+    sel.value = state.bookLangManual || '';
+    sel.options[0].textContent = t('bookLangAuto') + (state.bookLangMeta ? ` (${BOOK_LANG_NAMES[state.bookLangMeta]})` : '');
+}
+document.getElementById('book-lang-select')?.addEventListener('change', (e) => {
+    if (!state.bookKey) return;
+    state.bookLangManual = normalizeBookLang(e.target.value);
+    try { if (state.bookLangManual) writeStored(BOOK_LANG_STORE + state.bookKey, state.bookLangManual); else localStorage.removeItem(BOOK_LANG_STORE + state.bookKey); } catch (err) {}
+    if (typeof isSpeakingGlobal !== 'undefined' && isSpeakingGlobal) stopGlobalTTS();
+    if (state.format && state.format !== 'pdf') updateSourceLang(); else state.sourceLang = null;
+    state.translationCache = {};
+    if (typeof restoreVoiceSelectValue === 'function') restoreVoiceSelectValue();
+    syncBookLangSelect();
+});
+// Зразок розділу для визначення мови — не лише його початок: у книжках бібліотеки розділ часто починається англійським
+// службовим текстом Gutenberg, і перші 6000 символів робили іспанський розділ «англійським». Беремо кілька вікон по всьому тексту.
+function chapterLangSample(text) {
+    if (text.length <= 6000) return text;
+    const win = 1500, parts = [];
+    for (const f of [0.08, 0.3, 0.5, 0.7, 0.92]) { const at = Math.floor((text.length - win) * f); parts.push(text.slice(at, at + win)); }
+    return parts.join('\n');
+}
 function updateSourceLang() {
-    const sample = (els.pages.innerText || '').slice(0, 6000);
-    state.sourceLang = sample.trim() ? detectLang(sample) : 'en-US';
+    const text = els.pages.innerText || '';
+    const book = explicitBookLang();
+    state.sourceLang = book ? LATIN_LANG_LOCALES[book] : (text.trim() ? detectLang(chapterLangSample(text)) : 'en-US');
+    syncBookLangSelect();
     // Атрибут lang потрібен для автоматичних переносів: браузер переносить слова
     // за правилами конкретної мови й без нього не переносить узагалі.
     els.pages.lang = state.sourceLang.slice(0, 2);
@@ -426,7 +493,7 @@ function updateSourceLang() {
     // користувач уже сидітиме без інтернету, і мовний пакет завантажити ніде.
     warmLocalTranslator(state.sourceLang, state.targetLang);
 }
-function pageLang() { return state.sourceLang || 'en-US'; }
+function pageLang() { return state.sourceLang || (explicitBookLang() && LATIN_LANG_LOCALES[explicitBookLang()]) || 'en-US'; }
 // Мова КОНКРЕТНОГО фрагмента в межах ЯВНО переданого контексту (речення чи ширше):
 // шукаємо точну позицію фрагмента в контексті й беремо мову САМЕ ТОГО відрізка за
 // найбільшим перекриттям (найточніше: "car" у "Il reste car il pleut" і "car" у "I

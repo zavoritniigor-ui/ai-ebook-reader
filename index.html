@@ -254,6 +254,10 @@
         nav { position: absolute; top: 0; left: 0; height: 100%; width: min(280px, 82vw); background: var(--panel-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; transition: transform 0.3s; z-index: 9999; box-shadow: 2px 0 15px rgba(0,0,0,0.15); }
         nav.collapsed { transform: translateX(-105%); box-shadow: none; }
         #toc-list { list-style: none; padding: 10px; overflow-y: auto; flex: 1; }
+        /* Мова книги (js/lang-detect.js): «Автоматично» або вибрана мова — для озвучення й перекладу, на кожну книгу окремо. */
+        .book-lang-row { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 10px 12px 4px; font-size: 13px; flex: 0 0 auto; }
+        .book-lang-row label { white-space: nowrap; color: var(--text-muted); }
+        .book-lang-row select.book-lang-select, #book-lang-select { width: 100%; max-width: none; min-width: 0; }
         #toc-list li {
             padding: 11px 12px; cursor: pointer; border-radius: var(--radius-sm); font-size: 14.5px;
             color: var(--text-color); transition: background-color .12s;
@@ -1405,6 +1409,15 @@
 
     <div class="workspace">
         <nav id="sidebar" class="collapsed">
+            <div class="book-lang-row">
+                <label for="book-lang-select" data-i18n="bookLangLabel">📖 Мова книги</label>
+                <select id="book-lang-select" disabled>
+                    <option value="">Автоматично</option>
+                    <option value="en">English</option><option value="fr">Français</option><option value="es">Español</option>
+                    <option value="de">Deutsch</option><option value="it">Italiano</option><option value="pt">Português</option>
+                    <option value="nl">Nederlands</option><option value="pl">Polski</option>
+                </select>
+            </div>
             <ul id="toc-list"><li style="color: gray; padding: 20px;" data-i18n="noBook">Книгу не завантажено</li></ul>
             <div id="pdf-sidebar">
                 <div id="pdf-sidebar-tabs">
@@ -1608,8 +1621,8 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=dc6951f7203c"></script>
-    <script src="js/lang-detect.js?v=fc9f3e92a3ee"></script>
+    <script src="js/core.js?v=474df24c562f"></script>
+    <script src="js/lang-detect.js?v=79c89abfbcfa"></script>
     <script>
         // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
         // core.js: усередині він доходить до pageLang() (js/lang-detect.js), яка на момент
@@ -1644,11 +1657,11 @@
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
     <script src="js/pdf-continuous.js?v=9746d5291070"></script>
     <script src="js/pdf-render.js?v=190a67b22cc5"></script>
-    <script src="js/formats.js?v=50d48f2b7328"></script>
+    <script src="js/formats.js?v=ae46e80cbcb9"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=287a4798dca1"></script>
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
-    <script src="js/main.js?v=d253b9ea6cf6"></script>
+    <script src="js/main.js?v=c3cf5f569a03"></script>
     <script src="js/pwa-lifecycle.js?v=f79e3e8d91ce"></script>
 </body>
 </html>

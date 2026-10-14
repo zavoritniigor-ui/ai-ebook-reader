@@ -165,6 +165,7 @@ async function openBookFile(file) {
     state.pdfDoc = null; state.pdfOutline = null; state.epubZip = null; state.spine = []; state.txtLines = [];
     if (typeof resetPdfPageLabels === 'function') resetPdfPageLabels();
     state.bookTextOffset = null; state.blockWeights = null;
+    state.bookLangMeta = ''; state.sourceLang = null;
     state.totalPages = 0; state.pageInChapter = 0; state.totalPagesInChapter = 1;
     state.currentIndex = 0; state.lastAskContext = ''; state.lastGrammarSentence = ''; state.lastAskParagraph = ''; state.lastGrammarSourceText = null;
     state.inkMode = false; setPageArrows(false);
@@ -178,6 +179,8 @@ async function openBookFile(file) {
     if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
     state.bookKey = bookKeyFor(file);
     state.oldBookKey = oldBookKeyFor(file);
+    state.bookLangManual = normalizeBookLang(readStored(BOOK_LANG_STORE + state.bookKey));
+    syncBookLangSelect();
     loadLearningStatsForBook();
     state.docChapters = null;
     loadInk();

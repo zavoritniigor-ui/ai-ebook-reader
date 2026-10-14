@@ -103,6 +103,7 @@ async function settleBookLayout(current, target, textOffset = null) {
 function parseFb2(text) {
     const xml = new DOMParser().parseFromString(text, 'application/xml');
     if (xml.querySelector('parsererror') || xml.documentElement.localName !== 'FictionBook') throw new Error('Некоректний FB2.');
+    state.bookLangMeta = normalizeBookLang(xml.getElementsByTagNameNS('*', 'lang')[0]?.textContent);
     const images = new Map();
     for (const binary of xml.getElementsByTagNameNS('*', 'binary')) {
         const mime = (binary.getAttribute('content-type') || '').toLowerCase();
@@ -199,6 +200,8 @@ async function initEpub(file, epoch = readerEpoch.book) {
     if (epoch !== readerEpoch.book) return;
     if (doc.querySelector('parsererror')) throw new Error('Некоректний опис книги EPUB.');
     state.epubZip = zip; 
+    // Мова книги з метаданих (dc:language): книжки бібліотеки (Gutenberg) її мають завжди.
+    state.bookLangMeta = normalizeBookLang(doc.getElementsByTagNameNS('*', 'language')[0]?.textContent);
     const man = Object.create(null); const items = doc.getElementsByTagNameNS('*', 'item');
     for(let i=0; i<items.length; i++) man[items[i].getAttribute("id")] = items[i].getAttribute("href");
     
@@ -317,7 +320,9 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
         // content, since splitIntoChapters() below starts a new chapter at the
         // next heading — the reader opened on a near-empty page showing only the
         // leaked title, with the actual content one chapter further in.
-        bodyHtml = new DOMParser().parseFromString(await file.text(), 'text/html').body.innerHTML;
+        const page = new DOMParser().parseFromString(await file.text(), 'text/html');
+        state.bookLangMeta = normalizeBookLang(page.documentElement.getAttribute('lang'));   // книги Wikisource з бібліотеки мають <html lang>
+        bodyHtml = page.body.innerHTML;
     } else if (ext === 'rtf') {
         const bytes = new Uint8Array(await file.arrayBuffer());
         const header = new TextDecoder().decode(bytes.subarray(0, 1024));
