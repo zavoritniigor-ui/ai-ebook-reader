@@ -75,7 +75,7 @@ els.voiceSelect.onchange = e => {
     state.voiceChosenByUser[code] = true;   // далі автовибір цю мову не перевизначає
     saveVoiceChoices();
     // Коротка проба — щоб одразу почути, який голос обрано.
-    const samples = { fr: 'Bonjour, ceci est ma voix.', en: 'Hello, this is my voice.', uk: 'Вітаю, це мій голос.', ru: 'Здравствуйте, это мой голос.', zh: '你好，这是我的声音。', ko: '안녕하세요, 제 목소리입니다.', hi: 'नमस्ते, यह मेरी आवाज़ है।', ga: 'Dia dhuit, seo é mo ghuth.' };
+    const samples = { fr: 'Bonjour, ceci est ma voix.', en: 'Hello, this is my voice.', uk: 'Вітаю, це мій голос.', ru: 'Здравствуйте, это мой голос.', zh: '你好，这是我的声音。', ko: '안녕하세요, 제 목소리입니다.', hi: 'नमस्ते, यह मेरी आवाज़ है।', ga: 'Dia dhuit, seo é mo ghuth.', de: 'Hallo, das ist meine Stimme.', es: 'Hola, esta es mi voz.' };
     const u = new SpeechSynthesisUtterance(samples[code] || 'Test');
     setUtteranceVoice(u, v.lang, v); u.rate = 0.95;
     cancelSpeech();

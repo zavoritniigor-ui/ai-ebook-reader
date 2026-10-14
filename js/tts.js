@@ -196,6 +196,14 @@ function speakInLang(text, langCode, side, offset, onEnd) {
     cancelSpeech();
     const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
     const voice = voices.find(v => v.voiceURI === state.selectedVoiceURIByLang[langCode]) || pickBestVoice(langCode, voices);
+    // Голосів у системі багато, а цієї мови немає (ірландська майже скрізь, хінді/корейська без мовного пакета):
+    // синтезатор прочитав би текст ЧУЖИМ голосом — звучить жахливо. Краще чесно сказати, що голос треба встановити.
+    if (!voice && voices.length) {
+        const name = document.querySelector(`#target-lang option[value="${langCode}"]`)?.textContent || langCode;
+        showToast(t('noVoiceForLang').replace('{lang}', name));
+        if (onEnd) onEnd();
+        return;
+    }
     setUtteranceVoice(u, LANG_TAGS[langCode] || langCode, voice);
     u.rate = 0.95;
     bindUtterance(u, side, text, offset, onEnd);
@@ -494,3 +502,7 @@ els.ttsToggle.onclick = (e) => {
 };
 els.ttsPrev.onclick = (e) => { e.stopPropagation(); stepSentence(-1); };
 els.ttsNext.onclick = (e) => { e.stopPropagation(); stepSentence(1); };
+
+Object.assign(I18N, {
+    noVoiceForLang: { uk: 'На цьому пристрої немає голосу для мови «{lang}». Встановіть його в системних налаштуваннях синтезу мовлення.', en: 'This device has no voice for «{lang}». Install one in the system text-to-speech settings.', fr: 'Cet appareil n’a pas de voix pour «{lang}». Installez-en une dans les réglages de synthèse vocale du système.', ru: 'На этом устройстве нет голоса для языка «{lang}». Установите его в системных настройках синтеза речи.', zh: '此设备没有“{lang}”的语音。请在系统的文字转语音设置中安装。', ko: '이 기기에는 «{lang}» 음성이 없습니다. 시스템 텍스트 음성 변환 설정에서 설치하세요.', hi: 'इस डिवाइस पर «{lang}» की आवाज़ नहीं है। सिस्टम की टेक्स्ट-टू-स्पीच सेटिंग में इसे इंस्टॉल करें।', ga: 'Níl guth don teanga «{lang}» ar an ngléas seo. Suiteáil ceann i socruithe téacs-go-caint an chórais.' }
+});

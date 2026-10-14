@@ -757,14 +757,20 @@ const VOICE_QUALITY_RE = /neural|natural|enhanced|premium|wavenet|studio/i;
 // він єдиний із правильною локаллю.
 const VOICE_POOR_RE = /compact|eloquence|espeak|pico|festival|sapi\s?4|robot|classic|legacy/i;
 // Найвища якість — нейромережеві голоси конкретних платформ.
-const VOICE_TOP_RE  = /neural|natural|wavenet|studio|journey|siri|premium|enhanced/i;
+// «network» — серверні голоси Google TTS на Android (ru-ru-x-dfc-network): помітно кращі за -local того ж рушія.
+const VOICE_TOP_RE  = /neural|natural|wavenet|studio|journey|siri|premium|enhanced|network/i;
 // Улюблена локаль для кожної мови: fr-FR звучить звичніше за fr-CA, en-US за en-IN.
-const PREFERRED_LOCALE = { fr: ['fr-fr', 'fr-ca'], en: ['en-us', 'en-gb'], uk: ['uk-ua'], ru: ['ru-ru'], zh: ['zh-cn', 'zh-tw'], ko: ['ko-kr'], hi: ['hi-in'], ga: ['ga-ie'] };
+const PREFERRED_LOCALE = { fr: ['fr-fr', 'fr-ca'], en: ['en-us', 'en-gb'], uk: ['uk-ua'], ru: ['ru-ru'], zh: ['zh-cn', 'zh-tw'], ko: ['ko-kr'], hi: ['hi-in'], ga: ['ga-ie'],
+    de: ['de-de', 'de-at', 'de-ch'], es: ['es-es', 'es-mx', 'es-us'], it: ['it-it'], pt: ['pt-br', 'pt-pt'], nl: ['nl-nl', 'nl-be'], pl: ['pl-pl'] };
+// Голос формально тієї ж мови, але читає НЕ ТАК: переклад китайською — спрощений путунхуа, а кантонський
+// голос (zh-HK / yue) вимовляє ці ієрогліфи зовсім інакше. Такий голос — лише якщо іншого немає.
+const VOICE_WRONG_VARIANT_RE = /^(zh-hk|zh-mo|yue)|cantonese|粤|粵/i;
 
 function voiceQualityScore(v) {
     let s = 0;
     const name = v.name || '';
-    const lang = (v.lang || '').toLowerCase();
+    // Android WebView інколи дає «zh_CN» — приводимо до «zh-cn».
+    const lang = (v.lang || '').toLowerCase().replace(/_/g, '-');
 
     if (VOICE_TOP_RE.test(name)) s += 8;          // нейромережевий
     else if (VOICE_QUALITY_RE.test(name)) s += 4; // просто «покращений»
@@ -783,6 +789,7 @@ function voiceQualityScore(v) {
     if (v.default) s += 1;                        // системний типовий — легкий плюс
 
     if (VOICE_POOR_RE.test(name)) s -= 10;        // старий синтезатор — у самий кінець
+    if (VOICE_WRONG_VARIANT_RE.test(lang) || VOICE_WRONG_VARIANT_RE.test(name)) s -= 20;
     return s;
 }
 
