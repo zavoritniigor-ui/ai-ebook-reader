@@ -559,6 +559,12 @@
         #page-arrow-prev { left: 56px; }
         #page-arrow-next { right: 56px; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow { display: flex; }
+        /* Режим без меню: текст книги не ховається під плаваючими кнопками — перший рядок починається нижче ☰ (8px + 44px
+           у лівому верхньому куті), а поки видно стрілки ‹ ›, останній рядок стоїть над ними (12px + 44px від низу). Раніше
+           ☰ накривав перше слово кожної сторінки, а стрілки — останній рядок. PDF має власне прокручування і поля. */
+        body.immersive-mode:not(.pdf-mode) #reader-container { padding-top: max(20px, calc(max(8px, env(safe-area-inset-top, 0px)) + 52px)); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):not(.pdf-mode):has(#page-arrows:not([hidden])) #reader-container {
+            padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 
         /* ОНОВЛЕНИЙ Tooltip (Захист від виходу за межі екрана)
            Спливаюче вікно навмисно темне на будь-якій темі сторінки — як окрема "картка"
