@@ -21,7 +21,7 @@ const rulesSearchCache = new Map(), rulesExplainCache = new Map();
 // every topic that occurs in those sentences, with its examples. A whole page was too much for one reliable answer.
 // Topics with examples get a green dot in the tree; opening one paints those examples without a new request.
 const RULES_SCAN_MAX_PER_TOPIC = 6, RULES_SCAN_MAX_CHARS = 2500;   // a long sentence or a whole paragraph
-let rulesScan = null;   // { lang, targetLang, sourceText, flat, status: 'running'|'ready'|'none'|'failed', found: Map(topicId -> matches result) }
+let rulesScan = null;   // { lang, explainLang, sourceText, flat, status: 'running'|'ready'|'none'|'failed', found: Map(topicId -> matches result) }
 const RULES_CACHE_MAX = 60;
 
 function rulesPick(obj) { return (obj && (obj[state.uiLang] || obj.en || obj.uk || obj.fr)) || ''; }
@@ -532,7 +532,7 @@ function renderRuleDetailsText(container, text) {
 }
 // The scan result to show in the tree (same catalogue language and explanation language), or null.
 function currentRuleScan() {
-    if (!rulesScan || rulesScan.status !== 'ready' && rulesScan.status !== 'none' || rulesScan.lang !== rulesState.lang || rulesScan.targetLang !== state.targetLang) return null;
+    if (!rulesScan || rulesScan.status !== 'ready' && rulesScan.status !== 'none' || rulesScan.lang !== rulesState.lang || rulesScan.explainLang !== state.uiLang) return null;
     return rulesScan;
 }
 // The learner's current selection in the book (several words … two sentences), or (button only) the sentence of a tapped word; null when
@@ -554,7 +554,7 @@ async function runRuleSelectionScan() {
     // Мову, обрану вручну в списку вікна, автовизначення більше не перебиває.
     if (!rulesLangPinned() && RULES_LANGS.includes(detected)) rulesState.lang = detected;
     const langCode = rulesState.lang, sourceText = flat.text.replace(/\s+/g, ' ').trim();
-    const scan = { lang: langCode, targetLang: state.targetLang, sourceText, flat, status: 'running', found: new Map() };
+    const scan = { lang: langCode, explainLang: state.uiLang, sourceText, flat, status: 'running', found: new Map() };
     rulesScan = scan; rulesState.status = 'running';
     if (rulesState.topic) { rulesState.token++; rulesState.topic = null; rulesState.matches = []; clearRuleHighlights(); }
     renderRulesTree();
@@ -562,7 +562,7 @@ async function runRuleSelectionScan() {
     let result;
     try {
         let out;
-        try { out = await callAI(buildRuleScanPrompt(langCode, flat.text, LANG_NAMES[state.targetLang] || 'English'), undefined, 'rules_search', undefined, { maxOutputTokens: 3000, timeoutMs: 90000 }); }
+        try { out = await callAI(buildRuleScanPrompt(langCode, flat.text, explainLangName()), undefined, 'rules_search', undefined, { maxOutputTokens: 3000, timeoutMs: 90000 }); }
         catch (err) { if (err && err.reason === 'truncated' && err.partial) out = err.partial; else throw err; }
         result = normalizeRuleScan(out, langCode, flat.text);
     } catch (err) { result = { ok: false, found: new Map() }; }
@@ -653,13 +653,13 @@ async function runRuleSearch(force = false) {
     clearRuleHighlights();
     rulesState.text = flat.text;
     const langCode = rulesState.lang;
-    const key = [langCode, topic.id, state.targetLang, rulesHash(flat.text)].join('|');
+    const key = [langCode, topic.id, state.uiLang, rulesHash(flat.text)].join('|');
     let result = !force && rulesSearchCache.get(key);
     if (!result) {
         setRulesStatus(t('rulesRunning')); rulesState.status = 'running'; updateRulesTab();
         document.getElementById('rules-find')?.setAttribute('disabled', '');
         try {
-            const prompt = buildRuleSearchPrompt(topic, langCode, flat.text, LANG_NAMES[state.targetLang] || 'English');
+            const prompt = buildRuleSearchPrompt(topic, langCode, flat.text, explainLangName());
             const out = await callAI(prompt, undefined, 'rules_search');
             result = normalizeRuleMatches(out, langCode, flat.text);
             if (result.ok) rulesBounded(rulesSearchCache, key, result);
@@ -725,7 +725,7 @@ function renderRuleDetail(index) {
     if (cached) renderExplainText(out, cached);
 }
 
-function explainKey(m, topic, question) { return [rulesState.lang, topic.id, state.targetLang, m.sentence, m.text, m.exception ? m.exceptionNote : '', question].join('|'); }
+function explainKey(m, topic, question) { return [rulesState.lang, topic.id, state.uiLang, m.sentence, m.text, m.exception ? m.exceptionNote : '', question].join('|'); }
 function renderExplainText(out, text) {
     out.replaceChildren();
     for (const para of String(text).split(/\n{2,}/)) if (para.trim()) out.appendChild(ruleEl('p', '', para.trim()));
@@ -746,7 +746,7 @@ async function explainRuleMatch(m, topic, question, out, isCurrent) {
     if (!aiAvailable() || !navigator.onLine) { out.textContent = t('needKey'); return; }
     out.textContent = t('generating');
     try {
-        const text = await callAI(buildRuleExplainPrompt(m, topic, rulesState.lang, LANG_NAMES[state.targetLang] || 'English', question), undefined, 'rules_explain');
+        const text = await callAI(buildRuleExplainPrompt(m, topic, rulesState.lang, explainLangName(), question), undefined, 'rules_explain');
         const clean = String(text || '').replace(/```[a-z]*|```/g, '').trim();
         if (!clean) throw new Error('empty');
         rulesBounded(rulesExplainCache, key, clean);
