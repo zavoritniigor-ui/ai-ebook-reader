@@ -303,12 +303,14 @@ c.js("document.getElementById('btn-rules').click(); 1"); time.sleep(0.4)
 check("46 ... and reopening rules closes Grammar", "document.getElementById('rules-panel').classList.contains('expanded') && !els.grammarPanel.classList.contains('expanded') && !els.askPanel.classList.contains('expanded')")
 p = word_pos('chat')
 click_xy(p['x'], p['y'])
-check("47 tapping an ordinary word opens its translation and tucks the rules window away (no overlap with the tooltip)",
-      "els.tooltip.style.display === 'flex' && !document.getElementById('rules-panel').classList.contains('expanded')", timeout=8)
+check("47 tapping an ordinary word while the rules window is open shows its translation ON TOP and KEEPS the window and the results (user: a click in the found sentence must not drop the search)",
+      "els.tooltip.style.display === 'flex' && document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match') && rulesState.matches.length > 0 && Number(getComputedStyle(els.tooltip).zIndex) > Number(getComputedStyle(document.getElementById('rules-panel')).zIndex)", timeout=8)
 c.js("els.ttCloseBtn.click(); 1")
 c.js("document.getElementById('btn-rules').click(); 1"); time.sleep(0.4)
 check("48 the Back button / overlay close HIDES the window (highlights stay); the ✕ closes it AND clears the highlights",
       """(() => { closeTopOverlay('rules'); const hidden = !document.getElementById('rules-panel').classList.contains('expanded') && CSS.highlights.has('rule-match'); document.getElementById('btn-rules').click(); document.getElementById('rules-close').click(); return hidden && !CSS.highlights.has('rule-match') && !CSS.highlights.has('rule-exception') && !document.getElementById('rules-tab').hidden && document.getElementById('rules-tab').dataset.state === 'idle'; })()""")
+check("48b the ✕ is a full RESET for a new search: reopening shows the topic list, no open topic, no remembered selection result",
+      "(() => { document.getElementById('btn-rules').click(); const ok = document.getElementById('rules-panel').classList.contains('expanded') && rulesState.topic === null && rulesScan === null && !!document.querySelector('#rules-content .rules-topic') && !document.querySelector('#rules-content .rules-back') && rulesState.matches.length === 0; document.getElementById('rules-min').click(); return ok; })()", timeout=3)
 
 # highlights survive a text-size change
 c.js("__calls.length = 0; rulesSearchCache.clear(); __reply = %s; document.getElementById('btn-rules').click(); 1" % json.dumps(EXC))

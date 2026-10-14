@@ -390,8 +390,17 @@ function calculateCurrentPageStats() {
     return statsForOccurrenceIds(page.scope, page.words.map(word => word.id));
 }
 
-// Розуміння за рівнями A1–C2 (+ «Інше» — слова, яких нема в словнику рівнів): рядок на рівень зі смужкою «% без допомоги»
-// і кількістю слів цього рівня на сторінці. Рівень без жодного слова показується рискою.
+Object.assign(I18N, {
+    statsKnownSelf: { uk: 'Знали самі', en: 'Knew yourself', fr: 'Compris seul', ru: 'Знали сами', zh: '自己读懂', ko: '스스로 이해', hi: 'खुद समझे', ga: 'Thuig tú féin' },
+    statsTranslated: { uk: 'Перекладали', en: 'Looked up', fr: 'Traduits', ru: 'Переводили', zh: '查过', ko: '찾아본 단어', hi: 'अनुवाद देखा', ga: 'Aistrithe' },
+    statsKnownOf: { uk: '{a} з {b} слів', en: '{a} of {b} words', fr: '{a} sur {b} mots', ru: '{a} из {b} слов', zh: '{b} 个词中的 {a} 个', ko: '{b}개 중 {a}개', hi: '{b} में से {a} शब्द', ga: '{a} as {b} focal' },
+    statsOf: { uk: '{a} з {b}', en: '{a} of {b}', fr: '{a} sur {b}', ru: '{a} из {b}', zh: '{a}/{b}', ko: '{a}/{b}', hi: '{b} में {a}', ga: '{a} as {b}' },
+    statsTranslatedWords: { uk: 'Перекладені слова', en: 'Words you looked up', fr: 'Mots traduits', ru: 'Переведённые слова', zh: '查过的词', ko: '찾아본 단어', hi: 'अनुवाद देखे गए शब्द', ga: 'Focail a d’aistrigh tú' },
+    statsByLevel: { uk: 'За рівнями — скільки слів знали самі', en: 'By level — words you knew yourself', fr: 'Par niveau — mots compris seul', ru: 'По уровням — сколько слов знали сами', zh: '按级别——自己读懂的词', ko: '수준별 — 스스로 이해한 단어', hi: 'स्तर के अनुसार — खुद समझे शब्द', ga: 'De réir leibhéil — focail a thuig tú féin' },
+    statsKnownLevelHint: { uk: '{p}% слів цього рівня ви знали самі', en: 'You knew {p}% of this level’s words yourself', fr: 'Vous avez compris seul {p} % des mots de ce niveau', ru: '{p}% слов этого уровня вы знали сами', zh: '此级别 {p}% 的词你自己读懂了', ko: '이 수준 단어의 {p}%를 스스로 이해했습니다', hi: 'इस स्तर के {p}% शब्द आप खुद समझे', ga: 'Thuig tú féin {p}% d’fhocail an leibhéil seo' },
+});
+// Розуміння за рівнями A1–C2 (+ «Інше» — слова, яких нема в словнику рівнів): рядок на рівень, у якому є слова сторінки, —
+// смужка «частка слів, які знали самі» і «N з M» (користувач: «88% 8 сл.» і «0% 1 сл.» читались незрозуміло).
 function renderCefrDistribution(stats) {
     const bar = document.getElementById('reading-stats-cefr-bar');
     const list = document.getElementById('reading-stats-cefr-list');
@@ -399,7 +408,7 @@ function renderCefrDistribution(stats) {
     bar.replaceChildren(); list.replaceChildren();
     for (const level of CEFR_LEVELS) {
         const l = stats.levels[level];
-        if (level === 'unknown' && !l.total) continue;
+        if (!l.total) continue;
         const row = document.createElement('div');
         row.className = 'cefr-row'; row.dataset.level = level;
         const name = document.createElement('b');
@@ -407,20 +416,34 @@ function renderCefrDistribution(stats) {
         if (level === 'unknown') name.title = t('statsUnknown');
         const track = document.createElement('span'); track.className = 'cefr-track';
         const fill = document.createElement('span'); fill.className = `cefr-fill cefr-${level.toLowerCase()}`;
-        fill.style.width = l.total ? `${l.readingPercent}%` : '0%';
+        fill.style.width = `${l.readingPercent}%`;
         track.appendChild(fill);
-        const pct = document.createElement('span'); pct.className = 'cefr-pct';
-        pct.textContent = l.total ? `${Math.round(l.readingPercent)}%` : '—';
         const count = document.createElement('span'); count.className = 'cefr-count';
-        count.textContent = `${l.total} ${t('statsWordsShort')}`;
-        row.append(name, track, pct, count);
-        if (l.helped) row.title = `${t('statsHelpRequested')}: ${l.helped}`;
+        count.textContent = t('statsOf').replace('{a}', l.total - l.helped).replace('{b}', l.total);
+        row.append(name, track, count);
+        row.title = t('statsKnownLevelHint').replace('{p}', Math.round(l.readingPercent));
         list.appendChild(row);
     }
     bar.classList.add('empty'); bar.hidden = true;
 }
+// Перекладені на цій сторінці слова (кожне один раз), найскладніші першими, з кольоровою позначкою рівня.
+function renderTappedWords(stats) {
+    const box = document.getElementById('stats-tapped-box'), list = document.getElementById('stats-tapped-list');
+    if (!box || !list) return;
+    list.replaceChildren();
+    const seen = new Set(), order = level => { const i = CEFR_LEVELS.indexOf(level); return level === 'unknown' ? -1 : i; };
+    const words = stats.tapped.filter(r => !seen.has(r.normalized) && seen.add(r.normalized)).sort((a, b) => order(b.cefr) - order(a.cefr));
+    for (const r of words.slice(0, 40)) {
+        const chip = document.createElement('span'); chip.className = 'stats-word';
+        const dot = document.createElement('i'); dot.className = `cefr-${r.cefr.toLowerCase()}`;
+        chip.title = r.cefr === 'unknown' ? t('statsUnknown') : r.cefr;
+        chip.append(dot, document.createTextNode(r.word));
+        list.appendChild(chip);
+    }
+    box.hidden = !words.length;
+}
 function displayedLearningPercent(value) {
-    return `${Math.round(value * 10) / 10}%`;
+    return `${Math.round(value)}%`;
 }
 function updateReadingStatsNow() {
     readingStatsFrame = 0;
@@ -434,12 +457,10 @@ function updateReadingStatsNow() {
     button.disabled = !state.bookKey || !stats.total;
     button.setAttribute('aria-label', `${t('statsReading')}: ${displayedLearningPercent(stats.readingPercent)}`);
     document.getElementById('stats-reading-pct').textContent = displayedLearningPercent(stats.readingPercent);
-    document.getElementById('stats-reading-pct-label').textContent = displayedLearningPercent(stats.readingPercent);
-    document.getElementById('stats-help-pct').textContent = displayedLearningPercent(stats.helpPercent);
-    document.getElementById('stats-total').textContent = stats.total;
-    document.getElementById('stats-independent').textContent = stats.independent;
-    document.getElementById('stats-helped').textContent = stats.helped;
+    document.getElementById('stats-known-of').textContent = t('statsKnownOf').replace('{a}', stats.independent).replace('{b}', stats.total);
+    document.getElementById('stats-helped').textContent = String(stats.helped);
     document.getElementById('reading-stats-ring').style.setProperty('--coverage', `${stats.readingPercent * 3.6}deg`);
+    renderTappedWords(stats);
     renderCefrDistribution(stats);
 }
 function refreshReadingStats() {
