@@ -128,15 +128,41 @@ if ('onfreeze' in document) {
 // Закрити встановлений PWA з коду не можна, але мета кнопки — щоб наступне відкриття було вже НОВОЮ версією. Тому «Вихід»
 // спершу перевіряє оновлення: якщо воно є (чи вже скачане), застосунок одразу перезавантажується в нову версію — виходити
 // «в диспетчер вікон» заради оновлення не треба. Якщо оновлень нема — зберігаємо стан і пробуємо window.close().
-function activatePendingSwUpdate(timeoutMs = 8000) {
-    return new Promise(resolve => {
-        if (!swRegistration || navigator.onLine === false) { resolve(false); return; }
-        let done = false;
+// Повертає true — нова версія активувалась (час перезапускатись); false — оновлень нема; 'failed' — не вдалося перевірити чи
+// докачати. Раніше чекали лише 8 с ЗАГАЛОМ: нова версія — це ~50 файлів (~6 МБ), і на телефоні їх докачування тривало довше, тож
+// 🔄 казала «у вас остання версія», а оновлення ставало за хвилину саме (користувач: «не завжди спрацьовує»). Тепер: до 15 с на
+// саму перевірку, а коли нова версія вже качається — до 2 хв, з повідомленням «Завантажую оновлення…».
+const SW_CHECK_TIMEOUT_MS = 15000, SW_INSTALL_TIMEOUT_MS = 120000;
+function activatePendingSwUpdate({ onDownloading } = {}) {
+    return new Promise(async resolve => {
+        if (navigator.onLine === false || !('serviceWorker' in navigator)) { resolve(false); return; }
+        let reg = swRegistration;
+        // Натиснули, поки застосунок ще не зареєстрував service worker (одразу після запуску) — беремо наявну реєстрацію.
+        if (!reg) { try { reg = await navigator.serviceWorker.getRegistration(); } catch (e) {} if (reg) swRegistration = reg; }
+        if (!reg) { resolve(false); return; }
+        let done = false, tracked = null, timer = 0;
         const finish = (v) => { if (done) return; done = true; navigator.serviceWorker.removeEventListener('controllerchange', onChange); clearTimeout(timer); resolve(v); };
         const onChange = () => finish(true);
         navigator.serviceWorker.addEventListener('controllerchange', onChange);
-        const timer = setTimeout(() => finish(false), timeoutMs);
-        swRegistration.update().then(() => { if (!swRegistration.installing && !swRegistration.waiting) finish(false); }).catch(() => finish(false));
+        timer = setTimeout(() => finish('failed'), SW_CHECK_TIMEOUT_MS);
+        const track = (worker) => {
+            if (!worker || tracked === worker) return;
+            tracked = worker;
+            clearTimeout(timer); timer = setTimeout(() => finish('failed'), SW_INSTALL_TIMEOUT_MS);
+            if (onDownloading) onDownloading();
+            const onState = () => {
+                if (worker.state === 'redundant') finish('failed');                       // докачування не вдалося (мережа обірвалась)
+                else if (worker.state === 'activated') setTimeout(() => finish(true), 1500);   // controllerchange зазвичай приходить раніше
+            };
+            worker.addEventListener('statechange', onState);
+            onState();
+        };
+        if (reg.installing) track(reg.installing);
+        reg.update().then(() => {
+            const worker = reg.installing || reg.waiting;
+            if (worker) track(worker);
+            else if (!tracked) finish(false);
+        }).catch(() => { if (!tracked) finish('failed'); });
     });
 }
 let exitInProgress = false;
@@ -148,9 +174,9 @@ async function exitApp() {
     let updated = updateBannerShown;      // нова версія вже скачана й чекає на перезавантаження
     if (!updated) {
         showToast(t('exitChecking'));
-        try { updated = await activatePendingSwUpdate(); } catch (e) {}
+        try { updated = await activatePendingSwUpdate({ onDownloading: () => showToast(t('updateDownloading')) }); } catch (e) {}
     }
-    if (updated) {
+    if (updated === true) {
         showToast(t('exitUpdated'));
         persistCriticalState();
         setTimeout(() => location.reload(), 700);
@@ -172,15 +198,19 @@ async function updateApp() {
     let updated = updateBannerShown;
     if (!updated) {
         showToast(t('exitChecking'));
-        try { updated = await activatePendingSwUpdate(); } catch (e) {}
+        try { updated = await activatePendingSwUpdate({ onDownloading: () => showToast(t('updateDownloading')) }); } catch (e) { updated = 'failed'; }
     }
     updateInProgress = false;
-    if (updated) {
+    if (updated === true) {
         showToast(t('exitUpdated'));
         persistCriticalState();
         setTimeout(() => location.reload(), 700);
-    } else showToast(t('updateLatest'));
+    } else showToast(t(updated === 'failed' ? 'updateFailed' : 'updateLatest'));
 }
+Object.assign(I18N, {
+    updateDownloading: { uk: 'Знайдено нову версію — завантажую…', en: 'New version found — downloading…', fr: 'Nouvelle version trouvée — téléchargement…', ru: 'Найдена новая версия — загружаю…', zh: '发现新版本——正在下载…', ko: '새 버전 발견 — 다운로드 중…', hi: 'नया संस्करण मिला — डाउनलोड हो रहा है…', ga: 'Leagan nua aimsithe — á íoslódáil…' },
+    updateFailed: { uk: 'Не вдалося перевірити чи завантажити оновлення. Спробуйте ще раз.', en: 'Could not check or download the update. Please try again.', fr: 'Impossible de vérifier ou de télécharger la mise à jour. Réessayez.', ru: 'Не удалось проверить или загрузить обновление. Попробуйте ещё раз.', zh: '无法检查或下载更新，请重试。', ko: '업데이트를 확인하거나 다운로드할 수 없습니다. 다시 시도하세요.', hi: 'अपडेट जाँचा या डाउनलोड नहीं हो सका। फिर प्रयास करें।', ga: 'Níorbh fhéidir an nuashonrú a sheiceáil ná a íoslódáil. Bain triail eile as.' },
+});
 function showToast(msg) {
     let toast = document.getElementById('reader-toast');
     if (!toast) { toast = document.createElement('div'); toast.id = 'reader-toast'; document.body.appendChild(toast); }
