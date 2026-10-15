@@ -344,7 +344,7 @@ Object.assign(I18N, {
     shareNoFile: { uk: 'Застосунок ще не встановився до кінця — файл не дійшов. Поділіться ним ще раз.', en: 'The app was not fully installed yet, so the file did not arrive. Share it once more.',
                    fr: "L'application n'était pas encore complètement installée : le fichier n'est pas arrivé. Partagez-le encore une fois.", ru: 'Приложение ещё не установилось до конца — файл не дошёл. Поделитесь им ещё раз.',
                    es: 'La aplicación aún no estaba instalada del todo y el archivo no llegó. Compártelo otra vez.' },
-    shareFailed: { uk: 'Не вдалося прийняти те, чим ви поділилися.', en: 'Could not receive what you shared.', fr: "Impossible de recevoir ce que vous avez partagé.",
+    shareReceiveFailed: { uk: 'Не вдалося прийняти те, чим ви поділилися.', en: 'Could not receive what you shared.', fr: "Impossible de recevoir ce que vous avez partagé.",
                    ru: 'Не удалось принять то, чем вы поделились.', es: 'No se pudo recibir lo que compartiste.' }
 });
 async function receiveSharedContent() {
@@ -354,7 +354,7 @@ async function receiveSharedContent() {
     try { history.replaceState(null, '', location.pathname); } catch (e) {}   // перезавантаження не відкриває те саме вдруге
     let file = null, text = kind === 'text' ? (params.get('text') || '').trim() : '';
     if (kind === 'nofile') { showToast(t('shareNoFile')); return; }
-    if (kind === 'error') { showToast(t('shareFailed')); return; }
+    if (kind === 'error') { showToast(t('shareReceiveFailed')); return; }
     if (kind === '1' && typeof caches !== 'undefined') {
         try {
             const cache = await caches.open('reader-share');
@@ -367,7 +367,7 @@ async function receiveSharedContent() {
             }
             if (textRes) text = (await textRes.text()).trim();
             await caches.delete('reader-share');
-        } catch (e) { showToast(t('shareFailed')); return; }
+        } catch (e) { showToast(t('shareReceiveFailed')); return; }
     }
     if (file) { await openBookFile(file); return; }
     if (text) {
