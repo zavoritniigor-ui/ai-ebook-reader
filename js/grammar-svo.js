@@ -285,7 +285,8 @@ const GRAMMAR_TEXT_CAP_CHARS = 1400;
 const GRAMMAR_FULL_ITEMS_MAX = 8;
 function grammarWordCount(text) { return (String(text || '').match(/\p{L}+(?:['’-]\p{L}+)*/gu) || []).length; }
 function grammarSplitSentences(text) {
-    return (String(text || '').match(/[^.!?…。！？।]+(?:[.!?…。！？।]+|$)\s*/g) || []).map(x => x.trim()).filter(Boolean);
+    const str = String(text || '');
+    return sentenceSpans(str).map(([a, b]) => str.slice(a, b));
 }
 function grammarProfile(text, forceLite = false) {
     const words = grammarWordCount(text);
@@ -297,12 +298,7 @@ function grammarProfile(text, forceLite = false) {
     return { words, itemBudget, expected, lite, maxOutputTokens, timeoutMs: maxOutputTokens > 3500 ? 120000 : 75000 };
 }
 // Where each sentence starts and ends in `clean` (the same segmentation as grammarSplitSentences, with positions).
-function grammarSentenceSpans(clean) {
-    const out = [], re = /[^.!?…。！？।]+(?:[.!?…。！？।]+|$)\s*/g;
-    let m;
-    while ((m = re.exec(clean))) { const t = m[0].trimEnd(); if (t.trim()) out.push([m.index, m.index + t.length]); }
-    return out;
-}
+function grammarSentenceSpans(clean) { return sentenceSpans(clean); }
 // The part of a long text to analyse when the learner TAPPED a word inside it: the sentence holding that word, plus as many
 // neighbouring whole sentences as fit; if that one sentence alone is longer than the cap (an unpunctuated PDF run of bullets),
 // a word-aligned window around the word. The tapped word is always inside the returned text.
@@ -566,12 +562,13 @@ function resolveGrammarSurface(text, surface) {
     found = findSurfaceOccurrences(t2, s2);
     return found.length ? { surface: null, foldedLength: s2.length, positions: found, recased: true } : null;
 }
-// The sentence of `text` that contains [from, to). Sentence ends: . ! ? … 。！？। followed by a space (or the end).
+// The sentence of `text` that contains [from, to). Sentence ends: the shared sentenceCuts (core.js).
 function grammarSentenceAround(text, from, to) {
     let a = 0, b = text.length;
-    const isEnd = (i) => '.!?…。！？।'.includes(text[i]) && (i + 1 >= text.length || /\s/.test(text[i + 1]) || '。！？।'.includes(text[i]));
-    for (let i = from - 1; i >= 0; i--) if (isEnd(i)) { a = i + 1; break; }
-    for (let i = to; i < text.length; i++) if (isEnd(i)) { b = i + 1; break; }
+    for (const c of sentenceCuts(text)) {
+        if (c < from && c + 1 > a) a = c + 1;
+        if (c >= to && c + 1 < b) b = c + 1;
+    }
     while (a < from && /\s/.test(text[a])) a++;
     return { from: a, to: b };
 }
