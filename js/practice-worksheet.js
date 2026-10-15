@@ -500,18 +500,13 @@ function renderParagraphWithTargets(container, text, targets, langCode) {
 
 // The [from, to) slice of `text` that is the sentence a [start,end) span sits in (trimmed),
 // for the Grammar focus card's "used in context" display when a Practice target is clicked.
-// Terminators include the CJK / Devanagari full stops so non-Latin readings split correctly.
-const PRACTICE_SENTENCE_END = ['.', '!', '?', '。', '！', '？', '।'];
+// Boundaries come from the shared sentenceCuts (core.js): CJK / Devanagari full stops, abbreviations, initials, quotes.
 function sentenceSpanAround(text, start, end) {
-    let from = 0;
-    for (const p of PRACTICE_SENTENCE_END) {
-        const i = text.lastIndexOf(p, start - 1);
-        if (i !== -1) from = Math.max(from, i + 1);
-    }
-    let to = text.length;
-    for (const p of PRACTICE_SENTENCE_END) {
-        const i = text.indexOf(p, end);
-        if (i !== -1) to = Math.min(to, i + 1);
+    const cuts = sentenceCuts(text);
+    let from = 0, to = text.length;
+    for (const c of cuts) {
+        if (c < start && c + 1 > from) from = c + 1;
+        if (c >= end && c + 1 < to) to = c + 1;
     }
     while (from < start && /\s/.test(text[from])) from++;
     while (to > end && /\s/.test(text[to - 1])) to--;
