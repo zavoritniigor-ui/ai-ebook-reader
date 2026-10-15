@@ -179,6 +179,7 @@ async function openBookFile(file) {
     if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
     state.bookKey = bookKeyFor(file);
     state.oldBookKey = oldBookKeyFor(file);
+    if (typeof applySyncedBook === 'function') applySyncedBook(state.bookKey);   // місце/нотатки з іншого пристрою (js/sync.js)
     state.bookLangManual = normalizeBookLang(readStored(BOOK_LANG_STORE + state.bookKey));
     syncBookLangSelect();
     loadLearningStatsForBook();

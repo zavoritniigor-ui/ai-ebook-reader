@@ -625,6 +625,13 @@
         .mark-quote { grid-column: 1 / 2; display: block; min-width: 0; height: auto; min-height: 0; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; text-align: left; background: rgba(255, 214, 10, 0.30); border: 0; border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 14px; color: inherit; cursor: pointer; }
         .mark-note { grid-column: 1 / 2; width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: inherit; color: inherit; resize: vertical; }
         .mark-del { grid-column: 2 / 3; grid-row: 1 / 3; border: 0; background: transparent; font-size: 18px; cursor: pointer; min-width: 40px; min-height: 40px; }
+        /* Синхронізація пристроїв (js/sync.js) — у вікні налаштувань */
+        .sync-box { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border-color); }
+        .sync-box [hidden] { display: none !important; }
+        .sync-join-row, .sync-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .sync-join-row input { flex: 1 1 200px; min-width: 0; font-family: ui-monospace, monospace; letter-spacing: .5px; }
+        .sync-code { flex: 1 1 200px; min-width: 0; font-family: ui-monospace, monospace; font-size: 17px; letter-spacing: .5px; word-break: break-all; user-select: all; padding: 8px 10px; border-radius: 8px; background: var(--hover-color); }
+        #sync-status { margin: 8px 0 0; font-size: 14px; }
         /* Підсвітка виділення в PDF — обгорткою, бо накладна не враховує трансформацію шару */
         .sel-word { background: rgba(16, 163, 127, 0.38); border-radius: 2px;
                     box-decoration-break: clone; -webkit-box-decoration-break: clone; }
@@ -1687,8 +1694,9 @@
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=d7e71aab2993"></script>
     <script src="js/book-shelf.js?v=da89362f388e"></script>
+    <script src="js/sync.js?v=1684d2d3ee1e"></script>
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
-    <script src="js/main.js?v=fc5842abfa2a"></script>
+    <script src="js/main.js?v=f3cf0a8ad54a"></script>
     <script src="js/pwa-lifecycle.js?v=735bdf7efa70"></script>
     <script src="js/i18n-es.js?v=5c1d85ca6766"></script>
 </body>
