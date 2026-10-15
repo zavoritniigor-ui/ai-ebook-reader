@@ -607,6 +607,24 @@
         .word-visited { background: rgba(120,120,120,0.32); border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
         ::highlight(tts-current) { background-color: rgba(255, 193, 7, 0.38); }
         ::highlight(sel-current) { background-color: rgba(16, 163, 127, 0.38); }
+        /* Виділення читача (js/book-marks.js) */
+        ::highlight(book-mark) { background-color: rgba(255, 214, 10, 0.45); }
+        body.pdf-mode #tt-mark-btn { display: none; }
+        .tt-mark-host { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
+        .tt-mark-host[hidden] { display: none; }
+        .tt-mark-host textarea { width: 100%; box-sizing: border-box; min-height: 52px; resize: vertical; font: inherit; font-size: 15px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: inherit; color: inherit; }
+        .tt-mark-remove { align-self: flex-start; border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 14px; padding: 6px 10px; cursor: pointer; opacity: .85; }
+        /* Список виділень під змістом: зміст стискається до свого розміру, список гортається сам; знизу — місце під плаваючі кнопки. */
+        #sidebar:has(#marks-section:not([hidden])) #toc-list { flex: 0 1 auto; max-height: 45%; }
+        #marks-section { flex: 1 1 auto; overflow-y: auto; padding: 8px 12px 110px; border-top: 1px solid var(--border-color); }
+        #marks-section[hidden] { display: none; }
+        #marks-section h4 { margin: 6px 0 8px; font-size: 15px; }
+        #marks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        #marks-list .marks-empty { color: gray; font-size: 14px; }
+        .mark-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 6px; align-items: start; }
+        .mark-quote { grid-column: 1 / 2; display: block; min-width: 0; height: auto; min-height: 0; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; text-align: left; background: rgba(255, 214, 10, 0.30); border: 0; border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 14px; color: inherit; cursor: pointer; }
+        .mark-note { grid-column: 1 / 2; width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: inherit; color: inherit; resize: vertical; }
+        .mark-del { grid-column: 2 / 3; grid-row: 1 / 3; border: 0; background: transparent; font-size: 18px; cursor: pointer; min-width: 40px; min-height: 40px; }
         /* Підсвітка виділення в PDF — обгорткою, бо накладна не враховує трансформацію шару */
         .sel-word { background: rgba(16, 163, 127, 0.38); border-radius: 2px;
                     box-decoration-break: clone; -webkit-box-decoration-break: clone; }
@@ -1643,10 +1661,11 @@
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
-    <script src="js/navigation.js?v=f50f0dbb6497"></script>
+    <script src="js/book-marks.js?v=bde3dbd03747"></script>
+    <script src="js/navigation.js?v=6bf46382cd5d"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=04f9affacb92"></script>
-    <script src="js/translation.js?v=28e25e17b6b1"></script>
+    <script src="js/translation.js?v=4246c9049073"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
     <script src="js/grammar-svo.js?v=87cc90f2adcf"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
