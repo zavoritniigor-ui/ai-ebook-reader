@@ -61,6 +61,9 @@ c.js("""(() => { window.__wsReqs = []; const prev = window.fetch;
   const page = (body) => new Response('<!DOCTYPE html><html><body>' + body + '</body></html>', {status: 200, headers: {'content-type': 'text/html'}});
   window.fetch = async (url, opts) => { url = String(url);
     if (url.includes('op=ws-')) { __wsReqs.push(decodeURIComponent(url));
+      if (url.includes('op=ws-search') && url.includes('cats=')) return new Response(JSON.stringify(url.includes('page=2')
+          ? {total: 45, results: [{title: 'Байка 1/Частина', words: 10}, {title: 'Байка 41', words: 10}]}
+          : {total: 45, results: Array.from({length: 40}, (_, i) => ({title: 'Байка ' + (i + 1), words: 100}))}), {status: 200});
       if (url.includes('op=ws-search')) return new Response(JSON.stringify({results: [{title: 'Твір/II', words: 900}, {title: 'Твір', words: 40}, {title: 'Інший', words: 3000}]}), {status: 200});
       if (url.includes('op=ws-subpages')) return new Response(JSON.stringify({pages: []}), {status: 200});
       const title = decodeURIComponent(url.split('title=')[1]);
@@ -72,8 +75,8 @@ c.js("""(() => { window.__wsReqs = []; const prev = window.fetch;
     return prev(url, opts); };
   const s = document.getElementById('library-source'); s.value = 'wikisource'; s.dispatchEvent(new Event('change'));
   const q = document.getElementById('library-q'); q.value = 'твір'; q.dispatchEvent(new Event('input')); return 1; })()"""); time.sleep(1.5)
-check('12 Wikisource: source switch shows its languages (Ukrainian first), hides genres, and lists works once (chapter hits fold into the work)',
-      """document.getElementById('library-lang').value === 'uk' && document.getElementById('library-genre').hidden
+check('12 Wikisource: source switch shows its languages (Ukrainian first) and lists works once (chapter hits fold into the work)',
+      """document.getElementById('library-lang').value === 'uk'
          && [...document.querySelectorAll('#library-list .library-name')].map(e => e.textContent).join('|') === 'Твір|Інший'
          && __wsReqs.some(r => r.includes('op=ws-search&lang=uk&q=твір'))""")
 c.js("[...document.querySelectorAll('#library-list .library-card')][0].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
@@ -82,6 +85,23 @@ check('13 Read builds ONE HTML book from the chapters in order, without Wikisour
          const i1 = html.indexOf('Перший розділ'), i2 = html.indexOf('Другий розділ');
          return __opened.name === 'Твір.html' && __opened.type === 'text/html' && i1 > 0 && i2 > i1 && !/НАВІГАЦІЯ|шапка|\\[12\\]|<a |<img/.test(html) && /<h1>I<\\/h1>/.test(html) || html.slice(0, 400); })()""")
 check('14 the choice of source is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).source === 'wikisource'")
+check('14a Wikisource genres: only those the language section has categories for (Ukrainian: poetry yes, detective no; French: detective yes)',
+      """(() => { openLibrary(); const g = document.getElementById('library-genre'), l = document.getElementById('library-lang');
+         const has = k => [...g.options].some(o => o.value === k);
+         const uk = !g.hidden && has('') && has('poetry') && has('myth') && !has('detective') && !has('scifi');
+         l.value = 'fr'; l.dispatchEvent(new Event('change')); const fr = has('detective') && has('scifi');
+         l.value = 'uk'; l.dispatchEvent(new Event('change')); return uk && fr && !has('detective'); })()""")
+c.js("(() => { __wsReqs.length = 0; document.getElementById('library-q').value = ''; const g = document.getElementById('library-genre'); g.value = 'myth'; g.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.5)
+check('14b a genre lists its works WITHOUT a query: the request carries the section\'s categories, Show more is offered',
+      """__wsReqs.some(r => r.includes('op=ws-search&lang=uk&q=&cats=Легенди|Українські_народні_легенди|Міфи|Скандинавські_міфи|Байки') && !r.includes('page='))
+         && document.querySelectorAll('#library-list .library-card').length === 40 && !document.getElementById('library-more').hidden
+         && JSON.parse(localStorage.getItem('reader_library_filters')).topic === 'myth'""")
+c.js("document.getElementById('library-more').click(); 1"); time.sleep(1.5)
+check('14c Show more fetches the next page and appends only new works (a chapter of a listed work is not repeated)',
+      """__wsReqs.some(r => r.includes('&page=2')) && document.querySelectorAll('#library-list .library-card').length === 41
+         && document.querySelector('#library-list .library-card:last-child .library-name').textContent === 'Байка 41' && document.getElementById('library-more').hidden""")
+c.js("(() => { const g = document.getElementById('library-genre'); g.value = ''; g.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.2)
+check('14d with neither a query nor a genre the hint asks for one', "document.getElementById('library-status').textContent === t('libWsHint') && !document.querySelectorAll('#library-list .library-card').length")
 
 # ---- Internet Archive (third source: PDF / EPUB) ----
 c.js("""(() => { window.__iaReqs = []; window.__opened = null; const prev = window.fetch;
@@ -100,8 +120,11 @@ c.js("""(() => { window.__iaReqs = []; window.__opened = null; const prev = wind
     }
     return prev(url, opts); };
   document.getElementById('library-q').value = ''; const s = document.getElementById('library-source'); s.value = 'archive'; s.dispatchEvent(new Event('change')); return 1; })()"""); time.sleep(0.5)
-check('15 Internet Archive: its languages (Ukrainian first), no genres, and a hint until something is typed',
-      "document.getElementById('library-lang').value === 'ukr' && document.getElementById('library-genre').hidden && document.getElementById('library-status').textContent === t('libIaHint') && !__iaReqs.length")
+check('15 Internet Archive: its languages (Ukrainian first), every genre, and a hint until something is typed or a genre is chosen',
+      "document.getElementById('library-lang').value === 'ukr' && !document.getElementById('library-genre').hidden && document.getElementById('library-genre').options.length === 17 && document.getElementById('library-status').textContent === t('libIaHint') && !__iaReqs.length")
+c.js("(() => { const g = document.getElementById('library-genre'); g.value = 'poetry'; g.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.5)
+check('15a a genre alone browses Internet Archive by subject', "__iaReqs.some(r => r.includes('op=ia-search&lang=ukr&q=&page=1&genre=poetry')) && document.querySelectorAll('#library-list .library-card').length === 3")
+c.js("(() => { __iaReqs.length = 0; const g = document.getElementById('library-genre'); g.value = ''; g.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.2)
 c.js("const q = document.getElementById('library-q'); q.value = 'кобзар'; q.dispatchEvent(new Event('input')); 1"); time.sleep(1.5)
 check('16 search goes through the proxy with the language and lists author · year · formats',
       """__iaReqs.some(r => r.includes('op=ia-search&lang=ukr&q=кобзар&page=1'))

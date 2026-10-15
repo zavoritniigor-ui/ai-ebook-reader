@@ -4,11 +4,13 @@
 // із числових id.
 //   ?op=file&id=<number>                                              -> EPUB книги
 //   ?op=cover&id=<number>                                             -> обкладинка (jpg)
-//   ?op=ws-search&lang=<uk|fr|en|de|es|it>&q=<text>                   -> пошук творів у Wikisource (MediaWiki Action API, JSON)
+//   ?op=ws-search&lang=<uk|fr|en|de|es|it>&q=<text>[&cats=<A|B>][&page=<n>] -> пошук творів у Wikisource (MediaWiki Action API, JSON);
+//                                                                       cats — категорії жанру (лише прямі члени), тоді q може бути порожнім
 //   ?op=ws-page&lang=<…>&title=<title>                                -> HTML сторінки Wikisource (REST API; твір або його розділ)
 //   ?op=ws-subpages&lang=<…>&title=<title>                            -> список підсторінок-розділів твору (JSON)
 // Wikisource: лише хост <lang>.wikisource.org з білого списку мов, назва сторінки — звичайний рядок, кодується тут.
-//   ?op=ia-search&lang=<ukr|eng|fre|…|>&q=<text>&page=<n>             -> пошук книг Internet Archive (лише вільне надбання / вільні ліцензії)
+//   ?op=ia-search&lang=<ukr|eng|fre|…|>&q=<text>&page=<n>[&genre=<key>] -> пошук книг Internet Archive (лише вільне надбання / вільні ліцензії);
+//                                                                       genre — ключ жанру бібліотеки (IA_GENRES), тоді q може бути порожнім
 //   ?op=ia-files&id=<identifier>                                      -> PDF/EPUB файли книги (JSON)
 //   ?op=ia-file&id=<identifier>&name=<file.pdf|file.epub>             -> сам файл
 //   ?op=ia-cover&id=<identifier>                                      -> обкладинка
@@ -23,6 +25,27 @@ const IA_FREE = 'mediatype:texts AND NOT access-restricted-item:true AND format:
     + ' AND (year:[1 TO 1929] OR licenseurl:*creativecommons* OR licenseurl:*publicdomain*)';
 const IA_SCAN_FORMATS = new Set(['Scandata', 'Abbyy GZ', 'Single Page Processed JP2 ZIP', 'Single Page Original JP2 Tar']);
 const IA_BOOK_FORMATS = new Set(['Text PDF', 'Additional Text PDF', 'EPUB']);
+// Жанри бібліотеки → теми (subject) Internet Archive. Теми там пишуть різними мовами, тож кожен жанр — набір слів
+// англійською, французькою, німецькою, іспанською, італійською, польською, українською й російською.
+const IA_GENRES = {
+    fiction: 'fiction OR novel OR novels OR roman OR romans OR romane OR novela OR novelas OR romanzi OR powieść OR проза OR роман OR романи OR повість',
+    adventure: 'adventure OR adventures OR aventures OR abenteuer OR aventuras OR avventura OR przygodowa OR пригоди OR приключения',
+    detective: 'detective OR "detective and mystery stories" OR policier OR policiers OR "romans policiers" OR kriminalroman OR policíaca OR giallo OR kryminał OR детектив',
+    historical: '"historical fiction" OR "romans historiques" OR "historischer roman" OR "novela histórica" OR "romanzo storico" OR "історичний роман" OR "исторический роман"',
+    love: 'love OR romance OR "love stories" OR amour OR liebe OR amor OR amore OR кохання OR любовь',
+    scifi: '"science fiction" OR "science-fiction" OR "ciencia ficción" OR fantascienza OR utopie OR фантастика',
+    stories: '"short stories" OR nouvelles OR contes OR erzählungen OR cuentos OR racconti OR opowiadania OR оповідання OR новели OR рассказы',
+    poetry: 'poetry OR poems OR poésie OR poèmes OR gedichte OR lyrik OR poesía OR poesie OR poezja OR wiersze OR поезія OR вірші OR поэзия OR стихи',
+    drama: 'drama OR plays OR théâtre OR theater OR teatro OR dramat OR драма OR пʼєси OR "п\'єси" OR пьесы',
+    children: 'juvenile OR children OR "fairy tales" OR jeunesse OR kinderbücher OR märchen OR infantil OR ragazzi OR казки OR сказки OR дитяча',
+    humor: 'humor OR humour OR wit OR satire OR humorismo OR umorismo OR гумор OR сатира OR юмор',
+    biography: 'biography OR autobiography OR memoirs OR mémoires OR biographie OR biografía OR biografia OR memorie OR біографія OR спогади OR мемуари OR биография',
+    history: 'history OR histoire OR geschichte OR historia OR storia OR історія OR история',
+    philosophy: 'philosophy OR philosophie OR filosofía OR filosofia OR filozofia OR філософія OR философия',
+    myth: 'mythology OR folklore OR legends OR mythes OR légendes OR sagen OR leyendas OR leggende OR міфи OR легенди OR фольклор OR мифы',
+    travel: 'travel OR voyages OR "description and travel" OR reisen OR viajes OR viaggi OR podróże OR подорожі OR путешествия'
+};
+const WS_CAT = /^[^\u0000-\u001f#<>\[\]{}|"\\:]{1,80}$/;
 const iaQuote = s => s.replace(/[\\"():\[\]{}^~*?!+\-&|\/]/g, ' ').trim();
 
 function json(body, status = 200, maxAge = 0) {
@@ -73,13 +96,18 @@ export async function onRequestGet({ request }) {
             const host = `https://${lang}.wikisource.org`;
             if (op === 'ws-search') {
                 const q = (url.searchParams.get('q') || '').trim();
-                if (!q || q.length > 200) return json({ error: 'bad query' }, 400);
-                const api = `${host}/w/api.php?action=query&list=search&srnamespace=0&srlimit=40&srprop=wordcount&format=json&formatversion=2&srsearch=${encodeURIComponent(q)}`;
+                // Категорії жанру: кожна — звичайна назва (без службових знаків пошуку), не більше 12; «A|B» = твір у будь-якій із них.
+                const cats = (url.searchParams.get('cats') || '').split('|').map(c => c.trim().replace(/ /g, '_')).filter(Boolean);
+                if (cats.length > 12 || cats.some(c => !WS_CAT.test(c))) return json({ error: 'bad cats' }, 400);
+                if ((!q && !cats.length) || q.length > 200) return json({ error: 'bad query' }, 400);
+                const page = Math.min(25, Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1));
+                const search = [q, cats.length ? 'incategory:' + cats.join('|') : ''].filter(Boolean).join(' ');
+                const api = `${host}/w/api.php?action=query&list=search&srnamespace=0&srlimit=40&sroffset=${(page - 1) * 40}&srprop=wordcount&format=json&formatversion=2&srsearch=${encodeURIComponent(search)}`;
                 const res = await upstream(api, 'application/json');
                 if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
                 const data = await res.json();
                 const results = ((data.query && data.query.search) || []).map(x => ({ title: x.title, words: x.wordcount || 0 }));
-                return json({ results }, 200, 3600);
+                return json({ results, total: (data.query && data.query.searchinfo && data.query.searchinfo.totalhits) || 0 }, 200, 3600);
             }
             const title = (url.searchParams.get('title') || '').trim();
             if (!title || title.length > 300 || /[\u0000-\u001f#<>\[\]{}|]/.test(title)) return json({ error: 'bad title' }, 400);
@@ -100,13 +128,16 @@ export async function onRequestGet({ request }) {
         if (op === 'ia-search') {
             const q = iaQuote((url.searchParams.get('q') || '').slice(0, 200));
             const lang = url.searchParams.get('lang') || '';
+            const genre = url.searchParams.get('genre') || '';
             const page = Math.min(50, Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1));
-            if (!q) return json({ error: 'bad query' }, 400);
+            if (genre && !Object.prototype.hasOwnProperty.call(IA_GENRES, genre)) return json({ error: 'bad genre' }, 400);
+            if (!q && !genre) return json({ error: 'bad query' }, 400);
             if (lang && !IA_LANGS[lang]) return json({ error: 'bad lang' }, 400);
             // Кожне слово — або в назві, або в автора: «voltaire candide» знаходить «Candide» Вольтера (раніше обидва слова мали бути
             // в одному полі, і таких книг майже не було).
             const words = q.split(/\s+/).filter(Boolean).slice(0, 8);
-            let query = `${IA_FREE} AND ` + words.map(w => `(title:(${w}) OR creator:(${w}))`).join(' AND ');
+            let query = IA_FREE + words.map(w => ` AND (title:(${w}) OR creator:(${w}))`).join('');
+            if (genre) query += ` AND subject:(${IA_GENRES[genre]})`;
             if (lang) query += ` AND language:(${lang} OR ${IA_LANGS[lang]})`;
             const api = new URL('https://archive.org/advancedsearch.php');
             api.searchParams.set('q', query);
