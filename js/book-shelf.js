@@ -4,6 +4,9 @@
  * розмір + lastModified), тож відкрита звідси книга продовжується з тієї самої сторінки. Старі книги витісняються:
  * не більше SHELF_MAX_BOOKS і SHELF_MAX_BYTES разом, найдавніше відкриті — першими. */
 Object.assign(I18N, {
+    myBooksLabel: { uk: 'Мої книги', en: 'My books', fr: 'Mes livres', ru: 'Мои книги', es: 'Mis libros', zh: '我的书', ko: '내 책', hi: 'मेरी किताबें', ga: 'Mo leabhair' },
+    tMyBooks: { uk: 'Книги, які ви вже відкривали (збережені на цьому пристрої)', en: 'Books you have opened before (kept on this device)', fr: 'Les livres déjà ouverts (gardés sur cet appareil)',
+                ru: 'Книги, которые вы уже открывали (сохранены на этом устройстве)', es: 'Libros que ya abriste (guardados en este dispositivo)' },
     shelfSource: { uk: '📖 Мої книги', en: '📖 My books', fr: '📖 Mes livres', ru: '📖 Мои книги', es: '📖 Mis libros' },
     shelfRecent: { uk: 'Нещодавні книги', en: 'Recent books', fr: 'Livres récents', ru: 'Недавние книги', es: 'Libros recientes' },
     shelfEmpty: { uk: 'Тут з’являться книги, які ви відкривали: вони зберігаються на пристрої.', en: 'Books you open will appear here: they are kept on this device.',
@@ -128,3 +131,5 @@ async function runShelfList() {
     }
 }
 renderRecentBooks();
+// «📖 Мої книги» в меню: бібліотека одразу на збережених книгах, без перемикання джерела.
+document.getElementById('btn-my-books')?.addEventListener('click', () => openLibrary('shelf'));

@@ -172,8 +172,12 @@ function fillLibraryLangs() {
     if (source) { source.hidden = src === 'shelf'; source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : 'libSource'; source.textContent = t(source.dataset.i18n); }
 }
 
-function openLibrary() {
+// source — одразу відкрити це джерело (кнопка «📖 Мої книги» в меню відкриває збережені на пристрої книги).
+function openLibrary(source = null) {
     buildLibrary();
+    if (source && LIBRARY_SOURCES.includes(source) && source !== libraryState.source) {
+        const select = libraryEl('library-source'); select.value = source; select.dispatchEvent(new Event('change'));
+    }
     libraryEl('library-modal').classList.add('open');
     libraryEl('library-q').placeholder = t('libSearch');
     if (!libraryEl('library-list').children.length || libraryState.source === 'shelf') runLibrarySearch(1);
