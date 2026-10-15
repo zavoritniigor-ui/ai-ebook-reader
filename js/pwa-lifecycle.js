@@ -337,6 +337,46 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         }).catch(() => {});
     });
 }
+// «Поділитися → AI Reader» (share_target у manifest.webmanifest; приймає sw.js або functions/share-target.js).
+// Файл книги відкривається одразу (lastModified 0 — та сама книга, надіслана ще раз, має той самий ключ і відкривається
+// на своєму місці); текст — у вікні перекладу посеред екрана, з тими самими кнопками (Запитай AI, Граматика…).
+Object.assign(I18N, {
+    shareNoFile: { uk: 'Застосунок ще не встановився до кінця — файл не дійшов. Поділіться ним ще раз.', en: 'The app was not fully installed yet, so the file did not arrive. Share it once more.',
+                   fr: "L'application n'était pas encore complètement installée : le fichier n'est pas arrivé. Partagez-le encore une fois.", ru: 'Приложение ещё не установилось до конца — файл не дошёл. Поделитесь им ещё раз.',
+                   es: 'La aplicación aún no estaba instalada del todo y el archivo no llegó. Compártelo otra vez.' },
+    shareFailed: { uk: 'Не вдалося прийняти те, чим ви поділилися.', en: 'Could not receive what you shared.', fr: "Impossible de recevoir ce que vous avez partagé.",
+                   ru: 'Не удалось принять то, чем вы поделились.', es: 'No se pudo recibir lo que compartiste.' }
+});
+async function receiveSharedContent() {
+    const params = new URLSearchParams(location.search);
+    const kind = params.get('shared');
+    if (!kind) return;
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}   // перезавантаження не відкриває те саме вдруге
+    let file = null, text = kind === 'text' ? (params.get('text') || '').trim() : '';
+    if (kind === 'nofile') { showToast(t('shareNoFile')); return; }
+    if (kind === 'error') { showToast(t('shareFailed')); return; }
+    if (kind === '1' && typeof caches !== 'undefined') {
+        try {
+            const cache = await caches.open('reader-share');
+            const fileRes = await cache.match(new URL('__share/file', location.href).href);
+            const textRes = await cache.match(new URL('__share/text', location.href).href);
+            if (fileRes) {
+                let name = 'book'; try { name = decodeURIComponent(fileRes.headers.get('x-name') || 'book'); } catch (e) {}
+                const blob = await fileRes.blob();
+                file = new File([blob], name, { type: fileRes.headers.get('content-type') || blob.type, lastModified: 0 });
+            }
+            if (textRes) text = (await textRes.text()).trim();
+            await caches.delete('reader-share');
+        } catch (e) { showToast(t('shareFailed')); return; }
+    }
+    if (file) { await openBookFile(file); return; }
+    if (text) {
+        state.ctxSentence = text.length <= 400 ? text : '';
+        handleWordOrSelection(text, Math.round(innerWidth / 2), Math.round(innerHeight / 3));
+    }
+}
+window.addEventListener('load', () => { setTimeout(receiveSharedContent, 0); }, { once: true });
+
 // Classic files expose callbacks before later files/module PDF.js finish.
 // Enable input only after the entire application has initialized.
 window.addEventListener('load', () => { document.body.inert = false; }, { once: true });
