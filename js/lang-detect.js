@@ -569,3 +569,7 @@ function debugLanguageSegments(text, priorLang2) {
     });
     return { tokens, segments: segmentInfo };
 }
+
+// Перший виклик loadVoices() (js/core.js) — тут, у кінці lang-detect.js: усередині він доходить до pageLang(), визначеної
+// вище в цьому файлі (у core.js її ще немає). Раніше це був вбудований <script> в index.html — CSP тепер такі забороняє.
+if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }

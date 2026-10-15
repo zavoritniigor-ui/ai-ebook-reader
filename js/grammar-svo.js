@@ -195,8 +195,9 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         if (err instanceof TypeError && /fetch/i.test(err.message)) msg = t('errNoConnection');
         // Зберігаємо контекст для повтору у глобальній змінній
         window.lastAiRetryContext = { contextText, mode, userPrompt };
-        const retryBtn = `<button style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;" onclick="(ctx => startAiTask(ctx.contextText, ctx.mode, ctx.userPrompt))(window.lastAiRetryContext)">${t('retry')}</button>`;
-        content.innerHTML = `<div><span style="color:red">${escapeHtml(msg)}</span><br/>${retryBtn}</div>`;
+        // Кнопка повтору — справжній обробник, а не рядок onclick (CSP забороняє вбудовані скрипти).
+        content.innerHTML = `<div><span style="color:red">${escapeHtml(msg)}</span><br/><button type="button" class="ai-retry-btn" style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;">${t('retry')}</button></div>`;
+        content.querySelector('.ai-retry-btn').addEventListener('click', () => { const ctx = window.lastAiRetryContext; startAiTask(ctx.contextText, ctx.mode, ctx.userPrompt); });
         if (isAiAuthError(err)) content.firstElementChild.append(' ', aiUpdateKeyButton());
     }
 }

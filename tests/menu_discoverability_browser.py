@@ -29,7 +29,7 @@ check('handles keep their accessible names', "!!els.askTab.getAttribute('aria-la
 ids = ['btn-ink', 'btn-region', 'zoom-out', 'zoom-in']
 check('icon-only header buttons have a localized aria-label',
       "%s.every(id => { const b = document.getElementById(id); return b && b.getAttribute('aria-label') && b.getAttribute('aria-label').length > 3; })" % ids)
-check('the key button has an aria-label', "document.querySelector('button[onclick=\"openKeySettings()\"]').getAttribute('aria-label') === t('tAiKey')")
+check('the key button has an aria-label', "document.querySelector('#btn-ai-key').getAttribute('aria-label') === t('tAiKey')")
 check('the reading-progress indicator is explained (tooltip title; name already carries the live percentage)', "(() => { const b = document.getElementById('reading-stats-button'); return b.title === t('statsTitle') && /%/.test(b.getAttribute('aria-label') || ''); })()")
 check('opening the AI panel still hides its handle and shows the microphone row', "(() => { els.askPanel.classList.add('expanded'); return true; })()")
 c.js("new Promise(r => setTimeout(r, 600))")

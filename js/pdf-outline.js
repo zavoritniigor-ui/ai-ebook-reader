@@ -550,10 +550,12 @@ async function buildPdfLinkLayer(page, viewport) {
         div.style.top = `${Math.min(y1, y2)}px`;
         div.style.width = `${Math.abs(x2 - x1)}px`;
         div.style.height = `${Math.abs(y2 - y1)}px`;
-        if (ann.url) {
+        // Лише звичайні адреси (pdf.js і так відсіює небезпечні, це друга перевірка); внутрішнє посилання — без
+        // href="javascript:", який CSP без 'unsafe-inline' блокує: role=button і обробник.
+        if (ann.url && /^(?:https?:|mailto:)/i.test(ann.url)) {
             div.href = ann.url; div.target = '_blank'; div.rel = 'noopener noreferrer';
         } else if (ann.dest) {
-            div.href = 'javascript:void(0)';
+            div.setAttribute('role', 'button'); div.tabIndex = 0;
             div.onclick = (e) => { e.preventDefault(); navigatePdfLinkDestination(ann.dest); };
         }
         layer.appendChild(div);

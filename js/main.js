@@ -252,3 +252,16 @@ updateDictationUI();
 // Застосовуємо мову інтерфейсу на старті — уже після того, як усі функції визначені.
 document.documentElement.lang = state.uiLang;
 applyI18n();
+
+// Обробники кнопок, що раніше стояли атрибутами onclick/onsubmit в index.html: CSP забороняє вбудовані скрипти
+// ('unsafe-inline'), тож навіть помилка в очищенні HTML не дасть виконати чужий onclick. Функції шукаються в момент
+// натискання (updateApp/exitApp визначає js/pwa-lifecycle.js, що завантажується пізніше).
+document.getElementById('btn-ai-key').addEventListener('click', () => openKeySettings());
+document.getElementById('btn-update-app').addEventListener('click', () => updateApp());
+document.getElementById('btn-exit-app').addEventListener('click', () => exitApp());
+document.querySelectorAll('[data-close-panel]').forEach(btn => btn.addEventListener('click', () => document.getElementById(btn.dataset.closePanel).classList.remove('expanded')));
+document.getElementById('ask-chat-form').addEventListener('submit', e => { e.preventDefault(); els.askSendBtn.click(); });
+document.getElementById('settings-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeKeySettings(); });
+document.querySelectorAll('[data-close-settings]').forEach(btn => btn.addEventListener('click', () => closeKeySettings()));
+document.getElementById('api-keys-form').addEventListener('submit', e => { e.preventDefault(); saveApiKey(); });
+document.getElementById('btn-use-site-key').addEventListener('click', () => useSiteAiKey());
