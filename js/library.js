@@ -15,8 +15,8 @@ Object.assign(I18N, {
     libSourceGutenberg: { uk: 'Project Gutenberg', en: 'Project Gutenberg', fr: 'Project Gutenberg', ru: 'Project Gutenberg' },
     libSourceWikisource:{ uk: 'Вікіджерела (Wikisource)', en: 'Wikisource', fr: 'Wikisource', ru: 'Викитека (Wikisource)' },
     libSourceLabel: { uk: 'Джерело книг', en: 'Book source', fr: 'Source des livres', ru: 'Источник книг' },
-    libWsHint:   { uk: 'Введіть назву твору або автора — пошук у Вікіджерелах.', en: 'Type a title or an author to search Wikisource.',
-                   fr: 'Saisissez un titre ou un auteur pour chercher dans Wikisource.', ru: 'Введите название или автора — поиск в Викитеке.' },
+    libWsHint:   { uk: 'Введіть назву твору чи автора або виберіть жанр — пошук у Вікіджерелах.', en: 'Type a title or an author, or pick a genre, to search Wikisource.',
+                   fr: 'Saisissez un titre ou un auteur, ou choisissez un genre, pour chercher dans Wikisource.', ru: 'Введите название или автора либо выберите жанр — поиск в Викитеке.' },
     libWsChapters: { uk: 'Завантаження розділів: {n} / {total}…', en: 'Loading chapters: {n} / {total}…', fr: 'Chargement des chapitres : {n} / {total}…', ru: 'Загрузка глав: {n} / {total}…' },
     libWsWords:  { uk: 'слів у першій частині: {n}', en: 'words in the first part: {n}', fr: 'mots dans la première partie : {n}', ru: 'слов в первой части: {n}' },
     libWsSource: { uk: 'Тексти з Вікіджерел — вільне надбання або вільні ліцензії; укладачі — волонтери Вікімедіа.', en: 'Texts from Wikisource — public domain or free licences, prepared by Wikimedia volunteers.',
@@ -48,8 +48,8 @@ Object.assign(I18N, {
     genTravel: { uk: 'Подорожі', en: 'Travel', fr: 'Voyages', ru: 'Путешествия' },
     genHumor: { uk: 'Гумор', en: 'Humor', fr: 'Humour', ru: 'Юмор' },
     libSourceArchive: { uk: 'Internet Archive (PDF, EPUB)', en: 'Internet Archive (PDF, EPUB)', fr: 'Internet Archive (PDF, EPUB)', ru: 'Internet Archive (PDF, EPUB)' },
-    libIaHint: { uk: 'Введіть назву або автора — пошук у Internet Archive (скани старих видань і вільні книги).', en: 'Type a title or an author to search Internet Archive (scans of old editions and free books).',
-                 fr: "Saisissez un titre ou un auteur pour chercher dans Internet Archive (scans d'éditions anciennes et livres libres).", ru: 'Введите название или автора — поиск в Internet Archive (сканы старых изданий и свободные книги).' },
+    libIaHint: { uk: 'Введіть назву чи автора або виберіть жанр — пошук у Internet Archive (скани старих видань і вільні книги).', en: 'Type a title or an author, or pick a genre, to search Internet Archive (scans of old editions and free books).',
+                 fr: "Saisissez un titre ou un auteur, ou choisissez un genre, pour chercher dans Internet Archive (scans d'éditions anciennes et livres libres).", ru: 'Введите название или автора либо выберите жанр — поиск в Internet Archive (сканы старых изданий и свободные книги).' },
     libIaSource: { uk: 'Книги з Internet Archive: видання до 1930 року (вільне надбання) і книги з вільними ліцензіями. Скановані книги відкриваються як PDF.',
                    en: 'Books from Internet Archive: editions before 1930 (public domain) and books under free licences. Scanned books open as PDF.',
                    fr: 'Livres d’Internet Archive : éditions antérieures à 1930 (domaine public) et livres sous licence libre. Les livres numérisés s’ouvrent en PDF.',
@@ -66,13 +66,38 @@ const LIBRARY_LANGS = [['fr', 'Français'], ['en', 'English'], ['de', 'Deutsch']
 const LIBRARY_PAGE = 30;
 // Вікіджерела (Wikisource): живий пошук через свій проксі; твір збирається з розділів-підсторінок в одну HTML-книгу.
 const LIBRARY_WS_LANGS = [['uk', 'Українська'], ['fr', 'Français'], ['en', 'English'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano']];
-const WS_MAX_CHAPTERS = 150, WS_CONCURRENCY = 6;
+const WS_MAX_CHAPTERS = 150, WS_CONCURRENCY = 6, WS_PAGE = 40;
+// Жанри Вікіджерел — справжні категорії кожного мовного розділу (назви з «_» замість пробілів; пошук бере лише прямих членів
+// категорії, тож підкатегорії перелічено явно). Жанру, якого в розділі немає (напр. детективів в українських), у списку не буде.
+// Перевірено 2026-10-15 через categoryinfo: у кожній категорії є твори.
+const LIBRARY_WS_GENRES = {
+    uk: { stories: 'Оповідання', poetry: 'Поезія|Вірші|Поеми|Українська_поезія|Балади|Українські_балади', history: 'Історія|Історія_України',
+          children: 'Казки|Українські_народні_казки|Дитяча_література|Дитячий_фольклор', biography: 'Спогади',
+          myth: 'Легенди|Українські_народні_легенди|Міфи|Скандинавські_міфи|Байки' },
+    fr: { fiction: 'Romans|Romans_français|Romans_de_mœurs', adventure: 'Romans_d’aventures', detective: 'Romans_policiers', historical: 'Romans_historiques',
+          love: 'Romans_d’amour|Poèmes_d\'amour', scifi: 'Science-fiction', stories: 'Nouvelles|Contes', poetry: 'Poésie|Poèmes', drama: 'Théâtre|Comédies|Tragédies',
+          children: 'Littérature_jeunesse', humor: 'Humour', biography: 'Biographies|Mémoires', history: 'Histoire', philosophy: 'Philosophie|Contes_philosophiques',
+          myth: 'Mythologie|Fables', travel: 'Récits_de_voyage|Voyages' },
+    en: { fiction: 'Novels|Novellas|Fiction', adventure: 'Adventure_novels|Adventure_short_stories|Adventure|Nautical_fiction|Sea_stories',
+          detective: 'Detective_novels|Detective_short_stories|Mystery_novels|Mystery_short_stories|Mystery|Mystery_novellas',
+          historical: 'Historical_fiction|Historical_fiction_novels|Historical_fiction_short_stories', love: 'Romance|Romance_novels|Love_poetry',
+          scifi: 'Science_fiction|Science_fiction_novels|Science_fiction_short_stories|Science_fiction_novellas', stories: 'Short_stories', poetry: 'Poems|Poetry',
+          drama: 'Plays|Drama|Comedy_plays', children: 'Children\'s_books|Children\'s_literature|Fairy_tales', humor: 'Humor|Humorous_short_stories|Humorous_poetry',
+          biography: 'Biographies|Memoirs|Autobiographies', history: 'History', philosophy: 'Philosophy', myth: 'Mythology|Folk_tales|Fables', travel: 'Travel|Travelogues' },
+    de: { fiction: 'Roman|Novelle', stories: 'Erzählung|Novelle|Anekdote|Schwank', poetry: 'Gedicht|Ballade', drama: 'Drama|Komödie', children: 'Märchen',
+          humor: 'Humoreske|Satire|Schwank', biography: 'Biographie|Autobiographie', history: 'Geschichte', philosophy: 'Philosophie|Philosophische_Erzaehlungen',
+          myth: 'Sage|Fabel', travel: 'Reisebericht' },
+    es: { fiction: 'Novelas', scifi: 'Ciencia_ficción', stories: 'Cuentos', poetry: 'Poesías', drama: 'Teatro|Comedias', biography: 'Biografías|Memorias',
+          history: 'Historia', philosophy: 'Filosofía|Ensayos', myth: 'Leyendas|Fábulas|Mitología', travel: 'Viajes_y_exploración' },
+    it: { fiction: 'Romanzi|Novelle', adventure: 'Avventura', scifi: 'Fantascienza', stories: 'Racconti|Novelle', poetry: 'Poesie', drama: 'Teatro|Commedie|Tragedie',
+          children: 'Fiabe|Letteratura_per_ragazzi', biography: 'Biografie|Memorie', history: 'Storia', philosophy: 'Filosofia', myth: 'Mitologia|Mitologia_greca|Favole' }
+};
 // Internet Archive: живий пошук через свій проксі; коди мов — як у самому архіві (MARC).
 const LIBRARY_IA_LANGS = [['ukr', 'Українська'], ['eng', 'English'], ['fre', 'Français'], ['ger', 'Deutsch'], ['spa', 'Español'], ['ita', 'Italiano'], ['pol', 'Polski'], ['rus', 'Русский'], ['', null]];
 const LIBRARY_MAX_BYTES = 300 * 1024 * 1024;
 const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'shelf'];
 
-const libraryState = { source: 'gutenberg', wsToken: 0, page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
+const libraryState = { source: 'gutenberg', topic: '', wsSeen: null, wsToken: 0, page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
 function libraryEl(id) { return document.getElementById(id); }
 
 function buildLibrary() {
@@ -93,7 +118,6 @@ function buildLibrary() {
     const lang = document.createElement('select'); lang.id = 'library-lang';
     for (const [code, label] of LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else o.dataset.i18n = 'libAllLangs'; lang.append(o); }
     const genre = document.createElement('select'); genre.id = 'library-genre';
-    for (const [topic, key] of LIBRARY_GENRES) { const o = document.createElement('option'); o.value = topic; o.dataset.i18n = key; genre.append(o); }
     tools.append(src, q, lang, genre);
     const status = document.createElement('div'); status.id = 'library-status'; status.setAttribute('aria-live', 'polite');
     const list = document.createElement('div'); list.id = 'library-list';
@@ -105,11 +129,14 @@ function buildLibrary() {
     libraryState.source = LIBRARY_SOURCES.includes(saved.source) ? saved.source : 'gutenberg';
     libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr' };
     src.value = libraryState.source;
+    libraryState.topic = LIBRARY_GENRES.some(([topic]) => topic && topic === saved.topic) ? saved.topic : '';
     fillLibraryLangs();
-    genre.value = saved.topic && [...genre.options].some(o => o.value === saved.topic) ? saved.topic : '';
-    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, iaLang: libraryState.langBySource.archive, topic: genre.value })); } catch (e) {} };
-    const restart = () => {
+    // Жанр зберігається один на всі джерела: якщо в цьому джерелі/мові його немає, список показує «Усі жанри», але вибір не губиться.
+    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, iaLang: libraryState.langBySource.archive, topic: libraryState.topic })); } catch (e) {} };
+    const restart = (e) => {
         libraryState.langBySource[libraryState.source] = lang.value;
+        if (e && e.target === genre) libraryState.topic = genre.value;
+        if (e && e.target === lang) fillLibraryGenres();   // жанри Вікіджерел залежать від мови розділу
         persist();
         clearTimeout(libraryState.timer); libraryState.timer = setTimeout(() => runLibrarySearch(1), libraryState.source === 'gutenberg' ? 350 : 600);
     };
@@ -119,14 +146,26 @@ function buildLibrary() {
     applyI18n(); q.placeholder = t('libSearch');
 }
 
-// Список мов і видимість тем — за джерелом (теми є лише в каталозі Gutenberg, мови в кожного джерела свої).
+// Жанри: Gutenberg і Internet Archive — усі; Вікіджерела — лише ті, що мають категорії в розділі вибраної мови.
+function fillLibraryGenres() {
+    const genre = libraryEl('library-genre'), src = libraryState.source;
+    const ws = src === 'wikisource' ? LIBRARY_WS_GENRES[libraryEl('library-lang').value] || {} : null;
+    genre.replaceChildren();
+    for (const [topic, key] of LIBRARY_GENRES) {
+        if (ws && topic && !ws[topic]) continue;
+        const o = document.createElement('option'); o.value = topic; o.dataset.i18n = key; o.textContent = t(key); genre.append(o);
+    }
+    genre.value = [...genre.options].some(o => o.value === libraryState.topic) ? libraryState.topic : '';
+    genre.hidden = src === 'shelf';
+}
+// Список мов — за джерелом (мови в кожного джерела свої), за ним — жанри.
 function fillLibraryLangs() {
-    const lang = libraryEl('library-lang'), genre = libraryEl('library-genre'), src = libraryState.source;
+    const lang = libraryEl('library-lang'), src = libraryState.source;
     lang.replaceChildren();
     for (const [code, label] of src === 'wikisource' ? LIBRARY_WS_LANGS : src === 'archive' ? LIBRARY_IA_LANGS : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
     const want = libraryState.langBySource[libraryState.source];
     lang.value = [...lang.options].some(o => o.value === want) ? want : lang.options[0].value;
-    genre.hidden = src !== 'gutenberg';
+    fillLibraryGenres();
     // «Мої книги» — збережені на пристрої книги: без пошуку, мов і підпису джерела.
     lang.hidden = src === 'shelf'; libraryEl('library-q').hidden = src === 'shelf';
     const source = document.querySelector('#library-modal .library-source');
@@ -159,7 +198,7 @@ function loadLibraryCatalog() {
 async function runLibrarySearch(page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
     more.hidden = true;
-    if (libraryState.source === 'wikisource') { await runWikisourceSearch(); return; }
+    if (libraryState.source === 'wikisource') { await runWikisourceSearch(page); return; }
     if (libraryState.source === 'archive') { await runArchiveSearch(page); return; }
     if (libraryState.source === 'shelf') { await runShelfList(); return; }
     let catalog;
@@ -276,28 +315,32 @@ async function downloadLibraryBook(book, btn) {
 }
 // ---------- Вікіджерела ----------
 // Результати пошуку часто є розділами («Твір/II»): показуємо сам твір (корінь назви) один раз, у порядку релевантності.
-async function runWikisourceSearch() {
-    const status = libraryEl('library-status'), list = libraryEl('library-list');
+// Жанр — категорії розділу (LIBRARY_WS_GENRES); з жанром пошук працює й без запиту: тоді це просто перелік творів жанру.
+async function runWikisourceSearch(page = 1) {
+    const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
     const q = libraryEl('library-q').value.trim(), lang = libraryEl('library-lang').value;
+    const cats = (LIBRARY_WS_GENRES[lang] || {})[libraryEl('library-genre').value] || '';
     const token = ++libraryState.wsToken;
-    list.replaceChildren();
-    if (!q) { status.textContent = t('libWsHint'); return; }
+    if (page === 1) { list.replaceChildren(); libraryState.wsSeen = new Set(); }
+    if (!q && !cats) { status.textContent = t('libWsHint'); return; }
     status.textContent = t('libLoading');
     let data;
     try {
-        const res = await fetch(`/api/library?op=ws-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/library?op=ws-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}` + (cats ? '&cats=' + encodeURIComponent(cats) : '') + (page > 1 ? '&page=' + page : ''));
         if (!res.ok) throw new Error('HTTP ' + res.status);
         data = await res.json();
     } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
-    if (token !== libraryState.wsToken) return;
-    const seen = new Map();
+    if (token !== libraryState.wsToken || libraryState.source !== 'wikisource') return;
+    libraryState.page = page;
+    // Твір показуємо один раз на весь перелік, навіть якщо його розділи трапляються на різних сторінках результатів.
     for (const r of data.results || []) {
         const root = String(r.title || '').split('/')[0];
-        if (!root || seen.has(root)) continue;
-        seen.set(root, { ws: true, lang, title: root, words: r.title === root ? r.words : 0 });
+        if (!root || libraryState.wsSeen.has(root)) continue;
+        libraryState.wsSeen.add(root);
+        list.append(libraryCard({ ws: true, lang, title: root, words: r.title === root ? r.words : 0 }));
     }
-    for (const book of [...seen.values()].slice(0, 30)) list.append(libraryCard(book));
-    status.textContent = seen.size ? '' : t('libEmpty');
+    status.textContent = list.children.length ? '' : t('libEmpty');
+    more.hidden = page * WS_PAGE >= (data.total || 0);
 }
 async function wsPage(lang, title) {
     const res = await fetch(`/api/library?op=ws-page&lang=${encodeURIComponent(lang)}&title=${encodeURIComponent(title)}`);
@@ -379,14 +422,14 @@ async function buildWikisourceBook(book, onProgress) {
 // ---------- Internet Archive ----------
 async function runArchiveSearch(page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
-    const q = libraryEl('library-q').value.trim(), lang = libraryEl('library-lang').value;
+    const q = libraryEl('library-q').value.trim(), lang = libraryEl('library-lang').value, topic = libraryEl('library-genre').value;
     const token = ++libraryState.wsToken;
     if (page === 1) list.replaceChildren();
-    if (!q) { status.textContent = t('libIaHint'); return; }
+    if (!q && !topic) { status.textContent = t('libIaHint'); return; }
     status.textContent = t('libLoading');
     let data;
     try {
-        const res = await fetch(`/api/library?op=ia-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}&page=${page}`);
+        const res = await fetch(`/api/library?op=ia-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}&page=${page}` + (topic ? '&genre=' + topic : ''));
         if (!res.ok) throw new Error('HTTP ' + res.status);
         data = await res.json();
     } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
