@@ -255,17 +255,25 @@ function buildSentenceRanges(range) {
             return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
         }
     });
-    const sentences = [];
-    let buffer = '', startNode = null, startOffset = 0, lastNode = null, lastOffset = 0, node;
+    // Спершу — плоский рядок усього діапазону (межа речення залежить від сусідніх символів, що можуть бути в іншому
+    // вузлі: «Mr.</i> Smith»), потім межі за спільним правилом sentenceCuts (core.js).
+    const parts = [];
+    let node;
     while (node = walker.nextNode()) {
-        const text = node.nodeValue;
         const from = (node === range.startContainer) ? range.startOffset : 0;
-        const to = (node === range.endContainer) ? range.endOffset : text.length;
-        for (let i = from; i < to; i++) {
+        const to = (node === range.endContainer) ? range.endOffset : node.nodeValue.length;
+        if (to > from) parts.push({ node, from, to });
+    }
+    const cuts = sentenceCuts(parts.map(p => p.node.nodeValue.slice(p.from, p.to)).join(''));
+    const sentences = [];
+    let buffer = '', startNode = null, startOffset = 0, lastNode = null, lastOffset = 0, pos = 0;
+    for (const { node, from, to } of parts) {
+        const text = node.nodeValue;
+        for (let i = from; i < to; i++, pos++) {
             if (buffer === '') { startNode = node; startOffset = i; }
             buffer += text[i];
             lastNode = node; lastOffset = i + 1;
-            const atSentenceEnd = /[.!?]/.test(text[i]) && (i + 1 >= text.length || /\s/.test(text[i + 1]));
+            const atSentenceEnd = cuts.has(pos);
             const atRangeEnd = (i === to - 1) && (node === range.endContainer);
             if (atSentenceEnd || atRangeEnd) {
                 const trimmed = buffer.trim();

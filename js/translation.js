@@ -193,6 +193,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     positionTooltip(clientX, clientY, anchorRect);
     els.tooltip.style.visibility = 'visible';
     state.tooltipAnchor = { clientX, clientY, anchorRect };
+    if (typeof showBookMarkForTap === 'function') showBookMarkForTap();   // у виділеному місці — його нотатка (js/book-marks.js)
     // No auto-close countdown while the translation is loading: AI/network latency must not eat the reader's time.
     // Single words start the usual countdown only once a translation is actually on screen (below).
     cancelTooltipHide();
@@ -294,6 +295,11 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
 
     let alignmentResult = null;
     let translated = true;   // false only when no translation arrived (the error text is shown instead)
+    if (!state.translationCache[cacheKey]) {
+        const stored = await readStoredTranslation(cacheKey);   // переклад з попередніх запусків
+        if (myLookup !== state.lookupToken || !task.current()) return;
+        if (stored) state.translationCache[cacheKey] = stored;
+    }
     if (state.translationCache[cacheKey]) {
         const cached = state.translationCache[cacheKey];
         els.ttTranslation.innerHTML = typeof cached === 'string' ? cached : cached.html;
@@ -302,7 +308,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         // Groq відповідає настільки швидко, що змагатися з машинним перекладом
         // немає сенсу: онлайн усе перекладає AI — і слова, і речення. Машинний
         // лишається виключно як запасний варіант, коли немає мережі або ключа.
-        let html = null;
+        let html = null, quality = null;   // звідки переклад: 'ai' | 'mt' | 'local' — від цього залежить, чи його зберігати
         // МИТТЄВИЙ ШАР (лише слова): локальна модель Chrome перекладає без мережі й показується ОДРАЗУ; щойно приходить AI
         // (за маршрутизацією завдань — Groq), він замінює її. Запускається тут же, в обробнику тапу: створення моделі
         // ('downloadable') вимагає жесту користувача, а фонове «розігрівання» його не має — тому раніше локальний
@@ -342,6 +348,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 const full = main.html + extrasHtml;
                 els.ttTranslation.innerHTML = full;
                 state.translationCache[cacheKey] = main.al ? { ...main.al, html: full } : full;
+                storeTranslation(cacheKey, state.translationCache[cacheKey], 'ai');
                 if (reinstall) {
                     clearAlignment();
                     if (main.al) installAlignment(cleanText, main.al, lookupRoot);
@@ -368,13 +375,14 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             }
             alignmentResult = main.al;
             html = main.html + extrasHtml;
+            quality = 'ai';
         } else if (isMultiWord) {
             // Речення й фрази онлайн — лише через AI (машинний переклад Google не бачить контексту). Без AI (офлайн, без ключа чи AI не відповів)
             // перекладає локальна модель Chrome на пристрої (⌂); якщо її нема — показуємо причину.
             let local = null;
             try { local = await waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 20000); } catch (e) { if (e && e.name === 'AbortError') return; }
             if (myLookup !== state.lookupToken || !task.current()) return;
-            if (local) html = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
+            if (local) { html = escapeHtml(local) + ' <span class="tt-note">⌂</span>'; quality = 'local'; }
             else {
                 els.ttTranslation.textContent = !aiAvailable() ? t('sentenceNeedsAi') : (!navigator.onLine ? t('sentenceNeedsOnline') : t('sentenceAiFailed'));
                 translated = false;
@@ -383,7 +391,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             try {
                 const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
                 if (myLookup !== state.lookupToken || !task.current()) return;
-                html = m.html;
+                html = m.html; quality = 'mt';
             } catch (e) {
                 if (myLookup !== state.lookupToken || !task.current()) return;
                 els.ttTranslation.textContent = e.message || t('error');
@@ -394,6 +402,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         if (html) {
             els.ttTranslation.innerHTML = html;
             state.translationCache[cacheKey] = alignmentResult ? { ...alignmentResult, html } : html;
+            storeTranslation(cacheKey, state.translationCache[cacheKey], quality);
         }
     }
     if (task.current() && alignmentResult) installAlignment(cleanText, alignmentResult, lookupRoot);
@@ -467,6 +476,66 @@ function buildTranslationExtras(data, mainTranslation) {
     alts = kept.slice(0, 2);
     if (alts.length) out += `<div class="tt-extra"><div class="tt-sense"><span class="tt-pos">${t('more')}</span> ${escapeHtml(alts.join(' · '))}</div></div>`;
     return out;
+}
+
+// ========== ЗБЕРЕЖЕНІ ПЕРЕКЛАДИ (між запусками) ==========
+// Кеш у пам'яті (state.translationCache) жив лише до закриття застосунку, тож те саме слово в тому самому реченні
+// після перезапуску знову йшло в мережу. Тепер готовий результат (той самий об'єкт, що й у пам'яті) лежить і в IndexedDB
+// під тим самим ключем (мова оригіналу > мова перекладу | текст @ речення). Зберігаються лише переклади AI ('ai') і
+// машинні ('mt'); локальна модель Chrome (⌂) і так миттєва. Машинний береться зі сховища лише коли AI зараз недоступний —
+// інакше один збій AI назавжди закріпив би слабший переклад. Не більше TR_STORE_MAX записів (найдавніші йдуть першими).
+// Помилки сховища тихі: переклад працює як раніше.
+// Скидання кешу в пам'яті (cancelAIRequests після зміни ключа AI; тести) — свідомий «чистий старт»: до наступного запуску
+// збережені переклади теж не читаються й не пишуться (порівнюється сам об'єкт кешу, створений при старті).
+const TR_DB = 'reader-translations', TR_STORE = 'tr', TR_STORE_MAX = 5000, trStartCache = state.translationCache;
+let trDbPromise = null, trWrites = 0;
+function trStoreActive() { return state.translationCache === trStartCache; }
+function trDb() {
+    if (!trDbPromise) trDbPromise = new Promise((resolve, reject) => {
+        if (typeof indexedDB === 'undefined') { reject(new Error('no indexedDB')); return; }
+        const req = indexedDB.open(TR_DB, 1);
+        req.onupgradeneeded = () => { const st = req.result.createObjectStore(TR_STORE, { keyPath: 'k' }); st.createIndex('at', 'at'); };
+        // Іншій вкладці/оновленню (або видаленню бази) не заважаємо: закриваємо з'єднання, наступне звернення відкриє нове.
+        req.onsuccess = () => { const db = req.result; db.onversionchange = () => { db.close(); trDbPromise = null; }; resolve(db); };
+        req.onerror = () => reject(req.error);
+    }).catch(err => { trDbPromise = null; throw err; });
+    return trDbPromise;
+}
+function validStoredTranslation(v) {
+    return typeof v === 'string' ? v : (v && typeof v === 'object' && typeof v.html === 'string' ? v : null);
+}
+// Збережений переклад або null; не чекає довше за 300 мс (повільний диск не має гальмувати тап).
+async function readStoredTranslation(key) {
+    if (!trStoreActive()) return null;
+    try {
+        const entry = await waitForResult(trDb().then(db => new Promise((resolve) => {
+            const req = db.transaction(TR_STORE).objectStore(TR_STORE).get(key);
+            req.onsuccess = () => resolve(req.result || null); req.onerror = () => resolve(null);
+        })), null, 300);
+        if (!entry || (entry.q !== 'ai' && navigator.onLine && aiAvailable())) return null;
+        return validStoredTranslation(entry.v);
+    } catch (e) { return null; }
+}
+function storeTranslation(key, value, quality) {
+    if ((quality !== 'ai' && quality !== 'mt') || !trStoreActive()) return;
+    const v = validStoredTranslation(value);
+    if (!v) return;
+    trDb().then(db => {
+        const tx = db.transaction(TR_STORE, 'readwrite');
+        tx.objectStore(TR_STORE).put({ k: key, v, q: quality, at: Date.now() });
+        if (++trWrites % 50 === 1) pruneStoredTranslations(db);
+    }).catch(() => {});
+}
+function pruneStoredTranslations(db) {
+    try {
+        const st = db.transaction(TR_STORE, 'readwrite').objectStore(TR_STORE);
+        const count = st.count();
+        count.onsuccess = () => {
+            let extra = count.result - TR_STORE_MAX;
+            if (extra <= 0) return;
+            st.index('at').openCursor().onsuccess = (e) => { const cur = e.target.result; if (cur && extra-- > 0) { cur.delete(); cur.continue(); } };
+        };
+    } catch (e) {}
 }
 
 // ========== ЛОКАЛЬНИЙ ПЕРЕКЛАДАЧ CHROME (офлайн, без ключа) ==========

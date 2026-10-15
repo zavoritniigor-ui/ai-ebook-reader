@@ -281,6 +281,18 @@ jobs:
           echo "Running sync_browser.py..."
           python3 -u tests/sync_browser.py
 
+          echo "Running book_marks_browser.py..."
+          python3 -u tests/book_marks_browser.py
+
+          echo "Running share_target_browser.py..."
+          python3 -u tests/share_target_browser.py
+
+          echo "Running translation_cache_persist_browser.py..."
+          python3 -u tests/translation_cache_persist_browser.py
+
+          echo "Running sentence_boundaries_browser.py..."
+          python3 -u tests/sentence_boundaries_browser.py
+
           echo "Running text_scrubber_ribbon_browser.py..."
           python3 -u tests/text_scrubber_ribbon_browser.py
 

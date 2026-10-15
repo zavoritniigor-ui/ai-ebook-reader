@@ -17,6 +17,7 @@ class CDP:
                 # UI, so every test browser reports a Ukrainian system language regardless of the Chrome flags/host.
                 ua = self.call('Runtime.evaluate', expression='navigator.userAgent', returnByValue=True)['result']['value']
                 self.call('Emulation.setUserAgentOverride', userAgent=ua, acceptLanguage='uk-UA,uk')
+                self._forget_stored_translations()
                 return
             except (ConnectionError, OSError) as e:
                 last = e
@@ -25,6 +26,17 @@ class CDP:
                 if ws_url: break                     # an explicit target is the caller's choice: no silent swap
                 time.sleep(0.5 * (attempt + 1))
         raise last
+    def _forget_stored_translations(self):
+        # The app keeps finished translations in IndexedDB between launches (js/translation.js). All suites share one
+        # browser profile, so a mocked translation from one suite would answer the next suite's tap: start each with none.
+        from urllib.parse import urlparse
+        origins = {'http://127.0.0.1:8765'}
+        for name in ('READER_TEST_URL', 'READER_TTS_URL', 'READER_AUDIT_URL'):
+            u = urlparse(os.environ.get(name, ''))
+            if u.scheme and u.netloc: origins.add(f'{u.scheme}://{u.netloc}')
+        for origin in origins:
+            try: self.call('IndexedDB.deleteDatabase', securityOrigin=origin, databaseName='reader-translations')
+            except Exception: pass
     def _connect(self, ws_url=None):
         from urllib.parse import urlparse
         if not ws_url:

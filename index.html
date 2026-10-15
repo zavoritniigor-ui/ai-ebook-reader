@@ -607,6 +607,24 @@
         .word-visited { background: rgba(120,120,120,0.32); border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
         ::highlight(tts-current) { background-color: rgba(255, 193, 7, 0.38); }
         ::highlight(sel-current) { background-color: rgba(16, 163, 127, 0.38); }
+        /* Виділення читача (js/book-marks.js) */
+        ::highlight(book-mark) { background-color: rgba(255, 214, 10, 0.45); }
+        body.pdf-mode #tt-mark-btn { display: none; }
+        .tt-mark-host { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
+        .tt-mark-host[hidden] { display: none; }
+        .tt-mark-host textarea { width: 100%; box-sizing: border-box; min-height: 52px; resize: vertical; font: inherit; font-size: 15px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: inherit; color: inherit; }
+        .tt-mark-remove { align-self: flex-start; border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 14px; padding: 6px 10px; cursor: pointer; opacity: .85; }
+        /* Список виділень під змістом: зміст стискається до свого розміру, список гортається сам; знизу — місце під плаваючі кнопки. */
+        #sidebar:has(#marks-section:not([hidden])) #toc-list { flex: 0 1 auto; max-height: 45%; }
+        #marks-section { flex: 1 1 auto; overflow-y: auto; padding: 8px 12px 110px; border-top: 1px solid var(--border-color); }
+        #marks-section[hidden] { display: none; }
+        #marks-section h4 { margin: 6px 0 8px; font-size: 15px; }
+        #marks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        #marks-list .marks-empty { color: gray; font-size: 14px; }
+        .mark-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 6px; align-items: start; }
+        .mark-quote { grid-column: 1 / 2; display: block; min-width: 0; height: auto; min-height: 0; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; text-align: left; background: rgba(255, 214, 10, 0.30); border: 0; border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 14px; color: inherit; cursor: pointer; }
+        .mark-note { grid-column: 1 / 2; width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: inherit; color: inherit; resize: vertical; }
+        .mark-del { grid-column: 2 / 3; grid-row: 1 / 3; border: 0; background: transparent; font-size: 18px; cursor: pointer; min-width: 40px; min-height: 40px; }
         /* Синхронізація пристроїв (js/sync.js) — у вікні налаштувань */
         .sync-box { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border-color); }
         .sync-box [hidden] { display: none !important; }
@@ -1643,19 +1661,20 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=a05003066ea9"></script>
+    <script src="js/core.js?v=b22d00fd4186"></script>
     <script src="js/lang-detect.js?v=1955ec13e28d"></script>
-    <script src="js/tts.js?v=69d6aa977c46"></script>
-    <script src="js/selection.js?v=8fc476b43b2a"></script>
+    <script src="js/tts.js?v=fe7937d7ff5f"></script>
+    <script src="js/selection.js?v=568b132fc0a5"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
-    <script src="js/navigation.js?v=f50f0dbb6497"></script>
+    <script src="js/book-marks.js?v=bde3dbd03747"></script>
+    <script src="js/navigation.js?v=6bf46382cd5d"></script>
     <script src="js/pdf-zoom-pan.js?v=92884b71c1e4"></script>
     <script src="js/ui-tooltip.js?v=04f9affacb92"></script>
-    <script src="js/translation.js?v=11212fae30f7"></script>
+    <script src="js/translation.js?v=4246c9049073"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
-    <script src="js/grammar-svo.js?v=0758a568b5d0"></script>
+    <script src="js/grammar-svo.js?v=87cc90f2adcf"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
@@ -1663,7 +1682,7 @@
     <script src="js/grammar-rules.js?v=968243ba6b79"></script>
     <script src="js/ai-client.js?v=2b913809fb8e"></script>
     <script src="js/practice-session.js?v=240bbcb9a08d"></script>
-    <script src="js/practice-worksheet.js?v=bbcefde19020"></script>
+    <script src="js/practice-worksheet.js?v=431c79ac8f34"></script>
     <script src="js/dictation.js?v=5ea8b430dc63"></script>
     <script src="js/pdf-ink.js?v=9ed1750d501f"></script>
     <script src="js/pdf-crop.js?v=dc0c469a9ca2"></script>
@@ -1678,7 +1697,7 @@
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
     <script src="js/main.js?v=f3cf0a8ad54a"></script>
-    <script src="js/pwa-lifecycle.js?v=f79e3e8d91ce"></script>
+    <script src="js/pwa-lifecycle.js?v=735bdf7efa70"></script>
     <script src="js/i18n-es.js?v=5c1d85ca6766"></script>
 </body>
 </html>
