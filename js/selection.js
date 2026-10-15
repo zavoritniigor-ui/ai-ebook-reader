@@ -352,7 +352,7 @@ function pdfVisualGroup(layer, targetSpan) {
     while (to < sorted.length - 1 && (sortedRects[to + 1].top - sortedRects[to].top) < lineGap) to++;
     return sorted.slice(from, to + 1);
 }
-// Той самий алгоритм пошуку меж речення (крапка/знак+пробіл), що й buildSentenceRanges,
+// Ті самі межі речення (sentenceCuts у core.js), що й у buildSentenceRanges,
 // але джерело символів — заздалегідь відсортований у ВІЗУАЛЬНОМУ порядку список
 // фрагментів PDF, а не TreeWalker по DOM. range.toString() свідомо перевизначений на
 // точний зібраний текст: звичайний Range.toString() однаково пройшовся б по DOM/
@@ -399,6 +399,7 @@ function pdfSpansToText(spans) {
 }
 function buildSentenceRangesFromSpans(spans) {
     const chars = pdfSpansToChars(spans);
+    const cuts = sentenceCuts(chars.map(c => c.ch).join(''));   // core.js: скорочення, ініціали, лапки
     const sentences = [];
     let buffer = '', startNode = null, startOffset = 0, nodes = [], pieces = [];
     for (let k = 0; k < chars.length; k++) {
@@ -411,8 +412,7 @@ function buildSentenceRangesFromSpans(spans) {
             else pieces.push({ node, start: offset, end: offset + 1, span: chars[k].span });
         }
         if (!nodes.includes(node)) nodes.push(node);
-        const next = chars[k + 1];
-        const atSentenceEnd = /[.!?]/.test(ch) && (!next || /\s/.test(next.ch));
+        const atSentenceEnd = cuts.has(k);
         const atEnd = k === chars.length - 1;
         if (atSentenceEnd || atEnd) {
             const trimmed = buffer.trim();
