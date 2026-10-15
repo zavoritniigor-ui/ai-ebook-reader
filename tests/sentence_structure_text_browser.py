@@ -130,12 +130,14 @@ check("12 an unusable reply shows the failure note and paints nothing",
 # gap fill: a first reply that stops after the first clause leaves the rest uncoloured -> ONE follow-up call about just those words
 PART1 = json.dumps({"language": "fr", "parts": [{"text": "Hier", "role": "time", "kind": "past"}, {"text": "Marie", "role": "subject"}, {"text": "a mangé", "role": "verb"}]}, ensure_ascii=False)
 PART2 = json.dumps({"language": "fr", "parts": [{"text": "une pomme", "role": "object"}, {"text": "dans le jardin", "role": "place"}]}, ensure_ascii=False)
-c.js("els.ttCloseBtn.click(); structureCache.clear(); __calls.length = 0; { const seq = [%s, %s]; callAI = async (prompt, signal, task) => { __calls.push({task, prompt}); return seq.shift() || '{}'; }; } 1" % (json.dumps(PART1), json.dumps(PART2))); time.sleep(0.3)
+# The tap also translates the word (task 'translation') — only the breakdown calls may take the queued replies, or the
+# translation could swallow the first one depending on timing (failed locally, passed in CI).
+c.js("els.ttCloseBtn.click(); structureCache.clear(); __calls.length = 0; { const seq = [%s, %s]; callAI = async (prompt, signal, task) => { __calls.push({task, prompt}); return task === 'sentence_structure' ? (seq.shift() || '{}') : 'ok'; }; } 1" % (json.dumps(PART1), json.dumps(PART2))); time.sleep(0.3)
 click_xy(pos['x'], pos['y'])
 c.wait("els.tooltip.style.display==='flex'", timeout=8)
 b = center('#tt-struct-btn'); click_xy(b['x'], b['y'])
 check("14 words the first reply left uncovered are asked about in ONE follow-up call and painted too",
-      "document.querySelectorAll('#tt-struct-host .struct-key').length === 5 && __calls.filter(x => x.task === 'sentence_structure').length === 2 && __calls[1].prompt.includes(JSON.stringify('une pomme dans le jardin')) && CSS.highlights.has('struct-place') && [...CSS.highlights.get('struct-place')].map(x => x.toString()).join('|') === 'dans le jardin'", timeout=15)
+      "document.querySelectorAll('#tt-struct-host .struct-key').length === 5 && __calls.filter(x => x.task === 'sentence_structure').length === 2 && __calls.filter(x => x.task === 'sentence_structure')[1].prompt.includes(JSON.stringify('une pomme dans le jardin')) && CSS.highlights.has('struct-place') && [...CSS.highlights.get('struct-place')].map(x => x.toString()).join('|') === 'dans le jardin'", timeout=15)
 check("14b a fully covered sentence needs no follow-up (gap finder)",
       "structureGaps('Hier, Marie a mangé.', [{start:0,end:4},{start:6,end:11},{start:12,end:19}]).length === 0 && structureGaps('Hier, Marie a mangé une pomme.', [{start:0,end:4}]).length === 1")
 
