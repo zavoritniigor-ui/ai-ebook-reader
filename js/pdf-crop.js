@@ -21,7 +21,10 @@ let regionStart = null;
 document.getElementById('region-cancel').onclick = exitRegionMode;
 
 document.getElementById('btn-region').onclick = () => {
-    if (state.format !== 'pdf') { showToast(t('regionPdfOnly')); return; }
+    if (!state.format) { showToast(t('noBook')); return; }
+    // PDF — вирізане зображення; текстові книги (EPUB, FB2, TXT, HTML…) — текст усередині рамки стає звичайним виділенням
+    // (раніше тут була лише підказка «працює в PDF», а книги з бібліотеки здебільшого EPUB).
+    document.getElementById('region-hint').textContent = t(state.format === 'pdf' ? 'regionHint' : 'regionHintText');
     state.inkMode = false; document.body.classList.remove('ink-mode');
     document.body.classList.add('region-mode');
     document.body.classList.add('immersive-mode');   // прибираємо меню з дороги
@@ -57,6 +60,13 @@ regionOverlay.addEventListener('pointerup', async (e) => {
         left: Math.min(e.clientX, regionStart.x), top: Math.min(e.clientY, regionStart.y),
         width: Math.abs(e.clientX - regionStart.x), height: Math.abs(e.clientY - regionStart.y)
     };
+    if (state.format !== 'pdf') {
+        exitRegionMode();
+        if (rect.width < 20 || rect.height < 20) return;   // випадковий тап
+        const range = textRangeInRect(rect);
+        if (!range || !selectRangeAndTranslate(range, rect.left + rect.width / 2, rect.top + rect.height / 2, 'phrase_translation')) showToast(t('regionNoText'));
+        return;
+    }
     // Resolve WHICH page the gesture started on — continuous scroll can have
     // several pages rendered at once, unlike the old single-page layout.
     const startWrapper = document.elementFromPoint(regionStart.x, regionStart.y)?.closest('.pdf-page-wrapper');
@@ -67,9 +77,37 @@ regionOverlay.addEventListener('pointerup', async (e) => {
     openCropPreview(dataUrl);
 });
 
+// Текст книги всередині рамки: від першого до останнього символу, центр якого лежить у ній (лише видима сторінка).
+function textRangeInRect(rect) {
+    const right = rect.left + rect.width, bottom = rect.top + rect.height;
+    const inside = b => { const x = b.left + b.width / 2, y = b.top + b.height / 2; return b.width > 0 && x >= rect.left && x <= right && y >= rect.top && y <= bottom; };
+    const touches = b => b.width > 0 && b.left < right && b.right > rect.left && b.top < bottom && b.bottom > rect.top;
+    const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT);
+    const r = document.createRange();
+    let first = null, last = null, node;
+    while ((node = walker.nextNode())) {
+        if (!node.nodeValue.trim()) continue;
+        r.selectNodeContents(node);
+        if (![...r.getClientRects()].some(touches)) continue;
+        for (let i = 0; i < node.length; i++) {
+            if (/\s/.test(node.nodeValue[i])) continue;
+            r.setStart(node, i); r.setEnd(node, i + 1);
+            if (!inside(r.getBoundingClientRect())) continue;
+            if (!first) first = { node, i };
+            last = { node, i };
+        }
+    }
+    if (!first) return null;
+    const range = document.createRange();
+    range.setStart(first.node, first.i); range.setEnd(last.node, last.i + 1);
+    return range;
+}
 regionOverlay.addEventListener('pointercancel', () => { regionStart = null; regionBox.style.display = 'none'; });
 const cropDialog = document.getElementById('crop-dialog');
 Object.assign(I18N, {
+    regionHintText: { uk: 'Обведіть фрагмент сторінки — текст у ньому виділиться', en: 'Draw around part of the page — its text gets selected', fr: 'Entourez une partie de la page — son texte sera sélectionné',
+                      ru: 'Обведите фрагмент страницы — текст в нём выделится', es: 'Rodea una parte de la página: su texto quedará seleccionado' },
+    regionNoText: { uk: 'У цій рамці немає тексту книги.', en: 'There is no book text inside this frame.', fr: 'Aucun texte du livre dans ce cadre.', ru: 'В этой рамке нет текста книги.', es: 'No hay texto del libro en este recuadro.' },
     cropAttached: { uk: 'Фрагмент сторінки додано. Поставте запитання й натисніть ➤', en: 'Page crop attached. Ask your question and press ➤', fr: 'Extrait de page joint. Posez votre question et appuyez sur ➤', ru: 'Фрагмент страницы добавлен. Задайте вопрос и нажмите ➤', zh: '已附加页面片段。请输入问题并按 ➤', ko: '페이지 조각을 첨부했습니다. 질문을 입력하고 ➤ 를 누르세요', hi: 'पृष्ठ का अंश जोड़ा गया। अपना प्रश्न लिखें और ➤ दबाएँ', ga: 'Tá blúire den leathanach ceangailte. Cuir do cheist agus brúigh ➤' },
     cropRemove: { uk: 'Прибрати зображення', en: 'Remove image', fr: "Retirer l'image", ru: 'Убрать изображение', zh: '移除图片', ko: '이미지 제거', hi: 'छवि हटाएँ', ga: 'Bain an íomhá' },
     cropAskPlaceholder: { uk: 'Запитання про зображення (порожнє — перевірити вправу)', en: 'Question about the image (empty = check the exercise)', fr: "Question sur l'image (vide = vérifier l'exercice)", ru: 'Вопрос об изображении (пусто — проверить упражнение)', zh: '关于图片的问题（留空 = 检查练习）', ko: '이미지에 대한 질문 (비우면 = 연습 확인)', hi: 'छवि के बारे में प्रश्न (खाली = अभ्यास जाँचें)', ga: 'Ceist faoin íomhá (folamh = seiceáil an cleachtadh)' },

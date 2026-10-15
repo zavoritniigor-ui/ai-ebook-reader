@@ -78,6 +78,14 @@ function pageForBookTextOffset(offset) {
     }
     return null;
 }
+// Поки висота тексту зафіксована на час зміни розміру (див. containerResizeObserver), номери сторінок належать ще
+// СТАРОМУ макету. Перехід на сторінку в цей момент (гортання, «перейти до…») спершу завершує відкладене переразбиття —
+// інакше після нього сторінка зсувалась і читач опинявся не там, куди гортав.
+function flushPendingResize() {
+    if (!state.format || state.format === 'pdf' || !resizeTimer || els.pages.style.height === '100%') return;
+    clearTimeout(resizeTimer); resizeTimer = null;
+    repaginateBook();
+}
 function repaginateBook() {
     const offset = state.bookTextOffset;
     paginateContainer();
@@ -100,6 +108,7 @@ function paginateContainer() {
     els.pages.style.columnGap = pageGap() + 'px';
     els.pages.style.columnWidth = els.pages.clientWidth + 'px';
     els.pages.style.height = '100%';
+    state.pagedHeight = els.pages.clientHeight;   // висота, за якою щойно розбито сторінки (див. containerResizeObserver)
 
     const rough = Math.round(els.pages.clientWidth) + pageGap();
     const total = Math.max(1, Math.round(els.pages.scrollWidth / rough));
@@ -112,6 +121,7 @@ function paginateContainer() {
 // стоїть на цій сторінці. Інакше місцем ставав початок сторінки, і кожне переразбиття (на планшеті меню ховається одразу
 // після відкриття книги) відсувало закладку на сторінку назад: збережено 2-гу, відкривалась 1-ша.
 function goToPageInChapter(p, animate = true, anchor = null) {
+    flushPendingResize();
     p = Number.isFinite(p) ? Math.trunc(p) : 0;
     p = Math.max(0, Math.min(p, state.totalPagesInChapter - 1));
     state.pageInChapter = p;
@@ -310,6 +320,7 @@ function loadBookmark() {
 
 // НАВІГАЦІЯ ТА КЛІКИ
 function goNext() {
+    flushPendingResize();   // гортаємо від того, що видно, у вже остаточному макеті
     invalidateSelection();
     if (isSpeakingGlobal) stopGlobalTTS();
     // PDF Prev/Next remain secondary navigation (spec §12) but now scroll
@@ -320,6 +331,7 @@ function goNext() {
     else if (state.currentIndex < state.totalPages - 1) { if (state.format === 'epub') loadEpubChapter(state.currentIndex + 1); else if (state.docChapters) renderDocChapter(state.currentIndex + 1); else renderTxtPage(state.currentIndex + 1); }
 }
 function goPrev() {
+    flushPendingResize();
     invalidateSelection();
     if (isSpeakingGlobal) stopGlobalTTS();
     if (state.format === 'pdf') { if (state.currentIndex > 1) navigateToPdfPage(state.currentIndex - 1); return; }
@@ -446,6 +458,11 @@ const containerResizeObserver = new ResizeObserver((entries) => {
     // new size with the still-old page-wrapper size and mis-locate the point
     // that was actually centered on screen pre-resize. See pdfAnchor()'s doc
     // comment in pdf-zoom-pan.js.
+    // Текстові книги: поки розмір змінюється (анімація меню 0,3 с), колонки з висотою 100% перетікали б на КОЖНОМУ кадрі,
+    // а зсув сторінки лишається тим самим — на екрані миготів то один, то інший текст («хаотичне перемальовування»).
+    // Тримаємо висоту, за якою сторінки розбито востаннє; репагінація після анімації (finishResize) повертає 100% один раз.
+    // Обробник ResizeObserver спрацьовує до відмальовування кадру, тож перетікання не видно зовсім.
+    if (state.format && state.format !== 'pdf' && state.pagedHeight > 0) els.pages.style.height = state.pagedHeight + 'px';
     pendingPdfResizeAnchor = (state.format === 'pdf' && state.pdfDoc && pdfContinuousReady && lastContainerResizeSize)
         ? pdfAnchor(lastContainerResizeSize.w, lastContainerResizeSize.h) : null;
     lastContainerResizeSize = { w, h };

@@ -275,6 +275,8 @@ jobs:
           python3 -u tests/explain_lang_browser.py
           echo "Running csp_strict_browser.py..."
           python3 -u tests/csp_strict_browser.py
+          echo "Running menu_toggle_region_browser.py..."
+          python3 -u tests/menu_toggle_region_browser.py
 
           echo "Running text_scrubber_ribbon_browser.py..."
           python3 -u tests/text_scrubber_ribbon_browser.py
