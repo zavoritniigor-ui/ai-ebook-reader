@@ -57,7 +57,7 @@ c.call('Page.navigate', url=URL); boot()
 c.js("localStorage.clear()"); c.call('Page.reload'); boot()
 
 INP = {'openai': 'openai-key-input', 'groq': 'groq-key-input', 'gemini': 'api-key-input'}
-def open_dialog(): c.js("document.querySelector('button[onclick=\"openKeySettings()\"]').click()")
+def open_dialog(): c.js("document.querySelector('#btn-ai-key').click()")
 def radio(p): c.js(f"document.querySelector('input[name=ai-provider][value={p}]').click()")
 def save(): c.js("document.querySelector('#api-keys-form button[type=submit]').click()")
 def type_key(provider, text):

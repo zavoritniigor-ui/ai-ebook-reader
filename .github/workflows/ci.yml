@@ -37,7 +37,7 @@ jobs:
           node --check archive-guard.worker.js
           node tests/shared_ai_proxy_test.mjs
           
-          echo "Extracting inline JS from index.html..."
+          echo "Checking index.html has no inline JS (CSP forbids it)..."
           python3 -c '
           import html.parser
           import sys
@@ -67,14 +67,15 @@ jobs:
               parser = ScriptExtractor()
               parser.feed(f.read())
               
-          if not parser.scripts:
-              print("WARNING: No inline script blocks found in index.html!")
+          # The production CSP (_headers) has no 'unsafe-inline' in script-src: an inline <script> or on...= attribute would
+          # silently not run on the site. Fail here instead.
+          import re
+          scripts = [s for s in parser.scripts if s.strip()]
+          handlers = re.findall(r"<[a-zA-Z][^>]*\s(on[a-z]+)\s*=", open("index.html").read())
+          if scripts or handlers:
+              print(f"ERROR: index.html has {len(scripts)} inline script block(s) and inline handlers {sorted(set(handlers))}; the CSP blocks them - move the code into a js/ file.")
               sys.exit(1)
-              
-          print(f"Extracted {len(parser.scripts)} inline script blocks.")
-          for i, script in enumerate(parser.scripts):
-              with open(f"inline_script_{i}.js", "w") as out:
-                  out.write(script)
+          print("No inline scripts or inline event handlers in index.html (required by the CSP).")
           '
           
           echo "Checking inline JS blocks..."
@@ -272,6 +273,8 @@ jobs:
           python3 -u tests/ui_lang_es_browser.py
           echo "Running explain_lang_browser.py..."
           python3 -u tests/explain_lang_browser.py
+          echo "Running csp_strict_browser.py..."
+          python3 -u tests/csp_strict_browser.py
 
           echo "Running text_scrubber_ribbon_browser.py..."
           python3 -u tests/text_scrubber_ribbon_browser.py

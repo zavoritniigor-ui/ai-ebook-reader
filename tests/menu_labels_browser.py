@@ -31,7 +31,7 @@ check('1 every header control has a name: visible text or aria-label/title (>= 2
 check('2 the voice, translation-language and menu-language selects are told apart by distinct icons bound to them (no text captions) with titles',
       """(() => { const lab = id => document.querySelector('label.field-ico[for="' + id + '"]'); const l = ['voice-select', 'target-lang', 'ui-lang'].map(lab); return l.every(x => x && x.offsetParent !== null && x.title.length > 3) && new Set(l.map(x => x.textContent.trim())).size === 3 && !document.querySelector('label.field-cap'); })()""")
 check('3 four+ group captions exist and the previously icon-only buttons have visible text labels',
-      """document.querySelectorAll('.group-caption').length >= 5 && ['btn-ink', 'btn-region'].every(id => document.getElementById(id).textContent.trim().length > 4) && document.querySelector('button[onclick="openKeySettings()"]').textContent.trim().length > 4""")
+      """document.querySelectorAll('.group-caption').length >= 5 && ['btn-ink', 'btn-region'].every(id => document.getElementById(id).textContent.trim().length > 4) && document.querySelector('#btn-ai-key').textContent.trim().length > 4""")
 check('4 tablet portrait: captions hidden, header <= 190px, no horizontal overflow',
       """(() => { const h = document.getElementById('app-header').getBoundingClientRect().height; return getComputedStyle(document.querySelector('.group-caption')).display === 'none' && h <= 190 && document.documentElement.scrollWidth <= innerWidth + 1 || JSON.stringify({h, sw: document.documentElement.scrollWidth}); })()""")
 check('4b tablet portrait with wider glyphs (CI fonts): header still <= 190px',

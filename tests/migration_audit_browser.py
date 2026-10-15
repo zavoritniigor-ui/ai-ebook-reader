@@ -62,8 +62,10 @@ check('later controller changes show exactly one update banner', """(()=>{
 for _ in range(2):
     reload(hard=True)
 check('classic execution order and no duplicate scripts', '''(()=>{
- const scripts=[...document.scripts].filter(s=>s.src.includes('/js/'));
- return scripts.every(s=>!s.async&&!s.defer&&s.type!=='module') &&
+ const modules=[...document.scripts].filter(s=>s.src.includes('/js/')&&s.type==='module');
+ const scripts=[...document.scripts].filter(s=>s.src.includes('/js/')&&s.type!=='module');
+ return modules.length===1 && modules[0].src.includes('/js/pdf-worker-setup.js') && ![...document.scripts].some(s=>!s.src&&s.textContent.trim()) &&
+ scripts.every(s=>!s.async&&!s.defer) &&
  new Set(scripts.map(s=>s.src)).size===scripts.length &&
  scripts.map(s=>new URL(s.src).pathname.split('/').pop()).join(',')==='core.js,lang-detect.js,tts.js,selection.js,cefr-lexicon-data.js,learning-stats.js,reading-ribbon.js,navigation.js,pdf-zoom-pan.js,ui-tooltip.js,translation.js,sentence-structure.js,grammar-svo.js,grammar-rules-data-fr.js,grammar-rules-data-en.js,grammar-rules-details-fr.js,grammar-rules-details-en.js,grammar-rules.js,ai-client.js,practice-session.js,practice-worksheet.js,dictation.js,pdf-ink.js,pdf-crop.js,pdf-outline.js,pdf-thumbnails.js,pdf-continuous.js,pdf-render.js,formats.js,onboarding.js,library.js,book-shelf.js,quick-wheel.js,main.js,pwa-lifecycle.js,i18n-es.js';})()''')
 check('language and voice helper dependencies', "detectLang('Les oiseaux chantent.').startsWith('fr') && voiceForText('Hello world').voice.voiceURI==='audit-en'")

@@ -21,7 +21,7 @@
          тега: жодних import у застосунку не потрібно, pdfjsLib і далі доступний
          як глобальна змінна для решти (не-модульного) коду сторінки. -->
     <script src="vendor/pdf-6.3.289.min.mjs" type="module"></script>
-    <script type="module">if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf-6.3.289.worker.min.mjs';</script>
+    <script src="js/pdf-worker-setup.js?v=5274ecaf6438" type="module"></script>
 
     <style>
         :root {
@@ -1412,11 +1412,11 @@
                     <option value="ga">Gaeilge</option>
                     <option value="es">ES</option>
                 </select>
-                <button class="icon-btn" onclick="openKeySettings()" data-i18n-title="tAiKey" data-i18n-aria="tAiKey"><span aria-hidden="true">🔑</span> <span class="btn-text" data-i18n="lblAiKey">AI-ключ</span></button>
+                <button class="icon-btn" id="btn-ai-key" data-i18n-title="tAiKey" data-i18n-aria="tAiKey"><span aria-hidden="true">🔑</span> <span class="btn-text" data-i18n="lblAiKey">AI-ключ</span></button>
                 <!-- Показується лише у встановленому standalone-PWA (вмикається з JS) —
                      у звичайній вкладці браузера ця кнопка не потрібна. -->
-                <button class="icon-btn compact" id="btn-update-app" onclick="updateApp()" data-i18n-title="tUpdateApp" data-i18n-aria="tUpdateApp">🔄</button>
-                <button class="icon-btn compact" id="btn-exit-app" style="display:none;" onclick="exitApp()" data-i18n-title="tExitApp">🚪</button>
+                <button class="icon-btn compact" id="btn-update-app" data-i18n-title="tUpdateApp" data-i18n-aria="tUpdateApp">🔄</button>
+                <button class="icon-btn compact" id="btn-exit-app" style="display:none;" data-i18n-title="tExitApp">🚪</button>
             </div>
         </div>
     </header>
@@ -1483,7 +1483,7 @@
             <button type="button" id="ask-tab" class="panel-tab" aria-label="Запитай AI" data-i18n-title="tAskPanel"></button>
             <div class="panel-header">
                 <h3 data-i18n="panelAsk">🤖 Пояснення слова</h3>
-                <button class="close-panel-btn" onclick="document.getElementById('ask-panel').classList.remove('expanded')" data-i18n="close" data-i18n-title="tClose">✕</button>
+                <button class="close-panel-btn" data-close-panel="ask-panel" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
             <div id="ask-content" class="panel-content">
                 <div style="text-align:center; padding-top: 50px; color: gray;" data-i18n="askHint">…</div>
@@ -1497,7 +1497,7 @@
                 <span id="ask-attachment-label"></span>
                 <button type="button" id="ask-attachment-remove" aria-label="Remove image">✕</button>
             </div>
-            <form id="ask-chat-form" role="search" autocomplete="off" onsubmit="event.preventDefault(); els.askSendBtn.click();" style="display:contents;">
+            <form id="ask-chat-form" role="search" autocomplete="off" style="display:contents;">
                 <div class="chat-input-area">
                     <select id="mic-lang" style="height:44px; max-width:76px;">
                         <option value="uk-UA">UK</option><option value="en-US">EN</option><option value="fr-FR">FR</option><option value="ru-RU">RU</option>
@@ -1527,7 +1527,7 @@
             <button type="button" id="grammar-tab" class="panel-tab" aria-label="Граматика" data-i18n-title="tGrammarPanel"></button>
             <div class="panel-header">
                 <h3 data-i18n="panelGrammar">📝 Граматика</h3>
-                <button class="close-panel-btn" onclick="document.getElementById('grammar-panel').classList.remove('expanded')" data-i18n="close" data-i18n-title="tClose">✕</button>
+                <button class="close-panel-btn" data-close-panel="grammar-panel" data-i18n="close" data-i18n-title="tClose">✕</button>
             </div>
             <div class="grammar-mode-bar" id="grammar-mode-bar">
                 <!-- Verbs/Adjectives toggle. Labels are set by
@@ -1597,13 +1597,13 @@
         <button type="button" id="page-arrow-next" class="page-arrow" data-i18n-aria="next" data-i18n-title="next" aria-label="Вперед ▶" title="Вперед ▶">›</button>
     </div>
 
-    <div id="settings-modal" onclick="if (event.target === this) closeKeySettings()">
+    <div id="settings-modal">
         <div class="modal-content">
-            <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" onclick="closeKeySettings()" data-i18n="close" data-i18n-title="tClose">✕</button>
-            <form id="api-keys-form" autocomplete="off" onsubmit="event.preventDefault(); saveApiKey();">
+            <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" data-close-settings data-i18n="close" data-i18n-title="tClose">✕</button>
+            <form id="api-keys-form" autocomplete="off">
                 <div id="site-key-box" class="site-key-box" hidden>
                     <p id="site-key-status" role="status"></p>
-                    <button type="button" id="btn-use-site-key" class="btn-secondary" data-i18n="aiUseSiteKey" onclick="useSiteAiKey()">Використовувати ключ сайту</button>
+                    <button type="button" id="btn-use-site-key" class="btn-secondary" data-i18n="aiUseSiteKey">Використовувати ключ сайту</button>
                 </div>
                 <h3 id="gemini-key-label" data-i18n="keyTitle">🔑 Ключ Google AI Studio (Gemini)</h3>
                 <input type="password" id="api-key-input" name="gemini_api_key" placeholder="AIza..." aria-labelledby="gemini-key-label" autocomplete="new-password" spellcheck="false">
@@ -1629,7 +1629,7 @@
                 <div class="key-hint" data-i18n="keyNote"></div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn-ghost" onclick="closeKeySettings()" data-i18n="cancel">Скасувати</button>
+                    <button type="button" class="btn-ghost" data-close-settings data-i18n="cancel">Скасувати</button>
                     <button type="submit" class="btn-primary" data-i18n="save">Зберегти</button>
                 </div>
             </form>
@@ -1637,15 +1637,7 @@
     </div>
 
     <script src="js/core.js?v=a05003066ea9"></script>
-    <script src="js/lang-detect.js?v=79c89abfbcfa"></script>
-    <script>
-        // Перший виклик loadVoices() (визначена в js/core.js) навмисно тут, а не в самому
-        // core.js: усередині він доходить до pageLang() (js/lang-detect.js), яка на момент
-        // виконання core.js ще не існує — окремі класичні <script> НЕ поділяють hoisting
-        // одне з одним, лише спільний "script scope" для вже ВИКОНАНОГО коду. lang-detect.js
-        // вище вже завантажений і виконаний, тож тут виклик безпечний.
-        if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
-    </script>
+    <script src="js/lang-detect.js?v=1955ec13e28d"></script>
     <script src="js/tts.js?v=69d6aa977c46"></script>
     <script src="js/selection.js?v=8fc476b43b2a"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
@@ -1656,7 +1648,7 @@
     <script src="js/ui-tooltip.js?v=04f9affacb92"></script>
     <script src="js/translation.js?v=11212fae30f7"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
-    <script src="js/grammar-svo.js?v=dcf425f80840"></script>
+    <script src="js/grammar-svo.js?v=0758a568b5d0"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
@@ -1668,7 +1660,7 @@
     <script src="js/dictation.js?v=5ea8b430dc63"></script>
     <script src="js/pdf-ink.js?v=9ed1750d501f"></script>
     <script src="js/pdf-crop.js?v=1f5a80590d5c"></script>
-    <script src="js/pdf-outline.js?v=97d934db97c6"></script>
+    <script src="js/pdf-outline.js?v=c098ccf7c507"></script>
     <script src="js/pdf-thumbnails.js?v=8bb6dae47df9"></script>
     <script src="js/pdf-continuous.js?v=9746d5291070"></script>
     <script src="js/pdf-render.js?v=190a67b22cc5"></script>
@@ -1677,7 +1669,7 @@
     <script src="js/library.js?v=66bf1a0a0db9"></script>
     <script src="js/book-shelf.js?v=da89362f388e"></script>
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
-    <script src="js/main.js?v=467a6ea0f8b6"></script>
+    <script src="js/main.js?v=fc5842abfa2a"></script>
     <script src="js/pwa-lifecycle.js?v=f79e3e8d91ce"></script>
     <script src="js/i18n-es.js?v=7b143e6a5ccd"></script>
 </body>
