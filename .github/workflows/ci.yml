@@ -278,6 +278,9 @@ jobs:
           echo "Running menu_toggle_region_browser.py..."
           python3 -u tests/menu_toggle_region_browser.py
 
+          echo "Running share_target_browser.py..."
+          python3 -u tests/share_target_browser.py
+
           echo "Running translation_cache_persist_browser.py..."
           python3 -u tests/translation_cache_persist_browser.py
 
