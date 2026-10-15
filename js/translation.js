@@ -193,6 +193,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     positionTooltip(clientX, clientY, anchorRect);
     els.tooltip.style.visibility = 'visible';
     state.tooltipAnchor = { clientX, clientY, anchorRect };
+    if (typeof showBookMarkForTap === 'function') showBookMarkForTap();   // у виділеному місці — його нотатка (js/book-marks.js)
     // No auto-close countdown while the translation is loading: AI/network latency must not eat the reader's time.
     // Single words start the usual countdown only once a translation is actually on screen (below).
     cancelTooltipHide();

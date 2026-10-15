@@ -278,6 +278,9 @@ jobs:
           echo "Running menu_toggle_region_browser.py..."
           python3 -u tests/menu_toggle_region_browser.py
 
+          echo "Running book_marks_browser.py..."
+          python3 -u tests/book_marks_browser.py
+
           echo "Running text_scrubber_ribbon_browser.py..."
           python3 -u tests/text_scrubber_ribbon_browser.py
 
