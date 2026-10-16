@@ -1030,6 +1030,9 @@
         .grammar-focus-query { color: var(--text-muted, gray); font-weight: normal; }
         .grammar-lookup-alts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; }
         .grammar-lookup-alts button { min-height: 36px; padding: 4px 10px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--panel-bg); color: var(--text-color); cursor: pointer; }
+        /* Phones: the word popup docks at the bottom over the panel's lower part; scroll room lets any item (the Practice
+           button below a lookup card, the last grid rows) be brought above it. */
+        @media (max-width: 640px) { #grammar-content { padding-bottom: 45vh; } }
         .grammar-practice-row .grammar-practice-btn { margin-top: 0; flex: 0 0 auto; }
         .grammar-practice-topic-mic { flex: 0 0 44px; width: 44px; height: 44px; }
         .grammar-practice-topic-mic.recording { color: #dc3545; border-color: #dc3545; }
