@@ -80,7 +80,7 @@ window.addEventListener('pointerup', () => {
 
 // One pointer stream owns PDF touch gestures (including the crop overlay).
 const pdfPointers = new Map();
-let pdfGesture = null, pdfBlockClick = false, pdfFrame = 0, pdfInkSnapshot = null;
+let pdfGesture = null, pdfBlockClick = false, pdfFrame = 0;
 els.container.addEventListener('scroll', () => {
     if (state.format !== 'pdf') return;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
@@ -306,8 +306,9 @@ function cancelPdfRender() {
 }
 function cancelPdfInteraction(keepTrackingSuppressed = false) {
     clearTimeout(wheelZoomTimer); cancelAnimationFrame(pdfFrame); pdfFrame = 0;
-    pdfPointers.clear(); pdfGesture = null; pdfInkSnapshot = null;
-    if (inkDrawing) { inkDrawing = false; inkCurrent = null; redrawInk(activeInkCanvas(), activeInkPage()); saveInk(); }
+    pdfPointers.clear(); pdfGesture = null;
+    if (inkDrawing) { inkDrawing = false; inkCurrent = null; redrawInk(activeInkCanvas(), activeInkPage()); saveInk(activeInkPage()); }
+    inkGestureSnapshot = null;
     els.pages.style.removeProperty('will-change');
     // Safety net: every gesture-end path reaches here, including the "zoom
     // ended back at 1x" case where relayoutContinuousPdfAtScale() (the other
@@ -338,7 +339,7 @@ document.addEventListener('pointerdown', e => {
         clearTimeout(wheelZoomTimer);
         pdfBlockClick = false; state.suppressNextClick = false;
         pdfGesture = { moved: false, multi: false };
-        pdfInkSnapshot = state.inkMode ? structuredClone(inkStrokes(activeInkPage())) : null;
+        inkGestureSnapshot = null;   // the canvas under this finger records its own page (js/pdf-ink.js)
     }
     pdfPointers.set(e.pointerId, { x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY });
     if (pdfPointers.size >= 2) {
@@ -347,8 +348,8 @@ document.addEventListener('pointerdown', e => {
         pdfBlockClick = true;
         clearTimeout(touchSelTimer); dragSel = null; state.touchSelecting = false;
         invalidateSelection(); window.getSelection()?.removeAllRanges();
-        if (pdfInkSnapshot) { state.ink[inkPageKey(activeInkPage())] = pdfInkSnapshot; redrawInk(activeInkCanvas(), activeInkPage()); saveInk(); }
-        inkDrawing = false; inkCurrent = null; regionStart = null; regionBox.style.display = 'none';
+        if (state.inkMode) rollbackInkGesture(); else { inkDrawing = false; inkCurrent = null; }
+        regionStart = null; regionBox.style.display = 'none';
         els.pages.style.willChange = 'transform';
         e.preventDefault(); e.stopPropagation();
     }

@@ -35,8 +35,10 @@ class CDP:
             u = urlparse(os.environ.get(name, ''))
             if u.scheme and u.netloc: origins.add(f'{u.scheme}://{u.netloc}')
         for origin in origins:
-            try: self.call('IndexedDB.deleteDatabase', securityOrigin=origin, databaseName='reader-translations')
-            except Exception: pass
+            # Suites share one browser profile: stored translations / PDF ink of one suite must not answer or appear in the next.
+            for db in ('reader-translations', 'reader-ink'):
+                try: self.call('IndexedDB.deleteDatabase', securityOrigin=origin, databaseName=db)
+                except Exception: pass
     def _connect(self, ws_url=None):
         from urllib.parse import urlparse
         if not ws_url:
