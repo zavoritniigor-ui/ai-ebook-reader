@@ -1023,6 +1023,16 @@
         .grammar-focus-why { font-size: 13.5px; line-height: 1.5; color: var(--text-color); opacity: .9; margin: 0; }
         .grammar-practice-btn { margin-top: 15px; }
         .grammar-practice-row { display: flex; gap: 8px; align-items: center; margin-top: 15px; }
+        .grammar-lookup { display: flex; gap: 8px; align-items: center; padding: 10px 15px 0; flex-shrink: 0; }
+        .grammar-lookup input { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 6px 10px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--panel-bg); color: var(--text-color); }
+        .grammar-lookup button { flex: 0 0 44px; width: 44px; min-height: 44px; margin: 0; padding: 0; }
+        .grammar-lookup-status { margin: 6px 15px 0; font-size: 13px; color: var(--text-muted, gray); flex-shrink: 0; }
+        .grammar-focus-query { color: var(--text-muted, gray); font-weight: normal; }
+        .grammar-lookup-alts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; }
+        .grammar-lookup-alts button { min-height: 36px; padding: 4px 10px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--panel-bg); color: var(--text-color); cursor: pointer; }
+        /* Phones: the word popup docks at the bottom over the panel's lower part; scroll room lets any item (the Practice
+           button below a lookup card, the last grid rows) be brought above it. */
+        @media (max-width: 640px) { #grammar-content { padding-bottom: 45vh; } }
         .grammar-practice-row .grammar-practice-btn { margin-top: 0; flex: 0 0 auto; }
         .grammar-practice-topic-mic { flex: 0 0 44px; width: 44px; height: 44px; }
         .grammar-practice-topic-mic.recording { color: #dc3545; border-color: #dc3545; }
@@ -1570,6 +1580,13 @@
                 <button type="button" id="grammar-mode-verbs" class="grammar-mode-btn active">Verbs</button>
                 <button type="button" id="grammar-mode-adjectives" class="grammar-mode-btn">Adjectives</button>
             </div>
+            <!-- A verb/adjective typed by the learner (usually in their own language) -> its paradigm in the studied
+                 language (grammar-svo.js runGrammarLookup). Placeholder/labels set by renderGrammarLookupLabels(). -->
+            <form class="grammar-lookup" id="grammar-lookup" autocomplete="off">
+                <input type="text" id="grammar-lookup-input" maxlength="60" autocomplete="off" spellcheck="false" enterkeyhint="search">
+                <button type="submit" id="grammar-lookup-btn" class="btn-secondary">🔎</button>
+            </form>
+            <p id="grammar-lookup-status" class="grammar-lookup-status" role="status" hidden></p>
             <div class="grammar-controls-bar" id="grammar-controls-bar">
                 <!-- Dynamically populated by grammar-svo.js:renderGrammarControlsBar():
                      tense/mood buttons in Verbs mode, empty in Adjectives mode. -->
@@ -1669,7 +1686,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=e5df45c204da"></script>
+    <script src="js/core.js?v=e539f7a94cf9"></script>
     <script src="js/lang-detect.js?v=1955ec13e28d"></script>
     <script src="js/tts.js?v=fe7937d7ff5f"></script>
     <script src="js/selection.js?v=568b132fc0a5"></script>
@@ -1682,13 +1699,13 @@
     <script src="js/ui-tooltip.js?v=04f9affacb92"></script>
     <script src="js/translation.js?v=76a5c76c33c5"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
-    <script src="js/grammar-svo.js?v=87cc90f2adcf"></script>
+    <script src="js/grammar-svo.js?v=4c92ef091106"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
     <script src="js/grammar-rules.js?v=968243ba6b79"></script>
-    <script src="js/ai-client.js?v=4650e84bf281"></script>
+    <script src="js/ai-client.js?v=920e91ef9912"></script>
     <script src="js/practice-session.js?v=240bbcb9a08d"></script>
     <script src="js/practice-worksheet.js?v=431c79ac8f34"></script>
     <script src="js/dictation.js?v=5ea8b430dc63"></script>
@@ -1706,6 +1723,6 @@
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
     <script src="js/main.js?v=f3cf0a8ad54a"></script>
     <script src="js/pwa-lifecycle.js?v=735bdf7efa70"></script>
-    <script src="js/i18n-es.js?v=ac54d6a99b65"></script>
+    <script src="js/i18n-es.js?v=324fbddbb942"></script>
 </body>
 </html>

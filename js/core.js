@@ -1135,6 +1135,12 @@ const I18N = {
     practiceFocus:      { uk: 'Слова:', en: 'Words:', fr: 'Mots :', ru: 'Слова:' },
     practiceTopicLabel: { uk: 'Тема речень', en: 'Topic of the sentences', fr: 'Thème des phrases', ru: 'Тема предложений', zh: '句子主题', ko: '문장 주제', hi: 'वाक्यों का विषय', ga: 'Ábhar na n-abairtí' },
     practiceTopicPlaceholder: { uk: 'Своя тема…', en: 'Your topic…', fr: 'Votre thème…', ru: 'Своя тема…', zh: '自定主题…', ko: '내 주제…', hi: 'अपना विषय…', ga: 'Do théama…' },
+    grammarLookupPlaceholder: { uk: 'Дієслово чи прикметник своєю мовою → {lang}', en: 'A verb or adjective in your language → {lang}', fr: 'Un verbe ou un adjectif dans votre langue → {lang}', ru: 'Глагол или прилагательное на своём языке → {lang}', zh: '用你的语言输入动词或形容词 → {lang}', ko: '내 언어로 동사나 형용사 → {lang}', hi: 'अपनी भाषा में क्रिया या विशेषण → {lang}', ga: 'Briathar nó aidiacht i do theanga féin → {lang}' },
+    grammarLookupLabel: { uk: 'Знайти відмінювання свого слова', en: 'Find the forms of your own word', fr: 'Trouver les formes de votre mot', ru: 'Найти формы своего слова', zh: '查找自己输入的词的变化形式', ko: '내 단어의 활용형 찾기', hi: 'अपने शब्द के रूप खोजें', ga: 'Aimsigh foirmeacha d’fhocail féin' },
+    grammarLookupBtn: { uk: 'Знайти', en: 'Find', fr: 'Chercher', ru: 'Найти', zh: '查找', ko: '찾기', hi: 'खोजें', ga: 'Aimsigh' },
+    grammarLookupEmpty: { uk: 'Напишіть дієслово чи прикметник.', en: 'Type a verb or an adjective.', fr: 'Écrivez un verbe ou un adjectif.', ru: 'Напишите глагол или прилагательное.', zh: '请输入一个动词或形容词。', ko: '동사나 형용사를 입력하세요.', hi: 'कोई क्रिया या विशेषण लिखें।', ga: 'Scríobh briathar nó aidiacht.' },
+    grammarLookupNotFound: { uk: 'Це не схоже на дієслово чи прикметник. Спробуйте інше слово.', en: 'That does not look like a verb or an adjective. Try another word.', fr: 'Cela ne ressemble pas à un verbe ni à un adjectif. Essayez un autre mot.', ru: 'Это не похоже на глагол или прилагательное. Попробуйте другое слово.', zh: '这看起来不是动词或形容词，请换一个词。', ko: '동사나 형용사가 아닌 것 같습니다. 다른 단어를 입력해 보세요.', hi: 'यह क्रिया या विशेषण नहीं लगता। कोई दूसरा शब्द आज़माएँ।', ga: 'Ní cosúil gur briathar ná aidiacht é sin. Bain triail as focal eile.' },
+    grammarLookupAlso: { uk: 'Також: ', en: 'Also: ', fr: 'Aussi : ', ru: 'Также: ', zh: '另见：', ko: '다른 단어: ', hi: 'और भी: ', ga: 'Freisin: ' },
     practiceTopicMeta: { uk: 'Тема:', en: 'Topic:', fr: 'Thème :', ru: 'Тема:', zh: '主题：', ko: '주제:', hi: 'विषय:', ga: 'Ábhar:' },
     practiceRegenerate: { uk: 'Регенерувати', en: 'Regenerate', fr: 'Régénérer', ru: 'Перегенерировать' },
     // Sentence-level learning actions in Practice (js/practice-worksheet.js buildPracticeSentenceRow):
@@ -1914,6 +1920,7 @@ function applyI18n() {
     updateDictationUI();
     els.askTab.setAttribute('aria-label', t('tAskPanel'));
     els.grammarTab.setAttribute('aria-label', t('tGrammarPanel'));
+    if (typeof renderGrammarLookupLabels === 'function') renderGrammarLookupLabels();
     if (typeof syncBookLangSelect === 'function') syncBookLangSelect();
     const practiceRestore = document.getElementById('practice-restore');
     if (practiceRestore) {

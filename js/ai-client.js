@@ -21,6 +21,8 @@ const OPENAI_TASK_PROFILES = {
     // The per-request budget is set by grammarProfile() (grammar-svo.js) from the size of the text; this is only the fallback.
     grammar_analysis: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
+    // Grammar lookup: a verb/adjective typed by the learner (usually in their own language) -> its lemma + one paradigm.
+    grammar_lookup: { reasoning: 'none', max_output_tokens: 500, stream: false },
     // Grammar rules panel (js/grammar-rules.js): find a rule's occurrences in the visible page text; explain one by theory.
     rules_search: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     rules_explain: { reasoning: 'low', max_output_tokens: 900, stream: false },
@@ -160,7 +162,7 @@ function aiAvailable() { return !!aiEffectiveKey(aiProviderForTask('default')); 
 // reply) the same request is repeated once on OpenAI (requestAI). Waiting for OpenAI on every request was too slow.
 // No Groq key at all: the request goes where it went before -- OpenAI for the deeper tasks below, else the ACTIVE provider.
 // Routing 'off': the single active provider, no fallback.
-const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'practice_reading', 'sentence_structure', 'structure_deep',
+const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'grammar_lookup', 'practice_reading', 'sentence_structure', 'structure_deep',
     'rules_search', 'rules_explain', 'language_level', 'ask']);
 function aiProviderForTask(task) {
     const active = state.activeAiProvider;
