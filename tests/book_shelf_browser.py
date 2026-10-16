@@ -40,6 +40,10 @@ check('4 one tap reopens it at the saved page (same book key, so the position is
 c.js("openLibrary(); const s = document.getElementById('library-source'); s.value = 'shelf'; s.dispatchEvent(new Event('change')); 1"); time.sleep(0.8)
 check('5 the library window has «My books»: the kept book with Read and remove, no search field or languages',
       "document.querySelectorAll('#library-list .library-card').length === 1 && document.querySelector('#library-list .library-name').textContent === 'Kept Book' && document.getElementById('library-q').hidden && document.getElementById('library-lang').hidden")
+c.js("(() => { closeLibrary(); const s = document.getElementById('library-source'); s.value = 'gutenberg'; s.dispatchEvent(new Event('change')); closeLibrary(); return 1; })()"); time.sleep(0.5)
+c.js("document.getElementById('btn-my-books').click(); 1"); time.sleep(0.8)
+check('5b the menu button «📖 My books» opens the library straight on the kept books (even if another source was chosen last)',
+      "document.getElementById('library-modal').classList.contains('open') && document.getElementById('library-source').value === 'shelf' && document.querySelector('#library-list .library-name').textContent === 'Kept Book' && document.getElementById('btn-my-books').getAttribute('aria-label') === t('myBooksLabel')")
 c.js("document.querySelector('#library-list .library-card .library-save').click(); 1"); time.sleep(0.8)
 check('6 remove deletes it from the device', "listShelfBooks().then(b => b.length === 0 && document.querySelectorAll('#library-list .library-card').length === 0)")
 c.js("closeLibrary(); 1")

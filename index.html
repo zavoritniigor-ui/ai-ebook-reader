@@ -110,6 +110,7 @@
         #qm-launcher:focus-visible, .qm-item:focus-visible { outline: 3px solid var(--accent-color); outline-offset: 3px; }
 
         .header-controls { display: flex; width: 100%; align-items: center; gap: 4px; flex-wrap: wrap; }
+        .header-controls .my-books-tablet { display: none; }
         .toolbar-group {
             display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
             padding: 0 12px; border-right: 1px solid var(--border-color);
@@ -1062,6 +1063,10 @@
             /* 96px і відступи 4px: значок 🗣️ перед списком голосів забрав запас першого рядка, і з ширшими шрифтами (CI) шапка
                планшета ставала третім рядком (211px). */
             #voice-select { max-width: 96px; }
+            /* «📖 Мої книги» на планшеті — значок у групі налаштувань: перший рядок шапки тут заповнений ушир (з ширшими
+               шрифтами CI навіть значок у групі «Книга» переносив рядок, і шапка росла 161→211px), а останній має запас. */
+            #btn-my-books { display: none; }
+            .header-controls .my-books-tablet { display: inline-flex; }
             .header-controls { row-gap: 6px; }
             .toolbar-group { padding-left: 4px; padding-right: 4px; }
             .toolbar-group:first-child { padding-left: 0; }
@@ -1358,6 +1363,7 @@
                 <span class="group-caption" data-i18n="grpBook"></span>
                 <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tBookContents" aria-label="Зміст та ескізи книги"><svg class="book-nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></button>
                 <label class="btn" for="file-upload" data-i18n="open">📂 Відкрити</label>
+                <button class="btn my-books-btn" id="btn-my-books" data-i18n-title="tMyBooks" data-i18n-aria="myBooksLabel"><span aria-hidden="true">📖</span><span data-i18n="myBooksLabel"> Мої книги</span></button>
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown">
             </div>
             <!-- READING / TTS -->
@@ -1420,6 +1426,8 @@
             <!-- SETTINGS -->
             <div class="toolbar-group">
                 <span class="group-caption" data-i18n="grpView"></span>
+                <!-- Планшет: «Мої книги» тут (значок), бо перший рядок шапки заповнений ушир; див. CSS .my-books-tablet -->
+                <button class="icon-btn compact my-books-btn my-books-tablet" data-i18n-title="tMyBooks" data-i18n-aria="myBooksLabel">📖</button>
                 <select id="theme-select" data-i18n-title="tTheme">
                     <option value="light" data-i18n="themeLight">Світла</option>
                     <option value="sepia" data-i18n="themeSepia">Сепія</option>
@@ -1692,8 +1700,8 @@
     <script src="js/pdf-render.js?v=190a67b22cc5"></script>
     <script src="js/formats.js?v=0adff3b5d013"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=d7e71aab2993"></script>
-    <script src="js/book-shelf.js?v=da89362f388e"></script>
+    <script src="js/library.js?v=a266be538226"></script>
+    <script src="js/book-shelf.js?v=aa2098ef9089"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
     <script src="js/quick-wheel.js?v=838f095142a1"></script>
     <script src="js/main.js?v=f3cf0a8ad54a"></script>
