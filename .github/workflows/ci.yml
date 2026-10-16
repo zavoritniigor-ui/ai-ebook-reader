@@ -284,6 +284,9 @@ jobs:
           echo "Running book_marks_browser.py..."
           python3 -u tests/book_marks_browser.py
 
+          echo "Running grammar_lookup_browser.py..."
+          python3 -u tests/grammar_lookup_browser.py
+
           echo "Running share_target_browser.py..."
           python3 -u tests/share_target_browser.py
 

@@ -80,8 +80,9 @@ check('async replacement/epoch/target cancellation', '''(()=>{
  const old=state.targetLang;state.targetLang='fr';const stale=!d.current();state.targetLang=old;
  cancelAsyncTasks();return stale&&d.signal.aborted&&!asyncTasks.size;})()''')
 check('explicit provider, no fallback, no-key and abort', '''(async()=>{
- const oldFetch=fetch, oldGroq=state.groqKey, oldKey=state.apiKey, oldProvider=state.activeAiProvider;let calls=[];
- try{state.groqKey='audit-fake';state.apiKey='audit-fake';state.activeAiProvider='groq';
+ const oldFetch=fetch, oldGroq=state.groqKey, oldKey=state.apiKey, oldProvider=state.activeAiProvider, oldRouting=state.aiRouting;let calls=[];
+ // routing off = the explicitly chosen provider only (routing 'auto' sends everything to Groq first: ai_routing_browser.py)
+ try{state.aiRouting='off';state.groqKey='audit-fake';state.apiKey='audit-fake';state.activeAiProvider='groq';
  window.fetch=async(url,opts)=>{calls.push(String(url));return new Response('{}',{status:503});};
  try{await callAI('test');return false;}catch(e){if(calls.length!==1||!calls[0].includes('groq'))return false;}
  state.activeAiProvider='gemini';calls=[];
@@ -90,7 +91,7 @@ check('explicit provider, no fallback, no-key and abort', '''(async()=>{
  const controller=new AbortController();controller.abort();calls=[];
  try{await callAIVision('test','data:image/jpeg;base64,AA==',controller.signal);return false;}catch(e){if(e.name!=='AbortError'||calls.length)return false;}
  state.groqKey='';state.apiKey='';try{await callAI('test');return false;}catch(e){return e.message===missingAiKey()&&calls.length===0;}
- }finally{window.fetch=oldFetch;state.groqKey=oldGroq;state.apiKey=oldKey;state.activeAiProvider=oldProvider;}})()''')
+ }finally{window.fetch=oldFetch;state.groqKey=oldGroq;state.apiKey=oldKey;state.activeAiProvider=oldProvider;state.aiRouting=oldRouting;}})()''')
 check('in-flight text and vision abort never call fallback', """(async()=>{
  const oldFetch=fetch,oldGroq=state.groqKey,oldGemini=state.apiKey,oldProvider=state.activeAiProvider;
  try{state.groqKey=state.apiKey='audit-fake';state.activeAiProvider='groq';

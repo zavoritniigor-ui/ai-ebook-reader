@@ -157,32 +157,36 @@ function sharedAiProvider(preferred) {
 }
 function aiAvailable() { return !!aiEffectiveKey(aiProviderForTask('default')); }
 // ---- Task routing --------------------------------------------------------------------------------------------------
-// With routing 'auto' (default) each task goes to the provider that suits it, IF that provider's key is stored:
-//   translation  -> Groq   (near-instant answers while the learner waits at a tapped word)
-//   grammar, breakdowns, rules, practice, ask, language level -> OpenAI (the deeper, structured work)
-// Anything else (vision, default) and every task whose preferred provider has no key use the ACTIVE provider, exactly as before.
-// This is a choice made BEFORE the request by task type; a failed request is never silently re-sent to another provider.
-const AI_ROUTE_GROQ_TASKS = new Set(['translation']);
+// With routing 'auto' (default) EVERY request goes to Groq first (answers in a second or two), IF a Groq key is stored or the
+// site has a shared one; OpenAI is only the backup: when Groq does not answer (network error, timeout, refusal, empty / cut-off
+// reply) the same request is repeated once on OpenAI (requestAI). Waiting for OpenAI on every request was too slow.
+// No Groq key at all: the request goes where it went before -- OpenAI for the deeper tasks below, else the ACTIVE provider.
+// Routing 'off': the single active provider, no fallback.
 const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'grammar_lookup', 'practice_reading', 'sentence_structure', 'structure_deep',
     'rules_search', 'rules_explain', 'language_level', 'ask']);
 function aiProviderForTask(task) {
     const active = state.activeAiProvider;
     if (state.aiRouting === 'off') return aiProviderKey(active) ? active : sharedAiProvider(active) || active;
-    const wanted = AI_ROUTE_GROQ_TASKS.has(task) ? 'groq' : AI_ROUTE_OPENAI_TASKS.has(task) ? 'openai' : null;
+    if (aiProviderKey('groq')) return 'groq';
+    const wanted = AI_ROUTE_OPENAI_TASKS.has(task) ? 'openai' : null;
     const own = wanted && aiProviderKey(wanted) ? wanted : active;
-    // No own key for it: the shared server key, preferring the task's routed provider; none -> the active one (asks for a key).
-    return aiProviderKey(own) ? own : sharedAiProvider(wanted || active) || own;
+    // No own key for it: the shared server key, Groq first; none -> the active one (asks for a key).
+    return aiProviderKey(own) ? own : sharedAiProvider('groq') || own;
 }
-// Which providers translate a tapped fragment, fastest first. Routing 'auto': Groq (near-instant) and OpenAI (slower, more careful) are BOTH asked
-// when both keys are stored -- the UI shows Groq at once and OpenAI's answer replaces it when it arrives. Routing off / a single key: one provider.
-function translationProviders() {
+// Where a request goes when Groq did not answer: OpenAI (own or shared key), else the active provider; null = nowhere.
+function aiBackupProvider(provider) {
+    if (state.aiRouting === 'off' || provider !== 'groq') return null;
+    if (aiEffectiveKey('openai')) return 'openai';
     const active = state.activeAiProvider;
+    return active !== 'groq' && aiEffectiveKey(active) ? active : null;
+}
+// Which providers translate a tapped fragment, in order: the first is asked, the second ONLY if the first gave no usable answer.
+function translationProviders() {
     if (state.aiRouting === 'off') { const p = aiProviderForTask('translation'); return aiEffectiveKey(p) ? [p] : []; }
-    const list = ['groq', 'openai'].filter(p => aiProviderKey(p));
-    if (!list.length && aiProviderKey(active)) list.push(active);
-    // Only the shared key: ONE provider per tap (Groq when the site has it -- fast and cheap), not two paid requests.
-    if (!list.length) { const shared = sharedAiProvider('groq'); if (shared) list.push(shared); }
-    return list;
+    const first = aiProviderForTask('translation');
+    if (!aiEffectiveKey(first)) return [];
+    const backup = aiBackupProvider(first);
+    return backup ? [first, backup] : [first];
 }
 function missingAiKey(provider = state.activeAiProvider) {
     return t('aiAddKey').replace('{provider}', AI_PROVIDERS[provider]?.name || 'AI');
@@ -438,6 +442,18 @@ const GROQ_TASK_PROFILES = {
     vision: { max_completion_tokens: 700 },
     default: { max_completion_tokens: 2048 }
 };
+// gpt-oss counts its hidden reasoning in max_completion_tokens: a task without its own Groq profile gets the OpenAI budget plus
+// this headroom, so a long structured reply (grammar, rules, practice) is not cut off.
+const GROQ_REASONING_HEADROOM = 1024;
+function groqMaxTokens(task, options) {
+    if (options.maxOutputTokens) return options.maxOutputTokens + GROQ_REASONING_HEADROOM;
+    if (GROQ_TASK_PROFILES[task]) return GROQ_TASK_PROFILES[task].max_completion_tokens;
+    const openai = OPENAI_TASK_PROFILES[task];
+    return openai ? Math.max(GROQ_TASK_PROFILES.default.max_completion_tokens, openai.max_output_tokens + GROQ_REASONING_HEADROOM) : GROQ_TASK_PROFILES.default.max_completion_tokens;
+}
+// With OpenAI as a backup, Groq is not waited for as long as a slow provider would be: past this it counts as "not answering".
+const GROQ_FIRST_TIMEOUT_MS = { practice_reading: 60000, rules_search: 30000, grammar_analysis: 30000, sentence_structure: 30000 };
+function groqFirstTimeout(task) { return GROQ_FIRST_TIMEOUT_MS[task] || 20000; }
 
 async function callGroq(prompt, dataUrl, key, signal, task = 'default', options = {}) {
     const profile = GROQ_TASK_PROFILES[task] || GROQ_TASK_PROFILES.default;
@@ -447,7 +463,7 @@ async function callGroq(prompt, dataUrl, key, signal, task = 'default', options 
             { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: dataUrl } }
         ] }]
     } : {
-        model: GROQ_MODEL, reasoning_format: 'hidden', reasoning_effort: 'low', max_completion_tokens: options.maxOutputTokens || profile.max_completion_tokens,
+        model: GROQ_MODEL, reasoning_format: 'hidden', reasoning_effort: 'low', max_completion_tokens: groqMaxTokens(task, options),
         messages: [{ role: 'user', content: prompt }]
     };
     const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal, options.timeoutMs || aiTaskTimeout(task));
@@ -463,16 +479,28 @@ async function callGroq(prompt, dataUrl, key, signal, task = 'default', options 
 // options (all optional): { maxOutputTokens, timeoutMs, meta } — meta is filled with { provider, model, finish, usage, elapsedMs, rawChars }.
 function callAI(prompt, signal, task = 'default', onDelta, options) { return requestAI(prompt, null, signal, task, onDelta, options); }
 function callAIVision(prompt, dataUrl, signal, options) { return requestAI(prompt, dataUrl, signal, 'vision', undefined, options); }
+// Groq first (routing 'auto'): when Groq gives no usable answer the same request is repeated ONCE on the backup provider
+// (aiBackupProvider: OpenAI). A caller that chose the provider itself (options.provider -- translation) runs its own order.
 // Shared key only: when the shared provider refuses (bad key, quota, provider outage), the request is repeated ONCE on the
-// other shared provider, so visitors keep working. Own keys never fall back (a failure there is the learner's to see/fix).
+// other shared provider, so visitors keep working.
 const SHARED_FALLBACK_STATUS = s => s === 401 || s === 403 || s === 429 || s >= 500;
 async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
     const forced = options.provider && Object.hasOwn(AI_PROVIDERS, options.provider) ? options.provider : null;
     const provider = forced || aiProviderForTask(task);
-    try { return await requestAIOnce(prompt, dataUrl, signal, task, onDelta, options); }
+    const backup = forced ? null : aiBackupProvider(provider);
+    const meta = options.meta || (options.meta = {});   // one meta object for the caller, whichever provider answers
+    const first = backup && !options.timeoutMs ? Object.assign({}, options, { timeoutMs: groqFirstTimeout(task) }) : options;
+    try { return await requestAIOnce(prompt, dataUrl, signal, task, onDelta, first); }
     catch (err) {
+        if (signal?.aborted || !err || err.name === 'AbortError') throw err;
+        if (backup && err.reason) {
+            // A refused shared Groq key stays refused for this session: later requests start on the backup at once.
+            if ((err.status === 401 || err.status === 403) && aiEffectiveKey('groq') === SHARED_AI_KEY) sharedAiProviders.groq = false;
+            for (const k of Object.keys(meta)) delete meta[k];
+            return requestAIOnce(prompt, dataUrl, signal, task, onDelta, Object.assign({}, options, { provider: backup }));
+        }
         const other = provider === 'groq' ? 'openai' : provider === 'openai' ? 'groq' : null;
-        const fallback = err && err.reason === 'http' && SHARED_FALLBACK_STATUS(Number(err.status)) && !signal?.aborted
+        const fallback = err.reason === 'http' && SHARED_FALLBACK_STATUS(Number(err.status))
             && aiEffectiveKey(provider) === SHARED_AI_KEY && other && aiEffectiveKey(other) === SHARED_AI_KEY;
         if (!fallback) throw err;
         // A refused key stays refused: later requests go straight to the other provider for this session.

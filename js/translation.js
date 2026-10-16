@@ -321,16 +321,14 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
             }).catch(() => {});
         }
-        // Онлайн з двома ключами: Groq (миттєво) і OpenAI (повільніше, ретельніше) питаються ОДНОЧАСНО. Groq показується одразу (⚡),
-        // а коли надходить OpenAI (🧠) — його переклад замінює перший. Якщо швидкий не відповів, чекаємо на повільного.
+        // Онлайн: спершу Groq (відповідає за секунду-дві, ⚡). OpenAI (🧠) питаємо ЛИШЕ тоді, коли Groq не дав придатної відповіді
+        // (помилка, тайм-аут, порожньо) — чекати на повільний OpenAI при кожному тапі було задовго.
         const providers = navigator.onLine && aiAvailable() ? translationProviders() : [];
         const askProvider = (p) => aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000, p || null);
-        const fastProvider = providers[0] || null, slowProvider = providers[1] || null;
-        const fastPromise = askProvider(fastProvider);   // без ключа aiTranslateText сама повертає null
-        const slowPromise = slowProvider ? askProvider(slowProvider) : null;
-        let ai = await fastPromise;
-        let aiMark = fastProvider === 'openai' ? '🧠' : '⚡';
-        if (!ai && slowPromise) { ai = await slowPromise; aiMark = '🧠'; }
+        const markOf = p => (p === 'groq' ? '⚡' : '🧠');
+        let ai = await askProvider(providers[0] || null);   // без ключа aiTranslateText сама повертає null
+        let aiMark = markOf(providers[0]);
+        if (!ai && providers[1] && myLookup === state.lookupToken && task.current()) { ai = await askProvider(providers[1]); aiMark = markOf(providers[1]); }
         aiDone = true;
         if (myLookup !== state.lookupToken || !task.current()) return;
         const renderAi = (result, mark) => {
@@ -339,32 +337,11 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 (al?.contextNote ? ` <span class="tt-context">(${escapeHtml(al.contextNote)})</span>` : '') + ` <span class="tt-note">${mark}</span>` };
         };
         if (ai) {
-            let main = renderAi(ai, aiMark), extrasHtml = '';
+            const main = renderAi(ai, aiMark);
+            let extrasHtml = '';
             alignmentResult = main.al;
             html = main.html;
             els.ttTranslation.innerHTML = html;
-            // Перемальовує вікно з поточним головним перекладом і словниковими значеннями; викликається і коли надходить повільніший провайдер.
-            const repaint = (reinstall) => {
-                const full = main.html + extrasHtml;
-                els.ttTranslation.innerHTML = full;
-                state.translationCache[cacheKey] = main.al ? { ...main.al, html: full } : full;
-                storeTranslation(cacheKey, state.translationCache[cacheKey], 'ai');
-                if (reinstall) {
-                    clearAlignment();
-                    if (main.al) installAlignment(cleanText, main.al, lookupRoot);
-                    if (state.speakSide === 'translation') speakInLang(mainTranslationText(), targetLang, 'tr');
-                }
-                const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
-            };
-            // Повільніший провайдер замінює показане, щойно відповість (лише якщо вікно те саме й відповідь придатна).
-            if (slowPromise && aiMark === '⚡') {
-                slowPromise.then(better => {
-                    if (!better || myLookup !== state.lookupToken || !task.current()) return;
-                    const plainOf = r => (typeof r === 'object' ? r.translation : r);
-                    if (plainOf(better) === plainOf(ai)) { main = renderAi(better, '⚡🧠'); repaint(false); return; }
-                    main = renderAi(better, '🧠'); repaint(true);
-                }).catch(() => {});
-            }
             // Для окремого слова додаємо словникові значення: вони не дублюють переклад, а показують інші можливі значення.
             if (!isMultiWord) {
                 try {

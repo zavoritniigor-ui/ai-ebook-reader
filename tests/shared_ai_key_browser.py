@@ -39,14 +39,14 @@ c.call('Page.navigate', url=URL)
 c.wait("document.readyState==='complete' && !document.body.inert && typeof aiEffectiveKey==='function'", timeout=30)
 c.js("localStorage.clear(); state.openaiKey = ''; state.groqKey = ''; state.apiKey = ''; state.activeAiProvider = 'gemini'; state.aiRouting = 'auto'; 1")
 check('1 the app learns which shared keys the site has', "sharedAiProviders.groq === true && sharedAiProviders.openai === true", timeout=5)
-check('2 with no own key AI is available and tasks are routed to the shared providers',
-      "aiAvailable() && aiProviderForTask('translation') === 'groq' && aiProviderForTask('grammar_analysis') === 'openai' && aiProviderForTask('vision') === 'openai'")
-check('3 a tapped word asks ONE provider (Groq) with the shared key, not two', "JSON.stringify(translationProviders()) === '[\"groq\"]'")
+check('2 with no own key AI is available and every task starts on the shared Groq, shared OpenAI is the backup',
+      "aiAvailable() && aiProviderForTask('translation') === 'groq' && aiProviderForTask('grammar_analysis') === 'groq' && aiProviderForTask('vision') === 'groq' && aiBackupProvider('groq') === 'openai'")
+check('3 a tapped word asks shared Groq first, shared OpenAI only as the backup', "JSON.stringify(translationProviders()) === '[\"groq\",\"openai\"]'")
 c.js("window.__out = null; callAI('Translate: pear', new AbortController().signal, 'translation').then(r => __out = r, e => __out = 'ERR ' + e.message); 1")
 check('4 the request goes to /api/ai with NO Authorization header (the key is added by the server)',
       "__out === '{\"direct\":\"груша\",\"context\":null}' && __calls.length === 1 && __calls[0].viaServer && __calls[0].provider === 'groq' && __calls[0].auth === null", timeout=5)
 c.js("window.__out = null; callAI('Explain', new AbortController().signal, 'grammar_analysis').then(r => __out = r, e => __out = 'ERR ' + e.message); 1")
-check('5 OpenAI tasks also go through the server', "__out !== null && __calls.length === 2 && __calls[1].viaServer && __calls[1].provider === 'openai' && __calls[1].auth === null", timeout=5)
+check('5 grammar also goes to shared Groq through the server (one request: Groq answered)', "__out !== null && __calls.length === 2 && __calls[1].viaServer && __calls[1].provider === 'groq' && __calls[1].auth === null", timeout=5)
 check('6 the key dialog does not treat the shared key as an own key', "aiProviderKey('groq') === '' && aiProviderKey('openai') === ''")
 c.js("state.groqKey = 'gsk-own'; window.__out = null; callAI('Translate: pear', new AbortController().signal, 'translation').then(r => __out = r, e => __out = 'ERR ' + e.message); 1")
 check('7 an own key wins: the request goes straight to the provider with the own key', "__out !== null && __calls.length === 3 && !__calls[2].viaServer && __calls[2].auth === 'Bearer gsk-own'", timeout=5)
@@ -72,7 +72,7 @@ check('13 own keys saved + a site key: the dialog says own keys win and offers t
       "(() => { const b = document.getElementById('site-key-box'), btn = document.getElementById('btn-use-site-key'); return !b.hidden && getComputedStyle(b).display !== 'none' && !btn.hidden && getComputedStyle(btn).display !== 'none' && document.getElementById('site-key-status').textContent === t('aiSiteKeyOwnSaved'); })()")
 c.js("document.getElementById('btn-use-site-key').click(); 1")
 check('14 one tap drops ALL own keys (state + storage), closes the dialog and routes AI to the site key',
-      "!state.groqKey && !state.openaiKey && !localStorage.getItem('reader_groq_key') && !localStorage.getItem('reader_openai_key') && document.getElementById('settings-modal').style.display === 'none' && aiEffectiveKey('groq') === SHARED_AI_KEY && JSON.stringify(translationProviders()) === '[\"groq\"]'")
+      "!state.groqKey && !state.openaiKey && !localStorage.getItem('reader_groq_key') && !localStorage.getItem('reader_openai_key') && document.getElementById('settings-modal').style.display === 'none' && aiEffectiveKey('groq') === SHARED_AI_KEY && JSON.stringify(translationProviders()) === '[\"groq\",\"openai\"]'")
 c.js("openKeySettings(); 1")
 check('15 reopened: it says AI works through the site key, no button, fields empty',
       "document.getElementById('site-key-status').textContent === t('aiSiteKeyActive') && document.getElementById('btn-use-site-key').hidden && getComputedStyle(document.getElementById('btn-use-site-key')).display === 'none' && document.getElementById('groq-key-input').value === '' && document.getElementById('openai-key-input').value === ''")
