@@ -49,6 +49,7 @@ def upload(pdf_bytes, name):
     c.wait("state.format==='pdf' && pdfContinuousReady && !!state.pdfDoc && !!pdfPageWrappers[1]?.querySelector('.ink-layer')", timeout=20)
     c.js("els.container.scrollTop=0;document.getElementById('btn-ink').click();inkWidth.value='2'")
     c.wait("state.inkMode && !!pdfPageWrappers[1].querySelector('.ink-layer').dataset.bound", timeout=5)
+    c.js("inkLoadPromise.then(() => 1)")   # the book's stored ink (IndexedDB) is in memory
 
 def key(name):
     return c.js(f"'ink_'+bookKeyFor({{name:{name!r},size:{len(PDF_A if name == 'a.pdf' else PDF_B)},lastModified:{STAMP[name]}}})")
@@ -76,7 +77,7 @@ def erase_at(fx, fy, page=1):
 undo = lambda: c.js("document.getElementById('ink-undo').click()")
 clear = lambda: c.js("document.getElementById('ink-clear').click()")
 mem = lambda page=1: c.js(f"JSON.stringify(state.ink['{page}']||[])")
-stored = lambda name: c.js(f"localStorage.getItem({key(name)!r})")
+stored = lambda name: c.js(f"readStoredInk({key(name)[4:]!r})")   # what is persisted (IndexedDB), after pending writes
 def stored_page(name, page=1):
     raw = stored(name)
     return json.dumps(json.loads(raw).get(str(page), []), separators=(',', ':')) if raw else '[]'
@@ -84,7 +85,7 @@ def stored_page(name, page=1):
 def seed_b():
     """B gets its own existing ink (drawn in B, top-left) and is reopened so it starts with no history."""
     upload(PDF_B, 'b.pdf')
-    c.js("state.ink={};saveInk()")
+    c.js("state.ink={};saveInk().then(() => 1)")
     draw(.1, .1, dy=0)
     assert c.js("inkStrokes(1).length") == 1
     upload(PDF_B, 'b.pdf')
@@ -92,7 +93,7 @@ def seed_b():
 
 def seed_a(n=2):
     upload(PDF_A, 'a.pdf')
-    c.js("state.ink={};saveInk()")
+    c.js("state.ink={};saveInk().then(() => 1)")
     for i in range(n):
         draw(.3, .4 + i * .15)
     assert c.js("inkStrokes(1).length") == n, c.js("inkStrokes(1).length")

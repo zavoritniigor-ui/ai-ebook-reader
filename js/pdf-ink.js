@@ -39,6 +39,8 @@ function inkStrokes(pageNum) {
 // "3" in B), so loadInk() starts a fresh history and every op/canvas/save is checked against
 // inkOwner: a stale op from book A can never mutate or persist into book B.
 let inkHistory = {}, inkRedoStack = {}, inkOwner = null;
+// The page a touch gesture started on, as it was BEFORE the gesture (see rollbackInkGesture).
+let inkGestureSnapshot = null;
 function inkHistoryKey(pageNum) { return 'history_' + inkPageKey(pageNum); }
 function getInkHistory(pageNum) {
     const key = inkHistoryKey(pageNum);
@@ -50,26 +52,151 @@ function getInkRedoStack(pageNum) {
     if (!inkRedoStack[key]) inkRedoStack[key] = [];
     return inkRedoStack[key];
 }
-function saveInk() {
-    if (!state.bookKey || inkOwner !== state.bookKey) return; // in-memory ink is not this book's
-    try { writeStored('ink_' + state.bookKey, JSON.stringify(state.ink)); } catch (e) {}
+// ---- Storage: IndexedDB, one record per page, compact ------------------------------------------------------------
+// Textbooks collect a LOT of handwriting. All of a book's ink used to be one JSON string in localStorage (≈5 MB for the
+// whole app, ~40 bytes per point): past the quota every later stroke was silently lost on the next launch. Now each page
+// is its own IndexedDB record ['<bookKey>', '<page>'] (hundreds of MB available), points packed as a Uint16Array
+// (0..65535 of the page width/height, 4 bytes per point). Coordinates are quantised to that grid when drawn
+// (inkPoint), so what is on screen is exactly what is stored. localStorage ink from older versions is moved over once.
+const INK_DB = 'reader-ink', INK_STORE = 'pages', INK_Q = 65535;
+let inkDbPromise = null, inkDbBroken = false;
+function inkDb() {
+    if (inkDbBroken || typeof indexedDB === 'undefined') return Promise.resolve(null);
+    if (!inkDbPromise) {
+        inkDbPromise = new Promise(resolve => {
+            let req;
+            try { req = indexedDB.open(INK_DB, 1); } catch (e) { inkDbBroken = true; resolve(null); return; }
+            req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(INK_STORE)) req.result.createObjectStore(INK_STORE); };
+            req.onsuccess = () => {
+                const db = req.result;
+                db.onversionchange = () => { db.close(); inkDbPromise = null; };
+                resolve(db);
+            };
+            req.onerror = req.onblocked = () => { inkDbBroken = true; resolve(null); };
+        });
+    }
+    return inkDbPromise;
 }
+const inkQ = v => Math.round(Math.min(1, Math.max(0, v)) * INK_Q) / INK_Q;
+function encodeInkPage(strokes) {
+    return (strokes || []).filter(st => st && Array.isArray(st.p) && st.p.length).map(st => {
+        const flat = new Uint16Array(st.p.length * 2);
+        st.p.forEach((pt, i) => { flat[2 * i] = Math.round(inkQ(pt[0]) * INK_Q); flat[2 * i + 1] = Math.round(inkQ(pt[1]) * INK_Q); });
+        return { c: st.c, w: st.w, p: flat };
+    });
+}
+function decodeInkPage(records) {
+    return (Array.isArray(records) ? records : []).map(r => {
+        const p = [];
+        const flat = r && r.p;
+        if (flat && typeof flat.length === 'number' && !Array.isArray(flat)) { for (let i = 0; i + 1 < flat.length; i += 2) p.push([flat[i] / INK_Q, flat[i + 1] / INK_Q]); }
+        else if (Array.isArray(flat)) flat.forEach(pt => p.push([inkQ(pt[0]), inkQ(pt[1])]));   // plain arrays (legacy / fallback)
+        return { c: r.c, w: r.w, p };
+    }).filter(st => st.p.length);
+}
+const inkBookRange = bookKey => IDBKeyRange.bound([bookKey, ''], [bookKey, '￿']);
+// Every page of a book, decoded: { '<page>': strokes }.
+async function readInkPages(bookKey) {
+    const db = await inkDb();
+    if (!db || !bookKey) return null;
+    return new Promise(resolve => {
+        const out = {};
+        try {
+            const req = db.transaction(INK_STORE, 'readonly').objectStore(INK_STORE).openCursor(inkBookRange(bookKey));
+            req.onsuccess = () => { const cur = req.result; if (!cur) { resolve(out); return; } out[cur.key[1]] = decodeInkPage(cur.value); cur.continue(); };
+            req.onerror = () => resolve(null);
+        } catch (e) { resolve(null); }
+    });
+}
+// Writes the given pages ({page: strokes}; an empty page is deleted); replaceAll also deletes this book's other pages.
+async function writeInkPages(bookKey, pages, replaceAll = false) {
+    const db = await inkDb();
+    if (!db) return false;
+    return new Promise(resolve => {
+        try {
+            const tx = db.transaction(INK_STORE, 'readwrite'), store = tx.objectStore(INK_STORE);
+            if (replaceAll) {
+                const keysReq = store.getAllKeys(inkBookRange(bookKey));
+                keysReq.onsuccess = () => { for (const k of keysReq.result) if (!pages[k[1]] || !pages[k[1]].length) store.delete(k); };
+            }
+            for (const [page, strokes] of Object.entries(pages)) {
+                const enc = encodeInkPage(strokes);
+                if (enc.length) store.put(enc, [bookKey, String(page)]); else store.delete([bookKey, String(page)]);
+            }
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = tx.onabort = () => resolve(false);
+        } catch (e) { resolve(false); }
+    });
+}
+// No IndexedDB at all (very old / locked-down browsers): the old localStorage key, at least quantised.
+function saveInkFallback() {
+    const compact = {};
+    for (const [page, strokes] of Object.entries(state.ink)) if (strokes && strokes.length) compact[page] = strokes.map(st => ({ c: st.c, w: st.w, p: st.p.map(pt => [inkQ(pt[0]), inkQ(pt[1])]) }));
+    writeStored('ink_' + state.bookKey, JSON.stringify(compact));
+}
+let inkSaveChain = Promise.resolve();
+// saveInk(page): persists that page of the CURRENT book. saveInk() with no page: the whole in-memory ink of this book
+// (pages that are no longer there are deleted). Saves run one after another, so an older write never lands last.
+function saveInk(pageNum) {
+    if (!state.bookKey || inkOwner !== state.bookKey) return inkSaveChain; // in-memory ink is not this book's
+    const bookKey = state.bookKey;
+    const whole = pageNum === undefined;
+    const page = whole ? null : inkPageKey(pageNum);
+    // Never before this book's stored ink has been read: a page written now would replace the strokes it already had.
+    // The pages are taken at write time, after the load merged everything in.
+    inkSaveChain = inkSaveChain.then(() => inkLoadPromise).then(async () => {
+        if (inkOwner !== bookKey || state.bookKey !== bookKey) return;
+        const pages = {};
+        if (whole) for (const [p, strokes] of Object.entries(state.ink)) pages[p] = (strokes || []).slice();
+        else pages[page] = (state.ink[page] || []).slice();
+        const ok = await writeInkPages(bookKey, pages, whole);
+        if (!ok && inkOwner === bookKey && state.bookKey === bookKey) saveInkFallback();
+    }).catch(() => {});
+    return inkSaveChain;
+}
+// Waits for every queued write (tests; the app never needs to).
+function inkSaved() { return inkSaveChain; }
+// For tests and diagnostics: what is actually stored for a book, as JSON ({page: strokes}).
+async function readStoredInk(bookKey) {
+    await inkSaveChain;
+    const pages = await readInkPages(bookKey);
+    if (pages) return JSON.stringify(pages);
+    try { return readStored('ink_' + bookKey); } catch (e) { return null; }
+}
+let inkLoadPromise = Promise.resolve();
 function loadInk() {
     state.ink = {};
     inkOwner = state.bookKey || null;
-    inkHistory = {}; inkRedoStack = {}; inkActivePage = 0;
+    inkHistory = {}; inkRedoStack = {}; inkActivePage = 0; inkGestureSnapshot = null;
     inkDrawing = false; inkCurrent = null; inkPointerId = null;
-    if (!state.bookKey) return;
-    try {
-        let raw = readStored('ink_' + state.bookKey);
-        if (!raw && state.oldBookKey) {
-            raw = readStored('ink_' + state.oldBookKey);
-            if (raw) {
-                try { writeStored('ink_' + state.bookKey, raw); localStorage.removeItem('ink_' + state.oldBookKey); } catch (e) {}
-            }
+    if (!state.bookKey) { inkLoadPromise = Promise.resolve(); return; }
+    const bookKey = state.bookKey, oldKey = state.oldBookKey;
+    inkLoadPromise = (async () => {
+        // 1) what older versions kept in localStorage (this book's key, or the key it had before)
+        let legacy = {}, legacyKey = null;
+        for (const k of [bookKey, oldKey]) {
+            if (!k) continue;
+            try { const raw = readStored('ink_' + k); if (raw) { legacy = JSON.parse(raw) || {}; legacyKey = k; break; } } catch (e) { /* unreadable: ignore */ }
         }
-        state.ink = JSON.parse(raw || '{}');
-    } catch (e) { state.ink = {}; }
+        // 2) IndexedDB (this key; else records still under the book's previous key)
+        let pages = await readInkPages(bookKey);
+        if (pages && !Object.keys(pages).length && oldKey) {
+            const old = await readInkPages(oldKey);
+            if (old && Object.keys(old).length) { pages = old; if (await writeInkPages(bookKey, old)) await writeInkPages(oldKey, {}, true); }
+        }
+        const loaded = {};
+        for (const [page, strokes] of Object.entries(legacy)) loaded[page] = decodeInkPage(strokes);
+        if (pages) Object.assign(loaded, pages);           // IndexedDB is newer than any leftover localStorage copy
+        if (pages && legacyKey) {
+            const missing = {};
+            for (const page of Object.keys(legacy)) if (!pages[page]) missing[page] = loaded[page];
+            if (!Object.keys(missing).length || await writeInkPages(bookKey, missing)) { try { localStorage.removeItem('ink_' + legacyKey); } catch (e) {} }
+        }
+        if (inkOwner !== bookKey || state.bookKey !== bookKey) return;   // another book was opened meanwhile
+        // Strokes drawn while the stored ink was still loading are kept, on top of it.
+        for (const [page, strokes] of Object.entries(loaded)) state.ink[page] = strokes.concat(state.ink[page] || []);
+        if (typeof redrawAllVisibleInk === 'function') redrawAllVisibleInk();
+    })().catch(() => {});
 }
 function redrawInk(cv, pageNum) {
     cv ??= activeInkCanvas(); pageNum ??= activeInkPage();
@@ -102,10 +229,24 @@ function redrawAllVisibleInk() {
     });
 }
 
+// A second finger landed while the first one was drawing/erasing: that touch was the start of a pinch, not ink. The
+// page the gesture STARTED on gets its strokes back exactly as they were (it used to be the previously active page,
+// so one page's handwriting could land on another and the current page's was lost).
+function rollbackInkGesture() {
+    const snap = inkGestureSnapshot;
+    inkGestureSnapshot = null;
+    inkDrawing = false; inkCurrent = null;
+    if (!snap || snap.owner !== inkOwner) return;   // a snapshot from another document never lands here (saveInk guards the book)
+    state.ink[snap.page] = snap.strokes;
+    const w = typeof pdfPageWrappers !== 'undefined' ? pdfPageWrappers[Number(snap.page)] : null;
+    const cv = w && w.querySelector('.ink-layer');
+    if (cv) redrawInk(cv, Number(snap.page));
+    saveInk(Number(snap.page));
+}
 let inkDrawing = false, inkCurrent = null;
 function inkPoint(e, cv) {
     const r = cv.getBoundingClientRect();
-    return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
+    return [inkQ((e.clientX - r.left) / r.width), inkQ((e.clientY - r.top) / r.height)];
 }
 const inkWidth = document.getElementById('ink-width');
 inkWidth.value = readStoredNumber('reader_ink_width', 1.5, .5, 6);
@@ -137,6 +278,8 @@ function bindInkCanvas(cv, pageNum) {
         if (owner !== inkOwner || !state.inkMode || inkDrawing || pdfPointers.size > 1) return;
         inkActivePage = pageNum;
         inkPointerId = e.pointerId;
+        // A second finger (pinch / palm) turns this into a zoom gesture: rollbackInkGesture() restores THIS page.
+        inkGestureSnapshot = { page: inkPageKey(pageNum), owner, strokes: inkStrokes(pageNum).slice() };
         e.preventDefault();
         cv.setPointerCapture(e.pointerId);
         inkDrawing = true;
@@ -161,7 +304,7 @@ function bindInkCanvas(cv, pageNum) {
             if (hist.length > 50) hist.shift();
         }
         inkDrawing = false; inkCurrent = null;
-        redrawInk(cv, pageNum); saveInk();
+        redrawInk(cv, pageNum); saveInk(pageNum);
     };
     cv.addEventListener('pointerup', finishStroke);
     cv.addEventListener('pointercancel', finishStroke);
@@ -182,7 +325,7 @@ function inkEraseAt(pt, cv, pageNum) {
         }
         if (erased) {
             const erasedStroke = list.splice(i, 1)[0];
-            redrawInk(cv, pageNum); saveInk();
+            redrawInk(cv, pageNum); saveInk(pageNum);
             getInkHistory(pageNum).push({ type: 'erase', stroke: erasedStroke, index: i, owner: inkOwner });
             const hist = getInkHistory(pageNum);
             if (hist.length > 50) hist.shift();
@@ -236,7 +379,7 @@ document.getElementById('ink-undo').onclick = () => {
     const redo = getInkRedoStack(pageNum);
     if (redo.length > 50) redo.shift();
 
-    redrawInk(activeInkCanvas(), pageNum); saveInk();
+    redrawInk(activeInkCanvas(), pageNum); saveInk(pageNum);
 };
 document.getElementById('ink-clear').onclick = () => {
     if (!confirm(t('clearPageAsk'))) return;
@@ -247,7 +390,7 @@ document.getElementById('ink-clear').onclick = () => {
     if (hist.length > 50) hist.shift();
     state.ink[inkPageKey(pageNum)] = [];
     getInkRedoStack(pageNum).length = 0;
-    redrawInk(activeInkCanvas(), pageNum); saveInk();
+    redrawInk(activeInkCanvas(), pageNum); saveInk(pageNum);
 };
 document.getElementById('ink-done').onclick = () => {
     state.inkMode = false;
