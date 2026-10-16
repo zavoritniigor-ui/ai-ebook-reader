@@ -189,7 +189,8 @@ for provider, key, expr in (
         ('openai', 'openaiKey', "a => JSON.stringify(a.body.input).includes('input_image') && JSON.stringify(a.body.input).includes('data:image/jpeg;base64,')")):
     if not c.js(f"typeof AI_PROVIDERS['{provider}'] === 'object'"):
         continue
-    c.js(f"state.activeAiProvider = '{provider}'; state[AI_PROVIDERS['{provider}'].key] = 'test-key-not-real'; 1")
+    # routing off: this checks each provider's own request format, not which provider answers first (Groq-first routing)
+    c.js(f"state.aiRouting = 'off'; state.activeAiProvider = '{provider}'; state[AI_PROVIDERS['{provider}'].key] = 'test-key-not-real'; 1")
     crop(4); click('#crop-ai'); ask('What does this say?')
     check(f'9 {provider}: image sent in its multimodal format (vision-capable model)', f"__ai.at(-1).provider === '{provider}' && ({expr})(__ai.at(-1))", timeout=5)
     check(f'9 {provider}: answer shown', "els.askContent.textContent.includes('Answer about the crop')", timeout=5)

@@ -1224,8 +1224,8 @@ const I18N = {
     btnStruct:      { uk: '🧩 Розбір', en: '🧩 Parts', fr: '🧩 Analyse', ru: '🧩 Разбор' },
     tStruct:        { uk: 'Розбір речення: частини речення кольорами в тексті', en: 'Sentence breakdown: colour the parts in the text', fr: 'Analyse de la phrase : parties en couleur dans le texte', ru: 'Разбор предложения: части цветом в тексте' },
     // AI task routing (settings).
-    aiRoutingLabel: { uk: 'Розподіл за завданнями: переклад — Groq, граматика й розбори — OpenAI', en: 'Route by task: translation → Groq, grammar & breakdowns → OpenAI', fr: 'Répartition par tâche : traduction → Groq, grammaire et analyses → OpenAI', ru: 'Распределение по задачам: перевод — Groq, грамматика и разборы — OpenAI' },
-    aiRoutingHint: { uk: 'Працює лише для провайдерів, чиї ключі збережено; інакше використовується «Активний AI». Вимкніть, щоб усе йшло через один активний провайдер.', en: 'Only applies to providers whose keys are saved; otherwise the active AI is used. Turn off to send everything through the single active provider.', fr: 'Ne s’applique qu’aux fournisseurs dont la clé est enregistrée ; sinon l’IA active est utilisée. Désactivez pour tout envoyer au fournisseur actif.', ru: 'Работает только для провайдеров с сохранёнными ключами; иначе используется «Активный AI». Выключите, чтобы всё шло через один активный провайдер.' },
+    aiRoutingLabel: { uk: 'Спершу Groq (швидко); якщо не відповів — OpenAI', en: 'Groq first (fast); OpenAI only if Groq does not answer', fr: 'Groq d’abord (rapide) ; OpenAI seulement si Groq ne répond pas', ru: 'Сначала Groq (быстро); если не ответил — OpenAI' },
+    aiRoutingHint: { uk: 'Усі запити спершу йдуть у Groq; OpenAI — лише запасний, коли Groq не відповів. Працює для збережених ключів (або ключа сайту). Вимкніть, щоб усе йшло через один «Активний AI».', en: 'Every request goes to Groq first; OpenAI is only the backup when Groq does not answer. Uses the saved keys (or the site key). Turn off to send everything through the single active AI.', fr: 'Chaque requête va d’abord à Groq ; OpenAI n’est qu’un secours quand Groq ne répond pas. Utilise les clés enregistrées (ou la clé du site). Désactivez pour tout envoyer à l’IA active.', ru: 'Все запросы сначала идут в Groq; OpenAI — только запасной, когда Groq не ответил. Работает с сохранёнными ключами (или ключом сайта). Выключите, чтобы всё шло через один «Активный AI».' },
     // Rules panel: hide / readiness pill / exceptions.
     rulesHide: { uk: 'Сховати вікно (підсвітка лишається)', en: 'Hide window (highlights stay)', fr: 'Masquer la fenêtre (le surlignage reste)', ru: 'Скрыть окно (подсветка остаётся)' },
     rulesBgStarted: { uk: 'Шукаю правила у виділеному… Коли кнопка «Правила» стане зеленою — натисніть її ще раз.', en: 'Searching the selection for rules… When the Rules button turns green, tap it again.',
@@ -1568,20 +1568,20 @@ for (const [locale, values] of Object.entries({
 // AI task routing strings for the I18N_EXTRA languages.
 for (const [locale, values] of Object.entries({
     zh: {
-        aiRoutingLabel: '按任务分配：翻译 → Groq，语法与解析 → OpenAI',
-        aiRoutingHint: '仅对已保存密钥的提供商生效；否则使用当前 AI。关闭后所有请求都走当前提供商。',
+        aiRoutingLabel: '先用 Groq（快）；Groq 无响应时才用 OpenAI',
+        aiRoutingHint: '所有请求先发给 Groq；只有 Groq 无响应时才改用 OpenAI。使用已保存的密钥（或网站密钥）。关闭后所有请求都走当前 AI。',
     },
     ko: {
-        aiRoutingLabel: '작업별 분배: 번역 → Groq, 문법·분석 → OpenAI',
-        aiRoutingHint: '키가 저장된 제공업체에만 적용되며, 없으면 활성 AI를 사용합니다. 끄면 모든 요청이 활성 제공업체로 갑니다.',
+        aiRoutingLabel: '먼저 Groq(빠름), 응답이 없을 때만 OpenAI',
+        aiRoutingHint: '모든 요청은 먼저 Groq로 가고, Groq가 응답하지 않을 때만 OpenAI를 사용합니다. 저장된 키(또는 사이트 키)를 사용합니다. 끄면 모든 요청이 활성 AI로 갑니다.',
     },
     hi: {
-        aiRoutingLabel: 'कार्य के अनुसार: अनुवाद → Groq, व्याकरण और विश्लेषण → OpenAI',
-        aiRoutingHint: 'केवल उन प्रदाताओं पर लागू जिनकी कुंजी सहेजी है; अन्यथा सक्रिय AI इस्तेमाल होता है। बंद करने पर सब कुछ सक्रिय प्रदाता से जाएगा।',
+        aiRoutingLabel: 'पहले Groq (तेज़); जवाब न मिले तभी OpenAI',
+        aiRoutingHint: 'हर अनुरोध पहले Groq को जाता है; Groq जवाब न दे तभी OpenAI इस्तेमाल होता है। सहेजी गई कुंजियाँ (या साइट की कुंजी) इस्तेमाल होती हैं। बंद करने पर सब कुछ सक्रिय AI से जाएगा।',
     },
     ga: {
-        aiRoutingLabel: 'Roinn de réir tascanna: aistriúchán → Groq, gramadach agus anailísí → OpenAI',
-        aiRoutingHint: 'Ní bhaineann ach le soláthraithe a bhfuil a n-eochair sábháilte; seachas sin úsáidtear an AI gníomhach. Múch chun gach rud a sheoladh tríd an soláthraí gníomhach amháin.',
+        aiRoutingLabel: 'Groq ar dtús (tapa); OpenAI ach mura bhfreagraíonn Groq',
+        aiRoutingHint: 'Téann gach iarratas chuig Groq ar dtús; ní úsáidtear OpenAI ach mura bhfreagraíonn Groq. Úsáidtear na heochracha sábháilte (nó eochair an tsuímh). Múch chun gach rud a sheoladh tríd an AI gníomhach.',
     },
 })) Object.assign(I18N_EXTRA[locale], values);
 // Rules panel (hide / pill / exceptions) strings for the I18N_EXTRA languages.

@@ -386,7 +386,8 @@ FETCHED = c.js("""(()=>{ window.__fetches=[]; window.__realFetch=window.__realFe
         return window.__realFetch(url, opts); };
     return true; })()""" % json.dumps(PF.to_json(PF.VERBS_FR)))
 for provider, key_field in [('gemini', 'apiKey'), ('groq', 'groqKey'), ('openai', 'openaiKey')]:
-    c.js("state.%s='test-key-%s'; state.activeAiProvider=%s; window.__fetches.length=0" % (key_field, provider, json.dumps(provider)))
+    # routing off: each provider's own request is checked here, not the Groq-first routing (ai_routing_browser.py)
+    c.js("state.aiRouting='off'; state.%s='test-key-%s'; state.activeAiProvider=%s; window.__fetches.length=0" % (key_field, provider, json.dumps(provider)))
     c.js("window.__prov=generatePracticeReading({sourceText:'', sourceLanguage:'fr', targetLanguage:'en', mode:'verbs', bookId:'t', lemmas:['parler','plaindre']}).catch(e=>({error:e.message}))")
     check("provider %s: the same reading request is sent and the sectioned reply is parsed and accepted" % provider,
           "getCurrentPracticeSession()?.status==='ready' && getCurrentPracticeSession().reading.sections.length===3", timeout=10)
@@ -403,7 +404,7 @@ for provider, key_field in [('gemini', 'apiKey'), ('groq', 'groqKey'), ('openai'
         assert c.js("__fetches[0].body.max_output_tokens") == expected_tokens, (c.js("__fetches[0].body.max_output_tokens"), expected_tokens)
 assert c.js("aiTaskTimeout('practice_reading')") >= 120000 and c.js("aiTaskTimeout('translation')") == 45000
 print("PASS L: Gemini, Groq and OpenAI all use the SAME single reading prompt and contract; OpenAI gets a large output budget and Practice a %ds timeout" % (c.js("aiTaskTimeout('practice_reading')") // 1000), flush=True)
-c.js("window.fetch=window.__realFetch; state.activeAiProvider='gemini'; state.apiKey=''; state.groqKey=''; state.openaiKey=''")
+c.js("window.fetch=window.__realFetch; state.aiRouting='auto'; state.activeAiProvider='gemini'; state.apiKey=''; state.groqKey=''; state.openaiKey=''")
 
 # =====================================================================================================
 print("\n=== SECTION 6: legacy storage / reload / service worker cannot bring the old format back (M) ===")

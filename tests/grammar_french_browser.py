@@ -392,6 +392,11 @@ def word_center(word, nth=0):
 def tap(word, nth=0):
     """A REAL user tap: a genuine mouse click at the word's position, handled by the app's own tap listener
     (selectWordAtPoint -> sentence capture -> handleWordOrSelection), not a call into an internal function."""
+    # A popup still open from the PREVIOUS tap can sit right over this word: a real tap would hit the popup, not the word,
+    # and the popup's own auto-hide timer (it starts when the previous translation lands -- network-dependent in CI) could
+    # then close it under the wait below. Close it first, as the learner would.
+    c.js("if (els.tooltip.style.display !== 'none') els.ttCloseBtn.click(); 1")
+    time.sleep(0.15)   # past the 100 ms 'popup just closed' guard
     pos = word_center(word, nth)
     assert pos, ('word not found', word)
     for kind in ('mousePressed', 'mouseReleased'):
