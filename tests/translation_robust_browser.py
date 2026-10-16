@@ -43,5 +43,7 @@ check('4 a reply without usable JSON falls back to ONE plain translation request
   const r = await aiTranslateText({SENT!r}, 'fr', null, 'uk', '', true);
   return typeof r === 'string' && r.startsWith('Вчора') && __calls.length === 2 && __calls[0].alignment && !__calls[1].alignment || JSON.stringify({{r, calls: __calls}}); }})()""")
 c.js(STUB + "1")
-check('5 Groq honours the per-request budget', """(() => { const src = callGroq.toString(); return src.includes('options.maxOutputTokens || profile.max_completion_tokens'); })()""")
+# groqMaxTokens: the caller's budget plus room for gpt-oss hidden reasoning (never less than asked); the profile otherwise
+check('5 Groq honours the per-request budget', """(() => groqMaxTokens('translation', {maxOutputTokens: 900}) >= 900 && groqMaxTokens('translation', {maxOutputTokens: 900}) > groqMaxTokens('translation', {maxOutputTokens: 300})
+  && groqMaxTokens('translation', {}) === GROQ_TASK_PROFILES.translation.max_completion_tokens && callGroq.toString().includes('groqMaxTokens(task, options)'))()""")
 print('ALL PASS')
