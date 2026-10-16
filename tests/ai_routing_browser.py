@@ -1,8 +1,9 @@
 """AI task routing + instant local translation of a tapped word.
 
-Routing (js/ai-client.js aiProviderForTask): with routing 'auto' translation goes to Groq and grammar / breakdowns / rules / practice /
-ask / language level go to OpenAI WHEN those keys are stored; everything else (vision, default) and any task whose preferred provider
-has no key use the ACTIVE provider; routing 'off' = the single active provider as before. Checked on the real HTTP layer (mocked fetch).
+Routing (js/ai-client.js aiProviderForTask / aiBackupProvider / requestAI): with routing 'auto' EVERY request goes to Groq first when a
+Groq key is stored; OpenAI is asked only when Groq gives no usable answer (network error, HTTP error, cut-off reply). Without a Groq key:
+grammar / breakdowns / rules / practice / ask / language level go to OpenAI, everything else to the ACTIVE provider; routing 'off' = the
+single active provider, no fallback. Checked on the real HTTP layer (mocked fetch).
 
 Instant layer (js/translation.js): for a single word the on-device Chrome translator is started in the tap handler (a user gesture, which
 creating a 'downloadable' model requires) and its result is shown at once with the ⌂ mark; the AI answer then REPLACES it (⚡). Sentences
@@ -24,6 +25,9 @@ window.fetch = async (url, options = {}) => {
   const provider = a.includes('api.openai.com') ? 'openai' : a.includes('api.groq.com') ? 'groq' : a.includes('generativelanguage.googleapis.com') ? 'gemini' : null;
   if (!provider) return originalFetch(url, options);
   __calls.push(provider);
+  if (provider === 'groq' && window.__groqFail === 'network') throw new TypeError('Failed to fetch');
+  if (provider === 'groq' && window.__groqFail === 'http') return new Response('{"error":{"message":"overloaded"}}', {status: 503});
+  if (provider === 'groq' && window.__groqFail === 'length') return new Response(JSON.stringify({choices:[{finish_reason:'length', message:{content:'{"direct":"гр'}}]}));
   const text = String(options.body || '').includes('alignment') ? '{"translation":"зелене яблуко","alignment":[]}' : (provider === 'openai' ? '{"direct":"груша точна","context":null}' : '{"direct":"груша","context":null}');
   return new Response(JSON.stringify(provider === 'openai' ? {status:'completed', output:[{type:'message', role:'assistant', content:[{type:'output_text', text}]}]}
     : provider === 'groq' ? {choices:[{message:{content:text}}]} : {candidates:[{content:{parts:[{text}]}}]}));
@@ -50,24 +54,36 @@ def route(task, active='gemini', routing='auto', keys=('openai', 'groq', 'gemini
                 % (json.dumps('sk-test' if 'openai' in keys else ''), json.dumps('gsk-test' if 'groq' in keys else ''), json.dumps('AIza-test' if 'gemini' in keys else ''),
                    json.dumps(active), json.dumps(routing), json.dumps(task)))
 
-assert route('translation') == 'groq' and route('translation', active='openai') == 'groq'
-for t in ['grammar_analysis', 'grammar_paradigm', 'grammar', 'practice_reading', 'sentence_structure', 'structure_deep', 'rules_search', 'rules_explain', 'language_level', 'ask']:
-    assert route(t, active='groq') == 'openai', t
-print('PASS 1 routing: translation -> Groq; grammar/breakdown/rules/practice/ask/level -> OpenAI (whatever the active provider is)', flush=True)
-assert route('vision', active='gemini') == 'gemini' and route('default', active='groq') == 'groq'
-print('PASS 2 other tasks (vision, default) use the active provider', flush=True)
-assert route('translation', active='openai', keys=('openai',)) == 'openai' and route('grammar_analysis', active='groq', keys=('groq',)) == 'groq'
-assert route('translation', active='gemini', keys=('gemini',)) == 'gemini'
-print('PASS 3 a task whose preferred provider has no key falls back to the ACTIVE provider (decided before the request, never after a failure)', flush=True)
-assert route('translation', routing='off') == 'gemini' and route('grammar_analysis', active='groq', routing='off') == 'groq'
-print('PASS 4 routing off = the single active provider, as before', flush=True)
+ALL = ['translation', 'grammar_analysis', 'grammar_paradigm', 'grammar', 'practice_reading', 'sentence_structure', 'structure_deep', 'rules_search',
+       'rules_explain', 'language_level', 'ask', 'vision', 'default']
+for t in ALL:
+    assert route(t, active='openai') == 'groq' and route(t, active='gemini') == 'groq', t
+print('PASS 1 routing: every task goes to Groq first, whatever the active provider is', flush=True)
+assert c.js("aiBackupProvider('groq')") == 'openai'
+assert route('translation', keys=('groq', 'gemini')) == 'groq' and c.js("aiBackupProvider('groq')") == 'gemini'
+assert route('translation', active='groq', keys=('groq',)) == 'groq' and c.js("aiBackupProvider('groq')") is None
+print('PASS 2 backup: OpenAI; without an OpenAI key the active provider; Groq alone has no backup', flush=True)
+assert route('translation', active='openai', keys=('openai',)) == 'openai' and route('grammar_analysis', active='gemini', keys=('openai', 'gemini')) == 'openai'
+assert route('translation', active='gemini', keys=('gemini', 'openai')) == 'gemini' and route('vision', active='gemini', keys=('gemini', 'openai')) == 'gemini'
+print('PASS 3 without a Groq key: deep tasks -> OpenAI, the rest -> the active provider (as before)', flush=True)
+assert route('translation', routing='off') == 'gemini' and route('grammar_analysis', active='openai', routing='off') == 'openai' and c.js("aiBackupProvider('groq')") is None
+print('PASS 4 routing off = the single active provider, no backup', flush=True)
 
 # ---- 2. the real HTTP layer ----
-c.js("state.openaiKey='sk-test'; state.groqKey='gsk-test'; state.apiKey='AIza-test'; state.activeAiProvider='gemini'; state.aiRouting='auto'; __calls.length = 0; 1")
+c.js("state.openaiKey='sk-test'; state.groqKey='gsk-test'; state.apiKey='AIza-test'; state.activeAiProvider='gemini'; state.aiRouting='auto'; window.__groqFail = null; __calls.length = 0; 1")
 c.js("(async () => { await callAI('x', undefined, 'translation'); await callAI('x', undefined, 'grammar_analysis'); await callAI('x', undefined, 'rules_search'); await callAI('x', undefined, 'default'); window.__done = true; })()")
-check("5 requests really go to Groq (translation), OpenAI (grammar, rules) and the active Gemini (default)", "window.__done === true && JSON.stringify(__calls) === JSON.stringify(['groq', 'openai', 'openai', 'gemini']) || JSON.stringify(__calls)", timeout=10)
-c.js("window.__done = false; state.aiRouting='off'; __calls.length = 0; (async () => { await callAI('x', undefined, 'translation'); await callAI('x', undefined, 'grammar_analysis'); window.__done = true; })()")
+check("5 Groq answers: every request goes to Groq only, OpenAI is never asked", "window.__done === true && JSON.stringify(__calls) === JSON.stringify(['groq', 'groq', 'groq', 'groq']) || JSON.stringify(__calls)", timeout=10)
+for i, mode in enumerate(['network', 'http', 'length']):
+    c.js("window.__done = false; window.__meta = {}; window.__groqFail = %s; __calls.length = 0; (async () => { window.__out = await callAI('x', undefined, 'grammar_analysis', undefined, {meta: __meta}); window.__done = true; })()" % json.dumps(mode))
+    check("5%s Groq fails (%s): the same request is repeated once on OpenAI and its answer is returned" % ('abc'[i], mode),
+          "window.__done === true && JSON.stringify(__calls) === JSON.stringify(['groq', 'openai']) && __out.includes('груша точна') && __meta.provider === 'openai' || JSON.stringify([__calls, window.__out])", timeout=10)
+c.js("window.__done = false; window.__groqFail = 'http'; state.openaiKey = ''; state.apiKey = ''; __calls.length = 0; callAI('x', undefined, 'grammar_analysis').then(() => window.__done = 'ok', e => window.__done = 'ERR'); 1")
+check("5d Groq alone (no backup key): its failure is shown, nothing else is asked", "window.__done === 'ERR' && JSON.stringify(__calls) === JSON.stringify(['groq']) || JSON.stringify([__calls, window.__done])", timeout=10)
+c.js("window.__done = false; window.__groqFail = null; state.openaiKey='sk-test'; state.apiKey='AIza-test'; state.aiRouting='off'; __calls.length = 0; (async () => { await callAI('x', undefined, 'translation'); await callAI('x', undefined, 'grammar_analysis'); window.__done = true; })()")
 check("6 with routing off both go to the active provider", "window.__done === true && JSON.stringify(__calls) === JSON.stringify(['gemini', 'gemini']) || JSON.stringify(__calls)", timeout=10)
+c.js("window.__done = false; window.__groqFail = 'http'; state.activeAiProvider = 'groq'; __calls.length = 0; callAI('x', undefined, 'grammar_analysis').then(() => window.__done = 'ok', e => window.__done = 'ERR'); 1")
+check("6b routing off: a Groq failure is NOT re-sent to OpenAI", "window.__done === 'ERR' && JSON.stringify(__calls) === JSON.stringify(['groq']) || JSON.stringify([__calls, window.__done])", timeout=10)
+c.js("window.__groqFail = null; state.activeAiProvider = 'gemini'; state.aiRouting = 'auto'; 1")
 
 # ---- 3. settings checkbox ----
 c.js("state.aiRouting='auto'; localStorage.removeItem('reader_ai_routing'); openKeySettings(); 1")
@@ -86,7 +102,7 @@ c.js("openBookFile(new File([Uint8Array.from(atob(%s),ch=>ch.charCodeAt(0))],'le
 c.wait("els.pages.textContent.includes('pomme verte')", timeout=20); time.sleep(0.8)
 if not c.js('state.translateMode'):
     c.js('els.translateBtn.click()'); time.sleep(0.3)
-c.js("""(() => { state.targetLang = 'uk'; state.openaiKey = 'sk-test'; state.groqKey = 'gsk-test'; state.activeAiProvider = 'gemini'; state.aiRouting = 'auto';
+c.js("""(() => { Object.defineProperty(navigator, 'onLine', {configurable: true, get: () => true}); state.targetLang = 'uk'; state.openaiKey = 'sk-test'; state.groqKey = 'gsk-test'; state.activeAiProvider = 'gemini'; state.aiRouting = 'auto';
   window.__local = { created: 0, activeAtCreate: null, translated: [] };
   window.Translator = { availability: async () => 'downloadable', create: async (opts) => { __local.created++; __local.activeAtCreate = navigator.userActivation.isActive;
       return { translate: async (t) => { __local.translated.push(t); await new Promise(r => setTimeout(r, 30)); return 'ЛОКАЛЬНО ' + t; } }; } };
@@ -104,12 +120,17 @@ for kind in ('mousePressed', 'mouseReleased'):
 check("11 a tapped word shows the on-device translation at once (before the AI answers), marked ⌂",
       "els.ttTranslation.textContent.includes('ЛОКАЛЬНО pomme') && els.ttTranslation.textContent.includes('⌂')", timeout=3)
 check("12 the local model was created inside the tap's user activation (what 'downloadable' requires)", "__local.created === 1 && __local.activeAtCreate === true")
-check("13 the AI answer (Groq ⚡, then OpenAI 🧠) then REPLACES it: translation + an AI mark, no ⌂ left",
-      "els.ttTranslation.textContent.includes('груша') && /⚡|🧠/.test(els.ttTranslation.textContent) && !els.ttTranslation.textContent.includes('ЛОКАЛЬНО')", timeout=8)
+check("13 the AI answer (Groq ⚡) then REPLACES it: translation + an AI mark, no ⌂ left",
+      "els.ttTranslation.textContent.includes('груша') && els.ttTranslation.textContent.includes('⚡') && !els.ttTranslation.textContent.includes('ЛОКАЛЬНО')", timeout=8)
 check("14 the instant layer really came first: local shown, then AI, in that order, with a clear gap",
       "(() => { const tl = __timeline; const li = tl.findIndex(x => x[1].includes('ЛОКАЛЬНО')); const ai = tl.findIndex(x => x[1].includes('груша')); return li !== -1 && ai > li && tl[ai][0] - tl[li][0] >= 300 || JSON.stringify(tl); })()")
-check("15 translation asked Groq (fast) AND OpenAI (careful) at once, never the active Gemini", "JSON.stringify([...__calls].sort()) === JSON.stringify(['groq', 'openai']) || JSON.stringify(__calls)")
-check("15b OpenAI's careful answer replaced Groq's (🧠), the word shows the OpenAI translation", "els.ttTranslation.textContent.includes('груша точна') && els.ttTranslation.textContent.includes('🧠') || els.ttTranslation.textContent", timeout=6)
+check("15 translation asked ONLY Groq (it answered), never OpenAI or the active Gemini", "JSON.stringify(__calls) === JSON.stringify(['groq']) || JSON.stringify(__calls)")
+time.sleep(1.0)
+check("15b nothing replaced Groq's answer afterwards", "els.ttTranslation.textContent.includes('груша') && !els.ttTranslation.textContent.includes('точна') && JSON.stringify(__calls) === JSON.stringify(['groq']) || els.ttTranslation.textContent")
+c.js("els.ttCloseBtn.click(); window.__groqFail = 'http'; state.translationCache = {}; __calls.length = 0; window.__aiDelay = 50; handleWordOrSelection('jardin', 300, 300, null); 1")
+check("15c Groq failing on a tapped word: OpenAI is asked next and its answer is shown (🧠)",
+      "els.ttTranslation.textContent.includes('груша точна') && els.ttTranslation.textContent.includes('🧠') && JSON.stringify(__calls) === JSON.stringify(['groq', 'openai']) || JSON.stringify([__calls, els.ttTranslation.textContent])", timeout=8)
+c.js("window.__groqFail = null; 1")
 
 # sentence/multi-word: no local translator
 c.js("els.ttCloseBtn.click(); __local.created = 0; __local.translated.length = 0; state.translationCache = {}; handleWordOrSelection('une pomme verte', 300, 300, null); 1")
