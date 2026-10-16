@@ -54,7 +54,7 @@ check("1 the Grammar panel has the lookup field; its hint names the book's langu
 def type_and_submit(text):
     c.js("document.getElementById('grammar-lookup-input').value = ''; document.getElementById('grammar-lookup-input').focus(); 1")
     c.call('Input.insertText', text=text)
-    c.call('Input.dispatchKeyEvent', type='keyDown', key='Enter', code='Enter', windowsVirtualKeyCode=13)
+    c.call('Input.dispatchKeyEvent', type='keyDown', key='Enter', code='Enter', windowsVirtualKeyCode=13, text='\r')
     c.call('Input.dispatchKeyEvent', type='keyUp', key='Enter', code='Enter', windowsVirtualKeyCode=13)
 
 
