@@ -338,6 +338,7 @@ function updatePdfRenderWindow(activePage, rerenderWanted = false) {
                 w.classList.add('pdf-placeholder');
                 delete w.dataset.rendered;
             }
+            releasePdfPage(doc, n);
         }
     });
     pdfRenderedPages.forEach(n => {
@@ -353,10 +354,16 @@ function updatePdfRenderWindow(activePage, rerenderWanted = false) {
             // it here would lose the fit scale and shift every later page.
         }
         pdfRenderedPages.delete(n);
+        releasePdfPage(doc, n);
     });
 
     const pending = new Map(); // pageNum -> Promise<boolean>, for callers that need to await a specific page
-    wanted.forEach(n => {
+    // ONE page at a time, the page asked for first, then its neighbours outward (n+1, n-1, n+2, n-2). Started together,
+    // the five pages of a scanned book (JPEG 2000 / JBIG2 images) were decoded side by side: the page the reader jumped to
+    // waited for four others and the decoders' memory peaked at five pages at once (a tablet then killed the tab).
+    const order = [...wanted].sort((a, b) => Math.abs(a - activePage) - Math.abs(b - activePage) || b - a);
+    let chain = Promise.resolve();
+    order.forEach(n => {
         if (!rerenderWanted && pdfRenderedPages.has(n)) { pending.set(n, Promise.resolve(true)); return; }
         const w = pdfPageWrappers[n];
         if (!w) return;
@@ -370,7 +377,7 @@ function updatePdfRenderWindow(activePage, rerenderWanted = false) {
         const token = ++pdfPageTokens[n];
         const isWanted = () => state.pdfDoc === doc && readerEpoch.book === epoch && pdfContinuousGeneration === generation &&
             pdfPageWrappers[n] === w && pdfWantedPages.has(n) && pdfPageTokens[n] === token && state.format === 'pdf' && !document.hidden;
-        const promise = measurePdfPage(doc, n).then(meta => {
+        const promise = chain.then(() => isWanted() ? measurePdfPage(doc, n) : null).then(meta => {
             if (!meta || !isWanted()) return false;
             const scale = pdfScaleForPage(meta);
             correctPlaceholderSize(n, meta, scale);
@@ -382,6 +389,7 @@ function updatePdfRenderWindow(activePage, rerenderWanted = false) {
             if (isWanted()) console.warn('PDF page measurement failed', n, err);
             return false;
         });
+        chain = promise.then(() => {}, () => {});
         pending.set(n, promise);
     });
     return pending;
