@@ -198,9 +198,17 @@ function loadInk() {
         if (typeof redrawAllVisibleInk === 'function') redrawAllVisibleInk();
     })().catch(() => {});
 }
+// Gives a page's ink canvas its full-size buffer (it is created empty while the page has no ink; js/pdf-render.js).
+function ensureInkCanvas(cv) {
+    if (cv && cv.width === 0 && Number(cv.dataset.fullWidth) > 0) { cv.width = Number(cv.dataset.fullWidth); cv.height = Number(cv.dataset.fullHeight); }
+    return cv;
+}
 function redrawInk(cv, pageNum) {
     cv ??= activeInkCanvas(); pageNum ??= activeInkPage();
     if (!cv) return;
+    const strokesHere = state.ink[inkPageKey(pageNum)];
+    if (cv.width === 0 && !(strokesHere && strokesHere.length)) return;   // nothing to draw on an unallocated layer
+    ensureInkCanvas(cv);
     const ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -276,6 +284,7 @@ function bindInkCanvas(cv, pageNum) {
     const owner = inkOwner; // a canvas left over from a previous book must never draw into this one
     cv.addEventListener('pointerdown', (e) => {
         if (owner !== inkOwner || !state.inkMode || inkDrawing || pdfPointers.size > 1) return;
+        ensureInkCanvas(cv);
         inkActivePage = pageNum;
         inkPointerId = e.pointerId;
         // A second finger (pinch / palm) turns this into a zoom gesture: rollbackInkGesture() restores THIS page.
@@ -340,7 +349,7 @@ document.getElementById('btn-ink').onclick = () => {
     exitRegionMode();
     state.inkMode = true;
     document.body.classList.add('ink-mode', 'immersive-mode');
-    document.querySelectorAll('.ink-layer').forEach(cv => bindInkCanvas(cv, Number(cv.dataset.page)));
+    document.querySelectorAll('.ink-layer').forEach(cv => { ensureInkCanvas(cv); bindInkCanvas(cv, Number(cv.dataset.page)); });
     updateInkTools();
 };
 function updateInkTools() {

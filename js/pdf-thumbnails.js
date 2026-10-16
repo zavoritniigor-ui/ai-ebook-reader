@@ -257,7 +257,8 @@ async function runPdfThumbQueue(doc) {
                 c.width = Math.round(vp.width); c.height = Math.round(vp.height);
                 c.style.width = `${vp.width}px`; c.style.height = `${vp.height}px`;
                 const task = page.render({ canvasContext: c.getContext('2d'), viewport: vp });
-                await task.promise;
+                try { await task.promise; }
+                finally { if (typeof pdfWantedPages === 'undefined' || !pdfWantedPages.has(pageNum)) { try { page.cleanup(); } catch (e) {} } }   // the full scan is not kept for a 120 px picture
                 if (generation !== pdfThumbGeneration || !li.isConnected) continue;
 
                 if (pdfThumbCache.size >= PDF_THUMB_CACHE_MAX) {

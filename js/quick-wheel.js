@@ -456,6 +456,7 @@ function printCurrentReaderPage() {
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
                 await page.render({ canvasContext: canvas.getContext('2d'), viewport, intent: 'print' }).promise;
+                if (typeof pdfWantedPages === 'undefined' || !pdfWantedPages.has(pageNum)) { try { page.cleanup(); } catch (e) {} }
 
                 // Додаємо ink-шар поверх PDF, якщо є рукописні позначки
                 const key = typeof inkPageKey === 'function' ? inkPageKey(pageNum) : String(pageNum);

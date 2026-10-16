@@ -142,6 +142,7 @@ async function startPrintedPageLabelScan(doc, gen = pdfLabelScanGeneration) {
                 if (!isCurrent()) return;
                 const label = extractPrintedPageLabel(tc.items, vp);
                 recordPdfPageLabel(p, label);
+                if (typeof pdfWantedPages === 'undefined' || !pdfWantedPages.has(p)) page.cleanup();   // a whole-book scan keeps nothing per page
             } catch (e) {
                 if (!isCurrent()) return;
                 recordPdfPageLabel(p, null);
@@ -252,6 +253,7 @@ async function goToBookPage(bookPageLabel, options = {}) {
                 if (!isCurrent()) return null;
                 const label = extractPrintedPageLabel(tc.items, vp);
                 recordPdfPageLabel(p, label);
+                if (typeof pdfWantedPages === 'undefined' || !pdfWantedPages.has(p)) page.cleanup();   // a whole-book scan keeps nothing per page
                 return label;
             } catch (e) {
                 if (isCurrent()) recordPdfPageLabel(p, null);
@@ -454,6 +456,7 @@ async function startPdfHeadingScan(doc, gen) {
             const tc = await page.getTextContent();
             if (!isCurrent()) return;
             pages.set(p, pdfPageTextLines(tc.items, page.getViewport({ scale: 1 })));
+            if (typeof pdfWantedPages === 'undefined' || !pdfWantedPages.has(p)) page.cleanup();
         } catch (e) { /* one unreadable page must not stop the rest */ }
         if (p % PDF_HEADING_BATCH === 0) publish();
         await new Promise(r => setTimeout(r, 60));

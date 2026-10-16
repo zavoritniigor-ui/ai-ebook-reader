@@ -40,6 +40,7 @@ async function initPdf(file, epoch = readerEpoch.book) {
     try { doc = await loading.promise; }
     catch (err) { if (pdfTasks.loading === loading) pdfTasks.loading = null; throw err; }
     if (epoch !== readerEpoch.book) { await loading.destroy(); return; }
+    pdfLoadedPages.clear();   // the previous document's page objects are gone with it
     state.pdfDoc = doc; state.totalPages = doc.numPages;
     const bm = loadBookmark();
     const startPage = (bm && bm.format === 'pdf' && bm.currentIndex >= 1 && bm.currentIndex <= state.totalPages) ? bm.currentIndex : 1;
@@ -61,6 +62,19 @@ async function initPdf(file, epoch = readerEpoch.book) {
 // concurrently; this replaces that role for callers (tests, "is the reader
 // busy" UI) that need to know when the virtualization window has settled.
 let pdfInFlightRenders = 0;
+// A page that is no longer on screen gives its memory back. PDF.js keeps every rendered page's decoded images (a scanned
+// book page: several to tens of MB, JPEG 2000 / JBIG2) and parsed content until page.cleanup(); nothing called it, so
+// a scanned book grew by ~100+ MB per jump until the tablet killed the tab (a white page). cleanup() waits by itself
+// while that page still has a render in progress; a page that comes back is simply parsed again.
+// Only pages this view actually rendered (pdfLoadedPages): asking PDF.js for a page that was merely scrolled past would
+// make it parse that page just to clean it.
+const pdfLoadedPages = new Map();   // pageNum -> PDFPageProxy, for the current document
+function releasePdfPage(doc, pageNum) {
+    const page = pdfLoadedPages.get(pageNum);
+    if (!page || doc !== state.pdfDoc) return;
+    pdfLoadedPages.delete(pageNum);
+    try { page.cleanup(); } catch (e) { /* busy or destroyed: nothing to free now */ }
+}
 async function renderPdfPageInto(pageNum, wrapperEl, scale, isWanted) {
     if (document.hidden || !state.pdfDoc || pageNum < 1 || pageNum > state.totalPages) return false;
     pdfInFlightRenders++;
@@ -95,6 +109,7 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
     pdfPageActiveTask.set(pageNum, activeTask);
     try {
         const page = await state.pdfDoc.getPage(pageNum);
+        pdfLoadedPages.set(pageNum, page);
         if (!isWanted()) return false;
         const vp = page.getViewport({ scale });
         wrapperEl.style.width = `${vp.width}px`;
@@ -172,7 +187,11 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
 
         const ink = document.createElement('canvas');
         ink.className = 'ink-layer'; ink.dataset.page = pageNum;
-        ink.width = c.width; ink.height = c.height;
+        // The full-size ink buffer (as big as the page canvas) only when the page has handwriting or the pen is out:
+        // otherwise every page on screen paid double canvas memory for nothing. ensureInkCanvas() sizes it on demand.
+        ink.dataset.fullWidth = c.width; ink.dataset.fullHeight = c.height;
+        const hasInk = state.inkMode || (state.ink && state.ink[String(pageNum)] && state.ink[String(pageNum)].length);
+        ink.width = hasInk ? c.width : 0; ink.height = hasInk ? c.height : 0;
         ink.style.width = `${vp.width}px`; ink.style.height = `${vp.height}px`;
 
         wrapperEl.replaceChildren(c, tl, ...(linkLayer ? [linkLayer] : []), ink);
