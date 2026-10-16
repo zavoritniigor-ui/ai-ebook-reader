@@ -132,4 +132,5 @@ async function runShelfList() {
 }
 renderRecentBooks();
 // «📖 Мої книги» в меню: бібліотека одразу на збережених книгах, без перемикання джерела.
-document.getElementById('btn-my-books')?.addEventListener('click', () => openLibrary('shelf'));
+// Дві кнопки: у групі «Книга» (телефон, комп'ютер) і значок у налаштуваннях (планшет) — показується одна з них.
+document.querySelectorAll('.my-books-btn').forEach(b => b.addEventListener('click', () => openLibrary('shelf')));

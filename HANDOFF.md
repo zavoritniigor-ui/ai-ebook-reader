@@ -1,6 +1,6 @@
 ## «📖 Мої книги» button in the menu (2026-10-15, Claude)
 
-User asked how to find books already read without leaving the app; the answer was ✦ → Бібліотека → source «Мої книги». Now the ☰ menu (group «Книга», next to «📂 Відкрити книгу») has «📖 Мої книги»: `openLibrary('shelf')` (library.js `openLibrary(source)` switches the source select first, so the choice is also remembered). Tablet 641–1180px shows the icon only (title/aria carry the name, padding 0 9px): the header there is sized to the pixel — with the label (and with CI-wide glyphs) the first row wrapped and the header grew 161→211px (menu_labels 4/4b). Measured: wide glyphs leave 7px spare in row 1. Test: book_shelf_browser.py 5b.
+User asked how to find books already read without leaving the app; the answer was ✦ → Бібліотека → source «Мої книги». Now the ☰ menu (group «Книга», next to «📂 Відкрити книгу») has «📖 Мої книги»: `openLibrary('shelf')` (library.js `openLibrary(source)` switches the source select first, so the choice is also remembered). On tablets (641–1180px) that button is hidden and an icon copy (`.my-books-tablet`) in the settings group is shown instead: the header's first row is full there — even an icon in the Book group wrapped it with CI fonts (header 161→211px, menu_labels 4b failed in CI); the last row has ~200px spare (161px header even with letter-spacing 1px). Both buttons have class `my-books-btn`. Test: book_shelf_browser.py 5b.
 
 ## Sync between devices by a code (2026-10-15, Claude)
 
