@@ -51,7 +51,7 @@ const I18N_ES = {
     statsPageWords: 'Palabras en la página', statsIndependentWords: 'Sin ayuda', statsUniqueTapped: 'Palabras distintas tocadas',
     statsTappedVocabulary: 'Comprensión por nivel', statsWordsShort: 'pal.', statsUnknown: 'Sin clasificar', statsUnknownShort: 'Otras',
     statsNoHelp: 'Todavía no has pedido ayuda',
-    practiceSource: 'Fuente:', practiceFocus: 'Palabras:', practiceTopicLabel: 'Tema de las frases', practiceTopicPlaceholder: 'Tu tema…', practiceTopicMeta: 'Tema:',
+    practiceSource: 'Fuente:', practiceFocus: 'Palabras:', practiceTopicLabel: 'Tema de las frases', practiceTopicPlaceholder: 'Tu tema…', grammarLookupPlaceholder: 'Un verbo o adjetivo en tu idioma → {lang}', grammarLookupLabel: 'Buscar las formas de tu palabra', grammarLookupBtn: 'Buscar', grammarLookupEmpty: 'Escribe un verbo o un adjetivo.', grammarLookupNotFound: 'No parece un verbo ni un adjetivo. Prueba otra palabra.', grammarLookupAlso: 'También: ', practiceTopicMeta: 'Tema:',
     practiceRegenerate: 'Generar de nuevo', practiceSpeakSentence: 'Escuchar la frase', practiceTranslateSentence: 'Traducir la frase',
     practiceError: 'Error de la práctica', practiceUnknownError: 'Error desconocido',
     practiceSaveFailed: 'No se pudo guardar la práctica en este dispositivo: se perderá al recargar. Libera espacio e inténtalo de nuevo.',

@@ -21,6 +21,8 @@ const OPENAI_TASK_PROFILES = {
     // The per-request budget is set by grammarProfile() (grammar-svo.js) from the size of the text; this is only the fallback.
     grammar_analysis: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
+    // Grammar lookup: a verb/adjective typed by the learner (usually in their own language) -> its lemma + one paradigm.
+    grammar_lookup: { reasoning: 'none', max_output_tokens: 500, stream: false },
     // Grammar rules panel (js/grammar-rules.js): find a rule's occurrences in the visible page text; explain one by theory.
     rules_search: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     rules_explain: { reasoning: 'low', max_output_tokens: 900, stream: false },
@@ -161,7 +163,7 @@ function aiAvailable() { return !!aiEffectiveKey(aiProviderForTask('default')); 
 // Anything else (vision, default) and every task whose preferred provider has no key use the ACTIVE provider, exactly as before.
 // This is a choice made BEFORE the request by task type; a failed request is never silently re-sent to another provider.
 const AI_ROUTE_GROQ_TASKS = new Set(['translation']);
-const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'practice_reading', 'sentence_structure', 'structure_deep',
+const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'grammar_lookup', 'practice_reading', 'sentence_structure', 'structure_deep',
     'rules_search', 'rules_explain', 'language_level', 'ask']);
 function aiProviderForTask(task) {
     const active = state.activeAiProvider;
