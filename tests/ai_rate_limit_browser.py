@@ -48,7 +48,7 @@ def check(name, expression):
 c.call('Page.navigate', url=URL)
 c.wait("document.readyState==='complete' && !document.body.inert && typeof aiRateDetails==='function' && sharedAiProbeAnswered === true", timeout=30)
 c.js("localStorage.clear(); showUpdateBanner=()=>{}; document.getElementById('sw-update-banner')?.remove(); 1")
-RUN = """(async (mode, own, forced) => { __mode = mode; __bodies.length = 0; state.groqKey = own ? 'gsk-own-groq' : ''; state.openaiKey = ''; state.activeAiProvider = 'groq'; state.aiRouting = 'auto';
+RUN = """(async (mode, own, forced) => { __mode = mode; __bodies.length = 0; groqCooldownUntil = 0; state.groqKey = own ? 'gsk-own-groq' : ''; state.openaiKey = ''; state.activeAiProvider = 'groq'; state.aiRouting = 'auto';
   sharedAiProviders.groq = true; sharedAiProviders.openai = true; const before = readerAiRequests().length; let out = null, error = null;
   try { out = await callAI('Translate: pomme', undefined, 'translation', undefined, forced ? {provider: 'groq'} : {}); } catch (e) { error = {reason: e.reason, status: e.status, rate: e.rate}; }
   return {out, error, log: readerAiRequests().slice(before)}; })"""

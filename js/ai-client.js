@@ -506,6 +506,21 @@ function groqMaxTokens(task, options) {
     const openai = OPENAI_TASK_PROFILES[task];
     return openai ? Math.max(GROQ_TASK_PROFILES.default.max_completion_tokens, openai.max_output_tokens + GROQ_REASONING_HEADROOM) : GROQ_TASK_PROFILES.default.max_completion_tokens;
 }
+// ---- Groq limit cooldown ---------------------------------------------------------------------------------------------------
+// Groq's FREE plan gives gpt-oss-120b 200000 tokens a DAY (about 290 word translations: ~580 prompt + ~100 answer tokens each), 8000 a minute and 1000
+// requests a day. When a limit refuses (HTTP 429) every further request is refused too until it lifts, and each costs a wasted round trip before the
+// backup answers. So after a 429 the request goes straight to the backup for as long as the limit says it will refuse (its retryAfterSec: at least 3 s,
+// at most 10 min), and js/translation.js says WHY the answer carries OpenAI's mark. Other Groq models are NOT a way round it -- measured on the same
+// 40 French words: gpt-oss-20b and qwen3.8-27b write Russian words into Ukrainian («дети», «несмотря на», «инакше»; one even drops a Chinese character into
+// a sentence), llama-3.3-70b answers 404; only gpt-oss-120b (and OpenAI) translate acceptably. A paid Groq plan (no daily cap) is the real remedy.
+let groqCooldownUntil = 0, groqLimitedAt = 0;
+function groqNoteLimit(err) {
+    const wait = err && err.rate && Number.isFinite(err.rate.retryAfterSec) ? err.rate.retryAfterSec : 20;
+    groqLimitedAt = Date.now();
+    groqCooldownUntil = groqLimitedAt + Math.min(Math.max(wait, 3), 600) * 1000;
+}
+const groqCoolingDown = () => Date.now() < groqCooldownUntil;
+const groqLimitedRecently = () => Date.now() - groqLimitedAt < 60000;   // for the note beside the backup's mark
 // With OpenAI as a backup, Groq is not waited for as long as a slow provider would be: past this it counts as "not answering".
 const GROQ_FIRST_TIMEOUT_MS = { practice_reading: 60000, rules_search: 30000, grammar_analysis: 30000, sentence_structure: 30000 };
 function groqFirstTimeout(task) { return GROQ_FIRST_TIMEOUT_MS[task] || 20000; }
@@ -547,9 +562,15 @@ async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, opt
     const backup = forced ? null : aiBackupProvider(provider);
     const meta = options.meta || (options.meta = {});   // one meta object for the caller, whichever provider answers
     const first = backup && !options.timeoutMs ? Object.assign({}, options, { timeoutMs: groqFirstTimeout(task) }) : options;
-    try { return await requestAIOnce(prompt, dataUrl, signal, task, onDelta, first); }
-    catch (err) {
+    try {
+        if (provider === 'groq' && !dataUrl && groqCoolingDown()) {   // known to refuse for a while: no round trip, the backup answers at once
+            recordAiRequest({ task, provider, ok: false, reason: 'cooldown', status: 429, skipped: true, ms: 0 });
+            throw new AiRequestError(t('aiRateError').replace('{provider}', AI_PROVIDERS.groq.name), 'http', { status: 429, skipped: true });
+        }
+        return await requestAIOnce(prompt, dataUrl, signal, task, onDelta, first);
+    } catch (err) {
         if (signal?.aborted || !err || err.name === 'AbortError') throw err;
+        if (provider === 'groq' && !dataUrl && err.reason === 'http' && Number(err.status) === 429 && !err.skipped) groqNoteLimit(err);
         if (backup && err.reason) {
             // A refused shared Groq key stays refused for this session: later requests start on the backup at once.
             if ((err.status === 401 || err.status === 403) && aiEffectiveKey('groq') === SHARED_AI_KEY) sharedAiProviders.groq = false;
@@ -646,7 +667,9 @@ async function machineTranslate(text, srcCode, isMultiWord, signal, targetLang =
 }
 
 // Переклад через вибраний AI-провайдер. Повертає лише сам переклад.
-async function aiTranslateText(text, srcCode, signal, targetLang = state.targetLang, contextSentence = state.ctxSentence, withAlignment = false, provider = null) {
+// info (optional): receives { provider } -- the provider that REALLY answered (a refused shared Groq key is repeated on the shared OpenAI inside callAI, so the
+// caller cannot assume it is the one it asked).
+async function aiTranslateText(text, srcCode, signal, targetLang = state.targetLang, contextSentence = state.ctxSentence, withAlignment = false, provider = null, info = null) {
     if (!(provider ? aiEffectiveKey(provider) : aiAvailable()) || !navigator.onLine) return null;
     const langName = LANG_NAMES[targetLang] || 'українською';
     const isWord = text.trim().split(/\s+/).length === 1;
@@ -675,7 +698,8 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
     if (provider) options.provider = provider;
     try {
         let out;
-        try { out = await callAI(prompt, signal, 'translation', undefined, options); }
+        options.meta = {};
+        try { out = await callAI(prompt, signal, 'translation', undefined, options); if (info) info.provider = options.meta.provider; }
         catch (err) {
             // Обірвана відповідь: з того, що встигло прийти, ще можна взяти готовий переклад.
             if (err && err.reason === 'truncated' && err.partial) out = err.partial; else throw err;
@@ -686,7 +710,7 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
             if (!tr) { const m = String(out).match(/"translation"\s*:\s*"((?:[^"\\]|\\.)*)"/); if (m) { try { tr = JSON.parse('"' + m[1] + '"'); } catch (e) {} } }
             const cleanTr = tr && tr.trim() && tr.length <= 12000 ? normalizeTranslation(tr, targetLang, false) : null;
             // Без придатного JSON — ще одна спроба простим перекладом без розмітки, а не відмова.
-            if (!cleanTr) return signal && signal.aborted ? null : aiTranslateText(text, srcCode, signal, targetLang, contextSentence, false, provider);
+            if (!cleanTr) return signal && signal.aborted ? null : aiTranslateText(text, srcCode, signal, targetLang, contextSentence, false, provider, info);
             return { translation: cleanTr, alignment: parsed.ok ? validateAlignment(text, cleanTr, parsed.value.alignment) : [] };
         }
         if (isWord) {
