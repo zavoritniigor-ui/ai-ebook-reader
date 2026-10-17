@@ -104,6 +104,7 @@ const I18N_ES = {
     aiKeySavedHint: 'Clave guardada: escribe una nueva para sustituirla.',
     aiKeyInvalid: '{provider}: la clave contiene caracteres no válidos (espacios dentro, puntos o símbolos como •). Vuelve a pegar la clave completa.',
     practiceTab: 'Práctica', tRestorePractice: 'Restaurar el espacio de Práctica', bookLangLabel: '📖 Idioma del libro', bookLangAuto: 'Automático',
+    ttsNoSound: 'La voz no arranca. Revisa el volumen multimedia y «Texto a voz» en los ajustes de Android (motor de Google, idioma instalado).',
     noVoiceForLang: 'Este dispositivo no tiene voz para «{lang}». Instala una en los ajustes de texto a voz del sistema.',
     statsKnownSelf: 'Sabías solo', statsTranslated: 'Consultadas', statsKnownOf: '{a} de {b} palabras', statsOf: '{a} de {b}',
     statsTranslatedWords: 'Palabras que consultaste', statsByLevel: 'Por nivel: palabras que sabías solo',

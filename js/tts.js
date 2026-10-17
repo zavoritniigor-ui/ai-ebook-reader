@@ -92,39 +92,73 @@ function startUtterance(u, gen, mayRetry = true) {
     if (wait > 0) setTimeout(() => { if (gen === state.ttsGen) speakWithRecovery(u, gen, mayRetry); }, wait);
     else speakWithRecovery(u, gen, mayRetry);
 }
+// Chrome on Android can leave the engine WEDGED -- typically after the app was in the background or a phone call /
+// recording took the audio: still "paused" (cancel() does not clear that) or "speaking" with nothing playing. Every
+// later speak() then queued behind it and the app stayed silent until it was restarted.
+function unwedgeSynth(hard) {
+    if (!ttsSynth) return;
+    if (hard) {
+        traceTts('unwedge');
+        try { ttsSynth.cancel(); } catch (e) {}
+        lastSpeechCancelAt = performance.now();
+    }
+    try { if (hard || ttsSynth.paused) ttsSynth.resume(); } catch (e) {}
+}
+// Utterances in flight stay referenced: Chrome can garbage-collect one held only by the engine queue, and then its
+// end/error never fire (the speaker button stays on ■, reading aloud stops).
+const liveUtterances = new Set();
+let ttsNoSoundShown = false;
 function speakWithRecovery(u, gen, mayRetry) {
     const onEnd = u.onend, onError = u.onerror;
     let started = false, settled = false, watchdog = 0;
+    const done = () => { settled = true; clearTimeout(watchdog); liveUtterances.delete(u); };
     const retry = (why) => {
-        settled = true; clearTimeout(watchdog);
+        done();
         traceTts('retry:' + why, u.text);
         const again = new SpeechSynthesisUtterance(u.text);
         if (u.voice) again.voice = u.voice;
         again.lang = u.lang; again.rate = u.rate;
         again.onboundary = u.onboundary; again.onend = onEnd; again.onerror = onError;
-        cancelSpeech(true);   // the dropped request may still sit in the engine's queue
+        unwedgeSynth(true);   // the dropped request may still sit in the queue; a paused/stuck engine is released
         startUtterance(again, gen, false);
     };
     u.onstart = () => { started = true; clearTimeout(watchdog); traceTts('start', u.text); };
     u.onend = (e) => {
         if (settled) return;
-        settled = true; clearTimeout(watchdog); traceTts('end', u.text);
+        done(); traceTts('end', u.text);
         if (onEnd) onEnd.call(u, e);
     };
     u.onerror = (e) => {
         if (settled) return;
         const error = e && e.error;
         if (mayRetry && !started && gen === state.ttsGen && TTS_RETRYABLE_ERRORS.has(error)) { retry(error); return; }
-        settled = true; clearTimeout(watchdog); traceTts('error:' + error, u.text);
+        done(); traceTts('error:' + error, u.text);
         if (error !== 'interrupted' && error !== 'canceled') console.warn('[tts] speech failed:', error, u.text.slice(0, 60));
         if (onError) onError.call(u, e);
     };
-    if (mayRetry) watchdog = setTimeout(() => {
-        if (!settled && !started && gen === state.ttsGen && !ttsSynth.speaking) retry('no-start');
+    // Not started in time: once more after releasing the engine (it may report "speaking" while nothing plays --
+    // that used to block the retry). Still nothing the second time: release it again, end this phrase (so the
+    // buttons and the read-aloud queue are not left waiting) and say once why there is no sound.
+    watchdog = setTimeout(() => {
+        if (settled || started || gen !== state.ttsGen) return;
+        if (mayRetry) { retry('no-start'); return; }
+        traceTts('no-sound', u.text);
+        unwedgeSynth(true);
+        if (!ttsNoSoundShown) { ttsNoSoundShown = true; showToast(t('ttsNoSound')); }
+        u.onerror({ error: 'no-start' });
     }, TTS_START_TIMEOUT_MS);
+    if (ttsSynth.paused) { traceTts('resume-paused'); unwedgeSynth(false); }
+    liveUtterances.add(u);
     traceTts('speak', u.text);
     try { ttsSynth.speak(u); } catch (err) { u.onerror({ error: 'synthesis-failed' }); }
 }
+// Back from the background with nothing of ours playing: release an engine left paused or "speaking" in silence.
+function releaseIdleSynth() {
+    if (!ttsSynth || document.hidden || isSpeakingGlobal || state.speakingSide) return;
+    if (ttsSynth.paused || ttsSynth.speaking || ttsSynth.pending) unwedgeSynth(true);
+}
+document.addEventListener('visibilitychange', releaseIdleSynth);
+window.addEventListener('pageshow', releaseIdleSynth);
 // Узгоджує utterance.lang із САМИМ ГОЛОСОМ, а не з нашою власною канонічною назвою
 // мови ('fr-FR'/'uk-UA' тощо): якщо голос уже вибрано, синтезатор орієнтується САМЕ
 // на utterance.voice, а utterance.lang, що йому суперечить (ми ставимо канонічне
@@ -512,5 +546,6 @@ els.ttsPrev.onclick = (e) => { e.stopPropagation(); stepSentence(-1); };
 els.ttsNext.onclick = (e) => { e.stopPropagation(); stepSentence(1); };
 
 Object.assign(I18N, {
+    ttsNoSound: { uk: 'Звук не запускається. Перевірте гучність мультимедіа та «Синтез мовлення» в налаштуваннях Android (рушій Google, мова встановлена).', en: 'Speech does not start. Check the media volume and Text-to-speech in the Android settings (Google engine, language installed).', fr: 'La synthèse vocale ne démarre pas. Vérifiez le volume multimédia et la synthèse vocale dans les réglages Android (moteur Google, langue installée).', ru: 'Звук не запускается. Проверьте громкость мультимедиа и «Синтез речи» в настройках Android (движок Google, язык установлен).', zh: '语音无法播放。请检查媒体音量以及 Android 设置中的“文字转语音”（Google 引擎、已安装语言）。', ko: '음성이 재생되지 않습니다. 미디어 볼륨과 Android 설정의 텍스트 음성 변환(Google 엔진, 언어 설치)을 확인하세요.', hi: 'आवाज़ शुरू नहीं हो रही। मीडिया वॉल्यूम और Android सेटिंग्स में टेक्स्ट-टू-स्पीच (Google इंजन, भाषा इंस्टॉल) जाँचें।', ga: 'Ní thosaíonn an chaint. Seiceáil airde na meán agus Téacs-go-caint i socruithe Android (inneall Google, teanga suiteáilte).' },
     noVoiceForLang: { uk: 'На цьому пристрої немає голосу для мови «{lang}». Встановіть його в системних налаштуваннях синтезу мовлення.', en: 'This device has no voice for «{lang}». Install one in the system text-to-speech settings.', fr: 'Cet appareil n’a pas de voix pour «{lang}». Installez-en une dans les réglages de synthèse vocale du système.', ru: 'На этом устройстве нет голоса для языка «{lang}». Установите его в системных настройках синтеза речи.', zh: '此设备没有“{lang}”的语音。请在系统的文字转语音设置中安装。', ko: '이 기기에는 «{lang}» 음성이 없습니다. 시스템 텍스트 음성 변환 설정에서 설치하세요.', hi: 'इस डिवाइस पर «{lang}» की आवाज़ नहीं है। सिस्टम की टेक्स्ट-टू-स्पीच सेटिंग में इसे इंस्टॉल करें।', ga: 'Níl guth don teanga «{lang}» ar an ngléas seo. Suiteáil ceann i socruithe téacs-go-caint an chórais.' }
 });
