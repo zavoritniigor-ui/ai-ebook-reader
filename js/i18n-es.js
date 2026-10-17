@@ -133,7 +133,15 @@ const I18N_ES = {
     wheelOpen: 'Abrir libro', wheelTitle: 'Rueda rápida', wheelStats: 'Estadísticas', wheelStudy: 'Modo estudio', wheelFull: 'Menú completo',
     printPage: 'Imprimir', printError: 'No se pudo imprimir. Inténtalo de nuevo.', wheelInk: 'Dibujar', wheelRegion: 'Zona', wheelVoices: 'Voces',
     wheelLevel: 'Nivel', updateDownloading: 'Hay una versión nueva: descargando…',
-    updateFailed: 'No se pudo comprobar ni descargar la actualización. Inténtalo de nuevo.'
+    updateFailed: 'No se pudo comprobar ni descargar la actualización. Inténtalo de nuevo.',
+    offTitle: '📴 Traducción sin conexión', offHint: 'Traduce palabras y frases sin internet, en el propio dispositivo. Descarga un par de idiomas una vez (mejor con Wi-Fi). La calidad es menor que la de la IA, así que con conexión traduce la IA y el paquete entra cuando no hay red o la IA no responde.',
+    offBookLang: 'Idioma del libro', offTarget: 'Traducir a: {lang} (el idioma de traducción se elige con el botón 🌍 de la barra)', offDownload: '⬇ Descargar ≈ {mb} MB', offHave: '✓ Ya instalado',
+    offProgress: 'Descargando: {done} de {total} MB…', offDone: 'Listo: {pair} funciona sin internet.', offCancelled: 'Descarga cancelada. Lo ya descargado se conserva y no se volverá a descargar.',
+    offErrNetwork: 'Se cortó la conexión. Pulsa Descargar otra vez; lo ya descargado se conserva.', offErrServer: 'El servidor de modelos no está disponible ahora. Inténtalo más tarde.',
+    offErrChecksum: 'Un archivo descargado no pasó la comprobación de integridad. Inténtalo de nuevo.', offErrQuota: 'No hay espacio suficiente en el dispositivo. Libera espacio e inténtalo de nuevo.',
+    offUnsupported: 'Este navegador no puede ejecutar el traductor sin conexión (hace falta un Chrome reciente con WebAssembly).', offNoRoute: 'No hay paquete sin conexión para este par de idiomas.',
+    offInstalled: 'Instalado:', offRemove: '🗑 Eliminar', offTest: '🧪 Probar', offTestResult: '«{src}» → «{out}» · {sec} s', offTestFail: 'No se pudo traducir en este dispositivo: {why}',
+    offNeedsPack: 'Para traducir sin internet, descarga un paquete de idioma: Ajustes (🔑) → 📴 Traducción sin conexión.', offUnitMb: 'MB'
 };
 for (const [key, value] of Object.entries(I18N_ES)) if (I18N[key]) I18N[key].es = value;
 // El menú ya se pintó en main.js (antes de este archivo): con el español elegido se vuelve a pintar.
