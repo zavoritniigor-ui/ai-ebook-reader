@@ -228,17 +228,40 @@ function isExerciseBlankContinuation(leftText, rightText) {
 // повертається — одна колонка чи всі.
 // Horizontal line bands -> per-line segments split at column gaps. `columnStarts` are x positions of column
 // edges confirmed elsewhere on the page (see pdfLayerColumnStarts).
+// Text lines of a PDF text layer. A word belongs to a line when its box overlaps the line's MEAN box by at least half its
+// own height -- not when its TOP is within 0.6 line height of the first word's top, as before. OCR word boxes of a scanned
+// book (Internet Archive) start at different heights (ascenders: «No» vs «just») and a slightly rotated scan drifts along
+// the line: the old rule cut such lines into pieces, a piece starting mid-page then counted as a second «column», and a
+// long selection dropped its words. Returns bands top to bottom: { top, bottom, indices }.
+function pdfLineBands(rects, indices) {
+    const order = indices.slice().sort((a, b) => (rects[a].top + rects[a].bottom) - (rects[b].top + rects[b].bottom));
+    const bands = [];
+    for (const i of order) {
+        const r = rects[i], h = Math.max(1, r.bottom - r.top);
+        let best = null, bestOverlap = 0;
+        for (let k = Math.max(0, bands.length - 4); k < bands.length; k++) {   // only the nearest lines can match (sorted by centre)
+            const b = bands[k];
+            const overlap = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top);
+            if (overlap >= 0.5 * Math.min(h, b.bottom - b.top) && overlap > bestOverlap) { best = b; bestOverlap = overlap; }
+        }
+        if (best) {
+            best.indices.push(i); best.n++; best.sumTop += r.top; best.sumBottom += r.bottom;
+            best.top = best.sumTop / best.n; best.bottom = best.sumBottom / best.n;
+        } else bands.push({ top: r.top, bottom: r.bottom, sumTop: r.top, sumBottom: r.bottom, n: 1, indices: [i] });
+    }
+    return bands.sort((a, b) => (a.top + a.bottom) - (b.top + b.bottom));
+}
+// Reading order of a set of spans (one column): line by line from the top, left to right inside a line.
+function pdfReadingOrder(rects) {
+    const out = [];
+    for (const band of pdfLineBands(rects, rects.map((_, i) => i))) out.push(...band.indices.sort((a, b) => rects[a].left - rects[b].left));
+    return out;
+}
 function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
-    const bands = [];
-    for (const i of rects.map((_, idx) => idx).sort((a, b) => rects[a].top - rects[b].top)) {
-        const r = rects[i];
-        const band = bands.find(band => Math.abs(r.top - band.top) <= Math.min(r.height, band.height) * 0.6);
-        if (band) band.indices.push(i);
-        else bands.push({ top: r.top, height: r.height, indices: [i] });
-    }
-    const segments = []; // { left, right, indices: [], first }
-    for (const band of bands) {
+    const bands = pdfLineBands(rects, rects.map((_, idx) => idx));
+    const segments = []; // { left, right, indices: [], first, line }
+    for (const [line, band] of bands.entries()) {
         const byLeft = band.indices.slice().sort((a, b) => rects[a].left - rects[b].left);
         let seg = null;
         for (const i of byLeft) {
@@ -258,7 +281,7 @@ function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
                 seg.indices.push(i);
                 seg.right = Math.max(seg.right, r.right);
             } else {
-                seg = { left: r.left, right: r.right, indices: [i], first: !seg };
+                seg = { left: r.left, right: r.right, indices: [i], first: !seg, line };
                 segments.push(seg);
             }
         }
@@ -266,15 +289,17 @@ function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
     return segments;
 }
 // Column edges (x of a segment that is not the first one of its line) shared by at least two lines of the
-// WHOLE page -- a drag range alone often holds just one such line. Cached per text layer and width.
+// WHOLE page -- a drag range alone often holds just one such line -- and how many lines the page has (a page with
+// only one or two lines cannot show a second row, see pdfComputeColumns). Cached per text layer and width.
 const pdfColumnStartCache = new WeakMap();
-function pdfLayerColumnStarts(layer, layerWidth) {
-    if (!layer) return [];
+function pdfLayerColumnInfo(layer, layerWidth) {
+    if (!layer) return { starts: [], lines: 0 };
     const hit = pdfColumnStartCache.get(layer);
     const all = pdfTextSpans(layer);
-    if (hit && hit.width === layerWidth && hit.count === all.length && hit.left === layer.getBoundingClientRect().left) return hit.starts;
+    if (hit && hit.width === layerWidth && hit.count === all.length && hit.left === layer.getBoundingClientRect().left) return hit;
     const rects = all.map(s => s.getBoundingClientRect());
-    const inner = pdfLineSegments(all, rects, layerWidth, []).filter(s => !s.first).map(s => s.left).sort((a, b) => a - b);
+    const segments = pdfLineSegments(all, rects, layerWidth, []);
+    const inner = segments.filter(s => !s.first).map(s => s.left).sort((a, b) => a - b);
     const starts = [];
     for (let k = 0; k < inner.length;) {
         let j = k;
@@ -282,21 +307,62 @@ function pdfLayerColumnStarts(layer, layerWidth) {
         if (j > k) starts.push(inner[k]);
         k = j + 1;
     }
-    pdfColumnStartCache.set(layer, { width: layerWidth, count: all.length, left: layer.getBoundingClientRect().left, starts });
-    return starts;
+    const info = { width: layerWidth, count: all.length, left: layer.getBoundingClientRect().left, starts, lines: new Set(segments.map(s => s.line)).size };
+    pdfColumnStartCache.set(layer, info);
+    return info;
+}
+function pdfLayerColumnStarts(layer, layerWidth) {
+    return pdfLayerColumnInfo(layer, layerWidth).starts;
+}
+// The spans of a whole text layer and their columns, kept while nothing about the page changes: a drag asks for them on EVERY
+// pointer move, and the page does not move under it. The key is cheap (the live span count, the first / last child, the layer's
+// own box -- a scroll, a zoom or a re-render changes at least one of them).
+const pdfPageColumnsCache = new WeakMap();
+function pdfPageColumns(layer, layerWidth) {
+    const box = layer.getBoundingClientRect(), count = layer.getElementsByTagName('span').length;
+    const hit = pdfPageColumnsCache.get(layer);
+    if (hit && hit.count === count && hit.first === layer.firstElementChild && hit.last === layer.lastElementChild
+        && hit.left === box.left && hit.top === box.top && hit.width === box.width && hit.height === box.height) return hit;
+    const spans = pdfTextSpans(layer);
+    const entry = { count, first: layer.firstElementChild, last: layer.lastElementChild, left: box.left, top: box.top, width: box.width, height: box.height, spans, cols: pdfComputeColumns(spans, layerWidth) };
+    pdfPageColumnsCache.set(layer, entry);
+    return entry;
 }
 function pdfComputeColumns(spans, layerWidth) {
     const rects = spans.map(s => s.getBoundingClientRect());
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const layer = spans[0]?.closest?.('.pdf-text-layer');
-    const segments = pdfLineSegments(spans, rects, layerWidth, pdfLayerColumnStarts(layer, layerWidth));
+    const info = layer ? pdfLayerColumnInfo(layer, layerWidth) : null;
+    const segments = pdfLineSegments(spans, rects, layerWidth, info ? info.starts : []);
     const segLeft = segments.map(s => s.left);
     const segsByLeft = segLeft.map((_, i) => i).sort((a, b) => segLeft[a] - segLeft[b]);
     const segColumn = new Array(segments.length).fill(0);
-    for (let k = 1; k < segsByLeft.length; k++) {
-        const prev = segsByLeft[k - 1], cur = segsByLeft[k];
-        segColumn[cur] = segColumn[prev] + (segLeft[cur] - segLeft[prev] > columnGapThreshold ? 1 : 0);
-    }
+    // The sorted left edges fall into clusters wherever two neighbours differ by more than the gap threshold. A cluster
+    // starts a NEW column only when something in it proves a column edge: a left edge the PAGE confirms (pdfLayerColumnStarts:
+    // lines resuming there after a gutter, on two or more lines), or -- on a page with only one or two lines, which has no
+    // room for a second row to confirm anything -- a segment that follows another one on its own line. A cluster that is
+    // only first-on-its-line segments at an unconfirmed x -- a centred heading, a page number, a verse line, an indented
+    // paragraph, a scanned line's tail -- is not a column, and neither is one speaker label followed by a gap on a page of
+    // prose: that used to split one-column pages of scanned books into several «columns», and a selection then dropped the
+    // words of the «other» ones. The proof is looked for in the whole cluster, not in its leftmost member, so the verdict
+    // does not depend on which of two nearly equal edges sorts first.
+    const pageStarts = info ? info.starts : [];
+    const provesColumnEdge = si => {
+        if (!info) return true;
+        const seg = segments[si], h = rects[seg.indices[0]].height || 10;
+        if (pageStarts.some(c => Math.abs(seg.left - c) <= Math.max(6, h * 0.5))) return true;
+        return !seg.first && info.lines <= 2;
+    };
+    let column = 0;
+    const clusters = [];
+    segsByLeft.forEach((si, k) => {
+        if (k === 0 || segLeft[si] - segLeft[segsByLeft[k - 1]] > columnGapThreshold) clusters.push([si]);
+        else clusters[clusters.length - 1].push(si);
+    });
+    clusters.forEach((members, ci) => {
+        if (ci > 0 && members.some(provesColumnEdge)) column++;
+        members.forEach(si => { segColumn[si] = column; });
+    });
     const spanSeg = new Array(spans.length);
     segments.forEach((seg, si) => seg.indices.forEach(i => spanSeg[i] = si));
     return { rects, segColumn, spanSeg, columnCount: segColumn.length ? Math.max(...segColumn) + 1 : 0 };
@@ -313,14 +379,7 @@ function pdfPartitionColumns(spans) {
     const { rects, segColumn, spanSeg, columnCount } = pdfComputeColumns(spans, layerWidth);
     const groups = Array.from({ length: columnCount }, () => ({ spans: [], rects: [] }));
     spans.forEach((s, i) => { const g = groups[segColumn[spanSeg[i]]]; g.spans.push(s); g.rects.push(rects[i]); });
-    return groups.filter(g => g.spans.length).map(g => {
-        const order = g.spans.map((_, i) => i).sort((a, b) => {
-            const ra = g.rects[a], rb = g.rects[b];
-            if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
-            return ra.left - rb.left;
-        });
-        return order.map(i => g.spans[i]);
-    });
+    return groups.filter(g => g.spans.length).map(g => pdfReadingOrder(g.rects).map(i => g.spans[i]));
 }
 function pdfVisualGroup(layer, targetSpan) {
     const spans = pdfTextSpans(layer);
@@ -335,11 +394,7 @@ function pdfVisualGroup(layer, targetSpan) {
     spans.forEach((s, i) => { if (segColumn[spanSeg[i]] === targetColumn) { sameColumn.push(s); sameColumnRects.push(rects[i]); } });
     // У межах колонки — справжній порядок читання (рядок згори вниз, у рядку зліва
     // направо), а не DOM/content-stream порядок.
-    const order = sameColumn.map((_, i) => i).sort((a, b) => {
-        const ra = sameColumnRects[a], rb = sameColumnRects[b];
-        if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
-        return ra.left - rb.left;
-    });
+    const order = pdfReadingOrder(sameColumnRects);
     const sorted = order.map(i => sameColumn[i]);
     const sortedRects = order.map(i => sameColumnRects[i]);
     // Розрив по Y, помітно більший за міжрядковий, — це вже інший абзац/підпис/
@@ -462,6 +517,19 @@ function pdfRangeSpans(range) {
     return pdfTextSpans(layer).filter(s => range.intersectsNode(s));
 }
 
+// The word a range end sits in (word characters as wordBoundsAt sees them): where it starts / where it ends.
+function pdfWordStartAt(node, offset) {
+    const text = (node && node.nodeValue) || '';
+    let start = Math.min(Math.max(0, offset), text.length);
+    while (start > 0 && IS_WORD_CH(text[start - 1])) start--;
+    return start;
+}
+function pdfWordEndAt(node, offset) {
+    const text = (node && node.nodeValue) || '';
+    let end = Math.min(Math.max(0, offset), text.length);
+    while (end < text.length && IS_WORD_CH(text[end])) end++;
+    return end;
+}
 // Canonical PDF selection resolver: ensures geometry-based column isolation,
 // study-language priority for multi-column / bilingual PDFs, and structured result object.
 function resolveCanonicalPdfSelection(range, options = {}) {
@@ -489,96 +557,87 @@ function resolveCanonicalPdfSelection(range, options = {}) {
 
     const layer = rawSpans[0].closest('.pdf-text-layer');
     const layerWidth = (layer && layer.getBoundingClientRect().width) || 1;
-    const { rects, segColumn, spanSeg, columnCount } = pdfComputeColumns(rawSpans, layerWidth);
-
-    // Identify start and end spans
-    const startNode = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
-    const startSpan = startNode ? (startNode.closest ? startNode.closest('span') : null) : null;
-    const endNode = range.endContainer.nodeType === Node.TEXT_NODE ? range.endContainer.parentElement : range.endContainer;
-    const endSpan = endNode ? (endNode.closest ? endNode.closest('span') : null) : null;
-
-    let startCol = -1;
-    let endCol = -1;
-    if (startSpan) {
-        const idx = rawSpans.indexOf(startSpan);
-        if (idx >= 0) startCol = segColumn[spanSeg[idx]];
-    }
-    if (endSpan) {
-        const idx = rawSpans.indexOf(endSpan);
-        if (idx >= 0) endCol = segColumn[spanSeg[idx]];
-    }
-
-    // Partition spans into column groups
-    const colGroups = Array.from({ length: columnCount }, () => ({ spans: [], rects: [] }));
-    rawSpans.forEach((s, i) => {
-        const c = segColumn[spanSeg[i]];
-        if (colGroups[c]) {
-            colGroups[c].spans.push(s);
-            colGroups[c].rects.push(rects[i]);
-        }
-    });
-
-    const partitionedColumns = colGroups.filter(g => g.spans.length).map((g, colIdx) => {
-        const order = g.spans.map((_, i) => i).sort((a, b) => {
-            const ra = g.rects[a], rb = g.rects[b];
-            if (Math.abs(ra.top - rb.top) > Math.min(ra.height, rb.height) * 0.6) return ra.top - rb.top;
-            return ra.left - rb.left;
-        });
-        const spans = order.map(i => g.spans[i]);
-        const text = pdfSpansToText(spans);
-        const lang = (typeof detectLang === 'function' ? String(detectLang(text) || '') : '').slice(0, 2).toLowerCase();
-        return { index: colIdx, spans, text, lang };
-    });
-
     const studyLang = (typeof pageLang === 'function' ? pageLang() : 'en').slice(0, 2).toLowerCase();
 
-    // CASE A: The drag started and ended in the SAME column of a multi-column page.
-    // Interleaved DOM nodes belonging to foreign columns are excluded.
-    if (partitionedColumns.length > 1 && startCol >= 0 && endCol >= 0 && startCol === endCol) {
-        const matchedCol = partitionedColumns.find(c => c.index === startCol) || partitionedColumns[0];
-        const colSpans = matchedCol.spans;
-        const i1 = startSpan ? colSpans.indexOf(startSpan) : 0;
-        const i2 = endSpan ? colSpans.indexOf(endSpan) : colSpans.length - 1;
-        const fromIdx = Math.max(0, Math.min(i1 >= 0 ? i1 : 0, i2 >= 0 ? i2 : colSpans.length - 1));
-        const toIdx = Math.min(colSpans.length - 1, Math.max(i1 >= 0 ? i1 : 0, i2 >= 0 ? i2 : colSpans.length - 1));
-        const selectedSpans = colSpans.slice(fromIdx, toIdx + 1);
+    // Columns are judged on the whole page, so a drag within one column of a two-column page stays there.
+    const page = layer ? pdfPageColumns(layer, layerWidth) : null;
+    const pageSpans = page ? page.spans : rawSpans;
+    const pageCols = page ? page.cols : pdfComputeColumns(pageSpans, layerWidth);
+    const spanOf = node => { const el = node && (node.nodeType === Node.TEXT_NODE ? node.parentElement : node); return el ? pageSpans.find(sp => sp === el || sp.contains(el)) || null : null; };
+    const startSpan = spanOf(range.startContainer), endSpan = spanOf(range.endContainer);
+    const colOf = sp => { const i = sp ? pageSpans.indexOf(sp) : -1; return i >= 0 ? pageCols.segColumn[pageCols.spanSeg[i]] : -1; };
+    const startCol = colOf(startSpan), endCol = colOf(endSpan);
+
+    // Which words lie between the two ends. The order the text layer lists them in is trusted while it never climbs back up the
+    // page: an OCR engine emits its lines in reading order even when the boxes of two neighbouring lines overlap vertically (then
+    // sorting by position would interleave the two lines word by word). Only a layer that jumps around -- blocks listed in another
+    // order than they are read, the stanzas of two columns interleaved -- is read by where its words are ON THE PAGE; a DOM range
+    // from the first to the last word then held a fraction of what the reader selected (a long selection «skipped words»).
+    const sameColumn = !!(startSpan && endSpan && startCol >= 0 && (pageCols.columnCount <= 1 || startCol === endCol));
+    let selectedSpans = null, layerInOrder = false;
+    if (sameColumn) {
+        const colIdx = pageSpans.map((_, i) => i).filter(i => pageCols.segColumn[pageCols.spanSeg[i]] === startCol);   // DOM order
+        const p1 = colIdx.indexOf(pageSpans.indexOf(startSpan)), p2 = colIdx.indexOf(pageSpans.indexOf(endSpan));
+        const run = colIdx.slice(Math.min(p1, p2), Math.max(p1, p2) + 1);
+        const climbs = run.some((i, k) => k && pageCols.rects[i].top < pageCols.rects[run[k - 1]].top - pageCols.rects[run[k - 1]].height * 0.8);
+        if (!climbs) { layerInOrder = true; selectedSpans = run.map(i => pageSpans[i]); }
+        else {
+            const colSpans = pdfReadingOrder(colIdx.map(i => pageCols.rects[i])).map(k => pageSpans[colIdx[k]]);
+            const i1 = colSpans.indexOf(startSpan), i2 = colSpans.indexOf(endSpan);
+            selectedSpans = colSpans.slice(Math.min(i1, i2), Math.max(i1, i2) + 1);
+        }
+    }
+
+    // CASE A: a drag inside ONE column of a multi-column page, or inside a one-column page whose layer lists its words out of order.
+    // A one-column page whose layer is in order is the plain DOM range (CASE B below), exactly as before.
+    if (selectedSpans && !(layerInOrder && pageCols.columnCount <= 1)) {
+        // A drag can go upwards: the range's start node is then the LAST span in reading order.
+        const firstSpan = selectedSpans[0], lastSpan = selectedSpans[selectedSpans.length - 1];
+        const rangeStartsFirst = selectedSpans.indexOf(startSpan) <= selectedSpans.indexOf(endSpan);
+        // A DOM range runs from the START of its earlier word to the END of its later one. When the page order is the opposite of
+        // the DOM order the two ends swap roles, and each must be widened/narrowed to ITS word: the word that is first on the
+        // page is selected from its start, the last one up to its end (the offsets of the range would give them empty).
+        const headNode = rangeStartsFirst ? range.startContainer : range.endContainer, tailNode = rangeStartsFirst ? range.endContainer : range.startContainer;
+        const headOffset = rangeStartsFirst ? range.startOffset : pdfWordStartAt(range.endContainer, range.endOffset);
+        const tailOffset = rangeStartsFirst ? range.endOffset : pdfWordEndAt(range.startContainer, range.startOffset);
 
         const pieces = [];
-        for (let i = 0; i < selectedSpans.length; i++) {
-            const s = selectedSpans[i];
-            const walker = document.createTreeWalker(s, NodeFilter.SHOW_TEXT);
-            let n;
-            let foundText = false;
+        for (const sp of selectedSpans) {
+            const walker = document.createTreeWalker(sp, NodeFilter.SHOW_TEXT);
+            let n, foundText = false;
             while ((n = walker.nextNode())) {
                 foundText = true;
-                const isStartNode = (n === range.startContainer);
-                const isEndNode = (n === range.endContainer);
-                const pStart = (i === 0 && isStartNode) ? range.startOffset : 0;
-                const pEnd = (i === selectedSpans.length - 1 && isEndNode) ? range.endOffset : n.nodeValue.length;
-                if (pEnd > pStart) {
-                    pieces.push({ node: n, start: pStart, end: pEnd, span: s });
-                }
+                const pStart = (sp === firstSpan && n === headNode) ? headOffset : 0;
+                const pEnd = (sp === lastSpan && n === tailNode) ? tailOffset : n.nodeValue.length;
+                if (pEnd > pStart) pieces.push({ node: n, start: pStart, end: pEnd, span: sp });
             }
-            if (!foundText && s.textContent) {
-                const node = s.firstChild || s;
-                pieces.push({ node, start: 0, end: (s.textContent || '').length, span: s });
-            }
+            if (!foundText && sp.textContent) pieces.push({ node: sp.firstChild || sp, start: 0, end: (sp.textContent || '').length, span: sp });
         }
         range._pdfPieces = pieces;
-        const cleanText = pdfSpansToText(selectedSpans);
+        // The text the reader sees selected: the spans in reading order, words joined the PDF way (pdfSpansToChars). On a
+        // one-column page it is cut at the first / last character of the selection (a born-digital span is often a whole
+        // line), as the DOM-order path always did; a drag inside ONE column of a multi-column page has always read whole
+        // fragments, and keeps doing so.
+        const byNode = new Map(pieces.map(p => [p.node, p]));
+        const cleanText = pageCols.columnCount > 1
+            ? pdfSpansToText(selectedSpans)
+            : pdfSpansToChars(selectedSpans)
+                .filter(c => c.separator || (byNode.has(c.node) && c.offset >= byNode.get(c.node).start && c.offset < byNode.get(c.node).end))
+                .map(c => c.ch).join('').replace(/\s+/g, ' ').trim();
         range.toString = () => cleanText;
 
         let rect = null;
         try { const b = range.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (e) {}
-
+        const lang = (typeof detectLang === 'function' ? String(detectLang(cleanText) || '') : '').slice(0, 2).toLowerCase();
+        const column = { index: startCol, spans: selectedSpans, text: cleanText, lang };
         const canonical = {
             text: cleanText,
             grammarText: cleanText,
-            sourceLanguage: matchedCol.lang || studyLang,
+            sourceLanguage: lang || studyLang,
             targetLanguage: state.targetLang || 'uk',
             isCrossColumn: false,
-            columns: [matchedCol],
-            studyColumnIndex: matchedCol.lang === studyLang ? 0 : -1,
+            columns: [column],
+            studyColumnIndex: lang === studyLang ? 0 : -1,
             spans: selectedSpans,
             range,
             rect,
@@ -587,6 +646,20 @@ function resolveCanonicalPdfSelection(range, options = {}) {
         state.canonicalSelection = canonical;
         return canonical;
     }
+
+    // A drag ACROSS the columns of a two-column (bilingual) page: the columns of the dragged spans, as before.
+    const { rects, segColumn, spanSeg, columnCount } = pdfComputeColumns(rawSpans, layerWidth);
+    const colGroups = Array.from({ length: columnCount }, () => ({ spans: [], rects: [] }));
+    rawSpans.forEach((sp, i) => {
+        const c = segColumn[spanSeg[i]];
+        if (colGroups[c]) { colGroups[c].spans.push(sp); colGroups[c].rects.push(rects[i]); }
+    });
+    const partitionedColumns = colGroups.filter(g => g.spans.length).map((g, colIdx) => {
+        const spans = pdfReadingOrder(g.rects).map(i => g.spans[i]);
+        const text = pdfSpansToText(spans);
+        const lang = (typeof detectLang === 'function' ? String(detectLang(text) || '') : '').slice(0, 2).toLowerCase();
+        return { index: colIdx, spans, text, lang };
+    });
 
     // CASE B: Ambiguous cross-column drag, or normal single-column layout.
     const isCrossColumn = partitionedColumns.length > 1;
