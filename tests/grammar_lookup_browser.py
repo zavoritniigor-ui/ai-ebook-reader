@@ -118,9 +118,92 @@ check("14 a new Grammar analysis cancels the lookup in flight: its late answer n
       "document.querySelector('#grammar-content .grammar-focus-head b')?.textContent !== 'dormir' && document.getElementById('grammar-lookup-status').hidden")
 c.js("window.__delay = 0; 1")
 
+# ---- 6b. a looked-up word shows the same detail as a tapped one: feature badges, stem split, a note
+c.js("window.__errors = []; addEventListener('error', e => __errors.push(e.message)); window.__delay = 0; document.getElementById('grammar-lookup-status').hidden = true; els.grammarPanel.classList.remove('loading'); els.grammarPanel.classList.add('expanded'); 1"); time.sleep(0.4)
+PARLER = {"language": "fr", "pos": "verb", "lemma": "parler", "alternatives": [],
+          "forms": {"je": "parle", "tu": "parles", "il / elle / on": "parle", "nous": "parlons", "vous": "parlez", "ils / elles": "parlent"},
+          "features": {"mood": "infinitif", "auxiliary": "avoir", "gender": "masculin", "tense": ""},
+          "stemBreakdown": {"stem": "parl", "ending": "er"}, "explanation": "Правильне дієслово 1-ї групи; у складних часах бере avoir."}
+ALLER = dict(PARLER, lemma="aller", features={"mood": "infinitif", "auxiliary": "être"}, stemBreakdown={"stem": "a", "ending": "ller"}, explanation="Неправильне дієслово.")
+NO_NOTE = {k: v for k, v in dict(PARLER, lemma="chanter", forms={"je": "chante"}).items() if k != "explanation"}
+ODD = dict(PARLER, lemma="penser", features=["mood"], stemBreakdown="pens|er", explanation={"a": 1})
+BEAU = {"language": "fr", "pos": "adjective", "lemma": "joli", "alternatives": [], "forms": {"ms": "joli", "fs": "jolie", "mp": "jolis", "fp": "jolies"},
+        "features": {"gender": "masculin", "number": "singulier", "degree": "positif"}, "stemBreakdown": {"stem": "jol", "ending": "i"},
+        "explanation": "Змінюється за родом і числом: +e, +s."}
+HTML = dict(BEAU, lemma="vert", forms={"ms": "vert", "fs": "verte", "mp": "verts", "fp": "vertes"}, explanation="<img src=x onerror=\"window.__pwned=1\"> змінюється")
+c.js("""(() => { const r = %s; for (const k of Object.keys(r)) __replies[k] = JSON.stringify(r[k]); return 1; })()""" % json.dumps({
+    "розмовляти": PARLER, "іти": ALLER, "співати": NO_NOTE, "думати": ODD, "гарний": BEAU, "зелений": HTML}, ensure_ascii=False))
+
+type_and_submit('розмовляти')
+check("14a the lookup prompt asks for the language's feature keys, the stem split and a one-sentence note in the menu language",
+      "(() => { const p = __calls.at(-1).prompt; return __calls.at(-1).task === 'grammar_lookup' && p.includes('\"features\"') && p.includes('tense, mood, person, number, auxiliary, participle') && p.includes('gender, number') && p.includes('\"stemBreakdown\"') && p.includes('\"explanation\"') && p.includes(explainLangName()); })()", timeout=5)
+check("14b the card shows the declared feature badges only (mood, auxiliary with its label); an undeclared key and an empty value are dropped",
+      "(() => { const d = document.querySelector('#grammar-content .grammar-focus'); const b = [...d.querySelectorAll('.grammar-badge')].map(x => x.textContent); return JSON.stringify(b) === JSON.stringify(['infinitif', 'auxiliaire: avoir']) || JSON.stringify(b); })()", timeout=5)
+check("14c a regular verb shows its stem + ending split (parl|er)",
+      "(() => { const p = document.querySelector('#grammar-content .grammar-focus-pattern'); return !!p && p.querySelector('.grammar-stem').textContent === 'parl' && p.querySelector('.grammar-ending').textContent === 'er'; })()")
+check("14d the note is labelled «about the word», not «why this form», and shows the model's sentence",
+      "(() => { const w = document.querySelector('#grammar-content .grammar-focus-why'); return !!w && w.querySelector('b').textContent === t('grammarAbout') + ': ' && t('grammarAbout') !== t('grammarWhy') && w.textContent.includes('бере avoir'); })()")
+check("14e the conjugation table is still there beside the new detail", "document.querySelectorAll('#grammar-content .grammar-focus .grammar-grid-row').length === 6")
+n = c.js("__calls.length")
+type_and_submit('розмовляти')
+check("14f the same word again comes from the cache WITH its detail (no request)",
+      "__calls.length === %d && document.querySelectorAll('#grammar-content .grammar-badge').length === 2 && !!document.querySelector('#grammar-content .grammar-focus-why')" % n, timeout=5)
+
+type_and_submit('іти')
+check("14g an irregular verb: the bogus stem split (a|ller) is dropped, the badges and the note stay",
+      "(() => { const d = document.querySelector('#grammar-content .grammar-focus'); return d.querySelector('.grammar-focus-head b').textContent === 'aller' && !d.querySelector('.grammar-focus-pattern') && d.querySelectorAll('.grammar-badge').length === 2 && !!d.querySelector('.grammar-focus-why'); })()", timeout=5)
+type_and_submit('співати')
+check("14h a reply without a note: no «about» block at all (no empty header), the rest of the card is intact",
+      "(() => { const d = document.querySelector('#grammar-content .grammar-focus'); return d.querySelector('.grammar-focus-head b').textContent === 'chanter' && !d.querySelector('.grammar-focus-why') && !!d.querySelector('.grammar-grid-row') && d.querySelectorAll('.grammar-badge').length === 2; })()", timeout=5)
+type_and_submit('думати')
+check("14i wrong shapes (features as an array, a note that is an object, a split that is a string) are ignored: the card shows, nothing throws",
+      "(() => { const d = document.querySelector('#grammar-content .grammar-focus'); return d.querySelector('.grammar-focus-head b').textContent === 'penser' && d.querySelectorAll('.grammar-badge').length === 0 && !d.querySelector('.grammar-focus-pattern') && !d.querySelector('.grammar-focus-why') && __errors.length === 0 && document.getElementById('grammar-lookup-status').hidden; })()", timeout=5)
+type_and_submit('гарний')
+check("14j an adjective: its gender / number badges (an undeclared «degree» dropped), its note, and no stem split",
+      "(() => { const d = document.querySelector('#grammar-content .grammar-focus'); return d.dataset.pos === 'adjective' && JSON.stringify([...d.querySelectorAll('.grammar-badge')].map(x => x.textContent)) === JSON.stringify(['masculin', 'singulier']) && !d.querySelector('.grammar-focus-pattern') && !!d.querySelector('.grammar-focus-why') && d.querySelectorAll('.grammar-grid-row').length === 4; })()", timeout=5)
+type_and_submit('зелений')
+check("14k a note carrying HTML is shown as text (no element is created, no script runs)",
+      "(() => { const w = document.querySelector('#grammar-content .grammar-focus-why'); return !!w && !w.querySelector('img') && w.textContent.includes('<img') && !window.__pwned; })()", timeout=5)
+
+# ---- 6c. a malformed reply of the first provider is repeated ONCE on the backup (real Groq: 1 of 35 clean lookups was a JSON slip)
+c.js("""(() => { window.__lk = {first: '', backup: '', firstProvider: 'groq', backupAvailable: true, calls: []};
+  callAI = async (prompt, signal, task, onDelta, options) => { __lk.calls.push({task, provider: (options && options.provider) || null});
+    if (options && options.meta) options.meta.provider = __lk.firstProvider;
+    return (options && options.provider) ? __lk.backup : __lk.first; };
+  aiBackupProvider = p => (p === 'groq' && __lk.backupAvailable) ? 'openai' : null; return 1; })()""")
+GOOD = json.dumps({"language": "fr", "pos": "verb", "lemma": "chanter", "forms": {"je": "chante"}})
+SLIP = '{"language":"fr","pos":"verb","lemma":"chanter","alternatives":[{"lemma":"x","note":"y"}},{"lemma":"z"}],"forms":{"je":"chante"}}'   # one stray brace
+NOT_VERB = '{"language":"fr","pos":null,"lemma":null}'
+
+
+def ok(name, cond, detail=None):
+    assert cond, (name, detail)
+    print('PASS', name, flush=True)
+
+
+def lookup_case(word, first, backup, first_provider='groq', backup_available=True):
+    c.js("__lk.first = %s; __lk.backup = %s; __lk.firstProvider = %s; __lk.backupAvailable = %s; __lk.calls = []; 1" % (json.dumps(first), json.dumps(backup), json.dumps(first_provider), 'true' if backup_available else 'false'))
+    type_and_submit(word); time.sleep(0.6)
+    return c.js("({calls: __lk.calls.map(x => x.provider), status: document.getElementById('grammar-lookup-status').textContent, head: document.querySelector('#grammar-content .grammar-focus-head b')?.textContent || null})")
+
+INVALID = c.js("t('aiInvalidResponse')"); NOT_FOUND = c.js("t('grammarLookupNotFound')")
+r = lookup_case('слово1', SLIP, GOOD)
+ok("14l a malformed first answer (Groq) is repeated once on the backup provider and the card shows", r['calls'] == [None, 'openai'] and r['head'] == 'chanter' and r['status'] == '', r)
+r = lookup_case('слово2', SLIP, SLIP)
+ok("14m if the backup is malformed too: the usual «invalid answer» message, exactly two requests, no loop",
+      r['calls'] == [None, 'openai'] and r['status'] == INVALID, r)
+r = lookup_case('слово3', GOOD, GOOD)
+ok("14n a good first answer: one request", r['calls'] == [None], r)
+r = lookup_case('слово4', NOT_VERB, GOOD)
+ok("14o «not a verb or an adjective» is an answer, not a slip: one request", r['calls'] == [None] and r['status'] == NOT_FOUND, r)
+r = lookup_case('слово5', SLIP, GOOD, backup_available=False)
+ok("14p no backup provider (routing off / no key): one request and the message", r['calls'] == [None] and r['status'] == INVALID, r)
+r = lookup_case('слово6', SLIP, GOOD, first_provider='openai')
+ok("14q the first answer did not come from Groq: not repeated", r['calls'] == [None], r)
+
 # ---- 7. labels in every UI language, phone layout
 check("15 the new texts exist in all UI languages (es included)",
-      "(() => { const bad = []; for (const k of ['grammarLookupPlaceholder','grammarLookupLabel','grammarLookupBtn','grammarLookupEmpty','grammarLookupNotFound','grammarLookupAlso']) { for (const l of ['uk','en','fr','ru','zh','ko','hi','ga']) if (!I18N[k] || !I18N[k][l]) bad.push(k + ':' + l); if (typeof I18N_ES === 'undefined' || !I18N_ES[k]) bad.push(k + ':es'); } return bad.length === 0 || JSON.stringify(bad); })()")
+      "(() => { const bad = []; for (const k of ['grammarLookupPlaceholder','grammarLookupLabel','grammarLookupBtn','grammarLookupEmpty','grammarLookupNotFound','grammarLookupAlso','grammarAbout']) { for (const l of ['uk','en','fr','ru','zh','ko','hi','ga']) if (!I18N[k] || !I18N[k][l]) bad.push(k + ':' + l); if (typeof I18N_ES === 'undefined' || !I18N_ES[k]) bad.push(k + ':es'); } return bad.length === 0 || JSON.stringify(bad); })()")
 c.js("document.getElementById('ui-lang').value = 'en'; document.getElementById('ui-lang').dispatchEvent(new Event('change')); 1"); time.sleep(0.3)
 check("16 switching the menu language relabels the field", "document.getElementById('grammar-lookup-input').placeholder.startsWith('A verb or adjective') && document.getElementById('grammar-lookup-input').placeholder.includes('French')")
 c.js("document.getElementById('ui-lang').value = 'uk'; document.getElementById('ui-lang').dispatchEvent(new Event('change')); 1")
