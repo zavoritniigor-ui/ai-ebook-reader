@@ -1,3 +1,203 @@
+# 📋 ПОВНА ПЕРЕДАЧА РОБОТИ НАСТУПНОМУ AI-АГЕНТУ (HANDOFF)
+
+> **⚠️ ІНСТРУКЦІЯ ДЛЯ НОВОГО АГЕНТА (ПРОЧИТАЙ ПЕРШИМ ПЕРЕД БУДЬ-ЯКИМИ ДІЯМИ):**
+> 1. **Спочатку прочитай цей розділ `HANDOFF.md` повністю.**
+> 2. **Перевір поточний стан Git** (`git status --short --branch`, `git rev-parse HEAD`, `git diff`, `git worktree list`, `gh pr list`), нічого не скидаючи (`git reset --hard`, `git checkout --`, `git clean` **ЗАБОРОНЕНІ**).
+> 3. **Продовжуй незавершену роботу з фактичного місця зупинки попереднього агента**, не повторюючи вже виконаних завдань і не втрачаючи незакомічених змін у робочому дереві.
+> 4. Попередній агент (Claude Opus 5.5, сесія `5c25a686-7a3f-5564-99bf-8d38a4a464e6`) зупинився **2026-10-16 о 21:54 EDT (`America/New_York`)** через вичерпання ліміту сесії (`You've hit your session limit · resets 10:50pm`) під час:
+>    - очікування зеленого CI для вже відкритого **PR #238** (`diagnostics` — кнопка «📋 Скопіювати діагностику» в Налаштуваннях) — **CI вже завершився УСПІШНО**, PR готовий до злиття в `main`;
+>    - розробки та тестування виправлення пропуску слів при великому виділенні тексту в сканованих PDF-книгах на локальній гілці **`pdf-selection-reading-order`** (зміни в `js/selection.js`, `index.html`, `sw.js` **незакомічені**, фоновий прогін 28 тестів виявив 2 прямі регресії у двомовних колонках та зворотному touch-drag, які потрібно довести до ладу перед комітом).
+
+---
+
+## 1. Дата, час і стан останньої перевірки
+
+- **Час останньої перевірки:** `2026-10-16T22:08:00-04:00` (`America/New_York`).
+- **Основний робочий каталог:** `/home/igor/Projects/AI Ebook rider`
+- **Поточна гілка:** `pdf-selection-reading-order`
+- **Поточний `HEAD`:** `548a9566a10f3d2fc9ede5dcd12f99145f965bdb` (збігається з `main` та `origin/main`: `fix(tts): speech no longer goes silent until the app is restarted (#237)`).
+- **Віддалений репозиторій (`origin`):** `https://github.com/zavoritniigor-ui/ai-ebook-reader.git`
+
+### Стан `git status --short --branch` в основному репозиторії
+```text
+## pdf-selection-reading-order
+ M HANDOFF.md
+ M index.html
+ M js/selection.js
+ M sw.js
+```
+*(Примітка: `index.html`, `js/selection.js`, `sw.js` — незакомічені зміни попереднього агента; `HANDOFF.md` — цей документ передачі).*
+
+### Усі наявні Git Worktrees (`git worktree list`)
+1. `/home/igor/Projects/AI Ebook rider` — `548a956` `[pdf-selection-reading-order]` (основний робочий каталог, має незакомічені зміни в `js/selection.js`, `index.html`, `sw.js`).
+2. `/tmp/claude-1000/-home-igor-Projects-AI-Ebook-rider/5c25a686-7a3f-5564-99bf-8d38a4a464e6/scratchpad/main-wt` — `548a956` `(detached HEAD)` — тимчасовий worktree на `origin/main`, створений попереднім агентом для порівняльного тестування сканованої книги з Internet Archive (`scan2_tmp` симлінк).
+3. `/home/igor/Projects/AI-Ebook-Reader-AndroidFollowup` — `b367447` `[fix/ask-ai-voice-android-restart]` (старий worktree від 8 жовтня, вже перекритий PR #178 та PR #238).
+4. `/home/igor/Projects/AI-Ebook-Reader-Instant` — `975ab2d` `[feature/instant-multisource-translation]` (старий worktree від 8 жовтня, Draft PR #142).
+5. `/home/igor/Projects/wt-tab` — `1d9d537` `[feat/rules-selection-scan]` (старий worktree від 11 жовтня).
+
+### Останні коміти (`git log --oneline -10` на `main` + активні гілки)
+- `e35e8d5` (`origin/diagnostics`, `diagnostics`) — `feat(settings): sound and microphone diagnostics to copy and send` (**PR #238, OPEN, CI SUCCESS**).
+- `548a956` (`HEAD -> pdf-selection-reading-order`, `origin/main`, `main`) — `fix(tts): speech no longer goes silent until the app is restarted (#237)` (MERGED `2026-10-17T00:27:29Z`).
+- `f451f9c` — `perf(pdf): release off-screen page memory and render the jumped-to page first (#236)` (MERGED `2026-10-16T23:59:59Z`).
+- `6fb79bc` — `fix(ink): keep handwritten notes in place and store large amounts (#235)` (MERGED `2026-10-16T22:55:00Z`).
+- `e87b74d` — `feat(grammar): look up a verb or adjective typed in your own language (#234)` (MERGED `2026-10-16T19:14:08Z`).
+- `a0fcefa` — `feat(ai): every request goes to Groq first; OpenAI only when Groq does not answer (#233)` (MERGED `2026-10-16T16:40:26Z`).
+
+---
+
+## 2. Над чим працював попередній агент останнім і що залишилося незавершеним
+
+За журналами сесії `/home/igor/.claude/projects/-home-igor-Projects-AI-Ebook-rider/5c25a686-7a3f-5564-99bf-8d38a4a464e6.jsonl` та фоновими задачами в `/tmp/claude-1000/-home-igor-Projects-AI-Ebook-rider/5c25a686-7a3f-5564-99bf-8d38a4a464e6/tasks/`:
+
+### Незавершена задача А (ГОТОВА ДО MERGE): Діагностика мікрофона та звуку — гілка `diagnostics`, PR #238
+- **Що зроблено:** Користувач попросив «Додай діагностику» для відстеження дублювання слів у диктуванні та проблем зі звуком. Попередній агент реалізував кнопку **«📋 Скопіювати діагностику»** у вікні Налаштувань (`index.html`, `js/dictation.js`, `js/i18n-es.js`, `sw.js`, `ARCHITECTURE.md`, `HANDOFF.md`, `tests/diagnostics_browser.py`, `.github/workflows/ci.yml`), закомітив у гілку `diagnostics` (`e35e8d56d43b554f361e8a0c07241fd0851c10a9`), запушив в `origin/diagnostics` і відкрив **PR #238**.
+- **Чому не завершено:** Попередній агент запустив фонову задачу `b8qlmojyq` («Wait for PR 238 CI»), щоб дочекатися зеленого CI, змерджити PR #238 у `main` і перевірити деплой на `ai-ebook-reader.pages.dev`, але паралельно взявся за наступне повідомлення користувача (пропуск слів при виділенні в PDF) і вичерпав ліміт сесії до того, як встиг обробити сповіщення про завершення CI.
+- **Фактичний стан PR #238 зараз (ПІДТВЕРДЖЕНО):**
+  - GitHub Actions Run `38988918177` на SHA `e35e8d5`: **`SUCCESS`** (`test`: SUCCESS, `Cloudflare Pages`: SUCCESS, `mergeStateStatus`: `CLEAN`).
+  - **PR #238 ще НЕ змерджено в `main`**, тому на продакшені `ai-ebook-reader.pages.dev` кнопки «📋 Скопіювати діагностику» ще немає.
+
+### Незавершена задача Б (У РОБОТІ / НЕЗАКОМІЧЕНІ ЗМІНИ): Пропуск слів під час великого виділення в PDF — гілка `pdf-selection-reading-order`
+- **Скарга користувача:** «Під час виділення пропускає слова , для одного двох речень працює добре» (зі знімком екрана сканованої англійської книги з Internet Archive, де під час великого виділення частина слів — напр., `it.`, `if it isn't stolen money… and is`, `not claimed` — не підсвічувалася зеленим виділенням).
+- **Діагноз попереднього агента (підтверджений на реальному скані в `/tmp/claude-1000/.../scratchpad/scan2`):**
+  1. У сканованих книгах висота OCR-спанів у межах одного рядка сильно коливається (ініціал або висока літера ~24px поруч зі словом ~9px на тій самій базовій лінії). Старе правило групування рядків `Math.abs(r.top - band.top) <= Math.min(r.height, band.height) * 0.6` розрізало такий рядок на кілька окремих «рядків».
+  2. У `pdfComputeColumns(spans, layerWidth)` будь-який стрибок лівого краю сегмента (`segLeft[cur] - segLeft[prev] > columnGapThreshold`) створював нову «колонку». Через це відступи абзаців, центровані заголовки або розірвані OCR-рядки на одноколонковій сторінці скану розбивали сторінку на 2–5 фальшивих «колонок».
+  3. У `resolveCanonicalPdfSelection(range)` при виділенні від початку до кінця на одній сторінці (коли стартовий і кінцевий спан потрапляли в «колонку 0») код вважав це виділенням усередині однієї колонки (`startCol === endCol`) і **відкидав усі спани, які потрапили в «колонки 1..N»**, через що слова посеред абзацу зникали з підсвічування!
+- **Що змінив попередній агент у `js/selection.js` (незакомічений diff):**
+  1. Додав `pdfLineBands(rects, indices)` — групує спани в рядки за вертикальним перекриттям (`overlap >= 0.5 * Math.min(h, b.bottom - b.top)`) замість різниці `top`.
+  2. Додав `pdfReadingOrder(rects)` — сортує спани рядками згори вниз, усередині рядка зліва направо.
+  3. У `pdfComputeColumns` додав перевірку `isColumnEdge`: нова колонка починається лише там, де `pdfLayerColumnStarts(layer, layerWidth)` бачить справжню межу колонки на сторінці (щонайменше 2 рядки з відступом після проміжку).
+  4. У `resolveCanonicalPdfSelection` замінив перевірку `if (partitionedColumns.length > 1)` на `if (pageColumnStarts.length > 0 && startCol >= 0 && startCol === endCol)`: якщо `startSpan` і `endSpan` в одній колонці `startCol` на сторінці з `pageColumnStarts`, бере всі спани цієї колонки між `ia` та `ib` у порядку `pdfReadingOrder`.
+  5. Оновив хеші версій через `python3 tools/version_app_shell.py` в `index.html` та `sw.js`.
+- **Чому ця зміна в `js/selection.js` ЩЕ НЕ ГОТОВА до коміту (ПІДТВЕРДЖЕНО логом `binecimlz.output`):**
+  Попередній агент запустив фоновий прогін 28 PDF/selection тестів (`binecimlz`), але перед цим сесія обірвалася. Результат `binecimlz.output` (23 PASS, **5 FAIL**):
+  - ❌ `tests/pdf_bilingual_columns_browser.py` — `AssertionError: ('a French line ending in an English gloss "le professeur (teacher) | the teacher"', [{'joined': True, 'sentences': ['le professeur (teacher) the teacher']}])`.
+    *Причина:* на сторінці двомовного підручника, де лише ОДИН рядок має другу колонку (або коли `pdfLayerColumnStarts` не знаходить `>= 2` рядків з однією межею колонки), `pageStarts` порожній, тому `pdfComputeColumns` з новим фільтром `isColumnEdge` перестає бачити другу колонку і склеює французький та англійський стовпчики в один рядок!
+  - ❌ `tests/pdf_workspace_regressions_browser.py` — `AssertionError: ('B4 reverse touch-only drag retains the original anchor and column', False)`.
+    *Причина:* у новому блоці `if (pageColumnStarts.length > 0 && startCol >= 0 && startCol === endCol)` (рядки 547–576 `js/selection.js`) `startSpan` та `endSpan` беруться з `pdfBoundarySpan(range, true)` і `pdfBoundarySpan(range, false)`, але при зворотному touch-drag або на синтетичній фікстурі з 1 рядком у колонці `pageColumnStarts.length` може дорівнювати `0` або `selectedSpans` не зберігає `pdfTouchDragState.anchorSpan` колонку так, як раніше робив `partitionedColumns`!
+  - ❌ `tests/format_reader_audit_browser.py` (`pdf offline navigation and reopen`) — імовірно таймаут/мережа під час паралельного запуску 28 браузерів або SW кеш; потребує окремого перевірочного запуску.
+  - ❌ `tests/rules_background_scan_browser.py` та `tests/rules_study_lang_browser.py` — впали через відсутність мережі у `unshare -rn` пісочниці або вплив `selection.js` на виділення тексту для Rules; потребують індивідуальної перевірки.
+
+---
+
+## 3. Актуальний стан Pull Request, CI та тестів
+
+### Відкриті Pull Requests (`gh pr list --state open`)
+1. **PR #238** — `feat(settings): sound and microphone diagnostics to copy and send`
+   - Гілка: `diagnostics` (`HEAD`: `e35e8d56d43b554f361e8a0c07241fd0851c10a9`) → база `main`.
+   - Стан CI: **SUCCESS** (Run `38988918177`: `test` SUCCESS, `Cloudflare Pages` SUCCESS, `mergeStateStatus: CLEAN`).
+   - Локальні тести, підтверджені попереднім агентом перед пушем: `tests/diagnostics_browser.py`, `tests/ask_dictation_browser.py`, `tests/tts_recovery_browser.py`, `tests/app_shell_versions.py`, `tests/ci_suite_coverage.py`.
+2. **PR #149** (Draft, від 6 жовтня) — `fix(dictation): replace-not-append for cumulative finals; visible mic error` (історичний чернетковий PR, перекритий #155 та #178).
+3. **PR #142** (Draft, від 5 жовтня) — `Instant local-first translation with background AI refinement` (історичний чернетковий PR, перекритий #165 та #230).
+
+### Стан CI на `main`
+- Останній коміт у `main`: `548a956` (`fix(tts): speech no longer goes silent until the app is restarted (#237)`).
+- GitHub Actions Run `38986454603` на `main`: **SUCCESS** (`2026-10-17T00:27:32Z`).
+- Продакшн `https://ai-ebook-reader.pages.dev` обслуговує коміт `548a956` (PR #237).
+
+---
+
+## 4. Детальний стан: Дублювання слів у голосовому введенні (Ask V / Диктування), Діагностика мікрофона та Озвучування (TTS)
+
+### 4.1. Дублювання слів у голосовому введенні («Запитай AI» / Ask V / `js/dictation.js`)
+- **Підтверджені факти:**
+  - Раніше (6–11 жовтня) були виправлені дві причини дублювання в `js/dictation.js`:
+    1. **PR #155 (`2cf2081`):** кумулятивні/повторні `isFinal` у межах однієї сесії замінюють текст сесії (`sessionCommitted`), а не дописуються двічі (`extendTranscript` + `overlapSuffixPrefix`).
+    2. **PR #178 (`cbdb21a`):** на Android під час автоматичного перезапуску `SpeechRecognition` (`singleUtterance` після кожної паузи) рушій іноді повторно надсилає останню фразу попередньої сесії. Додано `dropBoundaryReplay(prevCommitted, incoming)`, який відтинає повтор попередньої фрази на межі перезапуску.
+  - **2026-10-16** користувач знову повідомив: *«В застосунку пропав звук, запис через мікрофон знову дублює слова»*.
+  - Код `js/dictation.js` між PR #178 (11 жовтня) і 16 жовтня **не змінювався**.
+- **Гіпотези (потребують перевірки діагностичним звітом з пристрою користувача):**
+  1. На Android (Pixel 9 / планшет) Chrome Web Speech API може повертати дещо змінений варіант попередньої фрази (наприклад, інша пунктуація, регістр, або переформулювання з 1 зміненим словом на початку), через що точне префіксне порівняння у `dropBoundaryReplay` або `extendTranscript` не розпізнає це як повтор і дописує фразу вдруге.
+  2. Або дублювання відбувається в іншому полі мікрофона — у полі теми «Практики» (`buildPracticeTopicMic` в `js/grammar-svo.js`, рядки 1415–1455), яке використовує окремий простий обробник `SpeechRecognition` без `dropBoundaryReplay` та без захисту від кумулятивних `isFinal` з `js/dictation.js`!
+- **Що зроблено для точного встановлення причини:**
+  - У **PR #238 (`diagnostics`)** розширено `sttTrace` до 400 подій і додано запис події `field` (останні 160 символів поля вводу після кожного `commit`), а також кнопку **«📋 Скопіювати діагностику»** в Налаштуваннях (🔑).
+  - Щойно PR #238 буде змерджено в `main`, користувач зможе продиктувати фразу до появи дубля, натиснути «📋 Скопіювати діагностику» і надіслати JSON, де в `dictation.trace` буде видно покроково кожен `result`, `commit` і `field`.
+
+### 4.2. Діагностика мікрофона та звуку (`diagnostics` / PR #238)
+- **Підтверджені факти:**
+  - Код у `js/dictation.js` (функція `buildAudioDiagnosticsReport()` та обробник `#btn-copy-diagnostics`), розмітка в `index.html` (секція `#diagnostics-section` в модальному вікні налаштувань, висота кнопки `min-height: 44px`), переклади в 9 мовах інтерфейсу (`core.js` та `i18n-es.js`), тест `tests/diagnostics_browser.py` (6 перевірок, включно з відсутністю витоку ключів AI).
+  - Статус: **PR #238 відкритий, CI повністю зелений (`e35e8d5`)**. Очікує лише злиття в `main` (за правилами репозиторію — після дозволу користувача або в межах поточного циклу доставки).
+
+### 4.3. Проблеми озвучування / зникнення звуку (`js/tts.js`, PR #237)
+- **Підтверджені факти:**
+  - У **PR #237 (`548a956`, вже в `main` і на продакшені `ai-ebook-reader.pages.dev`)** виправлено 4 стани, в яких `window.speechSynthesis` у Chrome на Android замовкав до перезапуску застосунку:
+    1. Після згортання застосунку синтезатор залишався в стані `paused: true` (`cancel()` у Chrome не скидає паузу, і всі нові `speak()` мовчки ставали в чергу). Тепер `unwedgeSynth()` викликає `cancel()` + `resume()`, а перед кожним `speak()` перевіряється `if (synth.paused) synth.resume()`.
+    2. Сторожовий таймер старту фрази (`2500ms`) раніше не спрацьовував, якщо `synth.speaking` застрягав у `true` без реального звуку (`onstart` не приходив). Тепер watchdog перезапускає фразу після `unwedgeSynth()` незалежно від `synth.speaking`.
+    3. Якщо і друга спроба за `2500ms` не запустила `onstart`, фраза коректно завершується (кнопка скидається з `■`), і один раз за сесію показується підказка `ttsNoSound` (перевірити гучність мультимедіа та синтез мовлення Android).
+    4. При поверненні у вкладку (`visibilitychange` / `pageshow`), якщо застосунок зараз нічого не озвучує, `releaseIdleSynth()` автоматично розблоковує завислий синтезатор; активні `SpeechSynthesisUtterance` утримуються в `liveUtterances`, щоб сборщик сміття Chrome не знищував їх до `onend`.
+- **Що не підтверджено (гіпотеза / очікує перевірки на пристрої):**
+  - Чи усуває PR #237 проблему звуку на реальному телефоні Pixel 9 / планшеті користувача під час живого читання. Якщо звук зникає через відсутність системного голосу для обраної мови або перехоплення аудіофокусу мікрофоном, звіт із «📋 Скопіювати діагностику» (PR #238) покаже точний стан `speechSynthesis` (`paused`, `speaking`, `pending`, список `voices`, `ttsTrace`).
+
+---
+
+## 5. Попередня проблема зі зниклим описом дієслів і прикметників у Grammar (`js/grammar-svo.js`)
+
+За результатами аналізу історії комітів та коду `js/grammar-svo.js` зафіксовано три конкретні технічні аспекти роботи панелі «Граматика» (Verbs / Adjectives):
+
+1. **Пошук власного слова у «Граматиці» (PR #234, коміт `e87b74d`, в `main`):**
+   - Сьогодні користувач попросив: *«Потрібно в граматика мати можливість написати дієслово чи прикметник на своїй мові для подальшого відмінювання»*.
+   - Реалізовано форму `#grammar-lookup` (`runGrammarLookup` → `buildGrammarLookupPrompt` → `normalizeGrammarLookup` у `js/grammar-svo.js`, рядки 1277–1410).
+   - **Важлива особливість (підтверджений факт у коді, рядок 1368 `js/grammar-svo.js`):** `normalizeGrammarLookup` повертає об'єкт елемента з порожніми полями опису:
+     `features: {}, explanation: '', stemBreakdown: null, sentence: ''`.
+     Тобто при пошуку слова через поле вводу в деталях картки відображається лема, переклад запиту в дужках, варіанти (`alternatives` з короткими примітками до 4 слів) та таблиця відмінювання (`forms`), але **немає текстового опису/пояснення (`explanation` / «Чому ця форма»), морфологічних бейджів (`features`) і розбору основи (`stemBreakdown`)**.
+2. **Відображення карток дієслів і прикметників при виділенні тексту книги (`renderGrammarPanel` vs `renderGrammarFocusDetail`):**
+   - Коли користувач **тапає одне слово** (`tapped.length === 1` у `presentGrammarAnalysis`, рядок 1202), відразу відкривається детальна картка `renderGrammarFocusDetail` з бейджами `features`, таблицею `forms`, реченням і пояненням `explanation` («Чому ця форма: ...»).
+   - Коли користувач **виділяє речення або абзац** (`tapped.length === 0`), `presentGrammarAnalysis` викликає лише `renderGrammarPanel()` (рядки 939–993), який малює компактні картки лем (`buildGrammarCard`: лише кнопка з інфінітивом/базовою формою та чіпи поверхневих форм), **без автоматичного відкриття детального опису (`renderGrammarFocusDetail`)**, доки користувач не натисне на конкретну лему чи форму.
+   - Крім того, для довших виділень (`expected > GRAMMAR_FULL_ITEMS_MAX`, тобто понад ~24 слова, `prof.lite === true`, рядок 295 та 384) промпт `buildGrammarAnalysisPrompt` навмисно вимагає `"forms" and "stemBreakdown": always null`, щоб відповідь AI не обрізалася за лімітом токенів. Для дієслів таблицю можна підвантажити кліком по кнопці часу (`selectGrammarTense` → `fetchVerbParadigm`), але **для прикметників кнопок часу немає**, тому в режимі `lite` прикметник залишається без таблиці форм `forms`!
+3. **Маршрутизація Grammar-запитів на Groq (PR #233, коміт `a0fcefa`, в `main`):**
+   - Починаючи з PR #233, усі запити `grammar_analysis` та `grammar_lookup` спочатку йдуть у **Groq** (`llama-3.3-70b-versatile`), а в OpenAI перенаправляються лише при мережевій/HTTP помилці, таймауті або обрізанні (`AiRequestError`). Якщо модель Groq повертає JSON, де частина елементів відсіюється суворою валідацією `normalizeGrammarAnalysis` (наприклад, `forms_do_not_contain_surface`, `lemma_not_infinitive`, або порожній `explanation`), такий запит не повторюється на OpenAI автоматично.
+
+---
+
+## 6. Поточні змінені файли, результати перевірок і відомі помилки
+
+### Файли, які зараз змінені в `/home/igor/Projects/AI Ebook rider` (гілка `pdf-selection-reading-order`)
+1. `js/selection.js` (`+72 / -69` рядків):
+   - Додано `pdfLineBands(rects, indices)` та `pdfReadingOrder(rects)`.
+   - Оновлено `pdfLineSegments`, `pdfComputeColumns` (додано перевірку `isColumnEdge` через `pdfLayerColumnStarts`), `pdfPartitionColumns`, `pdfVisualGroup`.
+   - Оновлено `resolveCanonicalPdfSelection(range, options)` (розділення на випадок одноколонкового drag на двоколонковій сторінці `pageColumnStarts.length > 0 && startCol >= 0 && startCol === endCol` та загальний випадок).
+2. `index.html`:
+   - Оновлено версію скрипта `js/selection.js?v=74a6280c0877`.
+3. `sw.js`:
+   - Оновлено `CACHE_NAME = 'ai-reader-shell-9a02257fbe85'` та `js/selection.js?v=74a6280c0877`.
+4. `HANDOFF.md`:
+   - Додано цей розділ передачі роботи.
+
+### Результати останніх перевірок на гілці `pdf-selection-reading-order`
+- **Перевірка на сканованій книзі з Internet Archive (`colprobe.py` у scratchpad):**
+  - На 34 протестованих сторінках сканованої книги велике виділення тепер охоплює майже всі слова (на сторінках 116 і 119 на `origin/main` втрачалося 11–19 слів і створювалося 3–5 фальшивих колонок; з новою логікою `pdfLineBands` + `isColumnEdge` фальшиві колонки на одноколонкових сторінках прибрані, на стор. 89 виправлено інверсію `ia > ib` через `Math.min(ia, ib)` / `Math.max(ia, ib)`).
+- **Результат фонового прогону 28 тестів (`binecimlz.output`):**
+  - **23 тести ПРОЙШЛИ успішно:**
+    `grammar_french_browser.py`, `grammar_selection_preserve_browser.py`, `learning_stats_languages_grammar_browser.py`, `learning_stats_position_independence_browser.py`, `menu_toggle_region_browser.py`, `pdf_continuous_browser.py`, `pdf_crop_ai_share_browser.py`, `pdf_hitbox_stateless_browser.py`, `pdf_ink_ownership_browser.py`, `pdf_ink_storage_browser.py`, `pdf_memory_browser.py`, `pdf_page_identity_browser.py`, `pdf_pinch_anchor_browser.py`, `pdf_print_browser.py`, `pdf_rendering_audit_browser.py`, `pdf_scrubber_collapse_browser.py`, `pdf_sentence_reselect_browser.py`, `pdf_thumbnails_browser.py`, `pdf_ux_browser.py`, `pdf_word_click_browser.py`, `pdf_workspace_browser.py`, `reader_repair_verification_browser.py`, `rules_tap_translate_browser.py`.
+  - **5 тестів ВПАЛИ (потрібно розібрати й виправити перед комітом):**
+    1. `tests/pdf_bilingual_columns_browser.py` — `AssertionError: ('a French line ending in an English gloss "le professeur (teacher) | the teacher"', [{'joined': True, 'sentences': ['le professeur (teacher) the teacher']}])`.
+    2. `tests/pdf_workspace_regressions_browser.py` — `AssertionError: ('B4 reverse touch-only drag retains the original anchor and column', False)`.
+    3. `tests/format_reader_audit_browser.py` — `AssertionError: ('pdf offline navigation and reopen', False)`.
+    4. `tests/rules_background_scan_browser.py` — `AssertionError: ('1 first tap with a selection starts ONE background search and does NOT open the window', False)`.
+    5. `tests/rules_study_lang_browser.py` — `AssertionError: ('4 a selected French example is searched in the French catalogue', False)`.
+
+---
+
+## 7. Конкретні наступні кроки для нового агента завтра
+
+1. **Крок 1 — Перевірка стану та PR #238 (`diagnostics`):**
+   - Перевірити `git status --short --branch` і `gh pr view 238`.
+   - Оскільки CI для **PR #238** (`diagnostics`, SHA `e35e8d5`) вже **SUCCESS**, за згодою користувача (або згідно з процесом релізу) змерджити PR #238 у `main`, дочекатися зеленого CI на `main` і перевірити деплой на `https://ai-ebook-reader.pages.dev`, щоб користувач отримав кнопку «📋 Скопіювати діагностику» на своєму пристрої.
+2. **Крок 2 — Доведення до кінця гілки `pdf-selection-reading-order` (`js/selection.js`):**
+   - Не скидаючи незакомічених змін у `js/selection.js`, запустити поодинці 2 впалі таргетовані тести колонок:
+     - `python3 tests/pdf_bilingual_columns_browser.py`
+     - `python3 tests/pdf_workspace_regressions_browser.py`
+   - Виправити причину регресії в `js/selection.js`:
+     - У `pdfComputeColumns`: коли `spans` вже містять явні паралельні сегменти в одному рядку з великим розривом (`segLeft[cur] - segLeft[prev] > columnGapThreshold` на тому самому рядку `band`), або коли `layer` має двоколонкові рядки (навіть якщо на синтетичній фікстурі всього 1 такий рядок і `pdfLayerColumnStarts` повертає `[]`, бо вимагає `>= 2` рядків), двоколонковий поділ має зберігатися! Натомість фільтр `isColumnEdge` має блокувати лише фальшиві міжрядкові стрибки `segLeft` (коли сегменти лежать на *різних* рядках одноколонкової сторінки).
+     - У `resolveCanonicalPdfSelection`: перевірити збереження `anchorSpan` при зворотному touch-drag (`B4 reverse touch-only drag retains the original anchor and column`) та правильну передачу виділеного тексту в `rules_background_scan_browser.py` і `rules_study_lang_browser.py`.
+   - Перевірити окремо `python3 tests/format_reader_audit_browser.py`, `python3 tests/rules_background_scan_browser.py`, `python3 tests/rules_study_lang_browser.py`.
+   - Додати новий регресійний тест для виділення тексту на сканованій сторінці з нерівною висотою спанів та абзацними відступами (щоб жодне слово всередині абзацу не пропускалося).
+   - Оновити версії (`python3 tools/version_app_shell.py`), прогнати синтаксичний гейт (`node --check`), закомітити в `pdf-selection-reading-order`, відкрити PR і довести до зеленого CI.
+3. **Крок 3 — Дублювання слів у диктуванні (Ask V) та опис у Grammar:**
+   - Коли користувач надішле JSON-звіт з кнопки «📋 Скопіювати діагностику» (або уточнить, в якому саме полі дублюються слова — «Запитай AI» чи тема «Практики»), проаналізувати `dictation.trace` і виправити обробку повторів у `js/dictation.js` (та за потреби синхронізувати логіку мікрофона в `buildPracticeTopicMic` у `js/grammar-svo.js`).
+   - Якщо користувач підтвердить, що в панелі «Граматика» потрібні текстові описи (`explanation` / `features`) також для слів, знайдених через поле пошуку (`#grammar-lookup`), або таблиці форм для прикметників у довгих виділеннях (`lite` режим) — додати генерацію `explanation`/`features` у `buildGrammarLookupPrompt` / `normalizeGrammarLookup` та підвантаження форм прикметників при фокусі.
+
+---
+
 ## Sound went silent until restart (2026-10-16, Claude)
 
 User: «у застосунку пропав звук» (no details given; asked to fix anyway). tts.js / dictation.js were not changed by today's PRs; the code had four ways Chrome on Android could leave speech silent until the app was restarted, all reproduced with the engine model (tests/tts_recovery_browser.py, checks 2–5 fail on main): (1) an engine left PAUSED after the background — cancel() does not clear paused, every speak() queued; (2) an engine reporting "speaking" with nothing playing — the start watchdog only retried when NOT speaking; (3) a second failed start was silent and left ■ on the button; (4) nothing released the engine when the app came back. Fix (js/tts.js): `unwedgeSynth` (cancel + resume), resume before speak when paused, the watchdog retries regardless of `speaking`, a second no-start ends the phrase and shows `ttsNoSound` once per session (media volume / Android Text-to-speech), `releaseIdleSynth` on visibilitychange/pageshow when nothing of ours plays, `liveUtterances` holds utterances in flight (Chrome GC). Not checked on the device. Dictation duplicates (reported together) NOT addressed: waiting for where/how; dictation.js unchanged since #178; offered a diagnostics button (sttTrace/ttsTrace export).
