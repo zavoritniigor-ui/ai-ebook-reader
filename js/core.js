@@ -717,7 +717,7 @@ const state = {
     })(),
     apiKey: readStored('reader_gemini_key') || '', groqKey: readStored('reader_groq_key') || '',
     openaiKey: readStored('reader_openai_key') || '',
-    // Task routing: translation -> Groq (fast), grammar / breakdowns / rules / practice / ask -> OpenAI, whenever those keys exist.
+    // Task routing: with 'auto' EVERY task goes to Groq first (own key or the site's), OpenAI / the active provider only as the backup (js/ai-client.js).
     aiRouting: readStored('reader_ai_routing') === 'off' ? 'off' : 'auto',
     activeAiProvider: (() => {
         const saved = readStored('reader_active_ai_provider');
@@ -1794,14 +1794,14 @@ Object.assign(I18N, {
         "ga": "✅ Oibríonn AI le heochair an tsuímh — níl d'eochair féin de dhíth."
     },
     "aiSiteKeyOwnSaved": {
-        "en": "Your own keys are saved and are used instead of the site's key. If they don't work, switch to the site's key.",
-        "uk": "Збережено ваші власні ключі — вони використовуються замість ключа сайту. Якщо вони не працюють, перейдіть на ключ сайту.",
-        "fr": "Vos propres clés sont enregistrées et remplacent la clé du site. Si elles ne fonctionnent pas, passez à la clé du site.",
-        "ru": "Сохранены ваши собственные ключи — они используются вместо ключа сайта. Если они не работают, перейдите на ключ сайта.",
-        "zh": "已保存您自己的密钥，将代替网站密钥使用。如果它们无效，请改用网站密钥。",
-        "ko": "직접 입력한 키가 저장되어 사이트 키 대신 사용됩니다. 작동하지 않으면 사이트 키로 전환하세요.",
-        "hi": "आपकी अपनी कुंजियाँ सहेजी हैं और साइट की कुंजी की जगह इस्तेमाल होती हैं। काम न करें तो साइट की कुंजी पर जाएँ।",
-        "ga": "Tá d'eochracha féin sábháilte agus úsáidtear iad in ionad eochair an tsuímh. Mura n-oibríonn siad, athraigh go heochair an tsuímh."
+        "en": "Your own keys are saved. With “Groq first” on, every request goes to Groq (your own key or the site's) and your other keys are only the backup.",
+        "uk": "Ваші власні ключі збережено. Зі ввімкненою опцією «Спершу Groq» усі запити йдуть у Groq (ваш ключ або ключ сайту), а інші ваші ключі — лише запасні.",
+        "fr": "Vos propres clés sont enregistrées. Avec « Groq d’abord », chaque requête va à Groq (votre clé ou celle du site) ; vos autres clés ne servent que de secours.",
+        "ru": "Ваши собственные ключи сохранены. При включённой опции «Сначала Groq» все запросы идут в Groq (ваш ключ или ключ сайта), а остальные ваши ключи — только запасные.",
+        "zh": "已保存您自己的密钥。开启“先用 Groq”后，所有请求都先发给 Groq（您的密钥或网站密钥），其他密钥仅作备用。",
+        "ko": "직접 입력한 키가 저장되어 있습니다. ‘먼저 Groq’를 켜면 모든 요청이 Groq(내 키 또는 사이트 키)로 먼저 가고, 다른 키는 예비로만 쓰입니다.",
+        "hi": "आपकी अपनी कुंजियाँ सहेजी हैं। “पहले Groq” चालू होने पर हर अनुरोध पहले Groq (आपकी या साइट की कुंजी) को जाता है; आपकी बाकी कुंजियाँ सिर्फ़ बैकअप हैं।",
+        "ga": "Tá d’eochracha féin sábháilte. Nuair atá “Groq ar dtús” ar siúl, téann gach iarratas chuig Groq (d’eochair féin nó eochair an tsuímh) ar dtús; ní úsáidtear d’eochracha eile ach mar chúltaca."
     },
     "aiUseSiteKey": {
         "en": "Use the site's key",

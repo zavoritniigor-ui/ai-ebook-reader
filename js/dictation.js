@@ -240,6 +240,15 @@ function buildDiagnosticsReport() {
         when: new Date().toISOString(), app: 'core.js v=' + shell, userAgent: navigator.userAgent, online: navigator.onLine,
         standalone: window.matchMedia('(display-mode: standalone)').matches, visible: document.visibilityState,
         languages: { menu: state.uiLang, translation: state.targetLang, microphone: els.micLang?.value, system: navigator.languages },
+        // Which AI provider each request really used and how fast: routing, WHICH keys exist (yes / no -- never the keys), what a
+        // task would start on, and the last requests (task, provider, shared-or-own, ok, ms). No prompts, no answers.
+        ai: {
+            routing: state.aiRouting, active: state.activeAiProvider,
+            ownKeys: { openai: !!state.openaiKey, groq: !!state.groqKey, gemini: !!state.apiKey },
+            sharedOnSite: typeof sharedAiProviders !== 'undefined' ? Object.assign({}, sharedAiProviders) : null,
+            startsOn: typeof aiProviderForTask === 'function' ? { translation: aiProviderForTask('translation'), grammar: aiProviderForTask('grammar_analysis'), breakdown: aiProviderForTask('sentence_structure'), ask: aiProviderForTask('ask') } : null,
+            recent: typeof readerAiRequests === 'function' ? readerAiRequests().slice(-30) : []
+        },
         speech: {
             engine: synth ? { speaking: synth.speaking, pending: synth.pending, paused: synth.paused } : 'none',
             voices: typeof voices !== 'undefined' ? voices.length : 0,

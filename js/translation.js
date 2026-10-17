@@ -323,6 +323,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         }
         // Онлайн: спершу Groq (відповідає за секунду-дві, ⚡). OpenAI (🧠) питаємо ЛИШЕ тоді, коли Groq не дав придатної відповіді
         // (помилка, тайм-аут, порожньо) — чекати на повільний OpenAI при кожному тапі було задовго.
+        const probe = navigator.onLine ? ensureSharedAiProviders() : null;   // the site's shared Groq must be known before the order is chosen
+        if (probe) await probe;
         const providers = navigator.onLine && aiAvailable() ? translationProviders() : [];
         const askProvider = (p) => aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000, p || null);
         const markOf = p => (p === 'groq' ? '⚡' : '🧠');
