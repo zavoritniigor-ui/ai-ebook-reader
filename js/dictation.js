@@ -32,7 +32,7 @@ const sttTrace = [];
 let sttSessionSeq = 0;
 function traceStt(event, data) {
     sttTrace.push(Object.assign({ t: Math.round(performance.now()), event }, data || {}));
-    if (sttTrace.length > 80) sttTrace.shift();
+    if (sttTrace.length > 400) sttTrace.shift();   // a few minutes of dictation (interim results are frequent)
 }
 // Restart-boundary replay (Android): every utterance is its own session and the next session starts at once, but the
 // recognizer can hand the tail of the PREVIOUS utterance back as the start of the new one ("пошукай в інтернеті" ->
@@ -171,6 +171,7 @@ function startDictationSession() {
                 els.askInput.value = value + inserted;
                 sessionTyped = { heard: text, inserted };
                 dictationSessionHeard = text;
+                traceStt('field', { session: id, tail: els.askInput.value.slice(-160) });   // what the reader now sees
                 els.askInput.dispatchEvent(new Event('input', { bubbles: true }));
             } else interim += (interim ? ' ' : '') + text;
         }
@@ -225,3 +226,61 @@ els.micLang.addEventListener('change', () => stopDictation());
 new MutationObserver(() => {
     if (!els.askPanel.classList.contains('expanded') && (dictation.wanted || dictation.finishing)) stopDictation();
 }).observe(els.askPanel, { attributes: true, attributeFilter: ['class'] });
+
+
+// ========== 🩺 ДІАГНОСТИКА ЗВУКУ Й МІКРОФОНА (Налаштування) ==========
+// Web Speech never shows its audio or results to anyone but the page, so a problem on the reader's own device
+// (silence, doubled dictated words) can only be seen through these traces. The reader reproduces the problem, presses
+// «Скопіювати діагностику» and pastes the text to the developer. Holds no AI keys and no prompts -- only what the
+// recognizer heard, the engine events, voices and settings.
+function buildDiagnosticsReport() {
+    const synth = typeof ttsSynth !== 'undefined' && ttsSynth ? ttsSynth : null;
+    const shell = document.querySelector('script[src*="js/core.js"]')?.getAttribute('src')?.split('v=')[1] || '';
+    const report = {
+        when: new Date().toISOString(), app: 'core.js v=' + shell, userAgent: navigator.userAgent, online: navigator.onLine,
+        standalone: window.matchMedia('(display-mode: standalone)').matches, visible: document.visibilityState,
+        languages: { menu: state.uiLang, translation: state.targetLang, microphone: els.micLang?.value, system: navigator.languages },
+        speech: {
+            engine: synth ? { speaking: synth.speaking, pending: synth.pending, paused: synth.paused } : 'none',
+            voices: typeof voices !== 'undefined' ? voices.length : 0,
+            voiceList: (typeof voices !== 'undefined' ? voices : []).slice(0, 80).map(v => [v.lang, v.name, v.localService ? 'local' : 'net', v.default ? 'default' : ''].join(' | ')),
+            chosenVoices: state.selectedVoiceURIByLang, speakSide: state.speakSide, readingAloud: typeof isSpeakingGlobal !== 'undefined' ? isSpeakingGlobal : null,
+            trace: typeof ttsTrace !== 'undefined' ? ttsTrace : []
+        },
+        dictation: {
+            supported: !!SpeechRecognitionCtor, secure: micSecureOk, singleUtterancePerSession: dictationSingleUtterance,
+            wanted: dictation.wanted, finishing: dictation.finishing, trace: sttTrace
+        }
+    };
+    return JSON.stringify(report, null, 1);
+}
+function buildDiagnosticsBox() {
+    const content = document.querySelector('#settings-modal .modal-content');
+    if (!content || document.getElementById('diag-box')) return;
+    const box = document.createElement('section'); box.id = 'diag-box'; box.className = 'sync-box';
+    const h = document.createElement('h3'); h.dataset.i18n = 'diagTitle';
+    const hint = document.createElement('p'); hint.className = 'key-hint'; hint.dataset.i18n = 'diagHint';
+    const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'diag-copy'; btn.className = 'btn-secondary'; btn.dataset.i18n = 'diagCopy';
+    const status = document.createElement('p'); status.id = 'diag-status'; status.setAttribute('role', 'status');
+    const area = document.createElement('textarea'); area.id = 'diag-text'; area.readOnly = true; area.rows = 6; area.hidden = true;
+    area.style.cssText = 'width:100%;font-size:11px;margin-top:8px;';
+    btn.addEventListener('click', async () => {
+        const text = buildDiagnosticsReport();
+        area.value = text;
+        try { await navigator.clipboard.writeText(text); status.textContent = t('diagCopied'); area.hidden = true; }
+        catch (e) {   // clipboard refused: the text is shown, selected, for a manual copy
+            status.textContent = t('diagCopyManual'); area.hidden = false; area.focus(); area.select();
+        }
+    });
+    box.append(h, hint, btn, status, area);
+    content.append(box);
+    applyI18n();
+}
+window.addEventListener('load', buildDiagnosticsBox, { once: true });
+Object.assign(I18N, {
+    diagTitle: { uk: '🩺 Діагностика звуку й мікрофона', en: '🩺 Sound and microphone diagnostics', fr: '🩺 Diagnostic du son et du micro', ru: '🩺 Диагностика звука и микрофона', zh: '🩺 声音和麦克风诊断', ko: '🩺 소리 및 마이크 진단', hi: '🩺 आवाज़ और माइक्रोफ़ोन जाँच', ga: '🩺 Diagnóisic fuaime agus micreafóin' },
+    diagHint: { uk: 'Якщо пропав звук або диктування дублює слова: спершу повторіть проблему, потім натисніть кнопку й вставте текст у чат розробнику. Ключі AI сюди не потрапляють.', en: 'If the sound is gone or dictation doubles words: reproduce the problem first, then press the button and paste the text to the developer. AI keys are never included.', fr: 'Si le son a disparu ou si la dictée double les mots : reproduisez d’abord le problème, puis appuyez sur le bouton et collez le texte au développeur. Les clés IA ne sont jamais incluses.', ru: 'Если пропал звук или диктовка дублирует слова: сначала повторите проблему, затем нажмите кнопку и вставьте текст в чат разработчику. Ключи AI сюда не попадают.', zh: '如果声音消失或听写重复词语：请先重现问题，然后点击按钮并把文本粘贴给开发者。不包含 AI 密钥。', ko: '소리가 사라졌거나 받아쓰기가 단어를 중복하면: 먼저 문제를 재현한 다음 버튼을 누르고 텍스트를 개발자에게 붙여 넣으세요. AI 키는 포함되지 않습니다.', hi: 'अगर आवाज़ चली गई है या डिक्टेशन शब्द दोहराता है: पहले समस्या दोहराएँ, फिर बटन दबाएँ और टेक्स्ट डेवलपर को चिपकाएँ। AI कुंजियाँ शामिल नहीं होतीं।', ga: 'Má d’imigh an fhuaim nó má dhúblálann an deachtú focail: atáirg an fhadhb ar dtús, ansin brúigh an cnaipe agus greamaigh an téacs don fhorbróir. Ní chuirtear eochracha AI isteach riamh.' },
+    diagCopy: { uk: '📋 Скопіювати діагностику', en: '📋 Copy diagnostics', fr: '📋 Copier le diagnostic', ru: '📋 Скопировать диагностику', zh: '📋 复制诊断信息', ko: '📋 진단 정보 복사', hi: '📋 जाँच जानकारी कॉपी करें', ga: '📋 Cóipeáil an diagnóisic' },
+    diagCopied: { uk: 'Скопійовано. Вставте в чат розробнику.', en: 'Copied. Paste it to the developer.', fr: 'Copié. Collez-le au développeur.', ru: 'Скопировано. Вставьте в чат разработчику.', zh: '已复制。请粘贴给开发者。', ko: '복사했습니다. 개발자에게 붙여 넣으세요.', hi: 'कॉपी हो गया। डेवलपर को चिपकाएँ।', ga: 'Cóipeáilte. Greamaigh don fhorbróir é.' },
+    diagCopyManual: { uk: 'Не вдалося скопіювати автоматично — текст виділено нижче: скопіюйте його вручну.', en: 'Could not copy automatically — the text is selected below: copy it by hand.', fr: 'Copie automatique impossible — le texte est sélectionné ci-dessous : copiez-le à la main.', ru: 'Не удалось скопировать автоматически — текст выделен ниже: скопируйте его вручную.', zh: '无法自动复制——下方文本已选中，请手动复制。', ko: '자동으로 복사하지 못했습니다. 아래 텍스트가 선택되어 있으니 직접 복사하세요.', hi: 'अपने आप कॉपी नहीं हुआ — नीचे टेक्स्ट चुना गया है: उसे खुद कॉपी करें।', ga: 'Níorbh fhéidir cóipeáil go huathoibríoch — tá an téacs roghnaithe thíos: cóipeáil de láimh é.' }
+});
