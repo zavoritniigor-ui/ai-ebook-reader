@@ -308,7 +308,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         // Groq відповідає настільки швидко, що змагатися з машинним перекладом
         // немає сенсу: онлайн усе перекладає AI — і слова, і речення. Машинний
         // лишається виключно як запасний варіант, коли немає мережі або ключа.
-        let html = null, quality = null;   // звідки переклад: 'ai' | 'mt' | 'local' — від цього залежить, чи його зберігати
+        let html = null, quality = null;   // звідки переклад: 'ai' | 'mt' | 'local' | 'device' (офлайн-пакет) — від цього залежить, чи його зберігати
         // МИТТЄВИЙ ШАР (лише слова): локальна модель Chrome перекладає без мережі й показується ОДРАЗУ; щойно приходить AI
         // (за маршрутизацією завдань — Groq), він замінює її. Запускається тут же, в обробнику тапу: створення моделі
         // ('downloadable') вимагає жесту користувача, а фонове «розігрівання» його не має — тому раніше локальний
@@ -321,6 +321,14 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
             }).catch(() => {});
         }
+        // Мережа, що лише здається живою (Wi-Fi без інтернету), тримала б читача до тайм-ауту AI: через кілька секунд відповідає встановлений
+        // офлайн-пакет (js/offline-translate.js), а пізня відповідь AI його замінює. Без пакета offlineTranslate одразу повертає null.
+        const previewTimer = setTimeout(async () => {
+            const local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal);
+            if (!local || aiDone || myLookup !== state.lookupToken || !task.current()) return;
+            els.ttTranslation.innerHTML = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
+            const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+        }, OFFLINE_TR_PREVIEW_MS);
         // Онлайн: спершу Groq (відповідає за секунду-дві, ⚡). OpenAI (🧠) питаємо ЛИШЕ тоді, коли Groq не дав придатної відповіді
         // (помилка, тайм-аут, порожньо) — чекати на повільний OpenAI при кожному тапі було задовго.
         const probe = navigator.onLine ? ensureSharedAiProviders() : null;   // the site's shared Groq must be known before the order is chosen
@@ -332,6 +340,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         let aiMark = markOf(providers[0]);
         if (!ai && providers[1] && myLookup === state.lookupToken && task.current()) { ai = await askProvider(providers[1]); aiMark = markOf(providers[1]); }
         aiDone = true;
+        clearTimeout(previewTimer);
         if (myLookup !== state.lookupToken || !task.current()) return;
         const renderAi = (result, mark) => {
             const al = typeof result === 'object' ? result : null;
@@ -357,14 +366,18 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             quality = 'ai';
         } else if (isMultiWord) {
             // Речення й фрази онлайн — лише через AI (машинний переклад Google не бачить контексту). Без AI (офлайн, без ключа чи AI не відповів)
-            // перекладає локальна модель Chrome на пристрої (⌂); якщо її нема — показуємо причину.
+            // перекладає локальна модель Chrome на пристрої (⌂), а де її нема (Android) — встановлений офлайн-пакет; якщо немає й його —
+            // показуємо причину.
             let local = null;
             try { local = await waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 20000); } catch (e) { if (e && e.name === 'AbortError') return; }
+            if (local) quality = 'local';
+            else if ((local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal))) quality = 'device';
             if (myLookup !== state.lookupToken || !task.current()) return;
-            if (local) { html = escapeHtml(local) + ' <span class="tt-note">⌂</span>'; quality = 'local'; }
+            if (local) html = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
             else {
                 els.ttTranslation.textContent = !aiAvailable() ? t('sentenceNeedsAi') : (!navigator.onLine ? t('sentenceNeedsOnline') : t('sentenceAiFailed'));
                 translated = false;
+                offlineTrSuggest(srcCode, targetLang);
             }
         } else {
             try {
@@ -372,16 +385,20 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 if (myLookup !== state.lookupToken || !task.current()) return;
                 html = m.html; quality = 'mt';
             } catch (e) {
+                // Ні мережі, ні моделі Chrome: слово перекладає встановлений офлайн-пакет.
+                const local = e && e.name === 'AbortError' ? null : await offlineTranslate(cleanText, srcCode, targetLang, task.signal);
                 if (myLookup !== state.lookupToken || !task.current()) return;
-                els.ttTranslation.textContent = e.message || t('error');
-                translated = false;
+                if (local) { html = escapeHtml(local) + ' <span class="tt-note">⌂</span>'; quality = 'device'; }
+                else { els.ttTranslation.textContent = e.message || t('error'); translated = false; offlineTrSuggest(srcCode, targetLang); }
             }
         }
         if (!task.current()) return;
         if (html) {
             els.ttTranslation.innerHTML = html;
-            state.translationCache[cacheKey] = alignmentResult ? { ...alignmentResult, html } : html;
-            storeTranslation(cacheKey, state.translationCache[cacheKey], quality);
+            if (quality !== 'device') {   // грубіший переклад офлайн-пакета не запам'ятовується: наступний тап онлайн знову питає AI
+                state.translationCache[cacheKey] = alignmentResult ? { ...alignmentResult, html } : html;
+                storeTranslation(cacheKey, state.translationCache[cacheKey], quality);
+            }
         }
     }
     if (task.current() && alignmentResult) installAlignment(cleanText, alignmentResult, lookupRoot);

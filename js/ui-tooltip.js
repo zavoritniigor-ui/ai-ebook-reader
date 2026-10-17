@@ -243,6 +243,7 @@ function openKeySettings() {
     document.getElementById('ai-routing-input').checked = state.aiRouting !== 'off';
     document.getElementById('ai-provider-error').hidden = true;
     updateSiteKeyBox();
+    if (typeof offlineTrRefreshBox === 'function') offlineTrRefreshBox(true);   // js/offline-translate.js: the offline-translation section of this dialog
     document.getElementById('settings-modal').style.display = 'flex';
 }
 // The site's shared key (js/ai-client.js sharedAiProviders): say when AI already works without an own key, and offer ONE
