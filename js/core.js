@@ -1141,6 +1141,7 @@ const I18N = {
     grammarLookupEmpty: { uk: 'Напишіть дієслово чи прикметник.', en: 'Type a verb or an adjective.', fr: 'Écrivez un verbe ou un adjectif.', ru: 'Напишите глагол или прилагательное.', zh: '请输入一个动词或形容词。', ko: '동사나 형용사를 입력하세요.', hi: 'कोई क्रिया या विशेषण लिखें।', ga: 'Scríobh briathar nó aidiacht.' },
     grammarLookupNotFound: { uk: 'Це не схоже на дієслово чи прикметник. Спробуйте інше слово.', en: 'That does not look like a verb or an adjective. Try another word.', fr: 'Cela ne ressemble pas à un verbe ni à un adjectif. Essayez un autre mot.', ru: 'Это не похоже на глагол или прилагательное. Попробуйте другое слово.', zh: '这看起来不是动词或形容词，请换一个词。', ko: '동사나 형용사가 아닌 것 같습니다. 다른 단어를 입력해 보세요.', hi: 'यह क्रिया या विशेषण नहीं लगता। कोई दूसरा शब्द आज़माएँ।', ga: 'Ní cosúil gur briathar ná aidiacht é sin. Bain triail as focal eile.' },
     grammarLookupAlso: { uk: 'Також: ', en: 'Also: ', fr: 'Aussi : ', ru: 'Также: ', zh: '另见：', ko: '다른 단어: ', hi: 'और भी: ', ga: 'Freisin: ' },
+    grammarAbout: { uk: 'Про слово', en: 'About the word', fr: 'À propos du mot', ru: 'О слове', zh: '关于该词', ko: '단어 설명', hi: 'शब्द के बारे में', ga: 'Faoin bhfocal' },
     practiceTopicMeta: { uk: 'Тема:', en: 'Topic:', fr: 'Thème :', ru: 'Тема:', zh: '主题：', ko: '주제:', hi: 'विषय:', ga: 'Ábhar:' },
     practiceRegenerate: { uk: 'Регенерувати', en: 'Regenerate', fr: 'Régénérer', ru: 'Перегенерировать' },
     // Sentence-level learning actions in Practice (js/practice-worksheet.js buildPracticeSentenceRow):

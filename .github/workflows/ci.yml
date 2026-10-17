@@ -288,6 +288,7 @@ jobs:
 
           echo "Running grammar_lookup_browser.py..."
           python3 -u tests/grammar_lookup_browser.py
+          python3 -u tests/grammar_adjective_forms_browser.py
 
           echo "Running share_target_browser.py..."
           python3 -u tests/share_target_browser.py
