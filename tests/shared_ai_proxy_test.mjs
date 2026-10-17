@@ -31,6 +31,35 @@ r = await onRequestPost({ request: req('?provider=x', {}), env }); ok('unknown p
 r = await onRequestPost({ request: req('?provider=groq', 'not json'), env }); ok('bad JSON refused', r.status === 400);
 globalThis.fetch = async () => new Response('{"error":{"message":"account org-123 quota"}}', { status: 401 });
 r = await onRequestPost({ request: req('?provider=groq', { model: 'openai/gpt-oss-120b' }), env }); const t = await r.text(); ok('provider error: status only, no account details', r.status === 401 && !t.includes('org-123'));
+// Groq's 429 names the limit that was hit and when to come back: that (and nothing else of its text) reaches the app.
+const GROQ_429 = (kind, what, wait) => `{"error":{"message":"Rate limit reached for model \`openai/gpt-oss-120b\` in organization \`org_01secretaccount\` service tier \`on_demand\` on ${what} (${kind}): Limit 8000, Used 6905, Requested 1500. Please try again in ${wait}. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}`;
+const limited = async (body, headers = {}, status = 429) => {
+    globalThis.fetch = async () => new Response(body, { status, headers });
+    const res = await onRequestPost({ request: req('?provider=groq', { model: 'openai/gpt-oss-120b' }, { origin: O, 'cf-connecting-ip': '8.8.' + Math.floor(Math.random() * 250) + '.' + Math.floor(Math.random() * 250) }), env });
+    return { status: res.status, text: await res.text() };
+};
+let lim = await limited(GROQ_429('TPM', 'tokens per minute', '5.25s'), { 'retry-after': '2' });
+let json = JSON.parse(lim.text);
+ok('a 429 passes on WHICH limit, its numbers and the wait (the retry-after header wins over the text)', lim.status === 429 && json.error === 'upstream' && json.status === 429
+    && JSON.stringify(json.rate) === '{"kind":"TPM","limit":8000,"used":6905,"requested":1500,"retryAfterSec":2}');
+ok('... and nothing else of the provider text: no account name, no upgrade link', !lim.text.includes('org_01') && !lim.text.includes('console.groq.com') && !lim.text.includes('Rate limit reached'));
+for (const [wait, seconds] of [['5.25s', 5.25], ['2m3.5s', 123.5], ['16m33.552s', 993.55], ['450ms', 0.45], ['1h2m3s', 3723], ['59s', 59]]) {
+    lim = await limited(GROQ_429('RPD', 'requests per day', wait));
+    ok(`the wait written as "${wait}" is ${seconds} s and the limit is the daily request one`, JSON.parse(lim.text).rate.retryAfterSec === seconds && JSON.parse(lim.text).rate.kind === 'RPD');
+}
+lim = await limited('quota exceeded', {}, 429);
+ok('a 429 whose text cannot be read has no rate details, the status is still 429', lim.status === 429 && JSON.parse(lim.text).rate === undefined);
+lim = await limited(GROQ_429('TPM', 'tokens per minute', '3s'), {}, 500);
+ok('a 500 gets no rate details even if the text looks like a 429', lim.status === 502 && JSON.parse(lim.text).rate === undefined);
+lim = await limited('{"error":{"message":"model not found"}}', {}, 404);
+ok('a 404 keeps its status and shows no provider text', lim.status === 404 && !lim.text.includes('model not found'));
+for (const model of ['openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'qwen/qwen3.8-27b']) {
+    sent = null; globalThis.fetch = async (url, opt) => { sent = { url, opt, body: JSON.parse(opt.body) }; return new Response('{}'); };
+    r = await onRequestPost({ request: req('?provider=groq', { model }, { origin: O, 'cf-connecting-ip': '7.7.7.7' }), env });
+    ok(`${model} is allowed (Groq keeps a separate limit per model)`, r.status === 200 && sent.body.model === model);
+}
+sent = null; r = await onRequestPost({ request: req('?provider=groq', { model: 'qwen/qwen3.6-27b' }, { origin: O, 'cf-connecting-ip': '7.7.7.7' }), env });
+ok('the retired qwen3.6 is no longer allowed', r.status === 400 && !sent);
 globalThis.fetch = async () => new Response('{}');
 let last; for (let i = 0; i < 45; i++) last = await onRequestPost({ request: req('?provider=groq', { model: 'openai/gpt-oss-120b' }, { origin: O, 'cf-connecting-ip': '9.9.9.9' }), env });
 ok('more than 40 requests a minute from one IP -> 429', last.status === 429);

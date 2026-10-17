@@ -10,8 +10,9 @@
 // кабінеті провайдера — це єдиний справжній запобіжник від рахунку.
 const URLS = { groq: 'https://api.groq.com/openai/v1/chat/completions', openai: 'https://api.openai.com/v1/responses' };
 const SECRETS = { groq: 'GROQ_API_KEY', openai: 'OPENAI_API_KEY' };
-// Ті самі моделі, що в js/ai-client.js (GROQ_MODEL, GROQ_VISION_MODEL, OPENAI_MODEL) — змінюючи там, змініть і тут.
-const MODELS = { groq: new Set(['openai/gpt-oss-120b', 'qwen/qwen3.6-27b']), openai: new Set(['gpt-5.6-luna']) };
+// Ті самі моделі, що в js/ai-client.js (GROQ_MODEL, GROQ_VISION_MODEL, OPENAI_MODEL) — змінюючи там, змініть і тут. Groq рахує ліміти
+// ОКРЕМО на кожну модель, тому до списку входять і запасні моделі Groq (js/ai-client.js, GROQ_LADDER); qwen3.6 з Groq прибрали (404).
+const MODELS = { groq: new Set(['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3.8-27b']), openai: new Set(['gpt-5.6-luna']) };
 const MAX_BODY_BYTES = 6 * 1024 * 1024;   // запит із вирізаним фрагментом сторінки (data URL) буває кілька МБ
 const MAX_OUTPUT_TOKENS = 16000;
 const RATE_WINDOW_MS = 60000, RATE_MAX = 40;
@@ -37,6 +38,24 @@ function rateLimited(ip) {
     list.push(now); hits.set(ip, list);
     if (hits.size > 5000) for (const [k, v] of hits) if (!v.length || now - v[v.length - 1] > RATE_WINDOW_MS) hits.delete(k);
     return list.length > RATE_MAX;
+}
+
+// Відповідь 429 від Groq каже, КОТРИЙ ліміт вичерпано і коли повертатись: "...on tokens per minute (TPM): Limit 8000, Used 7000, Requested 1500.
+// Please try again in 5.25s". Застосунку (і діагностиці) потрібні лише ці числа; решту тексту провайдера не пересилаємо: там назва акаунта.
+const RATE_RE = /\b(RPM|RPD|TPM|TPD)\)?:\s*Limit (\d+),\s*Used (\d+),\s*Requested (\d+)/;
+const WAIT_RE = /try again in ((?:\d+h)?(?:\d+m(?!s))?(?:\d+(?:\.\d+)?s)?(?:\d+(?:\.\d+)?ms)?)/i;
+function rateDetails(upstream, text) {
+    const rate = {};
+    const limit = RATE_RE.exec(text);
+    if (limit) Object.assign(rate, { kind: limit[1], limit: Number(limit[2]), used: Number(limit[3]), requested: Number(limit[4]) });
+    const header = upstream.headers.get('retry-after');
+    let wait = header === null ? NaN : Number(header);
+    if (!(wait >= 0)) {
+        const m = WAIT_RE.exec(text);
+        wait = m && m[1] ? [...m[1].matchAll(/(\d+(?:\.\d+)?)(ms|h|m|s)/g)].reduce((sum, [, n, unit]) => sum + Number(n) * { h: 3600, m: 60, s: 1, ms: 0.001 }[unit], 0) : NaN;
+    }
+    if (wait >= 0 && wait < 86400) rate.retryAfterSec = Math.round(wait * 100) / 100;
+    return Object.keys(rate).length ? rate : undefined;
 }
 
 export async function onRequestGet({ env }) {
@@ -69,7 +88,11 @@ export async function onRequestPost({ request, env }) {
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` }
     });
     // Тіло помилки провайдера не пересилаємо: воно може містити подробиці акаунта. Лише статус — застосунок покаже своє повідомлення.
-    if (!upstream.ok) return json({ error: 'upstream', status: upstream.status }, upstream.status === 429 ? 429 : upstream.status >= 500 ? 502 : upstream.status);
+    if (!upstream.ok) {
+        let rate;
+        if (upstream.status === 429) { try { rate = rateDetails(upstream, (await upstream.text()).slice(0, 4000)); } catch (e) { /* the body is optional */ } }
+        return json({ error: 'upstream', status: upstream.status, ...(rate ? { rate } : {}) }, upstream.status === 429 ? 429 : upstream.status >= 500 ? 502 : upstream.status);
+    }
     return new Response(upstream.body, { status: 200, headers: {
         'content-type': upstream.headers.get('content-type') || 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
 }

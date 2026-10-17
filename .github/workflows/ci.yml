@@ -332,6 +332,7 @@ jobs:
           echo "Running ai_routing_browser.py..."
           python3 -u tests/ai_routing_browser.py
           python3 -u tests/ai_groq_first_own_keys_browser.py
+          python3 -u tests/ai_rate_limit_browser.py
           echo "Running shared_ai_key_browser.py..."
           python3 -u tests/shared_ai_key_browser.py
           echo "Running page_arrows_browser.py..."

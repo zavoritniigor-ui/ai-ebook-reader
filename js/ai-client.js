@@ -9,7 +9,7 @@ const OPENAI_MODEL = 'gpt-5.6-luna';
 const OPENAI_REASONING_EFFORT = 'low';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
 const GEMINI_MODEL = 'gemini-3.6-flash';
-const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
+const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';   // qwen3.6 was withdrawn by Groq (404): every photo check silently went to OpenAI
 
 // Task-specific OpenAI profiles: optimize reasoning effort, max_output_tokens, and streaming per workload
 const OPENAI_TASK_PROFILES = {
@@ -227,9 +227,30 @@ function cancelAIRequests() {
     state.lookupToken++;
     state.translationCache = {};
 }
-function aiHttpError(provider, status, providerMessage = '') {
+function aiHttpError(provider, status, providerMessage = '', rate = null) {
     const key = status === 401 || status === 403 ? 'aiAuthError' : status === 429 ? 'aiRateError' : 'aiRequestError';
-    return new AiRequestError(t(key).replace('{provider}', AI_PROVIDERS[provider].name), 'http', { status, providerMessage });
+    return new AiRequestError(t(key).replace('{provider}', AI_PROVIDERS[provider].name), 'http', { status, providerMessage, rate });
+}
+// What a 429 says: WHICH limit was hit (RPM/RPD requests, TPM/TPD tokens per minute/day), its numbers and when to come back. Through the site's
+// /api/ai it arrives ready as {rate:{...}}; with an own key it is the provider's own text ("... on tokens per minute (TPM): Limit 8000, Used 6905,
+// Requested 1500. Please try again in 5.25s"). The `retry-after` header (seconds) wins when the browser may read it. Numbers only -- never the text.
+function aiRateDetails(bodyText, retryAfterHeader) {
+    let rate = {}, message = String(bodyText || '');
+    try {
+        const j = JSON.parse(message);
+        if (j && typeof j.rate === 'object' && j.rate) {
+            for (const k of ['limit', 'used', 'requested', 'retryAfterSec']) if (Number.isFinite(j.rate[k])) rate[k] = j.rate[k];
+            if (/^(RPM|RPD|TPM|TPD)$/.test(j.rate.kind)) rate.kind = j.rate.kind;
+            message = '';
+        } else if (j && j.error && typeof j.error.message === 'string') message = j.error.message;
+    } catch (e) { /* not JSON: the text itself */ }
+    const limit = /\b(RPM|RPD|TPM|TPD)\)?:\s*Limit (\d+),\s*Used (\d+),\s*Requested (\d+)/.exec(message);
+    if (limit) Object.assign(rate, { kind: limit[1], limit: Number(limit[2]), used: Number(limit[3]), requested: Number(limit[4]) });
+    const wait = /try again in ((?:\d+h)?(?:\d+m(?!s))?(?:\d+(?:\.\d+)?s)?(?:\d+(?:\.\d+)?ms)?)/i.exec(message);
+    if (wait && wait[1]) rate.retryAfterSec = Math.round([...wait[1].matchAll(/(\d+(?:\.\d+)?)(ms|h|m|s)/g)].reduce((sum, [, n, unit]) => sum + Number(n) * { h: 3600, m: 60, s: 1, ms: 0.001 }[unit], 0) * 100) / 100;
+    const header = retryAfterHeader == null ? NaN : Number(retryAfterHeader);
+    if (header >= 0 && header < 86400) rate.retryAfterSec = header;
+    return Object.keys(rate).length ? rate : null;
 }
 async function aiJsonRequest(provider, key, url, body, signal, timeoutMs) {
     const headers = Object.assign({ 'Content-Type': 'application/json' }, aiAuthHeaders(provider, key));
@@ -243,9 +264,13 @@ async function aiJsonRequest(provider, key, url, body, signal, timeoutMs) {
     }
     if (!res.ok) {
         // The provider's own explanation (e.g. "max_output_tokens too small") is kept for the developer diagnostics only.
-        let providerMessage = '';
-        try { providerMessage = providerErrorText(await res.text()); } catch (e) { /* body unreadable */ }
-        throw aiHttpError(provider, res.status, providerMessage);
+        let providerMessage = '', rate = null;
+        try {
+            const text = await res.text();
+            providerMessage = providerErrorText(text);
+            if (res.status === 429) rate = aiRateDetails(text, res.headers.get('retry-after'));
+        } catch (e) { /* body unreadable */ }
+        throw aiHttpError(provider, res.status, providerMessage, rate);
     }
     try {
         const data = await res.json();
@@ -577,10 +602,10 @@ async function requestAIOnce(prompt, dataUrl, signal, task = 'default', onDelta,
     } catch (err) {
         if (!current()) throw new DOMException('Cancelled', 'AbortError');
         meta.elapsedMs = Math.round(performance.now() - started);
-        recordAiRequest({ task, provider, model: meta.model, shared: key === SHARED_AI_KEY, ok: false, reason: err && err.reason || 'error', status: err && err.status, ms: meta.elapsedMs });
+        recordAiRequest({ task, provider, model: meta.model, shared: key === SHARED_AI_KEY, ok: false, reason: err && err.reason || 'error', status: err && err.status, ...(err && err.rate ? { rate: err.rate } : {}), ms: meta.elapsedMs });
         // The provider-level cause, recorded once here. (Validation failures are recorded by the caller that validates.)
         recordAiDiagnostic(Object.assign({ task, outcome: 'error', phase: 'provider', reason: err && err.reason || 'error', provider, model: meta.model,
-            httpStatus: err && err.status, providerMessage: err && err.providerMessage, finish: meta.finish, usage: meta.usage, maxOutputTokens: meta.maxOutputTokens,
+            httpStatus: err && err.status, rate: err && err.rate || undefined, providerMessage: err && err.providerMessage, finish: meta.finish, usage: meta.usage, maxOutputTokens: meta.maxOutputTokens,
             elapsedMs: meta.elapsedMs }, err && err.partial !== undefined ? aiRawExcerpts(err.partial) : {}));
         throw err;
     } finally {
