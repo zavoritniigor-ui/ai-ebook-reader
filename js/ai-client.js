@@ -85,6 +85,15 @@ function recordAiDiagnostic(entry) {
 }
 function readerAiDiagnostics() { return aiDiagnostics.map(e => Object.assign({}, e)); }
 window.readerAiDiagnostics = readerAiDiagnostics;
+// Which provider answered each request and how fast (success AND failure) -- the diagnostics report shows it, so «everything goes through
+// OpenAI and is slow» can be checked on the learner's own device. Never a prompt, never a key.
+const aiRequestLog = [];
+function recordAiRequest(entry) {
+    aiRequestLog.push(Object.assign({ at: new Date().toISOString() }, entry));
+    if (aiRequestLog.length > AI_DIAG_MAX) aiRequestLog.shift();
+}
+function readerAiRequests() { return aiRequestLog.map(e => Object.assign({}, e)); }
+window.readerAiRequests = readerAiRequests;
 // Head/tail excerpts of a raw model reply for the diagnostics (bounded; redacted on record).
 function aiRawExcerpts(raw) {
     const text = String(raw == null ? '' : raw);
@@ -140,9 +149,12 @@ function aiAuthHeaders(provider, key) {
     if (key === SHARED_AI_KEY) return {};
     return provider === 'gemini' ? { 'x-goog-api-key': key } : { Authorization: `Bearer ${key}` };
 }
+let sharedAiProbeAnswered = false, sharedAiProbeAt = 0, sharedAiProbePromise = null, sharedAiProbeWaited = false;
 async function loadSharedAiProviders() {
+    sharedAiProbeAt = Date.now();
     try {
         const res = await fetch('/api/ai', { cache: 'no-store' });
+        sharedAiProbeAnswered = true;      // the site ANSWERED (even «no such function here»): asking again would not change it
         if (!res.ok) return;
         const data = await res.json();
         // format === false: the site's secret does not even look like that provider's key (e.g. an OpenAI key stored as
@@ -152,22 +164,40 @@ async function loadSharedAiProviders() {
         sharedAiProviders.openai = usable('openai');
     } catch (e) { /* offline / no server function (local test server): own keys only */ }
 }
+// The site's shared keys are learned once at start. When that probe could not reach the site (the app was opened offline, a flaky
+// connection) the shared Groq stayed «unknown» for the whole session and every request went to the slower own OpenAI key. So it is
+// repeated when the connection comes back and before a request -- at most every 20 s, never holding a request longer than 2.5 s.
+// Returns a promise to wait for, or null when there is nothing to wait for (the usual case: callers must not yield for nothing).
+function ensureSharedAiProviders(force = false) {
+    if (sharedAiProbeAnswered || navigator.onLine === false) return null;
+    if (!sharedAiProbePromise) {
+        if (!force && sharedAiProbeAt && Date.now() - sharedAiProbeAt < 20000) return null;
+        sharedAiProbeWaited = false;
+        sharedAiProbePromise = loadSharedAiProviders().finally(() => { sharedAiProbePromise = null; });
+    } else if (sharedAiProbeWaited) return null;   // one request was already held for this probe: a hung one must not hold more
+    return Promise.race([sharedAiProbePromise, new Promise(resolve => setTimeout(() => { sharedAiProbeWaited = true; resolve(); }, 2500))]);
+}
+window.addEventListener('online', () => { ensureSharedAiProviders(true); });
 function sharedAiProvider(preferred) {
     return [preferred, 'openai', 'groq'].find(p => p && sharedAiProviders[p] === true) || null;
 }
 function aiAvailable() { return !!aiEffectiveKey(aiProviderForTask('default')); }
 // ---- Task routing --------------------------------------------------------------------------------------------------
 // With routing 'auto' (default) EVERY request goes to Groq first (answers in a second or two), IF a Groq key is stored or the
-// site has a shared one; OpenAI is only the backup: when Groq does not answer (network error, timeout, refusal, empty / cut-off
-// reply) the same request is repeated once on OpenAI (requestAI). Waiting for OpenAI on every request was too slow.
-// No Groq key at all: the request goes where it went before -- OpenAI for the deeper tasks below, else the ACTIVE provider.
+// site has a shared one -- whatever other keys the learner saved; OpenAI is only the backup: when Groq does not answer (network
+// error, timeout, refusal, empty / cut-off reply) the same request is repeated once on OpenAI (requestAI). Waiting for OpenAI on
+// every request was too slow.
+// No usable Groq key at all: the request goes where it went before -- OpenAI for the deeper tasks below, else the ACTIVE provider.
 // Routing 'off': the single active provider, no fallback.
 const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'grammar_lookup', 'practice_reading', 'sentence_structure', 'structure_deep',
     'rules_search', 'rules_explain', 'language_level', 'ask']);
 function aiProviderForTask(task) {
     const active = state.activeAiProvider;
     if (state.aiRouting === 'off') return aiProviderKey(active) ? active : sharedAiProvider(active) || active;
-    if (aiProviderKey('groq')) return 'groq';
+    // EVERY task starts on Groq whenever a Groq key can be used -- the learner's own OR the site's shared one. Own OpenAI / Gemini
+    // keys do not take requests away from it: they are only the backup (aiBackupProvider). (A saved OpenAI key used to win here:
+    // with no own Groq key every grammar / breakdown / Ask request went to OpenAI and was slow, although the site has a Groq key.)
+    if (aiEffectiveKey('groq')) return 'groq';
     const wanted = AI_ROUTE_OPENAI_TASKS.has(task) ? 'openai' : null;
     const own = wanted && aiProviderKey(wanted) ? wanted : active;
     // No own key for it: the shared server key, Groq first; none -> the active one (asks for a key).
@@ -485,6 +515,8 @@ function callAIVision(prompt, dataUrl, signal, options) { return requestAI(promp
 // other shared provider, so visitors keep working.
 const SHARED_FALLBACK_STATUS = s => s === 401 || s === 403 || s === 429 || s >= 500;
 async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
+    const probe = ensureSharedAiProviders();
+    if (probe) await probe;   // only while the site's shared keys are still unknown; otherwise the request starts at once, as always
     const forced = options.provider && Object.hasOwn(AI_PROVIDERS, options.provider) ? options.provider : null;
     const provider = forced || aiProviderForTask(task);
     const backup = forced ? null : aiBackupProvider(provider);
@@ -540,10 +572,12 @@ async function requestAIOnce(prompt, dataUrl, signal, task = 'default', onDelta,
         if (!text) throw new AiRequestError(t('aiEmptyResponse'), 'empty_reply');
         meta.elapsedMs = Math.round(performance.now() - started);
         meta.rawChars = text.length;
+        recordAiRequest({ task, provider, model: meta.model, shared: key === SHARED_AI_KEY, ok: true, ms: meta.elapsedMs });
         return text;
     } catch (err) {
         if (!current()) throw new DOMException('Cancelled', 'AbortError');
         meta.elapsedMs = Math.round(performance.now() - started);
+        recordAiRequest({ task, provider, model: meta.model, shared: key === SHARED_AI_KEY, ok: false, reason: err && err.reason || 'error', status: err && err.status, ms: meta.elapsedMs });
         // The provider-level cause, recorded once here. (Validation failures are recorded by the caller that validates.)
         recordAiDiagnostic(Object.assign({ task, outcome: 'error', phase: 'provider', reason: err && err.reason || 'error', provider, model: meta.model,
             httpStatus: err && err.status, providerMessage: err && err.providerMessage, finish: meta.finish, usage: meta.usage, maxOutputTokens: meta.maxOutputTokens,
@@ -727,4 +761,4 @@ function sanitizeAI(text) {
     s = s.replace(/^\s*analysis[\s\S]*?(?=final\b)/i, '').replace(/^\s*final\b[:.]?\s*/i, '');
     return s.replace(/```html|```/g, '').trim();
 }
-loadSharedAiProviders();
+ensureSharedAiProviders(true);

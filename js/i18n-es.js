@@ -99,7 +99,7 @@ const I18N_ES = {
     aiInvalidResponse: 'La respuesta de la IA no es válida o está incompleta. Inténtalo de nuevo.', aiEmptyResponse: 'La IA no devolvió texto. Inténtalo de nuevo.',
     aiUpdateKey: 'Actualizar la clave de IA', aiRemoveKey: 'Eliminar la clave', aiKeyRemovePending: 'La clave se eliminará al pulsar Guardar.',
     aiSiteKeyActive: '✅ La IA funciona con la clave del sitio: no necesitas la tuya.',
-    aiSiteKeyOwnSaved: 'Tus propias claves están guardadas y se usan en lugar de la clave del sitio. Si no funcionan, cambia a la clave del sitio.',
+    aiSiteKeyOwnSaved: 'Tus claves propias están guardadas. Con «Groq primero» activado, cada petición va antes a Groq (tu clave o la del sitio) y tus otras claves solo sirven de respaldo.',
     aiUseSiteKey: 'Usar la clave del sitio', aiSiteKeyNow: 'Tus claves se eliminaron: ahora la IA funciona con la clave del sitio.',
     aiKeySavedHint: 'Clave guardada: escribe una nueva para sustituirla.',
     aiKeyInvalid: '{provider}: la clave contiene caracteres no válidos (espacios dentro, puntos o símbolos como •). Vuelve a pegar la clave completa.',
