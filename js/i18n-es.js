@@ -141,7 +141,8 @@ const I18N_ES = {
     offErrChecksum: 'Un archivo descargado no pasó la comprobación de integridad. Inténtalo de nuevo.', offErrQuota: 'No hay espacio suficiente en el dispositivo. Libera espacio e inténtalo de nuevo.',
     offUnsupported: 'Este navegador no puede ejecutar el traductor sin conexión (hace falta un Chrome reciente con WebAssembly).', offNoRoute: 'No hay paquete sin conexión para este par de idiomas.',
     offInstalled: 'Instalado:', offRemove: '🗑 Eliminar', offTest: '🧪 Probar', offTestResult: '«{src}» → «{out}» · {sec} s', offTestFail: 'No se pudo traducir en este dispositivo: {why}',
-    offNeedsPack: 'Para traducir sin internet, descarga un paquete de idioma: Ajustes (🔑) → 📴 Traducción sin conexión.', offUnitMb: 'MB'
+    offNeedsPack: 'Para traducir sin internet, descarga un paquete de idioma: Ajustes (🔑) → 📴 Traducción sin conexión.', offUnitMb: 'MB',
+    aiNoteGroqLimit: 'límite de Groq'
 };
 for (const [key, value] of Object.entries(I18N_ES)) if (I18N[key]) I18N[key].es = value;
 // El menú ya se pintó en main.js (antes de este archivo): con el español elegido se vuelve a pintar.

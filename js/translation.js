@@ -86,7 +86,8 @@ function installAlignment(source, result, root) {
         fragment.append(span); cursor = link.target.end;
     }
     fragment.append(document.createTextNode(result.translation.slice(cursor)));
-    const note = document.createElement('span'); note.className = 'tt-note'; note.textContent = ' ⚡';
+    const note = document.createElement('span'); note.className = 'tt-note';
+    note.innerHTML = ' ' + (result.mark || '⚡');   // the provider that really answered (the mark is built from constants and an escaped i18n text)
     els.ttTranslation.replaceChildren(fragment, note);
 }
 function flashAlignment(index) {
@@ -334,16 +335,19 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         const probe = navigator.onLine ? ensureSharedAiProviders() : null;   // the site's shared Groq must be known before the order is chosen
         if (probe) await probe;
         const providers = navigator.onLine && aiAvailable() ? translationProviders() : [];
-        const askProvider = (p) => aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000, p || null);
+        const askProvider = (p, info) => aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000, p || null, info);
         const markOf = p => (p === 'groq' ? '⚡' : '🧠');
-        let ai = await askProvider(providers[0] || null);   // без ключа aiTranslateText сама повертає null
-        let aiMark = markOf(providers[0]);
-        if (!ai && providers[1] && myLookup === state.lookupToken && task.current()) { ai = await askProvider(providers[1]); aiMark = markOf(providers[1]); }
+        const answered = {};   // who REALLY answered: a refused shared Groq key is repeated on the shared OpenAI inside the request, the mark must follow
+        let ai = await askProvider(providers[0] || null, answered);   // без ключа aiTranslateText сама повертає null
+        let aiMark = markOf(answered.provider || providers[0]);
+        if (!ai && providers[1] && myLookup === state.lookupToken && task.current()) { const second = {}; ai = await askProvider(providers[1], second); aiMark = markOf(second.provider || providers[1]); }
+        // OpenAI's mark after Groq refused for a quota (HTTP 429): say so, or the reader takes it for broken routing.
+        if (ai && providers[0] === 'groq' && aiMark === markOf('openai') && groqLimitedRecently()) aiMark += ' · ' + escapeHtml(t('aiNoteGroqLimit'));
         aiDone = true;
         clearTimeout(previewTimer);
         if (myLookup !== state.lookupToken || !task.current()) return;
         const renderAi = (result, mark) => {
-            const al = typeof result === 'object' ? result : null;
+            const al = typeof result === 'object' ? { ...result, mark } : null;   // the mark travels with the cached alignment, which paints its own
             return { al, html: escapeHtml(al ? result.translation : result) +
                 (al?.contextNote ? ` <span class="tt-context">(${escapeHtml(al.contextNote)})</span>` : '') + ` <span class="tt-note">${mark}</span>` };
         };
@@ -806,4 +810,9 @@ document.addEventListener('selectionchange', () => {
         const anchor = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
         translatePanelPoint({ target: anchor || root, clientX: rect.left + rect.width / 2, clientY: rect.bottom }, root, { keepNative: true });
     }, PANEL_SELECTION_SETTLE_MS);
+});
+
+// The short reason beside OpenAI's mark when Groq refused for a quota (see groqNoteLimit in js/ai-client.js).
+Object.assign(I18N, {
+    aiNoteGroqLimit: { uk: 'ліміт Groq', en: 'Groq limit', fr: 'limite Groq', ru: 'лимит Groq', zh: 'Groq 限额', ko: 'Groq 한도', hi: 'Groq सीमा', ga: 'teorainn Groq' }
 });
