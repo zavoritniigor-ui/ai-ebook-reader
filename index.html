@@ -1110,11 +1110,15 @@
 
         /* ===== ТЕЛЕФОН (до 640px) ===== */
         @media (max-width: 640px) {
-            header#app-header { padding: 0; min-height: 0; }
+            /* The open menu is taller than a phone screen (Settings with 🔑 is its last row): it scrolls inside itself, or every
+               control below the screen edge is unreachable (user report 2026-10-18). Overflow only here: on wider screens it would
+               clip the header's absolutely placed popovers. */
+            header#app-header { padding: 0; min-height: 0; max-height: 100dvh; overflow-y: auto; overscroll-behavior: contain; }
             /* Меню на телефоні: рівна сітка замість хаотично відцентрованих рядків.
                Групи розділені тонкою лінією-заголовком замість вертикальної риски —
                на всю ширину вона читається краще, ніж бордер збоку. */
-            .header-controls { display: flex; flex-direction: column; gap: 0; background: var(--panel-bg); padding: 10px 16px 14px calc(max(8px, env(safe-area-inset-left, 0px)) + 58px); }
+            /* Bottom padding: the last row can be scrolled clear of the round corner docks (🤖 🎤 / ✨) and the system navigation bar. */
+            .header-controls { display: flex; flex-direction: column; gap: 0; background: var(--panel-bg); padding: 10px 16px calc(120px + env(safe-area-inset-bottom, 0px)) calc(max(8px, env(safe-area-inset-left, 0px)) + 58px); }
             .toolbar-group {
                 display: flex; flex-wrap: wrap; gap: 8px; width: 100%;
                 padding: 10px 0; border-right: none; border-bottom: 1px solid var(--border-color);
@@ -1734,7 +1738,7 @@
     <script src="js/library.js?v=a266be538226"></script>
     <script src="js/book-shelf.js?v=aa2098ef9089"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
-    <script src="js/quick-wheel.js?v=964bade41152"></script>
+    <script src="js/quick-wheel.js?v=d0bead062bf4"></script>
     <script src="js/main.js?v=f3cf0a8ad54a"></script>
     <script src="js/pwa-lifecycle.js?v=735bdf7efa70"></script>
     <script src="js/i18n-es.js?v=10224da57cc4"></script>
