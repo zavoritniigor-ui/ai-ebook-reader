@@ -1,3 +1,23 @@
+## Google Drive: a library book or a PDF crop can be saved to Google Drive (2026-10-18, Claude)
+
+Owner: «a function for sending files to the disk — to Google Drive». Read as: the two places that already save a file to disk get a Google Drive button — the library card («☁ Google Диск» next to «⬇ Зберегти», same file) and the crop dialog («Google Drive» next to «Save PNG»). Files land in the folder «AI Ebook Reader» on the user's Drive. Code: `js/google-drive.js` (new), `js/library.js`, `js/pdf-crop.js`, `_headers` (CSP), `index.html`, `sw.js`. Test: `tests/google_drive_browser.py` (12 checks against a local fake of Google; wired into CI).
+
+**Shipped INACTIVE**: `GOOGLE_DRIVE_CLIENT_ID` is `''` in `js/google-drive.js`, so no button is shown and the page never contacts Google. Nothing changes for readers until the owner sets the client id.
+
+**To switch on (owner, once — needs the owner's Google account):**
+1. Google Cloud Console → create or pick a project → APIs & Services → Library → enable **Google Drive API**.
+2. APIs & Services → OAuth consent screen → User type External, app name «AI Ebook Reader», your support email. Scopes → add `https://www.googleapis.com/auth/drive.file`. While the status is «Testing», only the listed test users can sign in: add your own Google account. Check in the console whether publishing needs verification (drive.file should be a non-sensitive scope).
+3. Credentials → Create credentials → OAuth client ID → Application type **Web application** → Authorized JavaScript origins: `https://ai-ebook-reader.pages.dev` (add any preview origin you want to test from).
+4. Copy the **Client ID** (ends in `.apps.googleusercontent.com`) into `GOOGLE_DRIVE_CLIENT_ID` in `js/google-drive.js`. It is a public identifier, not a secret — never paste the client secret. Then PR → CI → merge, as usual.
+
+**Verification so far:**
+- AUTOMATED (local, fake Google): `tests/google_drive_browser.py` — shipped build shows no buttons and asks Google nothing; a small book goes up in one multipart request with the library file's exact bytes and name; one folder created once and reused (also for the crop); a 6 MB book goes up as a resumable session, byte-identical; an expired session (401) says so and drops the token; a blocked popup and a refused sign-in each say what happened and upload nothing.
+- PROBE (real network, not in the suite): the REAL `accounts.google.com/gsi/client` loads under the production CSP with zero CSP violations, and `requestAccessToken` opens Google's sign-in window (an unknown client id ends on Google's `invalid_client` page; our error callback fires).
+- NOT VERIFIED — needs the owner's real account: a successful sign-in and consent; the Drive upload itself; **whether the browser can read the `Location` header of a resumable session** (`driveUpload`, files over 5 MB). Drive's CORS list was not visible from here. If small books save but books over 5 MB fail with «Не вдалося зберегти на Google Диск», check that first (the fix would be to read the session from the response some other way or to lower the threshold).
+- MANUAL DEVICE VALIDATION REQUIRED: the Google sign-in window on a phone (Chrome, and the installed PWA), a real save of a book and of a crop, and the folder appearing in Drive.
+
+**Choices and limits:** every press creates a new file (no overwrite; the same book saved twice gives two files). The token lasts about an hour; after that the next press asks Google again. There is no sign-out button — revoke the app in your Google account's «Third-party access» page. The Google script is fetched from `accounts.google.com` only after the first press (not on reading), and the CSP allows `accounts.google.com` (script, frame, connect) and `www.googleapis.com` (connect) for this only.
+
 ## 🔊 Voice test in the 🩺 diagnostics (2026-10-18, Claude)
 
 Owner: «add a sound test so I can send you from the phone how the voice works». The phone's report showed a NORMAL TTS trace (speak → start → end) while the owner said the translation was not voiced; the cause there was `speakSide: 'original'` (only the side whose 🔊 was pressed last is voiced automatically; asked the owner whether to add «both»). New: 🔑 → 🩺 → «🔊 Перевірити озвучення» speaks 3 phrases — book language and translation language with the app's voice (speakInLang), then the translation language with NO voice straight to the system engine — and the reader marks ✅/❌ each; `speech.selfTest` in the 📋 report holds voice, start/end events, timings and the answers. Test `tests/tts_self_test_browser.py`.

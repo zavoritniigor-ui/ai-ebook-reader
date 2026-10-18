@@ -260,6 +260,9 @@ jobs:
           echo "Running library_browser.py..."
           python3 -u tests/library_browser.py
 
+          echo "Running google_drive_browser.py..."
+          python3 -u tests/google_drive_browser.py
+
           echo "Running exit_update_browser.py..."
           python3 -u tests/exit_update_browser.py
 

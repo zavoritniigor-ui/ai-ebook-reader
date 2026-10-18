@@ -1293,6 +1293,7 @@
         #crop-dialog::backdrop { background: #0008; }
         #crop-preview { display: block; max-width: 100%; max-height: 60dvh; margin: 12px auto; object-fit: contain; }
         #crop-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+        #crop-drive[hidden] { display: none; }
         #word-tooltip { position: fixed; }
         body.pdf-mode #word-tooltip .tt-original-wrapper { flex-basis: 100%; flex-wrap: wrap; overflow: visible; }
         body.pdf-mode #word-tooltip .tt-original { flex: 1; min-width: 70px; max-width: none; }
@@ -1617,7 +1618,7 @@
         <h3 id="crop-title">PDF · Crop</h3>
         <img id="crop-preview" alt="Виділений фрагмент PDF">
         <div id="crop-actions">
-            <button id="crop-save">Save PNG</button><button id="crop-share">Share</button>
+            <button id="crop-save">Save PNG</button><button id="crop-drive" hidden>Google Drive</button><button id="crop-share">Share</button>
             <button id="crop-copy">Copy image</button><button id="crop-ai">Send to AI</button>
             <button id="crop-cancel" data-i18n="cancel">Cancel</button>
         </div>
@@ -1728,14 +1729,15 @@
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-translate.js?v=1848df56cdea"></script>
     <script src="js/pdf-ink.js?v=defbefcd482f"></script>
-    <script src="js/pdf-crop.js?v=dc0c469a9ca2"></script>
+    <script src="js/google-drive.js?v=0322604a7af0"></script>
+    <script src="js/pdf-crop.js?v=aac85f3f2ea7"></script>
     <script src="js/pdf-outline.js?v=5930b9d8bb4e"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
     <script src="js/pdf-render.js?v=5b282aa80599"></script>
     <script src="js/formats.js?v=0adff3b5d013"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=a266be538226"></script>
+    <script src="js/library.js?v=b1629df6af31"></script>
     <script src="js/book-shelf.js?v=aa2098ef9089"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
     <script src="js/quick-wheel.js?v=d0bead062bf4"></script>
