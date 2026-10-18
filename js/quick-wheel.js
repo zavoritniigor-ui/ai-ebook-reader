@@ -60,7 +60,8 @@ function scheduleMenuAutoHide() {
     }, MENU_AUTOHIDE_MS);
 }
 new MutationObserver(scheduleMenuAutoHide).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-['pointerdown', 'pointermove', 'keydown', 'focusin', 'touchstart', 'wheel'].forEach(type =>
+// 'scroll': on a phone the open menu scrolls inside itself; reading down to 🔑 must not let it close under the finger.
+['pointerdown', 'pointermove', 'keydown', 'focusin', 'touchstart', 'wheel', 'scroll'].forEach(type =>
     document.getElementById('app-header')?.addEventListener(type, scheduleMenuAutoHide, { passive: true }));
 scheduleMenuAutoHide();
 
