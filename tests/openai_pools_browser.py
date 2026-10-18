@@ -1,5 +1,5 @@
 """OpenAI requests use the models of OpenAI's FREE daily token pools: gpt-5.4 (250K tokens a day) first, gpt-5.4-mini (2.5M a day) once this device has
-used 90% of the big pool today (UTC). OpenAI does not refuse when a pool is used up -- it bills -- so the app counts the usage OpenAI reports with every
+used the whole big pool today (UTC) -- the owner's choice: switch at 100%. OpenAI does not refuse when a pool is used up -- it bills -- so the app counts the usage OpenAI reports with every
 reply itself (also of a cut-off reply and of a streamed one). Owner's request 2026-10-18 («use one pool, then the other»); measured on production that
 gpt-5.4 translates as well as the billed gpt-5.6-luna used before, gpt-5.4-mini a little worse. A tapped word answered by the small model says «🧠 mini».
 Mocked fetch, no network, no keys."""
@@ -60,13 +60,13 @@ ok('A a fresh day: OpenAI is asked with gpt-5.4 (the big free pool)', r['models'
 ok('A ... and the 1000 tokens of its reply are counted for today', used() == {'day': TODAY, 'used': {'gpt-5.4': 1000}}, used())
 ok('A ... the request log names the model that answered', r['last']['model'].startswith('gpt-5.4') and r['last']['provider'] == 'openai', r['last'])
 
-setused({'day': TODAY, 'used': {'gpt-5.4': 224000}})
+setused({'day': TODAY, 'used': {'gpt-5.4': 249000}})
 r = ask()
-ok('B just below 90% of 250K the big model is still used', r['models'] == ['gpt-5.4'], r)
-ok('B ... and that reply reaches 225000 = 90%', used()['used']['gpt-5.4'] == 225000, used())
+ok('B just below 100% of 250K the big model is still used', r['models'] == ['gpt-5.4'], r)
+ok('B ... and that reply reaches 250000 = the whole pool', used()['used']['gpt-5.4'] == 250000, used())
 r = ask()
-ok('C at 90% of the big pool the next request goes to gpt-5.4-mini (the 2.5M pool)', r['models'] == ['gpt-5.4-mini'] and r['out'] == 'відповідь', r)
-ok('C ... its tokens are counted for the mini pool, not the big one', used()['used'] == {'gpt-5.4': 225000, 'gpt-5.4-mini': 1000}, used())
+ok('C with the whole big pool spent the next request goes to gpt-5.4-mini (the 2.5M pool)', r['models'] == ['gpt-5.4-mini'] and r['out'] == 'відповідь', r)
+ok('C ... its tokens are counted for the mini pool, not the big one', used()['used'] == {'gpt-5.4': 250000, 'gpt-5.4-mini': 1000}, used())
 
 setused({'day': '2000-01-01', 'used': {'gpt-5.4': 9999999}})
 ok('D yesterday\'s count does not hold: a new UTC day starts on gpt-5.4 again', ask()['models'] == ['gpt-5.4'] and used() == {'day': TODAY, 'used': {'gpt-5.4': 1000}}, used())
@@ -91,7 +91,7 @@ c.js("""(() => { Object.defineProperty(navigator, 'onLine', {configurable: true,
 c.js("localStorage.removeItem('reader_openai_pool_usage'); 1")
 text = c.js(f"({TAP})('pomme')")
 ok('H a tapped word answered by gpt-5.4: 🧠 without «mini»', '🧠' in text and 'mini' not in text, text)
-setused({'day': TODAY, 'used': {'gpt-5.4': 240000}})
+setused({'day': TODAY, 'used': {'gpt-5.4': 250000}})
 text = c.js(f"({TAP})('verte')")
 ok('H ... answered by the small model: «🧠 mini»', '🧠 mini' in text and c.js('__models.slice(-1)[0]') == 'gpt-5.4-mini', text)
 

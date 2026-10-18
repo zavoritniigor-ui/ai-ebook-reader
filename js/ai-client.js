@@ -20,9 +20,9 @@ const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';   // qwen3.6 was withdrawn by Groq
 
 // ---- OpenAI pool accounting ------------------------------------------------------------------------------------------------
 // Tokens this device spent today (UTC) on each pool model, from the usage OpenAI reports with every reply (also a cut-off or refused-as-invalid one: it
-// was paid for). Only THIS device's requests are seen -- a tablet and a PC each count their own -- so a pool counts as used up at 90% of its size.
+// was paid for). Only THIS device's requests are seen (a tablet and a PC each count their own); the owner chose to switch at 100% of a pool.
 const OPENAI_POOL_TOKENS = { [OPENAI_MODEL]: 250000, [OPENAI_MINI_MODEL]: 2500000 };
-const OPENAI_POOL_SHARE = 0.9;
+const OPENAI_POOL_SHARE = 1;   // owner's choice 2026-10-18: switch only when the whole pool is spent
 const OPENAI_POOL_STORAGE = 'reader_openai_pool_usage';
 function openaiPoolUsage() {
     const day = new Date().toISOString().slice(0, 10);
