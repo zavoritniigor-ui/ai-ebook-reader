@@ -241,6 +241,12 @@ function libraryCard(book) {
     const save = document.createElement('button'); save.type = 'button'; save.className = 'library-save'; save.textContent = t('libSave'); save.title = t('libSaveTitle');
     save.addEventListener('click', () => saveLibraryBook(book, save));
     const actions = document.createElement('div'); actions.className = 'library-actions'; actions.append(btn, save);
+    if (driveConfigured()) {
+        const drive = document.createElement('button'); drive.type = 'button'; drive.className = 'library-save library-drive';
+        drive.textContent = t('libDrive'); drive.title = t('libDriveTitle');
+        drive.addEventListener('click', () => saveLibraryBookToDrive(book, drive));
+        actions.append(drive);
+    }
     card.append(cover, info, actions);
     return card;
 }
@@ -300,6 +306,21 @@ async function saveLibraryBook(book, btn) {
         status.textContent = e && e.libraryMessage || t('libBookError');
     } finally {
         btn.disabled = false; btn.textContent = label;
+    }
+}
+
+// Той самий файл, що й «⬇ Зберегти», — на Google Диск (тека «AI Ebook Reader»).
+async function saveLibraryBookToDrive(book, btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const status = libraryEl('library-status');
+    try {
+        const saved = await saveFileToDrive(() => fetchLibraryFile(book, wsProgress(book)), text => { status.textContent = text; });
+        status.textContent = t('driveSaved').replace('{name}', saved.name);
+    } catch (e) {
+        status.textContent = driveMessage(e);
+    } finally {
+        btn.disabled = false;
     }
 }
 

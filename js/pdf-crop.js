@@ -127,6 +127,7 @@ function openCropPreview(dataUrl) {
     cropBlob = new Blob([bytes], { type: 'image/png' });
     document.getElementById('crop-preview').src = dataUrl;
     document.getElementById('crop-status').textContent = '';
+    document.getElementById('crop-drive').hidden = !driveConfigured();
     cropDialog.showModal();
     document.getElementById('crop-cancel').focus();
 }
@@ -138,6 +139,16 @@ document.getElementById('crop-save').onclick = () => {
     const url = URL.createObjectURL(cropBlob), a = document.createElement('a');
     a.href = url; a.download = cropFile().name; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+document.getElementById('crop-drive').onclick = async () => {
+    if (!cropBlob) return;
+    const btn = document.getElementById('crop-drive'), status = document.getElementById('crop-status'), file = cropFile();
+    btn.disabled = true; status.textContent = '';
+    try {
+        const saved = await saveFileToDrive(async () => file, text => { status.textContent = text; });
+        status.textContent = t('driveSaved').replace('{name}', saved.name);
+    } catch (e) { status.textContent = driveMessage(e); }
+    finally { btn.disabled = false; }
 };
 document.getElementById('crop-share').onclick = async () => {
     if (!cropBlob) return;
