@@ -1561,8 +1561,6 @@ els.mainArea.addEventListener('click', (e) => {
     const rect = els.mainArea.getBoundingClientRect(); const x = e.clientX - rect.left;
     if (x < rect.width * 0.20) goPrev(); 
     else if (x > rect.width * 0.80) goNext();
-    else {
-        document.body.classList.toggle('immersive-mode');
-        if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
-    }
+    // The middle of the page shows the «◀ page ▶» bar for a few seconds (as in other readers); the menu has its ☰ button.
+    else openFooterMenu();
 });

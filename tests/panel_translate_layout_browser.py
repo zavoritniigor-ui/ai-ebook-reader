@@ -28,13 +28,13 @@ c.js("localStorage.clear(); document.getElementById('sw-update-banner')?.remove(
 c.js("""(() => { window.__lookups = []; const orig = handleWordOrSelection; handleWordOrSelection = (text, ...rest) => { __lookups.push(text); return orig(text, ...rest); };
   state.targetLang = 'uk'; return 1; })()""")
 
-# ---- 1. panels start below the main menu --------------------------------------------------------------------------------
-check("1 Grammar panel starts below the main menu (does not cover its buttons)",
-      """(() => { els.grammarPanel.classList.add('expanded'); const hb = document.getElementById('app-header').getBoundingClientRect().bottom; const r = els.grammarPanel.getBoundingClientRect();
-         return r.top >= hb - 1 && r.bottom <= innerHeight + 1 || JSON.stringify({top: r.top, hb, bottom: r.bottom, ih: innerHeight}); })()""", timeout=3)
+# ---- 1. panels fit the screen (the main menu is a drawer over the book: no bar on top to keep clear any more) -----------------
+check("1 Grammar panel fits the screen height",
+      """(() => { closeFullMenu(); els.grammarPanel.classList.add('expanded'); const r = els.grammarPanel.getBoundingClientRect();
+         return r.top >= 0 && r.bottom <= innerHeight + 1 || JSON.stringify({top: r.top, bottom: r.bottom, ih: innerHeight}); })()""", timeout=3)
 c.js("els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.add('expanded'); 1"); time.sleep(0.6)
 check("1b Ask AI panel too",
-      "(() => { const hb = document.getElementById('app-header').getBoundingClientRect().bottom; const r = els.askPanel.getBoundingClientRect(); return r.top >= hb - 1 && r.bottom <= innerHeight + 1 || JSON.stringify({top: r.top, hb}); })()", timeout=3)
+      "(() => { const r = els.askPanel.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1 || JSON.stringify({top: r.top, bottom: r.bottom}); })()", timeout=3)
 c.js("els.askPanel.classList.remove('expanded'); 1")
 
 # ---- 2. breakdown popup: legend above the translation, translation keeps the full width, body scrolls ---------------------

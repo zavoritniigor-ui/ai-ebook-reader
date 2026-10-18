@@ -2,7 +2,8 @@
 fixed header grew taller than the screen (Settings is the last group, 🔑 its last row) and nothing scrolled, so every control
 below the screen edge -- 🔑 AI key (and with it the sound diagnostics), 🔄 update, the menu language -- was unreachable.
 On a short phone screen the header now scrolls inside itself (it stays fixed), its last row can be scrolled clear of the
-round corner docks (🤖 🎤 / ✨), scrolling counts as activity for the auto-hide timer, and tablets are unchanged. No network."""
+round corner docks (🤖 🎤 / ✨), scrolling counts as activity for the auto-hide timer. Since 2026-10-18 the menu is a side drawer on every screen, so on a
+tablet it scrolls inside itself as well. No network."""
 import os, time
 from browser_cdp import CDP
 
@@ -46,6 +47,7 @@ check('4 scrolling the menu counts as activity: the auto-hide timer is restarted
       "(() => { let n = 0; const orig = window.setTimeout; window.setTimeout = function (f, ms) { if (ms === MENU_AUTOHIDE_MS) n++; return orig.apply(this, arguments); }; document.getElementById('app-header').dispatchEvent(new Event('scroll')); window.setTimeout = orig; return n >= 1 || n; })()")
 
 load(820, 1180)
-check('5 tablet portrait: the header is unchanged -- short, nothing to scroll',
-      "(() => { const h = document.getElementById('app-header'); return h.getBoundingClientRect().height <= 190 && h.scrollHeight <= h.clientHeight + 1 || JSON.stringify({ht: h.getBoundingClientRect().height, sh: h.scrollHeight, ch: h.clientHeight}); })()")
+check('5 tablet portrait: the menu is a side panel as tall as the screen that scrolls inside itself too, and 🔑 is reachable',
+      "(() => { const h = document.getElementById('app-header'), r = h.getBoundingClientRect(); return Math.round(r.width) === 392 && Math.abs(r.height - innerHeight) <= 1 || JSON.stringify({w: r.width, ht: r.height}); })()")
+check('5b ...', f"({REACH})('btn-ai-key')")
 print('ALL PASS')

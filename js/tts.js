@@ -345,13 +345,13 @@ function pageIndexForRange(range) {
 let isSpeakingGlobal = false;
 function updateTtsButtons() {
     if (!isSpeakingGlobal) {
-        els.ttsBtn.textContent = t('read'); els.ttsBtn.classList.remove('tts-active');
+        setMenuRowTitle(els.ttsBtn, t('mRead')); els.ttsBtn.classList.remove('tts-active');
         els.ttsStopBtn.style.display = 'none';
     } else if (state.ttsPaused) {
-        els.ttsBtn.textContent = t('resume'); els.ttsBtn.classList.remove('tts-active');
+        setMenuRowTitle(els.ttsBtn, t('mResume')); els.ttsBtn.classList.remove('tts-active');
         els.ttsStopBtn.style.display = '';
     } else {
-        els.ttsBtn.textContent = t('pause'); els.ttsBtn.classList.add('tts-active');
+        setMenuRowTitle(els.ttsBtn, t('mPause')); els.ttsBtn.classList.add('tts-active');
         els.ttsStopBtn.style.display = '';
     }
     // Плаваюче керування поверх тексту — тільки поки читання активне.
@@ -507,8 +507,7 @@ function startTTS() {
 }
 // ========== ДВА ГОЛОСИ ПО ЧЕРЗІ ==========
 function updateAltVoicesBtn() {
-    els.altVoicesBtn.textContent = t(state.altVoices ? 'altVoicesOn' : 'altVoicesOff');
-    els.altVoicesBtn.classList.toggle('active-mode', state.altVoices);
+    setMenuSwitch(els.altVoicesBtn, state.altVoices);
 }
 els.altVoicesBtn.onclick = () => {
     state.altVoices = !state.altVoices;

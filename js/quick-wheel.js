@@ -26,12 +26,21 @@ I18N.wheelRules = I18N.wheelRules || { en:'Rules',uk:'Правила',fr:'Règle
 I18N.wheelLevel = {en:'Language Level',uk:'Рівень',fr:'Niveau',ru:'Уровень',zh:'等级',ko:'레벨',hi:'स्तर',ga:'Leibhéal'};
 
 // ========== ЄДИНЕ ДЖЕРЕЛО ІСТИНИ ДЛЯ ПОВНОГО МЕНЮ ==========
+// The menu is a side drawer over the book (index.html, header#app-header): the dimmed backdrop, ✕, Escape or a tap beside it close it;
+// an action that shows something on the page (contents, rules, pen, region, print, reading aloud) closes it too, so its result is seen.
+// Other code opens/closes it by toggling body.immersive-mode directly -- the backdrop follows the class (observer below).
 function isFullMenuOpen() { return !document.body.classList.contains('immersive-mode'); }
-function syncFullMenuControls() { els.menuHandle.setAttribute('aria-expanded', String(isFullMenuOpen())); }
+function syncFullMenuControls() {
+    const open = isFullMenuOpen();
+    els.menuHandle.setAttribute('aria-expanded', String(open));
+    const backdrop = document.getElementById('menu-backdrop');
+    if (backdrop) backdrop.hidden = !open;
+}
 function openFullMenu() {
     document.body.classList.remove('immersive-mode');
     syncFullMenuControls();
-    document.getElementById('toggle-toc-desktop').focus({ preventScroll: true });
+    // Focus moves into the menu (keyboard, screen readers) without drawing a focus ring after a tap.
+    document.getElementById('menu-close').focus({ preventScroll: true, focusVisible: false });
 }
 function closeFullMenu() {
     document.body.classList.add('immersive-mode');
@@ -39,12 +48,27 @@ function closeFullMenu() {
 }
 function toggleFullMenu() { isFullMenuOpen() ? closeFullMenu() : openFullMenu(); }
 els.menuHandle.addEventListener('click', toggleFullMenu);
+document.getElementById('menu-close').addEventListener('click', closeFullMenu);
+document.getElementById('menu-backdrop').addEventListener('click', closeFullMenu);
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !isFullMenuOpen() || e.defaultPrevented) return;
+    if (document.querySelector('#settings-modal[style*="flex"], #library-modal.open')) return;   // Escape closes the dialog on top first
+    closeFullMenu();
+});
+const MENU_CLOSING_ACTIONS = ['toggle-toc-desktop', 'btn-rules', 'btn-ink', 'btn-region', 'btn-print-page', 'btn-tts'];
+document.getElementById('header-controls').addEventListener('click', e => {
+    const row = e.target.closest('button');
+    if (row && MENU_CLOSING_ACTIONS.includes(row.id)) setTimeout(closeFullMenu, 0);   // after the action's own handler
+});
+document.getElementById('btn-free-library').addEventListener('click', () => openLibrary());
+document.getElementById('btn-print-page').addEventListener('click', () => printCurrentReaderPage());
+new MutationObserver(syncFullMenuControls).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 syncFullMenuControls();
 
-// Верхнє меню саме "засуває завісу" після кількох секунд бездіяльності. Будь-яка взаємодія з меню
-// (курсор над ним, дотик, клавіша, фокус у списку/полі) відкладає закриття; відкрите меню на стартовому
-// екрані (книги ще немає) не чіпаємо. Вимкнути: localStorage reader_menu_autohide = 'off'.
-const MENU_AUTOHIDE_MS = 4000;
+// Меню саме закривається після кількох секунд бездіяльності. Будь-яка взаємодія з меню (курсор над ним, дотик, прокрутка,
+// клавіша, фокус у списку/полі) відкладає закриття; відкрите меню на стартовому екрані (книги ще немає) не чіпаємо.
+// 10 с, а не 4: у кожному рядку тепер є пояснення, і його треба встигнути прочитати. Вимкнути: localStorage reader_menu_autohide = 'off'.
+const MENU_AUTOHIDE_MS = 10000;
 let menuIdleTimer = 0;
 function menuAutoHideEnabled() { return readStored('reader_menu_autohide') !== 'off'; }
 function scheduleMenuAutoHide() {

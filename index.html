@@ -50,14 +50,94 @@
         button, select, input { font-family: inherit; }
         :focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; }
 
+        /* ===== ГОЛОВНЕ МЕНЮ: бічна панель (drawer) =====
+           На всіх екранах — та сама панель з розділами: телефон — на всю ширину, планшет і комп'ютер — 392px ліворуч, книгу видно
+           за напівпрозорим тлом. Меню НЕ зсуває книгу (--app-header-h = 0): відкриття й закриття не перекомпоновує сторінку. */
+        :root { --app-header-h: 0px; --menu-w: min(392px, 100vw); }
         header#app-header {
-            position: fixed; top: 0; left: 0; width: 100%; min-height: 58px;
-            background: var(--panel-bg); border-bottom: 1px solid var(--border-color);
-            padding: 8px 18px 8px calc(max(8px, env(safe-area-inset-left, 0px)) + 58px); z-index: 10000; box-shadow: 0 1px 0 rgba(var(--shadow-color),0.04), 0 6px 18px -12px rgba(var(--shadow-color),0.35);
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: fixed; top: 0; left: 0; bottom: 0; width: var(--menu-w); height: 100dvh; z-index: 26010;
+            background: var(--panel-bg); border-right: 1px solid var(--border-color);
+            box-shadow: 0 0 0 1px rgba(var(--shadow-color),0.03), 12px 0 40px -18px rgba(var(--shadow-color),0.45);
+            display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+            padding: env(safe-area-inset-top, 0px) 0 0 env(safe-area-inset-left, 0px);
+            transform: translateX(0); visibility: visible;
+            transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0s;
         }
-        #toggle-toc-desktop svg { display: block; pointer-events: none; flex-shrink: 0; }
+        #menu-backdrop { position: fixed; inset: 0; z-index: 26005; background: rgba(0,0,0,.32); opacity: 1; transition: opacity .28s; }
+        #menu-backdrop[hidden] { display: block; opacity: 0; pointer-events: none; }
+        .menu-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 14px 12px 12px 18px;
+            background: color-mix(in srgb, var(--panel-bg) 94%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); }
+        .menu-logo { width: 36px; height: 36px; border-radius: 9px; flex: 0 0 auto; }
+        .menu-top-text { flex: 1; min-width: 0; }
+        #menu-heading { font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+        #menu-subheading { font-size: 12.5px; color: var(--text-muted); line-height: 1.3; margin-top: 1px; }
+        button.menu-close { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; flex: 0 0 auto; color: var(--text-muted); }
+        button.menu-close:hover { color: var(--text-color); }
+        .header-controls { display: flex; flex-direction: column; padding: 4px 0 calc(28px + env(safe-area-inset-bottom, 0px)); }
+        .menu-section { padding: 10px 10px 8px; border-bottom: 1px solid var(--border-color); }
+        .menu-section:last-child { border-bottom: 0; }
+        .menu-section-title { margin: 6px 10px 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+        svg.mi, svg.mi-chev { width: 22px; height: 22px; flex: 0 0 22px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+        svg.mi-chev { width: 18px; height: 18px; flex-basis: 18px; color: var(--text-muted); margin-left: auto; }
+        .menu-row, .menu-cta, button.menu-row-main {
+            display: flex; align-items: center; gap: 14px; width: 100%; min-height: 58px; padding: 9px 12px; margin: 0;
+            border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text-color);
+            font: inherit; text-align: left; white-space: normal; cursor: pointer; height: auto; justify-content: flex-start;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button.menu-row:hover, button.menu-row-main:hover, .menu-row-select:hover, .menu-cta:hover { background: var(--hover-color); }
+        button.menu-row:active, button.menu-row-main:active, .menu-cta:active { transform: none; background: var(--hover-color); }
+        .menu-row > svg.mi, .menu-row-main > svg.mi { color: var(--accent-color); }
+        .mr-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+        .mr-title { font-size: 15.5px; font-weight: 600; line-height: 1.25; color: var(--text-color); }
+        .mr-desc { font-size: 12.5px; font-weight: 400; line-height: 1.3; color: var(--text-muted); }
+        /* Головна дія — відкрити файл: єдиний залитий рядок у меню. */
+        label.menu-cta { background: var(--accent-color); color: var(--accent-contrast); margin: 2px 0 6px; border: 0; height: auto; font-weight: 600; }
+        label.menu-cta:hover { background: var(--accent-color); filter: brightness(1.06); }
+        label.menu-cta .mr-title, label.menu-cta .mr-desc, label.menu-cta svg.mi { color: var(--accent-contrast); }
+        label.menu-cta .mr-desc { opacity: .85; }
+        /* Перемикач (role="switch" + aria-checked): стан видно одразу, без «УВІМК/ВИМК» у тексті. */
+        .mr-switch { position: relative; flex: 0 0 auto; width: 46px; height: 28px; border-radius: 999px; background: color-mix(in srgb, var(--text-color) 22%, transparent); transition: background .2s; margin-left: auto; }
+        .mr-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+        [aria-checked="true"] > .mr-switch { background: var(--accent-color); }
+        [aria-checked="true"] > .mr-switch::after { transform: translateX(18px); }
+        button.menu-row.active-mode { background: transparent !important; color: var(--text-color) !important; border-color: transparent !important; }
+        /* Вибір зі списку: сам <select> накриває весь рядок (натиск у будь-якому місці відкриває список системи), а поточне
+           значення він показує праворуч сам — тому значення ніколи не розходиться з тим, що вибрано. */
+        .menu-row-select { position: relative; }
+        .menu-row-select > :not(select) { position: relative; pointer-events: none; }
+        .menu-row-select > .mr-text { padding-right: 40%; }   /* the right 40% shows the select's value */
+        select.mr-select {
+            position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; z-index: 1; margin: 0;
+            appearance: none; -webkit-appearance: none; background: transparent; border: 0; border-radius: var(--radius-md);
+            padding: 0 38px 0 60%; text-align: right; text-align-last: right; color: var(--text-muted); font-size: 14.5px; font-weight: 500; cursor: pointer;
+            background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+            background-position: calc(100% - 22px) 50%, calc(100% - 17px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+        }
+        select.mr-select option { color: var(--text-color); background: var(--panel-bg); }
+        select.mr-select:focus-visible { outline: 2px solid var(--focus-color); outline-offset: -2px; }
+        .menu-row[data-only="pdf"] { display: none; }
+        body.pdf-mode .menu-row[data-only="pdf"] { display: flex; }
+        .mr-stepper { display: inline-flex; flex: 0 0 auto; margin-left: auto; border: 1px solid var(--border-color); border-radius: 999px; overflow: hidden; }
+        button.mr-step { width: 48px; height: 40px; padding: 0; border: 0; border-radius: 0; font-size: 15px; font-weight: 700; color: var(--text-color); }
+        button.mr-step + button.mr-step { border-left: 1px solid var(--border-color); }
+        button.mr-step:disabled { color: var(--text-muted); opacity: .45; cursor: default; }
+        .menu-row-split { padding: 0; gap: 0; }
+        .menu-row-split > button.menu-row-main { flex: 1; }
+        button.mr-icon-btn { width: 44px; height: 44px; padding: 0; margin-right: 8px; border-radius: 50%; flex: 0 0 auto; color: #dc3545; border-color: rgba(220,53,69,.35); }
+        #btn-tts.tts-active { background: rgba(220,53,69,.10) !important; color: var(--text-color) !important; }
+        #btn-tts.tts-active svg.mi { color: #dc3545; }
+        .mr-value { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-color); }
+        .stats-mini-ring { width: 22px; height: 22px; border-radius: 50%;
+            background: conic-gradient(var(--accent-color) var(--coverage, 0deg), var(--border-color) 0);
+            -webkit-mask: radial-gradient(circle, transparent 46%, #000 49%); mask: radial-gradient(circle, transparent 46%, #000 49%); }
+        button.menu-row:disabled { opacity: .5; cursor: default; }
+        button.menu-row:disabled:hover { background: transparent; }
+        #btn-rules[data-state="ready"] .mr-desc { color: #0f9d76; }
+        @media (min-width: 641px) {
+            /* Планшет і комп'ютер: панель ліворуч, заокруглений правий край. */
+            header#app-header { border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
+        }
         #menu-handle {
             position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left));
             width: 44px; height: 44px; border-radius: 50%; z-index: 10050;
@@ -109,45 +189,6 @@
         .qm-item:disabled { color: var(--text-muted); cursor: default; }
         #qm-launcher:focus-visible, .qm-item:focus-visible { outline: 3px solid var(--accent-color); outline-offset: 3px; }
 
-        .header-controls { display: flex; width: 100%; align-items: center; gap: 4px; flex-wrap: wrap; }
-        .header-controls .my-books-tablet { display: none; }
-        .toolbar-group {
-            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-            padding: 0 12px; border-right: 1px solid var(--border-color);
-        }
-        .toolbar-group:last-child { border-right: none; }
-        /* Симетрія: групи кнопок центруються в рядку (раніше лише остання липла до правого краю). */
-        .header-controls { justify-content: center; }
-        /* Підписи груп і полів головного меню: що означає кожна кнопка видно без підказки. */
-        .toolbar-group { position: relative; padding-top: 15px; }
-        .group-caption { position: absolute; top: 0; left: 12px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; pointer-events: none; }
-        .toolbar-group:first-child .group-caption { left: 0; }
-        .field-cap { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
-        /* Замість текстових підписів («Переклад на», «Мова меню») — значок перед списком: 🗣️ голос, 🌍 мова перекладу, 🖥️ мова меню. */
-        .field-ico { font-size: 18px; line-height: 1; flex: 0 0 auto; min-width: 1.4em; text-align: center; cursor: pointer; }
-        /* Ноутбук / планшет в альбомній: заголовки груп і текст на ✏️ ✂️ 🔑 розтягували шапку до трьох рядків (184px),
-           тож тут лишаються лише іконки (назва — у aria-label/title). Повністю — на телефоні й на екрані від 1600px. */
-        @media (min-width: 641px) and (max-width: 1599px) {
-            .group-caption, .btn-text { display: none; }
-            .toolbar-group { padding-top: 0; padding-left: 6px; padding-right: 6px; gap: 4px; }
-            .field-cap { font-size: 11.5px; }
-            .toolbar-group:first-child { padding-left: 0; }
-            .toolbar-group:last-child { padding-right: 0; }
-            #voice-select { max-width: 130px; }
-            .field-ico { font-size: 16px; }
-            .toolbar-group { gap: 3px; }
-        }
-        /* Вузький ноутбук: у PDF-режимі (+ вибір масштабу) підписи полів знову давали третій рядок; назва лишається в title. */
-        @media (min-width: 1181px) and (max-width: 1299px) {
-            .field-cap { display: none; }
-            .toolbar-group { padding-left: 3px; padding-right: 3px; }
-            /* Значки 🌍 🖥️ і кнопка 🔄 з'їли запас другого рядка: з ширшими шрифтами (CI) PDF-шапка на 1200px ставала третім рядком (139px). */
-            #target-lang { max-width: 96px; }
-            #theme-select { max-width: 80px; }
-            #ui-lang { max-width: 58px; }
-            #pdf-fit { max-width: 90px; }
-        }
-        .toolbar-group:first-child { padding-left: 0; }
 
         button, label.btn {
             background: transparent; color: var(--text-color); border: 1px solid var(--border-color);
@@ -180,22 +221,11 @@
         .btn-danger:hover { background: rgba(220,53,69,0.18); }
         button.icon-btn { background: transparent; color: var(--text-color); font-weight: 500; }
         button.icon-btn.compact { width: var(--control-h); padding: 0; font-size: 15px; }
-        .reading-stats-control { position: relative; flex: 0 0 auto; }
-        #reading-stats-button {
-            min-width: 74px; padding: 0 10px; gap: 7px; font-variant-numeric: tabular-nums;
-        }
-        #reading-stats-button::before {
-            content: ''; width: 18px; height: 18px; flex: 0 0 18px; border-radius: 50%;
-            background: conic-gradient(var(--accent-color) var(--coverage, 0deg), var(--border-color) 0);
-            -webkit-mask: radial-gradient(circle, transparent 45%, #000 48%);
-            mask: radial-gradient(circle, transparent 45%, #000 48%);
-        }
-        #reading-stats-button:disabled { opacity: .55; cursor: default; }
+        .reading-stats-control { position: relative; }
+        /* Розуміння сторінки: подробиці розгортаються просто під рядком меню. */
         #reading-stats-popover {
-            position: absolute; top: calc(100% + 9px); right: 0; width: min(320px, calc(100vw - 24px));
-            padding: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md);
-            background: var(--panel-bg); color: var(--text-color); box-shadow: 0 14px 38px rgba(var(--shadow-color),.24);
-            z-index: 10200; font-size: 13px;
+            position: static; margin: 4px 4px 8px; padding: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md);
+            background: var(--surface-2); color: var(--text-color); font-size: 13px;
         }
         #reading-stats-popover[hidden] { display: none; }
         .stats-heading { font-size: 15px; margin: 0 0 13px; }
@@ -246,10 +276,15 @@
             min-width: 0; text-overflow: ellipsis;
         }
 
-        .workspace { margin-top: var(--app-header-h, 58px); height: calc(100vh - var(--app-header-h, 58px)); display: flex; flex: 1; overflow: hidden; position: relative; transition: margin-top 0.3s, height 0.3s; }
+        .workspace { margin-top: 0; height: 100vh; display: flex; flex: 1; overflow: hidden; position: relative; transition: margin-top 0.3s, height 0.3s; }
 
-        body.immersive-mode header#app-header { transform: translateY(-100%); }
-        body.immersive-mode footer#app-footer { transform: translateY(calc(100% + 24px)); } /* clears the 14px floating offset too */
+        /* Закрите меню: за межами екрана й поза порядком Tab (visibility після анімації). */
+        body.immersive-mode header#app-header { transform: translateX(calc(-100% - 24px)); visibility: hidden; box-shadow: none;
+            transition: transform 0.24s cubic-bezier(0.4, 0, 1, 1), visibility 0s linear 0.24s; }
+        /* «◀ сторінка ▶» не залежить від меню (меню тепер — бічна панель): ховається, доки її не покличе тап по середині сторінки або
+           прозора ручка внизу (js/ui-tooltip.js openFooterMenu). */
+        footer#app-footer { transform: translateY(calc(100% + 24px)); } /* clears the 14px floating offset too */
+        body.footer-open footer#app-footer { transform: none; }
         body.immersive-mode .workspace { margin-top: 0; height: 100vh; }
 
         nav { position: absolute; top: 0; left: 0; height: 100%; width: min(280px, 82vw); background: var(--panel-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; transition: transform 0.3s; z-index: 9999; box-shadow: 2px 0 15px rgba(0,0,0,0.15); }
@@ -548,7 +583,12 @@
         #region-hint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
                        background: rgba(33,37,41,0.92); color: #fff; padding: 8px 16px;
                        border-radius: 18px; font-size: 14px; pointer-events: none; }
-        #footer-handle { display: none; }
+        #footer-handle {
+            display: block; position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 96px; height: 22px; background: transparent; border: 0; padding: 0;
+            border-radius: 48px 48px 0 0; z-index: 10001; cursor: pointer;
+        }
+        body.footer-open #footer-handle { display: none; }
         /* Стрілки ‹ › у нижніх кутах: гортання по одній сторінці завжди під рукою, коли смуга «◀ сторінка ▶» схована
            (режим без меню; на 641–1180px до неї не було навіть ручки). Відступ 56px від країв — щоб не лягати на язички
            «Запитай AI»/«Граматика» біля самих країв; центр знизу лишається кнопці ✦. */
@@ -563,8 +603,9 @@
         /* Режим без меню: текст книги не ховається під плаваючими кнопками — перший рядок починається нижче ☰ (8px + 44px
            у лівому верхньому куті), а поки видно стрілки ‹ ›, останній рядок стоїть над ними (12px + 44px від низу). Раніше
            ☰ накривав перше слово кожної сторінки, а стрілки — останній рядок. PDF має власне прокручування і поля. */
-        body.immersive-mode:not(.pdf-mode) #reader-container { padding-top: max(20px, calc(max(8px, env(safe-area-inset-top, 0px)) + 52px)); }
-        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):not(.pdf-mode):has(#page-arrows:not([hidden])) #reader-container {
+        /* Не залежить від меню й смуги «◀ сторінка ▶»: інакше кожне їх відкриття перекомпоновувало б сторінку (текст «стрибав»). */
+        body:not(.pdf-mode) #reader-container { padding-top: max(20px, calc(max(8px, env(safe-area-inset-top, 0px)) + 52px)); }
+        body:not(.ink-mode):not(.region-mode):not(.pdf-mode):has(#page-arrows:not([hidden])) #reader-container {
             padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 
         /* ОНОВЛЕНИЙ Tooltip (Захист від виходу за межі екрана)
@@ -1074,26 +1115,6 @@
            панелі інструментів у пару рядків і для бічних панелей-"листів", що не
            ховають книгу повністю — це і є те, чого не вистачало під плаНшет. */
         @media (min-width: 641px) and (max-width: 1180px) {
-            .header-controls button, .header-controls label.btn, .header-controls select {
-                height: 44px; font-size: 13px;
-            }
-            .toolbar-group { gap: 6px; row-gap: 8px; }
-            /* Планшет: підписи кнопок і полів ("Переклад на", "Мова меню", "Писати"…) лишаються, а заголовки груп
-               ховаємо — вони з'їдали б цілий рядок висоти шапки. Вони показуються на телефоні й на великому екрані. */
-            .group-caption { display: none; }
-            .toolbar-group { padding-top: 0; }
-            /* 96px і відступи 4px: значок 🗣️ перед списком голосів забрав запас першого рядка, і з ширшими шрифтами (CI) шапка
-               планшета ставала третім рядком (211px). */
-            #voice-select { max-width: 96px; }
-            /* «📖 Мої книги» на планшеті — значок у групі налаштувань: перший рядок шапки тут заповнений ушир (з ширшими
-               шрифтами CI навіть значок у групі «Книга» переносив рядок, і шапка росла 161→211px), а останній має запас. */
-            #btn-my-books { display: none; }
-            .header-controls .my-books-tablet { display: inline-flex; }
-            .header-controls { row-gap: 6px; }
-            .toolbar-group { padding-left: 4px; padding-right: 4px; }
-            .toolbar-group:first-child { padding-left: 0; }
-            .toolbar-group:last-child { padding-right: 0; }
-            .field-cap { font-size: 11.5px; }
             nav { width: min(320px, 42vw); }
             #toc-list li { padding: 13px 14px; font-size: 15.5px; }
             #reader-container { padding: 40px 44px; }
@@ -1110,52 +1131,13 @@
 
         /* ===== ТЕЛЕФОН (до 640px) ===== */
         @media (max-width: 640px) {
-            /* The open menu is taller than a phone screen (Settings with 🔑 is its last row): it scrolls inside itself, or every
-               control below the screen edge is unreachable (user report 2026-10-18). Overflow only here: on wider screens it would
-               clip the header's absolutely placed popovers. */
-            header#app-header { padding: 0; min-height: 0; max-height: 100dvh; overflow-y: auto; overscroll-behavior: contain; }
-            /* Меню на телефоні: рівна сітка замість хаотично відцентрованих рядків.
-               Групи розділені тонкою лінією-заголовком замість вертикальної риски —
-               на всю ширину вона читається краще, ніж бордер збоку. */
-            /* Bottom padding: the last row can be scrolled clear of the round corner docks (🤖 🎤 / ✨) and the system navigation bar. */
-            .header-controls { display: flex; flex-direction: column; gap: 0; background: var(--panel-bg); padding: 10px 16px calc(120px + env(safe-area-inset-bottom, 0px)) calc(max(8px, env(safe-area-inset-left, 0px)) + 58px); }
-            .toolbar-group {
-                display: flex; flex-wrap: wrap; gap: 8px; width: 100%;
-                padding: 10px 0; border-right: none; border-bottom: 1px solid var(--border-color);
-            }
-            .toolbar-group:last-child { margin-left: 0; border-bottom: none; padding-bottom: 4px; }
-            .toolbar-group > * { flex: 1 1 calc(50% - 4px); margin: 0; max-width: none; }
-            .toolbar-group > select { flex: 1 1 calc(50% - 4px); }
-            .toolbar-group { padding-top: 10px; }
-            .group-caption { position: static; flex: 1 1 100%; margin: 0; }
-            .toolbar-group:first-child .group-caption { left: auto; }
-            .toolbar-group > .field-cap { flex: 1 1 100%; margin: 2px 0 -4px; font-size: 11.5px; }
-            /* Іконкові кнопки лишаються квадратними, а не розтягнутими на півширини */
-            .toolbar-group > .icon-btn.compact { flex: 0 0 44px; }
-            .toolbar-group > .reading-stats-control { flex: 0 0 auto; }
-            #reading-stats-button { min-height: 44px; }
-            #reading-stats-popover { position: fixed; top: 58px; right: 12px; }
-            .header-controls button, .header-controls label.btn, .header-controls select {
-                min-height: 44px; font-size: 14.5px;
-            }
-            /* Ці два керують режимами читання — даємо їм повний рядок для наочності */
-            #btn-tts, #btn-translate-mode { flex-basis: 100%; }
-            #zoom-out, #zoom-in { font-size: 16px; }
+            /* Телефон: меню — на весь екран; останній рядок можна прокрутити вище круглих кнопок у кутах (🤖 🎤 / ✨). */
+            :root { --menu-w: 100vw; }
+            .header-controls { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
 
-            .workspace { margin-top: 55px; height: calc(100vh - 55px); }
             main { padding: 0; }
             #reader-container { padding: 20px 15px; border-radius: 0; max-width: 100%; box-shadow: none; }
 
-            /* Повноекранний режим: футер (розділ/сторінка/вперед/назад) за замовчуванням
-               прихований і виїжджає як тимчасове підменю, викликане прозорою ручкою знизу. */
-            footer#app-footer { transform: translateY(100%); }
-            body.footer-open footer#app-footer { transform: translateY(0); }
-            #footer-handle {
-                display: block; position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-                width: 96px; height: 22px; background: transparent;
-                border-radius: 48px 48px 0 0; z-index: 10001; cursor: pointer;
-            }
-            body.footer-open #footer-handle { display: none; }
 
             /* На мобільному панелі відкриваються на весь екран; ховання — тим самим
                зсувом на 100% власної ширини, що й на десктопі. */
@@ -1261,8 +1243,6 @@
            A prior version forced position:absolute (single-page-only layout);
            removed as part of the continuous-scroll rewrite. */
         .pdf-page-wrapper.pdf-placeholder { background: var(--surface-2); }
-        #pdf-fit { display: none; }
-        body.pdf-mode #pdf-fit { display: inline-flex; }
         #ink-tools { max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; }
         #ink-width { width: 94px; touch-action: auto; }
         #ink-tools label { color: white; display: flex; align-items: center; gap: 5px; font-size: 12px; }
@@ -1382,45 +1362,100 @@
     </div>
     <!-- Modal backdrop: blocks all background interaction while Quick Menu is open. -->
     <div id="qm-backdrop" hidden></div>
-    <header id="app-header">
+    <!-- Головне меню: бічна панель із розділами (Книга, Читання, Навчання, Інструменти, Налаштування). Кожен рядок — значок, назва,
+         однорядкове пояснення й поточне значення: зрозуміло без підказок. Елементи керування зберегли свої id (JS прив'язаний до них). -->
+    <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute">
+        <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M12 10.5v5M9.5 13h5"/></symbol>
+        <symbol id="i-shelf" viewBox="0 0 24 24"><rect x="3.5" y="4" width="4.5" height="16" rx="1"/><rect x="9.5" y="4" width="4.5" height="16" rx="1"/><path d="m15.6 5.4 3.6-1 3 14.6-3.6 1z"/></symbol>
+        <symbol id="i-library" viewBox="0 0 24 24"><path d="M3 9.5 12 4l9 5.5"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 20.5h18"/></symbol>
+        <symbol id="i-toc" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></symbol>
+        <symbol id="i-speak" viewBox="0 0 24 24"><path d="M4 9h3l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+        <symbol id="i-voices" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 13.3A6 6 0 0 1 21 19"/></symbol>
+        <symbol id="i-textsize" viewBox="0 0 24 24"><path d="M3.5 7V5h10v2M8.5 5v14M6.5 19h4"/><path d="M14 13v-1.5h7V13M17.5 11.5V19M16 19h3"/></symbol>
+        <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+        <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol>
+        <symbol id="i-study" viewBox="0 0 24 24"><path d="M2.5 9 12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v4.5c0 1.6 2.5 3 5.5 3s5.5-1.4 5.5-3V11M21.5 9v5"/></symbol>
+        <symbol id="i-translate" viewBox="0 0 24 24"><path d="M3.5 5.5h9M8 3.5v2M10.5 5.5c-.8 3.6-3.3 6.2-6.8 7.7M5.8 8.6c1.2 1.8 3 3.2 5.2 4"/><path d="m12.5 20.5 4.2-9 4.3 9M14 17.5h5.5"/></symbol>
+        <symbol id="i-rules" viewBox="0 0 24 24"><path d="M5 19.5v-15A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5 1.5 1.5 0 0 0 6.5 21H19"/><path d="m9 10 2 2 4-4"/></symbol>
+        <symbol id="i-stats" viewBox="0 0 24 24"><path d="M11 4.1A8 8 0 1 0 19.9 13H11z"/><path d="M14 3.6A7 7 0 0 1 20.4 10H14z"/></symbol>
+        <symbol id="i-pen" viewBox="0 0 24 24"><path d="M15.5 4.5a2.1 2.1 0 0 1 3 3L8 18l-4 1.5L5.5 15.5z"/><path d="m13.5 6.5 3 3"/></symbol>
+        <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2.5V16a2 2 0 0 0 2 2h13.5"/><path d="M2.5 6H16a2 2 0 0 1 2 2v13.5"/></symbol>
+        <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="1.5"/><path d="M7 14h10v6.5H7z"/></symbol>
+        <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.3 2.3 3.5 5.2 3.5 8.5s-1.2 6.2-3.5 8.5c-2.3-2.3-3.5-5.2-3.5-8.5S9.7 5.8 12 3.5z"/></symbol>
+        <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="3.8"/><path d="m10.3 12.8 9.2-9.3M15.5 7.5 18 10M18 5l2 2"/></symbol>
+        <symbol id="i-update" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20.5 4v5h-5"/></symbol>
+        <symbol id="i-exit" viewBox="0 0 24 24"><path d="M9.5 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20h4M15 16l4-4-4-4M19 12H9"/></symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+        <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+        <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+    </svg>
+    <div id="menu-backdrop" hidden></div>
+    <header id="app-header" aria-labelledby="menu-heading">
+        <div class="menu-top">
+            <img class="menu-logo" src="icons/icon-192.png" alt="" width="36" height="36">
+            <div class="menu-top-text">
+                <h2 id="menu-heading">AI Ebook Reader</h2>
+                <p id="menu-subheading" data-i18n="mTagline">Читання з перекладом, граматикою й озвученням</p>
+            </div>
+            <button type="button" class="menu-close" id="menu-close" data-i18n-title="tClose" data-i18n-aria="tClose"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button>
+        </div>
         <div class="header-controls" id="header-controls">
-            <!-- FILE / BOOK -->
-            <div class="toolbar-group">
-                <span class="group-caption" data-i18n="grpBook"></span>
-                <button class="icon-btn compact" id="toggle-toc-desktop" data-i18n-title="tBookContents" aria-label="Зміст та ескізи книги"><svg class="book-nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></button>
-                <label class="btn" for="file-upload" data-i18n="open">📂 Відкрити</label>
-                <button class="btn my-books-btn" id="btn-my-books" data-i18n-title="tMyBooks" data-i18n-aria="myBooksLabel"><span aria-hidden="true">📖</span><span data-i18n="myBooksLabel"> Мої книги</span></button>
+            <!-- КНИГА -->
+            <section class="menu-section" aria-labelledby="ms-book">
+                <h3 class="menu-section-title" id="ms-book" data-i18n="mSecBook">Книга</h3>
+                <label class="menu-cta" for="file-upload" id="menu-open-file"><svg class="mi" aria-hidden="true"><use href="#i-open"/></svg><span class="mr-text"><span class="mr-title" data-i18n="mOpen">Відкрити файл</span><span class="mr-desc" data-i18n="mOpenDesc">EPUB, PDF, FB2, DOCX, TXT з пристрою</span></span></label>
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown">
-            </div>
-            <!-- READING / TTS -->
-            <div class="toolbar-group">
-                <span class="group-caption" data-i18n="grpSpeech"></span>
-                <button class="icon-btn" id="btn-tts" data-i18n="read">🔊 Читати</button>
-                <button class="icon-btn compact" id="btn-tts-stop" style="display:none;" data-i18n-title="tStop">⏹</button>
-                <button class="icon-btn" id="btn-alt-voices" data-i18n-title="tAltVoices">👥 Два голоси: ВИМК</button>
-                <label class="field-ico" for="voice-select" data-i18n-title="tVoice" aria-hidden="true">🗣️</label>
-                <select id="voice-select" data-i18n-title="tVoice"><option value="" data-i18n="loading">Завантаження...</option></select>
-            </div>
-            <!-- STUDY / TRANSLATION / STATISTICS -->
-            <div class="toolbar-group">
-                <span class="group-caption" data-i18n="grpStudy"></span>
-                <button class="icon-btn" id="btn-translate-mode" data-i18n-title="tStudyMode">🔮 Вивчення: ВИМК</button>
-                <button class="icon-btn" id="btn-rules" data-i18n="btnRules" data-i18n-title="tRules" aria-controls="rules-panel">📚 Правила</button>
-                <label class="field-ico" for="target-lang" data-i18n-title="tTargetLang" aria-hidden="true">🌍</label>
-                <select id="target-lang" data-i18n-title="tTargetLang">
-                    <option value="uk">🇺🇦 Українська</option>
-                    <option value="en">🇬🇧 English</option>
-                    <option value="fr">🇫🇷 Français</option>
-                    <option value="ru">🇷🇺 Русский</option>
-                    <option value="zh">🇨🇳 中文 / 简体中文</option>
-                    <option value="ko">🇰🇷 한국어</option>
-                    <option value="hi">🇮🇳 हिन्दी</option>
-                    <option value="ga">🇮🇪 Gaeilge</option>
-                    <option value="de">🇩🇪 Deutsch</option>
-                    <option value="es">🇪🇸 Español</option>
-                </select>
+                <button type="button" class="menu-row my-books-btn" id="btn-my-books" aria-labelledby="mr-shelf-t" aria-describedby="mr-shelf-d"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span class="mr-text"><span class="mr-title" id="mr-shelf-t" data-i18n="mShelf">Мої книги</span><span class="mr-desc" id="mr-shelf-d" data-i18n="mShelfDesc">Нещодавні й збережені на пристрої</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-free-library" aria-labelledby="mr-lib-t" aria-describedby="mr-lib-d"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span class="mr-text"><span class="mr-title" id="mr-lib-t" data-i18n="mLibrary">Безкоштовна бібліотека</span><span class="mr-desc" id="mr-lib-d" data-i18n="mLibraryDesc">Gutenberg, Вікіджерела, Internet Archive</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="toggle-toc-desktop" aria-labelledby="mr-toc-t" aria-describedby="mr-toc-d"><svg class="mi book-nav-icon" aria-hidden="true"><use href="#i-toc"/></svg><span class="mr-text"><span class="mr-title" id="mr-toc-t" data-i18n="mToc">Зміст</span><span class="mr-desc" id="mr-toc-d" data-i18n="mTocDesc">Розділи та мініатюри сторінок</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+            </section>
+            <!-- ЧИТАННЯ -->
+            <section class="menu-section" aria-labelledby="ms-reading">
+                <h3 class="menu-section-title" id="ms-reading" data-i18n="mSecReading">Читання</h3>
+                <div class="menu-row menu-row-split">
+                    <button type="button" class="menu-row-main" id="btn-tts" aria-labelledby="mr-tts-t" aria-describedby="mr-tts-d"><svg class="mi" aria-hidden="true"><use href="#i-speak"/></svg><span class="mr-text"><span class="mr-title" id="mr-tts-t">Читати вголос</span><span class="mr-desc" id="mr-tts-d" data-i18n="mReadDesc">Озвучує сторінку й підсвічує речення</span></span></button>
+                    <button type="button" class="mr-icon-btn" id="btn-tts-stop" style="display:none;" data-i18n-title="tStop" data-i18n-aria="tStop"><svg class="mi" aria-hidden="true"><use href="#i-stop"/></svg></button>
+                </div>
+                <button type="button" class="menu-row" id="btn-alt-voices" role="switch" aria-checked="false" aria-labelledby="mr-voices-t" aria-describedby="mr-voices-d"><svg class="mi" aria-hidden="true"><use href="#i-voices"/></svg><span class="mr-text"><span class="mr-title" id="mr-voices-t" data-i18n="mTwoVoices">Два голоси</span><span class="mr-desc" id="mr-voices-d" data-i18n="mTwoVoicesDesc">Різні голоси для реплік під час читання вголос</span></span><span class="mr-switch" aria-hidden="true"></span></button>
+                <div class="menu-row">
+                    <svg class="mi" aria-hidden="true"><use href="#i-textsize"/></svg><span class="mr-text"><span class="mr-title" data-i18n="mFontSize">Розмір тексту</span><span class="mr-desc" data-i18n="mFontSizeDesc">Менше чи більше — текст і сторінки PDF</span></span>
+                    <span class="mr-stepper"><button type="button" class="mr-step" id="zoom-out" data-i18n-title="tZoomOut" data-i18n-aria="tZoomOut">A−</button><button type="button" class="mr-step" id="zoom-in" data-i18n-title="tZoomIn" data-i18n-aria="tZoomIn">A+</button></span>
+                </div>
+                <div class="menu-row menu-row-select" data-only="pdf">
+                    <svg class="mi" aria-hidden="true"><use href="#i-fit"/></svg><span class="mr-text"><label class="mr-title" for="pdf-fit" data-i18n="mPdfFit">Масштаб сторінки PDF</label><span class="mr-desc" id="mr-fit-d" data-i18n="mPdfFitDesc">Як сторінка вписується в екран</span></span>
+                    <select id="pdf-fit" class="mr-select" aria-describedby="mr-fit-d"><option value="width" data-i18n="mFitWidth">По ширині</option><option value="page" data-i18n="mFitPage">Сторінка цілком</option><option value="free" data-i18n="mFitFree">Вільний</option></select>
+                </div>
+                <div class="menu-row menu-row-select">
+                    <svg class="mi" aria-hidden="true"><use href="#i-theme"/></svg><span class="mr-text"><label class="mr-title" for="theme-select" data-i18n="mTheme">Тема</label><span class="mr-desc" id="mr-theme-d" data-i18n="mThemeDesc">Кольори сторінки й меню</span></span>
+                    <select id="theme-select" class="mr-select" aria-describedby="mr-theme-d">
+                        <option value="light" data-i18n="themeLight">Світла</option>
+                        <option value="sepia" data-i18n="themeSepia">Сепія</option>
+                        <option value="dark" data-i18n="themeDark">Темна</option>
+                    </select>
+                </div>
+            </section>
+            <!-- НАВЧАННЯ -->
+            <section class="menu-section" aria-labelledby="ms-learning">
+                <h3 class="menu-section-title" id="ms-learning" data-i18n="mSecLearning">Навчання</h3>
+                <button type="button" class="menu-row" id="btn-translate-mode" role="switch" aria-checked="false" aria-labelledby="mr-study-t" aria-describedby="mr-study-d"><svg class="mi" aria-hidden="true"><use href="#i-study"/></svg><span class="mr-text"><span class="mr-title" id="mr-study-t" data-i18n="mStudy">Режим вивчення</span><span class="mr-desc" id="mr-study-d" data-i18n="mStudyDesc">Торкніться слова — переклад, граматика, озвучення</span></span><span class="mr-switch" aria-hidden="true"></span></button>
+                <div class="menu-row menu-row-select">
+                    <svg class="mi" aria-hidden="true"><use href="#i-translate"/></svg><span class="mr-text"><label class="mr-title" for="target-lang" data-i18n="mTargetLang">Мова перекладу</label><span class="mr-desc" id="mr-tl-d" data-i18n="mTargetLangDesc">Слова й речення перекладаються на неї</span></span>
+                    <select id="target-lang" class="mr-select" aria-describedby="mr-tl-d">
+                        <option value="uk">🇺🇦 Українська</option>
+                        <option value="en">🇬🇧 English</option>
+                        <option value="fr">🇫🇷 Français</option>
+                        <option value="ru">🇷🇺 Русский</option>
+                        <option value="zh">🇨🇳 中文 / 简体中文</option>
+                        <option value="ko">🇰🇷 한국어</option>
+                        <option value="hi">🇮🇳 हिन्दी</option>
+                        <option value="ga">🇮🇪 Gaeilge</option>
+                        <option value="de">🇩🇪 Deutsch</option>
+                        <option value="es">🇪🇸 Español</option>
+                    </select>
+                </div>
+                <button type="button" class="menu-row" id="btn-rules" aria-controls="rules-panel" aria-labelledby="mr-rules-t" aria-describedby="mr-rules-d"><svg class="mi" aria-hidden="true"><use href="#i-rules"/></svg><span class="mr-text"><span class="mr-title" id="mr-rules-t" data-i18n="mRules">Граматичні правила</span><span class="mr-desc" id="mr-rules-d" data-i18n="mRulesDesc">Правила з прикладами з цієї сторінки</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <div class="reading-stats-control">
-                    <button type="button" class="icon-btn" id="reading-stats-button" data-i18n-title="statsTitle" aria-expanded="false" aria-controls="reading-stats-popover"><span id="reading-stats-value">0%</span></button>
+                    <button type="button" class="menu-row" id="reading-stats-button" data-i18n-title="statsTitle" aria-expanded="false" aria-controls="reading-stats-popover" aria-describedby="mr-stats-d"><svg class="mi" aria-hidden="true"><use href="#i-stats"/></svg><span class="mr-text"><span class="mr-title" data-i18n="mStats">Розуміння сторінки</span><span class="mr-desc" id="mr-stats-d" data-i18n="mStatsDesc">Скільки слів ви знали без перекладу</span></span><span class="mr-value"><span class="stats-mini-ring" aria-hidden="true"></span><span id="reading-stats-value">0%</span></span></button>
                     <section id="reading-stats-popover" role="dialog" aria-labelledby="reading-stats-heading" hidden>
                         <h3 class="stats-heading" id="reading-stats-heading" data-i18n="statsTitle">Розуміння прочитаного</h3>
                         <div class="stats-overview">
@@ -1439,44 +1474,35 @@
                         <div class="stats-cefr-list" id="reading-stats-cefr-list"></div>
                     </section>
                 </div>
-            </div>
-            <!-- TEXT / ANNOTATION -->
-            <div class="toolbar-group">
-                <span class="group-caption" data-i18n="grpText"></span>
-                <button class="icon-btn" id="btn-ink" data-i18n-title="btnInk" data-i18n-aria="btnInk"><span aria-hidden="true">✏️</span> <span class="btn-text" data-i18n="lblInk">Писати</span></button>
-                <button class="icon-btn" id="btn-region" data-i18n-title="btnRegion" data-i18n-aria="btnRegion"><span aria-hidden="true">✂️</span> <span class="btn-text" data-i18n="lblRegion">Фрагмент</span></button>
-                <button class="icon-btn compact" id="zoom-out" data-i18n-title="tZoomOut" data-i18n-aria="tZoomOut">A-</button>
-                <button class="icon-btn compact" id="zoom-in" data-i18n-title="tZoomIn" data-i18n-aria="tZoomIn">A+</button>
-                <select id="pdf-fit" aria-label="Масштаб PDF"><option value="width">Fit width</option><option value="page">Fit page</option><option value="free">Free zoom</option></select>
+            </section>
+            <!-- ІНСТРУМЕНТИ -->
+            <section class="menu-section" aria-labelledby="ms-tools">
+                <h3 class="menu-section-title" id="ms-tools" data-i18n="mSecTools">Інструменти</h3>
+                <button type="button" class="menu-row" id="btn-ink" aria-labelledby="mr-ink-t" aria-describedby="mr-ink-d"><svg class="mi" aria-hidden="true"><use href="#i-pen"/></svg><span class="mr-text"><span class="mr-title" id="mr-ink-t" data-i18n="mInk">Писати від руки</span><span class="mr-desc" id="mr-ink-d" data-i18n="mInkDesc">Нотатки пальцем або стилусом поверх сторінки</span></span></button>
+                <button type="button" class="menu-row" id="btn-region" aria-labelledby="mr-region-t" aria-describedby="mr-region-d"><svg class="mi" aria-hidden="true"><use href="#i-crop"/></svg><span class="mr-text"><span class="mr-title" id="mr-region-t" data-i18n="mRegion">Фрагмент сторінки</span><span class="mr-desc" id="mr-region-d" data-i18n="mRegionDesc">Обведіть частину сторінки — AI її пояснить</span></span></button>
+                <button type="button" class="menu-row" id="btn-print-page" aria-labelledby="mr-print-t" aria-describedby="mr-print-d"><svg class="mi" aria-hidden="true"><use href="#i-print"/></svg><span class="mr-text"><span class="mr-title" id="mr-print-t" data-i18n="mPrint">Друк сторінки</span><span class="mr-desc" id="mr-print-d" data-i18n="mPrintDesc">Надрукувати або зберегти як PDF</span></span></button>
+            </section>
+            <!-- НАЛАШТУВАННЯ -->
+            <section class="menu-section" aria-labelledby="ms-settings">
+                <h3 class="menu-section-title" id="ms-settings" data-i18n="mSecSettings">Налаштування</h3>
+                <div class="menu-row menu-row-select">
+                    <svg class="mi" aria-hidden="true"><use href="#i-globe"/></svg><span class="mr-text"><label class="mr-title" for="ui-lang" data-i18n="mUiLang">Мова меню</label><span class="mr-desc" id="mr-ui-d" data-i18n="mUiLangDesc">Мова кнопок і пояснень AI</span></span>
+                    <select id="ui-lang" class="mr-select" aria-describedby="mr-ui-d">
+                        <option value="uk">Українська</option>
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                        <option value="ru">Русский</option>
+                        <option value="zh">中文</option>
+                        <option value="ko">한국어</option>
+                        <option value="hi">हिन्दी</option>
+                        <option value="ga">Gaeilge</option>
+                        <option value="es">Español</option>
+                    </select>
                 </div>
-            <!-- SETTINGS -->
-            <div class="toolbar-group">
-                <span class="group-caption" data-i18n="grpView"></span>
-                <!-- Планшет: «Мої книги» тут (значок), бо перший рядок шапки заповнений ушир; див. CSS .my-books-tablet -->
-                <button class="icon-btn compact my-books-btn my-books-tablet" data-i18n-title="tMyBooks" data-i18n-aria="myBooksLabel">📖</button>
-                <select id="theme-select" data-i18n-title="tTheme">
-                    <option value="light" data-i18n="themeLight">Світла</option>
-                    <option value="sepia" data-i18n="themeSepia">Сепія</option>
-                    <option value="dark" data-i18n="themeDark">Темна</option>
-                </select>
-                <label class="field-ico" for="ui-lang" data-i18n-title="tUiLang" aria-hidden="true">🖥️</label>
-                <select id="ui-lang" data-i18n-title="tUiLang">
-                    <option value="uk">UA</option>
-                    <option value="en">EN</option>
-                    <option value="fr">FR</option>
-                    <option value="ru">RU</option>
-                    <option value="zh">中文</option>
-                    <option value="ko">한국어</option>
-                    <option value="hi">हिन्दी</option>
-                    <option value="ga">Gaeilge</option>
-                    <option value="es">ES</option>
-                </select>
-                <button class="icon-btn" id="btn-ai-key" data-i18n-title="tAiKey" data-i18n-aria="tAiKey"><span aria-hidden="true">🔑</span> <span class="btn-text" data-i18n="lblAiKey">AI-ключ</span></button>
-                <!-- Показується лише у встановленому standalone-PWA (вмикається з JS) —
-                     у звичайній вкладці браузера ця кнопка не потрібна. -->
-                <button class="icon-btn compact" id="btn-update-app" data-i18n-title="tUpdateApp" data-i18n-aria="tUpdateApp">🔄</button>
-                <button class="icon-btn compact" id="btn-exit-app" style="display:none;" data-i18n-title="tExitApp">🚪</button>
-            </div>
+                <button type="button" class="menu-row" id="btn-ai-key" aria-labelledby="mr-ai-t" aria-describedby="mr-ai-d"><svg class="mi" aria-hidden="true"><use href="#i-key"/></svg><span class="mr-text"><span class="mr-title" id="mr-ai-t" data-i18n="mAi">AI та офлайн-переклад</span><span class="mr-desc" id="mr-ai-d" data-i18n="mAiDesc">Ключі AI, пакети без інтернету, діагностика</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-update-app" aria-labelledby="mr-upd-t" aria-describedby="mr-upd-d" data-i18n-title="tUpdateApp"><svg class="mi" aria-hidden="true"><use href="#i-update"/></svg><span class="mr-text"><span class="mr-title" id="mr-upd-t" data-i18n="mUpdate">Оновити застосунок</span><span class="mr-desc" id="mr-upd-d" data-i18n="mUpdateDesc">Перевірити й встановити нову версію</span></span></button>
+                <button type="button" class="menu-row" id="btn-exit-app" style="display:none;" aria-labelledby="mr-exit-t" data-i18n-title="tExitApp"><svg class="mi" aria-hidden="true"><use href="#i-exit"/></svg><span class="mr-text"><span class="mr-title" id="mr-exit-t" data-i18n="mExit">Вийти із застосунку</span></span></button>
+            </section>
         </div>
     </header>
 
@@ -1702,17 +1728,17 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=841676cfc15c"></script>
-    <script src="js/lang-detect.js?v=1955ec13e28d"></script>
-    <script src="js/tts.js?v=362b5cdca115"></script>
-    <script src="js/selection.js?v=0935a2d8476a"></script>
+    <script src="js/core.js?v=cddd1495ee9e"></script>
+    <script src="js/lang-detect.js?v=263bb11ae4d9"></script>
+    <script src="js/tts.js?v=768369b7982d"></script>
+    <script src="js/selection.js?v=53b18d236d1b"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=bde3dbd03747"></script>
     <script src="js/navigation.js?v=6bf46382cd5d"></script>
     <script src="js/pdf-zoom-pan.js?v=41f1d680361d"></script>
-    <script src="js/ui-tooltip.js?v=74e4ec016228"></script>
+    <script src="js/ui-tooltip.js?v=3086f1020b04"></script>
     <script src="js/translation.js?v=480e4c3033f2"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
     <script src="js/grammar-svo.js?v=8e97b96d7705"></script>
@@ -1720,13 +1746,13 @@
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=968243ba6b79"></script>
+    <script src="js/grammar-rules.js?v=7f854731612d"></script>
     <script src="js/ai-client.js?v=931fdb40d910"></script>
     <script src="js/practice-session.js?v=240bbcb9a08d"></script>
     <script src="js/practice-worksheet.js?v=431c79ac8f34"></script>
     <script src="js/dictation.js?v=7d4e2bbd3506"></script>
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
-    <script src="js/offline-translate.js?v=1848df56cdea"></script>
+    <script src="js/offline-translate.js?v=538501cacba1"></script>
     <script src="js/pdf-ink.js?v=defbefcd482f"></script>
     <script src="js/pdf-crop.js?v=dc0c469a9ca2"></script>
     <script src="js/pdf-outline.js?v=5930b9d8bb4e"></script>
@@ -1738,9 +1764,9 @@
     <script src="js/library.js?v=a266be538226"></script>
     <script src="js/book-shelf.js?v=aa2098ef9089"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
-    <script src="js/quick-wheel.js?v=d0bead062bf4"></script>
-    <script src="js/main.js?v=f3cf0a8ad54a"></script>
-    <script src="js/pwa-lifecycle.js?v=735bdf7efa70"></script>
-    <script src="js/i18n-es.js?v=a17bb8f7d5f0"></script>
+    <script src="js/quick-wheel.js?v=7c14c143a746"></script>
+    <script src="js/main.js?v=4b10604a9abd"></script>
+    <script src="js/pwa-lifecycle.js?v=5958d99e2f7a"></script>
+    <script src="js/i18n-es.js?v=a3ae5a14996f"></script>
 </body>
 </html>

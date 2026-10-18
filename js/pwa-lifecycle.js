@@ -244,6 +244,8 @@ const OVERLAY_LAYERS = [
     { name: 'quickMenu', test: () => !document.getElementById('quick-menu').hidden },
     { name: 'crop', test: () => cropDialog.open },
     { name: 'modal', test: () => document.getElementById('settings-modal').style.display === 'flex' },
+    // The main menu is a drawer over the book: Back closes it (with no book open it is the start screen, not a layer).
+    { name: 'menu', test: () => !!state.format && !document.body.classList.contains('immersive-mode') },
     { name: 'region', test: () => document.body.classList.contains('region-mode') },
     { name: 'ink', test: () => document.body.classList.contains('ink-mode') },
     { name: 'tooltip', test: () => els.tooltip.style.display === 'flex' },
@@ -260,6 +262,7 @@ function closeTopOverlay(name) {
         case 'quickMenu': quickMenu.close(); break;
         case 'crop': closeCropPreview(); break;
         case 'modal': closeKeySettings(); break;
+        case 'menu': closeFullMenu(); break;
         case 'region': exitRegionMode(); break;
         case 'ink': state.inkMode = false; document.body.classList.remove('ink-mode'); break;
         case 'tooltip': cancelTooltipHide(); els.tooltip.style.display = 'none'; break;

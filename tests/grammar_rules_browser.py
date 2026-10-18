@@ -263,7 +263,7 @@ for (w, h, mobile) in ((820, 1180, True), (1180, 820, True), (1024, 768, True), 
     c.js("(() => { document.getElementById('rules-panel').classList.remove('expanded'); document.body.classList.add('pdf-mode'); const sc = document.getElementById('pdf-scrubber'); sc.classList.add('available'); sc.style.height = '340px'; layoutRulesPanel(); return 1; })()"); time.sleep(0.8)
     check("42-pre %dx%d: the Rules bookmark (left edge) overlaps none of: ☰ menu button, Ask AI handle, main menu" % (w, h),
           """(() => { const t = document.getElementById('rules-tab').getBoundingClientRect(); const hit = id => { const e = document.getElementById(id), b = e && e.getBoundingClientRect(); return !!b && b.width > 0 && b.height > 0 && b.left < t.right && b.right > t.left && b.top < t.bottom && b.bottom > t.top; };
-             const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
+             const hb = 0;   /* the main menu is a drawer over the book now: no bar on top */
              const bad = ['menu-handle', 'ask-tab'].filter(hit); return (bad.length === 0 && t.top >= hb - 1 && t.bottom <= innerHeight + 1) || JSON.stringify({bad, t: [t.top, t.bottom], hb, ih: innerHeight}); })()""", timeout=3)
     c.js("(() => { document.body.classList.remove('pdf-mode'); const sc = document.getElementById('pdf-scrubber'); sc.classList.remove('available'); sc.style.height = ''; layoutRulesPanel(); return 1; })()")
 # phones (portrait and landscape): no bookmark on the screen at all (user: it covers the text); tablets keep it
@@ -278,12 +278,12 @@ c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScale
 
 # layout
 check("42 landscape (tablet): the window is a bottom sheet, never above the main menu, and the page gets bottom padding",
-      """(() => { document.getElementById('rules-tab').click(); const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
+      """(() => { document.getElementById('rules-tab').click(); const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = 0;   /* the main menu is a drawer over the book now: no bar on top */
          return p.classList.contains('rules-sheet') && r.bottom >= innerHeight - 1 && r.top >= hb && r.height <= innerHeight * 0.5 && document.body.classList.contains('rules-inset')
            && parseFloat(getComputedStyle(document.getElementById('reader-pages')).paddingBottom) >= r.height; })()""", timeout=3)
 c.call('Emulation.setDeviceMetricsOverride', width=820, height=1180, deviceScaleFactor=1, mobile=True); time.sleep(0.8)
 check("43 portrait too: a bottom sheet (the book above it stays readable), never above the main menu, at most half the screen, and the page gets bottom padding",
-      """(() => { const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = document.getElementById('app-header').getBoundingClientRect().bottom;
+      """(() => { const p = document.getElementById('rules-panel'); const r = p.getBoundingClientRect(); const hb = 0;   /* the main menu is a drawer over the book now: no bar on top */
          return p.classList.contains('rules-sheet') && r.bottom >= innerHeight - 1 && r.top >= hb && r.height <= innerHeight * 0.5 && document.body.classList.contains('rules-inset')
            && parseFloat(getComputedStyle(document.getElementById('reader-pages')).paddingBottom) >= r.height || JSON.stringify({cls: p.className, top: r.top, hb, h: r.height, ih: innerHeight}); })()""", timeout=3)
 c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False); time.sleep(0.8)

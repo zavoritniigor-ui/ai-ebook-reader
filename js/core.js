@@ -706,15 +706,13 @@ const state = {
     fontSize: clampReaderFontSize(parseFloat(readStored('reader_font_size'))),
     epubZip: null, spine: [], txtLines: [],
     translateMode: readStored('reader_translate_mode') === '1', extractedTextForTTS: "", currentLangCode: 'en-US',
+    // The voice list was removed from the menu (owner, 2026-10-18: «it does not work»): loadVoices picks the best voice of each
+    // language on every start. Voices saved by the old list (some chosen by hand) would stay with no way to change them: forgotten.
     selectedVoiceURIByLang: (() => {
-        // Голоси, обрані користувачем, зберігаються між сеансами — раніше вибір
-        // жив лише до перезавантаження сторінки.
-        try { return Object.assign(Object.fromEntries(TARGET_LANGUAGE_CODES.map(code => [code, null])), JSON.parse(readStored('reader_voices') || '{}')); }
-        catch (e) { return Object.fromEntries(TARGET_LANGUAGE_CODES.map(code => [code, null])); }
+        try { localStorage.removeItem('reader_voices'); localStorage.removeItem('reader_voices_manual'); } catch (e) { /* storage unavailable */ }
+        return Object.fromEntries(TARGET_LANGUAGE_CODES.map(code => [code, null]));
     })(),
-    voiceChosenByUser: (() => {
-        try { const value = JSON.parse(readStored('reader_voices_manual') || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch (e) { return {}; }
-    })(),
+    voiceChosenByUser: {},
     apiKey: readStored('reader_gemini_key') || '', groqKey: readStored('reader_groq_key') || '',
     openaiKey: readStored('reader_openai_key') || '',
     // Task routing: with 'auto' EVERY task goes to Groq first (own key or the site's), OpenAI / the active provider only as the backup (js/ai-client.js).
@@ -761,7 +759,7 @@ const els = {
     ttStructBtn: document.getElementById('tt-struct-btn'), ttStructHost: document.getElementById('tt-struct-host'),
     ttCloseBtn: document.getElementById('tt-close-btn'),
     mainArea: document.getElementById('main-area'), translateBtn: document.getElementById('btn-translate-mode'),
-    sidebar: document.getElementById('sidebar'), voiceSelect: document.getElementById('voice-select'),
+    sidebar: document.getElementById('sidebar'),
     ttsBtn: document.getElementById('btn-tts'), ttsStopBtn: document.getElementById('btn-tts-stop'), grammarPanel: document.getElementById('grammar-panel'),
     targetLang: document.getElementById('target-lang'), uiLang: document.getElementById('ui-lang'),
     askPanel: document.getElementById('ask-panel'), grammarTab: document.getElementById('grammar-tab'),
@@ -859,7 +857,7 @@ function pickBestVoice(langPrefix, pool) {
     return candidates[0];
 }
 function loadVoices() {
-    if (!ttsSynth) { els.voiceSelect.innerHTML = '<option data-i18n="synthUnavailable">Speech Synthesis unavailable</option>'; return; }
+    if (!ttsSynth) return;
     voices = ttsSynth.getVoices();
     if (voices.length === 0) {
         if (!window.voicesRetryCount) window.voicesRetryCount = 0;
@@ -868,8 +866,7 @@ function loadVoices() {
             setTimeout(loadVoices, 200 * window.voicesRetryCount);
             return;
         }
-        // Fallback: system voice auto-select
-        els.voiceSelect.innerHTML = '<option value="">System voice (auto-select)</option>';
+        // Fallback: the system picks the voice by the utterance's language
         if (!window.voicesChangedListenerAdded) {
             window.voicesChangedListenerAdded = true;
             ttsSynth.addEventListener('voiceschanged', () => { window.voicesRetryCount = 0; loadVoices(); });
@@ -877,28 +874,6 @@ function loadVoices() {
         return;
     }
     window.voicesRetryCount = 0;
-    els.voiceSelect.innerHTML = '';
-    // Показуємо мови книги (англійська/французька) + українську для озвучення перекладу.
-    const groups = Object.fromEntries(TARGET_LANGUAGE_CODES.map(code => [code, t('voices' + code[0].toUpperCase() + code.slice(1))]));
-    for (const [code, title] of Object.entries(groups)) {
-        const list = voices.filter(v => v.lang.toLowerCase().startsWith(code))
-                           .sort((a, b) => voiceQualityScore(b) - voiceQualityScore(a));
-        if (!list.length) continue;
-        const og = document.createElement('optgroup');
-        og.label = title;
-        list.forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = v.voiceURI;
-            // Зірочки показують рівень якості: ★★★ — нейромережевий/серверний,
-            // ★★ — покращений, ★ — звичайний, ⚠ — застарілий синтезатор.
-            const q = voiceQualityScore(v);
-            const mark = q < 0 ? '⚠ ' : q >= 12 ? '★★★ ' : q >= 7 ? '★★ ' : q >= 3 ? '★ ' : '';
-            opt.textContent = `${mark}${v.name} (${v.lang})`;
-            og.appendChild(opt);
-        });
-        els.voiceSelect.appendChild(og);
-    }
-
     // Автовибір найкращого голосу для кожної мови. Система часто підвантажує
     // якісні (серверні) голоси із запізненням, тому автовибір ПЕРЕГЛЯДАЄТЬСЯ, поки
     // користувач не зробив власний вибір: якщо з'явився кращий — беремо його.
@@ -911,27 +886,8 @@ function loadVoices() {
             state.selectedVoiceURIByLang[code] = best.voiceURI;
         }
     });
-    // Відновлюємо показаний вибір: список перебудовується щоразу, коли система
-    // повідомляє про зміну набору голосів, і без цього видимий вибір щоразу скидався.
-    restoreVoiceSelectValue();
 }
-// У полі показуємо голос тієї мови, якою зараз книга — саме його й буде чути.
-function restoreVoiceSelectValue() {
-    const key = pageLang().slice(0, 2).toLowerCase();
-    const uri = state.selectedVoiceURIByLang[key];
-    if (uri) els.voiceSelect.value = uri;
-}
-function saveVoiceChoices() {
-    try {
-        writeStored('reader_voices', JSON.stringify(state.selectedVoiceURIByLang));
-        writeStored('reader_voices_manual', JSON.stringify(state.voiceChosenByUser));
-    } catch (e) {}
-}
-// Виклик loadVoices() (нижче за визначенням) навмисно НЕ тут: loadVoices -> ...
-// -> restoreVoiceSelectValue -> pageLang(), а pageLang визначена в lang-detect.js,
-// який завантажується ПІСЛЯ core.js (окремий класичний <script>, без спільного
-// hoisting між файлами). Сам виклик перенесено в index.html одразу після
-// підключення lang-detect.js — див. коментар там.
+// Виклик loadVoices() — у кінці lang-detect.js (див. коментар там).
 // ========== МОВА ІНТЕРФЕЙСУ ==========
 // Написи задаються атрибутами data-i18n / data-i18n-title / data-i18n-ph у розмітці,
 // а тут лежать усі переклади. Динамічні написи (кнопки-перемикачі, індикатор
@@ -1908,6 +1864,70 @@ function t(key) {
     const e = I18N[key];
     return e ? (e[state.uiLang] || e.en || e.uk) : key;
 }
+// Головне меню (бічна панель, index.html): назви розділів і рядків та однорядкові пояснення під ними. Іспанська — у js/i18n-es.js.
+Object.assign(I18N, {
+    mTagline: { uk: "Читання з перекладом, граматикою й озвученням", en: "Read with translation, grammar and audio", fr: "Lire avec traduction, grammaire et voix", ru: "Чтение с переводом, грамматикой и озвучкой", zh: "带翻译、语法和朗读的阅读", ko: "번역·문법·음성과 함께 읽기", hi: "अनुवाद, व्याकरण और आवाज़ के साथ पढ़ें", ga: "Léigh le haistriúchán, gramadach agus guth" },
+    mSecBook: { uk: "Книга", en: "Book", fr: "Livre", ru: "Книга", zh: "图书", ko: "책", hi: "पुस्तक", ga: "Leabhar" },
+    mOpen: { uk: "Відкрити файл", en: "Open a file", fr: "Ouvrir un fichier", ru: "Открыть файл", zh: "打开文件", ko: "파일 열기", hi: "फ़ाइल खोलें", ga: "Oscail comhad" },
+    mOpenDesc: { uk: "EPUB, PDF, FB2, DOCX, TXT з пристрою", en: "EPUB, PDF, FB2, DOCX, TXT from this device", fr: "EPUB, PDF, FB2, DOCX, TXT depuis l’appareil", ru: "EPUB, PDF, FB2, DOCX, TXT с устройства", zh: "从设备打开 EPUB、PDF、FB2、DOCX、TXT", ko: "기기에서 EPUB, PDF, FB2, DOCX, TXT 열기", hi: "डिवाइस से EPUB, PDF, FB2, DOCX, TXT", ga: "EPUB, PDF, FB2, DOCX, TXT ón ngléas" },
+    mShelf: { uk: "Мої книги", en: "My books", fr: "Mes livres", ru: "Мои книги", zh: "我的图书", ko: "내 책", hi: "मेरी पुस्तकें", ga: "Mo leabhair" },
+    mShelfDesc: { uk: "Нещодавні й збережені на пристрої", en: "Recent and saved on this device", fr: "Récents et enregistrés sur l’appareil", ru: "Недавние и сохранённые на устройстве", zh: "最近阅读和保存在设备上的图书", ko: "최근 읽은 책과 기기에 저장된 책", hi: "हाल की और डिवाइस पर सहेजी गई", ga: "Le déanaí agus sábháilte ar an ngléas" },
+    mLibrary: { uk: "Безкоштовна бібліотека", en: "Free library", fr: "Bibliothèque gratuite", ru: "Бесплатная библиотека", zh: "免费图书馆", ko: "무료 도서관", hi: "मुफ़्त पुस्तकालय", ga: "Leabharlann saor in aisce" },
+    mLibraryDesc: { uk: "Gutenberg, Вікіджерела, Internet Archive", en: "Gutenberg, Wikisource and Internet Archive", fr: "Gutenberg, Wikisource et Internet Archive", ru: "Gutenberg, Викитека, Internet Archive", zh: "古腾堡、维基文库、互联网档案馆", ko: "구텐베르크, 위키문헌, 인터넷 아카이브", hi: "गुटेनबर्ग, विकिस्रोत, इंटरनेट आर्काइव", ga: "Gutenberg, Vicífhoinse agus Internet Archive" },
+    mToc: { uk: "Зміст", en: "Contents", fr: "Sommaire", ru: "Оглавление", zh: "目录", ko: "목차", hi: "विषय-सूची", ga: "Clár ábhair" },
+    mTocDesc: { uk: "Розділи та мініатюри сторінок", en: "Chapters and page thumbnails", fr: "Chapitres et miniatures des pages", ru: "Главы и миниатюры страниц", zh: "章节和页面缩略图", ko: "장과 페이지 미리보기", hi: "अध्याय और पृष्ठों के थंबनेल", ga: "Caibidlí agus mionsamhlacha leathanach" },
+    mSecReading: { uk: "Читання", en: "Reading", fr: "Lecture", ru: "Чтение", zh: "阅读", ko: "읽기", hi: "पढ़ना", ga: "Léitheoireacht" },
+    mRead: { uk: "Читати вголос", en: "Read aloud", fr: "Lire à voix haute", ru: "Читать вслух", zh: "朗读", ko: "소리 내어 읽기", hi: "ज़ोर से पढ़ें", ga: "Léigh os ard" },
+    mPause: { uk: "Пауза", en: "Pause", fr: "Mettre en pause", ru: "Пауза", zh: "暂停", ko: "일시정지", hi: "रोकें", ga: "Sos" },
+    mResume: { uk: "Продовжити читання", en: "Resume reading", fr: "Reprendre la lecture", ru: "Продолжить чтение", zh: "继续朗读", ko: "이어서 읽기", hi: "पढ़ना जारी रखें", ga: "Lean ar aghaidh ag léamh" },
+    mReadDesc: { uk: "Озвучує сторінку й підсвічує речення", en: "Reads the page and highlights each sentence", fr: "Lit la page et surligne chaque phrase", ru: "Озвучивает страницу и подсвечивает предложения", zh: "朗读本页并高亮每个句子", ko: "페이지를 읽고 문장을 강조 표시", hi: "पृष्ठ पढ़ता है और हर वाक्य को हाइलाइट करता है", ga: "Léann sé an leathanach agus aibhsíonn sé gach abairt" },
+    mTwoVoices: { uk: "Два голоси", en: "Two voices", fr: "Deux voix", ru: "Два голоса", zh: "双语音", ko: "두 목소리", hi: "दो आवाज़ें", ga: "Dhá ghuth" },
+    mTwoVoicesDesc: { uk: "Різні голоси для реплік під час читання вголос", en: "Different voices for dialogue when reading aloud", fr: "Des voix différentes pour les répliques en lecture", ru: "Разные голоса для реплик при чтении вслух", zh: "朗读时对话使用不同语音", ko: "소리 내어 읽을 때 대사마다 다른 목소리", hi: "ज़ोर से पढ़ते समय संवादों के लिए अलग आवाज़ें", ga: "Guthanna éagsúla don chomhrá agus é á léamh os ard" },
+    mFontSize: { uk: "Розмір тексту", en: "Text size", fr: "Taille du texte", ru: "Размер текста", zh: "文字大小", ko: "글자 크기", hi: "पाठ का आकार", ga: "Méid an téacs" },
+    mFontSizeDesc: { uk: "Менше чи більше — текст і сторінки PDF", en: "Smaller or larger — text and PDF pages", fr: "Plus petit ou plus grand — texte et pages PDF", ru: "Меньше или больше — текст и страницы PDF", zh: "缩小或放大——文本和 PDF 页面", ko: "작게 또는 크게 — 텍스트와 PDF 페이지", hi: "छोटा या बड़ा — पाठ और PDF पृष्ठ", ga: "Níos lú nó níos mó — téacs agus leathanaigh PDF" },
+    mPdfFit: { uk: "Масштаб сторінки PDF", en: "PDF page fit", fr: "Ajustement de la page PDF", ru: "Масштаб страницы PDF", zh: "PDF 页面缩放", ko: "PDF 페이지 맞춤", hi: "PDF पृष्ठ का माप", ga: "Oiriúnú leathanach PDF" },
+    mPdfFitDesc: { uk: "Як сторінка вписується в екран", en: "How the page fits the screen", fr: "Comment la page s’adapte à l’écran", ru: "Как страница помещается на экран", zh: "页面如何适应屏幕", ko: "페이지를 화면에 맞추는 방식", hi: "पृष्ठ स्क्रीन में कैसे समाए", ga: "Conas a oireann an leathanach don scáileán" },
+    mFitWidth: { uk: "По ширині", en: "Fit width", fr: "Pleine largeur", ru: "По ширине", zh: "适合宽度", ko: "너비에 맞춤", hi: "चौड़ाई में फ़िट", ga: "Leithead iomlán" },
+    mFitPage: { uk: "Сторінка цілком", en: "Whole page", fr: "Page entière", ru: "Страница целиком", zh: "整页", ko: "페이지 전체", hi: "पूरा पृष्ठ", ga: "Leathanach iomlán" },
+    mFitFree: { uk: "Вільний", en: "Free zoom", fr: "Zoom libre", ru: "Свободный", zh: "自由缩放", ko: "자유 확대", hi: "मुक्त ज़ूम", ga: "Súmáil shaor" },
+    mTheme: { uk: "Тема", en: "Theme", fr: "Thème", ru: "Тема", zh: "主题", ko: "테마", hi: "थीम", ga: "Téama" },
+    mThemeDesc: { uk: "Кольори сторінки й меню", en: "Colours of the page and menus", fr: "Couleurs de la page et des menus", ru: "Цвета страницы и меню", zh: "页面和菜单的颜色", ko: "페이지와 메뉴 색상", hi: "पृष्ठ और मेनू के रंग", ga: "Dathanna an leathanaigh agus na roghchlár" },
+    mSecLearning: { uk: "Навчання", en: "Learning", fr: "Apprentissage", ru: "Обучение", zh: "学习", ko: "학습", hi: "सीखना", ga: "Foghlaim" },
+    mStudy: { uk: "Режим вивчення", en: "Study mode", fr: "Mode étude", ru: "Режим изучения", zh: "学习模式", ko: "학습 모드", hi: "अध्ययन मोड", ga: "Mód staidéir" },
+    mStudyDesc: { uk: "Торкніться слова — переклад, граматика, озвучення", en: "Tap a word — translation, grammar, audio", fr: "Touchez un mot : traduction, grammaire, voix", ru: "Коснитесь слова — перевод, грамматика, озвучка", zh: "点按单词：翻译、语法、朗读", ko: "단어를 탭하면 번역·문법·음성", hi: "किसी शब्द को छुएँ — अनुवाद, व्याकरण, आवाज़", ga: "Tapáil focal — aistriúchán, gramadach, guth" },
+    mTargetLang: { uk: "Мова перекладу", en: "Translation language", fr: "Langue de traduction", ru: "Язык перевода", zh: "翻译语言", ko: "번역 언어", hi: "अनुवाद की भाषा", ga: "Teanga an aistriúcháin" },
+    mTargetLangDesc: { uk: "Слова й речення перекладаються на неї", en: "Words and sentences are translated into it", fr: "Les mots et les phrases sont traduits dans cette langue", ru: "Слова и предложения переводятся на него", zh: "单词和句子将翻译成此语言", ko: "단어와 문장을 이 언어로 번역", hi: "शब्दों और वाक्यों का इसी भाषा में अनुवाद होता है", ga: "Aistrítear focail agus abairtí go dtí í" },
+    mRules: { uk: "Граматичні правила", en: "Grammar rules", fr: "Règles de grammaire", ru: "Грамматические правила", zh: "语法规则", ko: "문법 규칙", hi: "व्याकरण के नियम", ga: "Rialacha gramadaí" },
+    mRulesDesc: { uk: "Правила з прикладами з цієї сторінки", en: "Rules with examples from this page", fr: "Règles avec des exemples de cette page", ru: "Правила с примерами с этой страницы", zh: "规则及本页中的例句", ko: "이 페이지의 예문과 함께 보는 규칙", hi: "इस पृष्ठ के उदाहरणों के साथ नियम", ga: "Rialacha le samplaí ón leathanach seo" },
+    mStats: { uk: "Розуміння сторінки", en: "Page comprehension", fr: "Compréhension de la page", ru: "Понимание страницы", zh: "本页理解度", ko: "페이지 이해도", hi: "पृष्ठ की समझ", ga: "Tuiscint an leathanaigh" },
+    mStatsDesc: { uk: "Скільки слів ви знали без перекладу", en: "How many words you knew without translating", fr: "Combien de mots vous connaissiez sans traduction", ru: "Сколько слов вы знали без перевода", zh: "不查翻译就认识的单词比例", ko: "번역 없이 안 단어의 비율", hi: "बिना अनुवाद के आप कितने शब्द जानते थे", ga: "Cé mhéad focal a bhí ar eolas agat gan aistriúchán" },
+    mSecTools: { uk: "Інструменти", en: "Tools", fr: "Outils", ru: "Инструменты", zh: "工具", ko: "도구", hi: "उपकरण", ga: "Uirlisí" },
+    mInk: { uk: "Писати від руки", en: "Handwriting", fr: "Écriture manuscrite", ru: "Писать от руки", zh: "手写", ko: "손글씨", hi: "हाथ से लिखें", ga: "Lámhscríbhneoireacht" },
+    mInkDesc: { uk: "Нотатки пальцем або стилусом поверх сторінки", en: "Notes with a finger or stylus on the page", fr: "Notes au doigt ou au stylet sur la page", ru: "Заметки пальцем или стилусом поверх страницы", zh: "用手指或手写笔在页面上做笔记", ko: "손가락이나 스타일러스로 페이지에 메모", hi: "उंगली या स्टाइलस से पृष्ठ पर नोट्स", ga: "Nótaí le méar nó stíleas ar an leathanach" },
+    mRegion: { uk: "Фрагмент сторінки", en: "Page region", fr: "Zone de la page", ru: "Фрагмент страницы", zh: "页面区域", ko: "페이지 영역", hi: "पृष्ठ का हिस्सा", ga: "Réigiún leathanaigh" },
+    mRegionDesc: { uk: "Обведіть частину сторінки — AI її пояснить", en: "Draw around part of the page — AI explains it", fr: "Entourez une partie de la page : l’IA l’explique", ru: "Обведите часть страницы — AI её объяснит", zh: "圈出页面的一部分，AI 为你讲解", ko: "페이지 일부를 표시하면 AI가 설명", hi: "पृष्ठ के हिस्से को घेरें — AI समझाएगा", ga: "Tarraing timpeall ar chuid den leathanach — míneoidh AI é" },
+    mPrint: { uk: "Друк сторінки", en: "Print page", fr: "Imprimer la page", ru: "Печать страницы", zh: "打印本页", ko: "페이지 인쇄", hi: "पृष्ठ प्रिंट करें", ga: "Priontáil an leathanach" },
+    mPrintDesc: { uk: "Надрукувати або зберегти як PDF", en: "Print or save as PDF", fr: "Imprimer ou enregistrer en PDF", ru: "Напечатать или сохранить как PDF", zh: "打印或另存为 PDF", ko: "인쇄하거나 PDF로 저장", hi: "प्रिंट करें या PDF के रूप में सहेजें", ga: "Priontáil nó sábháil mar PDF" },
+    mSecSettings: { uk: "Налаштування", en: "Settings", fr: "Réglages", ru: "Настройки", zh: "设置", ko: "설정", hi: "सेटिंग्स", ga: "Socruithe" },
+    mUiLang: { uk: "Мова меню", en: "Menu language", fr: "Langue du menu", ru: "Язык меню", zh: "菜单语言", ko: "메뉴 언어", hi: "मेनू की भाषा", ga: "Teanga an roghchláir" },
+    mUiLangDesc: { uk: "Мова кнопок і пояснень AI", en: "Language of buttons and AI explanations", fr: "Langue des boutons et des explications de l’IA", ru: "Язык кнопок и объяснений AI", zh: "按钮和 AI 讲解所用的语言", ko: "버튼과 AI 설명의 언어", hi: "बटन और AI व्याख्याओं की भाषा", ga: "Teanga na gcnaipí agus mhínithe AI" },
+    mAi: { uk: "AI та офлайн-переклад", en: "AI and offline translation", fr: "IA et traduction hors ligne", ru: "AI и офлайн-перевод", zh: "AI 与离线翻译", ko: "AI 및 오프라인 번역", hi: "AI और ऑफ़लाइन अनुवाद", ga: "AI agus aistriúchán as líne" },
+    mAiDesc: { uk: "Ключі AI, пакети без інтернету, діагностика", en: "AI keys, offline packs, diagnostics", fr: "Clés IA, packs hors ligne, diagnostic", ru: "Ключи AI, офлайн-пакеты, диагностика", zh: "AI 密钥、离线语言包、诊断", ko: "AI 키, 오프라인 팩, 진단", hi: "AI कुंजियाँ, ऑफ़लाइन पैक, जाँच", ga: "Eochracha AI, pacáistí as líne, diagnóisic" },
+    mUpdate: { uk: "Оновити застосунок", en: "Update the app", fr: "Mettre à jour l’app", ru: "Обновить приложение", zh: "更新应用", ko: "앱 업데이트", hi: "ऐप अपडेट करें", ga: "Nuashonraigh an aip" },
+    mUpdateDesc: { uk: "Перевірити й встановити нову версію", en: "Check for and install a new version", fr: "Rechercher et installer une nouvelle version", ru: "Проверить и установить новую версию", zh: "检查并安装新版本", ko: "새 버전 확인 및 설치", hi: "नया संस्करण जाँचें और इंस्टॉल करें", ga: "Seiceáil agus suiteáil leagan nua" },
+    mExit: { uk: "Вийти із застосунку", en: "Exit the app", fr: "Quitter l’app", ru: "Выйти из приложения", zh: "退出应用", ko: "앱 종료", hi: "ऐप से बाहर निकलें", ga: "Scoir den aip" }
+});
+// Головне меню: перемикач показує стан повзунком (role="switch" + aria-checked), а не словами «УВІМК/ВИМК» у назві;
+// рядок-дія міняє лише свою назву (.mr-title), не чіпаючи значок і пояснення.
+function setMenuSwitch(btn, on) {
+    if (!btn) return;
+    btn.setAttribute('aria-checked', String(!!on));
+    btn.classList.toggle('active-mode', !!on);
+}
+function setMenuRowTitle(btn, text) {
+    const title = btn && btn.querySelector('.mr-title');
+    if (title) title.textContent = text; else if (btn) btn.textContent = text;
+}
 function applyI18n() {
     document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
     document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
@@ -1916,7 +1936,7 @@ function applyI18n() {
     // Написи, що залежать від стану
     updateAltVoicesBtn();
     updateTtsButtons();
-    els.translateBtn.textContent = state.translateMode ? t('learnOn') : t('learnOff');
+    setMenuSwitch(els.translateBtn, state.translateMode);
     updateProgressText();
     updateDictationUI();
     els.askTab.setAttribute('aria-label', t('tAskPanel'));

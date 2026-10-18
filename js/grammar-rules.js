@@ -330,9 +330,8 @@ function rulesOpen() { return rulesEls().panel.classList.contains('expanded'); }
 // а текст книги отримує знизу відступ на висоту шторки, щоб його можна було прокрутити над нею.
 function layoutRulesPanel() {
     const { panel } = rulesEls();
-    const header = document.getElementById('app-header');
-    const hb = header && !document.body.classList.contains('immersive-mode') ? Math.max(0, Math.round(header.getBoundingClientRect().bottom)) : 0;
-    document.documentElement.style.setProperty('--rules-top', (hb + 8) + 'px');
+    // The main menu is a side drawer over the book, not a bar on top: nothing to keep clear above the window.
+    document.documentElement.style.setProperty('--rules-top', '8px');
     // Always a bottom sheet (portrait too): a side panel covered half of the page in portrait, the sheet leaves the text above it
     // readable, and the page gets bottom padding so every line can be scrolled above the sheet.
     const sheet = true;
@@ -340,12 +339,12 @@ function layoutRulesPanel() {
     const inset = sheet && panel.classList.contains('expanded') ? Math.round(panel.getBoundingClientRect().height) : 0;
     document.documentElement.style.setProperty('--rules-inset', inset + 'px');
     document.body.classList.toggle('rules-inset', inset > 0);
-    // Закладка — вертикальна, довгою стороною вздовж ЛІВОГО краю, на рівні колеса ✦. Якщо там зайнято (шапка, кнопка ☰, язичок
+    // Закладка — вертикальна, довгою стороною вздовж ЛІВОГО краю, на рівні колеса ✦. Якщо там зайнято (кнопка ☰, язичок
     // «Запитай AI», шторка Правил) — зсувається до найближчого вільного проміжку; нема жодного — ховається.
     const open = panel.classList.contains('expanded'), r = panel.getBoundingClientRect();
     const tab = document.getElementById('rules-tab');
     const TAB_H = 112, PAD = 8, ih = window.innerHeight;
-    const blocks = [[0, hb]];
+    const blocks = [];
     for (const id of ['menu-handle', 'ask-tab']) {
         const el = document.getElementById(id), b = el && el.getBoundingClientRect();
         if (b && b.width > 0 && b.height > 0 && b.left < 110 && b.right > 0) blocks.push([b.top, b.bottom]);
