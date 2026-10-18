@@ -93,6 +93,6 @@ p = json.loads(c.js("JSON.stringify(ttsSelfTest)"))['phrases']
 ok('6 an engine that never starts: every phrase says so (no start; the app path its retry / no-sound, the system one a timeout) and the test still ends',
    all(x['startMs'] is None for x in p) and any(e['ev'].startswith('retry') or e['ev'] == 'no-sound' for e in p[1]['events']) and p[2]['events'][-1]['ev'] == 'timeout', p)
 ok('6b ... in bounded time', time.time() - t0 < 60, time.time() - t0)
-ok('7 the labels exist in all 8 menu languages', c.js("['ttsTestRun','ttsTestPlaying','ttsTestAnswer','ttsTestHeard','ttsTestNotHeard','ttsTestSystem','ttsTestNoVoice'].every(k => ['uk','en','fr','ru','zh','ko','hi','ga'].every(l => typeof I18N[k][l] === 'string' && I18N[k][l].length))"))
+ok('7 the labels exist in all 9 menu languages', c.js("['ttsTestRun','ttsTestPlaying','ttsTestAnswer','ttsTestHeard','ttsTestNotHeard','ttsTestSystem','ttsTestNoVoice'].every(k => ['uk','en','fr','ru','zh','ko','hi','ga','es'].every(l => typeof I18N[k][l] === 'string' && I18N[k][l].length))"))
 ok('8 nothing threw', c.js("__errors.length") == 0, c.js("__errors"))
 print('ALL PASS')
