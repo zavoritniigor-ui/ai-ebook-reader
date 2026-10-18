@@ -232,6 +232,7 @@ jobs:
           echo "Running ask_ai_language_browser.py..."
           python3 -u tests/ask_ai_language_browser.py
           python3 -u tests/ask_dictation_browser.py
+          python3 -u tests/dictation_desktop_mode_browser.py
           python3 -u tests/dictation_send_browser.py
           python3 -u tests/ask_prompt_browser.py
 

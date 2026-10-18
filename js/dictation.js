@@ -23,8 +23,21 @@ const dictationStatus = document.getElementById('dictation-status');
 // final result at the NEXT result index (results[0] "one" final, then results[1] "one" final), which the per-index
 // commit below appended twice ("one" -> "one one"). There each session asks for ONE utterance -- so one utterance
 // yields one final result -- and the restart loop in onend keeps dictation going. Desktop keeps continuous mode.
-const dictationSingleUtterance = /Android|iPad|iPhone|iPod/i.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// The user agent is NOT enough: Chrome's «Desktop site» on an Android phone says «X11; Linux x86_64» while the recognizer is
+// still Android's (CONFIRMED 2026-10-18 from a phone's 📋 report: continuous sessions, every final repeated and growing --
+// «Так», «Так», «Так почнемо», «Так почнемо розмову» -- all typed). So also: a Linux «desktop» whose main pointer is a finger,
+// and, whatever the platform says, an engine SEEN to repeat itself (dictationNoteCumulative), remembered on the device.
+const DICTATION_SINGLE_KEY = 'reader_stt_single_utterance';
+let dictationSingleUtterance = /Android|iPad|iPhone|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    || (/\bLinux\b/.test(navigator.userAgent) && navigator.maxTouchPoints > 0 && !!window.matchMedia && matchMedia('(pointer: coarse)').matches)
+    || readStored(DICTATION_SINGLE_KEY) === '1';
+function dictationNoteCumulative(session) {
+    if (dictationSingleUtterance) return;
+    dictationSingleUtterance = true;   // the next sessions ask for one utterance each
+    try { localStorage.setItem(DICTATION_SINGLE_KEY, '1'); } catch (e) { /* this run only */ }
+    traceStt('engine-repeats', { session });
+}
 // Lifecycle trace for on-device diagnosis (`sttTrace` in the console): tells apart a duplicate emitted by the
 // browser (two results/indices), one result committed twice by the app, two live sessions, or one tap starting
 // twice. Holds recognized text only while the page is open; never keys or prompts.
@@ -125,8 +138,11 @@ function startDictationSession() {
     // Single-utterance sessions: the engine can still emit a SECOND final in the same session whose text repeats or
     // extends the first (cumulative "пошукай" -> "пошукай в інтернеті"). One session = one utterance, so such a
     // result REPLACES what this session already typed instead of being appended. Desktop (continuous) sessions
-    // legitimately produce separate finals, so this only applies to dictationSingleUtterance.
+    // legitimately produce separate finals («very», «very», «good»), so there only a CHAIN of three or more finals, each
+    // repeating or extending the one before, is taken for Android's engine behind a desktop user agent («Так», «Так», «Так»,
+    // «Так почнемо»…): the chain is collapsed to its newest text and the next sessions ask for one utterance.
     let sessionTyped = null;   // { heard, inserted }
+    let chain = null;          // continuous sessions: { count, inserted } -- consecutive finals repeating/extending the previous one
     // What EARLIER sessions of this dictation typed, frozen for this session (see dictationReplayWords above).
     // The time check happens when the FIRST final arrives (the session itself starts immediately after the previous one).
     const replayBase = dictationBoundary.heard, replayEndedAt = dictationBoundary.endedAt;
@@ -156,7 +172,16 @@ function startDictationSession() {
                 traceStt('commit', { session: id, i, text });
                 // Always use the live value, including any edits since the last event.
                 let value = els.askInput.value, add = text;
-                if (dictationSingleUtterance && sessionTyped) {
+                if (session.continuous && sessionTyped) {
+                    const prev = cmp(sessionTyped.heard), next = cmp(text);
+                    chain = next === prev || (prev && next.startsWith(prev + ' ')) ? { count: chain ? chain.count + 1 : 2, inserted: chain ? chain.inserted : sessionTyped.inserted } : null;
+                    if (chain && chain.count >= 3) {
+                        dictationNoteCumulative(id);
+                        if (value.endsWith(chain.inserted)) { value = value.slice(0, value.length - chain.inserted.length).replace(/\s+$/, ''); chain.inserted = ''; }
+                        else add = next === prev ? '' : text.split(/\s+/).slice(sessionTyped.heard.trim().split(/\s+/).length).join(' ');   // the reader edited: only the new words
+                        traceStt('replace-cumulative', { session: id, i, text });
+                    }
+                } else if (!session.continuous && sessionTyped) {
                     const prev = cmp(sessionTyped.heard), next = cmp(text);
                     if (next === prev) { traceStt('skip-repeat', { session: id, i, text }); continue; }
                     if (prev && next.startsWith(prev + ' ')) {
@@ -169,6 +194,7 @@ function startDictationSession() {
                 if (!add) continue;
                 const inserted = (value && !/\s$/.test(value) ? ' ' : '') + add;
                 els.askInput.value = value + inserted;
+                if (chain) chain.inserted = chain.count >= 3 ? inserted : chain.inserted + inserted;
                 sessionTyped = { heard: text, inserted };
                 dictationSessionHeard = text;
                 traceStt('field', { session: id, tail: els.askInput.value.slice(-160) });   // what the reader now sees
