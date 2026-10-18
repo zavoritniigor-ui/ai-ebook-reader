@@ -60,6 +60,26 @@ for (const model of ['openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'qwen/qwen
 }
 sent = null; r = await onRequestPost({ request: req('?provider=groq', { model: 'qwen/qwen3.6-27b' }, { origin: O, 'cf-connecting-ip': '7.7.7.7' }), env });
 ok('the retired qwen3.6 is no longer allowed', r.status === 400 && !sent);
+for (const model of ['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.6-luna']) {
+    sent = null; globalThis.fetch = async (url, opt) => { sent = { url, opt, body: JSON.parse(opt.body) }; return new Response('{}'); };
+    r = await onRequestPost({ request: req('?provider=openai', { model, max_output_tokens: 300 }, { origin: O, 'cf-connecting-ip': '6.6.6.6' }), env: { OPENAI_API_KEY: 'sk-proj-abcdefghijklmnopqrstuvwxyz' } });
+    ok(`OpenAI ${model} is allowed`, r.status === 200 && sent.url.includes('api.openai.com') && sent.body.model === model && sent.body.store === false);
+}
+for (const model of ['gpt-5.5', 'gpt-4o', 'o3']) {
+    sent = null; r = await onRequestPost({ request: req('?provider=openai', { model }, { origin: O, 'cf-connecting-ip': '6.6.6.6' }), env: { OPENAI_API_KEY: 'sk-proj-abcdefghijklmnopqrstuvwxyz' } });
+    ok(`OpenAI ${model} is not allowed`, r.status === 400 && !sent);
+}
+const openaiErr = async (body, status) => {
+    globalThis.fetch = async () => new Response(body, { status });
+    const res = await onRequestPost({ request: req('?provider=openai', { model: 'gpt-5.4-mini' }, { origin: O, 'cf-connecting-ip': '5.5.5.' + Math.floor(Math.random() * 250) }), env: { OPENAI_API_KEY: 'sk-proj-abcdefghijklmnopqrstuvwxyz' } });
+    return { status: res.status, text: await res.text() };
+};
+let oe = await openaiErr('{"error":{"message":"Unsupported value: \'reasoning.effort\' does not support \'none\' with this model. org-SECRET","type":"invalid_request_error","param":"reasoning.effort","code":"unsupported_value"}}', 400);
+ok('an OpenAI 400 passes its machine code and parameter, not its text', oe.status === 400 && JSON.parse(oe.text).code === 'unsupported_value' && JSON.parse(oe.text).param === 'reasoning.effort' && !oe.text.includes('org-SECRET') && !oe.text.includes('Unsupported'));
+oe = await openaiErr('{"error":{"message":"You exceeded your current quota, org-SECRET","type":"insufficient_quota","code":"insufficient_quota"}}', 429);
+ok('an OpenAI quota refusal says insufficient_quota', oe.status === 429 && JSON.parse(oe.text).code === 'insufficient_quota' && !oe.text.includes('org-SECRET'));
+oe = await openaiErr('{"error":{"message":"x","code":"Has Spaces <b>org-1</b>","param":"a b"}}', 400);
+ok('a code or param that does not look like one is dropped', oe.status === 400 && JSON.parse(oe.text).code === undefined && JSON.parse(oe.text).param === undefined);
 globalThis.fetch = async () => new Response('{}');
 let last; for (let i = 0; i < 45; i++) last = await onRequestPost({ request: req('?provider=groq', { model: 'openai/gpt-oss-120b' }, { origin: O, 'cf-connecting-ip': '9.9.9.9' }), env });
 ok('more than 40 requests a minute from one IP -> 429', last.status === 429);
