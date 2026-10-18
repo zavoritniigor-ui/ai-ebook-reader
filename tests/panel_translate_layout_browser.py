@@ -1,5 +1,5 @@
-"""Panels + breakdown tooltip UX (tablet portrait): the Grammar / Ask AI panels start BELOW the main menu (never over its
-buttons); in the breakdown popup the legend sits above the translation, which keeps the popup's full width and scrolls with it;
+"""Panels + breakdown tooltip UX (tablet portrait): the Grammar / Ask AI panels fit the screen (the main menu is a side drawer over
+the book since 2026-10-18, no bar on top to keep clear); in the breakdown popup the legend sits above the translation, which keeps the popup's full width and scrolls with it;
 selecting a word, sentence or paragraph INSIDE the Grammar, Ask AI and Practice panels opens the same translation popup as in the
 book (touch-native selection fires no click, so it is driven by selectionchange); a tap on a word of a Practice sentence does too,
 while a Practice target still goes to Grammar. Only the translation call is spied. No network."""
@@ -83,7 +83,9 @@ c.js("els.tooltip.style.display = 'none'; els.askPanel.classList.remove('expande
 
 # ---- 5. Practice ------------------------------------------------------------------------------------------------------
 c.js("""(() => { const panel = getPracticePanel(); panel.hidden = false; panel.classList.add('expanded'); panel.dataset.mode = 'expanded';
-  const row = document.createElement('div'); row.className = 'practice-sentence'; row.id = 'p-row';
+  // The real panel starts with its header, which keeps the top-left corner free for the floating ☰ button; this bare test row
+  // gets the same room (the menu used to push every panel below a top bar until it became a side drawer, 2026-10-18).
+  const row = document.createElement('div'); row.className = 'practice-sentence'; row.id = 'p-row'; row.style.marginTop = '64px';
   row.innerHTML = '<span class="practice-sentence-text">Le <span id="p-word">sentier</span> longe un <button type="button" class="practice-target practice-target-adjective" id="p-target">long</button> chemin entre les arbres.</span>';
   panel.appendChild(row); window.__lookups.length = 0; window.__targetClicks = 0; document.getElementById('p-target').addEventListener('click', () => __targetClicks++); return 1; })()""")
 time.sleep(0.4)

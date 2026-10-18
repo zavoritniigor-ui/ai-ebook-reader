@@ -1174,8 +1174,21 @@
         .library-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
         .library-save { min-height: 34px; font-size: 13px; }
         .library-source { font-size: 11px; color: var(--text-muted); text-align: center; }
+        /* Стартовий екран: як головна сторінка застосунку — логотип, назва, три головні дії, останні книги. */
+        .home { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 520px; margin: 4vh auto 0; padding: 0 4px; break-inside: avoid; }
+        body:not(.pdf-mode) #reader-pages img.home-logo { width: 64px; height: 64px; max-height: none; border-radius: 16px; box-shadow: 0 6px 18px -8px rgba(var(--shadow-color),.45); }
+        .home-title { margin: 14px 0 4px; font-size: 26px; font-weight: 750; letter-spacing: -.02em; line-height: 1.15; }
+        .home-tagline { margin: 0 0 22px; font-size: 15px; color: var(--text-muted); line-height: 1.4; }
+        .home-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .home-actions .mi { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 22px; }
+        label.home-cta, button.home-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; height: auto;
+            border-radius: var(--radius-md); font-size: 16px; font-weight: 600; cursor: pointer; padding: 0 16px; }
+        label.home-cta { background: var(--accent-color); color: var(--accent-contrast); border: 1px solid var(--accent-color); }
+        button.home-btn { background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); }
+        button.home-btn .mi { color: var(--accent-color); }
+        .home-formats { margin: 14px 0 0; font-size: 12.5px; color: var(--text-muted); }
         /* Нещодавні книги на стартовому екрані (js/book-shelf.js). */
-        #recent-books { display: flex; flex-direction: column; gap: 8px; max-width: 520px; margin-top: 18px; }
+        #recent-books { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 520px; margin-top: 22px; text-align: left; }
         #recent-books h3 { font-size: 15px; margin: 0 0 2px; color: var(--text-muted); font-weight: 600; }
         .recent-book { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 12px; min-height: 48px;
             border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); color: inherit; cursor: pointer; font: inherit; }
@@ -1347,7 +1360,7 @@
         }
     </style>
 </head>
-<body data-theme="light" inert>
+<body data-theme="light" class="immersive-mode" inert>
 
     <!-- Top/full menu toggle — independent of the bottom Quick Menu. Its own control,
          its own state (body.immersive-mode), unchanged since before the Quick Menu
@@ -1530,8 +1543,19 @@
 
         <main id="main-area">
             <div id="reader-container"><div id="reader-pages">
-                <p data-i18n="welcome">Натисніть «Відкрити», щоб завантажити книгу (EPUB, PDF або TXT).</p>
-                <div id="recent-books"></div>
+                <!-- Стартовий екран (книгу ще не відкрито): головні дії великими кнопками й останні книги. Меню на старті закрите. -->
+                <section class="home" id="home-screen">
+                    <img class="home-logo" src="icons/icon-192.png" alt="" width="64" height="64">
+                    <h1 class="home-title">AI Ebook Reader</h1>
+                    <p class="home-tagline" data-i18n="mTagline">Читання з перекладом, граматикою й озвученням</p>
+                    <div class="home-actions">
+                        <label class="home-cta" for="file-upload"><svg class="mi" aria-hidden="true"><use href="#i-open"/></svg><span data-i18n="mOpen">Відкрити файл</span></label>
+                        <button type="button" class="home-btn my-books-btn" id="home-my-books"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span data-i18n="mShelf">Мої книги</span></button>
+                        <button type="button" class="home-btn" id="home-library"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span data-i18n="mLibrary">Безкоштовна бібліотека</span></button>
+                    </div>
+                    <p class="home-formats" data-i18n="mHomeFormats">Підтримуються EPUB, PDF, DOCX, FB2, TXT, MD, HTML і RTF.</p>
+                    <div id="recent-books"></div>
+                </section>
             </div></div>
             
             <div id="pdf-scrubber" class="collapsed" role="group" tabindex="0" aria-label="Сторінка PDF"><output id="pdf-page-preview">1</output><input id="pdf-page-range" aria-label="Сторінка PDF" type="range" min="1" max="1" value="1" step="1"></div>
@@ -1728,7 +1752,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=cddd1495ee9e"></script>
+    <script src="js/core.js?v=9482addf0b92"></script>
     <script src="js/lang-detect.js?v=263bb11ae4d9"></script>
     <script src="js/tts.js?v=768369b7982d"></script>
     <script src="js/selection.js?v=53b18d236d1b"></script>
@@ -1762,11 +1786,11 @@
     <script src="js/formats.js?v=0adff3b5d013"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=a266be538226"></script>
-    <script src="js/book-shelf.js?v=aa2098ef9089"></script>
+    <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
-    <script src="js/quick-wheel.js?v=7c14c143a746"></script>
+    <script src="js/quick-wheel.js?v=8aa349dd03ab"></script>
     <script src="js/main.js?v=4b10604a9abd"></script>
     <script src="js/pwa-lifecycle.js?v=5958d99e2f7a"></script>
-    <script src="js/i18n-es.js?v=a3ae5a14996f"></script>
+    <script src="js/i18n-es.js?v=8f0323c6076e"></script>
 </body>
 </html>

@@ -319,6 +319,28 @@ mobile viewport setup. The navigation resize debounce can otherwise invalidate
 the test selection after `initPdf` resolves; this was reproduced during format
 release CI, then isolated to test setup rather than sentence expansion.
 
+## Main menu (side drawer)
+
+Since 2026-10-18 `header#app-header` (index.html) is a side drawer, not a top toolbar: five titled sections
+(`.menu-section`: Book, Reading, Learning, Tools, Settings), each control a `.menu-row` with a line icon (inline SVG
+sprite `#i-*` at the top of `<body>`), a `.mr-title` and a one-line `.mr-desc` (I18N keys `m*`, core.js; Spanish in
+i18n-es.js). Every control kept its id, so existing handlers are unchanged. On/off rows (`#btn-translate-mode`,
+`#btn-alt-voices`) are `role="switch"` driven by `setMenuSwitch` (core.js); the read-aloud row's title is set by
+`setMenuRowTitle` (`mRead`/`mPause`/`mResume`). A list row (`.menu-row-select`) is covered by its own transparent
+`<select class="mr-select">`, so a tap anywhere opens it and the value it shows is always the real one. The PDF-fit row
+has `data-only="pdf"`. The voice list was removed (owner: «it does not work»): `loadVoices` picks the best voice per
+language on every start and the old `reader_voices*` keys are deleted. Width: 100vw on a phone, 392px from 641px up;
+`--app-header-h` is 0 — the drawer never moves the page. Open/closed is still `body.immersive-mode` (absent = open);
+`syncFullMenuControls` (quick-wheel.js) shows `#menu-backdrop` while open; ✕, the backdrop, Escape and Android Back
+(`OVERLAY_LAYERS` 'menu', only with a book open) close it; rows in `MENU_CLOSING_ACTIONS` close it after their own
+handler; Study mode closes it 350 ms after the switch moved. Auto-hide: 10 s idle. The «◀ page ▶» footer no longer
+follows the menu: hidden until `footer-open` (a tap in the middle of the page or the bottom handle, all widths).
+The app starts with the menu CLOSED (`<body class="immersive-mode">`): with no book the start screen `#home-screen`
+(inside `#reader-pages`) offers «Open file» (label for `#file-upload`), «My books» (`.my-books-btn`), «Free library»
+(`#home-library`) and `#recent-books`; an open drawer there covered it all and its backdrop swallowed every tap.
+Tests: `tests/menu_labels_browser.py` (contract), `menu_phone_scroll_browser.py`, `menu_autohide_browser.py`,
+`page_arrows_browser.py`.
+
 ## Floating quick actions
 
 `js/quick-wheel.js` owns the right-side launcher, eleven-action continuous rotary

@@ -52,10 +52,14 @@ for sidebar, grammar in ((False, False), (True, False), (False, True), (True, Tr
             c.js(f"setPdfScale(1); navigateToPdfPage({page}, {{instant:true, focus:{{x:.5,y:{fraction}}}}})")
             settle()
             for ratio in (1.5, 1/1.5, 1.4, 1/1.4):
+                # The focal point is measured on the page that is really under the fingers (the app anchors to that page). It used
+                # to be page {page} always: with a taller viewport (no top bar since 2026-10-18) the point can fall on the next page,
+                # and the fixed 20px gap between pages (not scaled) then showed up as a false ~7px drift.
                 point = c.js(f"""(() => {{
-                    const w=pdfPageWrappers[{page}], r=w.getBoundingClientRect(), v=els.container.getBoundingClientRect();
+                    const v=els.container.getBoundingClientRect();
                     const x=v.left+els.container.clientWidth/2, y=v.top+els.container.clientHeight*.4;
-                    window.__pinchPoint={{page:{page}, x:(x-r.left)/r.width, y:(y-r.top)/r.height, clientX:x, clientY:y}};
+                    const under=getPdfPageAtClientY(y), r=pdfPageWrappers[under].getBoundingClientRect();
+                    window.__pinchPoint={{page:under, x:(x-r.left)/r.width, y:(y-r.top)/r.height, clientX:x, clientY:y}};
                     return {{x,y}};
                 }})()""")
                 x, y = point['x'], point['y']

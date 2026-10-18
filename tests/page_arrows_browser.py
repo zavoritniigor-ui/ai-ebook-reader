@@ -60,6 +60,8 @@ for (w, h, mobile) in ((390, 844, True), (844, 390, True), (820, 1180, True), (1
     check('%dx%d: while the «◀ page ▶» footer is open the arrows step aside' % (w, h), "!%s('page-arrow-next')" % VISIBLE)
     c.js("document.body.classList.remove('footer-open'); 1"); time.sleep(0.4)
     # The menu is a side drawer now (2026-10-18): a tap in the middle of the page shows the «◀ page ▶» bar, not the menu.
+    # (Study mode off: in it a tap on the text looks the word up, which is right; a previous suite may have left it on.)
+    c.js("if (state.translateMode) els.translateBtn.click(); els.tooltip.style.display = 'none'; 1"); time.sleep(0.5)
     mid = c.js("(r => ({x: r.left + r.width / 2, y: r.top + r.height / 2}))(els.mainArea.getBoundingClientRect())")
     for kind in ('mousePressed', 'mouseReleased'):
         c.call('Input.dispatchMouseEvent', type=kind, x=mid['x'], y=mid['y'], button='left', clickCount=1)

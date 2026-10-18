@@ -61,6 +61,7 @@ document.getElementById('header-controls').addEventListener('click', e => {
     if (row && MENU_CLOSING_ACTIONS.includes(row.id)) setTimeout(closeFullMenu, 0);   // after the action's own handler
 });
 document.getElementById('btn-free-library').addEventListener('click', () => openLibrary());
+document.getElementById('home-library').addEventListener('click', () => openLibrary());
 document.getElementById('btn-print-page').addEventListener('click', () => printCurrentReaderPage());
 new MutationObserver(syncFullMenuControls).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 syncFullMenuControls();

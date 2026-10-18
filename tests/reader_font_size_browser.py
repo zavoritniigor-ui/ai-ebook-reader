@@ -38,6 +38,9 @@ def check(name, expression, timeout=0):
 
 
 def click(sel, times=1):
+    # A− / A+ live in the main menu (a drawer since 2026-10-18): open it first, as a reader would, and let it slide in.
+    if c.js("!!document.querySelector(%r).closest('#app-header') && !isFullMenuOpen()" % sel):
+        c.js("openFullMenu(); 1"); c.js('new Promise(r => setTimeout(r, 450))')
     for _ in range(times):
         b = c.js("(r => ({x: r.left + r.width / 2, y: r.top + r.height / 2}))(document.querySelector(%r).getBoundingClientRect())" % sel)
         for kind in ('mousePressed', 'mouseReleased'):

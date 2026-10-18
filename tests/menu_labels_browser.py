@@ -50,6 +50,15 @@ def load(width, height, mobile=True, book=None, keep=False):
 ROWS = "[...document.querySelectorAll('#header-controls .menu-row, #header-controls .menu-cta')].filter(r => r.offsetParent !== null)"
 BOOK = "# Livre\n\n" + "Le petit prince regardait les étoiles chaque soir. " * 200
 
+# ---------------------------------------------------------------- start screen
+c.call('Emulation.setDeviceMetricsOverride', width=390, height=844, deviceScaleFactor=1, mobile=True)
+c.call('Page.navigate', url=URL)
+c.wait("document.readyState==='complete' && !document.body.inert && typeof openFullMenu==='function'", timeout=30)
+check('0 the app starts with the menu closed: the start screen offers Open file, My books and Free library as big buttons',
+      """(() => { const ids = [...document.querySelectorAll('.home-actions > *')].map(e => e.getBoundingClientRect()); const hit = r => document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+         return !!(!isFullMenuOpen() && ids.length === 3 && ids.every(r => r.height >= 48 && r.top > 0 && r.bottom < innerHeight) && hit(ids[0]).closest('label[for="file-upload"]') && hit(ids[2]).closest('#home-library')) || 'start'; })()""")
+check('0b ... Free library opens from there', "(() => { document.getElementById('home-library').click(); const ok = document.getElementById('library-modal').classList.contains('open'); closeLibrary(); return ok; })()")
+
 # ---------------------------------------------------------------- phone
 load(390, 844, book=BOOK)
 check('1 five titled sections in order: Book, Reading, Learning, Tools, Settings',
@@ -113,7 +122,7 @@ load(390, 844, keep=True)
 KEYS = ['mTagline','mSecBook','mOpen','mOpenDesc','mShelf','mShelfDesc','mLibrary','mLibraryDesc','mToc','mTocDesc','mSecReading','mRead','mPause','mResume','mReadDesc',
         'mTwoVoices','mTwoVoicesDesc','mFontSize','mFontSizeDesc','mPdfFit','mPdfFitDesc','mFitWidth','mFitPage','mFitFree','mTheme','mThemeDesc','mSecLearning','mStudy',
         'mStudyDesc','mTargetLang','mTargetLangDesc','mRules','mRulesDesc','mStats','mStatsDesc','mSecTools','mInk','mInkDesc','mRegion','mRegionDesc','mPrint','mPrintDesc',
-        'mSecSettings','mUiLang','mUiLangDesc','mAi','mAiDesc','mUpdate','mUpdateDesc','mExit']
+        'mSecSettings','mUiLang','mUiLangDesc','mAi','mAiDesc','mUpdate','mUpdateDesc','mExit','mHomeFormats']
 check('20 every menu text exists in all 9 languages with its own wording (no raw key, no English fallback)',
       """(() => { const keys = %s; const langs = ['uk','en','fr','ru','zh','ko','hi','ga','es']; const bad = [];
          for (const k of keys) for (const l of langs) { const v = I18N[k] && I18N[k][l]; if (!v || v === k) bad.push(k + ':' + l); else if (l !== 'en' && v === I18N[k].en && !/^[^a-z]*$/i.test(v)) bad.push('same as English ' + k + ':' + l); }

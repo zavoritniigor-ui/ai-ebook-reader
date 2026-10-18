@@ -3,7 +3,8 @@
 layout silently re-flows content across columns whenever '#reader-container'
 changes size -- but the app only listened for the window's own 'resize'
 event to react to that. Toggling immersive-mode (hiding/showing the header/
-footer, a normal, frequent interaction) changes the container's actual
+footer, a normal, frequent interaction -- until 2026-10-18; the menu is now a drawer over the book and the tests below make
+the same CSS-only change with a test bar) changes the container's actual
 height through CSS classes alone, with NO 'resize' event at all -- so
 state.pageInChapter/totalPagesInChapter silently went stale relative to
 the ACTUAL rendered column layout the browser had already re-flowed to.
@@ -56,6 +57,11 @@ def check(name, expr):
 
 
 pause(1)
+# A CSS-only layout change that resizes the container without any window 'resize' event. Until 2026-10-18 that was the top menu
+# (immersive-mode); the menu is now a drawer over the book and no longer moves it, so the same change is made here directly:
+# a 97px bar shown above the workspace, with the workspace's own 0.3 s transition.
+c.js("""(() => { const st = document.createElement('style'); st.textContent = '.workspace.__test-bar { margin-top: 97px !important; height: calc(100vh - 97px) !important; }';
+  document.head.appendChild(st); window.__layoutBar = on => document.querySelector('.workspace').classList.toggle('__test-bar', on); return 1; })()""")
 check('the fix is present: ResizeObserver on els.container', "typeof containerResizeObserver !== 'undefined' && containerResizeObserver instanceof ResizeObserver")
 
 # ---- Fixture: many pages, MIXED paragraph lengths (one-liners, medium, long) ----
@@ -96,13 +102,13 @@ def open_book(book_key_suffix):
 c.js("containerResizeObserver.unobserve(els.container)")
 totalPages = open_book(1)
 pause(0.3)
-c.js("document.body.classList.remove('immersive-mode')")
+c.js("__layoutBar(true)")
 pause(0.5)
 c.js("goToPageInChapter(2,false)")
 pause(0.2)
 c.js("window.__repagCalls=0; window.__realRepag=repaginateBook; repaginateBook=function(){window.__repagCalls++; return window.__realRepag();}")
 hBefore = c.js("els.container.getBoundingClientRect().height")
-c.js("document.body.classList.add('immersive-mode')")
+c.js("__layoutBar(false)")
 pause(0.8)
 hAfter = c.js("els.container.getBoundingClientRect().height")
 assert hBefore != hAfter, ('container did not actually resize -- test fixture problem', hBefore, hAfter)
@@ -112,14 +118,14 @@ c.js("repaginateBook = window.__realRepag; containerResizeObserver.observe(els.c
 # ==== B: with the fix, the exact same resize is detected and resynced =========
 open_book(2)
 pause(0.3)
-c.js("document.body.classList.remove('immersive-mode')")
+c.js("__layoutBar(true)")
 pause(0.5)
 c.js("goToPageInChapter(2,false)")
 pause(0.2)
 c.js("window.__repagCalls=0; window.__realRepag=repaginateBook; repaginateBook=function(){window.__repagCalls++; return window.__realRepag();}")
-c.js("document.body.classList.add('immersive-mode')")
+c.js("__layoutBar(false)")
 pause(0.8)
-check('B: WITH the fix, the same immersive-mode resize triggers repagination', 'window.__repagCalls>=1')
+check('B: WITH the fix, the same layout resize triggers repagination', 'window.__repagCalls>=1')
 check('B: pageInChapter stays valid after resync', '''(()=>{
     return state.pageInChapter >= 0 && state.pageInChapter < state.totalPagesInChapter;
 })()''')
@@ -150,37 +156,37 @@ check('C2: narrower->wider resize keeps pageInChapter valid', "state.pageInChapt
 c.call('Emulation.setDeviceMetricsOverride', width=1100, height=900, deviceScaleFactor=1, mobile=False)
 pause(0.8)
 
-# ==== D: immersive-mode toggle on first / middle / last page ==================
+# ==== D: layout toggle (bar shown/hidden) on first / middle / last page ==================
 for label, page in [('first', 0), ('middle', None), ('last', -1)]:
     open_book(f'd{label}')
     pause(0.3)
     total = c.js("state.totalPagesInChapter")
     target = page if page is not None else total // 2
     if target < 0: target = total - 1
-    c.js("document.body.classList.remove('immersive-mode')")
+    c.js("__layoutBar(true)")
     pause(0.5)
     c.js(f"goToPageInChapter({target},false)")
     pause(0.2)
-    c.js("document.body.classList.add('immersive-mode')")
+    c.js("__layoutBar(false)")
     pause(0.8)
-    check(f'D ({label} page): pageInChapter stays valid after immersive-mode toggle', "state.pageInChapter>=0 && state.pageInChapter<state.totalPagesInChapter")
+    check(f'D ({label} page): pageInChapter stays valid after the layout toggle', "state.pageInChapter>=0 && state.pageInChapter<state.totalPagesInChapter")
     check(f'D ({label} page): logical offset still resolves correctly', '''(()=>{
         const resolved = pageForBookTextOffset(state.bookTextOffset);
         return resolved === null || resolved === state.pageInChapter;
     })()''')
-    c.js("document.body.classList.remove('immersive-mode')")
+    c.js("__layoutBar(true)")
     pause(0.5)
 
 # ==== E: repeated rapid toggling collapses into one resync (debounce) =========
 open_book(5)
 pause(0.3)
-c.js("document.body.classList.remove('immersive-mode')")
+c.js("__layoutBar(true)")
 pause(0.5)
 c.js("goToPageInChapter(2,false)")
 pause(0.2)
 c.js("window.__repagCalls=0; window.__realRepag=repaginateBook; repaginateBook=function(){window.__repagCalls++; return window.__realRepag();}")
 for _ in range(6):
-    c.js("document.body.classList.toggle('immersive-mode')")
+    c.js("__layoutBar()")
     pause(0.05)  # faster than the CSS transition AND the debounce
 pause(0.9)  # let it all settle
 callsAfterBurst = c.js("window.__repagCalls")
@@ -193,7 +199,7 @@ c.js("repaginateBook = window.__realRepag")
 open_book(6)
 pause(0.3)
 c.js("state.translateMode = true")
-c.js("document.body.classList.remove('immersive-mode')")
+c.js("__layoutBar(true)")
 pause(0.5)
 c.js("goToPageInChapter(2,false)")
 pause(0.2)
@@ -222,11 +228,11 @@ assert wordInfo, 'could not find a word to highlight on this page'
 highlightedWord = c.js(f"selectWordAtPoint({wordInfo['x']},{wordInfo['y']})")
 assert highlightedWord, 'tap did not produce a highlighted word'
 highlightedTextBefore = c.js("state.lastWordNode ? state.lastWordNode.textContent : null")
-c.js("document.body.classList.add('immersive-mode')")
+c.js("__layoutBar(false)")
 pause(0.8)
 check('F: the .word-visited highlight span is still in the document after resize', "!!state.lastWordNode && document.contains(state.lastWordNode)")
 check('F: the highlighted text is unchanged after resize', f"state.lastWordNode.textContent === {highlightedTextBefore!r}")
-c.js("document.body.classList.remove('immersive-mode')")
+c.js("__layoutBar(true)")
 pause(0.5)
 
 # ==== G: resize AFTER translated/helped segments were recorded =================
@@ -240,7 +246,7 @@ pause(0.5)
 open_book(7)
 pause(0.3)
 c.js("state.translateMode = true")
-c.js("document.body.classList.remove('immersive-mode')")
+c.js("__layoutBar(true)")
 pause(0.5)
 c.js("goToPageInChapter(2,false)")
 pause(0.2)
@@ -258,7 +264,7 @@ setup = c.js('''(()=>{
 })()''')
 print('recorded before resize:', setup, flush=True)
 assert len(setup['recorded']) == 3 and all(r['id'] for r in setup['recorded']), setup
-c.js("document.body.classList.add('immersive-mode')")
+c.js("__layoutBar(false)")
 pause(0.8)
 scope_js = json.dumps(setup['scope'])
 recorded_js = json.dumps(setup['recorded'])
@@ -266,13 +272,13 @@ check('G: all 3 help records survive the resize with their normalized word uncha
     const records = learningStatsBook.scopes[{scope_js}] || {{}};
     return {recorded_js}.every(r => records[r.id] && records[r.id].normalized === r.normalized);
 }})()''')
-c.js("document.body.classList.remove('immersive-mode')")
+c.js("__layoutBar(true)")
 pause(0.5)
 
 # ==== H: resize while TTS is active =============================================
 open_book(8)
 pause(0.3)
-c.js("document.body.classList.remove('immersive-mode')")
+c.js("__layoutBar(true)")
 pause(0.5)
 c.js("goToPageInChapter(1,false)")
 pause(0.2)
@@ -284,7 +290,7 @@ c.js("startTTS()")
 pause(0.3)
 ttsWasActive = c.js("isSpeakingGlobal===true && state.ttsQueue.length>0")
 assert ttsWasActive, 'TTS did not start -- cannot test the resize-during-TTS scenario'
-c.js("document.body.classList.add('immersive-mode')")
+c.js("__layoutBar(false)")
 pause(0.8)
 check('H: TTS is still active/has a valid queue after a mid-read resize', "isSpeakingGlobal===true && state.ttsQueue.length>0 && state.ttsIndex>=0 && state.ttsIndex<=state.ttsQueue.length")
 check('H: pageInChapter is still valid after a resize during TTS', "state.pageInChapter>=0 && state.pageInChapter<state.totalPagesInChapter")

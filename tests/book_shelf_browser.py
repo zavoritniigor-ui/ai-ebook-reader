@@ -43,7 +43,7 @@ check('5 the library window has «My books»: the kept book with Read and remove
 c.js("(() => { closeLibrary(); const s = document.getElementById('library-source'); s.value = 'gutenberg'; s.dispatchEvent(new Event('change')); closeLibrary(); return 1; })()"); time.sleep(0.5)
 c.js("document.getElementById('btn-my-books').click(); 1"); time.sleep(0.8)
 check('5b the menu button «📖 My books» opens the library straight on the kept books (even if another source was chosen last)',
-      "document.getElementById('library-modal').classList.contains('open') && document.getElementById('library-source').value === 'shelf' && document.querySelector('#library-list .library-name').textContent === 'Kept Book' && document.getElementById('btn-my-books').getAttribute('aria-label') === t('myBooksLabel')")
+      "document.getElementById('library-modal').classList.contains('open') && document.getElementById('library-source').value === 'shelf' && document.querySelector('#library-list .library-name').textContent === 'Kept Book' && document.getElementById(document.getElementById('btn-my-books').getAttribute('aria-labelledby')).textContent === t('mShelf')")
 c.js("document.querySelector('#library-list .library-card .library-save').click(); 1"); time.sleep(0.8)
 check('6 remove deletes it from the device', "listShelfBooks().then(b => b.length === 0 && document.querySelectorAll('#library-list .library-card').length === 0)")
 c.js("closeLibrary(); 1")
