@@ -247,6 +247,7 @@ function buildDiagnosticsReport() {
             ownKeys: { openai: !!state.openaiKey, groq: !!state.groqKey, gemini: !!state.apiKey },
             sharedOnSite: typeof sharedAiProviders !== 'undefined' ? Object.assign({}, sharedAiProviders) : null,
             startsOn: typeof aiProviderForTask === 'function' ? { translation: aiProviderForTask('translation'), grammar: aiProviderForTask('grammar_analysis'), breakdown: aiProviderForTask('sentence_structure'), ask: aiProviderForTask('ask') } : null,
+            openaiPools: typeof openaiPoolReport === 'function' ? openaiPoolReport() : null,   // today's tokens per free OpenAI pool on this device
             recent: typeof readerAiRequests === 'function' ? readerAiRequests().slice(-30) : []
         },
         offline: typeof offlineTrReport === 'function' ? offlineTrReport() : null,   // js/offline-translate.js: installed packs, why the engine failed, last speed

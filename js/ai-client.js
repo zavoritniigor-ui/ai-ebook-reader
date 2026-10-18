@@ -4,12 +4,52 @@
  * Task-specific OpenAI profiles optimize latency per workload.
  * Real streaming for Ask AI and Language Level via Server-Sent Events with incremental rendering.
  */
-const OPENAI_MODEL = 'gpt-5.6-luna';
+// OpenAI's FREE daily token pools (project «Ebok rider», the project of the site's key; reset 00:00 UTC): up to 250K tokens a day across the big models
+// (gpt-5.4 …) and, counted SEPARATELY, 2.5M across the mini/nano ones; beyond that, and for any other model, OpenAI bills -- it does NOT refuse, so
+// the app has to count itself (openaiModel). Measured 2026-10-18 on production, French → Ukrainian, the app's own prompts: gpt-5.4 translates words and
+// sentences as well as gpt-5.6-luna (used before; billed, in neither pool) in the same ~0.9 s and keeps grammar notes in the menu language (luna wrote some
+// in French and Russian); gpt-5.4-mini is faster (~0.7 s) but weaker (souvenir → «сувенір», car → «тому», wrong lemmas in grammar); gpt-5.4-nano worse
+// still (pêche «рибальство» → «персик»). So: gpt-5.4 first, gpt-5.4-mini once the big pool is used up.
+const OPENAI_MODEL = 'gpt-5.4';
+const OPENAI_MINI_MODEL = 'gpt-5.4-mini';
 // Centralized default: "low" for ordinary reader workloads.
 const OPENAI_REASONING_EFFORT = 'low';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
 const GEMINI_MODEL = 'gemini-3.6-flash';
 const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';   // qwen3.6 was withdrawn by Groq (404): every photo check silently went to OpenAI
+
+// ---- OpenAI pool accounting ------------------------------------------------------------------------------------------------
+// Tokens this device spent today (UTC) on each pool model, from the usage OpenAI reports with every reply (also a cut-off or refused-as-invalid one: it
+// was paid for). Only THIS device's requests are seen -- a tablet and a PC each count their own -- so a pool counts as used up at 90% of its size.
+const OPENAI_POOL_TOKENS = { [OPENAI_MODEL]: 250000, [OPENAI_MINI_MODEL]: 2500000 };
+const OPENAI_POOL_SHARE = 0.9;
+const OPENAI_POOL_STORAGE = 'reader_openai_pool_usage';
+function openaiPoolUsage() {
+    const day = new Date().toISOString().slice(0, 10);
+    let u = null;
+    try { u = JSON.parse(readStored(OPENAI_POOL_STORAGE) || 'null'); } catch (e) { u = null; }
+    if (!u || u.day !== day || typeof u.used !== 'object' || !u.used) u = { day, used: {} };
+    return u;
+}
+function openaiNoteUsage(model, usage) {
+    const tokens = usage ? Number(usage.total_tokens) || (Number(usage.input_tokens) || 0) + (Number(usage.output_tokens) || 0) : 0;
+    if (!Object.hasOwn(OPENAI_POOL_TOKENS, model) || !(tokens > 0)) return;
+    const u = openaiPoolUsage();
+    u.used[model] = (Number(u.used[model]) || 0) + tokens;
+    // Not writeStored: a full storage must not raise its alert on every AI reply; the count is a best effort.
+    try { localStorage.setItem(OPENAI_POOL_STORAGE, JSON.stringify(u)); } catch (e) { /* not counted */ }
+}
+// The model an OpenAI request uses now: the big pool's gpt-5.4 while it has room, then the mini pool's gpt-5.4-mini (also once both are used up: it
+// is then billed, and the cheaper of the two).
+function openaiModel() {
+    const used = openaiPoolUsage().used;
+    return (Number(used[OPENAI_MODEL]) || 0) < OPENAI_POOL_TOKENS[OPENAI_MODEL] * OPENAI_POOL_SHARE ? OPENAI_MODEL : OPENAI_MINI_MODEL;
+}
+function openaiPoolReport() {
+    const u = openaiPoolUsage();
+    return { day: u.day, model: openaiModel(), used: Object.assign({}, u.used), pools: Object.assign({}, OPENAI_POOL_TOKENS) };
+}
+window.readerOpenaiPools = openaiPoolReport;
 
 // Task-specific OpenAI profiles: optimize reasoning effort, max_output_tokens, and streaming per workload
 const OPENAI_TASK_PROFILES = {
@@ -325,12 +365,13 @@ async function parseOpenAIStream(reader, signal, onDelta, idleMs = AI_STREAM_IDL
     let result = '';
     let sawValidEvent = false;
     const startTime = performance.now();
-    let finished = false;
+    let finished = false, usage = null;
     // The stream's own end state: a cut-off ("incomplete", usually the token cap) or a failure is NOT a complete answer.
     const terminal = data => {
+        if (data.response && data.response.usage && typeof data.response.usage === 'object') usage = data.response.usage;   // a cut-off reply was paid for too
         if (data.type === 'response.incomplete') {
             const why = data.response && data.response.incomplete_details && data.response.incomplete_details.reason;
-            throw new AiRequestError(t('aiInvalidResponse'), why === 'content_filter' ? 'blocked' : 'truncated', { partial: result, providerMessage: why || 'incomplete' });
+            throw new AiRequestError(t('aiInvalidResponse'), why === 'content_filter' ? 'blocked' : 'truncated', { partial: result, providerMessage: why || 'incomplete', usage });
         }
         if (data.type === 'response.failed' || data.type === 'error') {
             const err = data.response && data.response.error || data.error || data;
@@ -393,7 +434,7 @@ async function parseOpenAIStream(reader, signal, onDelta, idleMs = AI_STREAM_IDL
     if (!sawValidEvent) throw new Error('No valid SSE events received');
 
     // Return accumulated result (may be empty, which triggers aiEmptyResponse in requestAI)
-    return { result, firstTokenTime };
+    return { result, firstTokenTime, usage };
 }
 
 async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelta, options = {}) {
@@ -406,11 +447,13 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
     const startTime = performance.now();
     let firstTokenTime = null;
     let result = '';
+    const model = openaiModel();
+    if (options.meta) options.meta.model = model;
 
     if (profile.stream) {
         // Real streaming for Ask AI and Language Level
         const body = {
-            model: OPENAI_MODEL, input, store: false, max_output_tokens: profile.max_output_tokens,
+            model, input, store: false, max_output_tokens: profile.max_output_tokens,
             reasoning: { effort: profile.reasoning }, stream: true
         };
         const headers = Object.assign({ 'Content-Type': 'application/json' }, aiAuthHeaders('openai', key));
@@ -422,7 +465,11 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
             const reader = res.body?.getReader();
             if (!reader) throw new Error(t('aiInvalidResponse'));
 
-            const { result: parsed, firstTokenTime: ftt } = await parseOpenAIStream(reader, signal, onDelta);
+            let streamed;
+            try { streamed = await parseOpenAIStream(reader, signal, onDelta); }
+            catch (err) { if (err && err.usage) openaiNoteUsage(model, err.usage); throw err; }
+            const { result: parsed, firstTokenTime: ftt, usage } = streamed;
+            openaiNoteUsage(model, usage);
             result = parsed;
             firstTokenTime = ftt;
         } catch (err) {
@@ -436,11 +483,12 @@ async function callOpenAI(prompt, dataUrl, key, signal, task = 'default', onDelt
     } else {
         // Non-streaming response (translations, grammar, conjugation)
         const data = await aiJsonRequest('openai', key, 'https://api.openai.com/v1/responses', {
-            model: OPENAI_MODEL, input, store: false, max_output_tokens: options.maxOutputTokens || profile.max_output_tokens,
+            model, input, store: false, max_output_tokens: options.maxOutputTokens || profile.max_output_tokens,
             reasoning: { effort: profile.reasoning }
         }, signal, options.timeoutMs || aiTaskTimeout(task));
+        openaiNoteUsage(model, data.usage);   // before any check below: a cut-off or an error reply was paid for too
         const meta = options.meta || {};
-        meta.model = typeof data.model === 'string' ? data.model : OPENAI_MODEL;
+        meta.model = typeof data.model === 'string' ? data.model : model;
         meta.finish = data.status || null;
         if (data.usage && typeof data.usage === 'object') meta.usage = { in: data.usage.input_tokens, out: data.usage.output_tokens, reasoning: data.usage.output_tokens_details?.reasoning_tokens };
         // REST output may contain reasoning/tool items before assistant messages.
@@ -699,7 +747,7 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
     try {
         let out;
         options.meta = {};
-        try { out = await callAI(prompt, signal, 'translation', undefined, options); if (info) info.provider = options.meta.provider; }
+        try { out = await callAI(prompt, signal, 'translation', undefined, options); if (info) { info.provider = options.meta.provider; info.model = options.meta.model; } }
         catch (err) {
             // Обірвана відповідь: з того, що встигло прийти, ще можна взяти готовий переклад.
             if (err && err.reason === 'truncated' && err.partial) out = err.partial; else throw err;

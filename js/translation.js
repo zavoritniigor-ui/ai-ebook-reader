@@ -336,13 +336,14 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         if (probe) await probe;
         const providers = navigator.onLine && aiAvailable() ? translationProviders() : [];
         const askProvider = (p, info) => aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000, p || null, info);
-        const markOf = p => (p === 'groq' ? '⚡' : '🧠');
+        // 🧠 mini: OpenAI's smaller model answered -- this device used up the day's free pool of the big one (js/ai-client.js, openaiModel).
+        const markOf = (p, model) => (p === 'groq' ? '⚡' : '🧠') + (p === 'openai' && /mini/.test(model || '') ? ' mini' : '');
         const answered = {};   // who REALLY answered: a refused shared Groq key is repeated on the shared OpenAI inside the request, the mark must follow
         let ai = await askProvider(providers[0] || null, answered);   // без ключа aiTranslateText сама повертає null
-        let aiMark = markOf(answered.provider || providers[0]);
-        if (!ai && providers[1] && myLookup === state.lookupToken && task.current()) { const second = {}; ai = await askProvider(providers[1], second); aiMark = markOf(second.provider || providers[1]); }
+        let aiMark = markOf(answered.provider || providers[0], answered.model), aiBy = answered.provider || providers[0];
+        if (!ai && providers[1] && myLookup === state.lookupToken && task.current()) { const second = {}; ai = await askProvider(providers[1], second); aiBy = second.provider || providers[1]; aiMark = markOf(aiBy, second.model); }
         // OpenAI's mark after Groq refused for a quota (HTTP 429): say so, or the reader takes it for broken routing.
-        if (ai && providers[0] === 'groq' && aiMark === markOf('openai') && groqLimitedRecently()) aiMark += ' · ' + escapeHtml(t('aiNoteGroqLimit'));
+        if (ai && providers[0] === 'groq' && aiBy === 'openai' && groqLimitedRecently()) aiMark += ' · ' + escapeHtml(t('aiNoteGroqLimit'));
         aiDone = true;
         clearTimeout(previewTimer);
         if (myLookup !== state.lookupToken || !task.current()) return;
