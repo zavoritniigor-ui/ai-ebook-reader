@@ -12,7 +12,10 @@ const URLS = { groq: 'https://api.groq.com/openai/v1/chat/completions', openai: 
 const SECRETS = { groq: 'GROQ_API_KEY', openai: 'OPENAI_API_KEY' };
 // Ті самі моделі, що в js/ai-client.js (GROQ_MODEL, GROQ_VISION_MODEL, OPENAI_MODEL) — змінюючи там, змініть і тут. Groq рахує ліміти
 // ОКРЕМО на кожну модель, тому до списку входять і запасні моделі Groq (js/ai-client.js, GROQ_LADDER); qwen3.6 з Groq прибрали (404).
-const MODELS = { groq: new Set(['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3.8-27b']), openai: new Set(['gpt-5.6-luna']) };
+// gpt-5.4 / gpt-5.4-mini / gpt-5.4-nano — моделі з безкоштовних денних пулів OpenAI проєкту «Ebok rider» (250K і 2.5M токенів на добу; gpt-5.6-luna
+// у жоден пул не входить і завжди платна): дозволені, щоб їх можна було виміряти й перевести на них запити.
+const MODELS = { groq: new Set(['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3.8-27b']),
+    openai: new Set(['gpt-5.6-luna', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano']) };
 const MAX_BODY_BYTES = 6 * 1024 * 1024;   // запит із вирізаним фрагментом сторінки (data URL) буває кілька МБ
 const MAX_OUTPUT_TOKENS = 16000;
 const RATE_WINDOW_MS = 60000, RATE_MAX = 40;
@@ -88,10 +91,19 @@ export async function onRequestPost({ request, env }) {
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` }
     });
     // Тіло помилки провайдера не пересилаємо: воно може містити подробиці акаунта. Лише статус — застосунок покаже своє повідомлення.
+    // Крім того — лише машинний код помилки (insufficient_quota, unsupported_parameter…) і назва поля, якщо вони мають вигляд коду: без них
+    // відмову нової моделі (непідтримуваний параметр) не відрізнити від вичерпаної квоти.
     if (!upstream.ok) {
-        let rate;
-        if (upstream.status === 429) { try { rate = rateDetails(upstream, (await upstream.text()).slice(0, 4000)); } catch (e) { /* the body is optional */ } }
-        return json({ error: 'upstream', status: upstream.status, ...(rate ? { rate } : {}) }, upstream.status === 429 ? 429 : upstream.status >= 500 ? 502 : upstream.status);
+        let rate, code, param;
+        try {
+            const text = (await upstream.text()).slice(0, 4000);
+            if (upstream.status === 429) rate = rateDetails(upstream, text);
+            const err = JSON.parse(text).error || {};
+            if (/^[a-z_]{1,64}$/.test(err.code || '')) code = err.code;
+            if (/^[A-Za-z_.]{1,64}$/.test(err.param || '')) param = err.param;
+        } catch (e) { /* the body is optional */ }
+        return json({ error: 'upstream', status: upstream.status, ...(rate ? { rate } : {}), ...(code ? { code } : {}), ...(param ? { param } : {}) },
+            upstream.status === 429 ? 429 : upstream.status >= 500 ? 502 : upstream.status);
     }
     return new Response(upstream.body, { status: 200, headers: {
         'content-type': upstream.headers.get('content-type') || 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
