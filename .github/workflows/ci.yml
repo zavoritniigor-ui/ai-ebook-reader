@@ -352,6 +352,7 @@ jobs:
           python3 -u tests/tts_lang_voice_mismatch_browser.py
           python3 -u tests/tts_first_tap_browser.py
           python3 -u tests/tts_recovery_browser.py
+          python3 -u tests/tts_self_test_browser.py
           python3 -u tests/diagnostics_browser.py
 
           echo "Running offline_translation_browser.py (downloads ~50 MB of Mozilla models once)..."

@@ -105,6 +105,8 @@ const I18N_ES = {
     aiKeyInvalid: '{provider}: la clave contiene caracteres no válidos (espacios dentro, puntos o símbolos como •). Vuelve a pegar la clave completa.',
     practiceTab: 'Práctica', tRestorePractice: 'Restaurar el espacio de Práctica', bookLangLabel: '📖 Idioma del libro', bookLangAuto: 'Automático',
     diagTitle: '🩺 Diagnóstico de sonido y micrófono', diagHint: 'Si se fue el sonido o el dictado duplica palabras: reproduce primero el problema, luego pulsa el botón y pega el texto al desarrollador. Las claves de IA nunca se incluyen.', diagCopy: '📋 Copiar diagnóstico', diagCopied: 'Copiado. Pégalo al desarrollador.', diagCopyManual: 'No se pudo copiar automáticamente: el texto está seleccionado abajo, cópialo a mano.',
+    ttsTestRun: '🔊 Probar la voz', ttsTestPlaying: 'Suena la frase {n} de {total}… escucha.', ttsTestAnswer: 'Marca qué frases oíste y luego pulsa «📋 Copiar diagnóstico».',
+    ttsTestHeard: 'la oí', ttsTestNotHeard: 'no la oí', ttsTestSystem: 'voz del sistema', ttsTestNoVoice: 'sin voz',
     ttsNoSound: 'La voz no arranca. Revisa el volumen multimedia y «Texto a voz» en los ajustes de Android (motor de Google, idioma instalado).',
     noVoiceForLang: 'Este dispositivo no tiene voz para «{lang}». Instala una en los ajustes de texto a voz del sistema.',
     statsKnownSelf: 'Sabías solo', statsTranslated: 'Consultadas', statsKnownOf: '{a} de {b} palabras', statsOf: '{a} de {b}',

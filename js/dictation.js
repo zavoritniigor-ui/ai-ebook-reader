@@ -282,7 +282,8 @@ function buildDiagnosticsReport() {
             voices: typeof voices !== 'undefined' ? voices.length : 0,
             voiceList: (typeof voices !== 'undefined' ? voices : []).slice(0, 80).map(v => [v.lang, v.name, v.localService ? 'local' : 'net', v.default ? 'default' : ''].join(' | ')),
             chosenVoices: state.selectedVoiceURIByLang, speakSide: state.speakSide, readingAloud: typeof isSpeakingGlobal !== 'undefined' ? isSpeakingGlobal : null,
-            trace: typeof ttsTrace !== 'undefined' ? ttsTrace : []
+            trace: typeof ttsTrace !== 'undefined' ? ttsTrace : [],
+            selfTest: ttsSelfTest   // «🔊 Перевірити озвучення»: what each test phrase did and whether the reader heard it
         },
         dictation: {
             supported: !!SpeechRecognitionCtor, secure: micSecureOk, singleUtterancePerSession: dictationSingleUtterance,
@@ -309,12 +310,106 @@ function buildDiagnosticsBox() {
             status.textContent = t('diagCopyManual'); area.hidden = false; area.focus(); area.select();
         }
     });
-    box.append(h, hint, btn, status, area);
+    box.append(h, hint, buildTtsSelfTestUI(), btn, status, area);
     content.append(box);
     applyI18n();
 }
+
+// ========== 🔊 ПЕРЕВІРКА ОЗВУЧЕННЯ (у діагностиці) ==========
+// The trace alone cannot say what the reader HEARD: the engine can report start → end while the phone stays silent. Three
+// phrases are spoken one after another and the reader answers ✅ / ❌ for each; the answers and what the engine did go into
+// the 📋 report (speech.selfTest): 1) the book's language, the voice the app picks; 2) the translation language, the voice the
+// app picks; 3) the translation language WITHOUT choosing a voice, straight to the system engine (no app code in between) --
+// so «2 silent, 3 heard» points at the chosen voice, «all silent» at the phone (media volume, Text-to-speech engine).
+const TTS_SELF_TEST_TEXT = { fr: 'Bonjour, ceci est un test du son.', en: 'Hello, this is a sound test.', uk: 'Привіт, це перевірка звуку.',
+    ru: 'Привет, это проверка звука.', de: 'Hallo, das ist ein Tontest.', es: 'Hola, esto es una prueba de sonido.', it: 'Ciao, questa è una prova del suono.',
+    pl: 'Cześć, to jest test dźwięku.', zh: '你好，这是声音测试。', ko: '안녕하세요, 소리 테스트입니다.', hi: 'नमस्ते, यह आवाज़ की जाँच है।', ga: 'Dia duit, is tástáil fuaime í seo.' };
+let ttsSelfTest = null;
+function ttsSelfTestLangs() {
+    const book = (typeof explicitBookLang === 'function' && explicitBookLang()) || state.sourceLang || 'fr';
+    return { book: String(book).slice(0, 2).toLowerCase(), tr: state.targetLang || 'uk' };
+}
+const ttsVoiceInfo = v => v ? { name: v.name, lang: v.lang, local: v.localService, uri: v.voiceURI } : null;
+// One phrase through the app's own path (speakInLang: chosen voice, retry/watchdog) -- or, `system`, a bare utterance with only
+// a language. Resolves with what the engine reported; never longer than `limitMs`.
+function ttsSelfTestPhrase(code, system, limitMs = 15000) {
+    const text = TTS_SELF_TEST_TEXT[code] || TTS_SELF_TEST_TEXT.en;
+    const r = { lang: code, how: system ? 'system-default-voice' : 'app-voice', text, events: [], startMs: null, ms: null, heard: null };
+    const t0 = performance.now(), mark = ev => r.events.push({ ev, at: Math.round(performance.now() - t0) });
+    return new Promise(resolve => {
+        let done = false, poll = 0;
+        const finish = why => { if (done) return; done = true; clearTimeout(limit); clearInterval(poll); for (const x of r.events) delete x.t; if (why) mark(why); r.ms = Math.round(performance.now() - t0); resolve(r); };
+        const limit = setTimeout(() => finish('timeout'), limitMs);
+        if (!ttsSynth) { finish('no-speech-synthesis'); return; }
+        if (system) {
+            r.voice = null;
+            try { ttsSynth.cancel(); } catch (e) {}
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = (typeof LANG_TAGS !== 'undefined' && LANG_TAGS[code]) || code;
+            u.onstart = () => { r.startMs = Math.round(performance.now() - t0); mark('start'); };
+            u.onend = () => finish('end');
+            u.onerror = e => finish('error:' + (e && e.error));
+            ttsSelfTestPhrase.live = u;   // held until it ends (Chrome may collect an utterance only the engine holds)
+            setTimeout(() => { try { ttsSynth.speak(u); mark('speak'); } catch (e) { finish('speak-threw'); } }, 300);
+            return;
+        }
+        r.voice = ttsVoiceInfo(voices.find(v => v.voiceURI === state.selectedVoiceURIByLang[code]) || pickBestVoice(code, voices));
+        const from = ttsTrace.length;
+        poll = setInterval(() => {
+            for (const e of ttsTrace.slice(from)) if (e.text && text.startsWith(e.text) && !r.events.some(x => x.ev === e.event && x.t === e.t)) {
+                r.events.push({ ev: e.event, at: Math.round(e.t - t0), t: e.t });
+                if (e.event === 'start' && r.startMs === null) r.startMs = Math.round(e.t - t0);
+            }
+        }, 100);
+        speakInLang(text, code, 'diag', 0, () => { setTimeout(() => finish(''), 150); });   // after the poll saw the last trace events
+    });
+}
+function buildTtsSelfTestUI() {
+    const wrap = document.createElement('div'); wrap.id = 'tts-test';
+    const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'tts-test-run'; btn.className = 'btn-secondary'; btn.dataset.i18n = 'ttsTestRun';
+    const rows = document.createElement('div'); rows.id = 'tts-test-rows';
+    const note = document.createElement('p'); note.id = 'tts-test-status'; note.className = 'key-hint'; note.setAttribute('role', 'status');
+    btn.addEventListener('click', async () => {
+        btn.disabled = true; rows.replaceChildren();
+        const langs = ttsSelfTestLangs();
+        ttsSelfTest = { at: new Date().toISOString(), voices: typeof voices !== 'undefined' ? voices.length : 0,
+            engine: ttsSynth ? { speaking: ttsSynth.speaking, pending: ttsSynth.pending, paused: ttsSynth.paused } : 'none', phrases: [] };
+        const plan = [[langs.book, false], [langs.tr, false], [langs.tr, true]];
+        for (let k = 0; k < plan.length; k++) {
+            note.textContent = t('ttsTestPlaying').replace('{n}', k + 1).replace('{total}', plan.length);
+            const r = await ttsSelfTestPhrase(plan[k][0], plan[k][1]);
+            ttsSelfTest.phrases.push(r);
+            rows.append(ttsSelfTestRow(k, r));
+            await new Promise(res => setTimeout(res, 500));
+        }
+        note.textContent = t('ttsTestAnswer');
+        btn.disabled = false;
+    });
+    wrap.append(btn, note, rows);
+    return wrap;
+}
+function ttsSelfTestRow(k, r) {
+    const row = document.createElement('div'); row.className = 'tts-test-row';
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap;';
+    const label = document.createElement('span'); label.style.flex = '1 1 160px';
+    const name = document.querySelector(`#target-lang option[value="${r.lang}"]`)?.textContent || r.lang;
+    label.textContent = `${k + 1}. ${name} · ${r.how === 'system-default-voice' ? t('ttsTestSystem') : (r.voice ? r.voice.name : t('ttsTestNoVoice'))}`;
+    const answer = (heard, b) => { r.heard = heard; for (const x of row.querySelectorAll('button')) { x.setAttribute('aria-pressed', String(x === b)); x.style.outline = x === b ? '3px solid var(--focus-color)' : ''; } };
+    const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'btn-secondary'; yes.textContent = '✅ ' + t('ttsTestHeard');
+    const no = document.createElement('button'); no.type = 'button'; no.className = 'btn-secondary'; no.textContent = '❌ ' + t('ttsTestNotHeard');
+    yes.addEventListener('click', () => answer(true, yes)); no.addEventListener('click', () => answer(false, no));
+    row.append(label, yes, no);
+    return row;
+}
 window.addEventListener('load', buildDiagnosticsBox, { once: true });
 Object.assign(I18N, {
+    ttsTestRun: { uk: '🔊 Перевірити озвучення', en: '🔊 Test the voice', fr: '🔊 Tester la voix', ru: '🔊 Проверить озвучку', zh: '🔊 测试朗读', ko: '🔊 음성 테스트', hi: '🔊 आवाज़ जाँचें', ga: '🔊 Tástáil an guth' },
+    ttsTestPlaying: { uk: 'Звучить фраза {n} з {total}… слухайте.', en: 'Playing phrase {n} of {total}… listen.', fr: 'Phrase {n} sur {total}… écoutez.', ru: 'Звучит фраза {n} из {total}… слушайте.', zh: '正在播放第 {n}/{total} 句…请听。', ko: '{total}개 중 {n}번째 문장 재생 중… 들어 보세요.', hi: 'वाक्य {n} / {total} चल रहा है… सुनें।', ga: 'Abairt {n} as {total}… éist.' },
+    ttsTestAnswer: { uk: 'Позначте, які фрази ви почули, потім натисніть «📋 Скопіювати діагностику».', en: 'Mark which phrases you heard, then press «📋 Copy diagnostics».', fr: 'Indiquez les phrases entendues, puis appuyez sur « 📋 Copier le diagnostic ».', ru: 'Отметьте, какие фразы вы услышали, затем нажмите «📋 Скопировать диагностику».', zh: '标记你听到的句子，然后点击“📋 复制诊断信息”。', ko: '들린 문장을 표시한 뒤 «📋 진단 정보 복사»를 누르세요.', hi: 'जो वाक्य सुने उन्हें चिह्नित करें, फिर «📋 जाँच जानकारी कॉपी करें» दबाएँ।', ga: 'Marcáil na habairtí a chuala tú, ansin brúigh «📋 Cóipeáil an diagnóisic».' },
+    ttsTestHeard: { uk: 'чув', en: 'heard', fr: 'entendu', ru: 'слышал', zh: '听到了', ko: '들림', hi: 'सुना', ga: 'chuala' },
+    ttsTestNotHeard: { uk: 'не чув', en: 'not heard', fr: 'pas entendu', ru: 'не слышал', zh: '没听到', ko: '안 들림', hi: 'नहीं सुना', ga: 'níor chuala' },
+    ttsTestSystem: { uk: 'голос системи', en: 'system voice', fr: 'voix du système', ru: 'голос системы', zh: '系统语音', ko: '시스템 음성', hi: 'सिस्टम आवाज़', ga: 'guth an chórais' },
+    ttsTestNoVoice: { uk: 'голосу немає', en: 'no voice', fr: 'pas de voix', ru: 'голоса нет', zh: '没有语音', ko: '음성 없음', hi: 'आवाज़ नहीं', ga: 'gan ghuth' },
     diagTitle: { uk: '🩺 Діагностика звуку й мікрофона', en: '🩺 Sound and microphone diagnostics', fr: '🩺 Diagnostic du son et du micro', ru: '🩺 Диагностика звука и микрофона', zh: '🩺 声音和麦克风诊断', ko: '🩺 소리 및 마이크 진단', hi: '🩺 आवाज़ और माइक्रोफ़ोन जाँच', ga: '🩺 Diagnóisic fuaime agus micreafóin' },
     diagHint: { uk: 'Якщо пропав звук або диктування дублює слова: спершу повторіть проблему, потім натисніть кнопку й вставте текст у чат розробнику. Ключі AI сюди не потрапляють.', en: 'If the sound is gone or dictation doubles words: reproduce the problem first, then press the button and paste the text to the developer. AI keys are never included.', fr: 'Si le son a disparu ou si la dictée double les mots : reproduisez d’abord le problème, puis appuyez sur le bouton et collez le texte au développeur. Les clés IA ne sont jamais incluses.', ru: 'Если пропал звук или диктовка дублирует слова: сначала повторите проблему, затем нажмите кнопку и вставьте текст в чат разработчику. Ключи AI сюда не попадают.', zh: '如果声音消失或听写重复词语：请先重现问题，然后点击按钮并把文本粘贴给开发者。不包含 AI 密钥。', ko: '소리가 사라졌거나 받아쓰기가 단어를 중복하면: 먼저 문제를 재현한 다음 버튼을 누르고 텍스트를 개발자에게 붙여 넣으세요. AI 키는 포함되지 않습니다.', hi: 'अगर आवाज़ चली गई है या डिक्टेशन शब्द दोहराता है: पहले समस्या दोहराएँ, फिर बटन दबाएँ और टेक्स्ट डेवलपर को चिपकाएँ। AI कुंजियाँ शामिल नहीं होतीं।', ga: 'Má d’imigh an fhuaim nó má dhúblálann an deachtú focail: atáirg an fhadhb ar dtús, ansin brúigh an cnaipe agus greamaigh an téacs don fhorbróir. Ní chuirtear eochracha AI isteach riamh.' },
     diagCopy: { uk: '📋 Скопіювати діагностику', en: '📋 Copy diagnostics', fr: '📋 Copier le diagnostic', ru: '📋 Скопировать диагностику', zh: '📋 复制诊断信息', ko: '📋 진단 정보 복사', hi: '📋 जाँच जानकारी कॉपी करें', ga: '📋 Cóipeáil an diagnóisic' },
