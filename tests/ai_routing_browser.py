@@ -102,7 +102,8 @@ c.js("openBookFile(new File([Uint8Array.from(atob(%s),ch=>ch.charCodeAt(0))],'le
 c.wait("els.pages.textContent.includes('pomme verte')", timeout=20); time.sleep(0.8)
 if not c.js('state.translateMode'):
     c.js('els.translateBtn.click()'); time.sleep(0.3)
-c.js("""(() => { Object.defineProperty(navigator, 'onLine', {configurable: true, get: () => true}); state.targetLang = 'uk'; state.openaiKey = 'sk-test'; state.groqKey = 'gsk-test'; state.activeAiProvider = 'gemini'; state.aiRouting = 'auto';
+c.js("""(() => { localStorage.setItem('reader_page_translate', '0');   /* this suite is about the routing of the tapped word itself, not about the page-ahead translation (tests/page_translation_browser.py) */
+  Object.defineProperty(navigator, 'onLine', {configurable: true, get: () => true}); state.targetLang = 'uk'; state.openaiKey = 'sk-test'; state.groqKey = 'gsk-test'; state.activeAiProvider = 'gemini'; state.aiRouting = 'auto';
   window.__local = { created: 0, activeAtCreate: null, translated: [] };
   window.Translator = { availability: async () => 'downloadable', create: async (opts) => { __local.created++; __local.activeAtCreate = navigator.userActivation.isActive;
       return { translate: async (t) => { __local.translated.push(t); await new Promise(r => setTimeout(r, 30)); return 'ЛОКАЛЬНО ' + t; } }; } };

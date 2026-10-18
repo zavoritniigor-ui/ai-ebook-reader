@@ -142,7 +142,9 @@ const I18N_ES = {
     offUnsupported: 'Este navegador no puede ejecutar el traductor sin conexión (hace falta un Chrome reciente con WebAssembly).', offNoRoute: 'No hay paquete sin conexión para este par de idiomas.',
     offInstalled: 'Instalado:', offRemove: '🗑 Eliminar', offTest: '🧪 Probar', offTestResult: '«{src}» → «{out}» · {sec} s', offTestFail: 'No se pudo traducir en este dispositivo: {why}',
     offNeedsPack: 'Para traducir sin internet, descarga un paquete de idioma: Ajustes (🔑) → 📴 Traducción sin conexión.', offUnitMb: 'MB',
-    aiNoteGroqLimit: 'límite de Groq'
+    aiNoteGroqLimit: 'límite de Groq',
+    pageTrLabel: 'Traducir la página por adelantado (una sola petición a Groq)',
+    pageTrHint: 'El primer toque en una página la traduce entera en una sola petición; después el significado de sus palabras y la traducción de sus frases salen de ahí al instante y apenas gastan el límite de Groq. La traducción completa nunca se muestra: solo lo que tocas (marca 📄).'
 };
 for (const [key, value] of Object.entries(I18N_ES)) if (I18N[key]) I18N[key].es = value;
 // El menú ya se pintó en main.js (antes de este archivo): con el español elegido se vuelve a pintar.

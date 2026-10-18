@@ -301,6 +301,12 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         if (myLookup !== state.lookupToken || !task.current()) return;
         if (stored) state.translationCache[cacheKey] = stored;
     }
+    // A page that was pre-translated in one request (js/page-translate.js) answers like a cached translation: no request, only what was touched is shown.
+    if (!state.translationCache[cacheKey] && lookupRoot === els.pages) {
+        const page = await pageTranslationFor(cleanText, contextSentence, isMultiWord, srcCode, targetLang);
+        if (myLookup !== state.lookupToken || !task.current()) return;
+        if (page) state.translationCache[cacheKey] = page.html;
+    }
     if (state.translationCache[cacheKey]) {
         const cached = state.translationCache[cacheKey];
         els.ttTranslation.innerHTML = typeof cached === 'string' ? cached : cached.html;

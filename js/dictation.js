@@ -249,6 +249,7 @@ function buildDiagnosticsReport() {
             startsOn: typeof aiProviderForTask === 'function' ? { translation: aiProviderForTask('translation'), grammar: aiProviderForTask('grammar_analysis'), breakdown: aiProviderForTask('sentence_structure'), ask: aiProviderForTask('ask') } : null,
             recent: typeof readerAiRequests === 'function' ? readerAiRequests().slice(-30) : []
         },
+        pageTranslation: typeof pageTrReport === 'function' ? pageTrReport() : null,   // js/page-translate.js: pages translated ahead, hits, last request
         offline: typeof offlineTrReport === 'function' ? offlineTrReport() : null,   // js/offline-translate.js: installed packs, why the engine failed, last speed
         speech: {
             engine: synth ? { speaking: synth.speaking, pending: synth.pending, paused: synth.paused } : 'none',

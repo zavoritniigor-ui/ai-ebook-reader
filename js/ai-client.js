@@ -34,6 +34,8 @@ const OPENAI_TASK_PROFILES = {
     practice_reading: { reasoning: 'low', max_output_tokens: 8000, stream: false },
     language_level: { reasoning: 'low', max_output_tokens: 800, stream: true },
     vision: { reasoning: 'low', max_output_tokens: 1200, stream: false },
+    // The whole visible page in ONE request (js/page-translate.js): sentence translations + a meaning for every word. Groq only (never repeated on OpenAI).
+    page_translation: { reasoning: 'low', max_output_tokens: 6000, stream: false },
     default: { reasoning: 'low', max_output_tokens: 4096, stream: false }
 };
 
@@ -580,7 +582,7 @@ async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, opt
         const other = provider === 'groq' ? 'openai' : provider === 'openai' ? 'groq' : null;
         const fallback = err.reason === 'http' && SHARED_FALLBACK_STATUS(Number(err.status))
             && aiEffectiveKey(provider) === SHARED_AI_KEY && other && aiEffectiveKey(other) === SHARED_AI_KEY;
-        if (!fallback) throw err;
+        if (!fallback || options.noFallback) throw err;   // noFallback: a caller that wants Groq or nothing (the page translation is too long and costly for OpenAI)
         // A refused key stays refused: later requests go straight to the other provider for this session.
         if (err.status === 401 || err.status === 403) sharedAiProviders[provider] = false;
         return requestAIOnce(prompt, dataUrl, signal, task, onDelta, Object.assign({}, options, { provider: other }));
