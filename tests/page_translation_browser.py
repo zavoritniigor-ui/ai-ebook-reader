@@ -272,6 +272,18 @@ c.js("pageTranslationFor('texte', 'Un autre texte, tout à fait différent.', fa
 ok('8n while one page is being translated no second page is requested', len(reqs('page')) == 1, reqs('page'))
 c.js("els.pages.innerHTML = __html; 1")
 
+# the model "shortens" a long answer (the T lines of the last sentences vanish): ONE follow-up for just those sentences completes the page
+fresh_app(); open_book()
+c.js("""__pageText = (text, lines) => lines.length > 6 ? text.split('\\n\\n').map(b => { const n = Number(b.split('\\n')[0]); return n >= 7 ? b.split('\\n').filter(l => !l.startsWith('T:')).join('\\n') : b; }).join('\\n\\n') : text; 1""")
+tap('enfants'); wait_text("/(⚡|🧠)/.test(els.ttTranslation.textContent)")
+check('8o a page answer that lost the translations of its last sentences is completed by ONE follow-up request for just those', "[...pageTr.pages.values()][0].status === 'ready' && pageTr.last.followUp > 0 && [...pageTr.pages.values()][0].items.every(i => i.t)", timeout=8)
+pages = reqs('page')
+ok('8p ... the follow-up carries only the missing sentences (numbered again from 1), not the page', len(pages) == 2 and pages[1]['prompt'].count('\n') < pages[0]['prompt'].count('\n') and 'Sentences:\n1. ' in pages[1]['prompt'], [p['prompt'].count('\n') for p in pages])
+c.js("els.ttCloseBtn.click(); 1")
+c.js("state.translationCache = {}; handleWordOrSelection(%s, 300, 300, null); 1" % json.dumps(SENTENCES[6]))
+text = wait_text("/📄/.test(els.ttTranslation.textContent)")
+ok('8q ... so a sentence whose translation first went missing is answered from the page', text.startswith('Речення ') and len(reqs()) == 2 + len(reqs('word')), text)
+
 # ---- 9. diagnostics, languages ---------------------------------------------------------------------------------------------------------
 fresh_app(); open_book()
 tap('enfants'); wait_text("/(⚡|🧠)/.test(els.ttTranslation.textContent)")
