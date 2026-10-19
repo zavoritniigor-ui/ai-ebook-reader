@@ -256,6 +256,7 @@ extraction — both are **settled**, not open questions:
 | `tests/menu_labels_browser.py` | Main-menu clarity: every header control has a name, the two language selects carry visible labels (`Переклад на` / `Мова меню`), group captions (`.group-caption`) show on phone and desktop but are hidden on tablets (header height stays bounded), no horizontal overflow at 390/820/1024/1366, and every new label exists in all 8 UI languages and relabels on language switch. |
 | `tests/grammar_rules_browser.py` | Rules panel acceptance with gold/bad model replies: catalogue completeness and well-formedness, topic menu and filter, visible-text-only search (text below the fold is not sent), exact in-text highlights without rewrapping, match list, cache vs forced search, detail card, theory-based explanation and custom question, a real tap on a highlight (opens its card, no word tooltip) vs an ordinary word (tooltip), bad replies (invented text, malformed, wrong language, overlaps/multi-line/over-long), failing request, page change clearing highlights, Back-button overlay, all strings in 8 UI languages. |
 | `tests/rules_practice_browser.py` | Verb endings coloured in the Grammar grid and the Rules présent table (regular verbs only; irregular verbs and pronouns never split); Rules → Practice for a topic, a found example (prompt quotes the sentence, variations first) and a whole section; rule targets open their note under the sentence; Regenerate keeps the rule; a worksheet-shaped rule reply is rejected. |
+| `tests/verb_endings_browser.py` | Verb endings in every conjugation table: 21 gold segmentations (regular, spelling-change, irregular, compound; with and without a tense label), ≥ 95% of the forms of 33 common verbs coloured, every verb column of every French Rules table, the Grammar grid and its derived stem \| ending line, and the ending colour vs the stem / accent / frame / borders / WCAG AA in light, dark and sepia. |
 | `tests/sentence_structure_languages_browser.py` | The tooltip breakdown across all 8 languages (uk, en, fr, ru, zh, ko, hi, ga) with gold replies: language detected per sentence, each part painted on exactly its own characters (unspaced CJK, Korean particles, Hindi postpositions, Irish apostrophes), legend, untouched page text, and a deep breakdown for zh/ko. Mechanics only — linguistic quality needs a live model. |
 | `tests/sentence_structure_text_browser.py` | The tooltip "🧩 Розбір" flow on a real word tap: button placement/fit (desktop), validation gate, legend chips per validated part (invented text ignored), exact in-text highlights without rewrapping, time-marker kind, deep breakdown of one part (one call, cached, validated words only), highlights removed on close, same-sentence cache hit, failure note with nothing painted. |
 | `tests/ai_routing_browser.py` | AI task routing and the instant local translation layer: `aiProviderForTask`/`aiBackupProvider` matrix (every task → Groq first, OpenAI as the backup; without a Groq key deep tasks → OpenAI, the rest → the ACTIVE provider; routing off → active only, no backup), checked on the real HTTP layer with a mocked fetch incl. Groq network / HTTP / cut-off failures answered by OpenAI; the key-dialog checkbox (default on, persisted, 8 languages); for a tapped word the on-device `Translator` result shows first (⌂, model created inside the tap's user activation) and the Groq answer replaces it (⚡); OpenAI is asked only when Groq fails (🧠); sentences never start the local translator; no Translator API → AI only. |
@@ -612,13 +613,30 @@ actually guard against (still zero exercise/answer/check controls).
 
 ## Rules → Practice, and verb endings in conjugation tables
 
-**Verb endings** are coloured (`.verb-ending`, theme token `--verb-ending`) in the Grammar conjugation grid
-(`renderGrammarFocusDetail`) and in the Rules detail tables (`renderRuleDetailsText`; a column's verb is the first word of
-its header with a regular stem, `ruleColumnLemma`). One helper set in `grammar-svo.js`: `conjugationStem(lemma, lang)` =
-the lemma minus its infinitive ending (`verb.infinitiveEndings` in `GRAMMAR_LANG_CONFIG`, French only; a language without
-it uses the lemma itself), null for an irregular verb (`verb.irregularRe`) or a language without `verb.endings`;
-`appendConjugatedForm` splits a word only when it starts with that stem and the rest is a listed ending — subject
-pronouns are never split. So parl|ons, fin|issons, work|ed; never s|uis, never appel|le.
+**Verb endings** are coloured (`.verb-ending`, theme token `--verb-ending`: orange / bright orange / teal in light / dark /
+sepia, chosen to be far from the accent, the frames and the stem colour and AA on the highlighted row) in the Grammar
+conjugation grid (`renderGrammarFocusDetail`) and in the Rules detail tables (`buildRuleTable`). Owner, twice on 2026-10-19:
+«endings must necessarily have a different colour» — a first version coloured only forms that start with the lemma's stem
+(28% of the forms of 33 common verbs; faire, voir, prendre, venir… nothing), the current one 98%.
+
+`verbEndingRanges(cells, lemma, lang, label)` (`grammar-svo.js`) works on the whole paradigm of ONE tense (cells aligned with
+`verb.persons`, null where absent) and returns per cell the `[from, to)` ranges to colour; `appendMarkedForm` paints them,
+`verbEndingRangesByPerson` takes the grid's `{personId: form}` (abbreviated keys resolved by `resolveFormSlot`). French is
+data-driven (`GRAMMAR_LANG_CONFIG.fr.verb.endingRules`): the standard personal endings per tense and person (présent and
+passé simple per group 1 / 2 / 3, imparfait, futur, conditionnel, subjonctif, impératif) — the LONGEST one a form really ends
+with is marked, so irregular verbs are coloured wherever they follow the pattern (fer|ai, ét|ais, f|ont, fai|s) and plain
+where they do not (suis, sommes); the verb's group is read from the forms (the set that fits most forms, then the one that marks
+more letters, so fin|issons beats the -ons every present matches). Only the endings of two letters or more count for the
+present of être / avoir / aller (`irregularPresentRe`: av|ons, all|ez, v|ont — a lone -s or -t belongs to the irregular form).
+A compound tense marks the past participle after the auxiliary (`participleEndings`: parl|é, pr|is, fa|it, e|u, all|ée).
+The tense comes from the label (`paradigmLabel` / `features.tense` / the Rules topic id; a compound TOPIC wins over the
+auxiliary's tense named in a column header) through `endingRules.tenseKeys`; without a label the tense with most matches is
+taken and fewer than 60% matched forms mark nothing. A language with `verb.endings` but no rules (English) marks what follows the
+lemma's stem (`stemEndingRanges`: work|ed, go|es, be|ing). The same split gives the tapped form its «stem | ending» line
+when the model sent no `stemBreakdown` (fais|ons). Rules tables: `ruleColumnRanges` reads the verb from the column header,
+the person from the row (position when all six persons are listed, else the row label; a second row of the same person —
+elle after il — gets the same ending). Tests: `tests/verb_endings_browser.py` (gold segmentations, coverage ≥ 95%, every
+verb column of every table, colours in the three themes).
 
 **Rules → Practice** (`startRulePractice` in `grammar-rules.js`): a Practice READING (nothing to answer) for one topic
 (topic view), every topic of a section (button under each section of the tree) or a topic plus the example found in the

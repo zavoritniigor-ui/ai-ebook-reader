@@ -297,6 +297,30 @@ const GRAMMAR_LANG_CONFIG = {
             // What an infinitive ends with: parl|er, fin|ir, vend|re. The rest is the stem whose endings a
             // conjugation table colours (conjugationStem); a language without this list uses the lemma itself.
             infinitiveEndings: ['oir', 'er', 'ir', 're'],
+            // Which letters of a conjugated form are its ENDING (coloured .verb-ending in the conjugation tables; verbEndingRanges in grammar-svo.js).
+            // Personal endings are listed in the order je tu il nous vous ils; the LONGEST one a form really ends with is marked, so an irregular verb
+            // gets its ending wherever it follows the pattern (fer|ai, ét|ais, f|ont) and nothing where it does not (sommes). Présent and passé simple
+            // depend on the verb's group (1 = -er, 2 = finir, 3 = the rest), which is read from the forms themselves. tenseKeys name a tense from its
+            // label or id (accent-stripped); 'compound' tenses mark the past participle after the auxiliary instead.
+            endingRules: {
+                tenseKeys: [['passe_simple', /passe[- ]simple/], ['compound', /compose|plus[- ]?que[- ]?parfait|anterieur|(?:conditionnel|subjonctif)[- ]passe/],
+                    ['imparfait', /imparfait/], ['futur', /futur/], ['conditionnel', /conditionnel/], ['subjonctif', /subjonctif/], ['imperatif', /imperatif/], ['present', /present/]],
+                tenses: {
+                    present: { 1: [['e'], ['es'], ['e'], ['ons'], ['ez'], ['ent']], 2: [['is'], ['is'], ['it'], ['issons'], ['issez'], ['issent']],
+                               3: [['s', 'x'], ['s', 'x'], ['t'], ['ons'], ['ez', 'tes'], ['ent', 'ont']] },
+                    passe_simple: { 1: [['ai'], ['as'], ['a'], ['âmes'], ['âtes'], ['èrent']], 2: [['is'], ['is'], ['it'], ['îmes'], ['îtes'], ['irent']],
+                                    3: [['us'], ['us'], ['ut'], ['ûmes'], ['ûtes'], ['urent']] },
+                    imparfait: [['ais'], ['ais'], ['ait'], ['ions'], ['iez'], ['aient']],
+                    futur: [['ai'], ['as'], ['a'], ['ons'], ['ez'], ['ont']],
+                    conditionnel: [['ais'], ['ais'], ['ait'], ['ions'], ['iez'], ['aient']],
+                    subjonctif: [['e'], ['es'], ['e'], ['ions'], ['iez'], ['ent']],
+                    imperatif: { 1: [null, ['e'], null, ['ons'], ['ez'], null], 2: [null, ['is'], null, ['issons'], ['issez'], null],
+                                 3: [null, ['s', 'x'], null, ['ons'], ['ez', 'tes'], null] }
+                },
+                irregularPresentRe: /^(?:être|avoir|aller)$/u,   // the present of these follows the pattern only from two-letter endings on (avons, allez, vont); suis, vais, ai have none
+                // A past participle's ending, the longest that fits: parl|é, fin|i, vend|u, pr|is, ouv|ert, fa|it, e|u, d|û.
+                participleEndings: ['ertes', 'erte', 'erts', 'ert', 'ites', 'ite', 'its', 'it', 'ées', 'ée', 'és', 'é', 'ies', 'ie', 'is', 'i', 'ues', 'ue', 'us', 'u', 'û']
+            },
             // Irregular verbs (and their prefixed derivatives) have no honest "stem + ending"
             // split — nous sommes, ils vont, il fait — so any split is discarded.
             irregularRe: /(?:^|[\s'’])(?:être|avoir|aller)$|(?:aire|dire|voir|loir|seoir|venir|tenir|mettre|prendre|duire|struire|cevoir|courir|mourir|vivre|suivre|rire|crire|lire|croire|boire|aître|aitre|aindre|eindre|oindre|vaincre|battre|partir|sortir|dormir|servir|sentir|mentir|cueillir|frir|vrir|clure|luire|nuire|coudre|moudre|soudre|fuir|vêtir|quérir|bouillir|saillir|haïr)$/u,
