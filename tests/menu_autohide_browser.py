@@ -1,5 +1,6 @@
-"""The top menu closes by itself a few seconds after the last interaction; interaction postpones it; it never
-closes with no book open, while a header field has focus, or when the user switched it off. No network."""
+"""The menu closes by itself 10 s after the last interaction (each row now has a description to read; it was 4 s for the old
+toolbar); interaction postpones it; it never closes with no book open, while a menu field has focus, or when the user switched it
+off. No network."""
 import os, time
 from browser_cdp import CDP
 
@@ -24,22 +25,22 @@ def opened():
 is_open = "isFullMenuOpen()"
 opened()
 check('1 menu is open right after opening', c.js(is_open))
-time.sleep(2.5)
+time.sleep(6)
 c.js("document.getElementById('app-header').dispatchEvent(new Event('pointermove'))")
-time.sleep(2.5)
-check('2 interaction at 2.5s postponed the close (still open at 5s)', c.js(is_open))
-time.sleep(2.5)
-check('3 closes ~4s after the last interaction', c.js("!isFullMenuOpen()"))
+time.sleep(6)
+check('2 interaction at 6s postponed the close (still open at 12s)', c.js(is_open))
+time.sleep(5)
+check('3 closes ~10s after the last interaction', c.js("!isFullMenuOpen()"))
 
-opened(); c.js("document.getElementById('ui-lang').focus(); 1"); time.sleep(5)
-check('4 a focused header select keeps the menu open', c.js(is_open))
-c.js("document.activeElement.blur(); 1"); time.sleep(5)
+opened(); c.js("document.getElementById('ui-lang').focus(); 1"); time.sleep(11)
+check('4 a focused menu select keeps the menu open', c.js(is_open))
+c.js("document.activeElement.blur(); 1"); time.sleep(11)
 check('5 closes after the select loses focus', c.js("!isFullMenuOpen()"))
 
-c.js("state.format = null; openFullMenu(); document.activeElement.blur(); 1"); time.sleep(5)
+c.js("state.format = null; openFullMenu(); document.activeElement.blur(); 1"); time.sleep(11)
 check('6 no book open: the menu stays', c.js(is_open))
 
-c.js("localStorage.setItem('reader_menu_autohide','off'); state.format='txt'; closeFullMenu(); openFullMenu(); document.activeElement.blur(); 1"); time.sleep(5)
+c.js("localStorage.setItem('reader_menu_autohide','off'); state.format='txt'; closeFullMenu(); openFullMenu(); document.activeElement.blur(); 1"); time.sleep(11)
 check('7 switched off: the menu stays', c.js(is_open))
 c.js("localStorage.removeItem('reader_menu_autohide'); 1")
 print('ALL PASS')

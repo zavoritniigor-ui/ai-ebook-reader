@@ -466,7 +466,6 @@ document.getElementById('book-lang-select')?.addEventListener('change', (e) => {
     if (typeof isSpeakingGlobal !== 'undefined' && isSpeakingGlobal) stopGlobalTTS();
     if (state.format && state.format !== 'pdf') updateSourceLang(); else state.sourceLang = null;
     state.translationCache = {};
-    if (typeof restoreVoiceSelectValue === 'function') restoreVoiceSelectValue();
     syncBookLangSelect();
 });
 // Зразок розділу для визначення мови — не лише його початок: у книжках бібліотеки розділ часто починається англійським

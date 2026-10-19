@@ -81,20 +81,13 @@ document.addEventListener('pointerdown', (e) => {
     }
 });
 
-// The header wraps to two toolbar rows on narrower desktop/tablet widths (~97px), but .workspace used a fixed
-// 58px offset, so the header covered the top of the book and the sidebar's Thumbnails/Contents tabs. Keep the
-// workspace offset equal to the header's real height (phones keep their own collapsible-menu offset).
-const appHeaderEl = document.getElementById('app-header');
-if (appHeaderEl && typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(() => {
-        document.documentElement.style.setProperty('--app-header-h', `${Math.ceil(appHeaderEl.getBoundingClientRect().height)}px`);
-    }).observe(appHeaderEl);
-}
+// The main menu is a side drawer over the book (index.html): it never pushes the page down, so --app-header-h stays 0 (CSS :root).
 
 // Повноекранний режим на телефоні/планшеті: після відкриття книги ховаємо header —
 // футер на мобільному вже прихований за замовчуванням через CSS.
+// The menu is a drawer over the book on every screen now: it closes when a book opens, on a computer too.
 function enterMobileFullScreenIfNeeded() {
-    if (window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
+    document.body.classList.add('immersive-mode');
 }
 // Підказка зникає сама приблизно за 1,8 с — щоб можна було читати далі, не тапаючи
 // спеціально в інше місце. Таймер зупиняється, поки палець/курсор на самій підказці,

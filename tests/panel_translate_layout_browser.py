@@ -1,5 +1,5 @@
-"""Panels + breakdown tooltip UX (tablet portrait): the Grammar / Ask AI panels start BELOW the main menu (never over its
-buttons); in the breakdown popup the legend sits above the translation, which keeps the popup's full width and scrolls with it;
+"""Panels + breakdown tooltip UX (tablet portrait): the Grammar / Ask AI panels fit the screen (the main menu is a side drawer over
+the book since 2026-10-18, no bar on top to keep clear); in the breakdown popup the legend sits above the translation, which keeps the popup's full width and scrolls with it;
 selecting a word, sentence or paragraph INSIDE the Grammar, Ask AI and Practice panels opens the same translation popup as in the
 book (touch-native selection fires no click, so it is driven by selectionchange); a tap on a word of a Practice sentence does too,
 while a Practice target still goes to Grammar. Only the translation call is spied. No network."""
@@ -28,13 +28,13 @@ c.js("localStorage.clear(); document.getElementById('sw-update-banner')?.remove(
 c.js("""(() => { window.__lookups = []; const orig = handleWordOrSelection; handleWordOrSelection = (text, ...rest) => { __lookups.push(text); return orig(text, ...rest); };
   state.targetLang = 'uk'; return 1; })()""")
 
-# ---- 1. panels start below the main menu --------------------------------------------------------------------------------
-check("1 Grammar panel starts below the main menu (does not cover its buttons)",
-      """(() => { els.grammarPanel.classList.add('expanded'); const hb = document.getElementById('app-header').getBoundingClientRect().bottom; const r = els.grammarPanel.getBoundingClientRect();
-         return r.top >= hb - 1 && r.bottom <= innerHeight + 1 || JSON.stringify({top: r.top, hb, bottom: r.bottom, ih: innerHeight}); })()""", timeout=3)
+# ---- 1. panels fit the screen (the main menu is a drawer over the book: no bar on top to keep clear any more) -----------------
+check("1 Grammar panel fits the screen height",
+      """(() => { closeFullMenu(); els.grammarPanel.classList.add('expanded'); const r = els.grammarPanel.getBoundingClientRect();
+         return r.top >= 0 && r.bottom <= innerHeight + 1 || JSON.stringify({top: r.top, bottom: r.bottom, ih: innerHeight}); })()""", timeout=3)
 c.js("els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.add('expanded'); 1"); time.sleep(0.6)
 check("1b Ask AI panel too",
-      "(() => { const hb = document.getElementById('app-header').getBoundingClientRect().bottom; const r = els.askPanel.getBoundingClientRect(); return r.top >= hb - 1 && r.bottom <= innerHeight + 1 || JSON.stringify({top: r.top, hb}); })()", timeout=3)
+      "(() => { const r = els.askPanel.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1 || JSON.stringify({top: r.top, bottom: r.bottom}); })()", timeout=3)
 c.js("els.askPanel.classList.remove('expanded'); 1")
 
 # ---- 2. breakdown popup: legend above the translation, translation keeps the full width, body scrolls ---------------------
@@ -83,7 +83,9 @@ c.js("els.tooltip.style.display = 'none'; els.askPanel.classList.remove('expande
 
 # ---- 5. Practice ------------------------------------------------------------------------------------------------------
 c.js("""(() => { const panel = getPracticePanel(); panel.hidden = false; panel.classList.add('expanded'); panel.dataset.mode = 'expanded';
-  const row = document.createElement('div'); row.className = 'practice-sentence'; row.id = 'p-row';
+  // The real panel starts with its header, which keeps the top-left corner free for the floating ☰ button; this bare test row
+  // gets the same room (the menu used to push every panel below a top bar until it became a side drawer, 2026-10-18).
+  const row = document.createElement('div'); row.className = 'practice-sentence'; row.id = 'p-row'; row.style.marginTop = '64px';
   row.innerHTML = '<span class="practice-sentence-text">Le <span id="p-word">sentier</span> longe un <button type="button" class="practice-target practice-target-adjective" id="p-target">long</button> chemin entre les arbres.</span>';
   panel.appendChild(row); window.__lookups.length = 0; window.__targetClicks = 0; document.getElementById('p-target').addEventListener('click', () => __targetClicks++); return 1; })()""")
 time.sleep(0.4)

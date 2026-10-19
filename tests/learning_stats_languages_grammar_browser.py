@@ -14,9 +14,10 @@ def check(name, expression):
     assert value is True, (name, value)
     print('PASS', name, flush=True)
 
-check('statistics API and compact toolbar control are available', """(()=>{
+# Since 2026-10-18 the statistics control is a row of the main menu (Learning → Page comprehension), not a compact toolbar chip.
+check('statistics API and the menu row are available', """(()=>{
  const button=document.getElementById('reading-stats-button'), pop=document.getElementById('reading-stats-popover');
- return typeof calculateCurrentPageStats==='function' && button && pop.hidden && button.getBoundingClientRect().width<=100;
+ return typeof calculateCurrentPageStats==='function' && !!button && pop.hidden && !!button.closest('#app-header .menu-section') && !!button.querySelector('#reading-stats-value');
 })()""")
 
 # A PDF-style text root avoids pagination timing while exercising the stable
@@ -119,7 +120,7 @@ check('book change does not mix unrelated statistics', "calculateCurrentPageStat
 c.wait("!document.getElementById('reading-stats-button').disabled")
 
 c.js("document.getElementById('reading-stats-button').click()")
-check('expanded statistics remain a lightweight popover', """(()=>{const p=document.getElementById('reading-stats-popover'),r=p.getBoundingClientRect();return !p.hidden&&r.width<=340&&r.height<window.innerHeight})()""")
+check('expanded statistics open right under their menu row, inside the menu panel', """(()=>{const p=document.getElementById('reading-stats-popover'),r=p.getBoundingClientRect(),m=document.getElementById('app-header').getBoundingClientRect();return !p.hidden&&!!p.closest('#app-header')&&r.left>=m.left&&r.right<=m.right+1&&r.height<window.innerHeight})()""")
 
 check('new interface and target languages are registered', """(()=>{
  const wanted=['zh','ko','hi','ga'];

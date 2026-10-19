@@ -132,9 +132,12 @@ for action in ['file-upload','btn-tts','btn-translate-mode','reading-stats-butto
     assert action in boxes()
     tap(f'.qm-item[data-action="{action}"]'); closed()
     check('visible tap invokes '+action, f"__hits['{action}']===1")
+    # Statistics/Contents open the main menu or the sidebar over the page (the menu is a drawer since 2026-10-18): back to the page.
+    c.js("closeFullMenu(); els.sidebar.classList.add('collapsed'); 1"); time.sleep(0.35)
 # Theme focuses the actual selector.
 open_wheel(); seek('theme-select'); tap('.qm-item[data-action="theme-select"]'); closed()
 check('Theme focuses existing selector', "document.activeElement.id==='theme-select'")
+c.js("closeFullMenu(); 1"); time.sleep(0.35)   # the selector is in the main menu (a drawer): back to the page
 
 # Print remains a real system-print call (intercept the browser API, not the handler).
 c.js("printCurrentReaderPage=__realPrint; window.__systemPrint=0; window.__append=document.body.append; document.body.append=function(...nodes){__append.apply(this,nodes);for(const n of nodes)if(n.tagName==='IFRAME')n.contentWindow.print=()=>__systemPrint++}; els.pages.textContent='Printable reader page';")
@@ -210,6 +213,7 @@ c.call('Input.dispatchKeyEvent',type='keyDown',key='Escape',code='Escape');close
 open_wheel();c.js('history.back()');closed()
 open_wheel();seek('wheelFull');tap('.qm-item[data-action="wheelFull"]');closed()
 check('Full Menu controls share state', "document.getElementById('menu-handle').getAttribute('aria-expanded')===String(isFullMenuOpen())")
+c.js("closeFullMenu(); 1"); time.sleep(0.35)   # «Full menu» opened the side drawer over the page: back to the page
 c.call('Emulation.setEmulatedMedia',features=[{'name':'prefers-reduced-motion','value':'reduce'}])
 open_wheel();close_wheel()
 c.call('Emulation.setEmulatedMedia',features=[])

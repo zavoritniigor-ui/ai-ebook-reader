@@ -27,9 +27,11 @@ check('handles are no longer nearly invisible (background alpha >= 0.15)',
       "[els.askTab, els.grammarTab].every(b => { const m = getComputedStyle(b).backgroundColor.match(/[\\d.]+/g); return parseFloat(m[3]) >= 0.15; })")
 check('handles keep their accessible names', "!!els.askTab.getAttribute('aria-label') && !!els.grammarTab.getAttribute('aria-label')")
 ids = ['btn-ink', 'btn-region', 'zoom-out', 'zoom-in']
-check('icon-only header buttons have a localized aria-label',
-      "%s.every(id => { const b = document.getElementById(id); return b && b.getAttribute('aria-label') && b.getAttribute('aria-label').length > 3; })" % ids)
-check('the key button has an aria-label', "document.querySelector('#btn-ai-key').getAttribute('aria-label') === t('tAiKey')")
+# Menu rows are named by their visible title (aria-labelledby); the A−/A+ steppers by a localized aria-label.
+NAME = "(b => { const by = b.getAttribute('aria-labelledby'); return by ? by.split(' ').map(id => document.getElementById(id).textContent).join(' ') : (b.getAttribute('aria-label') || ''); })"
+check('menu buttons have a localized accessible name',
+      "%s.every(id => { const b = document.getElementById(id); return b && %s(b).trim().length > 3; })" % (ids, NAME))
+check('the key row is named after what it opens', "%s(document.querySelector('#btn-ai-key')) === t('mAi')" % NAME)
 check('the reading-progress indicator is explained (tooltip title; name already carries the live percentage)', "(() => { const b = document.getElementById('reading-stats-button'); return b.title === t('statsTitle') && /%/.test(b.getAttribute('aria-label') || ''); })()")
 check('opening the AI panel still hides its handle and shows the microphone row', "(() => { els.askPanel.classList.add('expanded'); return true; })()")
 c.js("new Promise(r => setTimeout(r, 600))")

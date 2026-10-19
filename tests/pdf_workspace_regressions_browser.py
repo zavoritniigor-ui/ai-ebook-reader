@@ -245,18 +245,20 @@ check('F1 the popup Grammar button text meets WCAG AA contrast (>= 4.5:1)', """(
   const cs = getComputedStyle(els.ttAiBtn); const f = lum(cs.color), b = lum(cs.backgroundColor);
   const ratio = (Math.max(f, b) + 0.05) / (Math.min(f, b) + 0.05); return ratio >= 4.5 || ratio; })()""")
 
-# ---------------------------------------------------------------- G: header offset + sidebar tabs (P2)
+# ---------------------------------------------------------------- G: the menu never covers the book; sidebar tabs (P2)
+# The main menu is a side drawer over the book (2026-10-18; before: a top bar that pushed the workspace down by its height).
 boot(1100, 900, False)
 upload(pdf_document([{'text': f'Header page {n}', 'size': (600, 800)} for n in range(1, 4)]))
 c.js("document.body.classList.remove('immersive-mode')")
 c.js("document.getElementById('toggle-toc-desktop').click()"); pause(.8)
-check('G1 the workspace starts below the (wrapped) app header, not under it', """(() => {
-  const h = document.getElementById('app-header').getBoundingClientRect(), w = document.querySelector('.workspace').getBoundingClientRect();
-  return (h.height > 60 && Math.abs(w.top - h.bottom) <= 2) || {header: [h.top, h.bottom], workspace: w.top}; })()""", timeout=3)
+check('G1 choosing Contents closes the menu, and the menu never pushes the book down (the workspace starts at the top)', """(() => {
+  const w = document.querySelector('.workspace').getBoundingClientRect();
+  return (!isFullMenuOpen() && w.top === 0 && !els.sidebar.classList.contains('collapsed')) || {menuOpen: isFullMenuOpen(), workspace: w.top}; })()""", timeout=3)
 check('G2 the sidebar Thumbnails/Contents tabs are visible and localized', """(() => {
-  const tabs = document.getElementById('pdf-sidebar-tabs').getBoundingClientRect(), h = document.getElementById('app-header').getBoundingClientRect();
+  const tabs = document.getElementById('pdf-sidebar-tabs').getBoundingClientRect();
+  const hit = document.elementFromPoint(tabs.left + tabs.width / 2, tabs.top + tabs.height / 2);   // nothing (menu, ☰) lies on top of them
   const labels = [...document.querySelectorAll('.pdf-sidebar-tab')].map(b => b.textContent.trim());
-  return (tabs.top >= h.bottom - 1 && tabs.height > 20 && labels.join('|') === [t('pdfTabThumbs'), t('pdfTabContents')].join('|') && !labels.includes('Thumbnails')) || {tabsTop: tabs.top, headerBottom: h.bottom, labels}; })()""")
+  return (tabs.top >= 0 && tabs.height > 20 && !!hit && document.getElementById('pdf-sidebar-tabs').contains(hit) && labels.join('|') === [t('pdfTabThumbs'), t('pdfTabContents')].join('|') && !labels.includes('Thumbnails')) || {tabsTop: tabs.top, hit: hit && (hit.id || hit.className), labels}; })()""")
 
 # ---------------------------------------------------------------- H: generated Contents for a PDF without an outline (P2)
 def headings_pdf():

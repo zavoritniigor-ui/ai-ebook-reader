@@ -43,7 +43,7 @@ els.uiLang.onchange = (e) => {
     if (themeSelect) themeSelect.value = document.body.getAttribute('data-theme') || 'light';
 })();
 if (state.translateMode) {
-    els.translateBtn.textContent = t('learnOn'); els.translateBtn.classList.add('active-mode');
+    setMenuSwitch(els.translateBtn, true);
     els.container.classList.add('mode-translate'); document.body.classList.add('mode-translate-on');
 }
 
@@ -64,33 +64,15 @@ els.targetLang.onchange = (e) => {
     warmLocalTranslator(pageLang(), state.targetLang);
 };
 
-els.voiceSelect.onchange = e => {
-    const v = voices.find(v => v.voiceURI === e.target.value);
-    if (!v) return;
-    // Зберігаємо голос під ЙОГО власною мовою. Раніше все, що не французьке,
-    // потрапляло у слот англійської — тому вибір українського голосу мовчки
-    // затирав англійський, а сам вибір здавався таким, що ні на що не впливає.
-    const code = v.lang.toLowerCase().slice(0, 2);
-    state.selectedVoiceURIByLang[code] = v.voiceURI;
-    state.voiceChosenByUser[code] = true;   // далі автовибір цю мову не перевизначає
-    saveVoiceChoices();
-    // Коротка проба — щоб одразу почути, який голос обрано.
-    const samples = { fr: 'Bonjour, ceci est ma voix.', en: 'Hello, this is my voice.', uk: 'Вітаю, це мій голос.', ru: 'Здравствуйте, это мой голос.', zh: '你好，这是我的声音。', ko: '안녕하세요, 제 목소리입니다.', hi: 'नमस्ते, यह मेरी आवाज़ है।', ga: 'Dia dhuit, seo é mo ghuth.', de: 'Hallo, das ist meine Stimme.', es: 'Hola, esta es mi voz.' };
-    const u = new SpeechSynthesisUtterance(samples[code] || 'Test');
-    setUtteranceVoice(u, v.lang, v); u.rate = 0.95;
-    cancelSpeech();
-    state.ttsGen++;
-    const gen = state.ttsGen;
-    // Після справжнього cancel() — пауза TTS_CANCEL_SPEAK_DELAY_MS (js/tts.js startUtterance), інакше одразу.
-    startUtterance(u, gen);
-};
 
 // РЕЖИМ ВИВЧЕННЯ ТА ZERO-MEMORY
 els.translateBtn.onclick = () => {
     state.translateMode = !state.translateMode;
-    if (state.translateMode) { els.translateBtn.textContent = t('learnOn'); els.translateBtn.classList.add('active-mode'); els.container.classList.add('mode-translate'); document.body.classList.add('mode-translate-on'); }
-    else { els.translateBtn.textContent = t('learnOff'); els.translateBtn.classList.remove('active-mode'); els.container.classList.remove('mode-translate'); document.body.classList.remove('mode-translate-on'); }
-    if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
+    setMenuSwitch(els.translateBtn, state.translateMode);
+    if (state.translateMode) { els.container.classList.add('mode-translate'); document.body.classList.add('mode-translate-on'); }
+    else { els.container.classList.remove('mode-translate'); document.body.classList.remove('mode-translate-on'); }
+    // Back to the page so the next tap can be a word -- a moment later, so the switch is seen to move first.
+    setTimeout(() => document.body.classList.add('immersive-mode'), 350);
     writeStored('reader_translate_mode', state.translateMode ? '1' : '0');
 };
 
@@ -176,7 +158,7 @@ async function openBookFile(file) {
     if (typeof resetGrammarState === 'function') resetGrammarState(); // no stale analysis/cache across books (section 18)
     els.toc.replaceChildren();
     els.pages.innerHTML = `<div style="text-align:center;">${t('loading')}</div>`;
-    if(window.innerWidth <= 1180) document.body.classList.add('immersive-mode');
+    document.body.classList.add('immersive-mode');   // the menu (a drawer over the page) gives way to the book on every screen
     state.bookKey = bookKeyFor(file);
     state.oldBookKey = oldBookKeyFor(file);
     if (typeof applySyncedBook === 'function') applySyncedBook(state.bookKey);   // місце/нотатки з іншого пристрою (js/sync.js)

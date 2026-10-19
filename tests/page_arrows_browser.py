@@ -1,6 +1,7 @@
 """Corner page arrows ‹ › (index.html .page-arrow, js/main.js setPageArrows): one-page turning is always at hand when the
 «◀ page ▶» footer is hidden (menu-less/immersive mode). Bug they fix: on 641-1180px screens the footer hid right after a
-book opened and there was not even a handle to bring it back. The arrows sit 56px in from the bottom corners so they cover
+book opened and there was not even a handle to bring it back. Since the menu became a side drawer (2026-10-18) the footer
+is independent of it: a tap in the middle of the page (or the handle at the bottom) shows it for a few seconds. The arrows sit 56px in from the bottom corners so they cover
 neither the Ask AI / Grammar edge tabs nor the ✦ launcher nor the footer handle; they are absent without a book, while the
 footer itself is visible, and in ink/region modes. Text and PDF. No network."""
 import json, os, time
@@ -57,10 +58,16 @@ for (w, h, mobile) in ((390, 844, True), (844, 390, True), (820, 1180, True), (1
     check('%dx%d: ‹ turns ONE page back' % (w, h), "state.pageInChapter === 1", timeout=2)
     c.js("document.body.classList.add('footer-open'); 1")
     check('%dx%d: while the «◀ page ▶» footer is open the arrows step aside' % (w, h), "!%s('page-arrow-next')" % VISIBLE)
-    c.js("document.body.classList.remove('footer-open', 'immersive-mode'); 1")
-    if w >= 1181:
-        check('%dx%d: with the menu shown the footer is on screen and the arrows are not' % (w, h),
-              "(r => r.top < innerHeight && r.bottom > 0)(document.querySelector('.footer-nav-group').getBoundingClientRect()) && !%s('page-arrow-next')" % VISIBLE, timeout=2)
+    c.js("document.body.classList.remove('footer-open'); 1"); time.sleep(0.4)
+    # The menu is a side drawer now (2026-10-18): a tap in the middle of the page shows the «◀ page ▶» bar, not the menu.
+    # (Study mode off: in it a tap on the text looks the word up, which is right; a previous suite may have left it on.)
+    c.js("if (state.translateMode) els.translateBtn.click(); els.tooltip.style.display = 'none'; 1"); time.sleep(0.5)
+    mid = c.js("(r => ({x: r.left + r.width / 2, y: r.top + r.height / 2}))(els.mainArea.getBoundingClientRect())")
+    for kind in ('mousePressed', 'mouseReleased'):
+        c.call('Input.dispatchMouseEvent', type=kind, x=mid['x'], y=mid['y'], button='left', clickCount=1)
+    check('%dx%d: a tap in the middle of the page shows the footer (not the menu) and the arrows step aside' % (w, h),
+          "(r => r.top < innerHeight && r.bottom > 0)(document.querySelector('.footer-nav-group').getBoundingClientRect()) && !%s('page-arrow-next') && !isFullMenuOpen()" % VISIBLE, timeout=2)
+    c.js("closeFooterMenu(); 1")
 
 # ink mode hides them; PDF works too
 c.js("document.body.classList.add('immersive-mode', 'ink-mode'); 1")

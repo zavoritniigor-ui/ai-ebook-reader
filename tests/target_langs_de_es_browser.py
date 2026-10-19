@@ -31,7 +31,8 @@ c.js("""(() => { window.__spoken = []; window.SpeechSynthesisUtterance = class {
   ttsSynth = { getVoices: () => [mk('Google Deutsch', 'de-DE', 'de-google', false), mk('Anna', 'de-DE', 'de-anna', true), mk('Google español', 'es-ES', 'es-google', false), mk('Google français', 'fr-FR', 'fr-google', false)],
     cancel() {}, speak(u) { __spoken.push({voice: u.voice && u.voice.voiceURI, lang: u.lang, text: u.text}); setTimeout(() => u.onend && u.onend(new Event('end')), 0); }, addEventListener() {}, speaking: false, pending: false, paused: false };
   loadVoices(); return 1; })()""")
-check('5 the voice list has German and Spanish groups', "[...document.querySelectorAll('#voice-select optgroup')].map(g => g.label).filter(l => ['Німецька', 'Іспанська', 'German', 'Spanish'].includes(l)).length === 2")
+# The voice list was removed from the menu (2026-10-18): the best voice of each language is picked by itself.
+check('5 the best German and Spanish voices are picked by themselves (Google over the local Anna)', "!document.getElementById('voice-select') && state.selectedVoiceURIByLang.de === 'de-google' && state.selectedVoiceURIByLang.es === 'es-google'")
 check('6 a voice is auto-picked for each', "!!state.selectedVoiceURIByLang.de && !!state.selectedVoiceURIByLang.es")
 c.js("speakInLang('Guten Tag', 'de', 'tr'); 1"); time.sleep(0.5)
 check('7 the German translation is spoken with a German voice (de-DE)', "__spoken.length === 1 && __spoken[0].lang.startsWith('de') && /^de-/.test(__spoken[0].voice)")
