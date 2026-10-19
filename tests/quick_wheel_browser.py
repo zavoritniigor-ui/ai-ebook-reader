@@ -123,6 +123,14 @@ print('PASS drag moves >=3 boxes, inertia moves after release, then stops', flus
 print('DRAG displacement px:',{k:[round(during[k]['x']-before[k]['x'],2),round(during[k]['y']-before[k]['y'],2)] for k in before.keys() & during.keys()},flush=True)
 close_wheel()
 
+# The wheel's read-aloud item shows the menu row's TITLE only (the row also carries a description line; the label once showed both
+# glued together: «Продовжити читанняОзвучує сторінку й підсвічує речення»), in all three states of the speaker button.
+for label_key, setup in (('mRead', 'isSpeakingGlobal=false; state.ttsPaused=false'), ('mPause', 'isSpeakingGlobal=true; state.ttsPaused=false'), ('mResume', 'isSpeakingGlobal=true; state.ttsPaused=true')):
+    c.js(f"{setup}; updateTtsButtons(); 1"); open_wheel(); seek('btn-tts')
+    check('wheel read-aloud label is the title only: ' + label_key, f"(() => {{ const l = document.querySelector('.qm-item[data-action=\"btn-tts\"] .qm-label').textContent.trim(); return l === t('{label_key}') || l; }})()")
+    close_wheel()
+c.js("isSpeakingGlobal=false; state.ttsPaused=false; updateTtsButtons(); 1")
+
 # Observe calls at the existing controls while using physical taps on visible actions.
 # Prevent downstream dialogs here; print has a separate real-function test below.
 c.js("window.__hits={}; document.addEventListener('click',e=>{if(e.target.id && ['file-upload','btn-tts','btn-translate-mode','reading-stats-button','toggle-toc-desktop','btn-ink','btn-region','btn-alt-voices','btn-lang-level'].includes(e.target.id)){__hits[e.target.id]=(__hits[e.target.id]||0)+1;e.stopImmediatePropagation();e.preventDefault()}},true); window.__realPrint=printCurrentReaderPage; printCurrentReaderPage=()=>{__hits['btn-print']=(__hits['btn-print']||0)+1}; state.format='txt';")
