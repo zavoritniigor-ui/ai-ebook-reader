@@ -241,6 +241,7 @@ jobs:
 
           echo "Running menu_autohide_browser.py..."
           python3 -u tests/menu_autohide_browser.py
+          python3 -u tests/sidebar_autoclose_browser.py
 
           echo "Running ui_lang_system_browser.py..."
           python3 -u tests/ui_lang_system_browser.py

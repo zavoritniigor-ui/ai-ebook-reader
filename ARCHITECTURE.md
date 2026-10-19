@@ -341,6 +341,13 @@ The app starts with the menu CLOSED (`<body class="immersive-mode">`): with no b
 Tests: `tests/menu_labels_browser.py` (contract), `menu_phone_scroll_browser.py`, `menu_autohide_browser.py`,
 `page_arrows_browser.py`.
 
+The Contents / thumbnails panel (`nav#sidebar`, class `collapsed` = closed) closes itself (`scheduleSidebarClose`,
+quick-wheel.js, `SIDEBAR_IDLE_MS`): 3 s after a page / chapter / outline entry was chosen, 5 s after the last scroll /
+touch / key inside it, 8 s after opening; never while the book-language `<select>` is focused; the tabs are not a
+"choice"; self-scrolls within 1.5 s of a choice (the list centres the chosen thumbnail) do not stretch the 3 s; same
+off switch as the menu (`reader_menu_autohide`). Closing restores the book's width through the existing class observers
+(pdf-continuous.js `updatePdfWorkspaceLayout`). Test: `tests/sidebar_autoclose_browser.py`.
+
 ## Floating quick actions
 
 `js/quick-wheel.js` owns the right-side launcher, eleven-action continuous rotary
