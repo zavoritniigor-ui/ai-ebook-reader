@@ -314,7 +314,9 @@ const quickMenu = (() => {
             const source = document.getElementById(actionId);
             b.disabled = source?.disabled ?? false;
             if (actionId === 'btn-tts') {
-                b.lastElementChild.textContent = source.textContent.replace(/^[^\p{L}]+/u, '');
+                // The menu row is icon + title + description: the wheel shows only the title («Read aloud» / «Pause» / «Resume»).
+                const title = source.querySelector('.mr-title');
+                b.lastElementChild.textContent = (title ? title.textContent : source.textContent).replace(/^[^\p{L}]+/u, '');
             }
             if (actionId === 'btn-translate-mode') {
                 b.setAttribute('aria-pressed', String(state.translateMode));
