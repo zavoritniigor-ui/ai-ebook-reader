@@ -207,12 +207,12 @@ function buildBookMarksSection() {
     toc.after(section);
 }
 
-// Кнопка 📝 серед значків угорі вікна перекладу (🔊, речення, ✕): у рядку великих кнопок на телефоні вже немає місця.
+// Кнопка нотатки (олівець) серед значків угорі вікна перекладу (динамік, речення, ✕): у рядку великих кнопок на телефоні вже немає місця.
 (function setUpBookMarks() {
     buildBookMarksSection();
     const close = document.getElementById('tt-close-btn');
     if (close && !document.getElementById('tt-mark-btn')) {
-        const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'tt-mark-btn'; btn.className = 'tt-replay-btn'; btn.textContent = '📝';
+        const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'tt-mark-btn'; btn.className = 'tt-replay-btn'; setIconButton(btn, 'pen');
         btn.dataset.i18nTitle = 'tMark'; btn.dataset.i18nAria = 'tMark'; btn.title = t('tMark'); btn.setAttribute('aria-label', t('tMark'));
         btn.addEventListener('click', onMarkButton);
         close.before(btn);

@@ -45,7 +45,7 @@ HIT = """((b) => { const r = b.getBoundingClientRect(); const pad = %d; const cx
 # ---- desktop, mouse: unchanged compact sizes -------------------------------------------------------------------
 load(1280, 800, False)
 check('mouse: pointer is not coarse', "!matchMedia('(pointer: coarse)').matches")
-check('mouse: compact 26px header buttons are unchanged', "[els.ttReplayBtn, els.ttExpandBtn,  els.ttCloseBtn].every(b => Math.round(b.getBoundingClientRect().height) === 26)")
+check('mouse: compact 30px header buttons are unchanged', "[els.ttReplayBtn, els.ttExpandBtn,  els.ttCloseBtn].every(b => Math.round(b.getBoundingClientRect().height) === 30)")
 
 # ---- phone, portrait, touch ------------------------------------------------------------------------------------
 load(360, 740, True)

@@ -141,7 +141,7 @@ def select_between(first_text, last_text, first_nth=0, last_nth=0, attempts=3):
 def press_grammar():
     p = c.js("(()=>{const b=els.ttAiBtn.getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2}})()")
     mouse('mousePressed', p['x'], p['y'], 1); mouse('mouseReleased', p['x'], p['y'])
-    c.wait("(els.grammarPanel.classList.contains('ready') || !!els.grammarContent.querySelector('span[style*=red]')) && !els.grammarContent.querySelector('.spinner-large')", timeout=20)
+    c.wait("(els.grammarPanel.classList.contains('ready') || !!els.grammarContent.querySelector('.ai-error-text')) && !els.grammarContent.querySelector('.spinner-large')", timeout=20)
     time.sleep(0.4)
     if not c.js("els.grammarPanel.classList.contains('expanded')"):
         t = c.js("(()=>{const b=document.getElementById('grammar-tab'); const r=b.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
@@ -150,6 +150,8 @@ def press_grammar():
 
 
 def click_practice_btn():
+    # The list of cards can be longer than the panel: bring the button into view first, like a learner scrolling to it.
+    c.js("document.querySelector('.grammar-practice-btn')?.scrollIntoView({block:'center'}); 1"); time.sleep(0.3)
     b = c.js("(()=>{const e=document.querySelector('.grammar-practice-btn'); if(!e) return null; const r=e.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
     assert b, 'the Practice button must exist after a successful analysis'
     mouse('mousePressed', b['x'], b['y'], 1); mouse('mouseReleased', b['x'], b['y'])
@@ -210,12 +212,16 @@ n0 = c.js("__calls.length")
 install_grammar_and_practice(delay_ms=200)   # a brief delay so the transient 'generating' button state can actually be observed
 click_practice_btn()
 check("1b: the button shows immediate visible feedback (disabled + 'Generating...') right after the click",
-      "document.querySelector('.grammar-practice-btn')?.disabled===true && document.querySelector('.grammar-practice-btn')?.textContent===t('generating')")
+      "document.querySelector('.grammar-practice-btn')?.disabled===true && document.querySelector('.grammar-practice-btn')?.textContent===plainLabel(t('generating'))")
+check("1b: pressing Practice never opens the word popup (its own label is not read as a tapped word)",
+      "els.tooltip.style.display === 'none' && els.ttOriginal.textContent !== plainLabel(t('generating'))", timeout=2)
+time.sleep(0.5)
+check("1b: ... and it still does not a moment later (the reader's tap handler ran after the click)", "els.tooltip.style.display === 'none'")
 c.wait("getCurrentPracticeSession()?.status==='ready'", timeout=10)
 sess = c.js("getCurrentPracticeSession()")
 assert sorted(sess['lemmas']) == sorted(FR_LEMMAS), ('all 8 detected verbs must reach Practice, not a truncated subset', sess['lemmas'])
 check("1b: the button is restored (enabled, its normal label) once generation completes",
-      "document.querySelector('.grammar-practice-btn')?.disabled===false && document.querySelector('.grammar-practice-btn')?.textContent===t('practice')")
+      "document.querySelector('.grammar-practice-btn')?.disabled===false && document.querySelector('.grammar-practice-btn')?.textContent===plainLabel(t('practice'))")
 print("PASS 1b: Practice receives ALL 8 detected verbs (%s), not a silently truncated subset" % ','.join(sess['lemmas']), flush=True)
 
 # 1c. duplicate click while a generation is genuinely in flight -> exactly ONE provider request
@@ -224,6 +230,7 @@ select_between(FR[0], EN[-1])
 press_grammar()
 install_grammar_and_practice(delay_ms=500)   # a realistic network delay so both clicks land while still 'generating'
 n0 = c.js("__calls.length")
+c.js("document.querySelector('.grammar-practice-btn').scrollIntoView({block:'center'}); 1"); time.sleep(0.3)   # a long card list: scroll to the button first
 b = c.js("(()=>{const e=document.querySelector('.grammar-practice-btn'); const r=e.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
 mouse('mousePressed', b['x'], b['y'], 1); mouse('mouseReleased', b['x'], b['y'])
 mouse('mousePressed', b['x'], b['y'], 1); mouse('mouseReleased', b['x'], b['y'])   # immediate second click

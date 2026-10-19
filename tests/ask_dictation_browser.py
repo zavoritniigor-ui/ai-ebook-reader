@@ -216,7 +216,7 @@ check('12 aborted by the engine: stops quietly (no error toast)', "!dictation.wa
 reset(); tap('#mic-btn', True); wait_listening(); c.js("window.__n = __rec.length; recognition._end(); 1"); pause(1.6)  # empty session: bounded back-off (0.6 s, its first)
 check('12 unexpected onend: exactly one new session', "dictation.wanted && __rec.length === __n + 1 && %s.length === 1" % live())
 tap('#mic-btn', True); pause(.3)
-check('12 user stops: recognizer finished, mic idle', "!dictation.wanted && !dictation.finishing && %s.length === 0 && els.micBtn.textContent === '🎤'" % live())
+check('12 user stops: recognizer finished, mic idle', "!dictation.wanted && !dictation.finishing && %s.length === 0 && els.micBtn.dataset.icon === 'mic'" % live())
 check('sttTrace records the lifecycle (toggle/start/result/commit/end)',
       "['toggle', 'start', 'result', 'commit', 'end'].every(k => sttTrace.some(e => e.event === k))")
 check('no application errors (tablet)', "__errors.length === 0 || JSON.stringify(__errors)")

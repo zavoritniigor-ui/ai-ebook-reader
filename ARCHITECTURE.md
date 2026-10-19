@@ -342,6 +342,38 @@ The app starts with the menu CLOSED (`<body class="immersive-mode">`): with no b
 Tests: `tests/menu_labels_browser.py` (contract), `menu_phone_scroll_browser.py`, `menu_autohide_browser.py`,
 `page_arrows_browser.py`.
 
+## Word popup, Ask AI and Grammar windows (design system, 2026-10-19)
+
+Same visual language as the main menu (see above): panel surface, thin border, soft ring shadow, accent colour from the
+theme (`--accent-color`), line icons instead of emoji. Nothing about geometry changed (position, size, tabs, z-index,
+transforms), only what is inside.
+
+- **Header** `.panel-header` (Ask AI, Grammar and Rules): `.pn-icon` tile + `.pn-titles` (`h3` + `.pn-sub`, a one-line
+  subtitle saying WHAT is being analysed, set with `setPanelSubtitle('ask-subtitle' | 'grammar-subtitle', text)`, hidden
+  when empty) + the round `.close-panel-btn` (an icon button, no `✕` text). `data-i18n-plain` on a label makes
+  `applyI18n` drop a leading emoji (`plainLabel`), so the existing `btnAsk`/`panelGrammar`… strings are reused next to an icon.
+- **Icons**: the `#i-*` sprite in index.html (new: `ask grammar struct mic send search arrow alert sparkle practice`).
+  JS builds them with `iconSvg(id)`; `setIconButton(btn, id)` also records `data-icon` (`speak` / `stop` on the popup's
+  speakers — tests read `dataset.icon`, never a glyph).
+- **Popup** `#word-tooltip` (dark on every theme, deliberately; colours are the `--tt-*` variables on the element):
+  header row = speaker of the original · the word · «sentence ⤢» pill · note · ✕, then the TRANSLATION (20px, the hero),
+  then `.tt-actions` — a 3-column grid pinned under the body (Ask AI / Grammar / Breakdown: neutral buttons, colour only in
+  the icon; ≤ 440px the icon sits over the label so labels are never cut). Dictionary senses are `.tt-sense` with a
+  `.tt-pos` chip; the provider mark (⚡ 🧠 ⌂) is a quiet `.tt-note` pill. Touch: 34px controls with a 44px hit area.
+- **Ask AI** states are built by shared helpers (core.js): `showPanelEmpty` (icon + hint), `aiLoadingHtml` (accent
+  spinner `.spinner-large`, the analysed text as `.ai-context-chip`, skeleton lines), `aiErrorView` (`.ai-error` with
+  `.ai-error-text`, a Retry `.ai-retry-btn` and, on 401/403, the «update key» button). The model's HTML answer is styled by
+  `#ask-content` rules (paragraphs, dotted lists, numbered badges, small uppercase headings) and `.lvl-block` cards.
+  The bottom is one rounded field: dictation language · mic · question · send; the two quick actions are chips above it.
+- **Grammar**: the Verbs/Adjectives switch is a segmented control (`.grammar-mode-bar`); the lookup is one field with a
+  search icon and an arrow button; tenses are pill chips; «selected» everywhere = accent tint + ring + accent text
+  (never a solid green button). A lemma card shows the lemma, `form · tense` (`.grammar-card-meta`) and a chevron; the focus
+  card has accent badges, a ruled conjugation table (current row tinted), the sentence as a quote and «why» as a callout.
+  Verb endings use `--verb-ending` (see the verb-endings section).
+- Tests that moved with this: `tooltip_touch_ux` (30px mouse buttons), `tts_first_tap` (`dataset.icon`),
+  `bilingual_selection` / `practice_allocation` (an error is `.ai-error-text`, not a red `span`), `practice_allocation`
+  (the Practice button's text is `plainLabel(...)`).
+
 ## Floating quick actions
 
 `js/quick-wheel.js` owns the right-side launcher, eleven-action continuous rotary

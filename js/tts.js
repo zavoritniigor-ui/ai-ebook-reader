@@ -30,8 +30,9 @@ function stopTooltipSpeech() {
     updateSpeakerIcons();
 }
 function updateSpeakerIcons() {
-    if (els.ttReplayBtn) els.ttReplayBtn.textContent = state.speakingSide === 'orig' ? '■' : '🔊';
-    if (els.ttSpeakTranslation) els.ttSpeakTranslation.textContent = state.speakingSide === 'tr' ? '■' : '🔊';
+    // The popup's speakers are line icons (data-icon = what the press will do: 'speak', or 'stop' while that side is being read).
+    if (els.ttReplayBtn) setIconButton(els.ttReplayBtn, state.speakingSide === 'orig' ? 'stop' : 'speak');
+    if (els.ttSpeakTranslation) setIconButton(els.ttSpeakTranslation, state.speakingSide === 'tr' ? 'stop' : 'speak');
     const origEl = document.getElementById('tt-original');
     if (origEl) {
         if (state.speakingSide === 'orig' && origEl.parentElement) {

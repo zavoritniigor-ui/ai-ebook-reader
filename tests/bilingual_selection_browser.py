@@ -158,7 +158,7 @@ def press_grammar():
     right away, but a real mouse click on one needs the drawer actually visible on screen first)."""
     p = c.js("(()=>{const b=els.ttAiBtn.getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2}})()")
     mouse('mousePressed', p['x'], p['y'], 1); mouse('mouseReleased', p['x'], p['y'])
-    c.wait("(els.grammarPanel.classList.contains('ready') || !!els.grammarContent.querySelector('span[style*=red]')) && !els.grammarContent.querySelector('.spinner-large')", timeout=20)
+    c.wait("(els.grammarPanel.classList.contains('ready') || !!els.grammarContent.querySelector('.ai-error-text')) && !els.grammarContent.querySelector('.spinner-large')", timeout=20)
     time.sleep(0.4)
     if not c.js("els.grammarPanel.classList.contains('expanded')"):
         t = c.js("(()=>{const b=document.getElementById('grammar-tab'); const r=b.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
@@ -177,7 +177,7 @@ def grammar_state():
                 items: an?an.items.map(i=>i.lemma+'/'+i.surface):null, lemmas: an?[...new Set(an.items.map(i=>i.lemma))]:null,
                 rejected: an?an.rejected.map(r=>r.reason+':'+r.surface):null, cards:[...els.grammarContent.querySelectorAll('.grammar-card-lemma')].map(b=>b.textContent),
                 focused: grammarContext.focused?grammarContext.focused.surface:null, focusCard: !!els.grammarContent.querySelector('.grammar-focus'), mode: grammarContext.mode, lang: grammarContext.sourceLanguage,
-                notes:[...els.grammarContent.querySelectorAll('.grammar-note')].map(n=>n.textContent), error:(els.grammarContent.querySelector('span[style*=red]')||{}).textContent||null,
+                notes:[...els.grammarContent.querySelectorAll('.grammar-note')].map(n=>n.textContent), error:(els.grammarContent.querySelector('.ai-error-text')||{}).textContent||null,
                 chips:[...document.querySelectorAll('#grammar-controls-bar button')].length }; })()""")
 
 

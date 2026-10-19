@@ -611,16 +611,18 @@
         body:not(.ink-mode):not(.region-mode):not(.pdf-mode):has(#page-arrows:not([hidden])) #reader-container {
             padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 
-        /* ОНОВЛЕНИЙ Tooltip (Захист від виходу за межі екрана)
-           Спливаюче вікно навмисно темне на будь-якій темі сторінки — як окрема "картка"
-           поверх тексту, а не продовження фону. Це дає стабільний контраст і не залежить
-           від того, наскільки світлий/темний зараз режим читання. */
+        /* Вікно перекладу слова. Навмисно темне на будь-якій темі сторінки — окрема "картка" поверх тексту, а не продовження фону:
+           стабільний контраст, що не залежить від режиму читання. Порядок: слово + значки → ПЕРЕКЛАД → дії (Запитай AI / Граматика / Розбір).
+           Усі кольори картки — змінні --tt-*: її можна перефарбувати в одному місці. */
         #word-tooltip {
-            position: absolute; display: none; flex-direction: column; background: #22242a; color: #fff;
-            padding: 14px 16px; border-radius: 16px;
-            box-shadow: 0 20px 45px -12px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25);
+            --tt-bg: #1c1e23; --tt-fg: #f4f5f7; --tt-muted: #a4aab4; --tt-accent: #8ab4ff;
+            --tt-soft: rgba(255,255,255,.07); --tt-soft-hover: rgba(255,255,255,.13); --tt-line: rgba(255,255,255,.10);
+            --tt-btn: #2b2e35; --tt-btn-hover: #373a43;   /* the same tint as --tt-soft over the card, but opaque: the contrast of the button text is then measurable */
+            position: absolute; display: none; flex-direction: column; background: var(--tt-bg); color: var(--tt-fg);
+            padding: 12px 14px 14px; border-radius: 18px; border: 1px solid rgba(255,255,255,.08);
+            box-shadow: 0 24px 48px -14px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.28);
             z-index: 30500; font-size: 15px; transform: translateX(-50%);
-            width: max-content; max-width: min(560px, 88vw); pointer-events: auto;
+            width: max-content; min-width: min(332px, 88vw); max-width: min(560px, 88vw); pointer-events: auto;
             /* Обов'язково: без цього текст, довший за обмежену висоту вікна, малювався
                ПОЗА його межами — саме ті "фантомні" рядки під вікном. */
             overflow: hidden;
@@ -646,8 +648,8 @@
         #word-tooltip .tt-translation::-webkit-scrollbar { width: 10px; }
         #word-tooltip .tt-translation::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 5px; }
         #word-tooltip .tt-translation::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 5px; }
-        #word-tooltip::after { content: ''; position: absolute; top: -5px; left: 50%; transform: translateX(-50%); border-width: 0 6px 6px 6px; border-style: solid; border-color: transparent transparent #22242a transparent; }
-        #word-tooltip.tooltip-above::after { top: auto; bottom: -5px; border-width: 6px 6px 0 6px; border-color: #22242a transparent transparent transparent; }
+        #word-tooltip::after { content: ''; position: absolute; top: -5px; left: 50%; transform: translateX(-50%); border-width: 0 6px 6px 6px; border-style: solid; border-color: transparent transparent var(--tt-bg) transparent; }
+        #word-tooltip.tooltip-above::after { top: auto; bottom: -5px; border-width: 6px 6px 0 6px; border-color: var(--tt-bg) transparent transparent transparent; }
 
         .word-visited { background: rgba(120,120,120,0.32); border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
         ::highlight(tts-current) { background-color: rgba(255, 193, 7, 0.38); }
@@ -657,7 +659,7 @@
         body.pdf-mode #tt-mark-btn { display: none; }
         .tt-mark-host { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
         .tt-mark-host[hidden] { display: none; }
-        .tt-mark-host textarea { width: 100%; box-sizing: border-box; min-height: 52px; resize: vertical; font: inherit; font-size: 15px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: inherit; color: inherit; }
+        .tt-mark-host textarea { width: 100%; box-sizing: border-box; min-height: 52px; resize: vertical; font: inherit; font-size: 15px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--tt-line, var(--border-color)); background: var(--tt-soft, inherit); color: inherit; }
         .tt-mark-remove { align-self: flex-start; border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 14px; padding: 6px 10px; cursor: pointer; opacity: .85; }
         /* Список виділень під змістом: зміст стискається до свого розміру, список гортається сам; знизу — місце під плаваючі кнопки. */
         #sidebar:has(#marks-section:not([hidden])) #toc-list { flex: 0 1 auto; max-height: 45%; }
@@ -699,20 +701,24 @@
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
         
-        .tt-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
-        .tt-original-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; }
+        .tt-header { flex-shrink: 0; margin-bottom: 8px; }
+        .tt-original-row { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
         .tt-original-wrapper { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1 1 auto; min-width: 0; }
-        .tt-original { color: #9aa1ab; font-size: 14px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 1; }
-        .tt-header-tools { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .tt-original { color: var(--tt-muted, #a4aab4); font-size: 14px; font-weight: 600; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex-shrink: 1; }
+        .tt-header-tools { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        /* Круглі значки вікна: той самий лінійний набір, що в меню (спрайт #i-*), а не емодзі. */
         .tt-replay-btn {
-            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff;
-            border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 12px; flex-shrink: 0; transition: background-color .15s, border-color .15s;
+            background: var(--tt-soft, rgba(255,255,255,.07)); border: 0; color: var(--tt-fg, #fff);
+            border-radius: 50%; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex-shrink: 0; transition: background-color .15s, color .15s, transform .1s;
         }
-        .tt-replay-btn:hover { background: rgba(255,255,255,0.14); }
-        /* Кнопка виділення речення — помітніша за динамік, щоб її не плутали з оформленням */
-        #tt-expand-btn { width: auto; border-radius: 12px; padding: 0 10px; height: 26px; font-size: 11.5px; font-weight: 700; background: rgba(16,163,127,0.16); border-color: transparent; color: #3ddba8; white-space: nowrap; flex-shrink: 0; }
-        #tt-expand-btn:hover { background: rgba(16,163,127,0.28); }
+        .tt-replay-btn svg.mi { width: 17px; height: 17px; flex-basis: 17px; }
+        .tt-replay-btn:hover { background: var(--tt-soft-hover, rgba(255,255,255,.14)); }
+        #tt-close-btn { background: transparent; color: var(--tt-muted, #a4aab4); }
+        #tt-close-btn:hover { background: var(--tt-soft, rgba(255,255,255,.07)); color: var(--tt-fg, #fff); }
+        /* Кнопка виділення речення — «пігулка» з підписом, помітніша за круглі значки, щоб її не плутали з оформленням */
+        #tt-expand-btn { width: auto; border-radius: 999px; padding: 0 12px; font-size: 12px; font-weight: 650; background: color-mix(in srgb, var(--tt-accent, #8ab4ff) 16%, transparent); color: var(--tt-accent, #8ab4ff); white-space: nowrap; flex-shrink: 0; }
+        #tt-expand-btn:hover { background: color-mix(in srgb, var(--tt-accent, #8ab4ff) 26%, transparent); }
         @keyframes tt-ticker {
             0%, 15% { transform: translateX(0); }
             85%, 100% { transform: translateX(calc(-100% + var(--ticker-container-w, 140px))); }
@@ -734,7 +740,7 @@
         .tt-ai-label { display: block; font-size: 11px; color: #0dcaf0; letter-spacing: .3px; margin-bottom: 2px; }
         .tt-ai-text { display: block; font-size: 16px; font-weight: bold; color: #fff; line-height: 1.35; }
         
-        .tt-actions { display: flex; gap: 8px; width: 100%; margin-top: 4px; flex-shrink: 0; }
+        .tt-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin-top: 12px; flex-shrink: 0; }
         /* Sentence breakdown painted in the text (js/sentence-structure.js) */
         ::highlight(struct-subject) { background-color: rgba(59,130,196, 0.40); }
         ::highlight(struct-verb) { background-color: rgba(217,83,79, 0.40); }
@@ -793,52 +799,62 @@
         .structure-role-manner { --role: #8a6d3b; }
         .structure-role-reason { --role: #b04a8f; }
         .structure-role-connector { --role: #6b7280; }
-        .tt-struct-btn { background: #6f42c1; color: white; border: none; padding: 9px 8px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex: 1 1 0; min-width: 0; text-align: center; }
-        .tt-struct-btn:hover { filter: brightness(1.08); }
-        .tt-struct-btn:active { transform: scale(0.98); }
-        .tt-ai-btn, .tt-ask-btn {
-            border: none; padding: 9px 8px; border-radius: 10px; font-size: 13px; font-weight: 600;
-            cursor: pointer; white-space: nowrap; flex: 1 1 0; min-width: 0; text-align: center;
-            transition: filter .15s, transform .1s; flex-shrink: 0;
+        /* Три дії під перекладом: однакові спокійні кнопки зі значком; колір лише в значку (Запитай AI — синій, Граматика — зелений, Розбір — фіолетовий). */
+        .tt-ask-btn, .tt-ai-btn, .tt-struct-btn {
+            --act: var(--tt-accent, #8ab4ff);
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; height: 40px; padding: 0 8px;
+            border: 1px solid var(--tt-line, rgba(255,255,255,.1)); border-radius: 12px; background: var(--tt-btn, #2b2e35); color: var(--tt-fg, #fff);
+            font-size: 13px; font-weight: 600; white-space: nowrap; text-align: center; cursor: pointer; flex-shrink: 0;
+            transition: background-color .15s, border-color .15s, transform .1s;
         }
-        .tt-ai-btn { background: #0b7a5e; color: white; }   /* white on #0b7a5e = 5.3:1 (AA); #10a37f was 3.2:1 */
-        .tt-ask-btn { background: #0dcaf0; color: #0b2226; }
-        .tt-ai-btn:hover, .tt-ask-btn:hover { filter: brightness(1.08); }
-        .tt-ai-btn:active, .tt-ask-btn:active { transform: scale(0.98); }
-        .tt-translation { font-weight: 700; font-size: 18px; margin-top: 2px; color: #fff; line-height: 1.35; }
+        .tt-ask-btn { --act: #8ab4ff; }
+        .tt-ai-btn { --act: #5fd3a8; }
+        .tt-struct-btn { --act: #b9a1ff; }
+        .tt-actions svg.mi { width: 18px; height: 18px; flex-basis: 18px; color: var(--act); }
+        .tt-actions button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .tt-ask-btn:hover, .tt-ai-btn:hover, .tt-struct-btn:hover { background: var(--tt-btn-hover, #373a43); border-color: color-mix(in srgb, var(--act) 50%, transparent); }
+        .tt-ask-btn:active, .tt-ai-btn:active, .tt-struct-btn:active { transform: scale(0.98); }
+        /* Переклад — головне у вікні: найбільший і найяскравіший рядок. */
+        .tt-translation { font-weight: 700; font-size: 20px; margin-top: 0; color: var(--tt-fg, #fff); line-height: 1.3; }
         /* Додаткові значення слова / варіанти перекладу — другорядним планом під основним */
-        .tt-extra { margin-top: 9px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-weight: normal; font-size: 13.5px; color: #c3c8cf; }
-        .tt-sense { margin: 3px 0; line-height: 1.4; }
-        .tt-pos { color: #3ddba8; font-style: italic; margin-right: 5px; }
-        .tt-note { font-weight: normal; font-size: 12.5px; color: #9aa1ab; }
-        .tt-context { font-weight: normal; font-size: 13px; color: #9aa1ab; }   /* single word: contextual meaning, secondary to the direct translation */
-        .tt-translation-row { display: flex; align-items: stretch; gap: 10px; margin-top: 4px; min-height: 0; }
+        .tt-extra { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--tt-line, rgba(255,255,255,0.1)); font-weight: normal; font-size: 13.5px; color: #c9ced6; }
+        .tt-sense { margin: 5px 0; line-height: 1.5; }
+        .tt-pos { display: inline-block; margin-right: 8px; padding: 0 8px; font-size: 11px; line-height: 18px; font-weight: 700; letter-spacing: .02em; font-style: normal; border-radius: 999px; background: color-mix(in srgb, var(--tt-accent, #8ab4ff) 16%, transparent); color: var(--tt-accent, #8ab4ff); }
+        /* Позначка, хто саме переклав (⚡ Groq, 🧠 OpenAI, ⌂ пристрій): тиха «пігулка» поруч із перекладом. */
+        .tt-note { display: inline-block; vertical-align: .18em; margin-left: 4px; padding: 0 7px; font-weight: 600; font-size: 11px; line-height: 18px; border-radius: 999px; background: var(--tt-soft, rgba(128,128,128,.14)); color: var(--tt-muted, var(--text-muted)); }
+        .tt-note.ask-cancelled { display: block; margin: 0 0 8px; padding: 0; border-radius: 0; background: none; font-size: 14px; line-height: 1.5; font-weight: 400; }
+        .tt-context { font-weight: normal; font-size: 13px; color: var(--tt-muted, #9aa1ab); }   /* single word: contextual meaning, secondary to the direct translation */
+        .tt-translation-row { display: flex; align-items: flex-start; gap: 10px; margin-top: 0; min-height: 0; }
         .tt-translation-row .tt-translation { flex: 1; }
-        #tt-speak-translation { align-self: flex-start; margin-top: 2px; }
-        /* Активний динамік — той, що озвучувався останнім; саме він відповідає за повтор */
-        .tt-replay-btn.speak-active { border-color: #10a37f; color: #3ddba8; background: rgba(16,163,127,0.18); }
+        #tt-speak-translation { align-self: flex-start; margin-top: 0; }
+        /* Активний динамік — той, що озвучувався останнім; саме він відповідає за повтор. Не лише колір: ще й кільце, а значок стає квадратом «стоп». */
         .tt-replay-btn:active, #tt-expand-btn:active { transform: scale(0.94); }
-        .tt-replay-btn, #tt-expand-btn { -webkit-tap-highlight-color: transparent; transition: background-color .15s, border-color .15s, transform .1s; }
-        /* Active speaker: not colour alone -- double ring + filled background (the glyph itself becomes a stop square while speaking). */
-        .tt-replay-btn.speak-active { box-shadow: inset 0 0 0 1px #10a37f; }
-        /* Touch screens: 44px hit areas around compact 30px controls, readable label sizes. The header stays ONE row: a taller popup would cover
+        .tt-replay-btn, #tt-expand-btn { -webkit-tap-highlight-color: transparent; transition: background-color .15s, color .15s, transform .1s; }
+        .tt-replay-btn.speak-active { color: var(--tt-accent, #8ab4ff); background: color-mix(in srgb, var(--tt-accent, #8ab4ff) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tt-accent, #8ab4ff) 65%, transparent); }
+        /* Touch screens: 44px hit areas around compact 34px controls, readable label sizes. The header stays ONE row: a taller popup would cover
            controls of the Grammar/Practice panel behind it on a phone. */
         @media (pointer: coarse) {
             .tt-header-tools { gap: 8px; }
-            .tt-replay-btn { width: 30px; height: 30px; font-size: 14px; position: relative; }
-            #tt-expand-btn { height: 30px; padding: 0 8px; font-size: 12.5px; border-radius: 15px; position: relative; }
+            .tt-replay-btn { width: 34px; height: 34px; position: relative; }
+            #tt-expand-btn { height: 34px; padding: 0 12px; font-size: 12.5px; position: relative; }
             /* Invisible margin brings every control to a 44px hit area; the 8px visual gap means neighbours only share the gap itself. */
-            .tt-replay-btn::after, #tt-expand-btn::after { content: ''; position: absolute; inset: -8px; }
+            .tt-replay-btn::after, #tt-expand-btn::after { content: ''; position: absolute; inset: -5px; }
             /* This one sits at the clipped edge of the translation row, so an invisible margin would be cut off: make the control itself 44px. */
-            #tt-speak-translation { width: 44px; height: 44px; font-size: 17px; }
+            #tt-speak-translation { width: 44px; height: 44px; }
+            #tt-speak-translation svg.mi { width: 20px; height: 20px; flex-basis: 20px; }
             #tt-speak-translation::after { content: none; }
-            .tt-ai-btn, .tt-ask-btn, .tt-struct-btn { min-height: 44px; font-size: 14px; }
+            .tt-ask-btn, .tt-ai-btn, .tt-struct-btn { min-height: 44px; font-size: 14px; }
             .tt-note, .tt-context { font-size: 13.5px; }
+            .tt-note { font-size: 12px; }
+        }
+        /* Phones: the three actions stack icon over label, so the labels are never cut ("Запитай A…"). */
+        @media (max-width: 440px) {
+            .tt-ask-btn, .tt-ai-btn, .tt-struct-btn { flex-direction: column; gap: 3px; height: auto; min-height: 54px; padding: 7px 4px; font-size: 12px; line-height: 1.15; }
         }
         /* Narrow phones (<= 380px): the single row would leave the selected word ~25px, so the tools drop to their own line. */
         @media (pointer: coarse) and (max-width: 380px) {
             .tt-original-row { flex-wrap: wrap; row-gap: 6px; }
-            .tt-original-wrapper { flex: 1 1 100%; }
+            .tt-original-wrapper { flex: 1 1 calc(100% - 46px); }
             .tt-header-tools { margin-left: auto; }
         }
 
@@ -855,11 +871,12 @@
         }
         /* Язички мають лишатись видимими, навіть коли сама панель прихована */
         .side-panel .panel-tab { visibility: visible; }
+        [data-theme="dark"] .side-panel { color-scheme: dark; }   /* темні смуги прокрутки й поля у вікнах */
         
-        #grammar-panel { right: 0; transform: translateX(100%); box-shadow: -5px 0 25px rgba(0,0,0,0.2); border-radius: 16px 0 0 16px; }
+        #grammar-panel { right: 0; transform: translateX(100%); box-shadow: 0 0 0 1px rgba(var(--shadow-color),0.05), -14px 0 44px -18px rgba(var(--shadow-color),0.5); border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
         #grammar-panel.expanded { transform: none; visibility: visible; }
         
-        #ask-panel { left: 0; transform: translateX(-100%); box-shadow: 5px 0 25px rgba(0,0,0,0.2); border-radius: 0 16px 16px 0; }
+        #ask-panel { left: 0; transform: translateX(-100%); box-shadow: 0 0 0 1px rgba(var(--shadow-color),0.05), 14px 0 44px -18px rgba(var(--shadow-color),0.5); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
         #ask-panel.expanded { transform: none; visibility: visible; }
         /* Граматика й «Запитай AI» починаються ПІД шапкою (на планшеті вона буває в 3 рядки), а не перекривають її кнопки. */
         @media (min-width: 641px) {
@@ -983,11 +1000,19 @@
         .side-panel.ready .panel-tab { background: rgba(25, 135, 84, 0.14); }
         
         /* Вміст панелей */
+        /* Шапка вікон Граматики, «Запитай AI» і Правил — та сама, що в головному меню: значок-плитка, заголовок, рядок-підзаголовок
+           (що саме розбираємо) і кругла ✕. Значок: .pn-icon; текст: .pn-titles > h3 + .pn-sub. */
         .panel-header {
-            display: flex; justify-content: space-between; align-items: center; padding: 14px 14px 14px 22px;
-            border-bottom: 1px solid var(--border-color); background: var(--surface-2); flex-shrink: 0;
+            display: flex; align-items: center; gap: 12px; padding: 12px 10px 12px 16px;
+            border-bottom: 1px solid var(--border-color); background: var(--panel-bg); flex-shrink: 0;
         }
-        .panel-header h3 { font-size: 16px; font-weight: 700; letter-spacing: -.1px; }
+        .pn-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px;
+            background: color-mix(in srgb, var(--accent-color) 12%, transparent); color: var(--accent-color); }
+        .pn-titles { flex: 1 1 auto; min-width: 0; }
+        .panel-header h3 { font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+        .pn-sub { margin: 1px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pn-sub[hidden] { display: none; }
+        .icon-down { transform: rotate(90deg); }
         /* Кругла "тиха" кнопка закриття — сучасніша за текстову пігулку "✖ Закрити" і
            звичніша для планшета: єдиний ×, легко влучити пальцем (44×44). */
         .close-panel-btn {
@@ -995,9 +1020,10 @@
             cursor: pointer; width: 40px; height: 40px; border-radius: 50%; padding: 0; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center; transition: background-color .15s, color .15s;
         }
+        .close-panel-btn svg.mi { width: 20px; height: 20px; flex-basis: 20px; }
         .close-panel-btn:hover { background: var(--hover-color); color: var(--text-color); }
         .close-panel-btn:active { transform: scale(0.9); }
-        .panel-content { flex: 1; padding: 22px 24px; overflow-y: auto; font-size: 18px; line-height: 1.6; }
+        .panel-content { flex: 1; padding: 18px 18px 22px; overflow-y: auto; font-size: 16.5px; line-height: 1.6; }
         /* Оформлення довідкової статті граматики (таблиця дієвідмінювання, стислі рубрики) */
         #grammar-content { font-size: 16px; line-height: 1.5; }
         .panel-content b, .panel-content strong { color: var(--text-color); }
@@ -1007,6 +1033,34 @@
         .panel-content ul, .panel-content ol { padding-left: 22px; margin: 6px 0; }
         .panel-content li { margin: 3px 0; }
         .panel-content p { margin: 8px 0; }
+        /* Відповідь AI: чисті абзаци, марковані списки з акцентною крапкою, малі заголовки секцій як у меню. */
+        #ask-content p { margin: 0 0 12px; }
+        #ask-content ul, #ask-content ol { list-style: none; padding-left: 0; margin: 8px 0 14px; }
+        #ask-content li { position: relative; margin: 8px 0; padding-left: 22px; }
+        #ask-content ul > li::before { content: ''; position: absolute; left: 6px; top: .68em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-color); }
+        #ask-content ol { counter-reset: ask-n; }
+        #ask-content ol > li { counter-increment: ask-n; }
+        #ask-content ol > li::before { content: counter(ask-n); position: absolute; left: 0; top: .2em; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; background: color-mix(in srgb, var(--accent-color) 14%, transparent); color: var(--accent-color); }
+        #ask-content h1, #ask-content h2, #ask-content h3, #ask-content h4 { margin: 18px 0 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+        /* Порожній стан, завантаження й помилка вікон AI та Граматики */
+        .pn-empty { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 44px 16px 16px; text-align: center; color: var(--text-muted); font-size: 14.5px; line-height: 1.5; }
+        .panel-content .pn-empty p { margin: 0; max-width: 32ch; }
+        .pn-empty-icon { display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 18px; background: color-mix(in srgb, var(--accent-color) 12%, transparent); color: var(--accent-color); }
+        .pn-empty-icon svg.mi { width: 28px; height: 28px; flex-basis: 28px; }
+        .ai-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 34px 6px 6px; text-align: center; }
+        .ai-loading-label { margin: 0; font-size: 14px; color: var(--text-muted); }
+        .ai-context-chip { max-width: 100%; padding: 4px 14px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border-color); font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ai-skeleton { display: grid; gap: 10px; width: 100%; margin-top: 18px; }
+        .ai-skeleton i { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--border-color) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: ai-shimmer 1.4s linear infinite; }
+        .ai-skeleton i:nth-child(1) { width: 100%; } .ai-skeleton i:nth-child(2) { width: 92%; } .ai-skeleton i:nth-child(3) { width: 78%; } .ai-skeleton i:nth-child(4) { width: 60%; }
+        @keyframes ai-shimmer { to { background-position: -200% 0; } }
+        @media (prefers-reduced-motion: reduce) { .ai-skeleton i { animation: none; } }
+        .ai-error { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin: 4px 0; padding: 14px 16px; border-radius: var(--radius-md);
+            border: 1px solid color-mix(in srgb, #dc3545 38%, var(--border-color)); background: color-mix(in srgb, #dc3545 7%, var(--panel-bg)); }
+        .ai-error-row { display: flex; align-items: flex-start; gap: 10px; }
+        .ai-error-row svg.mi { color: #dc3545; margin-top: 2px; }
+        .ai-error-text { margin: 0; font-size: 14.5px; line-height: 1.5; }
+        .ai-error .btn-primary, .ai-error .ask-retry-btn { height: 40px; }
         
         /* Кольорові позначки рівнів CEFR — від зеленого (простіше) до червоного (складніше) */
         .lvl { display: inline-block; padding: 1px 9px; border-radius: 10px; font-weight: bold;
@@ -1019,8 +1073,7 @@
         .lvl[data-l="C2"] { background: #7d2b8b; }
         /* Блоки спрощення — з кольоровою смугою того ж рівня */
         .lvl-block { margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md);
-                     border-left: 4px solid var(--border-color); background: var(--surface-2);
-                     box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
+                     border: 1px solid var(--border-color); border-left: 4px solid var(--border-color); background: var(--surface-2); }
         .lvl-block::before { content: attr(data-l); display: inline-block; margin-right: 8px;
                              padding: 1px 8px; border-radius: 9px; font-size: 12px;
                              font-weight: bold; color: #fff; background: #888; }
@@ -1041,80 +1094,106 @@
         /* Redesigned Grammar panel: Verbs/Adjectives mode toggle, language-specific
            tense/mood controls, and compact lemma cards — deliberately calm and
            learner-oriented rather than raw parser/debugger output (task section 16). */
-        .grammar-mode-bar { display: flex; gap: 6px; padding: 12px 15px 0; flex-shrink: 0; }
-        .grammar-mode-btn { flex: 1; background: var(--surface-2); color: var(--text-color); border: 1px solid var(--border-color);
-                             padding: 8px 10px; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 600; cursor: pointer; }
-        .grammar-mode-btn.active { background: #10a37f; color: #fff; border-color: #10a37f; }
-        .grammar-controls-bar { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 15px 0; }
+        /* «Вибране» у вікнах Граматики/Правил — одна мова: акцентна напівпрозора заливка + кільце + акцентний текст (не суцільно зелена кнопка). */
+        .grammar-mode-bar { --sel-bg: color-mix(in srgb, var(--accent-color) 14%, transparent); --sel-ring: color-mix(in srgb, var(--accent-color) 50%, transparent);
+            display: flex; gap: 2px; margin: 14px 16px 0; padding: 3px; flex-shrink: 0; background: var(--surface-2); border: 1px solid var(--border-color); border-radius: 12px; }
+        .grammar-mode-btn { flex: 1; height: 36px; padding: 0 10px; background: transparent; color: var(--text-muted); border: 0; border-radius: 9px; font-size: 14px; font-weight: 650; cursor: pointer; }
+        .grammar-mode-btn:hover { color: var(--text-color); background: var(--hover-color); }
+        .grammar-mode-btn.active { background: var(--panel-bg); color: var(--accent-color); box-shadow: 0 1px 3px rgba(var(--shadow-color),0.14), 0 0 0 1px var(--sel-ring); }
+        .grammar-controls-bar { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 16px 0; }
         .grammar-controls-bar:empty { padding: 0; }
-        .grammar-controls-bar button { background: var(--border-color); color: var(--text-color); border: none; padding: 6px 11px; border-radius: 13px; font-size: 13px; cursor: pointer; }
-        .grammar-controls-bar button.active { background: #10a37f; color: #fff; }
-        .grammar-empty { text-align: center; color: var(--text-muted, gray); padding-top: 50px; }
+        .grammar-controls-bar button { height: 30px; padding: 0 12px; background: transparent; color: var(--text-color); border: 1px solid var(--border-color); border-radius: 999px; font-size: 13px; font-weight: 550; cursor: pointer; }
+        .grammar-controls-bar button:hover { background: var(--hover-color); }
+        .grammar-controls-bar button.active { background: color-mix(in srgb, var(--accent-color) 14%, transparent); color: var(--accent-color); border-color: color-mix(in srgb, var(--accent-color) 50%, transparent); font-weight: 650; }
+        .grammar-empty { text-align: center; color: var(--text-muted, gray); padding: 44px 16px 0; font-size: 14.5px; line-height: 1.5; }
         .grammar-note { margin: 0 0 10px 0; padding: 6px 10px; font-size: 12px; line-height: 1.4; color: var(--text-muted); border-left: 3px solid #d9822b; background: color-mix(in srgb, #d9822b 8%, transparent); border-radius: 4px; }
-        .grammar-card { margin: 10px 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-2); }
-        .grammar-card-lemma { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text-color);
-                               font-size: 16px; font-weight: 700; padding: 0; cursor: pointer; }
-        .grammar-card-forms { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-        .grammar-form-chip { background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
-                              padding: 4px 10px; border-radius: 12px; font-size: 12.5px; cursor: pointer; }
-        .grammar-focus { margin: 12px 0; padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2);
-                          border-left: 4px solid #0d6efd; box-shadow: 0 1px 3px rgba(var(--shadow-color),0.06); }
-        .grammar-focus-head { font-size: 18px; margin-bottom: 6px; }
-        .grammar-focus-lemma { font-size: 14px; color: var(--text-color); opacity: .7; font-style: italic; }
-        .grammar-focus-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-        .grammar-badge { background: var(--border-color); color: var(--text-color); border-radius: 10px; padding: 2px 9px; font-size: 12px; }
+        .grammar-card { display: grid; grid-template-columns: minmax(0, 1fr); margin: 8px 0; padding: 0; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--panel-bg); overflow: hidden; }
+        .grammar-card > * { grid-column: 1; }
+        .grammar-card > .grammar-card-lemma, .grammar-card > .grammar-card-meta { grid-row: 1; }
+        .grammar-card-lemma { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: auto; min-height: 52px; padding: 10px 14px; text-align: left;
+                               background: none; border: 0; border-radius: 0; color: var(--text-color); font-size: 17px; font-weight: 700; cursor: pointer; }
+        .grammar-card-lemma:hover { background: var(--hover-color); }
+        /* Шеврон «відкрити» — маска, тож колір береться з теми */
+        .grammar-card-lemma::after { content: ''; flex: 0 0 18px; width: 18px; height: 18px; background: var(--text-muted);
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+                    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat; }
+        /* «форма · час» — на тому самому рядку, що й лема, праворуч перед шевроном; клік проходить крізь неї на кнопку леми */
+        .grammar-card-meta { align-self: center; justify-self: end; max-width: 58%; margin-right: 42px; font-size: 13px; color: var(--text-muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+        .grammar-card-forms { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 14px 12px; margin: 0; }
+        .grammar-form-chip { height: 30px; background: var(--surface-2); color: var(--text-color); border: 1px solid var(--border-color);
+                              padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 550; cursor: pointer; }
+        .grammar-form-chip:hover { background: var(--hover-color); }
+        .grammar-focus { margin: 4px 0 14px; padding: 16px 16px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--panel-bg);
+                          box-shadow: 0 1px 2px rgba(var(--shadow-color),0.05), 0 8px 24px -16px rgba(var(--shadow-color),0.35); }
+        .grammar-focus-head { font-size: 22px; line-height: 1.2; letter-spacing: -.01em; margin-bottom: 8px; }
+        .grammar-focus-lemma { font-size: 15px; font-weight: 400; letter-spacing: 0; color: var(--text-muted); font-style: normal; }
+        .grammar-focus-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .grammar-badge { background: color-mix(in srgb, var(--accent-color) 11%, transparent); color: var(--accent-color); border-radius: 999px; padding: 3px 11px; font-size: 12.5px; font-weight: 600; }
         .grammar-focus-pattern { font-family: ui-monospace, monospace; font-size: 15px; margin-bottom: 8px; }
         .grammar-stem { color: var(--text-color); }
-        .grammar-ending { color: #10a37f; font-weight: 700; }
+        .grammar-ending { color: var(--verb-ending); font-weight: 700; }
         .verb-ending { color: var(--verb-ending); font-weight: 700; }
-        .grammar-grid-title { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; opacity: .65; margin: 6px 0 4px; }
-        .grammar-focus-grid { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; font-size: 14px; }
-        .grammar-grid-row { display: grid; grid-template-columns: minmax(6.5em, 10em) 1fr auto; column-gap: 12px; align-items: baseline; padding: 1px 6px; margin: 0 -6px; border-radius: 6px; }
-        .grammar-grid-row.current { background: rgba(16,163,127,.16); box-shadow: inset 3px 0 0 #10a37f; }
+        .grammar-grid-title { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin: 10px 0 6px; }
+        .grammar-focus-grid { display: flex; flex-direction: column; margin: 0 0 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; }
+        .grammar-grid-row { display: grid; grid-template-columns: minmax(6.5em, 10em) 1fr auto; column-gap: 12px; align-items: baseline; padding: 7px 12px; }
+        .grammar-grid-row + .grammar-grid-row { border-top: 1px solid var(--border-color); }
+        .grammar-grid-row.current { background: color-mix(in srgb, var(--accent-color) 12%, transparent); box-shadow: inset 3px 0 0 var(--accent-color); }
         .grammar-grid-change { font-family: ui-monospace, monospace; font-size: 12px; opacity: .7; white-space: nowrap; }
         .grammar-grid-change.irregular { opacity: 1; color: #d9822b; font-weight: 700; }
         .grammar-grid-note { font-size: 13px; opacity: .7; margin: 4px 0 8px; }
-        .grammar-forms-retry { min-height: 44px; margin: 0 0 8px; padding: 8px 16px; border: 0; border-radius: 4px; background: #007AFF; color: #fff; font: inherit; cursor: pointer; }
+        .grammar-forms-retry { min-height: 44px; margin: 0 0 8px; padding: 8px 16px; border: 0; border-radius: var(--radius-sm); background: var(--accent-color); color: var(--accent-contrast); font: inherit; font-weight: 600; cursor: pointer; }
         .grammar-focus-agrees { font-size: 13.5px; margin: 0 0 8px; }
-        .grammar-grid-label { color: var(--text-color); opacity: .7; }
+        .grammar-grid-label { color: var(--text-muted); font-size: 13.5px; }
         .grammar-grid-value { font-weight: 600; }
-        .grammar-focus-context { font-size: 14px; line-height: 1.5; margin: 8px 0; }
-        .grammar-context-target { background: none; color: inherit; font-weight: 700; border-bottom: 2px solid #10a37f; }
+        .grammar-focus-context { font-size: 15px; line-height: 1.55; margin: 12px 0 10px; padding: 8px 12px; border-left: 3px solid var(--border-color); background: var(--surface-2); border-radius: 0 8px 8px 0; }
+        .grammar-context-target { background: none; color: inherit; font-weight: 700; border-bottom: 2px solid var(--accent-color); }
         .grammar-context-agrees { background: none; color: inherit; border-bottom: 2px dotted #d9822b; }
-        .grammar-focus-why { font-size: 13.5px; line-height: 1.5; color: var(--text-color); opacity: .9; margin: 0; }
-        .grammar-practice-btn { margin-top: 15px; }
-        .grammar-practice-row { display: flex; gap: 8px; align-items: center; margin-top: 15px; }
-        .grammar-lookup { display: flex; gap: 8px; align-items: center; padding: 10px 15px 0; flex-shrink: 0; }
-        .grammar-lookup input { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 6px 10px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--panel-bg); color: var(--text-color); }
-        .grammar-lookup button { flex: 0 0 44px; width: 44px; min-height: 44px; margin: 0; padding: 0; }
-        .grammar-lookup-status { margin: 6px 15px 0; font-size: 13px; color: var(--text-muted, gray); flex-shrink: 0; }
+        .grammar-focus-why { font-size: 14px; line-height: 1.55; color: var(--text-color); margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent-color) 7%, transparent); }
+        .grammar-practice-btn { margin-top: 15px; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+        .grammar-practice-btn svg.mi { width: 18px; height: 18px; flex-basis: 18px; color: var(--accent-color); }
+        .grammar-practice-row { display: flex; gap: 8px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+        .grammar-lookup { display: flex; gap: 6px; align-items: center; margin: 10px 16px 0; padding: 3px 3px 3px 12px; flex-shrink: 0; border: 1px solid var(--border-color); border-radius: 12px; background: var(--panel-bg); }
+        .grammar-lookup:focus-within { border-color: var(--accent-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 22%, transparent); }
+        .grammar-lookup-icon { color: var(--text-muted); }
+        .grammar-lookup input { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 0 4px; font-size: 15px; border: 0; outline: 0; background: transparent; color: var(--text-color); text-overflow: ellipsis; }
+        .grammar-lookup button { flex: 0 0 44px; width: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 9px; background: color-mix(in srgb, var(--accent-color) 14%, transparent); color: var(--accent-color); }
+        .grammar-lookup button:hover { background: color-mix(in srgb, var(--accent-color) 24%, transparent); }
+        .grammar-lookup-status { margin: 8px 16px 0; font-size: 13px; color: var(--text-muted, gray); flex-shrink: 0; }
         .grammar-focus-query { color: var(--text-muted, gray); font-weight: normal; }
         .grammar-lookup-alts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; }
-        .grammar-lookup-alts button { min-height: 36px; padding: 4px 10px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--panel-bg); color: var(--text-color); cursor: pointer; }
+        .grammar-lookup-alts button { min-height: 36px; padding: 4px 12px; border: 1px solid var(--border-color); border-radius: 999px; background: var(--panel-bg); color: var(--text-color); cursor: pointer; }
         /* Phones: the word popup docks at the bottom over the panel's lower part; scroll room lets any item (the Practice
            button below a lookup card, the last grid rows) be brought above it. */
         @media (max-width: 640px) { #grammar-content { padding-bottom: 45vh; } }
         .grammar-practice-row .grammar-practice-btn { margin-top: 0; flex: 0 0 auto; }
         .grammar-practice-topic-mic { flex: 0 0 44px; width: 44px; height: 44px; }
         .grammar-practice-topic-mic.recording { color: #dc3545; border-color: #dc3545; }
-        .grammar-practice-topic { flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 6px 10px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--panel-bg); color: var(--text-color); }
+        .grammar-practice-topic { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 6px 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); color: var(--text-color); }
         #ask-content { cursor: text; }
-        .panel-actions { padding: 12px 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+        /* Низ вікна «Запитай AI»: швидкі дії (чипи зі значком) і одне закруглене поле вводу: мова диктовки · мікрофон · запитання · надіслати. */
+        .panel-actions { padding: 10px 14px 4px; display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--border-color); }
         .panel-action-btn {
-            background: var(--surface-2); color: var(--text-color); border: 1px solid var(--border-color);
-            padding: 0 14px; height: 40px; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 600; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 7px; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
+            padding: 0 14px 0 10px; height: 38px; border-radius: 999px; font-size: 13.5px; font-weight: 600; cursor: pointer;
         }
+        .panel-action-btn svg.mi { width: 18px; height: 18px; flex-basis: 18px; color: var(--accent-color); }
         .panel-action-btn:hover { background: var(--hover-color); }
-        .chat-input-area { padding: 14px 16px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; background: var(--surface-2); align-items: center; flex-shrink: 0; }
+        .chat-input-area { display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin: 8px 14px calc(14px + env(safe-area-inset-bottom, 0px)); padding: 4px; border: 1px solid var(--border-color); border-radius: 999px; background: var(--surface-2); transition: border-color .15s, box-shadow .15s; }
+        .chat-input-area:focus-within { border-color: var(--accent-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 22%, transparent); }
         .chat-input-area input {
-            flex: 1; height: 44px; padding: 0 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);
-            background: var(--panel-bg); color: var(--text-color); font-size: 16px;
+            flex: 1; min-width: 0; height: 44px; padding: 0 6px; border: 0; outline: 0; border-radius: 0; background: transparent;
+            color: var(--text-color); font-size: 16px; -webkit-appearance: none; appearance: none;
         }
+        .chat-input-area input::-webkit-search-cancel-button { display: none; }
+        select.mic-lang { flex: 0 0 auto; width: 48px; height: 44px; max-width: none; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--text-muted);
+            font-size: 12px; font-weight: 700; text-align: center; text-align-last: center; -webkit-appearance: none; appearance: none; cursor: pointer; }
+        select.mic-lang:hover { background: var(--hover-color); color: var(--text-color); }
+        .chat-input-area .send-btn { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border-radius: 50%; }
         .mic-btn {
-            background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
-            width: 44px; height: 44px; padding: 0; border-radius: 50%; cursor: pointer; font-size: 18px; transition: .2s;
+            display: flex; align-items: center; justify-content: center; background: transparent; color: var(--text-muted); border: 0;
+            width: 44px; height: 44px; padding: 0; border-radius: 50%; cursor: pointer; transition: .2s;
         }
-        .mic-btn:hover { background: var(--hover-color); }
+        .mic-btn:hover { background: var(--hover-color); color: var(--text-color); }
         .mic-btn.recording { background: #dc3545 !important; color: white !important; border-color: #dc3545 !important; animation: pulse 1s infinite; }
 
         /* МОБІЛЬНА АДАПТАЦІЯ (ПОВНИЙ ЕКРАН ДЛЯ ПАНЕЛЕЙ) */
@@ -1151,11 +1230,12 @@
                зсувом на 100% власної ширини, що й на десктопі. */
             .side-panel { width: 100vw; height: 100vh; top: 0; border-radius: 0; z-index: 20000; }
 
-            /* Коли панель відкрита, ховаємо її язичок */
+            /* Коли панель відкрита, ховаємо її язичок — і язичок сусідньої панелі: на весь екран він лежав би поверх кнопки «надіслати» чи кнопки закриття */
             .side-panel.expanded .panel-tab { display: none; }
+            body:has(#ask-panel.expanded) #grammar-tab, body:has(#grammar-panel.expanded) #ask-tab { display: none; }
         }
 
-        .spinner-large { width: 40px; height: 40px; border: 4px solid rgba(220,53,69,0.2); border-top-color: #dc3545; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+        .spinner-large { width: 38px; height: 38px; border: 3px solid color-mix(in srgb, var(--accent-color) 20%, transparent); border-top-color: var(--accent-color); border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         #settings-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index:30000; justify-content:center; align-items:center; }
@@ -1297,12 +1377,12 @@
         #word-tooltip { position: fixed; }
         body.pdf-mode #word-tooltip .tt-original-wrapper { flex-basis: 100%; flex-wrap: wrap; overflow: visible; }
         body.pdf-mode #word-tooltip .tt-original { flex: 1; min-width: 70px; max-width: none; }
-        body.pdf-mode #word-tooltip .tt-actions { width: 100%; margin-top: 0; }
+        body.pdf-mode #word-tooltip .tt-actions { width: 100%; }
         #region-cancel { position: absolute; right: 12px; bottom: 24px; background: var(--panel-bg); }
-        .dictation-status { padding: 0 16px 8px; font-size: 13px; color: var(--text-muted); min-height: 24px; }
+        .dictation-status { padding: 0 18px 10px; font-size: 13px; color: var(--text-muted); min-height: 24px; margin-top: -6px; }
         .dictation-status:empty { display: none; }
         #ask-input { min-width: 0; }
-        .ask-attachment { display: flex; align-items: center; gap: 8px; margin: 0 16px 6px; padding: 6px 8px; border: 1px solid var(--border-color, #ccc); border-radius: 10px; font-size: 13px; }
+        .ask-attachment { display: flex; align-items: center; gap: 8px; margin: 6px 14px 0; padding: 6px 8px; border: 1px solid var(--border-color, #ccc); border-radius: 12px; font-size: 13px; }
         .ask-attachment[hidden] { display: none; }
         .ask-attachment img { width: 48px; height: 48px; object-fit: contain; background: #fff; border-radius: 6px; flex: none; }
         .ask-attachment span { flex: 1; min-width: 0; }
@@ -1409,6 +1489,16 @@
         <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
         <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
         <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+        <symbol id="i-ask" viewBox="0 0 24 24"><path d="M4 6a2.5 2.5 0 0 1 2.5-2.5h11A2.5 2.5 0 0 1 20 6v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4A2.5 2.5 0 0 1 4 14z"/><path d="m12 7.2.8 1.8 1.8.8-1.8.8-.8 1.8-.8-1.8-1.8-.8 1.8-.8z"/></symbol>
+        <symbol id="i-grammar" viewBox="0 0 24 24"><path d="M3.5 18.5 8.5 6l5 12.5M5.4 14h6.2"/><path d="M16 8h4.5M16 12h4.5M16 16h4.5"/></symbol>
+        <symbol id="i-struct" viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="5" rx="1.2"/><rect x="13.5" y="4" width="7" height="5" rx="1.2"/><rect x="8.5" y="15" width="7" height="5" rx="1.2"/><path d="M7 9v2.5h10V9M12 11.5V15"/></symbol>
+        <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10.5" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></symbol>
+        <symbol id="i-send" viewBox="0 0 24 24"><path d="M21.5 2.5 10.5 13.5"/><path d="M21.5 2.5 14.5 21.5l-4-8-8-4z"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2v.1"/></symbol>
+        <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m11 3.5 1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="m18.5 15.5.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+        <symbol id="i-practice" viewBox="0 0 24 24"><path d="M12 6v14M3 4.5h5.5A3.5 3.5 0 0 1 12 8a3.5 3.5 0 0 1 3.5-3.5H21V18h-5.5A3.5 3.5 0 0 0 12 21.5 3.5 3.5 0 0 0 8.5 18H3z"/></symbol>
     </svg>
     <div id="menu-backdrop" hidden></div>
     <header id="app-header" aria-labelledby="menu-heading">
@@ -1570,27 +1660,27 @@
             <div id="word-tooltip">
                 <div class="tt-header">
                     <div class="tt-original-row">
+                        <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig" data-i18n-aria="tSpeakOrig" aria-pressed="false" data-icon="speak"><svg class="mi" aria-hidden="true"><use href="#i-speak"/></svg></button>
                         <div class="tt-original-wrapper">
                             <span class="tt-original" id="tt-original">word</span>
                         </div>
                         <div class="tt-header-tools">
-                            <button class="tt-replay-btn" id="tt-replay-btn" data-i18n-title="tSpeakOrig" data-i18n-aria="tSpeakOrig" aria-pressed="false">🔊</button>
                             <button class="tt-replay-btn" id="tt-expand-btn" data-i18n-title="tExpand" data-i18n="btnSentence">речення ⤢</button>
-                            <button class="tt-replay-btn" id="tt-close-btn" data-i18n-title="tClose" data-i18n-aria="tClose" aria-label="Close">✕</button>
+                            <button class="tt-replay-btn" id="tt-close-btn" data-i18n-title="tClose" data-i18n-aria="tClose" aria-label="Close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button>
                         </div>
-                    </div>
-                    <div class="tt-actions">
-                        <button class="tt-ask-btn" id="tt-ask-btn" data-i18n="btnAsk">🤖 Запитай AI</button>
-                        <button class="tt-ai-btn" id="tt-ai-btn" data-i18n="btnGrammar">✨ Граматика</button>
-                        <button class="tt-struct-btn" id="tt-struct-btn" data-i18n="btnStruct" data-i18n-title="tStruct" data-i18n-aria="tStruct">🧩 Розбір</button>
                     </div>
                 </div>
                 <div class="tt-body">
                     <div id="tt-struct-host" class="tt-struct-host"></div>
                     <div class="tt-translation-row">
                         <div class="tt-translation" id="tt-translation" aria-live="polite" data-i18n="translating">Переклад...</div>
-                        <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr" data-i18n-aria="tSpeakTr" aria-pressed="false">🔊</button>
+                        <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr" data-i18n-aria="tSpeakTr" aria-pressed="false" data-icon="speak"><svg class="mi" aria-hidden="true"><use href="#i-speak"/></svg></button>
                     </div>
+                </div>
+                <div class="tt-actions">
+                    <button class="tt-ask-btn" id="tt-ask-btn"><svg class="mi" aria-hidden="true"><use href="#i-ask"/></svg><span data-i18n="btnAsk" data-i18n-plain>Запитай AI</span></button>
+                    <button class="tt-ai-btn" id="tt-ai-btn"><svg class="mi" aria-hidden="true"><use href="#i-grammar"/></svg><span data-i18n="btnGrammar" data-i18n-plain>Граматика</span></button>
+                    <button class="tt-struct-btn" id="tt-struct-btn" data-i18n-title="tStruct" data-i18n-aria="tStruct"><svg class="mi" aria-hidden="true"><use href="#i-struct"/></svg><span data-i18n="btnStruct" data-i18n-plain>Розбір</span></button>
                 </div>
             </div>
         </main>
@@ -1599,15 +1689,19 @@
         <div id="ask-panel" class="side-panel">
             <button type="button" id="ask-tab" class="panel-tab" aria-label="Запитай AI" data-i18n-title="tAskPanel"></button>
             <div class="panel-header">
-                <h3 data-i18n="panelAsk">🤖 Пояснення слова</h3>
-                <button class="close-panel-btn" data-close-panel="ask-panel" data-i18n="close" data-i18n-title="tClose">✕</button>
+                <span class="pn-icon" aria-hidden="true"><svg class="mi"><use href="#i-ask"/></svg></span>
+                <div class="pn-titles">
+                    <h3 data-i18n="panelAsk" data-i18n-plain>Пояснення слова</h3>
+                    <p class="pn-sub" id="ask-subtitle" hidden></p>
+                </div>
+                <button class="close-panel-btn" data-close-panel="ask-panel" data-i18n-title="tClose" data-i18n-aria="tClose" aria-label="Close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button>
             </div>
             <div id="ask-content" class="panel-content">
-                <div style="text-align:center; padding-top: 50px; color: gray;" data-i18n="askHint">…</div>
+                <div class="pn-empty"><span class="pn-empty-icon" aria-hidden="true"><svg class="mi"><use href="#i-sparkle"/></svg></span><p data-i18n="askHint">…</p></div>
             </div>
             <div class="panel-actions">
-                <button id="btn-lang-level" class="panel-action-btn" data-i18n="btnLangLevel">📘 Мовний розбір</button>
-                <button id="btn-explain" class="panel-action-btn" data-i18n="btnExplain">📖 Пояснення</button>
+                <button id="btn-lang-level" class="panel-action-btn"><svg class="mi" aria-hidden="true"><use href="#i-study"/></svg><span data-i18n="btnLangLevel" data-i18n-plain>Мовний розбір</span></button>
+                <button id="btn-explain" class="panel-action-btn"><svg class="mi" aria-hidden="true"><use href="#i-rules"/></svg><span data-i18n="btnExplain" data-i18n-plain>Пояснення</span></button>
             </div>
             <div id="ask-attachment" class="ask-attachment" hidden>
                 <img id="ask-attachment-img" alt="">
@@ -1616,13 +1710,13 @@
             </div>
             <form id="ask-chat-form" role="search" autocomplete="off" style="display:contents;">
                 <div class="chat-input-area">
-                    <select id="mic-lang" style="height:44px; max-width:76px;">
+                    <select id="mic-lang" class="mic-lang">
                         <option value="uk-UA">UK</option><option value="en-US">EN</option><option value="fr-FR">FR</option><option value="ru-RU">RU</option>
                         <option value="zh-CN">中文</option><option value="ko-KR">KO</option><option value="hi-IN">HI</option><option value="ga-IE">GA</option>
                     </select>
-                    <button type="button" class="mic-btn" id="mic-btn" aria-label="Почати диктовку" aria-pressed="false">🎤</button>
+                    <button type="button" class="mic-btn" id="mic-btn" aria-label="Почати диктовку" aria-pressed="false"><svg class="mi" aria-hidden="true"><use href="#i-mic"/></svg></button>
                     <input type="search" id="ask-input" name="conversational_query" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" enterkeyhint="send" data-i18n-ph="ask">
-                    <button type="submit" id="ask-send-btn" class="btn-primary" style="width:44px; height:44px; padding:0; border-radius:50%; font-size:16px;">➤</button>
+                    <button type="submit" id="ask-send-btn" class="btn-primary send-btn" data-i18n-aria="sendLabel" aria-label="Send"><svg class="mi" aria-hidden="true"><use href="#i-send"/></svg></button>
                 </div>
             </form>
             <div id="dictation-status" class="dictation-status" role="status" aria-live="polite"></div>
@@ -1631,9 +1725,10 @@
         <!-- ПАНЕЛЬ «ПРАВИЛА»: каталог правил граматики + пошук і підсвітка їх у видимому тексті (js/grammar-rules.js) -->
         <div id="rules-panel" class="side-panel" role="dialog" aria-labelledby="rules-title">
             <div class="panel-header">
-                <h3 id="rules-title" data-i18n="panelRules">📚 Правила граматики</h3>
-                <button class="close-panel-btn" id="rules-min" data-i18n-title="rulesHide" data-i18n-aria="rulesHide" aria-label="Hide">⌄</button>
-                <button class="close-panel-btn" id="rules-close" data-i18n="close" data-i18n-title="tClose">✕</button>
+                <span class="pn-icon" aria-hidden="true"><svg class="mi"><use href="#i-rules"/></svg></span>
+                <div class="pn-titles"><h3 id="rules-title" data-i18n="panelRules" data-i18n-plain>Правила граматики</h3></div>
+                <button class="close-panel-btn" id="rules-min" data-i18n-title="rulesHide" data-i18n-aria="rulesHide" aria-label="Hide"><svg class="mi icon-down" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button class="close-panel-btn" id="rules-close" data-i18n-title="tClose" data-i18n-aria="tClose" aria-label="Close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button>
             </div>
             <div class="panel-content" id="rules-content"></div>
         </div>
@@ -1643,8 +1738,12 @@
         <div id="grammar-panel" class="side-panel">
             <button type="button" id="grammar-tab" class="panel-tab" aria-label="Граматика" data-i18n-title="tGrammarPanel"></button>
             <div class="panel-header">
-                <h3 data-i18n="panelGrammar">📝 Граматика</h3>
-                <button class="close-panel-btn" data-close-panel="grammar-panel" data-i18n="close" data-i18n-title="tClose">✕</button>
+                <span class="pn-icon" aria-hidden="true"><svg class="mi"><use href="#i-grammar"/></svg></span>
+                <div class="pn-titles">
+                    <h3 data-i18n="panelGrammar" data-i18n-plain>Граматика</h3>
+                    <p class="pn-sub" id="grammar-subtitle" hidden></p>
+                </div>
+                <button class="close-panel-btn" data-close-panel="grammar-panel" data-i18n-title="tClose" data-i18n-aria="tClose" aria-label="Close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button>
             </div>
             <div class="grammar-mode-bar" id="grammar-mode-bar">
                 <!-- Verbs/Adjectives toggle. Labels are set by
@@ -1657,8 +1756,9 @@
             <!-- A verb/adjective typed by the learner (usually in their own language) -> its paradigm in the studied
                  language (grammar-svo.js runGrammarLookup). Placeholder/labels set by renderGrammarLookupLabels(). -->
             <form class="grammar-lookup" id="grammar-lookup" autocomplete="off">
+                <svg class="mi grammar-lookup-icon" aria-hidden="true"><use href="#i-search"/></svg>
                 <input type="text" id="grammar-lookup-input" maxlength="60" autocomplete="off" spellcheck="false" enterkeyhint="search">
-                <button type="submit" id="grammar-lookup-btn" class="btn-secondary">🔎</button>
+                <button type="submit" id="grammar-lookup-btn" class="btn-primary"><svg class="mi" aria-hidden="true"><use href="#i-arrow"/></svg></button>
             </form>
             <p id="grammar-lookup-status" class="grammar-lookup-status" role="status" hidden></p>
             <div class="grammar-controls-bar" id="grammar-controls-bar">
@@ -1666,7 +1766,7 @@
                      tense/mood buttons in Verbs mode, empty in Adjectives mode. -->
             </div>
             <div id="grammar-content" class="panel-content">
-                <div style="text-align:center; padding-top: 50px; color: gray;" data-i18n="grammarHint">…</div>
+                <div class="pn-empty"><span class="pn-empty-icon" aria-hidden="true"><svg class="mi"><use href="#i-grammar"/></svg></span><p data-i18n="grammarHint">…</p></div>
             </div>
         </div>
     </div>
@@ -1760,20 +1860,20 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=059400226a1e"></script>
+    <script src="js/core.js?v=77d3fdc44b08"></script>
     <script src="js/lang-detect.js?v=263bb11ae4d9"></script>
-    <script src="js/tts.js?v=768369b7982d"></script>
+    <script src="js/tts.js?v=e523ad5c9e5b"></script>
     <script src="js/selection.js?v=53b18d236d1b"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
-    <script src="js/book-marks.js?v=bde3dbd03747"></script>
+    <script src="js/book-marks.js?v=6447147d7e80"></script>
     <script src="js/navigation.js?v=6bf46382cd5d"></script>
     <script src="js/pdf-zoom-pan.js?v=41f1d680361d"></script>
     <script src="js/ui-tooltip.js?v=3086f1020b04"></script>
     <script src="js/translation.js?v=480e4c3033f2"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
-    <script src="js/grammar-svo.js?v=e2e0bd389c03"></script>
+    <script src="js/grammar-svo.js?v=7d3510680f3c"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
@@ -1782,11 +1882,11 @@
     <script src="js/ai-client.js?v=931fdb40d910"></script>
     <script src="js/practice-session.js?v=d5acdacc16e7"></script>
     <script src="js/practice-worksheet.js?v=9b3689eeed02"></script>
-    <script src="js/dictation.js?v=7d4e2bbd3506"></script>
+    <script src="js/dictation.js?v=2ff7a0ad0484"></script>
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-translate.js?v=538501cacba1"></script>
     <script src="js/pdf-ink.js?v=defbefcd482f"></script>
-    <script src="js/pdf-crop.js?v=dc0c469a9ca2"></script>
+    <script src="js/pdf-crop.js?v=d075e66bd44c"></script>
     <script src="js/pdf-outline.js?v=5930b9d8bb4e"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
@@ -1797,8 +1897,8 @@
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
     <script src="js/quick-wheel.js?v=a8c5445dc2b5"></script>
-    <script src="js/main.js?v=4b10604a9abd"></script>
+    <script src="js/main.js?v=9521ee325197"></script>
     <script src="js/pwa-lifecycle.js?v=5958d99e2f7a"></script>
-    <script src="js/i18n-es.js?v=e4e1b4429c4e"></script>
+    <script src="js/i18n-es.js?v=971ff7723453"></script>
 </body>
 </html>
