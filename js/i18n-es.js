@@ -195,7 +195,9 @@ const I18N_ES = {
     mUpdate: "Actualizar la app",
     mUpdateDesc: "Buscar e instalar una nueva versión",
     mExit: "Salir de la app",
-    mHomeFormats: "Admite EPUB, PDF, DOCX, FB2, TXT, MD, HTML y RTF."
+    mHomeFormats: "Admite EPUB, PDF, DOCX, FB2, TXT, MD, HTML y RTF.",
+    rulesPractice: 'Práctica', rulesPracticeSection: 'Practicar toda la sección', rulesPracticeExample: 'Practicar con este ejemplo',
+    practiceRuleMeta: 'Regla:', practiceRuleNoNote: 'aquí se aplica la regla.'
 };
 for (const [key, value] of Object.entries(I18N_ES)) if (I18N[key]) I18N[key].es = value;
 // El menú ya se pintó en main.js (antes de este archivo): con el español elegido se vuelve a pintar.

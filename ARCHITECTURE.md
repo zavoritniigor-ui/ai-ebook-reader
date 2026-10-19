@@ -255,6 +255,7 @@ extraction — both are **settled**, not open questions:
 | `tests/local_translator_warmup_browser.py` | `translation.js`'s `warmLocalTranslator`: a silent background download of Chrome's on-device Translator language pack, triggered from `updateSourceLang()` and the target-language change handler, must not touch `els.progress` (also "page X of Y"), while a real foreground `translateLocally()` call still shows its download percentage there; warm-up is skipped offline or for a same-language "pair", and repeated calls for the same pair only start one download. The real Translator API is mocked. |
 | `tests/menu_labels_browser.py` | Main-menu clarity: every header control has a name, the two language selects carry visible labels (`Переклад на` / `Мова меню`), group captions (`.group-caption`) show on phone and desktop but are hidden on tablets (header height stays bounded), no horizontal overflow at 390/820/1024/1366, and every new label exists in all 8 UI languages and relabels on language switch. |
 | `tests/grammar_rules_browser.py` | Rules panel acceptance with gold/bad model replies: catalogue completeness and well-formedness, topic menu and filter, visible-text-only search (text below the fold is not sent), exact in-text highlights without rewrapping, match list, cache vs forced search, detail card, theory-based explanation and custom question, a real tap on a highlight (opens its card, no word tooltip) vs an ordinary word (tooltip), bad replies (invented text, malformed, wrong language, overlaps/multi-line/over-long), failing request, page change clearing highlights, Back-button overlay, all strings in 8 UI languages. |
+| `tests/rules_practice_browser.py` | Verb endings coloured in the Grammar grid and the Rules présent table (regular verbs only; irregular verbs and pronouns never split); Rules → Practice for a topic, a found example (prompt quotes the sentence, variations first) and a whole section; rule targets open their note under the sentence; Regenerate keeps the rule; a worksheet-shaped rule reply is rejected. |
 | `tests/sentence_structure_languages_browser.py` | The tooltip breakdown across all 8 languages (uk, en, fr, ru, zh, ko, hi, ga) with gold replies: language detected per sentence, each part painted on exactly its own characters (unspaced CJK, Korean particles, Hindi postpositions, Irish apostrophes), legend, untouched page text, and a deep breakdown for zh/ko. Mechanics only — linguistic quality needs a live model. |
 | `tests/sentence_structure_text_browser.py` | The tooltip "🧩 Розбір" flow on a real word tap: button placement/fit (desktop), validation gate, legend chips per validated part (invented text ignored), exact in-text highlights without rewrapping, time-marker kind, deep breakdown of one part (one call, cached, validated words only), highlights removed on close, same-sentence cache hit, failure note with nothing painted. |
 | `tests/ai_routing_browser.py` | AI task routing and the instant local translation layer: `aiProviderForTask`/`aiBackupProvider` matrix (every task → Groq first, OpenAI as the backup; without a Groq key deep tasks → OpenAI, the rest → the ACTIVE provider; routing off → active only, no backup), checked on the real HTTP layer with a mocked fetch incl. Groq network / HTTP / cut-off failures answered by OpenAI; the key-dialog checkbox (default on, persisted, 8 languages); for a tapped word the on-device `Translator` result shows first (⌂, model created inside the tap's user activation) and the Groq answer replaces it (⚡); OpenAI is asked only when Groq fails (🧠); sentences never start the local translator; no Translator API → AI only. |
@@ -576,6 +577,26 @@ reverted, then restored. `tests/practice_reading_browser.py` and `grammar_redesi
 the new action buttons' glyphs) or whitelisted `.practice-target` as the only allowed button class — both
 switched to read `.practice-sentence-text` / allow `.practice-action-btn` too, never loosening what they
 actually guard against (still zero exercise/answer/check controls).
+
+## Rules → Practice, and verb endings in conjugation tables
+
+**Verb endings** are coloured (`.verb-ending`, theme token `--verb-ending`) in the Grammar conjugation grid
+(`renderGrammarFocusDetail`) and in the Rules detail tables (`renderRuleDetailsText`; a column's verb is the first word of
+its header with a regular stem, `ruleColumnLemma`). One helper set in `grammar-svo.js`: `conjugationStem(lemma, lang)` =
+the lemma minus its infinitive ending (`verb.infinitiveEndings` in `GRAMMAR_LANG_CONFIG`, French only; a language without
+it uses the lemma itself), null for an irregular verb (`verb.irregularRe`) or a language without `verb.endings`;
+`appendConjugatedForm` splits a word only when it starts with that stem and the rest is a listed ending — subject
+pronouns are never split. So parl|ons, fin|issons, work|ed; never s|uis, never appel|le.
+
+**Rules → Practice** (`startRulePractice` in `grammar-rules.js`): a Practice READING (nothing to answer) for one topic
+(topic view), every topic of a section (button under each section of the tree) or a topic plus the example found in the
+book (the match card: the found sentence is quoted as data and the reading opens with variations on its pattern).
+`practice-session.js` mode `'rule'`: the session carries `rule` (`sanitizePracticeRule`: ≤ 12 topics with id, title,
+theory incl. the detailed rules, the `find` instruction; optional `{sentence, text}` example), `buildRulePracticePrompt`
+asks for a fixed number of sentences per topic (`practiceRulePerTopic`) + 2 stories, and `validatePracticeReading` keeps
+`pos:'rule'` targets (a short fragment, ≤ 80 chars; an unknown rule id falls back to the first topic) under the same
+floors and exercise filter. In the worksheet a rule fragment opens its one-line "why" under its sentence
+(`togglePracticeRuleNote`) instead of the Grammar card; the meta row says «Правило:». Test: `tests/rules_practice_browser.py`.
 
 ## The live-model AI contract (Grammar + Practice)
 
