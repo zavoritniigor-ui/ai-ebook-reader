@@ -28,7 +28,8 @@ c.call('Page.navigate', url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:
 c.wait("location.protocol==='http:' && document.readyState==='complete' && !document.body.inert && typeof initPdf==='function'")
 data = base64.b64encode(pdf_document([{'text': f'Physical page {n}', 'size': (600, 800)} for n in range(1, 431)])).decode()
 c.js(f"""(async () => {{
-    localStorage.clear(); state.format='pdf'; state.bookKey='pinch-test'; state.pdfScale=1; state.pdfFit='width'; document.body.classList.add('pdf-mode');
+    localStorage.clear(); localStorage.setItem('reader_menu_autohide', 'off');   /* panels stay open for minutes of pinches here: the side panel's own auto-close (js/quick-wheel.js) would move the page */
+    state.format='pdf'; state.bookKey='pinch-test'; state.pdfScale=1; state.pdfFit='width'; document.body.classList.add('pdf-mode');
     await initPdf(new File([Uint8Array.from(atob('{data}'), c=>c.charCodeAt(0))], 'pinch.pdf'));
 }})()""")
 

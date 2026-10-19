@@ -90,6 +90,36 @@ new MutationObserver(scheduleMenuAutoHide).observe(document.body, { attributes: 
     document.getElementById('app-header')?.addEventListener(type, scheduleMenuAutoHide, { passive: true }));
 scheduleMenuAutoHide();
 
+// ========== БІЧНА ПАНЕЛЬ «ЗМІСТ / ЕСКІЗИ СТОРІНОК» САМА ЗАКРИВАЄТЬСЯ ==========
+// Раніше її можна було закрити лише вручну (через головне меню чи меню прокрутки), а ескізи PDF не закривали її взагалі. Тепер:
+// після вибору сторінки чи розділу — через 3 с; після прокрутки панелі, дотику чи клавіші — через 5 с; відкрита й нічого не робили — через 8 с.
+// Прибрати її зі сторінки закриттям і є мета: клас `collapsed` повертає книзі повну ширину (спостерігачі розкладки PDF і пагінації).
+// Той самий вимикач, що й в меню: localStorage reader_menu_autohide = 'off'.
+const SIDEBAR_IDLE_MS = { open: 8000, scroll: 5000, pick: 3000 };
+let sidebarIdleTimer = 0, sidebarPickAt = 0;
+const sidebarIsOpen = () => !els.sidebar.classList.contains('collapsed');
+function scheduleSidebarClose(kind) {
+    clearTimeout(sidebarIdleTimer); sidebarIdleTimer = 0;
+    if (!sidebarIsOpen() || !menuAutoHideEnabled()) return;
+    sidebarIdleTimer = setTimeout(() => {
+        sidebarIdleTimer = 0;
+        if (!sidebarIsOpen()) return;
+        // A finger gesture on the page (a pinch zoom, a drag) is under way: closing the panel now would move the page under the fingers.
+        if (typeof pdfPointers !== 'undefined' && pdfPointers.size) { scheduleSidebarClose('scroll'); return; }
+        const a = document.activeElement;
+        if (a && els.sidebar.contains(a) && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)) { scheduleSidebarClose('scroll'); return; }   // the book-language list is open
+        els.sidebar.classList.add('collapsed');
+    }, SIDEBAR_IDLE_MS[kind] || SIDEBAR_IDLE_MS.scroll);
+}
+new MutationObserver(() => scheduleSidebarClose('open')).observe(els.sidebar, { attributes: true, attributeFilter: ['class'] });
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(type => els.sidebar.addEventListener(type, () => scheduleSidebarClose('scroll'), { passive: true }));
+// scroll does not bubble: capture. Right after a choice the panel scrolls ITSELF to the chosen thumbnail: those scrolls must not stretch the 3 s.
+els.sidebar.addEventListener('scroll', () => { if (performance.now() - sidebarPickAt > 1500) scheduleSidebarClose('scroll'); }, { capture: true, passive: true });
+// A page / chapter / outline entry was chosen (the tabs and the book-language list are not choices).
+els.sidebar.addEventListener('click', e => {
+    if (e.target.closest('#toc-list li, .pdf-thumb-item, .pdf-outline-item:not(.disabled)')) { sidebarPickAt = performance.now(); scheduleSidebarClose('pick'); }
+});
+
 // ========== LOWER-RIGHT CURVED SCROLLABLE QUICK WHEEL ==========
 const quickMenu = (() => {
     const launcher = document.getElementById('qm-launcher');
