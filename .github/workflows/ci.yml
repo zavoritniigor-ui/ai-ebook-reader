@@ -326,6 +326,9 @@ jobs:
           echo "Running grammar_rules_browser.py..."
           python3 -u tests/grammar_rules_browser.py
 
+          echo "Running rules_practice_browser.py..."
+          python3 -u tests/rules_practice_browser.py
+
           echo "Running sentence_structure_languages_browser.py..."
           python3 -u tests/sentence_structure_languages_browser.py
 

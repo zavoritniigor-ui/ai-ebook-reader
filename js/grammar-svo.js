@@ -466,6 +466,52 @@ function validStemBreakdown(rawSplit, surface, lemma, verbCfg) {
     return { stem, ending };
 }
 
+// Verb endings shown in their own colour in a conjugation table (the Grammar grid, the Rules tables). The stem is
+// the lemma minus its infinitive ending (parl|er, fin|ir; an English lemma is its own stem); a word is split only
+// when it starts with that stem and the rest is a genuine ending of the language (verb.endings). Irregular verbs,
+// and languages without an endings list, are never split -- no fake "s|uis" or "v|ais".
+function conjugationStem(lemma, lang) {
+    const verbCfg = grammarConfigFor(lang).verb;
+    if (!verbCfg.endings || typeof lemma !== 'string') return null;
+    const bare = normalizeGrammarText(lemma).toLowerCase().replace(/^(?:se\s+|s['’])/, '');
+    if (!/^\p{L}+$/u.test(bare) || (verbCfg.irregularRe && verbCfg.irregularRe.test(bare))) return null;
+    if (!verbCfg.infinitiveEndings) return bare.length >= 2 ? bare : null;
+    const inf = verbCfg.infinitiveEndings.find(e => bare.endsWith(e) && bare.length - e.length >= 2);
+    return inf ? bare.slice(0, -inf.length) : null;
+}
+function splitVerbEnding(word, stem, verbCfg) {
+    const w = word.toLowerCase();
+    let k = 0;
+    while (k < w.length && k < stem.length && w[k] === stem[k]) k++;
+    // English drops a final e/y before an ending (mak|ing, stud|ies); a French stem stays whole (appel|le is no split).
+    const minK = verbCfg.infinitiveEndings ? stem.length : Math.max(2, stem.length - 1);
+    if (k < minK || k >= w.length) return null;
+    const ending = word.slice(k);
+    return verbCfg.endings.includes(ending.toLowerCase()) ? ending : null;
+}
+// Appends `text` (a table cell: "parlons", "nous avons parlé", "j'aime") to `parent`, each ending of `lemma`'s forms
+// in a .verb-ending span. Subject pronouns are never split (nous for nouer).
+function appendConjugatedForm(parent, text, lemma, lang) {
+    const stem = conjugationStem(lemma, lang);
+    if (!stem) { parent.appendChild(document.createTextNode(text)); return; }
+    const verbCfg = grammarConfigFor(lang).verb;
+    const pronouns = new Set((verbCfg.persons || []).join(' ').toLowerCase().match(/\p{L}+/gu) || []);
+    let last = 0;
+    for (const m of text.matchAll(/\p{L}+/gu)) {
+        if (pronouns.has(m[0].toLowerCase())) continue;
+        const ending = splitVerbEnding(m[0], stem, verbCfg);
+        if (!ending) continue;
+        const endAt = m.index + m[0].length;
+        parent.appendChild(document.createTextNode(text.slice(last, endAt - ending.length)));
+        const span = document.createElement('span');
+        span.className = 'verb-ending';
+        span.textContent = ending;
+        parent.appendChild(span);
+        last = endAt;
+    }
+    if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+}
+
 // Shared by the Grammar analysis gate and Practice target validation: keeps only the declared
 // slot ids of a returned forms grid, validates the special before-vowel forms, verifies the grid
 // really contains THIS occurrence's own form (else discards it), repairs a non-base lemma from
@@ -1119,7 +1165,8 @@ function renderGrammarFocusDetail(item, langCode) {
             const row = document.createElement('div'); row.className = 'grammar-grid-row';
             if (current.includes(id)) { row.classList.add('current'); row.setAttribute('aria-current', 'true'); }
             const label = document.createElement('span'); label.className = 'grammar-grid-label'; label.textContent = grammarFormLabel(item.pos, langCode, id);
-            const val = document.createElement('span'); val.className = 'grammar-grid-value'; val.textContent = formValue;
+            const val = document.createElement('span'); val.className = 'grammar-grid-value';
+            if (item.pos === 'verb') appendConjugatedForm(val, formValue, item.lemma, langCode); else val.textContent = formValue;
             row.append(label, val);
             const change = item.transformations && item.transformations[id];
             if (change) {

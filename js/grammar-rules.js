@@ -24,6 +24,13 @@ const RULES_SCAN_MAX_PER_TOPIC = 6, RULES_SCAN_MAX_CHARS = 2500;   // a long sen
 let rulesScan = null;   // { lang, explainLang, sourceText, flat, status: 'running'|'ready'|'none'|'failed', found: Map(topicId -> matches result) }
 const RULES_CACHE_MAX = 60;
 
+Object.assign(I18N, {
+    rulesPractice: { uk: 'Практика', en: 'Practice', fr: 'Pratique', ru: 'Практика', zh: '练习', ko: '연습', hi: 'अभ्यास', ga: 'Cleachtadh' },
+    rulesPracticeSection: { uk: 'Практика всього розділу', en: 'Practise the whole section', fr: 'Pratiquer toute la section', ru: 'Практика всего раздела', zh: '练习整个章节', ko: '이 단원 전체 연습', hi: 'पूरे खंड का अभ्यास', ga: 'Cleacht an chuid ar fad' },
+    rulesPracticeExample: { uk: 'Практика на цьому прикладі', en: 'Practise with this example', fr: 'Pratiquer avec cet exemple', ru: 'Практика на этом примере', zh: '用这个例子练习', ko: '이 예문으로 연습', hi: 'इस उदाहरण से अभ्यास', ga: 'Cleacht leis an sampla seo' },
+    practiceRuleMeta: { uk: 'Правило:', en: 'Rule:', fr: 'Règle :', ru: 'Правило:', zh: '规则：', ko: '규칙:', hi: 'नियम:', ga: 'Riail:' },
+    practiceRuleNoNote: { uk: 'тут працює це правило.', en: 'the rule is at work here.', fr: 'la règle s’applique ici.', ru: 'здесь работает это правило.', zh: '这里用到了这条规则。', ko: '여기에 이 규칙이 쓰였습니다.', hi: 'यहाँ यह नियम लागू है।', ga: 'tá an riail i bhfeidhm anseo.' }
+});
 function rulesPick(obj) { return (obj && (obj[state.uiLang] || obj.en || obj.uk || obj.fr)) || ''; }
 // The topic's own name in the language of the rules (French: title.fr, English: title.en); the UI-language name goes under it.
 function ruleTitle(topic, lang = rulesState.lang) { return topic.title[lang] || topic.title.fr || topic.title.en || rulesPick(topic.title); }
@@ -499,14 +506,24 @@ function renderRulesTree() {
             details.appendChild(b);
             shown++;
         }
+        const practise = ruleEl('button', 'rules-practice rules-section-practice', '✍️ ' + t('rulesPracticeSection'));
+        practise.type = 'button';
+        practise.onclick = () => startRulePractice({ title: rulesPick(section.title), topics: topics.map(rulePracticeTopic) }, practise);
+        details.appendChild(practise);
         content.appendChild(details);
     }
     if (!shown) content.appendChild(ruleEl('p', 'rules-note', t('rulesNoTopics')));
 }
 
 // Expanded text: lines ending with ':' are subheadings ("Правила:", "Винятки:"), lines starting with '• ' are list items.
-function renderRuleDetailsText(container, text) {
-    let list = null, table = null;
+// In a conjugation table each column's verb comes from its header ("parler", "présent (se laver)", "work (regular)"):
+// the first word with a regular stem; that verb's endings are coloured in the column (appendConjugatedForm).
+function ruleColumnLemma(header, lang) {
+    for (const m of String(header).matchAll(/\p{L}+/gu)) if (conjugationStem(m[0], lang)) return m[0];
+    return null;
+}
+function renderRuleDetailsText(container, text, lang = rulesState.lang) {
+    let list = null, table = null, lemmas = [];
     for (const raw of String(text || '').split('\n')) {
         const line = raw.trim();
         if (!line) { list = null; table = null; continue; }
@@ -517,8 +534,16 @@ function renderRuleDetailsText(container, text) {
                 table = ruleEl('table', 'rules-table');
                 wrap.appendChild(table); container.appendChild(wrap);
                 const head = ruleEl('tr'); cells.forEach(c => head.appendChild(ruleEl('th', '', c))); table.appendChild(head);
+                lemmas = cells.map((c, i) => i === 0 ? null : ruleColumnLemma(c, lang));
             } else {
-                const row = ruleEl('tr'); cells.forEach((c, i) => row.appendChild(ruleEl(i === 0 ? 'th' : 'td', i === 0 ? 'rules-table-row-head' : '', c))); table.appendChild(row);
+                const row = ruleEl('tr');
+                cells.forEach((c, i) => {
+                    if (i === 0) { row.appendChild(ruleEl('th', 'rules-table-row-head', c)); return; }
+                    const td = ruleEl('td', '');
+                    if (lemmas[i]) appendConjugatedForm(td, c, lemmas[i], lang); else td.textContent = c;
+                    row.appendChild(td);
+                });
+                table.appendChild(row);
             }
             list = null;
             continue;
@@ -634,7 +659,9 @@ function renderRuleTopic() {
     find.onclick = () => runRuleSearch(true);
     const clear = ruleEl('button', 'rules-clear', t('rulesClear')); clear.type = 'button';
     clear.onclick = () => { clearRuleHighlights(); rulesState.matches = []; rulesState.token++; rulesState.status = 'idle'; setRulesStatus(''); content.querySelector('.rules-matches')?.replaceChildren(); content.querySelector('.rules-detail')?.replaceChildren(); };
-    actions.append(find, clear);
+    const practise = ruleEl('button', 'rules-practice', '✍️ ' + t('rulesPractice')); practise.type = 'button'; practise.id = 'rules-practice';
+    practise.onclick = () => startRulePractice({ title: ruleTitle(topic), topics: [rulePracticeTopic(topic)] }, practise);
+    actions.append(find, practise, clear);
     content.appendChild(actions);
     const status = ruleEl('p', 'rules-status'); status.id = 'rules-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
     content.appendChild(status);
@@ -718,7 +745,9 @@ function renderRuleDetail(index) {
     askBtn.onclick = () => { const q = ask.value.trim(); if (q) run(q); };
     ask.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); askBtn.click(); } };
     const row = ruleEl('div', 'rules-ask-row'); row.append(ask, askBtn);
-    card.append(explain, row, out);
+    const practise = ruleEl('button', 'rules-practice rules-example-practice', '✍️ ' + t('rulesPracticeExample')); practise.type = 'button';
+    practise.onclick = () => startRulePractice({ title: ruleTitle(topic), topics: [rulePracticeTopic(topic)], example: { sentence: m.sentence, text: m.text } }, practise);
+    card.append(explain, practise, row, out);
     host.appendChild(card);
     const cached = rulesExplainCache.get(explainKey(m, topic, ''));
     if (cached) renderExplainText(out, cached);
@@ -751,6 +780,28 @@ async function explainRuleMatch(m, topic, question, out, isCurrent) {
         rulesBounded(rulesExplainCache, key, clean);
         if (isCurrent()) renderExplainText(out, clean);
     } catch (err) { if (isCurrent()) out.textContent = t('rulesFailed'); }
+}
+
+// Практика правила — читання прикладів, нічого не треба відповідати (js/practice-session.js, режим 'rule'): одна тема, усі
+// теми розділу або тема разом із прикладом, знайденим у книзі. Вікно Правил ховається (підсвітка й результати лишаються).
+function rulePracticeTopic(tp) {
+    const more = ruleDetails(tp);
+    return { id: tp.id, title: ruleTitle(tp), theory: (tp.theory.en || rulesPick(tp.theory)) + (more && more.en ? ' ' + more.en : ''), find: tp.find || '' };
+}
+function startRulePractice(rule, btn) {
+    if (typeof generatePracticeReading !== 'function') return;
+    if (!aiAvailable()) { showToast(t('needKey')); return; }
+    const inFlight = getCurrentPracticeSession();
+    if (inFlight && inFlight.status === 'generating') { minimizeRulesPanel(); displayPracticeSession(inFlight); return; }
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = t('generating');
+    const generating = generatePracticeReading({ sourceLanguage: rulesState.lang, targetLanguage: state.targetLang, bookId: state.bookKey, mode: 'rule', rule, level: null });
+    minimizeRulesPanel();
+    const session = getCurrentPracticeSession();
+    if (session) displayPracticeSession(session);
+    generating.then(done => { const s = done || getCurrentPracticeSession(); if (s) displayPracticeSession(s); })
+        .catch(() => { const s = getCurrentPracticeSession(); if (s) displayPracticeSession(s); })
+        .finally(() => { btn.disabled = false; btn.textContent = label; });
 }
 
 // Кнопка «Правила» (шапка, закладка, колесо) з виділеним реченням/абзацом: ПЕРШИЙ тап лише запускає пошук у фоні — вікно не відкривається,

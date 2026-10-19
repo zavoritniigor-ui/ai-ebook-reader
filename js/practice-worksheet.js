@@ -250,12 +250,14 @@ function displayPracticeReady(panel, session) {
 
     // What is being practised — the words, NOT the raw selection: that is often a book exercise
     // ("Ils (plaindre) …") and must not appear on a reading surface.
-    const focusWords = (session.lemmas && session.lemmas.length ? session.lemmas : [...new Set(reading.targets.map(x => x.lemma))]).slice(0, PRACTICE_MAX_LEMMAS);
+    // A Rules practice names its rule(s) instead (its targets' "lemma" is a rule id, not a word).
+    const ruleTitles = session.mode === 'rule' && session.rule ? session.rule.topics.map(tp => tp.title) : null;
+    const focusWords = ruleTitles || (session.lemmas && session.lemmas.length ? session.lemmas : [...new Set(reading.targets.map(x => x.lemma))]).slice(0, PRACTICE_MAX_LEMMAS);
     if (focusWords.length) {
         const meta = document.createElement('div');
         meta.className = 'practice-meta';
         const row = document.createElement('div'); row.className = 'meta-row';
-        const label = document.createElement('span'); label.className = 'meta-label'; label.textContent = t('practiceFocus');
+        const label = document.createElement('span'); label.className = 'meta-label'; label.textContent = t(ruleTitles ? 'practiceRuleMeta' : 'practiceFocus');
         const value = document.createElement('span'); value.className = 'meta-value'; value.textContent = focusWords.join(' · ');
         row.append(label, value);
         meta.appendChild(row);
@@ -482,6 +484,14 @@ function renderParagraphWithTargets(container, text, targets, langCode) {
         btn.className = 'practice-target practice-target-' + target.pos;
         btn.textContent = text.slice(start, end);
         btn.dataset.lemma = target.lemma;
+        if (target.pos === 'rule') {
+            // A rule fragment has no Grammar card: its one-line "why" opens under the sentence (again = hides it).
+            btn.setAttribute('aria-expanded', 'false');
+            btn.onclick = () => togglePracticeRuleNote(btn, target);
+            container.appendChild(btn);
+            cursor = end;
+            continue;
+        }
         btn.onclick = () => {
             const span = sentenceSpanAround(text, start, end);
             focusGrammarItem({
@@ -496,6 +506,24 @@ function renderParagraphWithTargets(container, text, targets, langCode) {
         cursor = end;
     }
     if (cursor < text.length) container.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function togglePracticeRuleNote(btn, target) {
+    const row = btn.closest('.practice-sentence, .practice-paragraph');
+    if (!row) return;
+    const open = row.querySelector('.practice-rule-note');
+    const same = open && open.dataset.for === String(target.start);
+    row.querySelectorAll('.practice-target-rule[aria-expanded="true"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    open?.remove();
+    if (same) return;
+    const note = document.createElement('div');
+    note.className = 'practice-rule-note';
+    note.dataset.for = String(target.start);
+    note.setAttribute('role', 'note');
+    const head = document.createElement('b'); head.textContent = target.surface;
+    note.append(head, document.createTextNode(' — ' + (target.explanation || t('practiceRuleNoNote'))));
+    row.querySelector('.practice-sentence-translation').before(note);
+    btn.setAttribute('aria-expanded', 'true');
 }
 
 // The [from, to) slice of `text` that is the sentence a [start,end) span sits in (trimmed),
@@ -849,6 +877,23 @@ const practiceStyles = `
 
 .practice-target-adjective {
     border-bottom-color: #0d6efd;
+}
+
+.practice-target-rule {
+    border-bottom-color: var(--accent-color);
+}
+.practice-target-rule[aria-expanded="true"] {
+    background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+}
+.practice-rule-note {
+    flex: 1 0 100%;
+    margin: 4px 0 2px;
+    padding: 6px 10px;
+    border-left: 3px solid var(--accent-color);
+    background: var(--surface-2);
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 /* Sentence-level learning actions: compact and visually secondary (task requirement) — muted until

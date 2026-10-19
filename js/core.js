@@ -294,6 +294,9 @@ const GRAMMAR_LANG_CONFIG = {
             // (parlait, mange) is a model error and the item is rejected.
             verifyForms: true,
             lemmaRe: /^(?:s['’]|se\s+)?(?:en\s+)?\p{L}+(?:er|ir|re|oir)$/u,
+            // What an infinitive ends with: parl|er, fin|ir, vend|re. The rest is the stem whose endings a
+            // conjugation table colours (conjugationStem); a language without this list uses the lemma itself.
+            infinitiveEndings: ['oir', 'er', 'ir', 're'],
             // Irregular verbs (and their prefixed derivatives) have no honest "stem + ending"
             // split — nous sommes, ils vont, il fait — so any split is discarded.
             irregularRe: /(?:^|[\s'’])(?:être|avoir|aller)$|(?:aire|dire|voir|loir|seoir|venir|tenir|mettre|prendre|duire|struire|cevoir|courir|mourir|vivre|suivre|rire|crire|lire|croire|boire|aître|aitre|aindre|eindre|oindre|vaincre|battre|partir|sortir|dormir|servir|sentir|mentir|cueillir|frir|vrir|clure|luire|nuire|coudre|moudre|soudre|fuir|vêtir|quérir|bouillir|saillir|haïr)$/u,
