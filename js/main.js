@@ -153,7 +153,8 @@ async function openBookFile(file) {
     state.inkMode = false; setPageArrows(false);
     document.body.classList.remove('ink-mode', 'region-mode', 'pdf-pannable', 'pdf-dragging');
     els.askPanel.classList.remove('loading', 'ready'); els.grammarPanel.classList.remove('loading', 'ready');
-    els.askContent.textContent = t('askHint'); els.grammarContent.textContent = t('grammarHint');
+    showPanelEmpty(els.askContent, 'askHint', 'sparkle'); showPanelEmpty(els.grammarContent, 'grammarHint', 'grammar');
+    setPanelSubtitle('ask-subtitle', ''); setPanelSubtitle('grammar-subtitle', '');
     document.getElementById('grammar-controls-bar').replaceChildren();
     if (typeof resetGrammarState === 'function') resetGrammarState(); // no stale analysis/cache across books (section 18)
     els.toc.replaceChildren();

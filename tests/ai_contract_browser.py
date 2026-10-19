@@ -351,7 +351,7 @@ def run_grammar(text, focus_sentence=None, plan=None, provider='openai', mode='v
     c.js("window.__done=false; startAiTask(%s,'grammar').then(()=>{__done=true})" % json.dumps(text, ensure_ascii=False))
     c.wait("__done===true && !els.grammarContent.querySelector('.spinner-large')", timeout=40)
     time.sleep(0.15)
-    return c.js("""(()=>{const err=els.grammarContent.querySelector('span[style*="red"]'); const an=grammarContext.analysis;
+    return c.js("""(()=>{const err=els.grammarContent.querySelector('.ai-error-text'); const an=grammarContext.analysis;
         return {error: err?err.textContent:null, retry: !!els.grammarContent.querySelector('button'), notes:[...els.grammarContent.querySelectorAll('.grammar-note')].map(n=>n.textContent),
                 items: an?an.items.length:null, partial: an?!!an.partial:null, suspect: an?!!an.suspect:null, cards:[...els.grammarContent.querySelectorAll('.grammar-card-lemma')].map(b=>b.textContent),
                 requests: __stub.requests.filter(r=>r.kind==='grammar').map(r=>({maxTokens:r.maxTokens, chars:r.chars, lite:r.lite, tapped:r.promptHasTapped, n:r.itemsInReply, step:r.step})),
@@ -460,7 +460,7 @@ run_grammar(F.SENTENCES[1], plan=[dict(mode='raw', text='oops')])
 n0 = c.js("__stub.requests.length")
 c.js("window.__done=false; document.querySelector('#grammar-content button').click()")
 c.wait("!els.grammarContent.querySelector('.spinner-large') && !!grammarContext.analysis", timeout=20)
-assert c.js("__stub.requests.length") - n0 == 1 and c.js("grammarContext.analysis.items.length") == 2 and not c.js("els.grammarContent.querySelector('span[style*=\"red\"]')")
+assert c.js("__stub.requests.length") - n0 == 1 and c.js("grammarContext.analysis.items.length") == 2 and not c.js("els.grammarContent.querySelector('.ai-error-text')")
 print("PASS retry: Retry after a rejected reply sends exactly ONE new request and replaces the error with the analysis", flush=True)
 
 # Gemini and Groq: the same pipeline, the same behaviour (no provider-specific grammar logic)
@@ -649,7 +649,7 @@ time.sleep(0.4)
 tap_pdf_word('effectuer')
 c.wait("!!grammarContext.analysis && grammarContext.analysis.partial===true", timeout=20)
 check("9: a cut-off reply on the same tap shows the 2 complete items with a 'partial analysis' note (no error banner)",
-      "grammarContext.analysis.items.length===2 && !!document.querySelector('#grammar-content .grammar-note') && !document.querySelector('#grammar-content span[style*=\"red\"]') && grammarContext.focused?.surface==='effectuer'")
+      "grammarContext.analysis.items.length===2 && !!document.querySelector('#grammar-content .grammar-note') && !document.querySelector('#grammar-content .ai-error-text') && grammarContext.focused?.surface==='effectuer'")
 assert c.js("readerAiDiagnostics().filter(d=>d.task==='grammar_analysis').at(-1).reason") == 'partial'
 # Practice built from this analysis, then a highlighted form is clicked: exact occurrence, zero AI calls.
 # The reply must cover BOTH lemmas actually detected on this tap (effectuer, préparer) -- not the generic
@@ -747,7 +747,7 @@ else:
     c.wait("!!grammarContext.analysis", timeout=20)
     st = c.js("""({ok:grammarContext.analysis.ok, n:grammarContext.analysis.items.length, surfaces:grammarContext.analysis.items.map(i=>i.pos+':'+i.surface), rejected:grammarContext.analysis.rejected.map(r=>r.reason+':'+r.surface),
         adjusted:grammarContext.analysis.adjusted.map(a=>a.reason), notes:grammarContext.analysis.notes, lang:grammarContext.sourceLanguage, focused:grammarContext.focused&&grammarContext.focused.surface, mode:grammarContext.mode,
-        chips:[...document.querySelectorAll('#grammar-controls-bar button')].map(b=>b.textContent), banner:!!document.querySelector('#grammar-content span[style*="red"]')})""")
+        chips:[...document.querySelectorAll('#grammar-controls-bar button')].map(b=>b.textContent), banner:!!document.querySelector('#grammar-content .ai-error-text')})""")
     assert st['ok'] is True and st['lang'] == 'fr' and st['mode'] == 'verbs' and not st['banner'], st
     assert st['n'] == 4, ('all four items of the fenced reply must be accepted on the real page', st)
     assert st['focused'] == 'effectuer', ("the tapped word's own occurrence is focused", st)

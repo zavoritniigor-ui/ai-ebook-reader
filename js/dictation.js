@@ -75,7 +75,7 @@ function dictationDropWords(base, text, k) {
 }
 function updateDictationUI(interim = '') {
     els.micBtn.classList.toggle('recording', dictation.wanted);
-    els.micBtn.textContent = dictation.wanted ? '■' : '🎤';
+    setIconButton(els.micBtn, dictation.wanted ? 'stop' : 'mic');
     els.micBtn.setAttribute('aria-pressed', String(dictation.wanted));
     els.micBtn.setAttribute('aria-label', t(dictation.wanted ? 'dictationStop' : 'dictationStart'));
     els.micBtn.title = t(dictation.wanted ? 'dictationStop' : 'dictationStart');

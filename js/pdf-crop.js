@@ -272,7 +272,7 @@ async function checkExerciseImage(dataUrl, question = '') {
     els.askPanel.classList.remove('loading', 'ready');
     const langName = explainLangName();
     els.askPanel.classList.add('expanded', 'loading');
-    els.askContent.replaceChildren(askRequestView(requestId, `<div style="text-align:center;margin-top:40px;"><div class="spinner-large"></div><p class="tt-note">${t(question ? 'generating' : 'checking')}</p>${question ? `<p><b>${escapeHtml(question)}</b></p>` : ''}</div>`));
+    els.askContent.replaceChildren(askRequestView(requestId, aiLoadingHtml(t(question ? 'generating' : 'checking'), question)));
     // Запит навмисно короткий: кожен зайвий рядок інструкції — це витрачені токени,
     // а їхній ліміт тут головне обмеження.
     const prompt = question
@@ -291,12 +291,7 @@ async function checkExerciseImage(dataUrl, question = '') {
         els.askPanel.classList.remove('loading');
         if (askAttachment && askAttachment.dataUrl === dataUrl) askAttachment.sending = false;
         // The attachment stays; Retry resends the same question with the same image.
-        const button = document.createElement('button');
-        button.textContent = t('retry');
-        button.style.cssText = 'margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;';
-        button.onclick = retry;
-        els.askContent.innerHTML = `<div><span style="color:red">${escapeHtml(err.message || t('error'))}</span><br/></div>`;
-        els.askContent.firstChild.append(button);
+        els.askContent.replaceChildren(aiErrorView(err.message || t('error'), retry, err));
     }
     // Cancelled: leave "generating" (unless a newer Ask request owns the panel); the crop stays attached and can
     // be sent again -- by Retry or by Send.

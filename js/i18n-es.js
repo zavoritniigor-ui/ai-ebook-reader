@@ -196,6 +196,7 @@ const I18N_ES = {
     mUpdateDesc: "Buscar e instalar una nueva versión",
     mExit: "Salir de la app",
     mHomeFormats: "Admite EPUB, PDF, DOCX, FB2, TXT, MD, HTML y RTF.",
+    sendLabel: 'Enviar',
     rulesPractice: 'Práctica', rulesPracticeSection: 'Practicar toda la sección', rulesPracticeExample: 'Practicar con este ejemplo',
     practiceRuleMeta: 'Regla:', practiceRuleNoNote: 'aquí se aplica la regla.'
 };

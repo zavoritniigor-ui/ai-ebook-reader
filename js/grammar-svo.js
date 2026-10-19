@@ -83,6 +83,7 @@ els.askTab.onclick = () => { els.askPanel.classList.toggle('expanded'); els.gram
 // shows its own view -- so a newer loading state, answer, error, crop request or the book-change hint is never
 // overwritten.
 Object.assign(I18N, {
+    sendLabel: { uk: 'Надіслати', en: 'Send', fr: 'Envoyer', ru: 'Отправить', zh: '发送', ko: '보내기', hi: 'भेजें', ga: 'Seol' },
     aiRequestCancelled: { uk: 'Запит скасовано.', en: 'Request cancelled.', fr: 'Demande annulée.', ru: 'Запрос отменён.', zh: '请求已取消。', ko: '요청이 취소되었습니다.', hi: 'अनुरोध रद्द किया गया।', ga: 'Cealaíodh an t-iarratas.' },
 });
 let askRequestSeq = 0;
@@ -105,9 +106,8 @@ function settleCancelledAskRequest(task, requestId, retry) {
         note.textContent = t('aiRequestCancelled');
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'ask-retry-btn';
+        button.className = 'ask-retry-btn btn-primary';
         button.textContent = t('retry');
-        button.style.cssText = 'margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;';
         button.onclick = retry;
         els.askContent.replaceChildren(askRequestView(requestId, ''));
         els.askContent.firstChild.append(note, button);
@@ -166,7 +166,8 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     // consumes state.lastAskContext once and clears it).
 
     panel.classList.remove('ready'); panel.classList.add('loading'); // Вмикаємо червоний неон
-    content.replaceChildren(askRequestView(requestId, `<div style="text-align:center;margin-top:50px;"><div class="spinner-large"></div><p style="margin-top:20px;color:gray;">${t('generating')}<br><b style="color:var(--text-color);">${escapeHtml(contextText.length>40?contextText.substring(0,40)+'...':contextText)}</b></p></div>`));
+    setPanelSubtitle('ask-subtitle', contextText || userPrompt);
+    content.replaceChildren(askRequestView(requestId, aiLoadingHtml(t('generating'), contextText || userPrompt)));
 
     const langName = explainLangName();
     const prompt = mode === 'level'
@@ -196,9 +197,7 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         // Зберігаємо контекст для повтору у глобальній змінній
         window.lastAiRetryContext = { contextText, mode, userPrompt };
         // Кнопка повтору — справжній обробник, а не рядок onclick (CSP забороняє вбудовані скрипти).
-        content.innerHTML = `<div><span style="color:red">${escapeHtml(msg)}</span><br/><button type="button" class="ai-retry-btn" style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;">${t('retry')}</button></div>`;
-        content.querySelector('.ai-retry-btn').addEventListener('click', () => { const ctx = window.lastAiRetryContext; startAiTask(ctx.contextText, ctx.mode, ctx.userPrompt); });
-        if (isAiAuthError(err)) content.firstElementChild.append(' ', aiUpdateKeyButton());
+        content.replaceChildren(aiErrorView(msg, () => { const ctx = window.lastAiRetryContext; startAiTask(ctx.contextText, ctx.mode, ctx.userPrompt); }, err));
     }
 }
 
@@ -958,6 +957,7 @@ function renderGrammarModeBar(langCode) {
     adjBtn.textContent = cfg.labels.adjectives;
     verbsBtn.classList.toggle('active', grammarContext.mode !== 'adjectives');
     adjBtn.classList.toggle('active', grammarContext.mode === 'adjectives');
+    setPanelSubtitle('grammar-subtitle', grammarContext.selectedText);
     if (typeof renderGrammarLookupLabels === 'function') renderGrammarLookupLabels();
 }
 
@@ -1022,6 +1022,12 @@ function buildGrammarCard(lemma, occurrences) {
     head.textContent = lemma;
     head.onclick = () => focusGrammarItem(occurrences[0]);
     card.appendChild(head);
+    // One occurrence: say which form met and in what tense (or gender/number), so the card is informative before it is opened.
+    if (occurrences.length === 1) {
+        const first = occurrences[0], f = first.features || {};
+        const bits = [first.surface && first.surface.toLowerCase() !== lemma.toLowerCase() ? first.surface : '', f.tense || [f.gender, f.number].filter(Boolean).join(' ')].filter(Boolean);
+        if (bits.length) { const meta = document.createElement('div'); meta.className = 'grammar-card-meta'; meta.textContent = bits.join(' · '); card.appendChild(meta); }
+    }
     if (occurrences.length > 1) {
         const list = document.createElement('div');
         list.className = 'grammar-card-forms';
@@ -1562,17 +1568,26 @@ renderGrammarLookupLabels();
 // generation request in the lemmas actually detected for the CURRENT mode
 // (task section 21: ground AI-generated examples in detected target lemmas).
 const PRACTICE_TOPIC_STORAGE_KEY = 'reader_practice_topic';
+// The Practice button: line icon + plain label (no emoji), like the rest of the panel; `withIcon` false = label only (the «generating» state).
+// Updated IN PLACE: its click handler calls this, and the click still bubbles to the reader's tap handler (selection.js), which
+// must still find the target inside the side panel -- a replaced child would be detached and the label read as a tapped word.
+function setPracticeButtonLabel(btn, key, withIcon = true) {
+    let svg = btn.querySelector('svg'), label = btn.querySelector('span');
+    if (!svg || !label) { svg = iconSvg('practice'); label = document.createElement('span'); btn.replaceChildren(svg, label); }
+    label.textContent = plainLabel(t(key));
+    svg.style.display = withIcon ? '' : 'none';
+}
 // 🎤 for the topic field: one spoken phrase replaces the field (the learner's own topic, any language). Uses the dictation
 // language the learner picked for Ask AI; a running Ask dictation is stopped first so two recognizers never compete.
 function buildPracticeTopicMic(input) {
     const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Ctor || window.isSecureContext === false) return null;
     const btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'icon-btn grammar-practice-topic-mic'; btn.textContent = '🎤';
+    btn.type = 'button'; btn.className = 'icon-btn grammar-practice-topic-mic'; setIconButton(btn, 'mic');
     btn.setAttribute('aria-label', t('dictationStart')); btn.title = t('dictationStart'); btn.setAttribute('aria-pressed', 'false');
     let rec = null;
     const setListening = on => {
-        btn.textContent = on ? '■' : '🎤'; btn.classList.toggle('recording', on); btn.setAttribute('aria-pressed', String(on));
+        setIconButton(btn, on ? 'stop' : 'mic'); btn.classList.toggle('recording', on); btn.setAttribute('aria-pressed', String(on));
         btn.setAttribute('aria-label', t(on ? 'dictationStop' : 'dictationStart')); btn.title = t(on ? 'dictationStop' : 'dictationStart');
     };
     btn.onclick = () => {
@@ -1601,7 +1616,7 @@ function maybeShowPracticeButton() {
     const content = els.grammarContent;
     const practiceBtn = document.createElement('button');
     practiceBtn.className = 'btn-secondary grammar-practice-btn';
-    practiceBtn.textContent = t('practice');
+    setPracticeButtonLabel(practiceBtn, 'practice');
     // The learner's topic for the generated sentences (optional, remembered between sessions).
     // One row with the button (never pushes it lower: on phones the bottom-docked word popup covers the panel's lower part).
     const topicWrap = document.createElement('div');
@@ -1647,8 +1662,8 @@ function maybeShowPracticeButton() {
         // screen) so a click never looks dead, and re-entrancy stays impossible for the life of this
         // button even before the session's own 'generating' status has had a chance to be read back.
         practiceBtn.disabled = true;
-        practiceBtn.textContent = t('generating');
-        const restoreBtn = () => { practiceBtn.disabled = false; practiceBtn.textContent = t('practice'); };
+        setPracticeButtonLabel(practiceBtn, 'generating', false);
+        const restoreBtn = () => { practiceBtn.disabled = false; setPracticeButtonLabel(practiceBtn, 'practice'); };
         const generatePromise = generatePracticeReading(practiceContext);
         const generatingSession = getCurrentPracticeSession();
         if (generatingSession) displayPracticeSession(generatingSession);
@@ -1696,17 +1711,7 @@ function appendAiDebug(parent) {
 function showGrammarError(message, retry, err) {
     const content = els.grammarContent;
     content.innerHTML = '';
-    const wrap = document.createElement('div');
-    const text = document.createElement('span'); text.style.color = 'red'; text.textContent = message;
-    wrap.appendChild(text);
-    if (retry) {
-        const retryBtn = document.createElement('button');
-        retryBtn.textContent = t('retry');
-        retryBtn.style.cssText = 'margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:0;border-radius:4px;cursor:pointer;';
-        retryBtn.onclick = retry;
-        wrap.append(document.createElement('br'), retryBtn);
-    }
-    if (isAiAuthError(err)) wrap.append(' ', aiUpdateKeyButton());
+    const wrap = aiErrorView(message, retry, err);
     appendAiDebug(wrap);
     content.appendChild(wrap);
 }
@@ -1793,15 +1798,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     const task = beginAsyncTask('grammar');
     panel.classList.remove('expanded'); // Залишаємо панель згорнутою, як і раніше
     panel.classList.remove('ready'); panel.classList.add('loading');
-    content.innerHTML = '';
-    const spinner = document.createElement('div');
-    spinner.style.cssText = 'text-align:center;margin-top:50px;';
-    spinner.innerHTML = '<div class="spinner-large"></div>';
-    const spinnerLabel = document.createElement('p');
-    spinnerLabel.style.cssText = 'margin-top:20px;color:gray;';
-    spinnerLabel.textContent = t('generating');
-    spinner.appendChild(spinnerLabel);
-    content.appendChild(spinner);
+    content.innerHTML = aiLoadingHtml(t('generating'), context);
     renderGrammarControlsBar(sourceLang);
 
     const langName = explainLangName();

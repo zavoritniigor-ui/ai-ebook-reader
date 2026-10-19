@@ -1932,8 +1932,66 @@ function setMenuRowTitle(btn, text) {
     const title = btn && btn.querySelector('.mr-title');
     if (title) title.textContent = text; else if (btn) btn.textContent = text;
 }
+// Значок із SVG-спрайту (#i-*, index.html) для кнопок, які JS створює або перемальовує, — замість емодзі.
+function iconSvg(id, cls = 'mi') {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg'), use = document.createElementNS(ns, 'use');
+    svg.setAttribute('class', cls); svg.setAttribute('aria-hidden', 'true');
+    use.setAttribute('href', '#i-' + id);
+    svg.appendChild(use);
+    return svg;
+}
+// Меняє значок кнопки НА МІСЦІ (лише href у <use>), а не перебудовує її вміст: клік, чиєю ціллю був значок, ще піднімається до
+// обробника тапу по тексту (selection.js), і відчеплена від DOM ціль минула б його перевірку «це кнопка вікна, не слово».
+function setIconButton(btn, id) {
+    if (!btn) return;
+    btn.dataset.icon = id;
+    const use = btn.querySelector('svg > use');
+    if (use) use.setAttribute('href', '#i-' + id);
+    else btn.replaceChildren(iconSvg(id));
+}
+// Назва без початкового емодзі («🤖 Запитай AI» → «Запитай AI»): поруч стоїть значок зі спрайту (атрибут data-i18n-plain).
+function plainLabel(text) { return String(text || '').replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, ''); }
+// Порожній стан панелі: значок + підказка (textContent лишається самою підказкою; applyI18n перекладає <p data-i18n>).
+function showPanelEmpty(container, key, icon) {
+    if (!container) return;
+    const box = document.createElement('div'); box.className = 'pn-empty';
+    const tile = document.createElement('span'); tile.className = 'pn-empty-icon'; tile.setAttribute('aria-hidden', 'true'); tile.appendChild(iconSvg(icon));
+    const p = document.createElement('p'); p.dataset.i18n = key; p.textContent = t(key);
+    box.append(tile, p);
+    container.replaceChildren(box);
+}
+// Завантаження у вікнах AI та Граматики: акцентний спінер, підпис, що саме розбирається, і «скелет» майбутньої відповіді.
+function aiLoadingHtml(label, contextText) {
+    const ctx = String(contextText || '');
+    const chip = ctx ? `<span class="ai-context-chip">${escapeHtml(ctx.length > 40 ? ctx.substring(0, 40) + '...' : ctx)}</span>` : '';
+    return `<div class="ai-loading"><div class="spinner-large"></div><p class="ai-loading-label">${escapeHtml(label)}</p>${chip}<div class="ai-skeleton"><i></i><i></i><i></i><i></i></div></div>`;
+}
+// Помилка у вікні AI чи Граматики: значок, текст і кнопка «Повторити» (+ «Оновити ключ AI» при 401/403). Повертає елемент .ai-error.
+function aiErrorView(message, retry, err) {
+    const box = document.createElement('div'); box.className = 'ai-error';
+    const row = document.createElement('div'); row.className = 'ai-error-row';
+    const text = document.createElement('p'); text.className = 'ai-error-text'; text.textContent = message;
+    row.append(iconSvg('alert'), text);
+    box.appendChild(row);
+    if (retry) {
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-primary ai-retry-btn'; btn.textContent = t('retry');
+        btn.onclick = retry;
+        box.appendChild(btn);
+    }
+    if (err && typeof isAiAuthError === 'function' && isAiAuthError(err) && typeof aiUpdateKeyButton === 'function') box.appendChild(aiUpdateKeyButton());
+    return box;
+}
+// Рядок під заголовком панелі — що саме зараз розбирається ('' ховає його).
+function setPanelSubtitle(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    el.textContent = value.length > 90 ? value.slice(0, 89) + '…' : value;
+    el.hidden = !value;
+}
 function applyI18n() {
-    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n]').forEach(el => { const text = t(el.dataset.i18n); el.textContent = el.hasAttribute('data-i18n-plain') ? plainLabel(text) : text; });
     document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
     document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
     document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });

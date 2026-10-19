@@ -167,7 +167,7 @@ check('10 transient audio error (audio-busy): retried once, then plays whole',
       "__tl.filter(e => e.ev === 'speak').length === 2 && %s('dort')" % COMPLETE)
 fresh(); c.js("__faults.push('not-allowed'); 1"); tap('canapé'); pause(.5); idle()
 check('10 hard error (not-allowed): not retried, logged (not swallowed), speaker UI reset',
-      "__tl.filter(e => e.ev === 'speak').length === 1 && __warnings.some(w => w.includes('not-allowed')) && state.speakingSide === null && els.ttReplayBtn.textContent === '🔊'")
+      "__tl.filter(e => e.ev === 'speak').length === 1 && __warnings.some(w => w.includes('not-allowed')) && state.speakingSide === null && els.ttReplayBtn.dataset.icon === 'speak'")
 
 # global read-aloud chain still works and starts inside the click
 c.js("els.ttCloseBtn.click(); 1"); fresh()
