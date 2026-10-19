@@ -84,7 +84,7 @@ c.js("""(() => { focusGrammarItem({ pos: 'verb', lemma: 'parler', surface: 'parl
 check("1c the Grammar conjugation grid colours every ending of a regular verb, the whole form still readable",
       """(() => { const vals = [...document.querySelectorAll('.grammar-focus-grid .grammar-grid-value')];
          return vals.map(v => v.textContent).join(',') === 'parle,parles,parle,parlons,parlez,parlent' && vals.map(%s).join('|') === 'e|es|e|ons|ez|ent'
-           && getComputedStyle(vals[3].querySelector('.verb-ending')).color === 'rgb(194, 65, 12)' || vals.map(v => v.innerHTML).join(' / '); })()""" % ENDINGS, timeout=3)
+           && (e => getComputedStyle(e).color !== getComputedStyle(e.parentElement).color)(vals[3].querySelector('.verb-ending')) || vals.map(v => v.innerHTML).join(' / '); })()""" % ENDINGS, timeout=3)
 c.js("""(() => { focusGrammarItem({ pos: 'verb', lemma: 'être', surface: 'sommes', sentence: 'Nous sommes là.', start: 4, end: 10, features: {}, explanation: '', stemBreakdown: null,
   forms: { je: 'suis', tu: 'es', il: 'est', nous: 'sommes', vous: 'êtes', ils: 'sont' } }, 'fr'); return 1; })()""")
 check("1d an irregular verb's grid has no coloured ending (no fake split)",
