@@ -104,6 +104,8 @@ function scheduleSidebarClose(kind) {
     sidebarIdleTimer = setTimeout(() => {
         sidebarIdleTimer = 0;
         if (!sidebarIsOpen()) return;
+        // A finger gesture on the page (a pinch zoom, a drag) is under way: closing the panel now would move the page under the fingers.
+        if (typeof pdfPointers !== 'undefined' && pdfPointers.size) { scheduleSidebarClose('scroll'); return; }
         const a = document.activeElement;
         if (a && els.sidebar.contains(a) && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)) { scheduleSidebarClose('scroll'); return; }   // the book-language list is open
         els.sidebar.classList.add('collapsed');

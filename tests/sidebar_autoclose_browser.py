@@ -83,6 +83,13 @@ check('9 while the book-language list is focused it stays open (past every delay
 c.js("document.activeElement.blur(); 1")
 check('9b ... and closes once it is released', f"!({OPEN})", timeout=4)
 
+# A finger gesture on the page (pinch / drag) is under way: closing now would move the page under the fingers (CI caught this in the pinch test).
+c.js("pdfPointers.set(99, {x: 1, y: 1, startX: 1, startY: 1}); 1")
+open_sidebar(); time.sleep(3.2)
+check('9c while a finger gesture is under way the panel stays open (past every delay)', OPEN)
+c.js("pdfPointers.clear(); 1")
+check('9d ... and closes after the gesture ended', f"!({OPEN})", timeout=4)
+
 c.js("localStorage.setItem('reader_menu_autohide', 'off'); 1")
 open_sidebar(); time.sleep(3.2)
 check('10 switched off (the same switch as the main menu): it stays open', OPEN)
