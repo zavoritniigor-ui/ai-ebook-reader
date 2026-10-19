@@ -66,29 +66,18 @@ c.call('Page.reload')
 c.wait("document.readyState==='complete' && !document.body.inert && typeof openRulesPanel==='function'", timeout=30)
 c.js("state.uiLang = 'uk'; applyI18n(); window.__errs = []; addEventListener('error', e => __errs.push(e.message)); addEventListener('unhandledrejection', e => __errs.push(String(e.reason))); 1")
 
-# ---- 1. endings ----
+# ---- 1. endings (the full matrix is tests/verb_endings_browser.py) ----
 ENDINGS = """(el => [...el.querySelectorAll('.verb-ending')].map(s => s.textContent).join(','))"""
-check("1a French stems: parl|er, fin|ir, vend|re, lav|er (reflexive); irregular être/avoir/aller and non-infinitives give none",
-      """conjugationStem('parler','fr') === 'parl' && conjugationStem('finir','fr') === 'fin' && conjugationStem('vendre','fr') === 'vend' && conjugationStem('se laver','fr') === 'lav'
-         && conjugationStem('être','fr') === null && conjugationStem('avoir','fr') === null && conjugationStem('aller','fr') === null && conjugationStem('prendre','fr') === null && conjugationStem('maison','fr') === null
-         && conjugationStem('work','en') === 'work' && conjugationStem('be','en') === null && conjugationStem('parler','es') === null""")
-check("1b only real endings are split: parl|ons, fin|issons, parl|erai, vend|s; 'vend', 'appelle' and the pronoun 'nous' stay whole",
-      """(() => { const cell = (txt, lemma, lang) => { const d = document.createElement('span'); appendConjugatedForm(d, txt, lemma, lang); return d; };
-         const e = %s; const r = [e(cell('parlons','parler','fr')), e(cell('nous finissons','finir','fr')), e(cell('parlerai','parler','fr')), e(cell('vends','vendre','fr')), e(cell('vend','vendre','fr')),
-           e(cell('appelle','appeler','fr')), e(cell('nous nouons','nouer','fr')), e(cell("j'aime",'aimer','fr')), e(cell('ai parlé','parler','fr')), e(cell('baking','bake','en')), e(cell('studies','study','en')), e(cell('suis','être','fr'))];
-         const want = ['ons','issons','erai','s','','','ons','e','é','ing','ies',''];
-         return JSON.stringify(r) === JSON.stringify(want) && cell('nous finissons','finir','fr').textContent === 'nous finissons' || JSON.stringify(r); })()""" % ENDINGS)
-
 c.js("""(() => { focusGrammarItem({ pos: 'verb', lemma: 'parler', surface: 'parlons', sentence: 'Nous parlons français.', start: 4, end: 11, features: {},
   explanation: '', stemBreakdown: null, forms: { je: 'parle', tu: 'parles', il: 'parle', nous: 'parlons', vous: 'parlez', ils: 'parlent' } }, 'fr'); return 1; })()""")
-check("1c the Grammar conjugation grid colours every ending of a regular verb, the whole form still readable",
+check("1c the Grammar conjugation grid colours every ending of a regular verb (abbreviated person keys included), the whole form still readable",
       """(() => { const vals = [...document.querySelectorAll('.grammar-focus-grid .grammar-grid-value')];
          return vals.map(v => v.textContent).join(',') === 'parle,parles,parle,parlons,parlez,parlent' && vals.map(%s).join('|') === 'e|es|e|ons|ez|ent'
            && (e => getComputedStyle(e).color !== getComputedStyle(e.parentElement).color)(vals[3].querySelector('.verb-ending')) || vals.map(v => v.innerHTML).join(' / '); })()""" % ENDINGS, timeout=3)
-c.js("""(() => { focusGrammarItem({ pos: 'verb', lemma: 'être', surface: 'sommes', sentence: 'Nous sommes là.', start: 4, end: 10, features: {}, explanation: '', stemBreakdown: null,
+c.js("""(() => { focusGrammarItem({ pos: 'verb', lemma: 'être', surface: 'sommes', sentence: 'Nous sommes là.', start: 4, end: 10, features: { tense: 'présent' }, explanation: '', stemBreakdown: null,
   forms: { je: 'suis', tu: 'es', il: 'est', nous: 'sommes', vous: 'êtes', ils: 'sont' } }, 'fr'); return 1; })()""")
-check("1d an irregular verb's grid has no coloured ending (no fake split)",
-      "document.querySelectorAll('.grammar-focus-grid .grammar-grid-value').length === 6 && document.querySelectorAll('.grammar-focus-grid .verb-ending').length === 0", timeout=3)
+check("1d an irregular verb's grid is coloured only where its forms follow the ending pattern (êtes, sont); suis, es, est, sommes are not split",
+      "document.querySelectorAll('.grammar-focus-grid .grammar-grid-value').length === 6 && [...document.querySelectorAll('.grammar-focus-grid .grammar-grid-value')].map(%s).join('|') === '||||tes|ont'" % ENDINGS, timeout=3)
 c.js("els.grammarPanel.classList.remove('expanded'); 1")
 
 # ---- open the book, mocks ----
@@ -103,13 +92,13 @@ c.js("""(() => { Object.defineProperty(navigator, 'onLine', { get: () => true, c
 c.js("document.getElementById('btn-rules').click(); 1"); time.sleep(0.5)
 check("2a each section of the topic tree has a 'practise the whole section' button",
       "(() => { const s = [...document.querySelectorAll('#rules-content .rules-section')]; return s.length >= 7 && s.every(d => d.querySelector('.rules-section-practice')) && s[0].querySelector('.rules-section-practice').textContent.includes(t('rulesPracticeSection')); })()")
-check("2b the présent table in the rules details colours parler/finir/vendre endings and never être/avoir/aller",
+check("2b the présent table in the rules details colours every verb's endings, être/avoir/aller from the pattern-following ones on",
       """(() => { const tp = GRAMMAR_RULES.fr.sections.flatMap(s => s.topics).find(x => x.id === 'present'); openRuleTopic(tp);
          const rows = [...document.querySelectorAll('#rules-content .rules-table tr')]; const head = [...rows[0].children].map(x => x.textContent);
          const col = name => rows.slice(1).map(r => r.children[head.indexOf(name)]);
          const ends = name => col(name).map(td => [...td.querySelectorAll('.verb-ending')].map(s => s.textContent).join('')).join(',');
          return ends('parler') === 'e,es,e,ons,ez,ent' && ends('finir') === 'is,is,it,issons,issez,issent' && ends('vendre') === 's,s,,ons,ez,ent'
-           && ['être', 'avoir', 'aller', 'faire'].every(v => ends(v) === ',,,,,') && col('parler').map(td => td.textContent).join(',') === 'parle,parles,parle,parlons,parlez,parlent'
+           && ends('être') === ',,,,tes,ont' && ends('avoir') === ',,,ons,ez,' && ends('aller') === ',,,ons,ez,ont' && ends('faire') === 's,s,t,ons,tes,ont' && col('parler').map(td => td.textContent).join(',') === 'parle,parles,parle,parlons,parlez,parlent'
            || JSON.stringify({ p: ends('parler'), f: ends('finir'), v: ends('vendre'), e: ends('être') }); })()""", timeout=3)
 
 # ---- 3. topic practice ----

@@ -465,15 +465,19 @@ function validStemBreakdown(rawSplit, surface, lemma, verbCfg) {
     return { stem, ending };
 }
 
-// Verb endings shown in their own colour in a conjugation table (the Grammar grid, the Rules tables). The stem is
-// the lemma minus its infinitive ending (parl|er, fin|ir; an English lemma is its own stem); a word is split only
-// when it starts with that stem and the rest is a genuine ending of the language (verb.endings). Irregular verbs,
-// and languages without an endings list, are never split -- no fake "s|uis" or "v|ais".
+// ---- Verb endings in conjugation tables --------------------------------------------------------------------------------
+// Every conjugation table (the Grammar grid, the Rules tables) paints the ENDING of each form in its own colour (.verb-ending).
+// verbEndingRanges() works on the WHOLE paradigm of one tense -- cells aligned with verb.persons, null where a person is absent --
+// because the verb's group (parl-er / fin-ir / vend-re) is read from the forms themselves. A language with verb.endingRules (French)
+// marks the longest personal ending a form really ends with, per tense and person, so an irregular verb is coloured wherever it follows
+// the pattern (fer|ai, ét|ais, f|ont) and left plain where it does not (sommes); a compound tense marks the past participle's ending.
+// Any other language with verb.endings (English) marks what follows the lemma's stem (work|ed, go|es). Returns, per cell, a list of
+// [from, to) ranges inside the cell's text, or null.
 function conjugationStem(lemma, lang) {
     const verbCfg = grammarConfigFor(lang).verb;
     if (!verbCfg.endings || typeof lemma !== 'string') return null;
     const bare = normalizeGrammarText(lemma).toLowerCase().replace(/^(?:se\s+|s['’])/, '');
-    if (!/^\p{L}+$/u.test(bare) || (verbCfg.irregularRe && verbCfg.irregularRe.test(bare))) return null;
+    if (!/^\p{L}+$/u.test(bare)) return null;
     if (!verbCfg.infinitiveEndings) return bare.length >= 2 ? bare : null;
     const inf = verbCfg.infinitiveEndings.find(e => bare.endsWith(e) && bare.length - e.length >= 2);
     return inf ? bare.slice(0, -inf.length) : null;
@@ -488,27 +492,112 @@ function splitVerbEnding(word, stem, verbCfg) {
     const ending = word.slice(k);
     return verbCfg.endings.includes(ending.toLowerCase()) ? ending : null;
 }
-// Appends `text` (a table cell: "parlons", "nous avons parlé", "j'aime") to `parent`, each ending of `lemma`'s forms
-// in a .verb-ending span. Subject pronouns are never split (nous for nouer).
-function appendConjugatedForm(parent, text, lemma, lang) {
-    const stem = conjugationStem(lemma, lang);
-    if (!stem) { parent.appendChild(document.createTextNode(text)); return; }
-    const verbCfg = grammarConfigFor(lang).verb;
+const verbWordTokens = cell => [...String(cell || '').matchAll(/\p{L}+/gu)].map(m => ({ word: m[0], from: m.index }));
+const longestEnding = (word, endings) => (endings || []).reduce((best, e) => (e.length > best.length && word.length > e.length && word.endsWith(e) ? e : best), '');
+// The tense a label or id names ('Passé composé', 'conditionnel_present', 'plus-que-parfait'), as a key of verb.endingRules, or null.
+function verbTenseKey(rules, label) {
+    if (!rules || !label) return null;
+    const text = stripGrammarAccents(String(label)).replace(/_/g, ' ');
+    const hit = rules.tenseKeys.find(([, re]) => re.test(text));
+    return hit ? hit[0] : null;
+}
+// English and other stem-based languages: what follows the lemma's stem in every word of the cell.
+function stemEndingRanges(cell, lemma, lang) {
+    const verbCfg = grammarConfigFor(lang).verb, stem = conjugationStem(lemma, lang);
+    if (!stem) return null;
     const pronouns = new Set((verbCfg.persons || []).join(' ').toLowerCase().match(/\p{L}+/gu) || []);
+    const ranges = [];
+    for (const { word, from } of verbWordTokens(cell)) {
+        if (pronouns.has(word.toLowerCase())) continue;
+        const ending = splitVerbEnding(word, stem, verbCfg);
+        if (ending) ranges.push([from + word.length - ending.length, from + word.length]);
+    }
+    return ranges.length ? ranges : null;
+}
+// Compound tenses: the ending of each past participle after the auxiliary (a mangé, est allée, avaient fini). Short words that can follow
+// an auxiliary without being a participle (il a du, n'a pas) are never marked; two-letter participles (vu, eu, pu, lu) are.
+const NOT_PARTICIPLE = new Set(['il', 'ils', 'du', 'ne', 'pas', 'le', 'la', 'les', 'me', 'te', 'se', 'de', 'en', 'on', 'au', 'un', 'une', 'des']);
+function participleRanges(tokens, rules, aux) {
+    const first = tokens.findIndex(tk => aux.has(tk.word.toLowerCase()));
+    const ranges = [];
+    for (const { word, from } of tokens.slice(first + 1)) {
+        const w = word.toLowerCase();
+        if (aux.has(w) || w.length < 2 || NOT_PARTICIPLE.has(w) || !/^\p{Script=Latin}+$/u.test(word)) continue;
+        const e = longestEnding(w, rules.participleEndings);
+        if (e) ranges.push([from + w.length - e.length, from + w.length]);
+    }
+    return ranges.length ? ranges : null;
+}
+// One simple tense over the cells that are not compound: the ending each form really has, trying the verb's groups and keeping the one
+// that fits most forms; on a tie the one that marks more letters wins (finir-type -issons over the -ons every present also matches).
+function simpleTenseRanges(key, indexes, tokensOf, lemma, rules) {
+    const table = rules.tenses[key];
+    if (!table) return null;
+    // être / avoir / aller: only the endings of two letters or more (all|ons, v|ont) -- a lone -s or -t is part of the irregular form itself.
+    const strong = key === 'present' && lemma && rules.irregularPresentRe.test(lemma.toLowerCase());
+    let best = null;
+    for (const endings of Array.isArray(table) ? [table] : [table[1], table[2], table[3]]) {
+        const found = new Map();
+        let chars = 0;
+        for (const i of indexes) {
+            const last = tokensOf[i][tokensOf[i].length - 1], w = last.word.toLowerCase();
+            const e = longestEnding(w, strong ? (endings[i] || []).filter(x => x.length >= 2) : endings[i]);
+            if (e) { found.set(i, [[last.from + w.length - e.length, last.from + w.length]]); chars += e.length; }
+        }
+        if (!best || found.size > best.found.size || (found.size === best.found.size && chars > best.chars)) best = { found, chars };
+    }
+    return best;
+}
+function verbEndingRanges(cells, lemma, lang, label) {
+    const verbCfg = grammarConfigFor(lang).verb, rules = verbCfg.endingRules;
+    const out = cells.map(() => null);
+    if (!rules) { cells.forEach((cell, i) => { if (cell) out[i] = stemEndingRanges(cell, lemma, lang); }); return out; }
+    const aux = new Set(verbCfg.auxiliaries || []);
+    const key = verbTenseKey(rules, label);
+    const tokensOf = cells.map(verbWordTokens);
+    const simple = [];
+    tokensOf.forEach((tokens, i) => {
+        if (!tokens.length) return;
+        const at = tokens.findIndex(tk => aux.has(tk.word.toLowerCase()));
+        if (key === 'compound' || (!key && at !== -1 && at < tokens.length - 1)) out[i] = participleRanges(tokens, rules, aux);
+        else simple.push(i);
+    });
+    if (key === 'compound' || !simple.length) return out;
+    let best = null;
+    for (const k of key ? [key] : ['present', 'imparfait', 'futur', 'conditionnel', 'subjonctif', 'passe_simple']) {
+        const run = simpleTenseRanges(k, simple, tokensOf, lemma, rules);
+        if (run && (!best || run.found.size > best.found.size || (run.found.size === best.found.size && run.chars > best.chars))) best = run;
+    }
+    // A tense that is not named must still explain most of the forms, or nothing is marked.
+    if (best && best.found.size >= (key ? 1 : Math.max(3, Math.ceil(simple.length * 0.6)))) for (const [i, r] of best.found) out[i] = r;
+    return out;
+}
+// Appends `text` to `parent`, each [from, to) range in a .verb-ending span.
+function appendMarkedForm(parent, text, ranges) {
     let last = 0;
-    for (const m of text.matchAll(/\p{L}+/gu)) {
-        if (pronouns.has(m[0].toLowerCase())) continue;
-        const ending = splitVerbEnding(m[0], stem, verbCfg);
-        if (!ending) continue;
-        const endAt = m.index + m[0].length;
-        parent.appendChild(document.createTextNode(text.slice(last, endAt - ending.length)));
+    for (const [from, to] of ranges || []) {
+        if (from < last) continue;
+        if (from > last) parent.appendChild(document.createTextNode(text.slice(last, from)));
         const span = document.createElement('span');
         span.className = 'verb-ending';
-        span.textContent = ending;
+        span.textContent = text.slice(from, to);
         parent.appendChild(span);
-        last = endAt;
+        last = to;
     }
     if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+}
+// A paradigm given as { personId: form } (the Grammar grid) -> ranges per personId.
+function verbEndingRangesByPerson(forms, lemma, lang, label) {
+    const persons = grammarConfigFor(lang).verb.persons || [];
+    const ids = Object.keys(forms);
+    // A key the model abbreviated ("il", "ils") still belongs to its declared person (resolveFormSlot).
+    const slotOf = id => persons.length ? persons.indexOf(resolveFormSlot(id, persons)) : ids.indexOf(id);
+    const cells = persons.length ? persons.map(() => null) : ids.map(id => forms[id]);
+    if (persons.length) ids.forEach(id => { const at = slotOf(id); if (at !== -1 && cells[at] == null) cells[at] = forms[id]; });
+    const ranges = verbEndingRanges(cells, lemma, lang, label);
+    const byId = {};
+    ids.forEach(id => { const at = slotOf(id); byId[id] = at === -1 ? null : ranges[at]; });
+    return byId;
 }
 
 // Shared by the Grammar analysis gate and Practice target validation: keeps only the declared
@@ -1139,11 +1228,21 @@ function renderGrammarFocusDetail(item, langCode) {
         detail.appendChild(badges);
     }
 
-    if (item.stemBreakdown) {
+    // The ending of every form in the grid (see verbEndingRanges); the same split gives the tapped form its stem | ending line when the
+    // model sent none (an irregular verb is not "unsplittable": faisons is fais|ons).
+    const hasGrid = !!(item.forms && Object.keys(item.forms).length);
+    const current = hasGrid ? matchingGrammarSlots(item.forms, item.surface) : [];
+    const endings = hasGrid && item.pos === 'verb' ? verbEndingRangesByPerson(item.forms, item.lemma, langCode, item.paradigmLabel || (item.features && item.features.tense)) : {};
+    let split = item.stemBreakdown;
+    if (!split && current.length === 1 && endings[current[0]] && endings[current[0]].length === 1) {
+        const cell = String(item.forms[current[0]]), [from, to] = endings[current[0]][0];
+        if (!/\s/.test(cell) && grammarComparableForm(cell) === grammarComparableForm(item.surface)) split = { stem: cell.slice(0, from), ending: cell.slice(from, to) };
+    }
+    if (split) {
         const pattern = document.createElement('div');
         pattern.className = 'grammar-focus-pattern';
-        const stemEl = document.createElement('span'); stemEl.className = 'grammar-stem'; stemEl.textContent = item.stemBreakdown.stem;
-        const endEl = document.createElement('span'); endEl.className = 'grammar-ending'; endEl.textContent = item.stemBreakdown.ending;
+        const stemEl = document.createElement('span'); stemEl.className = 'grammar-stem'; stemEl.textContent = split.stem;
+        const endEl = document.createElement('span'); endEl.className = 'grammar-ending'; endEl.textContent = split.ending;
         pattern.append(stemEl, endEl);
         detail.appendChild(pattern);
     }
@@ -1157,14 +1256,13 @@ function renderGrammarFocusDetail(item, langCode) {
         detail.appendChild(agrees);
     }
 
-    if (item.forms && Object.keys(item.forms).length) {
+    if (hasGrid) {
         if (item.paradigmLabel) {
             const gridTitle = document.createElement('div');
             gridTitle.className = 'grammar-grid-title';
             gridTitle.textContent = item.paradigmLabel;
             detail.appendChild(gridTitle);
         }
-        const current = matchingGrammarSlots(item.forms, item.surface);
         const grid = document.createElement('div');
         grid.className = 'grammar-focus-grid';
         for (const [id, formValue] of Object.entries(item.forms)) {
@@ -1172,7 +1270,7 @@ function renderGrammarFocusDetail(item, langCode) {
             if (current.includes(id)) { row.classList.add('current'); row.setAttribute('aria-current', 'true'); }
             const label = document.createElement('span'); label.className = 'grammar-grid-label'; label.textContent = grammarFormLabel(item.pos, langCode, id);
             const val = document.createElement('span'); val.className = 'grammar-grid-value';
-            if (item.pos === 'verb') appendConjugatedForm(val, formValue, item.lemma, langCode); else val.textContent = formValue;
+            appendMarkedForm(val, formValue, endings[id]);
             row.append(label, val);
             const change = item.transformations && item.transformations[id];
             if (change) {

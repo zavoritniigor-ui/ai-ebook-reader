@@ -516,43 +516,73 @@ function renderRulesTree() {
 }
 
 // Expanded text: lines ending with ':' are subheadings ("Правила:", "Винятки:"), lines starting with '• ' are list items.
-// In a conjugation table each column's verb comes from its header ("parler", "présent (se laver)", "work (regular)"):
-// the first word with a regular stem; that verb's endings are coloured in the column (appendConjugatedForm).
-function ruleColumnLemma(header, lang) {
-    for (const m of String(header).matchAll(/\p{L}+/gu)) if (conjugationStem(m[0], lang)) return m[0];
-    return null;
+// In a conjugation table each column is ONE verb's paradigm: the verb comes from the column header ("parler", "présent (se laver)",
+// "work (regular)"), the tense from the header or else from the topic ("imparfait", "passe-compose"), the rows are the persons. Returns the
+// ranges of the endings to colour per row (verbEndingRanges, js/grammar-svo.js), or null when the column is not a verb's paradigm.
+function rulePersonSlot(label, persons) {
+    const first = String(label).toLowerCase().replace(/^qu[’']\s*/, '').replace(/^que\s+/, '').split(/[\s/]+/)[0];
+    return persons.findIndex(p => p.toLowerCase().split(/\s*\/\s*/).some(x => x.split(/\s+/)[0] === first));
 }
-function renderRuleDetailsText(container, text, lang = rulesState.lang) {
-    let list = null, table = null, lemmas = [];
+function ruleColumnRanges(header, cells, labels, lang, topicId) {
+    const verbCfg = grammarConfigFor(lang).verb, rules = verbCfg.endingRules;
+    if (!rules && !verbCfg.endings) return null;
+    const words = [...String(header).matchAll(/\p{L}+/gu)].map(m => m[0]);
+    const lemma = rules ? words.find(w => w.length >= 3 && verbCfg.lemmaRe && verbCfg.lemmaRe.test(w.toLowerCase())) : words.find(w => conjugationStem(w, lang));
+    if (!lemma) return null;
+    if (!rules) return cells.map(c => stemEndingRanges(c, lemma, lang));
+    // A compound topic ("avoir (imparfait) + parlé") names the auxiliary's tense in the header, but the forms are compound: the topic decides.
+    const label = verbTenseKey(rules, topicId) === 'compound' || !verbTenseKey(rules, header) ? topicId : header;
+    if (verbTenseKey(rules, label) === 'compound') return verbEndingRanges(cells, lemma, lang, label);
+    // A simple tense: every form goes to its person (by position when the table lists all persons, else by its row label).
+    const persons = verbCfg.persons || [];
+    const slot = labels.map((l, i) => labels.length === persons.length ? i : rulePersonSlot(l, persons));
+    const aligned = persons.map(() => null), source = {};
+    slot.forEach((p, i) => { if (p >= 0 && aligned[p] == null) { aligned[p] = cells[i]; source[p] = i; } });
+    const ranges = verbEndingRanges(aligned, lemma, lang, label), out = cells.map(() => null);
+    slot.forEach((p, i) => {
+        if (p < 0 || !ranges[p]) return;
+        if (source[p] === i) { out[i] = ranges[p]; return; }
+        // A second row of the same person (elle after il): the same ending on its own copy of the form.
+        const a = verbWordTokens(aligned[p]).pop(), b = verbWordTokens(cells[i]).pop();
+        if (a && b && a.word === b.word) { const len = ranges[p][0][1] - ranges[p][0][0]; out[i] = [[b.from + b.word.length - len, b.from + b.word.length]]; }
+    });
+    return out;
+}
+function buildRuleTable(rows, lang, topicId) {
+    const wrap = ruleEl('div', 'rules-table-wrap'), table = ruleEl('table', 'rules-table');
+    wrap.appendChild(table);
+    const head = ruleEl('tr'); rows[0].forEach(c => head.appendChild(ruleEl('th', '', c))); table.appendChild(head);
+    const body = rows.slice(1), labels = body.map(r => r[0]);
+    const columns = rows[0].map((header, j) => j === 0 ? null : ruleColumnRanges(header, body.map(r => r[j] || ''), labels, lang, topicId));
+    body.forEach((r, i) => {
+        const tr = ruleEl('tr');
+        r.forEach((c, j) => {
+            if (j === 0) { tr.appendChild(ruleEl('th', 'rules-table-row-head', c)); return; }
+            const td = ruleEl('td', '');
+            appendMarkedForm(td, c, columns[j] && columns[j][i]);
+            tr.appendChild(td);
+        });
+        table.appendChild(tr);
+    });
+    return wrap;
+}
+function renderRuleDetailsText(container, text, lang = rulesState.lang, topicId = rulesState.topic && rulesState.topic.id) {
+    let list = null, rows = null;
+    const flushTable = () => { if (rows) container.appendChild(buildRuleTable(rows, lang, topicId)); rows = null; };
     for (const raw of String(text || '').split('\n')) {
         const line = raw.trim();
-        if (!line) { list = null; table = null; continue; }
+        if (!line) { list = null; flushTable(); continue; }
         if (line.startsWith('|') && line.endsWith('|')) {      // conjugation / agreement table; the first row is the header
-            const cells = line.slice(1, -1).split(' | ').map(x => x.replace(/^\s*\|?\s*|\s*$/g, ''));
-            if (!table) {
-                const wrap = ruleEl('div', 'rules-table-wrap');
-                table = ruleEl('table', 'rules-table');
-                wrap.appendChild(table); container.appendChild(wrap);
-                const head = ruleEl('tr'); cells.forEach(c => head.appendChild(ruleEl('th', '', c))); table.appendChild(head);
-                lemmas = cells.map((c, i) => i === 0 ? null : ruleColumnLemma(c, lang));
-            } else {
-                const row = ruleEl('tr');
-                cells.forEach((c, i) => {
-                    if (i === 0) { row.appendChild(ruleEl('th', 'rules-table-row-head', c)); return; }
-                    const td = ruleEl('td', '');
-                    if (lemmas[i]) appendConjugatedForm(td, c, lemmas[i], lang); else td.textContent = c;
-                    row.appendChild(td);
-                });
-                table.appendChild(row);
-            }
+            (rows = rows || []).push(line.slice(1, -1).split(' | ').map(x => x.replace(/^\s*\|?\s*|\s*$/g, '')));
             list = null;
             continue;
         }
-        table = null;
+        flushTable();
         if (line.startsWith('• ')) { if (!list) { list = ruleEl('ul', 'rules-details-list'); container.appendChild(list); } list.appendChild(ruleEl('li', '', line.slice(2))); continue; }
         list = null;
         container.appendChild(ruleEl(line.endsWith(':') ? 'h5' : 'p', line.endsWith(':') ? 'rules-details-head' : '', line));
     }
+    flushTable();
 }
 // The scan result to show in the tree (same catalogue language and explanation language), or null.
 function currentRuleScan() {
