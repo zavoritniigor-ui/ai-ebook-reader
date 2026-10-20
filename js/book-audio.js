@@ -87,9 +87,17 @@ function baDb() {
 const baReq = req => new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
 const baTxDone = tx => new Promise((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = tx.onabort = () => reject(tx.error); });
 // The description of every track of a book (the Blobs stay in BA_BLOB_STORE and are only read when a track is played).
+// The bookKey ends with the file's lastModified (js/navigation.js bookKeyFor). The same PDF copied or sent to another
+// place gets a new lastModified, so its key changes and its tracks would vanish. Match such tracks by name and size too.
+const baLooseKey = key => String(key).replace(/_\d+$/, '');
 async function baList(bookKey) {
     const db = await baDb();
-    const rows = await baReq(db.transaction(BA_STORE, 'readonly').objectStore(BA_STORE).index('book').getAll(IDBKeyRange.only(bookKey)));
+    const store = db.transaction(BA_STORE, 'readonly').objectStore(BA_STORE);
+    let rows = await baReq(store.index('book').getAll(IDBKeyRange.only(bookKey)));
+    if (!rows.length) {
+        const loose = baLooseKey(bookKey);
+        rows = (await baReq(store.getAll())).filter(r => baLooseKey(r.bookKey) === loose);
+    }
     return rows.map(({ blob, ...meta }) => meta);
 }
 async function baPut(record) {

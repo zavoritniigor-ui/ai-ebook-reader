@@ -244,5 +244,13 @@ check('14 Removing book audio clears tracks and blobs from IndexedDB and removes
     return metaRows.length === 0 && blobRows.length === 0 && !anyHasAudio;
 })()""")
 
+check('16 Tracks saved under the same name and size with another lastModified are still listed', """(async () => {
+    const k1 = 'reader_bookmark_book.pdf_123_111', k2 = 'reader_bookmark_book.pdf_123_222';
+    await baPut({ id: k1 + '\u0000x', bookKey: k1, cd: 0, track: 1, name: 't', path: 't', type: 'audio/wav', size: 1, blob: new Blob(['a']) });
+    const rows = await baList(k2);
+    await baDeleteBook(k1);
+    return rows.length === 1;
+})()""")
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')
