@@ -216,7 +216,7 @@ function stretchStalePdfPageContent(w, width, height) {
     const k = width / drawnW;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    for (const layer of w.querySelectorAll(':scope > .pdf-text-layer, :scope > .pdf-link-layer, :scope > .ink-layer')) {
+    for (const layer of w.querySelectorAll(':scope > .pdf-text-layer, :scope > .pdf-link-layer, :scope > .pdf-audio-layer, :scope > .ink-layer')) {
         layer.style.transformOrigin = '0 0';
         layer.style.transform = Math.abs(k - 1) < 1e-4 ? '' : `scale(${k})`;
     }
@@ -331,7 +331,7 @@ function paintPdfGesture() {
     pdfGesture.clientX = m.x; pdfGesture.clientY = m.y;
 }
 document.addEventListener('pointerdown', e => {
-    if (state.format !== 'pdf' ||
+    if (state.format !== 'pdf' || e.target.closest('.pdf-audio-marker') ||
         !(els.container.contains(e.target) || e.target.closest('#region-overlay')) || e.target.closest('#region-cancel')) return;
     if (e.pointerType !== 'touch') { pdfBlockClick = false; return; }
     if (!pdfContinuousReady) return;

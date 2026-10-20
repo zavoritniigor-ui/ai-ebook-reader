@@ -1266,7 +1266,7 @@ document.addEventListener('pointercancel', cancelDragSelection);
 // Touch coordinates remain authoritative even on browsers that coalesce pointer moves.
 document.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) { cancelDragSelection(); return; }
-    if (state.format !== 'pdf' || !touchSelTimer || !els.container.contains(e.target)) return;
+    if (state.format !== 'pdf' || !touchSelTimer || !els.container.contains(e.target) || e.target.closest('.pdf-audio-marker')) return;
     const t = e.touches[0];
     pdfSelectionTouch = { id: t.identifier, x: t.clientX, y: t.clientY, blocked: false, scrolling: false };
 }, { passive: true });
@@ -1330,6 +1330,7 @@ els.mainArea.addEventListener('pointerdown', (e) => {
     if (!state.translateMode) return;
     if (e.button !== 0) return;
     if (e.target.closest('#word-tooltip') || e.target.closest('.side-panel') ||
+        e.target.closest('.pdf-audio-marker') || e.target.closest('#audio-player') || e.target.closest('#book-audio-dialog') ||
         e.target.closest('#tts-controls') || e.target.closest('nav') || e.target.closest('header')) return;
 
     cancelDragSelection();
@@ -1577,7 +1578,7 @@ els.mainArea.addEventListener('click', (e) => {
     if (e.target.closest('#pdf-scrubber')) return;
     if (state.inkMode) return;   // у режимі письма тап малює, а не перекладає
     if (state.suppressNextClick) { state.suppressNextClick = false; return; } // клік після свайпу — ігноруємо
-    if(e.target.closest('#word-tooltip') || e.target.closest('.side-panel') || e.target.closest('nav') || e.target.closest('#menu-handle') || e.target.closest('#footer-handle') || e.target.closest('#tts-controls')) return;
+    if(e.target.closest('#word-tooltip') || e.target.closest('.side-panel') || e.target.closest('nav') || e.target.closest('#menu-handle') || e.target.closest('#footer-handle') || e.target.closest('#tts-controls') || e.target.closest('.pdf-audio-marker') || e.target.closest('#audio-player') || e.target.closest('#book-audio-dialog')) return;
     // Зона язичка меню (лівий верхній кут) — тут ніколи не спрацьовує переклад слова.
     if (els.menuHandle) {
         const h = els.menuHandle.getBoundingClientRect();

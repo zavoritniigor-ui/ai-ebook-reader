@@ -380,6 +380,9 @@ jobs:
           echo "Running pdf_hitbox_stateless_browser.py..."
           python3 -u tests/pdf_hitbox_stateless_browser.py
 
+          echo "Running book_audio_browser.py..."
+          python3 -u tests/book_audio_browser.py
+
           echo "All tests passed successfully!"
 
       - name: Upload Chrome crash reports

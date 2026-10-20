@@ -421,6 +421,93 @@
         .pdf-link-annotation { position: absolute; cursor: pointer; }
         .pdf-link-annotation:hover { background: rgba(26, 86, 219, 0.08); }
 
+        /* Book audio markers ("CD1 - piste 33" in PDF textbooks) + player + dialog (js/book-audio.js) */
+        .pdf-audio-layer { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 6; }
+        .pdf-audio-marker {
+            position: absolute; pointer-events: auto; cursor: pointer; padding: 0; margin: 0;
+            background: rgba(26, 86, 219, 0.06); border: 1.5px dashed rgba(26, 86, 219, 0.45);
+            border-radius: 6px; transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .pdf-audio-marker:hover, .pdf-audio-marker:focus-visible {
+            background: rgba(26, 86, 219, 0.16); border-color: var(--accent-color);
+            outline: 2px solid var(--accent-color); outline-offset: 1px;
+        }
+        .pdf-audio-marker.has-audio {
+            background: rgba(16, 163, 127, 0.10); border: 1.5px solid rgba(16, 163, 127, 0.65);
+        }
+        .pdf-audio-marker.has-audio:hover, .pdf-audio-marker.has-audio:focus-visible {
+            background: rgba(16, 163, 127, 0.22); border-color: #10a37f;
+        }
+        .pdf-audio-marker.playing {
+            background: rgba(16, 163, 127, 0.26); border: 2px solid #10a37f;
+            box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.25);
+        }
+        body.ink-mode .pdf-audio-marker, body.region-mode .pdf-audio-marker { pointer-events: none; opacity: 0.35; }
+        #audio-player {
+            position: fixed; left: 50%; bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%); z-index: 25000;
+            display: flex; align-items: center; gap: 10px;
+            width: min(440px, calc(100vw - 20px)); padding: 8px 12px;
+            background: var(--panel-bg); color: var(--text-color);
+            border: 1px solid var(--border-color); border-radius: 16px;
+            box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.42);
+        }
+        #audio-player[hidden] { display: none !important; }
+        #audio-player .ap-btn {
+            width: 38px; height: 38px; padding: 0; border-radius: 50%; flex: none;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); cursor: pointer;
+        }
+        #audio-player .ap-toggle { background: var(--accent-color); color: var(--accent-contrast); border-color: var(--accent-color); }
+        #audio-player .ap-btn .mi { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        #audio-player .ap-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        #audio-player .ap-label { font-size: 13px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+        #audio-player .ap-seek { width: 100%; height: 18px; margin: 0; accent-color: var(--accent-color); cursor: pointer; }
+        #audio-player .ap-time { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; line-height: 1; }
+        #audio-player .ap-chip {
+            min-width: 42px; height: 32px; padding: 0 8px; border-radius: 10px; flex: none;
+            border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);
+            font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; cursor: pointer;
+        }
+        #book-audio-dialog {
+            position: fixed; inset: 0; margin: auto; width: min(460px, calc(100vw - 24px));
+            max-height: calc(100dvh - 24px); overflow: auto; padding: 0; border-radius: 16px;
+            background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color);
+            box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.5);
+        }
+        #book-audio-dialog::backdrop { background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(2px); }
+        #book-audio-dialog .ba-head {
+            display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        #book-audio-dialog .ba-head .pn-titles { flex: 1; min-width: 0; }
+        #book-audio-dialog .ba-title { margin: 0; font-size: 16px; }
+        #book-audio-dialog .ba-subtitle { margin: 2px 0 0; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #book-audio-dialog .ba-subtitle:empty { display: none; }
+        #book-audio-dialog .ba-close { position: static; }
+        #book-audio-dialog .ba-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        #book-audio-dialog .ba-status { margin: 0; font-size: 14.5px; font-weight: 600; }
+        #book-audio-dialog .ba-message {
+            margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 13.5px;
+            background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+            border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
+        }
+        #book-audio-dialog .ba-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        #book-audio-dialog .ba-actions button { flex: 1 1 170px; min-height: 44px; font-weight: 600; border-radius: 10px; cursor: pointer; }
+        #book-audio-dialog .ba-progress { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+        #book-audio-dialog .ba-progress[hidden] { display: none !important; }
+        #book-audio-dialog .ba-progress-bar {
+            height: 6px; border-radius: 999px; overflow: hidden;
+            background: color-mix(in srgb, var(--text-muted) 22%, transparent);
+        }
+        #book-audio-dialog .ba-progress-bar::after {
+            content: ""; display: block; height: 100%;
+            width: calc(var(--ba-fraction, 0) * 100%); background: var(--accent-color);
+            transition: width 0.15s ease;
+        }
+        #book-audio-dialog .ba-remove { align-self: flex-start; min-height: 38px; padding: 0 12px; font-size: 13px; cursor: pointer; }
+        #book-audio-dialog .ba-note { margin: 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.45; }
+
         main { flex: 1; display: flex; justify-content: center; position: relative; overflow: hidden; background: var(--bg-color); }
         #reader-container {
             width: 100%; max-width: 900px; height: 100%; background: var(--panel-bg);
@@ -1422,6 +1509,7 @@
         @media print {
             #app-header, #app-footer, #menu-handle, #quick-menu-dock, #sidebar, .side-panel,
             #tts-controls, #footer-handle, #pdf-scrubber, #word-tooltip, .ink-layer, .pdf-link-layer,
+            #audio-player, #book-audio-dialog, .pdf-audio-layer,
             .panel-tab, .rules-tab {
                 display: none !important;
             }
@@ -1506,6 +1594,9 @@
         <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2v.1"/></symbol>
         <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m11 3.5 1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="m18.5 15.5.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
         <symbol id="i-practice" viewBox="0 0 24 24"><path d="M12 6v14M3 4.5h5.5A3.5 3.5 0 0 1 12 8a3.5 3.5 0 0 1 3.5-3.5H21V18h-5.5A3.5 3.5 0 0 0 12 21.5 3.5 3.5 0 0 0 8.5 18H3z"/></symbol>
+        <symbol id="i-audio" viewBox="0 0 24 24"><path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/></symbol>
+        <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></symbol>
+        <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5.5" width="4" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="13.5" y="5.5" width="4" height="13" rx="1" fill="currentColor" stroke="none"/></symbol>
     </svg>
     <div id="menu-backdrop" hidden></div>
     <header id="app-header" aria-labelledby="menu-heading">
@@ -1526,6 +1617,7 @@
                 <button type="button" class="menu-row my-books-btn" id="btn-my-books" aria-labelledby="mr-shelf-t" aria-describedby="mr-shelf-d"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span class="mr-text"><span class="mr-title" id="mr-shelf-t" data-i18n="mShelf">Мої книги</span><span class="mr-desc" id="mr-shelf-d" data-i18n="mShelfDesc">Нещодавні й збережені на пристрої</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-free-library" aria-labelledby="mr-lib-t" aria-describedby="mr-lib-d"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span class="mr-text"><span class="mr-title" id="mr-lib-t" data-i18n="mLibrary">Безкоштовна бібліотека</span><span class="mr-desc" id="mr-lib-d" data-i18n="mLibraryDesc">Gutenberg, Вікіджерела, Internet Archive</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="toggle-toc-desktop" aria-labelledby="mr-toc-t" aria-describedby="mr-toc-d"><svg class="mi book-nav-icon" aria-hidden="true"><use href="#i-toc"/></svg><span class="mr-text"><span class="mr-title" id="mr-toc-t" data-i18n="mToc">Зміст</span><span class="mr-desc" id="mr-toc-d" data-i18n="mTocDesc">Розділи та мініатюри сторінок</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-book-audio" data-only="pdf" aria-labelledby="mr-audio-t" aria-describedby="mr-audio-d"><svg class="mi" aria-hidden="true"><use href="#i-audio"/></svg><span class="mr-text"><span class="mr-title" id="mr-audio-t" data-i18n="mAudio">Аудіо до книги</span><span class="mr-desc" id="mr-audio-d" data-i18n="mAudioDesc">Папка з доріжками: тап на «piste» у книзі вмикає запис</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
             </section>
             <!-- ЧИТАННЯ -->
             <section class="menu-section" aria-labelledby="ms-reading">
@@ -1788,6 +1880,7 @@
         </div>
         <p id="crop-status" role="status"></p>
     </dialog>
+    <dialog id="book-audio-dialog"></dialog>
     <div id="ink-tools">
         <button class="ink-btn" id="ink-pen" title="Ручка">✏️</button>
         <button class="ink-btn" id="ink-erase" title="Гумка">🧽</button>
@@ -1867,17 +1960,17 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=a8fb0c212963"></script>
+    <script src="js/core.js?v=13af28984feb"></script>
     <script src="js/lang-detect.js?v=0e976ca4dcdf"></script>
     <script src="js/local-speech.js?v=d48d26c2ac70"></script>
-    <script src="js/tts.js?v=b567835d2a1a"></script>
-    <script src="js/selection.js?v=8d75e1eb5fab"></script>
+    <script src="js/tts.js?v=6855eaab201f"></script>
+    <script src="js/selection.js?v=c7d34901cde5"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
     <script src="js/navigation.js?v=6bf46382cd5d"></script>
-    <script src="js/pdf-zoom-pan.js?v=41f1d680361d"></script>
+    <script src="js/pdf-zoom-pan.js?v=e43f726a17a1"></script>
     <script src="js/ui-tooltip.js?v=2cc75b85d696"></script>
     <script src="js/translation.js?v=c50f38586ae0"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
@@ -1898,15 +1991,16 @@
     <script src="js/pdf-outline.js?v=5930b9d8bb4e"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
-    <script src="js/pdf-render.js?v=5b282aa80599"></script>
+    <script src="js/pdf-render.js?v=135d442641bb"></script>
+    <script src="js/book-audio.js?v=3f1afc272210"></script>
     <script src="js/formats.js?v=0adff3b5d013"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=a266be538226"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
-    <script src="js/quick-wheel.js?v=a8c5445dc2b5"></script>
-    <script src="js/main.js?v=9521ee325197"></script>
-    <script src="js/pwa-lifecycle.js?v=0b9e5a189d45"></script>
+    <script src="js/quick-wheel.js?v=2aa4f9bca460"></script>
+    <script src="js/main.js?v=8326d16dd18e"></script>
+    <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
     <script src="js/i18n-es.js?v=971ff7723453"></script>
 </body>
 </html>

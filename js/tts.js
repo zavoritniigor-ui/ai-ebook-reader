@@ -90,6 +90,7 @@ function cancelSpeech(force) {
 const TTS_START_TIMEOUT_MS = 2500;
 const TTS_RETRYABLE_ERRORS = new Set(['audio-busy', 'audio-hardware', 'synthesis-failed', 'synthesis-unavailable']);
 function startUtterance(u, gen, mayRetry = true) {
+    if (typeof pauseBookAudio === 'function') pauseBookAudio();
     const wait = lastSpeechCancelAt + TTS_CANCEL_SPEAK_DELAY_MS - performance.now();
     if (wait > 0) setTimeout(() => { if (gen === state.ttsGen) speakWithRecovery(u, gen, mayRetry); }, wait);
     else speakWithRecovery(u, gen, mayRetry);
