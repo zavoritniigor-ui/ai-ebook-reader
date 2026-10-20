@@ -117,3 +117,23 @@ function playLocalBlob(blob, side, text, offset, onEnd, gen, fallback) {
         fallback();
     });
 }
+
+// Перемикач у «Налаштуваннях» (index.html, #btn-local-speech) — той самий прапорець reader_local_speech, що й раніше.
+// Так його можна ввімкнути з телефона й планшета без консолі розробника.
+Object.assign(I18N, {
+    mLocalSpeech: { uk: "Локальний голос", en: "Local voice", fr: "Voix locale", ru: "Локальный голос", zh: "本地语音", ko: "로컬 음성", hi: "लोकल आवाज़", ga: "Guth áitiúil" },
+    mLocalSpeechDesc: { uk: "Озвучка через ваш сервер; без нього — голос браузера", en: "Speech from your server; without it, the browser voice", fr: "Voix de votre serveur ; sinon la voix du navigateur", ru: "Озвучка через ваш сервер; без него — голос браузера", zh: "通过您的服务器朗读；否则使用浏览器语音", ko: "내 서버를 통한 음성; 없으면 브라우저 음성", hi: "आपके सर्वर से आवाज़; वरना ब्राउज़र की आवाज़", ga: "Guth ó do fhreastalaí; murach sin, guth an bhrabhsálaí" }
+});
+(function initLocalSpeechSwitch() {
+    const btn = document.getElementById('btn-local-speech');
+    if (!btn) return;
+    const paint = () => setMenuSwitch(btn, localSpeechEnabled());
+    btn.onclick = () => {
+        const on = !localSpeechEnabled();
+        writeStored('reader_local_speech', on ? '1' : '0');
+        if (!on) stopLocalSpeech();
+        localSpeechHealth = { at: 0, ok: false };   // перевірити доступність заново при наступній фразі
+        paint();
+    };
+    paint();
+})();
