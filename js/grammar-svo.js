@@ -211,6 +211,27 @@ async function startAiTask(contextText, mode, userPrompt = "") {
 
 // Плоский текст діапазону + карта відповідності позицій текстовим вузлам.
 function flattenRange(range) {
+    if (range._pdfPieces && range._pdfPieces.length) {
+        let text = '', segs = [], prevSpan = null;
+        for (const p of range._pdfPieces) {
+            let candidates = [p];
+            if ((!p.node || !p.node.isConnected || !p.node.nodeValue) && p.span && p.span.isConnected && typeof pdfResolveSpanPieces === 'function' && typeof p.spanStart === 'number') {
+                candidates = pdfResolveSpanPieces(p.span, p.spanStart, p.spanEnd);
+            }
+            for (const c of candidates) {
+                const node = c.node, from = c.start, to = c.end;
+                if (!node || !node.isConnected || !node.nodeValue || to <= from) continue;
+                const slice = node.nodeValue.slice(from, to);
+                const span = c.span || (node.parentElement && (node.parentElement.closest('.pdf-text-layer > span, .markedContent > span') || node.parentElement.closest('span'))) || null;
+                if (text && !/\s$/.test(text) && !/^\s/.test(slice) && span !== prevSpan
+                    && !(typeof pdfSpansContinueWord === 'function' && pdfSpansContinueWord(prevSpan, span))) text += ' ';
+                prevSpan = span || prevSpan;
+                segs.push({ node, nodeStart: from, textStart: text.length, len: to - from });
+                text += slice;
+            }
+        }
+        if (segs.length) return { text, segs };
+    }
     const root = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
         ? range.commonAncestorContainer : range.commonAncestorContainer.parentNode;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -226,7 +247,7 @@ function flattenRange(range) {
         const to = (n === range.endContainer) ? range.endOffset : n.nodeValue.length;
         if (to <= from) continue;
         if (pdfLayer) {
-            const span = n.parentElement && n.parentElement.closest('span') || null;
+            const span = n.parentElement && (n.parentElement.closest('.pdf-text-layer > span, .markedContent > span') || n.parentElement.closest('span')) || null;
             if (text && !/\s$/.test(text) && !/^\s/.test(n.nodeValue.slice(from, to)) && span !== prevSpan
                 && !(typeof pdfSpansContinueWord === 'function' && pdfSpansContinueWord(prevSpan, span))) text += ' ';
             prevSpan = span || prevSpan;

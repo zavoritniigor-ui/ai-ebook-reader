@@ -424,11 +424,12 @@ function detectLang(text) {
     if (special) return special;
     const cyr = cyrillicLang(text);
     if (cyr) return cyr;
-    const segs = buildLanguageSegments(text, pageLang().slice(0, 2));
+    const prior = (state.ctxPanelLang && LATIN_LANG_LOCALES[state.ctxPanelLang]) ? state.ctxPanelLang : pageLang().slice(0, 2);
+    const segs = buildLanguageSegments(text, prior);
     const tally = {};
     for (const s of segs) { const lang = LATIN_LANG_LOCALES[s.lang] ? s.lang : 'en'; tally[lang] = (tally[lang] || 0) + s.text.trim().length; }
     const ranked = Object.entries(tally).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
-    if (!ranked.length) return pageLang();
+    if (!ranked.length) return (state.ctxPanelLang && LATIN_LANG_LOCALES[state.ctxPanelLang]) || pageLang();
     // Нічия en/fr лишається як раніше — на користь англійської.
     if (ranked.length > 1 && ranked[0][1] === ranked[1][1] && ranked.some(([l]) => l === 'en')) return 'en-US';
     return LATIN_LANG_LOCALES[ranked[0][0]];
@@ -508,11 +509,11 @@ function fragmentLangInContext(fragment, context) {
     if (!clean || !context || context.length < clean.length) return null;
     const special = specialLanguage(clean);
     if (special) return special;
+    if (/[а-яёіїєґ]/i.test(clean)) return cyrillicLang(clean) || cyrillicLang(context) || (/[іїєґ]/i.test(clean + ' ' + context) ? 'uk-UA' : 'ru-RU');
     const idx = context.toLowerCase().indexOf(clean.toLowerCase());
     if (idx === -1) return null;
-    const cyr = cyrillicLang(context);
-    if (cyr) return cyr;
-    const segs = buildLanguageSegments(context, pageLang().slice(0, 2));
+    const prior = (state.ctxPanelLang && LATIN_LANG_LOCALES[state.ctxPanelLang]) ? state.ctxPanelLang : pageLang().slice(0, 2);
+    const segs = buildLanguageSegments(context, prior);
     const from = idx, to = idx + clean.length;
     let pos = 0, best = null, bestOverlap = 0;
     for (const s of segs) {

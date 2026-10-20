@@ -26,17 +26,20 @@ function caretRangeAt(clientX, clientY) {
     // page wrapper, or canvas instead of a text offset. Recover the nearest glyph.
     if ((!range || range.startContainer.nodeType === Node.ELEMENT_NODE) && state.format === 'pdf') {
         const el = (range && range.startContainer.nodeType === Node.ELEMENT_NODE) ? range.startContainer : document.elementFromPoint(clientX, clientY);
-        let layer = el?.closest?.('.pdf-text-layer');
-        if (!layer) {
-            const pageEl = el?.closest?.('.pdf-page-wrapper') ||
-                           document.elementFromPoint(clientX, clientY)?.closest('.pdf-page-wrapper') ||
-                           pdfPageWrappers?.[pdfActivePage] || document.querySelector('.pdf-page-wrapper');
-            if (pageEl) layer = pageEl.querySelector('.pdf-text-layer');
-        }
-        const span = layer && pdfNearestSpan(layer, clientX, clientY);
-        if (span) {
-            const caret = pdfCaretInSpan(span, clientX, clientY);
-            if (caret) return caret;
+        const hitEl = document.elementFromPoint(clientX, clientY);
+        if (!el?.closest?.('.side-panel, #practice-panel') && !hitEl?.closest?.('.side-panel, #practice-panel')) {
+            let layer = el?.closest?.('.pdf-text-layer');
+            if (!layer) {
+                const pageEl = el?.closest?.('.pdf-page-wrapper') ||
+                               hitEl?.closest?.('.pdf-page-wrapper') ||
+                               pdfPageWrappers?.[pdfActivePage] || document.querySelector('.pdf-page-wrapper');
+                if (pageEl) layer = pageEl.querySelector('.pdf-text-layer');
+            }
+            const span = layer && pdfNearestSpan(layer, clientX, clientY);
+            if (span) {
+                const caret = pdfCaretInSpan(span, clientX, clientY);
+                if (caret) return caret;
+            }
         }
     } else if (range && range.startContainer.nodeType === Node.ELEMENT_NODE) {
         const layer = range.startContainer.closest('.pdf-text-layer');
@@ -731,13 +734,37 @@ const SEL_HL_NAME = 'sel-current';
 // враховує — звідси й сильне зміщення. Тому в PDF підсвічуємо так само, як сірі
 // слова: обгортаємо текст у span всередині того самого фрагмента, і він рухається
 // разом із ним.
+function pdfOffsetInSpan(pdfSpan, targetNode) {
+    let offset = 0, n;
+    const w = document.createTreeWalker(pdfSpan, NodeFilter.SHOW_TEXT);
+    while ((n = w.nextNode())) {
+        if (n === targetNode) return offset;
+        offset += n.nodeValue.length;
+    }
+    return 0;
+}
+function pdfResolveSpanPieces(pdfSpan, spanStart, spanEnd) {
+    const out = [];
+    let offset = 0, n;
+    const w = document.createTreeWalker(pdfSpan, NodeFilter.SHOW_TEXT);
+    while ((n = w.nextNode())) {
+        const len = n.nodeValue.length;
+        const from = Math.max(0, spanStart - offset);
+        const to = Math.min(len, spanEnd - offset);
+        if (to > from) {
+            out.push({ node: n, start: from, end: to, span: pdfSpan, spanStart: offset + from, spanEnd: offset + to });
+        }
+        offset += len;
+    }
+    return out;
+}
 function wrapRangeInSpans(range, className) {
     const spans = [];
     if (range._pdfPieces) {
         for (const p of range._pdfPieces.slice().reverse()) {
             const part = document.createRange();
             part.setStart(p.node, p.start); part.setEnd(p.node, p.end);
-            spans.push(...wrapRangeInSpans(part, className));
+            spans.unshift(...wrapRangeInSpans(part, className));
         }
         return spans;
     }
@@ -771,6 +798,24 @@ function unwrapSpans(spans) {
         parent.removeChild(s);
         parent.normalize();
     });
+    for (const r of [state.lastSelectedRange, state.ctxSentenceRange]) {
+        if (!r || !r._pdfPieces || !r._pdfPieces.length) continue;
+        const nextPieces = [];
+        let changed = false;
+        for (const p of r._pdfPieces) {
+            if (p.node && p.node.isConnected && p.node.nodeValue && p.end <= p.node.nodeValue.length) {
+                nextPieces.push(p);
+            } else if (p.span && p.span.isConnected && typeof p.spanStart === 'number' && typeof p.spanEnd === 'number') {
+                const resolved = pdfResolveSpanPieces(p.span, p.spanStart, p.spanEnd);
+                if (resolved.length) { nextPieces.push(...resolved); changed = true; }
+            }
+        }
+        if (changed && nextPieces.length) {
+            r._pdfPieces = nextPieces;
+            const first = nextPieces[0], last = nextPieces.at(-1);
+            try { r.setStart(first.node, first.start); r.setEnd(last.node, last.end); } catch (e) {}
+        }
+    }
 }
 function capturePdfSelectionAnchor(range) {
     if (!range || state.format !== 'pdf') return null;
@@ -898,16 +943,39 @@ function restorePdfSelection(pageNum, wrapperEl) {
 }
 
 function showSelectionHighlight(range) {
+    const startEl = range?.startContainer?.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range?.startContainer;
+    const inPdfBook = state.format === 'pdf' && !!startEl?.closest?.('.pdf-page-wrapper, .pdf-text-layer');
+    const origText = range ? range.toString() : '';
     let anchor = null;
-    if (state.format === 'pdf') {
+    if (inPdfBook) {
         anchor = capturePdfSelectionAnchor(range);
     }
     const savedCanonical = state.canonicalSelection;
     clearSelectionHighlight();
     if (savedCanonical) state.canonicalSelection = savedCanonical;
     if (anchor) state.activeSelectionAnchor = anchor;
-    if (state.format === 'pdf') {
+    if (inPdfBook) {
         state.selSpans = wrapRangeInSpans(range, 'sel-word');
+        const pieces = state.selSpans.map(s => {
+            const node = s.firstChild;
+            const span = s.parentElement?.closest('.pdf-text-layer > span, .markedContent > span') || s.parentElement?.closest('span') || s.parentElement;
+            const spanStart = span && node ? pdfOffsetInSpan(span, node) : 0;
+            const len = node?.nodeValue ? node.nodeValue.length : 0;
+            return { node, start: 0, end: len, span, spanStart, spanEnd: spanStart + len };
+        }).filter(p => p.node && p.end > p.start);
+        if (pieces.length) {
+            range._pdfPieces = pieces;
+            try {
+                range.setStart(pieces[0].node, pieces[0].start);
+                range.setEnd(pieces.at(-1).node, pieces.at(-1).end);
+            } catch (e) {}
+            if (origText) range.toString = () => origText;
+            if (state.lastSelectedRange) {
+                state.lastSelectedRange = range.cloneRange();
+                state.lastSelectedRange._pdfPieces = pieces.map(p => ({ ...p }));
+                if (origText) state.lastSelectedRange.toString = () => origText;
+            }
+        }
         return;
     }
     if (typeof Highlight !== 'undefined' && window.CSS && CSS.highlights) {
@@ -976,6 +1044,7 @@ function selectRangeAndTranslate(range, clientX, clientY, sourceType = 'phrase_t
     if (!range) return false;
     const text = range.toString().trim();
     if (!text) return false;
+    state.ctxPanelLang = '';
     // Resolve source offsets before PDF highlighting splits the text-layer nodes.
     const helpContext = recordHelpForSpan(range, sourceType);
     // Власна підсвітка, а не системне виділення: воно викликає вікно пошуку Chrome.
@@ -983,6 +1052,8 @@ function selectRangeAndTranslate(range, clientX, clientY, sourceType = 'phrase_t
     state.lastSelectionText = text;
     state.ctxSentence = text.slice(0, 400);
     state.lastSelectedRange = range.cloneRange();
+    if (range._pdfPieces) state.lastSelectedRange._pdfPieces = range._pdfPieces.map(p => ({ ...p }));
+    if (Object.prototype.hasOwnProperty.call(range, 'toString')) state.lastSelectedRange.toString = range.toString;
     state.lastTapPoint = { x: clientX, y: clientY };
     state.programmaticSelectionAt = Date.now();
     // Межі самого виділення — за ними вікно перекладу стане над або під реченням.
@@ -1429,11 +1500,13 @@ function commitDragSelection(clientX, clientY) {
     // untouched reader text layer.
     const helpContext = recordHelpForSpan(r, 'phrase_translation');
     state.suppressNextClick = true;   // інакше слідом спрацює ще й тап по слову
+    state.ctxPanelLang = '';
     // Одне слово — звичайний шлях (зі словниковою статтею); кілька — як фрагмент.
     state.lastTapPoint = { x: clientX, y: clientY };
     state.expandLevel = 0;
     state.lastSelectedRange = r.cloneRange();
     if (r._pdfPieces) state.lastSelectedRange._pdfPieces = r._pdfPieces;
+    if (Object.prototype.hasOwnProperty.call(r, 'toString')) state.lastSelectedRange.toString = r.toString;
     // Протягування завершено — тепер можна перемалювати точно (у PDF обгорткою).
     showSelectionHighlight(r);
     state.lastWordNode = null; state.ctxSentence = text.slice(0, 400);
@@ -1525,6 +1598,7 @@ els.mainArea.addEventListener('click', (e) => {
             const helpContext = recordHelpForSpan(state.lastWordNode, 'word_tap');
             // Новий тап скидає підсвітку попереднього фрагмента.
             clearSelectionHighlight();
+            state.ctxPanelLang = '';
             state.lastSelectedRange = null;
             state.ctxSentenceRange = null;
             state.lastTapPoint = { x: e.clientX, y: e.clientY };
@@ -1537,7 +1611,14 @@ els.mainArea.addEventListener('click', (e) => {
             try {
                 const sr = sentenceRangeAt(e.clientX, e.clientY);
                 state.ctxSentence = sr ? sr.toString().trim().slice(0, 400) : '';
-                state.ctxSentenceRange = sr ? sr.cloneRange() : null;   // для розбору речення прямо в тексті (js/sentence-structure.js)
+                if (sr) {
+                    const cr = sr.cloneRange();
+                    if (sr._pdfPieces) cr._pdfPieces = sr._pdfPieces.map(p => ({ ...p }));
+                    if (Object.prototype.hasOwnProperty.call(sr, 'toString')) cr.toString = sr.toString;
+                    state.ctxSentenceRange = cr;   // для розбору речення прямо в тексті (js/sentence-structure.js)
+                } else {
+                    state.ctxSentenceRange = null;
+                }
                 if (sr && typeof markReadingPoint === 'function') markReadingPoint(sr);   // стрічка «місце читання»
                 if (state.ctxSentence && detectLang(state.ctxSentence).startsWith('en')) {
                     const phrasal = detectPhrasalVerb(word, state.ctxSentence);

@@ -277,12 +277,29 @@ function closeTopOverlay(name) {
 // коли нічого не відкрито, поводиться як завжди (згортає/закриває застосунок).
 let overlayHistoryDepth = 0, suppressPopstate = false;
 function syncOverlayHistory() {
+    if (suppressPopstate) return;
     const n = countOpenOverlays();
-    if (n > overlayHistoryDepth) { overlayHistoryDepth = n; history.pushState({ readerOverlay: overlayHistoryDepth }, ''); }
-    else if (n < overlayHistoryDepth) { overlayHistoryDepth = n; suppressPopstate = true; history.back(); }
+    while (overlayHistoryDepth < n) {
+        overlayHistoryDepth++;
+        history.pushState({ readerOverlay: overlayHistoryDepth }, '');
+    }
+    if (n < overlayHistoryDepth) {
+        if (history.state && history.state.readerOverlay) {
+            overlayHistoryDepth--;
+            suppressPopstate = true;
+            history.back();
+        } else {
+            overlayHistoryDepth = n;
+        }
+    }
 }
 window.addEventListener('popstate', () => {
-    if (suppressPopstate) { suppressPopstate = false; return; }
+    if (suppressPopstate) {
+        suppressPopstate = false;
+        overlayHistoryDepth = (history.state && history.state.readerOverlay) || 0;
+        syncOverlayHistory();
+        return;
+    }
     const top = topOpenOverlay();
     if (top) { closeTopOverlay(top); overlayHistoryDepth = Math.max(0, overlayHistoryDepth - 1); }
 });
