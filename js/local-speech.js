@@ -13,7 +13,9 @@
  * (speakText/speakInLang) і cancelSpeech() зупиняє поточне локальне відтворення.
  */
 
-const LOCAL_SPEECH_URL = 'http://127.0.0.1:8880';
+// На ПК власника сторінка йде прямо до сервера; з телефона/планшета (і з самого сайту) — через Pages Function
+// /api/speech, яка передає запит на сервер через тунель (functions/api/speech/[[path]].js).
+const LOCAL_SPEECH_URL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://127.0.0.1:8880' : '/api/speech';
 const LOCAL_SPEECH_LANGS = new Set(['en', 'fr', 'uk']);
 const LOCAL_SPEECH_HEALTH_TTL_MS = 30000;
 const LOCAL_SPEECH_HEALTH_TIMEOUT_MS = 1500;
