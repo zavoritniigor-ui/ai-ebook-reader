@@ -77,6 +77,7 @@ function traceTts(event, text) {
     if (ttsTrace.length > 60) ttsTrace.shift();
 }
 function cancelSpeech(force) {
+    stopLocalSpeech();   // локальний голос (js/local-speech.js) зупиняється разом із браузерним
     if (!ttsSynth || !(force || ttsSynth.speaking || ttsSynth.pending || ttsSynth.paused)) return false;
     ttsSynth.cancel();
     lastSpeechCancelAt = performance.now();
@@ -213,13 +214,17 @@ function speakText(text, side, offset, onEnd) {
     state.ttsGen++;    // наш cancel не має рухати чергу читання вголос
     const gen = state.ttsGen;
     cancelSpeech();
-    const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
     const { lang, voice } = voiceForText(text);
-    setUtteranceVoice(u, lang, voice); u.rate = 0.95;
-    bindUtterance(u, side, text, offset, onEnd);
-    // Одразу, якщо синтезатор вільний; після справжнього cancel() — лише залишок TTS_CANCEL_SPEAK_DELAY_MS.
-    // Перевірка gen: якщо за цей час фразу вже скасували (ще один tap, stopTooltipSpeech) — не озвучуємо.
-    startUtterance(u, gen);
+    const browserSpeak = () => {
+        const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
+        setUtteranceVoice(u, lang, voice); u.rate = 0.95;
+        bindUtterance(u, side, text, offset, onEnd);
+        // Одразу, якщо синтезатор вільний; після справжнього cancel() — лише залишок TTS_CANCEL_SPEAK_DELAY_MS.
+        // Перевірка gen: якщо за цей час фразу вже скасували (ще один tap, stopTooltipSpeech) — не озвучуємо.
+        startUtterance(u, gen);
+    };
+    // Локальний голос (js/local-speech.js), якщо він увімкнений; 'fr-FR' → 'fr'. Інакше браузерний.
+    if (!speakViaLocal(text, lang.slice(0, 2).toLowerCase(), side, offset, onEnd, gen, browserSpeak)) browserSpeak();
 }
 // Озвучення ЗАДАНОЮ мовою — для перекладу, бо його мову ми знаємо точно й вона не
 // залежить від мови книги (автовизначення тут дало б хибний голос).
@@ -229,20 +234,24 @@ function speakInLang(text, langCode, side, offset, onEnd) {
     state.ttsGen++;
     const gen = state.ttsGen;
     cancelSpeech();
-    const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
-    const voice = voices.find(v => v.voiceURI === state.selectedVoiceURIByLang[langCode]) || pickBestVoice(langCode, voices);
-    // Голосів у системі багато, а цієї мови немає (ірландська майже скрізь, хінді/корейська без мовного пакета):
-    // синтезатор прочитав би текст ЧУЖИМ голосом — звучить жахливо. Краще чесно сказати, що голос треба встановити.
-    if (!voice && voices.length) {
-        const name = document.querySelector(`#target-lang option[value="${langCode}"]`)?.textContent || langCode;
-        showToast(t('noVoiceForLang').replace('{lang}', name));
-        if (onEnd) onEnd();
-        return;
-    }
-    setUtteranceVoice(u, LANG_TAGS[langCode] || langCode, voice);
-    u.rate = 0.95;
-    bindUtterance(u, side, text, offset, onEnd);
-    startUtterance(u, gen);
+    const browserSpeak = () => {
+        const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
+        const voice = voices.find(v => v.voiceURI === state.selectedVoiceURIByLang[langCode]) || pickBestVoice(langCode, voices);
+        // Голосів у системі багато, а цієї мови немає (ірландська майже скрізь, хінді/корейська без мовного пакета):
+        // синтезатор прочитав би текст ЧУЖИМ голосом — звучить жахливо. Краще чесно сказати, що голос треба встановити.
+        if (!voice && voices.length) {
+            const name = document.querySelector(`#target-lang option[value="${langCode}"]`)?.textContent || langCode;
+            showToast(t('noVoiceForLang').replace('{lang}', name));
+            if (onEnd) onEnd();
+            return;
+        }
+        setUtteranceVoice(u, LANG_TAGS[langCode] || langCode, voice);
+        u.rate = 0.95;
+        bindUtterance(u, side, text, offset, onEnd);
+        startUtterance(u, gen);
+    };
+    // Локальний голос (js/local-speech.js) для uk/en/fr, якщо увімкнений; інакше браузерний.
+    if (!speakViaLocal(text, langCode, side, offset, onEnd, gen, browserSpeak)) browserSpeak();
 }
 
 // ========== ЯКА СТОРОНА ОЗВУЧУЄТЬСЯ (оригінал чи переклад) ==========
