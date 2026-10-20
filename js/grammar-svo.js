@@ -1161,6 +1161,25 @@ function appendHighlightedSentence(parent, sentence, surface, start, agreesWith,
     if (cursor < sentence.length) parent.appendChild(document.createTextNode(sentence.slice(cursor)));
 }
 
+// The person (a slot of verb.persons) the SENTENCE names for this occurrence, so the grid of ANY tense can mark it: the subject the verb
+// agrees with ("Nous", "ils"), else the person + number features ("1re personne", "pluriel").
+function occurrencePersonSlot(item, langCode) {
+    const persons = grammarConfigFor(langCode).verb.persons || [];
+    if (item.pos !== 'verb' || !persons.length) return null;
+    if (item.agreesWith) { const id = resolveFormSlot(String(item.agreesWith), persons); if (id) return id; }
+    const f = item.features || {}, n = String(f.person || '').match(/[123]/);
+    if (!n) return null;
+    const plural = /plur|мн|\bpl\b/i.test(String(f.number || f.person));
+    return persons[(Number(n[0]) - 1) + (plural ? 3 : 0)] || null;
+}
+// An adjective's agreement slot named by the sentence: gender + number features -> ms / fs / mp / fp (when the language declares them).
+function occurrenceAdjectiveSlot(item, langCode) {
+    const ids = grammarConfigFor(langCode).adjective.forms.map(f => f.id), f = item.features || {};
+    const gender = /^(?:m|masc)/i.test(String(f.gender || '')) ? 'm' : /^(?:f|fém|fem)/i.test(String(f.gender || '')) ? 'f' : null;
+    const number = /^(?:s|sing)/i.test(String(f.number || '')) ? 's' : /^(?:p|plur)/i.test(String(f.number || '')) ? 'p' : null;
+    const id = gender && number ? gender + number : null;
+    return id && ids.includes(id) ? id : null;
+}
 function grammarFormLabel(pos, langCode, formId) {
     if (pos !== 'adjective') return formId;
     const match = grammarConfigFor(langCode).adjective.forms.find(f => f.id === formId);
@@ -1232,6 +1251,10 @@ function renderGrammarFocusDetail(item, langCode) {
     // model sent none (an irregular verb is not "unsplittable": faisons is fais|ons).
     const hasGrid = !!(item.forms && Object.keys(item.forms).length);
     const current = hasGrid ? matchingGrammarSlots(item.forms, item.surface) : [];
+    // The row(s) holding the occurrence's own FORM are the strong highlight (.current; two rows when two slots share a spelling, rouge ms / fs).
+    // When the grid has none -- a tense button showed ANOTHER tense -- the person the sentence names is marked instead (.person, softer).
+    const slotId = !hasGrid || current.length ? null : item.pos === 'adjective' ? occurrenceAdjectiveSlot(item, langCode) : occurrencePersonSlot(item, langCode);
+    const personRows = slotId && item.forms[slotId] !== undefined ? [slotId] : [];
     const endings = hasGrid && item.pos === 'verb' ? verbEndingRangesByPerson(item.forms, item.lemma, langCode, item.paradigmLabel || (item.features && item.features.tense)) : {};
     let split = item.stemBreakdown;
     if (!split && current.length === 1 && endings[current[0]] && endings[current[0]].length === 1) {
@@ -1268,6 +1291,7 @@ function renderGrammarFocusDetail(item, langCode) {
         for (const [id, formValue] of Object.entries(item.forms)) {
             const row = document.createElement('div'); row.className = 'grammar-grid-row';
             if (current.includes(id)) { row.classList.add('current'); row.setAttribute('aria-current', 'true'); }
+            else if (personRows.includes(id)) { row.classList.add('person'); row.setAttribute('aria-current', 'true'); }
             const label = document.createElement('span'); label.className = 'grammar-grid-label'; label.textContent = grammarFormLabel(item.pos, langCode, id);
             const val = document.createElement('span'); val.className = 'grammar-grid-value';
             appendMarkedForm(val, formValue, endings[id]);

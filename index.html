@@ -30,6 +30,7 @@
             --accent-color: #2f6fed; --accent-contrast: #ffffff; --hover-color: #eef0ef;
             --shadow-color: 0,0,0; --focus-color: #2f6fed;
             --verb-ending: #b83a0a;
+            --hl-bg: rgba(47,111,237,.17); --hl-ring: rgba(47,111,237,.55); --hl-soft: rgba(47,111,237,.07);
             --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px;
             --control-h: 38px;
         }
@@ -39,13 +40,15 @@
             --accent-color: #7aa2ff; --accent-contrast: #101114; --hover-color: #2a2b30;
             --shadow-color: 0,0,0; --focus-color: #7aa2ff;
             --verb-ending: #ff9a5c;
+            --hl-bg: rgba(122,162,255,.24); --hl-ring: rgba(122,162,255,.6); --hl-soft: rgba(122,162,255,.10);
         }
         [data-theme="sepia"] {
             --bg-color: #f2e6cd; --text-color: #4a3626; --text-muted: #8a7358;
             --panel-bg: #faf1dd; --surface-2: #f6ecd6; --border-color: #e0cea8;
             --accent-color: #a0522d; --accent-contrast: #fff8ee; --hover-color: #ecdcb9;
             --shadow-color: 74,54,26; --focus-color: #a0522d;
-            --verb-ending: #0f6e6a;
+            --verb-ending: #0b5f5b;
+            --hl-bg: rgba(160,82,45,.19); --hl-ring: rgba(160,82,45,.55); --hl-soft: rgba(160,82,45,.08);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; touch-action: manipulation; }
@@ -1137,7 +1140,11 @@
         .grammar-focus-grid { display: flex; flex-direction: column; margin: 0 0 12px; font-size: 15px; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; }
         .grammar-grid-row { display: grid; grid-template-columns: minmax(6.5em, 10em) 1fr auto; column-gap: 12px; align-items: baseline; padding: 7px 12px; }
         .grammar-grid-row + .grammar-grid-row { border-top: 1px solid var(--border-color); }
-        .grammar-grid-row.current { background: color-mix(in srgb, var(--accent-color) 12%, transparent); box-shadow: inset 3px 0 0 var(--accent-color); }
+        /* Рядок форми з речення: заливка + кільце + смуга (було зеленою заливкою зі смугою), а слово — жирним. .person — та сама особа в іншому часі. */
+        .grammar-grid-row.current { background: var(--hl-bg); box-shadow: inset 0 0 0 1px var(--hl-ring), inset 4px 0 0 var(--accent-color); }
+        .grammar-grid-row.current .grammar-grid-label { color: var(--text-color); font-weight: 650; }
+        .grammar-grid-row.person { background: var(--hl-soft); box-shadow: inset 4px 0 0 var(--hl-ring); }
+        .grammar-grid-row.person .grammar-grid-label { color: var(--text-color); }
         .grammar-grid-change { font-family: ui-monospace, monospace; font-size: 12px; opacity: .7; white-space: nowrap; }
         .grammar-grid-change.irregular { opacity: 1; color: #d9822b; font-weight: 700; }
         .grammar-grid-note { font-size: 13px; opacity: .7; margin: 4px 0 8px; }
@@ -1873,7 +1880,7 @@
     <script src="js/ui-tooltip.js?v=3086f1020b04"></script>
     <script src="js/translation.js?v=480e4c3033f2"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
-    <script src="js/grammar-svo.js?v=3743e945c46e"></script>
+    <script src="js/grammar-svo.js?v=b7c82996dfcf"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
