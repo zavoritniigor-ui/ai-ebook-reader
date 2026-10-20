@@ -332,6 +332,9 @@ jobs:
           echo "Running verb_endings_browser.py..."
           python3 -u tests/verb_endings_browser.py
 
+          echo "Running grammar_person_highlight_browser.py..."
+          python3 -u tests/grammar_person_highlight_browser.py
+
           echo "Running sentence_structure_languages_browser.py..."
           python3 -u tests/sentence_structure_languages_browser.py
 
