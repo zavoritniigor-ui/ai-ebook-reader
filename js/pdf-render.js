@@ -144,9 +144,10 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         tl.style.setProperty('--scale-round-x', '1px');
         tl.style.setProperty('--scale-round-y', '1px');
 
-        let textTask = null;
+        let textTask = null, textItems = null;
         try {
             const textContent = await page.getTextContent();
+            textItems = textContent.items;
             if (!isWanted()) return false;
             if (!state.pdfPageLabels && typeof recordPdfPageLabel === 'function' && typeof extractPrintedPageLabel === 'function') {
                 if (!state.pdfPrintedPageLabels || state.pdfPrintedPageLabels[pageNum] === undefined) {
@@ -185,6 +186,9 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         try { linkLayer = await buildPdfLinkLayer(page, vp); } catch (e) { /* annotations optional */ }
         if (!isWanted()) return false;
 
+        let audioLayer = null;
+        try { if (typeof buildPdfAudioLayer === 'function') audioLayer = buildPdfAudioLayer(textItems, vp, pageNum); } catch (e) { /* audio marks optional */ }
+
         const ink = document.createElement('canvas');
         ink.className = 'ink-layer'; ink.dataset.page = pageNum;
         // The full-size ink buffer (as big as the page canvas) only when the page has handwriting or the pen is out:
@@ -194,7 +198,7 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         ink.width = hasInk ? c.width : 0; ink.height = hasInk ? c.height : 0;
         ink.style.width = `${vp.width}px`; ink.style.height = `${vp.height}px`;
 
-        wrapperEl.replaceChildren(c, tl, ...(linkLayer ? [linkLayer] : []), ink);
+        wrapperEl.replaceChildren(c, tl, ...(linkLayer ? [linkLayer] : []), ...(audioLayer ? [audioLayer] : []), ink);
         wrapperEl.classList.remove('pdf-placeholder');
         wrapperEl.dataset.rendered = '1';
         redrawInk(ink, pageNum); bindInkCanvas(ink, pageNum);

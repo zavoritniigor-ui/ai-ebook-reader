@@ -61,16 +61,23 @@ Object.assign(I18N, {
                zh: '无法播放此文件。', ko: '이 파일을 재생할 수 없습니다.', hi: 'यह फ़ाइल चलाई नहीं जा सकी।', ga: 'Níorbh fhéidir an comhad seo a sheinm.' },
 });
 
-// ---------- storage: IndexedDB, one record per track with the audio Blob inside ----------------------------------------------
-const BA_DB = 'reader-book-audio', BA_STORE = 'tracks', BA_MAX_BYTES = 3 * 1024 * 1024 * 1024;
+// ---------- storage: IndexedDB, metadata in 'tracks' and Audio Blobs in 'blobs' ----------------------------------------------
+const BA_DB = 'reader-book-audio', BA_STORE = 'tracks', BA_BLOB_STORE = 'blobs', BA_MAX_BYTES = 3 * 1024 * 1024 * 1024;
 let baDbPromise = null;
 function baDb() {
     if (!baDbPromise) baDbPromise = new Promise((resolve, reject) => {
         if (typeof indexedDB === 'undefined') { reject(new Error('no indexedDB')); return; }
-        const req = indexedDB.open(BA_DB, 1);
+        const req = indexedDB.open(BA_DB, 2);
         req.onupgradeneeded = () => {
-            const store = req.result.createObjectStore(BA_STORE, { keyPath: 'id' });
-            store.createIndex('book', 'bookKey');
+            const db = req.result;
+            if (!db.objectStoreNames.contains(BA_STORE)) {
+                const store = db.createObjectStore(BA_STORE, { keyPath: 'id' });
+                store.createIndex('book', 'bookKey');
+            }
+            if (!db.objectStoreNames.contains(BA_BLOB_STORE)) {
+                const blobs = db.createObjectStore(BA_BLOB_STORE, { keyPath: 'id' });
+                blobs.createIndex('book', 'bookKey');
+            }
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
@@ -79,26 +86,32 @@ function baDb() {
 }
 const baReq = req => new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
 const baTxDone = tx => new Promise((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = tx.onabort = () => reject(tx.error); });
-// The description of every track of a book (the Blobs stay on disk: a record's Blob is only a handle until it is played).
+// The description of every track of a book (the Blobs stay in BA_BLOB_STORE and are only read when a track is played).
 async function baList(bookKey) {
     const db = await baDb();
     const rows = await baReq(db.transaction(BA_STORE, 'readonly').objectStore(BA_STORE).index('book').getAll(IDBKeyRange.only(bookKey)));
     return rows.map(({ blob, ...meta }) => meta);
 }
 async function baPut(record) {
-    const db = await baDb(), tx = db.transaction(BA_STORE, 'readwrite');
-    tx.objectStore(BA_STORE).put(record);
+    const { blob, ...meta } = record;
+    const db = await baDb(), tx = db.transaction([BA_STORE, BA_BLOB_STORE], 'readwrite');
+    tx.objectStore(BA_STORE).put(meta);
+    tx.objectStore(BA_BLOB_STORE).put({ id: meta.id, bookKey: meta.bookKey, blob });
     await baTxDone(tx);
 }
 async function baGetBlob(id) {
     const db = await baDb();
-    const row = await baReq(db.transaction(BA_STORE, 'readonly').objectStore(BA_STORE).get(id));
-    return row ? row.blob : null;
+    const row = await baReq(db.transaction(BA_BLOB_STORE, 'readonly').objectStore(BA_BLOB_STORE).get(id));
+    if (row && row.blob) return row.blob;
+    const legacy = await baReq(db.transaction(BA_STORE, 'readonly').objectStore(BA_STORE).get(id));
+    return legacy ? legacy.blob : null;
 }
 async function baDeleteBook(bookKey) {
-    const db = await baDb(), tx = db.transaction(BA_STORE, 'readwrite');
-    const store = tx.objectStore(BA_STORE), keys = await baReq(store.index('book').getAllKeys(IDBKeyRange.only(bookKey)));
-    for (const key of keys) store.delete(key);
+    const db = await baDb(), tx = db.transaction([BA_STORE, BA_BLOB_STORE], 'readwrite');
+    for (const storeName of [BA_STORE, BA_BLOB_STORE]) {
+        const store = tx.objectStore(storeName), keys = await baReq(store.index('book').getAllKeys(IDBKeyRange.only(bookKey)));
+        for (const key of keys) store.delete(key);
+    }
     await baTxDone(tx);
 }
 
@@ -115,13 +128,13 @@ function baParseFile(name, path) {
         if (m) { cd = Number(m[1]); break; }
     }
     if (cd === null) { const m = base.match(/(?:^|[^\p{L}])(?:cd|disc)\s*[-_ ]?\s*0*([1-9])(?![\p{L}\d])/iu); if (m) cd = Number(m[1]); }
-    let track = null, copy = 0, m = base.match(/(?:track|piste|plage|pista|tr|p)[ _-]*0*(\d{1,3})(?![\p{L}\d])/iu);
+    let track = null, copy = 0, m = base.match(/(?:^|[^\p{L}\d])(?:track|piste|plage|pista|tr|p)[ _-]*0*([1-9]\d{0,2})(?![\p{L}\d])/iu);
     if (m) {
         track = Number(m[1]);
         const dup = base.slice(m.index + m[0].length).match(/^[\s_(-]*(\d)\)?\s*$/);
         if (dup) copy = Number(dup[1]);
-    } else if ((m = base.match(/^\s*0*(\d{1,3})(?![\d])/))) track = Number(m[1]);
-    else if ((m = base.match(/(\d{1,3})(?!.*\d)/))) track = Number(m[1]);
+    } else if ((m = base.match(/^\s*0*([1-9]\d{0,2})(?![\d])/))) track = Number(m[1]);
+    else if ((m = base.match(/0*([1-9]\d{0,2})(?!.*\d)/))) track = Number(m[1]);
     return { name, path: path || name, cd, track, copy };
 }
 // A plain file picker has no folder names, so two sets with the same track numbers cannot be told apart by CD: the ones whose name
@@ -153,10 +166,10 @@ function baFind(cd, track, tracks = bookAudio.tracks) {
 
 // ---------- marks in the text -----------------------------------------------------------------------------------------------
 // «CD2 - piste 35», «CD2- piste 34», «CD1 - Piste 3», or a bare «piste 37» (a mark whose disc sits in another text item).
-const BA_MARK_RE = /(?:\bCD\s*([1-9])\s*[-–—:.]*\s*)?(?<![\p{L}\p{N}])(?:piste|plage|track|pista)\s*0*(\d{1,3})(?![\p{L}\p{N}])/giu;
+const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:CD\s*([1-9])\s*[-–—:.]*\s*(?:piste|plage|track|pista)\s*0*([1-9]\d{0,2})|(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
 function baFindMarks(text) {
     const out = [];
-    for (const m of String(text).matchAll(BA_MARK_RE)) out.push({ cd: m[1] ? Number(m[1]) : null, track: Number(m[2]), start: m.index, end: m.index + m[0].length });
+    for (const m of String(text).matchAll(BA_MARK_RE)) out.push({ cd: m[2] ? Number(m[2]) : null, track: Number(m[3] || m[4]), start: m.index + m[1].length, end: m.index + m[0].length });
     return out;
 }
 // The page's text items -> the boxes (in viewport pixels) of every mark. Items of one line are joined (a gap wider than a fifth of the
@@ -201,7 +214,6 @@ function baMarkBoxes(items, vp) {
 }
 // The layer of buttons over a page's marks; the page's wrapper takes it beside the link layer (js/pdf-render.js).
 function buildPdfAudioLayer(items, vp, pageNum) {
-    if (vp.rotation % 360 !== 0) return null;
     const boxes = baMarkBoxes(items, vp);
     if (!boxes.length) return null;
     const layer = document.createElement('div');
@@ -296,7 +308,7 @@ function baUnlock() {
             const wav = new Uint8Array([82, 73, 70, 70, 38, 0, 0, 0, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, 1, 0, 64, 31, 0, 0, 128, 62, 0, 0, 2, 0, 16, 0, 100, 97, 116, 97, 2, 0, 0, 0, 0, 0]);
             baSilentUrl = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
         }
-        if (baAudio.paused && !baAudio.currentSrc) { baAudio.src = baSilentUrl; const p = baAudio.play(); if (p && p.catch) p.catch(() => {}); }
+        if (baAudio.paused && !bookAudio.playing && !baAudio.currentSrc) { baAudio.src = baSilentUrl; const p = baAudio.play(); if (p && p.catch) p.catch(() => {}); }
     } catch (e) { /* no unlock: the real play() decides */ }
 }
 function tapBookAudioMark(btn) {
@@ -309,7 +321,7 @@ function tapBookAudioMark(btn) {
 }
 async function playBookTrack(rec, label) {
     // The same track again: the tap pauses / resumes it.
-    if (bookAudio.playing && bookAudio.playing.id === rec.id && baAudio.currentSrc && baAudio.src === baUrl) { baAudio.paused ? baAudio.play().catch(() => {}) : baAudio.pause(); return; }
+    if (bookAudio.playing && bookAudio.playing.id === rec.id && baUrl && baAudio.src === baUrl) { baAudio.paused ? baAudio.play().catch(() => {}) : baAudio.pause(); return; }
     let blob = null;
     try { blob = await baGetBlob(rec.id); } catch (e) { /* unreadable */ }
     if (!blob) { showToast(t('baError')); return; }
@@ -328,7 +340,7 @@ async function playBookTrack(rec, label) {
 function pauseBookAudio() { if (!baAudio.paused) baAudio.pause(); }
 function stopBookAudio() {
     baAudio.pause();
-    baAudio.removeAttribute('src'); baAudio.load();
+    try { baAudio.currentTime = 0; } catch (e) { /* not seekable */ }
     if (baUrl) { URL.revokeObjectURL(baUrl); baUrl = null; }
     bookAudio.playing = null;
     hideAudioPlayer(); syncAudioMarkers();
@@ -390,7 +402,8 @@ function setBookAudioProgress(text, fraction) {
 function renderBookAudioDialog(message) {
     const dialog = bookAudioDialog();
     if (!dialog || !dialog.querySelector('.ba-body')) return;
-    dialog.querySelector('.ba-subtitle').textContent = (typeof shelfTitle === 'function' ? shelfTitle(state.bookFileName || '') : '') || '';
+    const subName = state.bookFileName || (state.bookKey ? String(state.bookKey).replace(/:\d+$/, '') : '');
+    dialog.querySelector('.ba-subtitle').textContent = (typeof shelfTitle === 'function' ? shelfTitle(subName) : subName) || '';
     dialog.querySelector('.ba-status').textContent = bookAudio.tracks.length ? t('baCount').replace('{n}', bookAudio.tracks.length) : t('baNone');
     const msg = dialog.querySelector('.ba-message');
     if (message !== undefined) msg.textContent = message;
@@ -443,4 +456,5 @@ function openBookAudioDialog(message) {
     renderBookAudioDialog(message || '');
     if (!dialog.open) dialog.showModal();
 }
-document.getElementById('btn-book-audio').onclick = () => openBookAudioDialog('');
+const baBtn = document.getElementById('btn-book-audio');
+if (baBtn) baBtn.onclick = () => openBookAudioDialog('');

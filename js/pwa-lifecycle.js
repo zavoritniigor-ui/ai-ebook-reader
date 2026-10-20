@@ -54,6 +54,7 @@ function stopBackgroundActivity() {
     saveInk();
     if (isSpeakingGlobal) stopGlobalTTS();
     stopTooltipSpeech();
+    if (typeof pauseBookAudio === 'function') pauseBookAudio();
     stopDictation(); clearAlignment(); stopOnboarding();
     cancelAsyncTasks();
     pdfTasks.render?.cancel(); pdfTasks.render = null;
@@ -242,6 +243,7 @@ if (document.getElementById('btn-exit-app')) {
 const OVERLAY_LAYERS = [
     { name: 'library', test: () => !!document.getElementById('library-modal')?.classList.contains('open') },
     { name: 'quickMenu', test: () => !document.getElementById('quick-menu').hidden },
+    { name: 'bookAudio', test: () => !!document.getElementById('book-audio-dialog')?.open },
     { name: 'crop', test: () => cropDialog.open },
     { name: 'modal', test: () => document.getElementById('settings-modal').style.display === 'flex' },
     // The main menu is a drawer over the book: Back closes it (with no book open it is the start screen, not a layer).
@@ -260,6 +262,7 @@ function closeTopOverlay(name) {
     switch (name) {
         case 'library': closeLibrary(); break;
         case 'quickMenu': quickMenu.close(); break;
+        case 'bookAudio': document.getElementById('book-audio-dialog')?.close(); break;
         case 'crop': closeCropPreview(); break;
         case 'modal': closeKeySettings(); break;
         case 'menu': closeFullMenu(); break;
@@ -305,7 +308,7 @@ window.addEventListener('popstate', () => {
 });
 try {
     const overlayObserver = new MutationObserver(syncOverlayHistory);
-    [document.getElementById('quick-menu'), cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, document.getElementById('rules-panel'), els.sidebar, document.getElementById('settings-modal'), document.getElementById('library-modal')]
+    [document.getElementById('quick-menu'), document.getElementById('book-audio-dialog'), cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, document.getElementById('rules-panel'), els.sidebar, document.getElementById('settings-modal'), document.getElementById('library-modal')]
         .forEach((el) => el && overlayObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] }));
 } catch (e) {}
 

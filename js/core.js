@@ -754,7 +754,7 @@ const state = {
         return provider;
     })(),
     translationCache: {}, lastAskContext: "",
-    pageInChapter: 0, totalPagesInChapter: 1, bookKey: null, suppressNextClick: false,
+    pageInChapter: 0, totalPagesInChapter: 1, bookKey: null, bookFileName: '', suppressNextClick: false,
     ttsQueue: [], ttsIndex: 0, ttsPaused: false, ttsGen: 0, pdfZoom: 1, lastTapPoint: null, expandLevel: 0, lastWordNode: null,
     targetLang: storedLanguage('reader_target_lang', systemTargetLanguage(), TARGET_LANGUAGE_CODES),
     uiLang: storedLanguage('reader_ui_lang', systemUiLanguage()),
@@ -2038,6 +2038,10 @@ function applyI18n() {
     }
     if (typeof loadVoices === 'function') loadVoices();   // назви груп голосів
     if (typeof refreshReadingStats === 'function') refreshReadingStats();
+    if (typeof labelBookAudioDialog === 'function') labelBookAudioDialog();
+    if (typeof syncAudioMenuRow === 'function') syncAudioMenuRow();
+    if (typeof syncAudioPlayer === 'function') syncAudioPlayer();
+    if (typeof syncAudioMarkers === 'function') syncAudioMarkers();
 }
 
 

@@ -161,7 +161,9 @@ async function openBookFile(file) {
     els.pages.innerHTML = `<div style="text-align:center;">${t('loading')}</div>`;
     document.body.classList.add('immersive-mode');   // the menu (a drawer over the page) gives way to the book on every screen
     state.bookKey = bookKeyFor(file);
+    state.bookFileName = file.name || '';
     state.oldBookKey = oldBookKeyFor(file);
+    if (typeof onBookAudioBookChanged === 'function') onBookAudioBookChanged();
     if (typeof applySyncedBook === 'function') applySyncedBook(state.bookKey);   // місце/нотатки з іншого пристрою (js/sync.js)
     state.bookLangManual = normalizeBookLang(readStored(BOOK_LANG_STORE + state.bookKey));
     syncBookLangSelect();

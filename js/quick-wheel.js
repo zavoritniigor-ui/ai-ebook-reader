@@ -52,10 +52,10 @@ document.getElementById('menu-close').addEventListener('click', closeFullMenu);
 document.getElementById('menu-backdrop').addEventListener('click', closeFullMenu);
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || !isFullMenuOpen() || e.defaultPrevented) return;
-    if (document.querySelector('#settings-modal[style*="flex"], #library-modal.open')) return;   // Escape closes the dialog on top first
+    if (document.querySelector('#settings-modal[style*="flex"], #library-modal.open, #book-audio-dialog[open]')) return;   // Escape closes the dialog on top first
     closeFullMenu();
 });
-const MENU_CLOSING_ACTIONS = ['toggle-toc-desktop', 'btn-rules', 'btn-ink', 'btn-region', 'btn-print-page', 'btn-tts'];
+const MENU_CLOSING_ACTIONS = ['toggle-toc-desktop', 'btn-book-audio', 'btn-rules', 'btn-ink', 'btn-region', 'btn-print-page', 'btn-tts'];
 document.getElementById('header-controls').addEventListener('click', e => {
     const row = e.target.closest('button');
     if (row && MENU_CLOSING_ACTIONS.includes(row.id)) setTimeout(closeFullMenu, 0);   // after the action's own handler
