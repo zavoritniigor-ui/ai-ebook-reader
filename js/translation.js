@@ -739,6 +739,23 @@ function detectPhrasalVerb(word, sentenceText) {
 // ========== ПЕРЕКЛАД ПРЯМО В ПАНЕЛІ AI ==========
 // Розбір пропонує спрощені варіанти французькою, і їх теж треба вміти перекласти.
 // Тому тап по слову в самій панелі працює так само, як у тексті книги.
+function panelStudyLang(root) {
+    if (!root) return '';
+    if (root.id === 'practice-panel' || root.closest?.('#practice-panel')) {
+        const s = typeof getCurrentPracticeSession === 'function' ? getCurrentPracticeSession() : null;
+        return s?.reading?.language || s?.sourceLanguage || '';
+    }
+    if (root.id === 'rules-content' || root.closest?.('#rules-panel')) {
+        return (typeof rulesState !== 'undefined' && rulesState?.lang) || '';
+    }
+    if (root.id === 'grammar-content' || root.closest?.('#grammar-panel')) {
+        return (typeof grammarContext !== 'undefined' && grammarContext?.sourceLanguage) || '';
+    }
+    if (root.id === 'ask-content' || root.closest?.('#ask-panel')) {
+        return (typeof rulesStudyLang === 'function' && rulesStudyLang(state.lastAskContext || '')) || '';
+    }
+    return '';
+}
 function translatePanelPoint(e, root, { keepNative = false } = {}) {
     state.tooltipFromRules = !!root && root.id === 'rules-content';
     if (e.target.closest('button, a, input, select, textarea') || root.closest('.loading')) return;
@@ -751,12 +768,14 @@ function translatePanelPoint(e, root, { keepNative = false } = {}) {
         }
     }
     // A displayed conjugated form/cell is a useful phrase, not separate words.
-    const phrase = e.target.closest('.verb-forme, td');
+    const phrase = e.target.closest('.verb-forme, .grammar-grid-value, .grammar-focus-pattern, td');
     if (!text && phrase && root.contains(phrase) && phrase.textContent.trim().length <= 120) {
         range = document.createRange(); range.selectNodeContents(phrase); text = range.toString().trim();
     }
-    const host = e.target.closest('.verb-forme, .lvl-block, tr, p, li, .verb-head, .verb-card, .practice-sentence, .practice-paragraph') || e.target;
+    let host = e.target.closest('.verb-forme, .grammar-grid-value, .grammar-focus-pattern, .lvl-block, tr, p, li, .verb-head, .verb-card, .practice-sentence-text, .practice-rule-note, .practice-sentence, .practice-paragraph') || e.target;
+    if (host.matches?.('.practice-sentence, .practice-paragraph')) host = host.querySelector('.practice-sentence-text') || host;
     state.ctxSentence = (host.textContent || '').trim().slice(0, 400);
+    state.ctxPanelLang = panelStudyLang(root);
     if (!text) text = selectWordAtPoint(e.clientX, e.clientY);
     if (!text) return;
     state.lastSelectedRange = range;
@@ -778,7 +797,7 @@ if (rulesContentEl) rulesContentEl.addEventListener('click', e => {
 });
 
 // Будь-яка взаємодія з книгою — новий контекст: підказка, відкрита потім, уже не «належить» вікну Правил.
-els.mainArea.addEventListener('pointerdown', () => { state.tooltipFromRules = false; }, true);
+els.mainArea.addEventListener('pointerdown', () => { state.tooltipFromRules = false; state.ctxPanelLang = ''; }, true);
 
 // Practice: тап по слову, яке не є ціллю вправи, відкриває те саме вікно перекладу (ціль, як і раніше, веде в Граматику).
 function wirePracticePanelTranslate(panel) {

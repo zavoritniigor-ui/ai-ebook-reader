@@ -72,9 +72,57 @@ function rulesHash(text) { let h = 0; for (let i = 0; i < text.length; i++) h = 
 // Між блоками — '\n'; у PDF (абсолютно позиціоновані span-и рядків) — пробіл, інакше слова злипаються.
 function collectVisibleText(maxChars = RULES_PAGE_MAX, all = false) {
     const root = els.pages;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const vh = window.innerHeight, vw = window.innerWidth, probe = document.createRange();
     const isPdf = state.format === 'pdf';
+    if (isPdf && root.querySelector('.pdf-text-layer')) {
+        let text = '', segs = [];
+        const layers = root.querySelectorAll('.pdf-text-layer');
+        for (const layer of layers) {
+            const lr = layer.getBoundingClientRect();
+            if (!lr.width && !lr.height) continue;
+            if (!all && (lr.bottom <= 0 || lr.top >= vh || lr.right <= 0 || lr.left >= vw)) continue;
+            const rawSpans = typeof pdfTextSpans === 'function' ? pdfTextSpans(layer) : [...layer.querySelectorAll('span')];
+            const columns = typeof pdfPartitionColumns === 'function' ? pdfPartitionColumns(rawSpans) : [rawSpans];
+            for (const colSpans of columns) {
+                let prevSpan = null;
+                for (const span of colSpans) {
+                    if (!span.textContent || !span.textContent.trim()) continue;
+                    const sr = span.getBoundingClientRect();
+                    if (!sr.width && !sr.height) continue;
+                    if (!all && (sr.bottom <= 0 || sr.top >= vh || sr.right <= 0 || sr.left >= vw)) continue;
+                    const w = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
+                    let node, firstInSpan = true;
+                    while ((node = w.nextNode())) {
+                        const value = node.nodeValue;
+                        if (!value) continue;
+                        if (firstInSpan) {
+                            if (text) {
+                                if (!prevSpan) {
+                                    if (!text.endsWith('\n')) text += '\n';
+                                } else if (!/\s$/.test(text) && !/^\s/.test(value)
+                                    && !(typeof pdfSpansContinueWord === 'function' && pdfSpansContinueWord(prevSpan, span))) {
+                                    text += ' ';
+                                }
+                            }
+                            firstInSpan = false;
+                        }
+                        const room = maxChars - text.length;
+                        if (room <= 0) break;
+                        const take = value.length > room ? value.slice(0, room) : value;
+                        segs.push({ node, nodeStart: 0, textStart: text.length, len: take.length });
+                        text += take;
+                        if (text.length >= maxChars) break;
+                    }
+                    prevSpan = span;
+                    if (text.length >= maxChars) break;
+                }
+                if (text.length >= maxChars) break;
+            }
+            if (text.length >= maxChars) break;
+        }
+        return { text, segs };
+    }
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let text = '', segs = [], prevBlock = null, node;
     while ((node = walker.nextNode())) {
         const value = node.nodeValue;
@@ -320,10 +368,18 @@ els.mainArea.addEventListener('click', (e) => {
     if (!rulesState.matches.length || !rulesState.ranges.length) return;
     if (e.target.closest('.side-panel, #word-tooltip, nav, #pdf-scrubber')) return;
     let pos = null;
-    if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(e.clientX, e.clientY); if (p) pos = { node: p.offsetNode, offset: p.offset }; }
-    else if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(e.clientX, e.clientY); if (r) pos = { node: r.startContainer, offset: r.startOffset }; }
-    if (!pos) return;
-    const hit = rulesState.ranges.findIndex(r => { try { return r && r.isPointInRange(pos.node, pos.offset); } catch (err) { return false; } });
+    if (typeof caretRangeAt === 'function') {
+        const cr = caretRangeAt(e.clientX, e.clientY);
+        if (cr) pos = { node: cr.startContainer, offset: cr.startOffset };
+    }
+    if (!pos) {
+        if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(e.clientX, e.clientY); if (p) pos = { node: p.offsetNode, offset: p.offset }; }
+        else if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(e.clientX, e.clientY); if (r) pos = { node: r.startContainer, offset: r.startOffset }; }
+    }
+    let hit = pos ? rulesState.ranges.findIndex(r => { try { return r && r.isPointInRange(pos.node, pos.offset); } catch (err) { return false; } }) : -1;
+    if (hit === -1 && typeof isPointInRects === 'function') {
+        hit = rulesState.ranges.findIndex(r => { try { return r && isPointInRects(e.clientX, e.clientY, r.getClientRects(), 2); } catch (err) { return false; } });
+    }
     if (hit === -1) return;
     e.stopPropagation(); e.stopImmediatePropagation();
     openRulesPanel({ keep: true });
@@ -385,7 +441,10 @@ function openRulesPanel({ keep = false } = {}) {
     if (typeof closePractice === 'function' && practice && !practice.hidden) closePractice();
     cancelTooltipHide(); els.tooltip.style.display = 'none';
     if (!keep || !panel.dataset.ready) {
-        const page = rulesStudyLang(collectVisibleText().text) || pageLang().slice(0, 2);
+        const selFlat = rulesSelectionSource({ selectionOnly: true });
+        const selText = selFlat ? selFlat.text.replace(/\s+/g, ' ').trim() : '';
+        const scanLang = (selText && rulesScan && rulesScan.sourceText === selText && RULES_LANGS.includes(rulesScan.lang)) ? rulesScan.lang : '';
+        const page = scanLang || (selText && rulesStudyLang(selText)) || rulesStudyLang(collectVisibleText().text) || pageLang().slice(0, 2);
         if (!rulesState.topic && !rulesLangPinned() && RULES_LANGS.includes(page)) rulesState.lang = page;
         panel.dataset.ready = '1';
         if (rulesState.topic) renderRuleTopic(); else renderRulesTree();
@@ -616,7 +675,7 @@ async function runRuleSelectionScan() {
     let result;
     try {
         let out;
-        try { out = await callAI(buildRuleScanPrompt(langCode, flat.text, explainLangName()), undefined, 'rules_search', undefined, { maxOutputTokens: 3000, timeoutMs: 90000 }); }
+        try { out = await callAI(buildRuleScanPrompt(langCode, flat.text, explainLangName()), undefined, 'rules_search', undefined, { maxOutputTokens: 3000 }); }
         catch (err) { if (err && err.reason === 'truncated' && err.partial) out = err.partial; else throw err; }
         result = normalizeRuleScan(out, langCode, flat.text);
     } catch (err) { result = { ok: false, found: new Map() }; }
@@ -643,10 +702,15 @@ function openRuleTopic(topic) {
     renderRuleTopic();
     // Found by the selection scan: show exactly those examples (in the selected sentences), no new request.
     const scan = currentRuleScan(), hit = scan && scan.found.get(topic.id);
-    if (hit && scan.flat.segs.every(sg => sg.node.isConnected)) {
+    if (hit) {
         rulesState.text = scan.flat.text;
         rulesState.matches = hit.matches;
-        paintRuleMatches(scan.flat, hit.matches);
+        if (scan.flat.segs.every(sg => sg.node.isConnected)) {
+            paintRuleMatches(scan.flat, hit.matches);
+        } else {
+            const { ranges } = remapRuleHighlights();
+            applyRuleRanges(ranges);
+        }
         renderRuleMatches();
         rulesState.status = 'ready';
         const exc = hit.matches.filter(m => m.exception).length;
@@ -838,7 +902,10 @@ function startRulePractice(rule, btn) {
 // відкрите вікно перекладу не переривається; коли кнопка/закладка стає зеленою, ДРУГИМ тапом користувач сам відкриває вікно.
 function rulesButtonPress() {
     if (rulesOpen()) { minimizeRulesPanel(); return; }
-    const flat = aiAvailable() && navigator.onLine ? rulesSelectionSource({ selectionOnly: true }) : null;
+    const popupOpen = !!(els.tooltip && els.tooltip.style.display === 'flex')
+        && !isPhoneScreen()
+        && (typeof isFullMenuOpen !== 'function' || !isFullMenuOpen());
+    const flat = popupOpen && aiAvailable() && navigator.onLine ? rulesSelectionSource({ selectionOnly: true }) : null;
     if (flat) {
         const text = flat.text.replace(/\s+/g, ' ').trim();
         if (rulesScan && rulesScan.sourceText === text && rulesScan.status === 'running') { showToast(t('rulesBgWait')); return; }

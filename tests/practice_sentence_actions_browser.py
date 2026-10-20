@@ -41,7 +41,8 @@ window.__ttsSpeakCalls = []; window.__ttsCancelCalls = 0;
 Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
     getVoices: () => [
         { voiceURI: 'fr-fr', name: 'French', lang: 'fr-FR', localService: true },
-        { voiceURI: 'en-us', name: 'English', lang: 'en-US', localService: true }
+        { voiceURI: 'en-us', name: 'English', lang: 'en-US', localService: true },
+        { voiceURI: 'uk-ua', name: 'Ukrainian', lang: 'uk-UA', localService: true }
     ],
     speaking: false, pending: false, paused: false,   // tracked like the real API: only a busy synth is cancelled
     cancel() { window.__ttsCancelCalls++; this.speaking = false; },
@@ -388,5 +389,52 @@ translate_rect = c.js("(()=>{const b=document.querySelector('.practice-translate
 touch_tap(translate_rect['x'], translate_rect['y'])
 c.wait("document.querySelector('.practice-sentence-translation').textContent!==t('translating') && document.querySelector('.practice-sentence-translation').textContent.length>0", timeout=8)
 print("PASS 9: on a phone-sized touch viewport, both actions are reachable and respond to real touch taps", flush=True)
+
+# =====================================================================================================================
+print("\n=== SECTION 10: tapping an individual French word in Practice voices it in French (never Ukrainian uk-UA) ===")
+c.call('Emulation.setDeviceMetricsOverride', width=1000, height=1100, deviceScaleFactor=1, mobile=False)
+c.call('Emulation.setTouchEmulationEnabled', enabled=False)
+c.js("""(() => {
+    // Reproduce the exact bug setup: Ukrainian translation expanded inside .practice-sentence, Ukrainian rule note present,
+    // page sourceLang defaulting to en-US, and speakSide='orig' so tapping a word speaks it immediately via speakText().
+    state.sourceLang = 'en-US';
+    state.speakSide = 'orig';
+    state.selectedVoiceURIByLang.fr = 'fr-fr';
+    state.selectedVoiceURIByLang.uk = 'uk-ua';
+    state.selectedVoiceURIByLang.en = 'en-us';
+    const row = document.querySelector('#practice-panel .practice-sentence');
+    const tr = row.querySelector('.practice-sentence-translation');
+    tr.hidden = false;
+    tr.textContent = 'Ось приклад речення французькою мовою з українським перекладом і літерами іїєґ.';
+    window.__ttsSpeakCalls.length = 0;
+    lastSpeechCancelAt = -Infinity; speechSynthesis.speaking = false;
+    return 1;
+})()""")
+word_pt = c.js("""(() => {
+    const st = document.querySelector('#practice-panel .practice-sentence-text');
+    st.scrollIntoView({block: 'center'});
+    const w = document.createTreeWalker(st, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) {
+        if (!n.parentElement.closest('.practice-target')) {
+            const m = /\\b(exemple|contexte|phrase)\\b/.exec(n.nodeValue);
+            if (m) {
+                const r = document.createRange();
+                r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+                const b = r.getBoundingClientRect();
+                return { x: b.left + b.width / 2, y: b.top + b.height / 2, word: m[0] };
+            }
+        }
+    }
+    return null;
+})()""")
+assert word_pt and word_pt.get('word'), ('could not find non-target French word in Practice sentence', word_pt)
+mouse_click(word_pt['x'], word_pt['y'])
+check("10a: tapping a French word in Practice (even with Ukrainian sentence translation expanded below it) keeps ctxSentence pure French without Cyrillic",
+      "!/[а-яёіїєґ]/i.test(state.ctxSentence) && state.ctxPanelLang === 'fr'", timeout=5)
+check("10b: the tapped French word is voiced with the French voice (fr-FR), NEVER the Ukrainian voice (uk-UA)",
+      "window.__ttsSpeakCalls.length >= 1 && window.__ttsSpeakCalls.at(-1).lang === 'fr-FR' && window.__ttsSpeakCalls.at(-1).voice && window.__ttsSpeakCalls.at(-1).voice.voiceURI === 'fr-fr'", timeout=5)
+check("10c: fragmentLangInContext on a Latin French word inside a mixed French+Ukrainian context never returns uk-UA",
+      "fragmentLangInContext('parle', 'Je parle français (Я розмовляю французькою мовою).') === 'fr' && voiceForText('parle').lang === 'fr-FR'")
 
 print("\nALL PRACTICE SENTENCE-ACTIONS CHECKS PASSED")

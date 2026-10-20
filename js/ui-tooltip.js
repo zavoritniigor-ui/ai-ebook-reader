@@ -61,7 +61,7 @@ document.addEventListener('contextmenu', (e) => {
 
 document.addEventListener('pointerdown', (e) => {
     if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
-    if (e.target.closest('#menu-handle, #quick-menu-dock')) return;
+    if (e.target.closest('#menu-handle, #quick-menu-dock, #rules-tab')) return;
     let closedPopup = false;
     if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
         if (els.tooltip.style.display !== 'none') closedPopup = true;
@@ -70,6 +70,8 @@ document.addEventListener('pointerdown', (e) => {
         state.tooltipPersistent = false;
         stopTooltipSpeech();     // закрили вікно — озвучення теж зупиняємо
         clearSelectionHighlight();
+        state.lastSelectedRange = null;
+        state.ctxSentenceRange = null;
     }
     if (document.body.classList.contains('footer-open') && !e.target.closest('#app-footer') && !e.target.closest('#footer-handle')) {
         closeFooterMenu();
@@ -96,7 +98,12 @@ function enterMobileFullScreenIfNeeded() {
 let tooltipHideTimer;
 function scheduleTooltipHide(delay = 1800) {
     clearTimeout(tooltipHideTimer);
-    tooltipHideTimer = setTimeout(() => { els.tooltip.style.display = 'none'; clearSelectionHighlight(); }, delay);
+    tooltipHideTimer = setTimeout(() => {
+        els.tooltip.style.display = 'none';
+        clearSelectionHighlight();
+        state.lastSelectedRange = null;
+        state.ctxSentenceRange = null;
+    }, delay);
 }
 function cancelTooltipHide() { clearTimeout(tooltipHideTimer); }
 els.tooltip.addEventListener('pointerenter', cancelTooltipHide);
@@ -173,6 +180,8 @@ function dismissReaderPopup() {
     state.tooltipPersistent = false;
     stopTooltipSpeech();
     clearSelectionHighlight();
+    state.lastSelectedRange = null;
+    state.ctxSentenceRange = null;
 }
 if (els.ttCloseBtn) {
     els.ttCloseBtn.onclick = (e) => {
