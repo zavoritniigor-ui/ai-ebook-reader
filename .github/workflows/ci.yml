@@ -37,6 +37,7 @@ jobs:
           node --check archive-guard.worker.js
           node tests/shared_ai_proxy_test.mjs
           node tests/offline_model_proxy_test.mjs
+          node tests/book_speech_test.mjs
           
           echo "Checking index.html has no inline JS (CSP forbids it)..."
           python3 -c '
@@ -382,6 +383,9 @@ jobs:
 
           echo "Running book_audio_browser.py..."
           python3 -u tests/book_audio_browser.py
+
+          echo "Running book_speech_browser.py..."
+          python3 -u tests/book_speech_browser.py
 
           echo "All tests passed successfully!"
 

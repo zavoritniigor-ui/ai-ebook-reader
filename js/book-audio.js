@@ -67,9 +67,13 @@ let baDbPromise = null;
 function baDb() {
     if (!baDbPromise) baDbPromise = new Promise((resolve, reject) => {
         if (typeof indexedDB === 'undefined') { reject(new Error('no indexedDB')); return; }
-        const req = indexedDB.open(BA_DB, 2);
+        const req = indexedDB.open(BA_DB, 3);
         req.onupgradeneeded = () => {
             const db = req.result;
+            if (!db.objectStoreNames.contains('speech')) {   // the narration of a book (js/book-speech.js)
+                const speech = db.createObjectStore('speech', { keyPath: 'id' });
+                speech.createIndex('book', 'bookKey');
+            }
             if (!db.objectStoreNames.contains(BA_STORE)) {
                 const store = db.createObjectStore(BA_STORE, { keyPath: 'id' });
                 store.createIndex('book', 'bookKey');
@@ -250,6 +254,7 @@ const bookAudio = { key: null, tracks: [], playing: null };
 async function refreshBookAudio() {
     const key = state.bookKey;
     bookAudio.key = key;
+    if (typeof bsRefresh === 'function') bsRefresh();   // the book's narration (js/book-speech.js), read with its tracks
     if (!key) bookAudio.tracks = [];
     else {
         try { const rows = await baList(key); if (bookAudio.key !== key) return; bookAudio.tracks = rows; }
@@ -415,11 +420,15 @@ function renderBookAudioDialog(message) {
     if (!dialog || !dialog.querySelector('.ba-body')) return;
     const subName = state.bookFileName || (state.bookKey ? String(state.bookKey).replace(/:\d+$/, '') : '');
     dialog.querySelector('.ba-subtitle').textContent = (typeof shelfTitle === 'function' ? shelfTitle(subName) : subName) || '';
-    dialog.querySelector('.ba-status').textContent = bookAudio.tracks.length ? t('baCount').replace('{n}', bookAudio.tracks.length) : t('baNone');
+    const speech = typeof bsActiveSet === 'function' ? bsActiveSet() : null;
+    const parts = [bookAudio.tracks.length ? t('baCount').replace('{n}', bookAudio.tracks.length) : t('baNone')];
+    if (speech) parts.push(t('spkCount').replace('{n}', speech.sentences.length));
+    dialog.querySelector('.ba-status').textContent = parts.join(' · ');
     const msg = dialog.querySelector('.ba-message');
     if (message !== undefined) msg.textContent = message;
     msg.hidden = !msg.textContent;
     dialog.querySelector('.ba-remove').hidden = !bookAudio.tracks.length;
+    dialog.querySelector('.ba-speech-remove').hidden = !speech;
 }
 function buildBookAudioDialog() {
     const dialog = bookAudioDialog();
@@ -428,16 +437,20 @@ function buildBookAudioDialog() {
         + '<div class="pn-titles"><h3 class="ba-title"></h3><p class="pn-sub ba-subtitle"></p></div>'
         + '<button type="button" class="close-panel-btn ba-close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>'
         + '<div class="ba-body"><p class="ba-status"></p><p class="ba-message" hidden></p>'
-        + '<div class="ba-actions"><button type="button" class="btn-primary ba-folder"></button><button type="button" class="btn-secondary ba-files"></button></div>'
+        + '<div class="ba-actions"><button type="button" class="btn-primary ba-folder"></button><button type="button" class="btn-secondary ba-files"></button><button type="button" class="btn-secondary ba-speech"></button></div>'
         + '<div class="ba-progress" id="ba-progress" hidden><div class="ba-progress-text"></div><div class="ba-progress-bar"></div></div>'
-        + '<button type="button" class="btn-ghost ba-remove"></button><p class="ba-note"></p></div>';
-    const folder = document.createElement('input'), files = document.createElement('input');
+        + '<button type="button" class="btn-ghost ba-remove"></button><button type="button" class="btn-ghost ba-speech-remove"></button><p class="ba-note"></p></div>';
+    const folder = document.createElement('input'), files = document.createElement('input'), speech = document.createElement('input');
     folder.type = 'file'; folder.multiple = true; folder.setAttribute('webkitdirectory', ''); folder.hidden = true; folder.id = 'ba-input-folder';
     files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.opus'; files.hidden = true; files.id = 'ba-input-files';
-    dialog.append(folder, files);
+    speech.type = 'file'; speech.multiple = true; speech.accept = '.mp3,.json,audio/mpeg,application/json'; speech.hidden = true; speech.id = 'ba-input-speech';
+    dialog.append(folder, files, speech);
     dialog.querySelector('.ba-folder').onclick = () => folder.click();
     dialog.querySelector('.ba-files').onclick = () => files.click();
+    dialog.querySelector('.ba-speech').onclick = () => speech.click();
+    dialog.querySelector('.ba-speech-remove').onclick = () => bsRemoveFromDialog();
     for (const input of [folder, files]) input.onchange = () => { const list = Array.from(input.files); input.value = ''; importBookAudio(list); };
+    speech.onchange = () => { const list = Array.from(speech.files); speech.value = ''; bsImport(list); };
     dialog.querySelector('.ba-close').onclick = () => dialog.close();
     dialog.querySelector('.ba-remove').onclick = async () => {
         if (!state.bookKey) return;
@@ -455,6 +468,8 @@ function labelBookAudioDialog() {
     dialog.querySelector('.ba-title').textContent = t('mAudio');
     dialog.querySelector('.ba-folder').textContent = t('baPickFolder');
     dialog.querySelector('.ba-files').textContent = t('baPickFiles');
+    dialog.querySelector('.ba-speech').textContent = t('spkPick');
+    dialog.querySelector('.ba-speech-remove').textContent = t('spkRemove');
     dialog.querySelector('.ba-remove').textContent = t('baRemove');
     dialog.querySelector('.ba-note').textContent = t('baNote');
     dialog.querySelector('.ba-close').setAttribute('aria-label', t('tClose'));
