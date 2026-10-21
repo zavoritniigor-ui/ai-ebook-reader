@@ -252,5 +252,13 @@ check('16 Tracks saved under the same name and size with another lastModified ar
     return rows.length === 1;
 })()""")
 
+check('17 Removing a book also removes tracks saved under the same name and size with another lastModified', """(async () => {
+    const k1 = 'reader_bookmark_book.pdf_123_111', k2 = 'reader_bookmark_book.pdf_123_222';
+    await baPut({ id: k1 + '\\u0000y', bookKey: k1, cd: 0, track: 1, name: 't', path: 't', type: 'audio/wav', size: 1, blob: new Blob(['a']) });
+    await baDeleteBook(k2);
+    const left = await baList(k1);
+    return left.length === 0;
+})()""")
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')
