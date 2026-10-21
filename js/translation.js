@@ -179,7 +179,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     state.speakResume = null;      // нове слово — стара позиція вже не має сенсу
     // Автоозвучення йде тією стороною, чий динамік натискали останнім: оригінал —
     // одразу, переклад — після того, як він надійде (нижче).
-    if (state.speakSide === 'original') speakText(cleanText, 'orig');
+    // A word or sentence the book's own narration plays is not read again by the system voice (js/book-speech.js).
+    if (state.speakSide === 'original' && !state.bookSpeechTap) speakText(cleanText, 'orig');
     updateSpeakSideUI();
     
     // Спочатку заповнюємо вміст, і ЛИШЕ ПОТІМ міряємо. Раніше розмір знімався, поки

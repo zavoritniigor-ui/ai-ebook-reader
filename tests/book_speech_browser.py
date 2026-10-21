@@ -118,12 +118,20 @@ state_js = """(() => {
     return [b.left + b.width / 2, b.top + b.height / 2];
 })()"""
 x, y = c.js(state_js)
+c.js("""(() => {
+    window.__spoke = 0;   // the system voice: every utterance the app asks the browser to speak
+    const speak = speechSynthesis.speak.bind(speechSynthesis);
+    speechSynthesis.speak = u => { window.__spoke++; return speak(u); };
+    state.speakSide = 'original';
+})()""")
 c.touch_tap(x, y)   # a real tap on the word: the reader wraps it and calls bsTapWord
 
 check('4 Tapping a word plays it from its sentence (the decode uses that sentence\'s bytes only)', """(() => {
     const set = bsActiveSet();
     return !!bsCurrent && bsDecoded.has(set.id + '#0') && bsDecoded.get(set.id + '#0').duration > 0.5;
 })()""")
+
+check('4b A tap the narration covers is not read again by the system voice', "window.__spoke === 0")
 
 check('5 A word that is not in the narration is not played', """(async () => {
     const node = document.querySelector('.pdf-page-wrapper[data-page="1"] span');
