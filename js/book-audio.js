@@ -114,11 +114,14 @@ async function baGetBlob(id) {
     const legacy = await baReq(db.transaction(BA_STORE, 'readonly').objectStore(BA_STORE).get(id));
     return legacy ? legacy.blob : null;
 }
+// Removes what baList shows for this book, so the Remove button also clears tracks found by name and size.
 async function baDeleteBook(bookKey) {
     const db = await baDb(), tx = db.transaction([BA_STORE, BA_BLOB_STORE], 'readwrite');
+    const loose = baLooseKey(bookKey);
     for (const storeName of [BA_STORE, BA_BLOB_STORE]) {
-        const store = tx.objectStore(storeName), keys = await baReq(store.index('book').getAllKeys(IDBKeyRange.only(bookKey)));
-        for (const key of keys) store.delete(key);
+        const store = tx.objectStore(storeName);
+        const rows = await baReq(store.getAll());
+        for (const row of rows) if (baLooseKey(row.bookKey) === loose) store.delete(row.id);
     }
     await baTxDone(tx);
 }
