@@ -2,6 +2,7 @@
 // (tts-server, 127.0.0.1:8880), щоб телефон і планшет могли озвучувати через нього.
 // Адреса тунелю (SPEECH_TUNNEL_URL) і спільний токен (SPEECH_TOKEN) лежать ЛИШЕ в секретах Cloudflare Pages і ніколи не
 // потрапляють у браузер. Без обох секретів функція відповідає 503, і застосунок переходить на браузерний голос.
+// Передає IP відвідувача (cf-connecting-ip) для ліміту запитів на сервері; сервер довіряє йому лише з валідним токеном.
 // НЕ відкритий проксі: лише запити зі сторінок самого застосунку (Origin/Referer), лише два маршрути, обмежений розмір тіла.
 const ALLOWED = new Set(['health', 'speak']);
 const MAX_BODY_BYTES = 16 * 1024;   // фраза для озвучки коротка; сервер і так обмежує MAX_CHARS
@@ -32,7 +33,7 @@ export async function onRequest({ request, env, params }) {
     try {
         upstream = await fetch(base + '/' + path, {
             method: request.method,
-            headers: { 'Content-Type': 'application/json', 'X-Speech-Token': token },
+            headers: { 'Content-Type': 'application/json', 'X-Speech-Token': token, 'X-Client-IP': request.headers.get('cf-connecting-ip') || 'unknown' },
             body,
             signal: AbortSignal.timeout(20000),
         });
