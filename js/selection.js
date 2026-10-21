@@ -1517,7 +1517,8 @@ function commitDragSelection(clientX, clientY) {
         try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
     }
     state.touchJustCommitted = Date.now();
-    if (state.format === 'pdf') bsTapPhrase(r.startContainer.parentElement, text);   // the sentence's narration (js/book-speech.js)
+    state.bookSpeechTap = state.format === 'pdf' && bsCanPhrase(r.startContainer.parentElement, text);
+    if (state.bookSpeechTap) bsTapPhrase(r.startContainer.parentElement, text);
     handleWordOrSelection(text, clientX, clientY, rect, helpContext, 'phrase_translation');
 }
 
@@ -1629,7 +1630,9 @@ els.mainArea.addEventListener('click', (e) => {
             } catch (err) { state.ctxSentence = ''; state.ctxSentenceRange = null; }
             let rect = null;
             try { if (state.lastWordNode && state.lastWordNode.getBoundingClientRect) rect = state.lastWordNode.getBoundingClientRect(); } catch (err) {}
-            if (state.format === 'pdf') bsTapWord(state.lastWordNode, word);   // the book's narration (js/book-speech.js)
+            // The book's own narration reads a covered word; the app's voice then stays silent (translation.js).
+            state.bookSpeechTap = state.format === 'pdf' && bsCanWord(state.lastWordNode, word);
+            if (state.bookSpeechTap) bsTapWord(state.lastWordNode, word);
             handleWordOrSelection(lookup, e.clientX, e.clientY, rect, helpContext, 'word_tap');
             state.tooltipJustClosed = false; // успішний виклик перекладу — скасовуємо блокування
             return;

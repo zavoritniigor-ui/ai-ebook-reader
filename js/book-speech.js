@@ -162,33 +162,47 @@ function bsOccurrence(wrap, node, word) {
     return same.indexOf(node);
 }
 
-// Plays the tapped word from the speech of its sentence. Returns false when the book has no speech or the word is not found,
-// so the caller can carry on as before (the translation popup opens in every case).
-async function bsTapWord(node, word) {
+// The cue of the tapped word in the active narration, or null: the sentence and the word's span.
+function bsWordCue(node, word) {
     const set = bsActiveSet();
     const where = bsPageOf(node);
-    if (!set || !where || !bsWordKey(word)) return false;
+    if (!set || !where || !bsWordKey(word)) return null;
+    const cues = bsWordCues(set.sentences, where.page, word);
+    if (!cues.length) return null;
+    const k = bsOccurrence(where.wrap, node, word);
+    return { set, cue: cues[k >= 0 && k < cues.length ? k : 0] };
+}
+// Synchronous: does the narration cover this tap? (The app's own voice must then stay silent: translation.js.)
+function bsCanWord(node, word) { return !!bsWordCue(node, word); }
+
+// Plays the tapped word from the speech of its sentence. Returns false when the narration does not cover the word.
+async function bsTapWord(node, word) {
+    const found = bsWordCue(node, word);
+    if (!found) return false;
     try {
-        const cues = bsWordCues(set.sentences, where.page, word);
-        if (!cues.length) return false;
-        const k = bsOccurrence(where.wrap, node, word);
-        const cue = cues[k >= 0 && k < cues.length ? k : 0];
-        const buf = await bsDecode(set, cue.i);
-        bsPlay(buf, cue.w.start / 1000 - BS_MARGIN, cue.w.end / 1000 + BS_MARGIN);
+        const buf = await bsDecode(found.set, found.cue.i);
+        bsPlay(buf, found.cue.w.start / 1000 - BS_MARGIN, found.cue.w.end / 1000 + BS_MARGIN);
         return true;
     } catch (e) { return false; }
 }
 
-// Plays a selected sentence (or the part of it that the speech covers). Returns false when there is no matching sentence.
-async function bsTapPhrase(node, text) {
+// The sentence of the narration that a selected text belongs to, or -1.
+function bsPhraseIndex(node, text) {
     const set = bsActiveSet();
     const where = bsPageOf(node);
-    if (!set || !where) return false;
+    if (!set || !where) return null;
+    const index = bsSentenceIndex(set.sentences, where.page, text);
+    return index < 0 ? null : { set, index };
+}
+function bsCanPhrase(node, text) { return !!bsPhraseIndex(node, text); }
+
+// Plays a selected sentence (its whole narration). Returns false when the narration does not cover the text.
+async function bsTapPhrase(node, text) {
+    const found = bsPhraseIndex(node, text);
+    if (!found) return false;
     try {
-        const index = bsSentenceIndex(set.sentences, where.page, text);
-        if (index < 0) return false;
-        const buf = await bsDecode(set, index);
-        bsPlay(buf, 0, set.sentences[index].duration + BS_MARGIN);
+        const buf = await bsDecode(found.set, found.index);
+        bsPlay(buf, 0, found.set.sentences[found.index].duration + BS_MARGIN);
         return true;
     } catch (e) { return false; }
 }
