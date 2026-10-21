@@ -195,14 +195,14 @@ async function bsTapPhrase(node, text) {
 
 // ---------- i18n ----------------------------------------------------------------------------------------------------------------------------
 Object.assign(I18N, {
-    spkPick: { uk: 'Озвучка книги (MP3 + JSON)', en: 'Book narration (MP3 + JSON)', fr: 'Narration du livre (MP3 + JSON)', ru: 'Озвучка книги (MP3 + JSON)' },
-    spkRemove: { uk: 'Видалити озвучку', en: 'Remove narration', fr: 'Supprimer la narration', ru: 'Удалить озвучку' },
-    spkNeedBoth: { uk: 'Виберіть файл .mp3 і файл .json цього самого голосу.', en: 'Choose one .mp3 and one .json file of the same voice.', fr: 'Choisissez un fichier .mp3 et un fichier .json de la même voix.', ru: 'Выберите файл .mp3 и файл .json одного голоса.' },
-    spkBadJson: { uk: 'Це не файл озвучки: не вдалося прочитати JSON.', en: 'Not a narration file: the JSON could not be read.', fr: 'Ce n’est pas un fichier de narration : JSON illisible.', ru: 'Это не файл озвучки: JSON не читается.' },
-    spkMismatch: { uk: 'JSON описує файл {audio}. Виберіть саме цей MP3.', en: 'The JSON describes the file {audio}. Choose that MP3.', fr: 'Le JSON décrit le fichier {audio}. Choisissez ce MP3.', ru: 'JSON описывает файл {audio}. Выберите этот MP3.' },
-    spkSaved: { uk: 'Озвучку збережено: голос {voice}, речень: {n}.', en: 'Narration saved: voice {voice}, sentences: {n}.', fr: 'Narration enregistrée : voix {voice}, phrases : {n}.', ru: 'Озвучка сохранена: голос {voice}, предложений: {n}.' },
-    spkFailed: { uk: 'Не вдалося зберегти озвучку на цьому пристрої.', en: 'The narration could not be saved on this device.', fr: 'La narration n’a pas pu être enregistrée sur cet appareil.', ru: 'Озвучку не удалось сохранить на этом устройстве.' },
-    spkCount: { uk: 'Озвучка: {n} речень', en: 'Narration: {n} sentences', fr: 'Narration : {n} phrases', ru: 'Озвучка: {n} предложений' },
+    spkPick: { uk: 'Озвучка книги (MP3 + JSON)', en: 'Book narration (MP3 + JSON)', fr: 'Narration du livre (MP3 + JSON)', ru: 'Озвучка книги (MP3 + JSON)', es: 'Narración del libro (MP3 + JSON)' },
+    spkRemove: { uk: 'Видалити озвучку', en: 'Remove narration', fr: 'Supprimer la narration', ru: 'Удалить озвучку', es: 'Eliminar la narración' },
+    spkNeedBoth: { uk: 'Виберіть файл .mp3 і файл .json цього самого голосу.', en: 'Choose one .mp3 and one .json file of the same voice.', fr: 'Choisissez un fichier .mp3 et un fichier .json de la même voix.', ru: 'Выберите файл .mp3 и файл .json одного голоса.', es: 'Elija un archivo .mp3 y un archivo .json de la misma voz.' },
+    spkBadJson: { uk: 'Це не файл озвучки: не вдалося прочитати JSON.', en: 'Not a narration file: the JSON could not be read.', fr: 'Ce n’est pas un fichier de narration : JSON illisible.', ru: 'Это не файл озвучки: JSON не читается.', es: 'No es un archivo de narración: no se pudo leer el JSON.' },
+    spkMismatch: { uk: 'JSON описує файл {audio}. Виберіть саме цей MP3.', en: 'The JSON describes the file {audio}. Choose that MP3.', fr: 'Le JSON décrit le fichier {audio}. Choisissez ce MP3.', ru: 'JSON описывает файл {audio}. Выберите этот MP3.', es: 'El JSON describe el archivo {audio}. Elija ese MP3.' },
+    spkSaved: { uk: 'Озвучку збережено: голос {voice}, речень: {n}.', en: 'Narration saved: voice {voice}, sentences: {n}.', fr: 'Narration enregistrée : voix {voice}, phrases : {n}.', ru: 'Озвучка сохранена: голос {voice}, предложений: {n}.', es: 'Narración guardada: voz {voice}, frases: {n}.' },
+    spkFailed: { uk: 'Не вдалося зберегти озвучку на цьому пристрої.', en: 'The narration could not be saved on this device.', fr: 'La narration n’a pas pu être enregistrée sur cet appareil.', ru: 'Озвучку не удалось сохранить на этом устройстве.', es: 'No se pudo guardar la narración en este dispositivo.' },
+    spkCount: { uk: 'Озвучка: {n} речень', en: 'Narration: {n} sentences', fr: 'Narration : {n} phrases', ru: 'Озвучка: {n} предложений', es: 'Narración: {n} frases' },
 });
 
 // ---------- dialog wiring (called from book-audio.js) ------------------------------------------------------------------------------------
