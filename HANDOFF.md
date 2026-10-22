@@ -1,3 +1,21 @@
+## Local speech on phone/tablet, Par ici fixes (2026-10-20, Claude) — STATE FOR NEXT SESSION
+
+**Merged to main:** #261 (local speech engine), #262 (phone/tablet via Pages proxy `functions/api/speech/[[path]].js`, Settings switch «Локальний голос» = flag `reader_local_speech`), #263 (Par ici tracks found by name+size when lastModified changes), #264 (30 requests/min per visitor, 429), #265 (Remove clears the tracks the list shows).
+
+**Home speech server** (`~/tools/tts-server/server.py`, systemd user unit `tts-server`, 127.0.0.1:8880, not in repo): tunneled requests need `X-Speech-Token` (file `~/tools/tts-server/speech-token`, mode 600); visitor IP for the limit comes from `X-Client-IP`, which the proxy sets from `cf-connecting-ip`. Backups: `server.py.bak-*`. Voices: `KOKORO_VOICES` (en af_heart, fr ff_siwis), Piper uk single model. Measured: ~10 short phrases/s, GPU saturates at ~4 concurrent; no batching (Kokoro fails with batch>1 without patching the model).
+
+**Tunnel:** quick `cloudflared tunnel --url http://127.0.0.1:8880` → `https://cleaners-detect-correction-involved.trycloudflare.com` (changes on every restart). Pages secrets `SPEECH_TUNNEL_URL` and `SPEECH_TOKEN` are set by the owner. TODO: named tunnel with owner's domain so the URL stops changing (needs owner's Cloudflare login + domain, then a user systemd unit for cloudflared).
+
+**Phone/tablet use:** Settings → Локальний голос ON (no console). Off the tunnel/proxy the app silently falls back to browser voice (also on 429).
+
+**Open (not started):**
+- MP3 cache of speech on the server, only for «Par ici» (decide: only that book or all).
+- Pre-generated speech per textbook on the PC (needs a list of phrases and disk budget).
+- Voice choice in the app (server ignores a voice parameter today).
+- Device cache of speech (IndexedDB) — not done; server cache is the first step.
+
+**Worktrees left on disk** (safe to remove after merge): `~/Projects/wt-local-speech`, `wt-local-speech-mobile`, `wt-book-audio-link`, `wt-speech-ratelimit`, `wt-ba-remove`, `wt-handoff`.
+
 ## Rules panel, Practice French word TTS (#259), and «Par ici» book audio (`feat/book-audio-piste`) (2026-10-19)
 
 1. **Step 0 (`42903c8`, #258)**: Verified `main` CI run `39348261228` (`conclusion: "success"`) and Cloudflare Pages production (`https://ai-ebook-reader.pages.dev`).
