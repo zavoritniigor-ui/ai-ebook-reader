@@ -1,0 +1,11 @@
+{
+  "search.exclude": {
+    "vendor/**": true,
+    "library-catalog.json": true,
+    "tests/fixtures/**": true,
+    "docs/archive/**": true,
+    "review/**": true,
+    "**/*.min.js": true,
+    "**/*.min.mjs": true
+  }
+}

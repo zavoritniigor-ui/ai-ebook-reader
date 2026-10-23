@@ -2,7 +2,7 @@
 
 This file exists so a future agent (or Codex, or a human) can locate the code responsible
 for a given feature without scanning the entire application. It is the end result of the
-19-step modularization migration tracked in `MIGRATION_STATUS.md` — read that file for the
+19-step modularization migration tracked in `docs/archive/MIGRATION_STATUS.md` — read that file for the
 full history and reasoning behind every decision mentioned here; this file states the
 *current* shape only.
 
@@ -126,7 +126,7 @@ than assumed:
 ## Module map
 
 One line each, in load order. "Owns" means this is where the function/feature actually lives
-today; it does not always match the original `MODULARIZATION_PLAN.md` guess (see "Resolved
+today; it does not always match the original `docs/archive/MODULARIZATION_PLAN.md` guess (see "Resolved
 plan deviations" below for the two places the plan turned out to be wrong once the code was
 actually read).
 
@@ -167,7 +167,7 @@ actually read).
 
 ## Resolved plan deviations
 
-The original `MODULARIZATION_PLAN.md` was written by reading `index.html` once, before any
+The original `docs/archive/MODULARIZATION_PLAN.md` was written by reading `index.html` once, before any
 extraction happened, and guessed at file boundaries from line numbers and section-title
 comments. Two guesses turned out to be wrong once the actual code was read carefully during
 extraction — both are **settled**, not open questions:
@@ -181,7 +181,7 @@ extraction — both are **settled**, not open questions:
   touch-gesture section and the PDF-mouse-control section) turned out, once every listener
   body was actually read rather than just the section-title comment, to be 100%
   `navigation.js`/`pdf-zoom-pan.js` content with zero selection-related material. Lesson kept
-  in `MIGRATION_STATUS.md`: section-title comments are not reliable classifiers on their own.
+  in `docs/archive/MIGRATION_STATUS.md`: section-title comments are not reliable classifiers on their own.
 
 ## Known incidents (why some of the above rules exist)
 
@@ -309,7 +309,7 @@ agent doesn't have to re-diagnose them:
 - The offline shell (service worker cache) and the live `index.html` are always paired as one
   version identity this way — a stale cached JS file can never run against a freshly-fetched
   `index.html` or vice versa, which was the root cause of one of the retrospective audit's
-  findings (`RETRO_AUDIT.md` finding #1).
+  findings (`docs/archive/RETRO_AUDIT.md` finding #1).
 
 ## Format expansion (maintenance)
 
