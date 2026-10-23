@@ -286,5 +286,42 @@ joined = ' '.join(' '.join(r['sentences']) for r in gaps)
 assert '¡ Observation visuelle et olfactive' in joined and 'Utilisation appropriée' in joined and 'effectuer Décision' in joined, joined
 print('PASS real gaps are kept: bullet / word space / next line still separate the words', flush=True)
 
+# ---------------------------------------------------------------------------------------
+# A gutter narrower than the column gap threshold (real page: livre 56 «Par ici», p. 67 «L’essentiel sur la vitamine D»):
+# three justified columns 264px wide with 21px between them, about one line height. The lines of all three used to fuse
+# into one, and the «sentence» button selected the neighbouring columns too.
+# ---------------------------------------------------------------------------------------
+COLS = (141, 426, 711)
+article = layout([[(text, x, 264) for text, x in zip(row, COLS)] for row in [
+    ('La vitamine D est importante. Princi-', 'des meilleurs moyens de la prévenir', 'Il est primordial de s’assurer à tout'),
+    ('palement fabriquée par notre peau à', 'est de s’assurer d’un apport suffisant', 'âge d’un apport en vitamine D opti-'),
+    ('la suite de l’exposition aux rayons du', 'en calcium et en vitamine D, et ce,', 'mal. Cela dit, certaines personnes'),
+    ('soleil, cette vitamine peut également', 'dès l’enfance. La santé du squelette', 'sont davantage à risque de carence'),
+    ('provenir de l’alimentation.', 'reflète l’apport total dont une per-', 'en vitamine D, par exemple les gens'),
+]])
+assert not any(r['joined'] for r in article), article
+assert 'Princi- palement fabriquée par notre peau à la suite de l’exposition aux rayons du soleil, cette vitamine peut également provenir de l’alimentation.' in article[0]['sentences'], article[0]
+assert not any('meilleurs' in t or 'primordial' in t for t in article[0]['sentences']), article[0]
+third = c.js(LAYOUT_JS.replace('pdfVisualGroup(container, row[0])', 'pdfVisualGroup(container, row[2])') % json.dumps(
+    [[(t, x, 264) for t, x in zip(('La vitamine D est importante.', 'des meilleurs moyens', 'Il est primordial de s’assurer à tout'), COLS)],
+     [(t, x, 264) for t, x in zip(('Sa fonction principale est de', 'est de s’assurer d’un apport', 'âge d’un apport en vitamine D opti-'), COLS)],
+     [(t, x, 264) for t, x in zip(('favoriser l’absorption du calcium', 'en calcium et en vitamine D.', 'mal. Cela dit, certaines personnes'), COLS)]], ensure_ascii=False))
+assert 'Il est primordial de s’assurer à tout âge d’un apport en vitamine D opti- mal.' in third[0]['sentences'], third
+print('PASS a three-column article with a 21px gutter: each column reads its own sentences', flush=True)
+# the cells of a table («je | faisais», short words a narrow gap apart) do not count as such a gutter: one line stays one line
+table = layout([[('je', 176, 20), ('faisais', 217, 50), ('je', 300, 20), ('prenais', 341, 55)] for _ in range(5)])
+assert all(r['joined'] for r in table), table
+print('PASS the narrow gaps of a conjugation table are not column gutters', flush=True)
+# the run-in items of an answer key (Complete French p. 640) line up at one x by chance, but the lines between them run across it
+key = layout([
+    [('7. En courant très vite, j’ai attrapé le bus.', 189, 320), ('8. En prenant la deuxième rue à droite,', 530, 300)],
+    [('vous arriverez à la gare. 9. En voyageant, on apprend beaucoup de choses.', 189, 640)],
+    [('10. En lisant le journal, il a appris la nouvelle.', 189, 320), ('11. En faisant du yoga, je me détends.', 530, 280)],
+    [('12. En travaillant dur, nous réussirons. 13. Sachant la vérité, elle ne dit rien.', 189, 660)],
+    [('14. N’ayant pas vu le film, je me tais.', 189, 320), ('15. En s’entraînant tous les jours, ils gagnent.', 530, 320)],
+])
+assert all(r['joined'] for r in key[::2]), key
+print('PASS run-in answer-key items that line up by chance are not a column gutter', flush=True)
+
 check('no application errors', 'window.__errors.length===0 || JSON.stringify(window.__errors)')
 print('ALL PDF BILINGUAL COLUMN CHECKS PASSED', flush=True)

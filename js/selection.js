@@ -262,7 +262,7 @@ function pdfReadingOrder(rects) {
     for (const band of pdfLineBands(rects, rects.map((_, i) => i))) out.push(...band.indices.sort((a, b) => rects[a].left - rects[b].left));
     return out;
 }
-function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
+function pdfLineSegments(spans, rects, layerWidth, columnStarts, narrowStarts = []) {
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const bands = pdfLineBands(rects, rects.map((_, idx) => idx));
     const segments = []; // { left, right, indices: [], first, line }
@@ -279,8 +279,10 @@ function pdfLineSegments(spans, rects, layerWidth, columnStarts) {
             // A narrower-than-threshold gap still separates columns when the span resumes exactly at a column
             // edge other rows confirm -- e.g. the real "tu es  you are (familiar)  vous êtes  you are" row,
             // whose long gloss narrows the gutter to ~2 line heights and used to fuse into the left column.
-            const atColumnEdge = seg && columnStarts.length && gap <= columnGapThreshold && gap >= r.height * 1.2 &&
-                columnStarts.some(x => Math.abs(r.left - x) <= Math.max(4, r.height * 0.5)) &&
+            // A narrow gutter (pdfNarrowGutterStarts) is only ~1 line height wide, so it is taken from 0.8 of one.
+            const near = xs => xs.some(x => Math.abs(r.left - x) <= Math.max(4, r.height * 0.5));
+            const atColumnEdge = seg && gap <= columnGapThreshold &&
+                ((gap >= r.height * 1.2 && near(columnStarts)) || (gap >= r.height * 0.8 && near(narrowStarts))) &&
                 !isExerciseBlankContinuation(seg.indices.map(k => spans[k].textContent).join(' ').trim(), spans[i].textContent.trim());
             if (seg && !atColumnEdge && (gap <= columnGapThreshold || isExerciseGap)) {
                 seg.indices.push(i);
@@ -312,9 +314,48 @@ function pdfLayerColumnInfo(layer, layerWidth) {
         if (j > k) starts.push(inner[k]);
         k = j + 1;
     }
-    const info = { width: layerWidth, count: all.length, left: layer.getBoundingClientRect().left, starts, lines: new Set(segments.map(s => s.line)).size };
+    const narrow = pdfNarrowGutterStarts(rects, layerWidth);
+    for (const x of narrow) if (!starts.some(s => Math.abs(s - x) <= 6)) starts.push(x);
+    const info = { width: layerWidth, count: all.length, left: layer.getBoundingClientRect().left, starts, narrow, lines: new Set(segments.map(s => s.line)).size };
     pdfColumnStartCache.set(layer, info);
     return info;
+}
+// Column edges behind a gutter narrower than the column gap threshold: a three-column article (livre 56, p. 67, «L'essentiel
+// sur la vitamine D») leaves 21 px between columns of a 1085 px page, about one line height, and its lines of all three columns
+// used to fuse into one, so the «sentence» button selected the neighbouring columns too. A gap of at least 0.8 line height
+// between two lines of text, after which the text resumes at the same x on three or more lines, is such a gutter when it runs
+// down the page like a river: hardly any line between the first and the last of them has text across it. The run-in items
+// of an answer key («7. En courant …   8. En prenant …») line up at some x by chance, but the lines around them cross it.
+function pdfNarrowGutterStarts(rects, layerWidth) {
+    const columnGapThreshold = Math.max(24, layerWidth * 0.08);
+    const bands = pdfLineBands(rects, rects.map((_, i) => i));
+    const gaps = [];   // { left, right, line }
+    for (const [line, band] of bands.entries()) {
+        const byLeft = band.indices.slice().sort((a, b) => rects[a].left - rects[b].left);
+        for (let k = 1; k < byLeft.length; k++) {
+            const a = rects[byLeft[k - 1]], b = rects[byLeft[k]], h = Math.min(a.height, b.height);
+            const gap = b.left - a.right;
+            // Lines of text on both sides (at least 6 line heights wide), not the cells of a table: «je | faisais» rows would
+            // confirm so many edges that the columns of the page chain into one.
+            if (gap >= h * 0.8 && gap <= columnGapThreshold && a.width >= h * 6 && b.width >= h * 6) gaps.push({ left: b.left, right: a.right, line });
+        }
+    }
+    gaps.sort((a, b) => a.left - b.left);
+    const starts = [];
+    for (let k = 0; k < gaps.length;) {
+        let j = k;
+        while (j + 1 < gaps.length && gaps[j + 1].left - gaps[k].left <= 3) j++;
+        const group = gaps.slice(k, j + 1);
+        const lines = new Set(group.map(g => g.line)), left = gaps[k].left;
+        const first = Math.min(...lines), last = Math.max(...lines);
+        let crossed = 0;   // lines whose text runs on past the column edge
+        for (let ln = first; ln <= last; ln++) {
+            if (!lines.has(ln) && bands[ln].indices.some(i => rects[i].left < left - 2 && rects[i].right > left + 2)) crossed++;
+        }
+        if (lines.size >= 3 && crossed <= lines.size / 4) starts.push(left);
+        k = j + 1;
+    }
+    return starts;
 }
 function pdfLayerColumnStarts(layer, layerWidth) {
     return pdfLayerColumnInfo(layer, layerWidth).starts;
@@ -338,7 +379,7 @@ function pdfComputeColumns(spans, layerWidth) {
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const layer = spans[0]?.closest?.('.pdf-text-layer');
     const info = layer ? pdfLayerColumnInfo(layer, layerWidth) : null;
-    const segments = pdfLineSegments(spans, rects, layerWidth, info ? info.starts : []);
+    const segments = pdfLineSegments(spans, rects, layerWidth, info ? info.starts : [], info ? info.narrow : []);
     const segLeft = segments.map(s => s.left);
     const segsByLeft = segLeft.map((_, i) => i).sort((a, b) => segLeft[a] - segLeft[b]);
     const segColumn = new Array(segments.length).fill(0);
