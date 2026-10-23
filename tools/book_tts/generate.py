@@ -12,6 +12,10 @@ Usage:
       --out ~/Books/Par\\ Ici/tts/a1-ch1
 
 Needs: edge-tts (pip), pdftotext and ffprobe (poppler / ffmpeg).
+
+Then run align.py on the JSON: the edge-tts word times are estimates (up to a quarter
+of a second off); align.py measures them on the audio, and the reader plays a tapped
+word exactly only with aligned times.
 """
 import argparse
 import asyncio
@@ -192,6 +196,7 @@ def main():
         json.dump(meta, f, ensure_ascii=False, indent=1)
     total = sum(e['duration'] for e in entries)
     print(f'{mp3_path}: {len(entries)} sentences, {total / 60:.1f} min', file=sys.stderr)
+    print(f'next: python3 align.py {os.path.join(out_dir, name + ".json")!r}', file=sys.stderr)
 
 
 if __name__ == '__main__':

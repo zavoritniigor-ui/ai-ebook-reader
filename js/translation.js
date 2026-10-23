@@ -180,7 +180,10 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // Автоозвучення йде тією стороною, чий динамік натискали останнім: оригінал —
     // одразу, переклад — після того, як він надійде (нижче).
     // A word or sentence the book's own narration plays is not read again by the system voice (js/book-speech.js).
-    if (state.speakSide === 'original' && !state.bookSpeechTap) speakText(cleanText, 'orig');
+    // The mark belongs to this one call: it is cleared here, so a later lookup from another path is read as usual.
+    const bookSpeaks = state.bookSpeechTap;
+    state.bookSpeechTap = false;
+    if (state.speakSide === 'original' && !bookSpeaks) speakText(cleanText, 'orig');
     updateSpeakSideUI();
     
     // Спочатку заповнюємо вміст, і ЛИШЕ ПОТІМ міряємо. Раніше розмір знімався, поки

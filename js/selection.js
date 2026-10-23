@@ -117,7 +117,9 @@ function blockAncestorOf(node) {
 function anchorCaret(clientX, clientY) {
     const node = state.lastWordNode;
     if (node && node.isConnected) {
-        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        // The first text that is not empty: the selection highlight leaves an empty text node at the start of the word,
+        // and a caret there is in no sentence (sentenceRangeAt then fell back to the page's first sentence).
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: t => t.nodeValue ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP });
         const textNode = walker.nextNode();
         if (textNode) {
             const r = document.createRange();
@@ -1059,6 +1061,7 @@ function selectRangeAndTranslate(range, clientX, clientY, sourceType = 'phrase_t
     // Межі самого виділення — за ними вікно перекладу стане над або під реченням.
     let rect = null;
     try { const r = range.getBoundingClientRect(); if (r && (r.width || r.height)) rect = r; } catch (e) {}
+    state.bookSpeechTap = bsSpeakTap(state.lastSelectedRange.startContainer, text, false);   // the book's narration (js/book-speech.js)
     handleWordOrSelection(text, clientX, clientY, rect, helpContext, sourceType);
     return true;
 }
@@ -1517,8 +1520,7 @@ function commitDragSelection(clientX, clientY) {
         try { const b = r.getBoundingClientRect(); if (b && (b.width || b.height)) rect = b; } catch (err) {}
     }
     state.touchJustCommitted = Date.now();
-    state.bookSpeechTap = state.format === 'pdf' && bsCanPhrase(r.startContainer.parentElement, text);
-    if (state.bookSpeechTap) bsTapPhrase(r.startContainer.parentElement, text);
+    state.bookSpeechTap = bsSpeakTap(r.startContainer, text, false);   // the book's narration (js/book-speech.js)
     handleWordOrSelection(text, clientX, clientY, rect, helpContext, 'phrase_translation');
 }
 
@@ -1631,8 +1633,7 @@ els.mainArea.addEventListener('click', (e) => {
             let rect = null;
             try { if (state.lastWordNode && state.lastWordNode.getBoundingClientRect) rect = state.lastWordNode.getBoundingClientRect(); } catch (err) {}
             // The book's own narration reads a covered word; the app's voice then stays silent (translation.js).
-            state.bookSpeechTap = state.format === 'pdf' && bsCanWord(state.lastWordNode, word);
-            if (state.bookSpeechTap) bsTapWord(state.lastWordNode, word);
+            state.bookSpeechTap = bsSpeakTap(state.lastWordNode, word, true);
             handleWordOrSelection(lookup, e.clientX, e.clientY, rect, helpContext, 'word_tap');
             state.tooltipJustClosed = false; // успішний виклик перекладу — скасовуємо блокування
             return;
