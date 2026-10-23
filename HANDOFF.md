@@ -2,9 +2,11 @@
 
 **Merged:** #269 (aligned timings `tools/book_tts/align.py`, words said alone `words.py`, occurrence by neighbours, expand button plays the narration, `state.bookSpeechTap` used once, `anchorCaret` skips the empty text node). **This PR #270:** one file per voice (`pack.py`, JSON in the MP3's ID3 GEOB, `bsUnpack`, another book refused by page count), `engines.py` (edge-tts or Kokoro `kokoro:ff_siwis`).
 
-**Pipeline per book** (on this computer, GPU): `generate.py` (edge-tts venv `~/tools/book-tts/.venv`, or Kokoro `~/tools/kokoro-venv/bin/python`) → `align.py` (book-tts venv: torch 2.5.1 cu121 + torchaudio MMS_FA; ~40 min / 7k sentences, ffmpeg-bound) → `words.py` (same venv as the engine) → `pack.py --pdf <book> --out <file>`. Delivered folder: `~/Books/Par Ici/Озвучка Par ici` = Google Drive «Озвучка Par ici» (uploaded with `rclone copy … gdrive:`; the rclone shared client_id retires during 2026).
+**Pipeline per book** (on this computer, GPU): `generate.py` (edge-tts venv `~/tools/book-tts/.venv`, or Kokoro `~/tools/kokoro-venv/bin/python`) → `align.py` (book-tts venv: torch 2.5.1 cu121 + torchaudio MMS_FA; ~40 min / 7k sentences, ffmpeg-bound) → `words.py` (same venv as the engine) → `repair.py` + `align.py --marked` (sentences the engine cut short: edge-tts now and then returns 0.4 s; 12 in Sylvie were re-made) → `pack.py --pdf <book> --out <file>`. Kokoro: one French voice `ff_siwis`, ~70 isolated words/min; long runs without punctuation are synthesized in ≤200-character parts (`kokoro_parts`). Delivered folder: `~/Books/Par Ici/Озвучка Par ici` = Google Drive «Озвучка Par ici» (uploaded with `rclone copy … gdrive:`; the rclone shared client_id retires during 2026).
 
-**Measured:** edge-tts word starts were a median 116 ms early (p10–p90 52–164); Chrome decodeAudioData = ffmpeg to the sample for edge-tts and header-less Kokoro MP3. Real livre 12, 8 pages: 96.3 % of printed words covered, right occurrence 99.6 %.
+**Measured:** edge-tts word starts were a median 116 ms early (p10–p90 52–164); Chrome decodeAudioData = ffmpeg to the sample for edge-tts and header-less Kokoro MP3. Real livre 12, 8 pages: 96.3 % of printed words covered, right occurrence 99.6 %. Real livre 34 + Kokoro, pages 8–10: 99.8 % covered, right occurrence 100 %.
+
+Delivered on Drive «Озвучка Par ici»: «Par ici 1-2 - Sylvie (fr-CA).mp3», «… Antoine (fr-CA).mp3», «Par ici 3-4 - Kokoro (ff_siwis).mp3», «ЯК ПІДКЛЮЧИТИ.txt».
 
 **Open:** the owner has not heard it on the tablet yet; 230 MB import on the tablet (IndexedDB quota) unverified; Safari decode offset unverified. Headless `goToPhysicalPage(88)` on livre 12 lands on page 50 (seen without any narration; not investigated).
 

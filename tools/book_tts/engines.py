@@ -23,6 +23,18 @@ def kokoro_speed(rate):
     return 1 + int(m.group(1)) / 100 if m else 1.0
 
 
+def kokoro_parts(text, limit=200):
+    """The text in parts of at most limit characters, cut at spaces."""
+    parts, cur = [], ''
+    for word in text.split():
+        if cur and len(cur) + 1 + len(word) > limit:
+            parts.append(cur)
+            cur = word
+        else:
+            cur = f'{cur} {word}' if cur else word
+    return parts + [cur] if cur else parts
+
+
 def _kokoro_mp3(text, voice, rate):
     import numpy as np
     from kokoro import KPipeline
@@ -30,7 +42,9 @@ def _kokoro_mp3(text, voice, rate):
     with _kokoro_lock:
         if name[0] not in _kokoro:
             _kokoro[name[0]] = KPipeline(lang_code=name[0], repo_id='hexgrad/Kokoro-82M')   # «ff_siwis» -> «f» (French)
-        chunks = [np.asarray(audio, dtype=np.float32) for _, _, audio in _kokoro[name[0]](text, voice=name, speed=kokoro_speed(rate))]
+        # Kokoro cuts a piece at 510 phonemes: a long run without punctuation (a table, a contents page) is given in parts
+        chunks = [np.asarray(audio, dtype=np.float32) for part in kokoro_parts(text)
+                  for _, _, audio in _kokoro[name[0]](part, voice=name, speed=kokoro_speed(rate))]
     if not chunks:
         raise RuntimeError('no audio returned')
     pcm = np.concatenate(chunks).tobytes()

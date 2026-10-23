@@ -127,7 +127,8 @@ def build(path, concurrency):
         sys.exit(1)
     skipped = {form for form, _ in failed}
     forms = {key: form for key, form in forms.items() if form not in skipped}
-    start = meta.get('lexiconStart') or os.path.getsize(mp3_path)
+    # the words go after the sentences: a sentence repaired after an earlier run (repair.py) sits after the old words
+    start = max(meta.get('lexiconStart') or os.path.getsize(mp3_path), max(s['bytes'][1] for s in meta['sentences']))
     lexicon = {}
     with open(mp3_path, 'r+b') as out:
         out.truncate(start)
