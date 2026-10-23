@@ -263,6 +263,12 @@ function setSpeakSide(side) {
     writeStored('reader_speak_side', side);
     updateSpeakSideUI();
 }
+// The translation's 🔊 makes the translation the side read aloud only while that window is open: once it closes (✕, the
+// auto-hide timer, a tap beside it, Back -- every path hides it), the next lookup reads the book's language again (owner's rule).
+new MutationObserver(() => {
+    if (state.speakSide === 'translation' && els.tooltip.style.display === 'none') setSpeakSide('original');
+}).observe(els.tooltip, { attributes: true, attributeFilter: ['style'] });
+if (state.speakSide === 'translation') setSpeakSide('original');   // the window is closed when the app starts
 function updateSpeakSideUI() {
     els.ttReplayBtn.classList.toggle('speak-active', state.speakSide === 'original');
     els.ttSpeakTranslation.classList.toggle('speak-active', state.speakSide === 'translation');
