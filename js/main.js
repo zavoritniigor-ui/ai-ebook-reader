@@ -92,7 +92,7 @@ function sendAskFromField() {
     const q = els.askInput.value.trim();
     if (askAttachment) { sendAskAttachment(q); return; }
     if (!q) return;
-    if (!aiAvailable()) { showToast(t('needKey')); els.askInput.focus(); return; }
+    if (!aiCanAnswer()) { showToast(t('needKey')); els.askInput.focus(); return; }
     stopDictation();
     els.askInput.value = "";
     // One-shot: a context set by an earlier explicit selection (ttAskBtn/btn-explain/btn-lang-level)

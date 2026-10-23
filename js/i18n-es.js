@@ -198,7 +198,15 @@ const I18N_ES = {
     mHomeFormats: "Admite EPUB, PDF, DOCX, FB2, TXT, MD, HTML y RTF.",
     sendLabel: 'Enviar',
     rulesPractice: 'Práctica', rulesPracticeSection: 'Practicar toda la sección', rulesPracticeExample: 'Practicar con este ejemplo',
-    practiceRuleMeta: 'Regla:', practiceRuleNoNote: 'aquí se aplica la regla.'
+    practiceRuleMeta: 'Regla:', practiceRuleNoNote: 'aquí se aplica la regla.',
+    dlTitle: '🧠 IA en el dispositivo',
+    dlHint: 'Traducción y explicaciones sin internet: el modelo Gemma 4 (Google) funciona en el chip gráfico del propio dispositivo. Descarga ~2 GB una vez (mejor con Wi-Fi). Con conexión responde la IA en la nube como antes; el modelo del dispositivo entra cuando no hay red o la IA no responde. Es más débil y a veces se equivoca; sus respuestas llevan 📱.',
+    dlDownload: '⬇ Descargar ≈ {gb} GB', dlProgress: 'Descargando: {done} de {total} GB…',
+    dlDone: 'Listo: la traducción y las explicaciones funcionarán también sin internet. Pulsa Probar.', dlInstalled: 'Instalado: {name}, {gb} GB.',
+    dlLoading: 'Iniciando el modelo (la primera vez, hasta un minuto)…', dlUnsupported: 'Este navegador no puede ejecutar la IA en el dispositivo: hace falta un Chrome reciente con WebGPU.',
+    dlNoGpu: 'El chip gráfico de este dispositivo no puede ejecutar el modelo ({why}).', dlNoGpuShort: 'El chip gráfico de este dispositivo no puede ejecutar el modelo.',
+    dlErrQuota: 'No hay espacio suficiente: hacen falta ~2,1 GB libres. Libera espacio y vuelve a intentarlo; lo descargado se conserva.',
+    dlMark: '📱 en el dispositivo', dlTooLong: 'El fragmento es demasiado largo para la IA del dispositivo. Selecciona uno más corto.'
 };
 for (const [key, value] of Object.entries(I18N_ES)) if (I18N[key]) I18N[key].es = value;
 // El menú ya se pintó en main.js (antes de este archivo): con el español elegido se vuelve a pintar.
