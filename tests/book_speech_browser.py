@@ -1,25 +1,20 @@
 """Browser tests for js/book-speech.js: import a narration (MP3 + JSON), tap a word or select a sentence in a PDF, hear it.
 
-The narration here is synthetic: two WAV sentences joined into one file named like a generated MP3. Chrome sniffs the content,
-so the decode of a byte range, the word cut and the import all run as they do for a real chapter; the MP3 frames are not tested.
+The narration is real: two sentences of the edge-tts voice fr-CA-SylvieNeural («Je viens du Maroc. Je viens du Japon.»),
+cut from the book's MP3 with their aligned JSON entries (tools/book_tts/align.py). The words repeat, so the test also
+checks that a tap finds the occurrence it touched, and what a selection or the expand button plays. A tap plays the word
+said on its own (the JSON's lexicon, tools/book_tts/words.py); without it, the word is cut from its sentence.
 """
-import base64, json, os, struct, math, time
+import base64, json, os, time
 from browser_cdp import CDP
 
 URL = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html')
-RATE = 8000
-
-
-def wav_bytes(duration_ms, freq):
-    n = max(1, int(RATE * duration_ms / 1000))
-    pcm = b''.join(struct.pack('<h', int(12000 * math.sin(2 * math.pi * freq * i / RATE))) for i in range(n))
-    return struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 36 + len(pcm), b'WAVE', b'fmt ', 16, 1, 1, RATE, RATE * 2, 2, 16,
-                       b'data', len(pcm)) + pcm
+FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures', 'book_speech')
 
 
 def page_pdf_b64():
-    """One page with «Je viens du Maroc. Je suis espagnol.» in one text line (the text layer the reader works on)."""
-    ops = b'BT /F1 14 Tf 50 700 Td (Je viens du Maroc. Je suis espagnol.) Tj ET'
+    """One page with «Je viens du Maroc. Je viens du Japon.» in one text line (the text layer the reader works on)."""
+    ops = b'BT /F1 14 Tf 50 700 Td (Je viens du Maroc. Je viens du Japon.) Tj ET'
     objs = [
         b'<< /Type /Catalog /Pages 2 0 R >>',
         b'<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
@@ -40,20 +35,13 @@ def page_pdf_b64():
     return base64.b64encode(data).decode()
 
 
-A = wav_bytes(600, 440)   # «Je viens du Maroc.»
-B = wav_bytes(800, 330)   # «Je suis espagnol.»
-SPEECH_MP3 = A + B
-SPEECH_JSON = json.dumps({
-    'voice': 'fr-TEST-Voice', 'rate': '0%', 'pages': [1], 'audio': 'speech_test.mp3',
-    'sentences': [
-        {'page': 1, 'text': 'Je viens du Maroc.', 'bytes': [0, len(A)], 'duration': 0.6,
-         'words': [{'s': 0, 'e': 2, 'start': 0, 'end': 150}, {'s': 3, 'e': 8, 'start': 170, 'end': 350},
-                   {'s': 9, 'e': 11, 'start': 370, 'end': 430}, {'s': 12, 'e': 17, 'start': 450, 'end': 600}]},
-        {'page': 1, 'text': 'Je suis espagnol.', 'bytes': [len(A), len(A) + len(B)], 'duration': 0.8,
-         'words': [{'s': 0, 'e': 2, 'start': 0, 'end': 150}, {'s': 3, 'e': 7, 'start': 170, 'end': 350},
-                   {'s': 8, 'e': 17, 'start': 370, 'end': 780}]},
-    ],
-}, ensure_ascii=False)
+with open(os.path.join(FIXTURE, 'speech_test.mp3'), 'rb') as f:
+    SPEECH_MP3 = f.read()
+with open(os.path.join(FIXTURE, 'speech_test.json'), encoding='utf-8') as f:
+    SPEECH_JSON = f.read()
+META = json.loads(SPEECH_JSON)
+WORDS = [[(w['start'] / 1000, w['end'] / 1000) for w in s['words']] for s in META['sentences']]
+ALONE = {k: (v['start'] / 1000, v['end'] / 1000) for k, v in META['lexicon'].items()}   # words said on their own (words.py)
 
 c = CDP()
 c.call('Page.enable')
@@ -98,7 +86,7 @@ check('1 The PDF opens and its page 1 text layer is there', """(() => {
 
 check('2 Importing a MP3 + JSON pair stores one narration for the book', """(async () => {
     await bsImport([window.__json, window.__mp3]);
-    return bsSets.list.length === 1 && bsSets.list[0].sentences.length === 2 && bsSets.list[0].voice === 'fr-TEST-Voice';
+    return bsSets.list.length === 1 && bsSets.list[0].sentences.length === 2 && bsSets.list[0].voice === 'fr-CA-SylvieNeural';
 })()""", timeout=20)
 
 check('3 A JSON that describes another MP3 file is refused and not stored', """(async () => {
@@ -108,46 +96,122 @@ check('3 A JSON that describes another MP3 file is refused and not stored', """(
     return bsSets.list.length === before;
 })()""")
 
-state_js = """(() => {
-    state.translateMode = true;
-    const text = [...document.querySelectorAll('.pdf-page-wrapper[data-page="1"] span')].find(n => n.textContent.includes('Maroc')).firstChild;
-    const at = text.textContent.indexOf('Maroc');
-    const r = document.createRange();
-    r.setStart(text, at); r.setEnd(text, at + 3);
-    const b = r.getBoundingClientRect();
-    return [b.left + b.width / 2, b.top + b.height / 2];
-})()"""
-x, y = c.js(state_js)
+
+def word_point(word, nth=0):
+    """The screen point of the nth occurrence of a word on page 1 (earlier taps split the text into several nodes)."""
+    return c.js(f"""(() => {{
+        state.translateMode = true;
+        const layer = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer');
+        const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT), nodes = [];
+        let text = '';
+        for (let t = walker.nextNode(); t; t = walker.nextNode()) {{ nodes.push([t, text.length]); text += t.nodeValue; }}
+        let at = -1;
+        for (let k = 0; k <= {nth}; k++) at = text.indexOf({json.dumps(word)}, at + 1);
+        const [node, base] = nodes.filter(([t, b]) => b <= at).pop();
+        const r = document.createRange();
+        r.setStart(node, at - base); r.setEnd(node, at - base + 1);
+        const b = r.getBoundingClientRect();
+        return [b.left + b.width / 2, b.top + b.height / 2];
+    }})()""")
+
+
+def played(expect):
+    """bsLast equals the plan [(sentence index or word key, from s, to s)] to the millisecond."""
+    return f"""(() => {{
+        const want = {json.dumps(expect)};
+        return !!bsLast && bsLast.length === want.length && bsLast.every((p, k) => (typeof want[k][0] === 'string' ? p.word : p.i) === want[k][0]
+            && Math.abs(p.from - want[k][1]) < 0.001 && Math.abs(p.to - want[k][2]) < 0.001) || JSON.stringify(bsLast);
+    }})()"""
+
+
+def clear_layer_marks():
+    # earlier taps wrap words in spans; reopening is not needed, the matching reads the text nodes
+    c.js("bsLast = null; bsStop();")
+
+
 c.js("""(() => {
-    window.__spoke = 0;   // the system voice: every utterance the app asks the browser to speak
-    const speak = speechSynthesis.speak.bind(speechSynthesis);
-    speechSynthesis.speak = u => { window.__spoke++; return speak(u); };
+    window.__spoke = 0;   // the app's own voice: every automatic reading of the original
+    const speak = window.speakText;
+    window.speakText = (text, side, ...rest) => { if (side === 'orig') window.__spoke++; return speak(text, side, ...rest); };
     state.speakSide = 'original';
 })()""")
-c.touch_tap(x, y)   # a real tap on the word: the reader wraps it and calls bsTapWord
 
-check('4 Tapping a word plays it from its sentence (the decode uses that sentence\'s bytes only)', """(() => {
-    const set = bsActiveSet();
-    return !!bsCurrent && bsDecoded.has(set.id + '#0') && bsDecoded.get(set.id + '#0').duration > 0.5;
+check('4 Aligned timings are kept on import', "bsActiveSet().timing === 'aligned'")
+
+x, y = word_point('Maroc')
+c.touch_tap(x, y)   # a real tap on the word: the reader wraps it and calls bsTapWord
+check('5 Tapping «Maroc» plays the word said on its own (its sound, without the silence around it)', played([['maroc', *ALONE['maroc']]]))
+check('5b Only the bytes of that word were decoded (no sentence)', """(() => {
+    const set = bsActiveSet(), buf = bsDecoded.get(set.id + '#@maroc');
+    return !!buf && buf.duration > ALONE_END && bsDecoded.size === 1;
+})()""".replace('ALONE_END', str(ALONE['maroc'][1])))
+check('5c A tap the narration covers is not read again by the system voice', "window.__spoke === 0")
+
+clear_layer_marks()
+x, y = word_point('viens', 1)
+c.touch_tap(x, y)
+check('6 The second «viens» on the page is the second sentence\'s «viens», not the first one',
+      "bsWordCue(state.lastWordNode, 'viens').x.i === 1 || JSON.stringify(bsWordCue(state.lastWordNode, 'viens').x)")
+check('6b ...and plays «viens» said on its own', played([['viens', *ALONE['viens']]]))
+
+clear_layer_marks()
+x, y = word_point('Je', 1)
+c.touch_tap(x, y)
+check('7 The second «Je» is found in sentence 2', "bsWordCue(state.lastWordNode, 'Je').x.i === 1")
+
+clear_layer_marks()
+c.js("els.ttExpandBtn.click(); els.ttExpandBtn.click();")   # word → to the sentence end → the whole sentence
+check('8 The expand button plays the selected sentence from the narration', played([[1, WORDS[1][0][0], WORDS[1][3][1]]]))
+check('8b ...and the system voice stays silent for it', "window.__spoke === 0")
+
+check('9 A later lookup from another path is read by the system voice again (the mark is used once)', """(() => {
+    handleWordOrSelection('bonjour', 200, 200);
+    return window.__spoke === 1 || window.__spoke;
 })()""")
 
-check('4b A tap the narration covers is not read again by the system voice', "window.__spoke === 0")
+check('10 A selected part of a sentence plays exactly its words', f"""(async () => {{
+    const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
+    return (await bsTapPhrase(node, 'viens du')) === true;
+}})()""")
+check('10b ...from the start of «viens» to the end of «du» (first sentence: nearest place)', played([[0, WORDS[0][1][0], WORDS[0][2][1]]]))
 
-check('5 A word that is not in the narration is not played', """(async () => {
+check('11 Two sentences play one after the other', f"""(async () => {{
+    const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
+    return (await bsTapPhrase(node, 'du Maroc. Je viens')) === true;
+}})()""")
+check('11b ...«du Maroc» then «Je viens»', played([[0, WORDS[0][2][0], WORDS[0][3][1]], [1, WORDS[1][0][0], WORDS[1][1][1]]]))
+
+check('11c A word printed in pieces («Jap» + a coloured «on») plays the whole word', """(async () => {
+    const layer = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer');
+    const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
+    let t; while ((t = walker.nextNode()) && !t.nodeValue.includes('Japon'));
+    const at = t.nodeValue.indexOf('Japon');
+    const r1 = document.createRange(); r1.setStart(t, at); r1.setEnd(t, at + 3);
+    const jap = document.createElement('span'); r1.surroundContents(jap);
+    const rest = jap.nextSibling, r2 = document.createRange(); r2.setStart(rest, 0); r2.setEnd(rest, 2);
+    r2.surroundContents(document.createElement('span'));
+    return (await bsTapWord(jap, 'Jap')) === true;
+})()""")
+check('11d ...«Japon» said on its own', played([['japon', *ALONE['japon']]]))
+
+check('11e A word the lexicon lacks (a one-letter word) is cut exactly from its sentence', """(async () => {
+    const set = bsActiveSet();
+    delete set.lexicon.maroc;
+    const layer = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer');
+    const node = [...layer.querySelectorAll('.word-visited')].find(n => n.textContent === 'Maroc');
+    return (await bsTapWord(node, 'Maroc')) === true;
+})()""")
+check('11f ...from sentence 1, its aligned span with no margin', played([[0, *WORDS[0][3]]]))
+
+check('12 A word that is not in the narration is not played', """(async () => {
     const node = document.querySelector('.pdf-page-wrapper[data-page="1"] span');
     return (await bsTapWord(node, 'Paris')) === false;
 })()""")
 
-check('6 A selected sentence plays from its own bytes', """(async () => {
-    const node = document.querySelector('.pdf-page-wrapper[data-page="1"] span');
-    const played = await bsTapPhrase(node, 'Je suis espagnol.');
-    return played === true && bsDecoded.has(bsActiveSet().id + '#1');
-})()""")
-
-check('7 Removing the narration from the dialog empties the list', """(async () => {
+check('13 Removing the narration from the dialog empties the list', """(async () => {
     await bsRemoveFromDialog();
     return bsSets.list.length === 0 && bsActiveSet() === null;
 })()""")
 
-check('8 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
+check('14 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK SPEECH CHECKS PASSED')
