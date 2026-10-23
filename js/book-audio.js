@@ -330,8 +330,9 @@ function baUnlock() {
 function tapBookAudioMark(btn) {
     baUnlock();
     const cd = btn.dataset.cd ? Number(btn.dataset.cd) : null, track = Number(btn.dataset.track), label = baLabel(cd, track);
-    if (!bookAudio.tracks.length) { openBookAudioDialog(t('baConnect')); return; }
     const { rec, ambiguous } = baFind(cd, track);
+    if (typeof bsNote === 'function') bsNote('mark', { label, tracks: bookAudio.tracks.length, found: !!rec, ambiguous: !!ambiguous });
+    if (!bookAudio.tracks.length) { openBookAudioDialog(t('baConnect')); return; }
     if (!rec) { showToast(t(ambiguous ? 'baAmbiguous' : 'baMissing').replace('{label}', label)); return; }
     playBookTrack(rec, label);
 }

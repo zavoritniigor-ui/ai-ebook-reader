@@ -179,6 +179,31 @@ c.js("els.ttExpandBtn.click(); els.ttExpandBtn.click();")   # word → to the se
 check('8 The expand button plays the selected sentence from the narration', played([[1, WORDS[1][0][0], WORDS[1][3][1]]]))
 check('8b ...and the system voice stays silent for it', "window.__spoke === 0")
 
+check('8c A word still decoding when the sentence is asked for does not play over it (the newer tap wins)', """(async () => {
+    const decode = bsDecode;
+    bsDecoded.clear(); bsLast = null;
+    bsDecode = async (set, index) => {   // the word said alone decodes slowly, as a big file on a tablet does
+        const buf = await decode(set, index);
+        if (typeof index === 'string') await new Promise(r => setTimeout(r, 500));
+        return buf;
+    };
+    try {
+        const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
+        const word = bsTapWord(state.lastWordNode, 'Je');
+        await bsTapPhrase(node, 'Je viens du Japon.');
+        await word;
+    } finally { bsDecode = decode; }
+    return true;
+})()""")
+check('8d ...the sentence is what was played last', played([[1, WORDS[1][0][0], WORDS[1][3][1]]]))
+check('8e A stop cancels a tap that is still decoding', """(async () => {
+    bsDecoded.clear(); bsLast = null;
+    const word = bsTapWord(state.lastWordNode, 'Je');
+    bsStop();
+    await word;
+    return bsLast === null && bsCurrent === null;
+})()""")
+
 check('9 A later lookup from another path is read by the system voice again (the mark is used once)', """(() => {
     handleWordOrSelection('bonjour', 200, 200);
     return window.__spoke === 1 || window.__spoke;
@@ -245,6 +270,24 @@ check('13d A narration made for another book (other page count) is refused', """
 check('13e A plain MP3 that is not a narration is refused', """(async () => {
     await bsImport([new File([new Uint8Array([0xff, 0xfb, 0x90, 0x00, 1, 2, 3, 4, 5, 6, 7, 8])], 'song.mp3', { type: 'audio/mpeg' })]);
     return bsSets.list.length === 0;
+})()""")
+
+check('13f The 📋 report tells what the narration did: taps, the refused import of another book, stored narrations', """(async () => {
+    await bsImport([window.__packed]);
+    await bsReadStored();
+    const r = JSON.parse(buildDiagnosticsReport()).bookSpeech, ev = r.trace.map(x => x.ev);
+    const why = r.trace.filter(x => x.ev === 'tap').map(x => x.why);
+    return r.book === state.bookKey && r.narrations.length === 1 && r.narrations[0].sentences === 2 && r.active === r.narrations[0].voice
+        && why.includes('narration') && r.trace.some(x => x.ev === 'import-refused' && x.why === 'another book')
+        && ev.includes('import-saved') && r.stored.speech.some(id => id.startsWith(state.bookKey + ' | ')) || JSON.stringify(r);
+})()""", timeout=20)
+check('13g A book without narration: the tap is recorded as falling to the system voice', """(() => {
+    const keep = bsSets.list; bsSets.list = [];
+    const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
+    const said = bsSpeakTap(node, 'Maroc', true);
+    bsSets.list = keep;
+    const last = bsTrace[bsTrace.length - 1];
+    return said === false && last.ev === 'tap' && last.why === 'no narration for this book' || JSON.stringify(last);
 })()""")
 
 check('14 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
