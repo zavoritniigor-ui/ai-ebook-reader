@@ -81,27 +81,63 @@ async function deviceLlmCollectGarbage() {
 }
 
 // ========== ЗАВАНТАЖЕННЯ ==========
-const hex = (buf) => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
-// Один файл або один шматок моделі: перевіряються розмір і SHA-256, лише тоді він іде в сховище.
-async function deviceLlmFetch(file, from, size, sha256, onBytes, signal) {
-    let res;
-    const headers = from === null ? {} : { range: `bytes=${from}-${from + size - 1}` };
-    try { res = await fetch('/api/device-llm?f=' + file, { cache: 'no-store', headers, signal }); }
-    catch (e) { throw deviceLlmError(signal && signal.aborted ? 'aborted' : 'network'); }
-    if (res.status !== (from === null ? 200 : 206)) throw deviceLlmError(res.status === 429 || res.status >= 500 ? 'busy' : 'server', res.status);
-    const data = new Uint8Array(size);
-    let at = 0;
-    try {
-        const reader = res.body.getReader();
-        for (;;) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (at + value.length > size) throw deviceLlmError('checksum');
-            data.set(value, at); at += value.length; onBytes(value.length);
-        }
-    } catch (e) { throw e && e.deviceLlm ? e : deviceLlmError(signal && signal.aborted ? 'aborted' : 'network'); }
-    if (at !== size || hex(await crypto.subtle.digest('SHA-256', data)) !== sha256) throw deviceLlmError('checksum');
-    return data;
+// Один файл або один шматок моделі завантажується, перевіряється (розмір і SHA-256) і кладеться в сховище у Web Worker: SHA-256 і
+// копіювання 64 МіБ у головному потоці на ~0,3 с (на планшеті — довше) зупиняли сторінку на кожній частині. Тіло worker'а йде в Blob,
+// тож усе потрібне визначене всередині.
+function deviceLlmFetchWorkerMain() {
+    let controller = null;
+    const hex = (buf) => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+    const fail = (kind, status) => { const e = new Error(kind); e.kind = kind; e.status = status; return e; };
+    self.onmessage = async ({ data }) => {
+        if (data.cmd === 'abort') { if (controller) controller.abort(); return; }
+        const { url, from, size, sha256, cache, key } = data;
+        controller = new AbortController();
+        const signal = controller.signal;
+        try {
+            let res;
+            try { res = await fetch(url, { cache: 'no-store', headers: from === null ? {} : { range: `bytes=${from}-${from + size - 1}` }, signal }); }
+            catch (e) { throw fail(signal.aborted ? 'aborted' : 'network'); }
+            if (res.status !== (from === null ? 200 : 206)) throw fail(res.status === 429 || res.status >= 500 ? 'busy' : 'server', res.status);
+            const buf = new Uint8Array(size);
+            let at = 0, told = 0;
+            try {
+                const reader = res.body.getReader();
+                for (;;) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    if (at + value.length > size) throw fail('checksum');
+                    buf.set(value, at); at += value.length;
+                    if (at - told >= 1 << 20) { self.postMessage({ bytes: at - told }); told = at; }
+                }
+            } catch (e) { throw e.kind ? e : fail(signal.aborted ? 'aborted' : 'network'); }
+            if (at !== size || hex(await crypto.subtle.digest('SHA-256', buf)) !== sha256) throw fail('checksum');
+            try { await (await caches.open(cache)).put(key, new Response(buf, { headers: { 'content-type': 'application/octet-stream', 'x-sha256': sha256 } })); }
+            catch (e) { throw fail(e && e.name === 'QuotaExceededError' ? 'quota' : 'storage'); }
+            self.postMessage({ bytes: at - told, done: true });
+        } catch (e) {
+            self.postMessage({ error: e.kind || 'network', status: e.status });
+        } finally { controller = null; }
+    };
+}
+function deviceLlmFetchWorker() {
+    const url = URL.createObjectURL(new Blob(['(' + deviceLlmFetchWorkerMain + ')()'], { type: 'text/javascript' }));
+    const worker = new Worker(url);
+    URL.revokeObjectURL(url);
+    return worker;
+}
+function deviceLlmFetch(worker, job, onBytes, signal) {
+    return new Promise((resolve, reject) => {
+        const abort = () => worker.postMessage({ cmd: 'abort' });
+        signal?.addEventListener('abort', abort, { once: true });
+        const end = (fn, value) => { signal?.removeEventListener('abort', abort); worker.onmessage = worker.onerror = null; fn(value); };
+        worker.onmessage = ({ data }) => {
+            if (data.bytes) onBytes(data.bytes);
+            if (data.error) end(reject, deviceLlmError(signal && signal.aborted ? 'aborted' : data.error, data.status));
+            else if (data.done) end(resolve);
+        };
+        worker.onerror = (e) => end(reject, deviceLlmError('storage', e && e.message));
+        worker.postMessage({ url: location.origin + '/api/device-llm?f=' + job.file, from: job.from, size: job.size, sha256: job.sha256, cache: DEVICE_LLM_CACHE, key: job.key });
+    });
 }
 // Завантажує рушій і модель. Уже завантажені й перевірені частини (x-sha256) повторно не качаються: обрив зв'язку коштує одну
 // частину на 64 МіБ, а не 2 ГБ.
@@ -129,21 +165,21 @@ async function deviceLlmInstall({ onProgress, signal } = {}) {
     } catch (e) { if (e && e.deviceLlm) throw e; }
     try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* лише прохання не чистити модель за браком місця */ }
     if (onProgress) onProgress(done, total);
-    for (const [i, job] of jobs.entries()) {
-        if (have[i]) continue;
-        let data = null;
-        for (let attempt = 0; ; attempt++) {   // мобільна мережа рве довгі завантаження: частина пробується ще двічі
-            const before = done;
-            try { data = await deviceLlmFetch(job.file, job.from, job.size, job.sha256, n => { done += n; if (onProgress) onProgress(done, total); }, signal); break; }
-            catch (e) {
-                done = before;
-                if (e.deviceLlm === 'aborted' || attempt >= 2 || !['network', 'busy', 'checksum'].includes(e.deviceLlm)) throw e;
-                await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+    const worker = deviceLlmFetchWorker();
+    try {
+        for (const [i, job] of jobs.entries()) {
+            if (have[i]) continue;
+            for (let attempt = 0; ; attempt++) {   // мобільна мережа рве довгі завантаження: частина пробується ще двічі
+                const before = done;
+                try { await deviceLlmFetch(worker, job, n => { done += n; if (onProgress) onProgress(done, total); }, signal); break; }
+                catch (e) {
+                    done = before;
+                    if (e.deviceLlm === 'aborted' || (signal && signal.aborted) || attempt >= 2 || !['network', 'busy', 'checksum'].includes(e.deviceLlm)) throw e;
+                    await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+                }
             }
         }
-        try { await cache.put(job.key, new Response(data, { headers: { 'content-type': 'application/octet-stream', 'x-sha256': job.sha256 } })); }
-        catch (e) { throw deviceLlmError(e && e.name === 'QuotaExceededError' ? 'quota' : 'storage'); }
-    }
+    } finally { worker.terminate(); }
     await deviceLlmSave({ v: 1, engine: engine.version, model: model.id, at: Date.now() });
     await deviceLlmCollectGarbage();
     deviceLlmFailure = '';
