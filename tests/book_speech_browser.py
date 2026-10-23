@@ -164,6 +164,10 @@ check('5b Only the bytes of that word were decoded (no sentence)', """(() => {
     return !!buf && buf.duration > ALONE_END && bsDecoded.size === 1;
 })()""".replace('ALONE_END', str(ALONE['maroc'][1])))
 check('5c A tap the narration covers is not read again by the system voice', "window.__spoke === 0")
+c.js("bsLast = null; 1")
+c.js("els.ttReplayBtn.click(); 1")   # the 🔊 of the translation window
+check('5d The 🔊 in the translation window plays «Maroc» said on its own again', played([['maroc', *ALONE['maroc']]]))
+check('5e ...not with the system voice', "window.__spoke === 0")
 
 clear_layer_marks()
 x, y = word_point('viens', 1)
@@ -181,6 +185,10 @@ clear_layer_marks()
 c.js("els.ttExpandBtn.click(); els.ttExpandBtn.click();")   # word → to the sentence end → the whole sentence
 check('8 The expand button plays the selected sentence from the narration', played([[1, WORDS[1][0][0], WORDS[1][3][1]]]))
 check('8b ...and the system voice stays silent for it', "window.__spoke === 0")
+c.js("bsStop(); bsLast = null; els.ttReplayBtn.click(); 1")
+check('8f The 🔊 replays the whole sentence from the narration', played([[1, WORDS[1][0][0], WORDS[1][3][1]]]))
+check('8g A press while it plays starts it again from the start', "(() => { bsLast = null; els.ttReplayBtn.click(); return true; })()")
+check('8h ...the same sentence, no system voice', "(" + played([[1, WORDS[1][0][0], WORDS[1][3][1]]]) + ") === true && window.__spoke === 0")
 
 check('8c A word still decoding when the sentence is asked for does not play over it (the newer tap wins)', """(async () => {
     const decode = bsDecode;

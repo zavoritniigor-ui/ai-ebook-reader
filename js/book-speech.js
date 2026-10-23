@@ -401,22 +401,34 @@ async function bsTapWord(node, word) {
     const set = found ? found.set : bsActiveSet();
     const alone = bsAlone(set, node, found ? found.x.key : bsWordKey(word));
     if (!found && !alone) return false;
+    if (alone) return bsPlayPlan(set, [{ word: alone.key, from: alone.entry.start / 1000, to: alone.entry.end / 1000 }], word);
+    const [from, to] = bsSpan(found.set, found.x);
+    return bsPlayPlan(found.set, [{ i: found.x.i, from, to }], word);
+}
+
+// The last thing the narration was asked to play ({ set, plan }): the 🔊 of the translation window plays it again.
+let bsReplayable = null;
+// Plays a plan [{ i (sentence) | word (lexicon key), from, to (s) }]. A newer tap or a stop while it decodes wins.
+async function bsPlayPlan(set, plan, what) {
     const seq = ++bsSeq;
+    bsReplayable = { set, plan };
     try {
-        if (alone) {
-            const buf = await bsDecode(set, '@' + alone.key), from = alone.entry.start / 1000, to = alone.entry.end / 1000;
-            if (seq !== bsSeq) return true;   // a newer tap (the expand button, another word) plays instead
-            bsPlay([{ buf, from, to }]);
-            bsLast = [{ word: alone.key, from, to }];
-            return true;
-        }
-        const buf = await bsDecode(found.set, found.x.i);
-        if (seq !== bsSeq) return true;
-        const [from, to] = bsSpan(found.set, found.x);
-        bsPlay([{ buf, from, to }]);
-        bsLast = [{ i: found.x.i, from, to }];
+        const pieces = [];
+        for (const p of plan) pieces.push({ buf: await bsDecode(set, p.word !== undefined ? '@' + p.word : p.i), from: p.from, to: p.to });
+        if (seq !== bsSeq) return true;   // a newer tap (the expand button, another word) plays instead
+        bsPlay(pieces);
+        bsLast = plan;
         return true;
-    } catch (e) { bsNote('play-failed', { word, error: String(e && (e.name + ': ' + e.message) || e) }); return false; }
+    } catch (e) { bsNote('play-failed', { text: String(what || '').slice(0, 40), error: String(e && (e.name + ': ' + e.message) || e) }); return false; }
+}
+// The replay for the lookup just shown, or null when the narration did not play it (taken once by translation.js).
+function bsTakeReplay() { const r = bsReplayable; bsReplayable = null; return r; }
+// The translation window's 🔊: plays that word or passage again, from its start (also when pressed while it plays).
+function bsReplay(r) {
+    if (!r || !bsSets.list.includes(r.set)) return false;
+    bsNote('replay', { pieces: r.plan.length });
+    bsPlayPlan(r.set, r.plan, 'replay');
+    return true;
 }
 
 // What a selection plays: [{ i (sentence), from, to (s) }] in reading order, or null when the narration does not cover it.
@@ -452,15 +464,7 @@ function bsCanPhrase(node, text) { return !!bsPhrasePlan(node, text); }
 async function bsTapPhrase(node, text) {
     const found = bsPhrasePlan(node, text);
     if (!found) return false;
-    const seq = ++bsSeq;
-    try {
-        const pieces = [];
-        for (const p of found.plan) pieces.push({ buf: await bsDecode(found.set, p.i), from: p.from, to: p.to });
-        if (seq !== bsSeq) return true;
-        bsPlay(pieces);
-        bsLast = found.plan;
-        return true;
-    } catch (e) { bsNote('play-failed', { text: String(text).slice(0, 40), error: String(e && (e.name + ': ' + e.message) || e) }); return false; }
+    return bsPlayPlan(found.set, found.plan, text);
 }
 
 // One entry for the reader (js/selection.js): plays what a PDF tap or selection means in the narration and returns,

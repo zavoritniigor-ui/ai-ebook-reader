@@ -183,6 +183,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // The mark belongs to this one call: it is cleared here, so a later lookup from another path is read as usual.
     const bookSpeaks = state.bookSpeechTap;
     state.bookSpeechTap = false;
+    // ...and its 🔊 plays that narration again (the same word said alone, the same passage), not the system voice.
+    const bookReplay = bookSpeaks && typeof bsTakeReplay === 'function' ? bsTakeReplay() : null;
     if (state.speakSide === 'original' && !bookSpeaks) speakText(cleanText, 'orig');
     updateSpeakSideUI();
     
@@ -210,6 +212,10 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     els.ttReplayBtn.onclick = (e) => {
         e.stopPropagation();
         cancelTooltipHide();
+        if (bookReplay) {
+            if (state.speakingSide) stopTooltipSpeech();   // the translation being read by the system voice
+            if (bsReplay(bookReplay)) return;
+        }
         if (state.speakingSide === 'orig') { stopTooltipSpeech(); return; }
         setSpeakSide('original');
         const r = state.speakResume;
