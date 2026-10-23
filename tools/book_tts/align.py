@@ -18,6 +18,7 @@ Needs: torch, torchaudio (2.5), numpy, num2words; ffmpeg. A GPU is used when the
 """
 import argparse
 import copy
+import fcntl
 import json
 import os
 import re
@@ -190,6 +191,13 @@ def main():
     parser.add_argument('--out', help='write here instead of rewriting the JSON (one input only)')
     parser.add_argument('--marked', action='store_true', help='only the sentences repair.py marked "realign"')
     args = parser.parse_args()
+    # One align at a time on this computer: a long sentence needs ~9 GB of the 12 GB GPU, two runs at once ran it out.
+    lock = open(os.path.expanduser('~/.cache/book-tts-align.lock'), 'w')
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print('waiting for another align.py to finish', file=sys.stderr)
+        fcntl.flock(lock, fcntl.LOCK_EX)
     aligner = Aligner()
     print(f'device: {aligner.device}', file=sys.stderr)
     for name in args.json:
