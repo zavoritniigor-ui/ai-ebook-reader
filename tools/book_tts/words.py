@@ -5,7 +5,7 @@ A word cut out of a sentence carries its neighbours: the liaison, the enchaînem
 tap the reader plays the word said alone instead; the sentence narration stays for a selected sentence or a fragment.
 
 For each distinct word of the JSON (its key: lower case, no punctuation) the most frequent printed form is synthesized
-with the same voice and rate (edge-tts), cached, and appended to the narration MP3 after the sentences. The JSON gets
+with the same voice and rate (engines.py: edge-tts or Kokoro), cached, and appended to the narration MP3 after the sentences. The JSON gets
 "lexicon": { key: { text, bytes: [a, b), start, end (ms of the decoded clip: its sound without the silence) } } and
 "lexiconStart" (the MP3 size before the words; a new run cuts the file there first). One-letter words («a», «y», «à»)
 are left out: said alone they become the letter's name; the reader cuts them from the sentence.
@@ -13,7 +13,7 @@ are left out: said alone they become the letter's name; the reader cuts them fro
 Usage:
   python3 words.py "~/Books/Par Ici/tts/a1-full/fr-CA-SylvieNeural_p1-162.json"     # after align.py
 
-Needs: edge-tts, numpy; ffmpeg.
+Needs: edge-tts or kokoro, numpy; ffmpeg.
 """
 import argparse
 import asyncio
@@ -25,8 +25,9 @@ import re
 import subprocess
 import sys
 
-import edge_tts
 import numpy as np
+
+from engines import synthesize as engine_synthesize
 
 WORD = re.compile(r"[^\W_](?:[^\W_]|['’\-](?=[^\W_]))*")
 RATE = 24000
@@ -60,13 +61,7 @@ def forms_of(meta):
 
 
 async def synthesize(text, voice, rate):
-    audio = bytearray()
-    async for chunk in edge_tts.Communicate(text, voice, rate=rate).stream():
-        if chunk['type'] == 'audio':
-            audio.extend(chunk['data'])
-    if not audio:
-        raise RuntimeError('no audio returned')
-    return bytes(audio)
+    return (await engine_synthesize(text, voice, rate))[0]
 
 
 async def fill_cache(forms, voice, rate, cache_dir, concurrency):
@@ -126,10 +121,12 @@ def build(path, concurrency):
     forms = forms_of(meta)
     print(f'{path}: {len(forms)} words', file=sys.stderr)
     failed = asyncio.run(fill_cache(sorted(set(forms.values())), meta['voice'], meta['rate'], cache_dir, concurrency))
-    if failed:
-        for form, error in failed:
-            print(f'FAILED: {form!r}: {error}', file=sys.stderr)
+    for form, error in failed:
+        print(f'skipped (the reader cuts it from its sentence): {form!r}: {error}', file=sys.stderr)
+    if len(failed) > len(forms) // 100:   # more than a word here and there: the service is down, run again later
         sys.exit(1)
+    skipped = {form for form, _ in failed}
+    forms = {key: form for key, form in forms.items() if form not in skipped}
     start = meta.get('lexiconStart') or os.path.getsize(mp3_path)
     lexicon = {}
     with open(mp3_path, 'r+b') as out:

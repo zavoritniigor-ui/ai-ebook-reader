@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline narration of a book's pages with edge-tts (word timings included).
+"""Offline narration of a book's pages: edge-tts or Kokoro (engines.py).
 
 One chapter = a page range of a PDF. Each sentence is synthesized on its own
 (cached, so an interrupted run resumes), then the sentence streams are joined
@@ -10,8 +10,9 @@ and the time span in milliseconds. The reader decodes only the bytes it needs.
 Usage:
   python3 generate.py --pdf livre.pdf --pages 20-21 --voice fr-CA-SylvieNeural \
       --out ~/Books/Par\\ Ici/tts/a1-ch1
+  ~/tools/kokoro-venv/bin/python generate.py --pdf livre.pdf --pages 1-203 --voice kokoro:ff_siwis --out ...
 
-Needs: edge-tts (pip), pdftotext and ffprobe (poppler / ffmpeg).
+Needs: edge-tts (pip) or kokoro, pdftotext and ffprobe (poppler / ffmpeg).
 
 Then run align.py on the JSON: the edge-tts word times are estimates (up to a quarter
 of a second off); align.py measures them on the audio, and the reader plays a tapped
@@ -26,7 +27,7 @@ import re
 import subprocess
 import sys
 
-import edge_tts
+from engines import synthesize as engine_synthesize
 
 SENTENCE_END = re.compile(r'(?<=[.!?…])\s+')
 # «CD1 - piste 10» marks point at the book's own audio; they are not text to read.
@@ -63,19 +64,7 @@ def cache_key(voice, rate, text):
 
 
 async def synthesize(text, voice, rate):
-    communicate = edge_tts.Communicate(text, voice, rate=rate, boundary='WordBoundary')
-    audio = bytearray()
-    words = []
-    async for chunk in communicate.stream():
-        if chunk['type'] == 'audio':
-            audio.extend(chunk['data'])
-        elif chunk['type'] == 'WordBoundary':
-            words.append({'token': chunk['text'],
-                          'start': chunk['offset'] / 10000,
-                          'end': (chunk['offset'] + chunk['duration']) / 10000})
-    if not audio:
-        raise RuntimeError('no audio returned')
-    return bytes(audio), words
+    return await engine_synthesize(text, voice, rate, boundaries=True)
 
 
 def align_words(text, words):
@@ -188,7 +177,7 @@ def main():
             print(f'FAILED: {text[:60]!r}: {error}', file=sys.stderr)
         sys.exit(1)
 
-    name = f'{args.voice}_p{args.pages}'
+    name = f"{args.voice.replace(':', '-')}_p{args.pages}"
     mp3_path, entries = assemble(sentences, args.voice, args.rate, cache_dir, out_dir, name)
     meta = {'voice': args.voice, 'rate': args.rate, 'pages': pages,
             'audio': os.path.basename(mp3_path), 'sentences': entries}

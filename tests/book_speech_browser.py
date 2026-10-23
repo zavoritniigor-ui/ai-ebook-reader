@@ -41,6 +41,19 @@ with open(os.path.join(FIXTURE, 'speech_test.json'), encoding='utf-8') as f:
     SPEECH_JSON = f.read()
 META = json.loads(SPEECH_JSON)
 WORDS = [[(w['start'] / 1000, w['end'] / 1000) for w in s['words']] for s in META['sentences']]
+
+
+def packed(pages):
+    """One-file narration as tools/book_tts/pack.py writes it: the JSON in an ID3v2.4 GEOB frame before the MP3."""
+    def safe(n):
+        return bytes([(n >> 21) & 0x7f, (n >> 14) & 0x7f, (n >> 7) & 0x7f, n & 0x7f])
+    meta = dict(META, pdf={'name': 'Speech_test.pdf', 'pages': pages})
+    body = (b'\x03application/json\x00narration.json\x00ai-ebook-reader-narration\x00'
+            + json.dumps(meta, ensure_ascii=False).encode('utf-8'))
+    frame = b'GEOB' + safe(len(body)) + b'\x00\x00' + body
+    return b'ID3\x04\x00\x00' + safe(len(frame)) + frame + SPEECH_MP3
+
+
 ALONE = {k: (v['start'] / 1000, v['end'] / 1000) for k, v in META['lexicon'].items()}   # words said on their own (words.py)
 
 c = CDP()
@@ -77,6 +90,8 @@ c.js(f"""(async () => {{
     await openBookFile(toFile('{PDF_B64}', 'Speech_test.pdf', 'application/pdf'));
     window.__mp3 = toFile('{SPEECH_MP3_B64}', 'speech_test.mp3', 'audio/mpeg');
     window.__json = toFile('{SPEECH_JSON_B64}', 'speech_test.json', 'application/json');
+    window.__packed = toFile('{base64.b64encode(packed(1)).decode()}', 'Speech test - voice.mp3', 'audio/mpeg');
+    window.__otherBook = toFile('{base64.b64encode(packed(99)).decode()}', 'Other book - voice.mp3', 'audio/mpeg');
 }})()""")
 
 check('1 The PDF opens and its page 1 text layer is there', """(() => {
@@ -211,6 +226,25 @@ check('12 A word that is not in the narration is not played', """(async () => {
 check('13 Removing the narration from the dialog empties the list', """(async () => {
     await bsRemoveFromDialog();
     return bsSets.list.length === 0 && bsActiveSet() === null;
+})()""")
+
+check('13b One file (the JSON inside the MP3\'s tag) is enough to add a narration', """(async () => {
+    await bsImport([window.__packed]);
+    const set = bsActiveSet();
+    return !!set && set.sentences.length === 2 && !!set.lexicon.maroc && set.timing === 'aligned' && set.audioName === 'Speech test - voice.mp3';
+})()""", timeout=20)
+check('13c ...and it plays: the audio is the part after the tag', """(async () => {
+    const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
+    return (await bsTapPhrase(node, 'Je viens du Japon.')) === true && bsDecoded.get(bsActiveSet().id + '#1').duration > 2;
+})()""")
+check('13d A narration made for another book (other page count) is refused', """(async () => {
+    await bsRemoveFromDialog();
+    await bsImport([window.__otherBook]);
+    return bsSets.list.length === 0;
+})()""", timeout=20)
+check('13e A plain MP3 that is not a narration is refused', """(async () => {
+    await bsImport([new File([new Uint8Array([0xff, 0xfb, 0x90, 0x00, 1, 2, 3, 4, 5, 6, 7, 8])], 'song.mp3', { type: 'audio/mpeg' })]);
+    return bsSets.list.length === 0;
 })()""")
 
 check('14 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
