@@ -277,6 +277,7 @@ function buildDiagnosticsReport() {
             recent: typeof readerAiRequests === 'function' ? readerAiRequests().slice(-30) : []
         },
         offline: typeof offlineTrReport === 'function' ? offlineTrReport() : null,   // js/offline-translate.js: installed packs, why the engine failed, last speed
+        bookSpeech: typeof bsReport === 'function' ? bsReport() : null,   // js/book-speech.js: the book's narration and piste marks, what each tap decided
         speech: {
             engine: synth ? { speaking: synth.speaking, pending: synth.pending, paused: synth.paused } : 'none',
             voices: typeof voices !== 'undefined' ? voices.length : 0,

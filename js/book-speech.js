@@ -20,6 +20,15 @@ const bsSets = { key: null, list: [] };   // the speech sets of the open book: {
 const bsDecoded = new Map();              // «set#sentence» -> AudioBuffer, least recently used first
 const bsPageCache = new Map();            // «set#page» -> the narration's words on that page, in reading order
 let bsCtx = null, bsCurrent = null, bsLast = null;   // bsLast: what was played last ([{ i, from, to }]), for the tests
+let bsSeq = 0;   // each tap or stop takes a number; a decode that ends after a newer one plays nothing
+// What the narration and the piste marks decided on this device (the 📋 report, js/dictation.js): taps that played or
+// fell to the system voice and why, imports, stored narrations. A tablet's problem can only be seen through this.
+const bsTrace = [];
+const bsStored = { speech: [], tracks: [], quota: null };   // book keys that have a narration / tracks on this device
+function bsNote(ev, data) {
+    bsTrace.push(Object.assign({ at: new Date().toISOString().slice(11, 23), ev }, data));
+    if (bsTrace.length > 40) bsTrace.shift();
+}
 // A word as a tap takes it (js/selection.js isWordChar): letters and digits, with apostrophes and hyphens inside.
 const BS_WORD = /[\p{L}\p{N}](?:[\p{L}\p{N}]|['’-](?=[\p{L}\p{N}]))*/gu;
 
@@ -128,12 +137,40 @@ async function bsRefresh() {
     bsSets.key = key;
     bsDecoded.clear();
     bsPageCache.clear();
+    bsReadStored();
     if (!key) { bsSets.list = []; return; }
     try {
         const rows = await bsList(key);
         if (bsSets.key !== key) return;
         bsSets.list = rows.filter(r => r && Array.isArray(r.sentences) && r.blob);
-    } catch (e) { bsSets.list = []; }
+        bsNote('refresh', { book: key, rows: rows.length, usable: bsSets.list.length });
+    } catch (e) { bsSets.list = []; bsNote('refresh', { book: key, error: String(e && (e.name || e.message) || e) }); }
+}
+// For the report: which books have a narration or tracks here (the ids start with the book key), and the storage quota.
+async function bsReadStored() {
+    const bookOf = id => String(id).split('\u0000')[0];
+    try {
+        const db = await baDb();
+        const ids = async store => (await baReq(db.transaction(store, 'readonly').objectStore(store).getAllKeys())) || [];
+        bsStored.speech = (await ids(BS_STORE)).map(id => String(id).replace('\u0000', ' | '));
+        bsStored.tracks = [...new Set((await ids(BA_STORE)).map(bookOf))];
+    } catch (e) { bsStored.speech = ['error: ' + (e && (e.name || e.message))]; }
+    try {
+        const q = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+        if (q) bsStored.quota = { usedMB: Math.round(q.usage / 1048576), quotaMB: Math.round(q.quota / 1048576) };
+    } catch (e) { /* unknown */ }
+}
+function bsReport() {
+    const set = bsActiveSet();
+    return {
+        format: state.format, book: state.bookKey || null, pages: state.totalPages || null,
+        narrations: bsSets.list.map(s => ({ voice: s.voice, sentences: s.sentences.length, timing: s.timing,
+            words: s.lexicon ? Object.keys(s.lexicon).length : 0, mb: s.blob ? Math.round(s.blob.size / 1048576) : null })),
+        active: set ? set.voice : null, audio: bsCtx ? bsCtx.state : 'not started',
+        markers: document.querySelectorAll('.pdf-audio-marker').length,
+        tracks: typeof bookAudio !== 'undefined' ? bookAudio.tracks.length : null,
+        stored: bsStored, trace: bsTrace.slice()
+    };
 }
 // The voice to use: the one chosen last on this device, else the first set.
 function bsActiveSet() {
@@ -169,14 +206,37 @@ async function bsUnpack(file) {
     }
     return null;
 }
+// Is the open PDF the book this narration was made from? Its page count alone is not enough («Par ici» 3-4, 5-6 and 7-8
+// all have 203 pages): a few sentences spread over the narration must be printed on their pages. Returns 'same', 'other',
+// or 'unknown' when the pages have no text to compare (a scan).
+async function bsSameBook(meta) {
+    const doc = state.pdfDoc;
+    if (state.format !== 'pdf' || !doc) return 'unknown';
+    const long = meta.sentences.filter(s => s.page >= 1 && s.page <= doc.numPages && bsKeys(s.text).length >= 4);
+    if (!long.length) return 'unknown';
+    const pick = [...new Set([0.1, 0.25, 0.4, 0.55, 0.7, 0.85].map(f => long[Math.floor(f * (long.length - 1))]))];
+    let checked = 0, found = 0;
+    for (const s of pick) {
+        let printed;
+        try { printed = new Set(bsKeys((await (await doc.getPage(s.page)).getTextContent()).items.map(it => it.str).join(' '))); }
+        catch (e) { continue; }
+        if (printed.size < 3) continue;   // a scanned or picture page
+        const keys = bsKeys(s.text);
+        checked++;
+        if (keys.filter(k => printed.has(k)).length >= keys.length * 0.6) found++;
+    }
+    if (!checked) return 'unknown';
+    return found * 2 >= checked ? 'same' : 'other';
+}
 function bsValidMeta(meta) { return !!meta && Array.isArray(meta.sentences) && meta.sentences.length > 0 && !!meta.voice; }
 
 let bsImporting = false;
 // Imports narrations for the open book: one-file narrations (several voices at once) or an MP3 + JSON pair.
 async function bsImport(fileList) {
     const key = state.bookKey;
-    if (!key || bsImporting) return;
     const files = Array.from(fileList || []);
+    bsNote('import', { book: key || null, busy: bsImporting, files: files.map(f => [f.name, f.type, Math.round(f.size / 1048576) + ' MB']) });
+    if (!key || bsImporting) return;
     const jsonFile = files.find(f => /\.json$/i.test(f.name)), mp3s = files.filter(f => /\.mp3$/i.test(f.name));
     bsImporting = true;
     try {
@@ -194,19 +254,28 @@ async function bsImport(fileList) {
             const packed = await bsUnpack(f);
             if (packed && bsValidMeta(packed.meta)) items.push({ ...packed, name: f.name });
         }
-        if (!items.length) { showToast(t('spkNeedBoth')); return; }
+        if (!items.length) { bsNote('import-refused', { why: 'not a narration' }); showToast(t('spkNeedBoth')); return; }
         // a narration made for another book: its page count differs from the open PDF's
         const other = items.find(x => x.meta.pdf && x.meta.pdf.pages && state.format === 'pdf' && state.totalPages && x.meta.pdf.pages !== state.totalPages);
-        if (other) { showToast(t('spkWrongBook').replace('{book}', other.meta.pdf.name || '?')); return; }
+        if (other) { bsNote('import-refused', { why: 'another book', its: other.meta.pdf, open: state.totalPages }); showToast(t('spkWrongBook').replace('{book}', other.meta.pdf.name || '?')); return; }
+        for (const x of items) {
+            const same = await bsSameBook(x.meta);
+            if (same !== 'other') continue;
+            bsNote('import-refused', { why: 'another book (text differs)', its: x.meta.pdf || null, open: state.totalPages });
+            showToast(t('spkWrongBook').replace('{book}', (x.meta.pdf && x.meta.pdf.name) || x.name));
+            return;
+        }
         for (const { meta, blob, name } of items) {
             await bsPut({ id: key + '\u0000' + meta.voice, bookKey: key, voice: meta.voice, audioName: name,
                 timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences,
                 lexicon: meta.lexicon && typeof meta.lexicon === 'object' ? meta.lexicon : null, blob });
         }
         await bsRefresh();
+        bsNote('import-saved', { voices: items.map(x => x.meta.voice) });
         const last = items[items.length - 1].meta;
         renderBookAudioDialog(t('spkSaved').replace('{voice}', items.map(x => x.meta.voice).join(', ')).replace('{n}', last.sentences.length));
     } catch (e) {
+        bsNote('import-failed', { error: String(e && (e.name + ': ' + e.message) || e) });
         showToast(t('spkFailed'));
     } finally { bsImporting = false; }
 }
@@ -228,6 +297,7 @@ async function bsDecode(set, index) {
     return buf;
 }
 function bsStop() {
+    bsSeq++;   // a tap still decoding must not start after the stop
     if (!bsCurrent) return;
     for (const src of bsCurrent) { try { src.stop(); } catch (e) { /* already ended */ } }
     bsCurrent = null;
@@ -331,19 +401,22 @@ async function bsTapWord(node, word) {
     const set = found ? found.set : bsActiveSet();
     const alone = bsAlone(set, node, found ? found.x.key : bsWordKey(word));
     if (!found && !alone) return false;
+    const seq = ++bsSeq;
     try {
         if (alone) {
             const buf = await bsDecode(set, '@' + alone.key), from = alone.entry.start / 1000, to = alone.entry.end / 1000;
+            if (seq !== bsSeq) return true;   // a newer tap (the expand button, another word) plays instead
             bsPlay([{ buf, from, to }]);
             bsLast = [{ word: alone.key, from, to }];
             return true;
         }
         const buf = await bsDecode(found.set, found.x.i);
+        if (seq !== bsSeq) return true;
         const [from, to] = bsSpan(found.set, found.x);
         bsPlay([{ buf, from, to }]);
         bsLast = [{ i: found.x.i, from, to }];
         return true;
-    } catch (e) { return false; }
+    } catch (e) { bsNote('play-failed', { word, error: String(e && (e.name + ': ' + e.message) || e) }); return false; }
 }
 
 // What a selection plays: [{ i (sentence), from, to (s) }] in reading order, or null when the narration does not cover it.
@@ -379,20 +452,26 @@ function bsCanPhrase(node, text) { return !!bsPhrasePlan(node, text); }
 async function bsTapPhrase(node, text) {
     const found = bsPhrasePlan(node, text);
     if (!found) return false;
+    const seq = ++bsSeq;
     try {
         const pieces = [];
         for (const p of found.plan) pieces.push({ buf: await bsDecode(found.set, p.i), from: p.from, to: p.to });
+        if (seq !== bsSeq) return true;
         bsPlay(pieces);
         bsLast = found.plan;
         return true;
-    } catch (e) { return false; }
+    } catch (e) { bsNote('play-failed', { text: String(text).slice(0, 40), error: String(e && (e.name + ': ' + e.message) || e) }); return false; }
 }
 
 // One entry for the reader (js/selection.js): plays what a PDF tap or selection means in the narration and returns,
 // synchronously, whether it does — the app's own voice then stays silent for it (translation.js).
 function bsSpeakTap(node, text, isWord) {
-    if (state.format !== 'pdf' || !bsSets.list.length) return false;
-    if (isWord ? !bsCanWord(node, text) : !bsCanPhrase(node, text)) return false;
+    const note = why => bsNote('tap', { word: !!isWord, text: String(text || '').slice(0, 40), why });
+    if (state.format !== 'pdf') return false;
+    if (!bsSets.list.length) { note('no narration for this book'); return false; }
+    if (!bsPageOf(node)) { note('not on a PDF page'); return false; }
+    if (isWord ? !bsCanWord(node, text) : !bsCanPhrase(node, text)) { note('not in the narration'); return false; }
+    note('narration');
     if (isWord) bsTapWord(node, text); else bsTapPhrase(node, text);
     return true;
 }

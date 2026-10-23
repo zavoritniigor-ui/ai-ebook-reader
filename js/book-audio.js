@@ -288,8 +288,20 @@ let baImporting = false;
 async function importBookAudio(fileList) {
     const key = state.bookKey;
     if (!key || baImporting) return;
-    const files = Array.from(fileList || []).filter(baIsAudio);
-    if (!files.length) { showToast(t('baNoFiles')); return; }
+    let files = Array.from(fileList || []).filter(baIsAudio);
+    // a book narration chosen here by mistake (it is an MP3 too) goes where it belongs, not in as «track 4» of «Par ici 3-4»
+    const narrations = [];
+    if (typeof bsUnpack === 'function') {
+        for (const f of files) {
+            if (!/\.mp3$/i.test(f.name)) continue;
+            let packed = null;
+            try { packed = await bsUnpack(f); } catch (e) { /* not readable as a narration */ }
+            if (packed && bsValidMeta(packed.meta)) narrations.push(f);
+        }
+        files = files.filter(f => !narrations.includes(f));
+        if (narrations.length) bsNote('tracks-narration', { files: narrations.map(f => f.name) });
+    }
+    if (!files.length) { if (narrations.length) bsImport(narrations); else showToast(t('baNoFiles')); return; }
     baImporting = true;
     const parsed = baAssignDiscs(files.map(f => Object.assign(baParseFile(f.name, f.webkitRelativePath || ''), { file: f }))).filter(p => p.track !== null);
     const total = parsed.reduce((n, p) => n + p.file.size, 0);
@@ -311,6 +323,7 @@ async function importBookAudio(fileList) {
     setBookAudioProgress('', 0);
     await refreshBookAudio();
     if (!failed && saved) showToast(t('baSaved').replace('{n}', saved));
+    if (narrations.length) bsImport(narrations);
 }
 
 // ---------- playback ----------------------------------------------------------------------------------------------------------
@@ -330,9 +343,11 @@ function baUnlock() {
 function tapBookAudioMark(btn) {
     baUnlock();
     const cd = btn.dataset.cd ? Number(btn.dataset.cd) : null, track = Number(btn.dataset.track), label = baLabel(cd, track);
-    if (!bookAudio.tracks.length) { openBookAudioDialog(t('baConnect')); return; }
     const { rec, ambiguous } = baFind(cd, track);
-    if (!rec) { showToast(t(ambiguous ? 'baAmbiguous' : 'baMissing').replace('{label}', label)); return; }
+    if (typeof bsNote === 'function') bsNote('mark', { label, tracks: bookAudio.tracks.length, found: !!rec, ambiguous: !!ambiguous });
+    if (!bookAudio.tracks.length) { openBookAudioDialog(t('baConnect')); return; }
+    if (ambiguous) { showToast(t('baAmbiguous').replace('{label}', label)); return; }
+    if (!rec) { openBookAudioDialog(t('baMissing').replace('{label}', label)); return; }   // the dialog adds the missing files
     playBookTrack(rec, label);
 }
 async function playBookTrack(rec, label) {
