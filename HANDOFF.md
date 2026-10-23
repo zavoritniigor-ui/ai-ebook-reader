@@ -1,3 +1,13 @@
+## Book narration: measured word timings, words said alone, one file per voice, Kokoro (2026-10-22, Claude)
+
+**Merged:** #269 (aligned timings `tools/book_tts/align.py`, words said alone `words.py`, occurrence by neighbours, expand button plays the narration, `state.bookSpeechTap` used once, `anchorCaret` skips the empty text node). **This PR #270:** one file per voice (`pack.py`, JSON in the MP3's ID3 GEOB, `bsUnpack`, another book refused by page count), `engines.py` (edge-tts or Kokoro `kokoro:ff_siwis`).
+
+**Pipeline per book** (on this computer, GPU): `generate.py` (edge-tts venv `~/tools/book-tts/.venv`, or Kokoro `~/tools/kokoro-venv/bin/python`) → `align.py` (book-tts venv: torch 2.5.1 cu121 + torchaudio MMS_FA; ~40 min / 7k sentences, ffmpeg-bound) → `words.py` (same venv as the engine) → `pack.py --pdf <book> --out <file>`. Delivered folder: `~/Books/Par Ici/Озвучка Par ici` = Google Drive «Озвучка Par ici» (uploaded with `rclone copy … gdrive:`; the rclone shared client_id retires during 2026).
+
+**Measured:** edge-tts word starts were a median 116 ms early (p10–p90 52–164); Chrome decodeAudioData = ffmpeg to the sample for edge-tts and header-less Kokoro MP3. Real livre 12, 8 pages: 96.3 % of printed words covered, right occurrence 99.6 %.
+
+**Open:** the owner has not heard it on the tablet yet; 230 MB import on the tablet (IndexedDB quota) unverified; Safari decode offset unverified. Headless `goToPhysicalPage(88)` on livre 12 lands on page 50 (seen without any narration; not investigated).
+
 ## Rules panel, Practice French word TTS (#259), and «Par ici» book audio (`feat/book-audio-piste`) (2026-10-19)
 
 1. **Step 0 (`42903c8`, #258)**: Verified `main` CI run `39348261228` (`conclusion: "success"`) and Cloudflare Pages production (`https://ai-ebook-reader.pages.dev`).
