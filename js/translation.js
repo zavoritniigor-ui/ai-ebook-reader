@@ -137,6 +137,9 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // the learner ends up pressing, and can never leak into a later, unrelated tap/selection.
     const grammarSourceOverride = state.lastGrammarSourceText;
     state.lastGrammarSourceText = null;
+    // A dragged part of a sentence: the sentence it stands in (js/selection.js), read once like the override above.
+    const selectionContext = state.selectionContext || '';
+    state.selectionContext = '';
     clearAlignment();
     const isMultiWord = cleanText.split(/\s+/).length > 1;
     const lookupNode = state.lastSelectedRange?.startContainer || state.lastWordNode;
@@ -153,7 +156,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     const task = beginAsyncTask('lookup');
     structToken++; cancelAsyncTasks(['structure', 'structureDeep']);
     if (els.ttStructHost) els.ttStructHost.replaceChildren();
-    const contextSentence = state.ctxSentence;
+    // Only the selected words are translated, in the sense they have in their sentence.
+    const contextSentence = selectionContext || state.ctxSentence;
     const targetLang = state.targetLang;
     // Контекст для кнопок "AI"/"Ask" беремо ОДРАЗУ тут, поки clientX/clientY ще
     // відповідають реальному положенню тексту на екрані — а не пізніше, у самих
@@ -300,7 +304,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // "car" (фр. "оскільки") показувалось як "автомобіль", і саме з другого разу.
     // Переклад слова тепер залежить від речення, тому в ключ кешу входить і контекст:
     // "fait" у різних реченнях — це різні значення, і одне не має підміняти інше.
-    const ctxKey = isMultiWord ? '' : '@' + (state.ctxSentence || '').slice(0, 80).toLowerCase();
+    const ctxKey = isMultiWord ? (selectionContext ? '@' + selectionContext.slice(0, 80).toLowerCase() : '') : '@' + (contextSentence || '').slice(0, 80).toLowerCase();
     const cacheKey = srcCode + '>' + state.targetLang + '|' + (isMultiWord ? cleanText : cleanText.toLowerCase()) + ctxKey;
     const myLookup = ++state.lookupToken;   // щоб пізня відповідь не перебила новий тап
 
@@ -388,7 +392,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             if (local) quality = 'local';
             else {
                 // The AI on the device (js/device-llm.js) sees the context and translates better than the offline pack, which is the last resort.
-                try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, '', task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
+                try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, selectionContext, task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
                 if (local) { quality = 'device'; mark = t('dlMark'); }
                 else if ((local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal))) quality = 'device';
             }

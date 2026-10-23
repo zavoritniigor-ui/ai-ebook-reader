@@ -308,6 +308,27 @@ third = c.js(LAYOUT_JS.replace('pdfVisualGroup(container, row[0])', 'pdfVisualGr
      [(t, x, 264) for t, x in zip(('favoriser l’absorption du calcium', 'en calcium et en vitamine D.', 'mal. Cela dit, certaines personnes'), COLS)]], ensure_ascii=False))
 assert 'Il est primordial de s’assurer à tout âge d’un apport en vitamine D opti- mal.' in third[0]['sentences'], third
 print('PASS a three-column article with a 21px gutter: each column reads its own sentences', flush=True)
+# A drag over a few words of one column reads exactly those words, not their whole lines: «fabriquée par notre» was translated
+# and narrated as «palement fabriquée par notre peau à» (each PDF item of that page is a whole line).
+drags = c.js('''(rows => {
+    const container = document.createElement('div'); container.className = 'pdf-text-layer';
+    container.style.cssText = 'position:relative;width:1000px;height:' + (rows.length * 40 + 80) + 'px;';
+    document.body.appendChild(container);
+    rows.forEach((row, ri) => row.forEach(([text, left, width]) => {
+        const s = document.createElement('span'); s.textContent = text;
+        s.style.cssText = 'position:absolute;left:' + left + 'px;top:' + (40 + ri * 40) + 'px;width:' + width + 'px;height:20px;';
+        container.appendChild(s); }));
+    const word = (w) => { const s = [...container.children].find(x => x.textContent.includes(w)), n = s.firstChild, at = n.nodeValue.indexOf(w);
+        return { node: n, start: at, end: at + w.length }; };
+    const read = (a, b) => resolveCanonicalPdfSelection(rangeBetweenWords(word(a), word(b))).text;
+    const out = [read('fabriquée', 'notre'), read('rayons', 'fabriquée'), read('meilleurs', 'prévenir')];
+    container.remove(); return out; })(%s)''' % json.dumps([[(text, x, 264) for text, x in zip(row, COLS)] for row in [
+    ('La vitamine D est importante. Princi-', 'des meilleurs moyens de la prévenir', 'Il est primordial de s’assurer à tout'),
+    ('palement fabriquée par notre peau à', 'est de s’assurer d’un apport suffisant', 'âge d’un apport en vitamine D opti-'),
+    ('la suite de l’exposition aux rayons du', 'en calcium et en vitamine D, et ce,', 'mal. Cela dit, certaines personnes'),
+]], ensure_ascii=False))
+assert drags == ['fabriquée par notre', 'fabriquée par notre peau à la suite de l’exposition aux rayons', 'meilleurs moyens de la prévenir'], drags
+print('PASS a drag inside one column of that page reads only the dragged words (also over two lines, also upwards)', flush=True)
 # the cells of a table («je | faisais», short words a narrow gap apart) do not count as such a gutter: one line stays one line
 table = layout([[('je', 176, 20), ('faisais', 217, 50), ('je', 300, 20), ('prenais', 341, 55)] for _ in range(5)])
 assert all(r['joined'] for r in table), table

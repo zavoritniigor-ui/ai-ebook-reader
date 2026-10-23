@@ -660,16 +660,14 @@ function resolveCanonicalPdfSelection(range, options = {}) {
             if (!foundText && sp.textContent) pieces.push({ node: sp.firstChild || sp, start: 0, end: (sp.textContent || '').length, span: sp });
         }
         range._pdfPieces = pieces;
-        // The text the reader sees selected: the spans in reading order, words joined the PDF way (pdfSpansToChars). On a
-        // one-column page it is cut at the first / last character of the selection (a born-digital span is often a whole
-        // line), as the DOM-order path always did; a drag inside ONE column of a multi-column page has always read whole
-        // fragments, and keeps doing so.
+        // The text the reader sees selected: the spans in reading order, words joined the PDF way (pdfSpansToChars), cut at
+        // the first / last character of the selection (a born-digital span is often a whole line). A drag inside one column
+        // of a multi-column page used to read whole fragments: two words selected in livre 56 p.67 were translated and
+        // narrated as their whole lines («palement fabriquée par notre peau à» for «fabriquée par notre»).
         const byNode = new Map(pieces.map(p => [p.node, p]));
-        const cleanText = pageCols.columnCount > 1
-            ? pdfSpansToText(selectedSpans)
-            : pdfSpansToChars(selectedSpans)
-                .filter(c => c.separator || (byNode.has(c.node) && c.offset >= byNode.get(c.node).start && c.offset < byNode.get(c.node).end))
-                .map(c => c.ch).join('').replace(/\s+/g, ' ').trim();
+        const cleanText = pdfSpansToChars(selectedSpans)
+            .filter(c => c.separator || (byNode.has(c.node) && c.offset >= byNode.get(c.node).start && c.offset < byNode.get(c.node).end))
+            .map(c => c.ch).join('').replace(/\s+/g, ' ').trim();
         range.toString = () => cleanText;
 
         let rect = null;
@@ -1544,6 +1542,7 @@ function commitDragSelection(clientX, clientY) {
     // Capture source occurrence IDs while the drag Range still references the
     // untouched reader text layer.
     const helpContext = recordHelpForSpan(r, 'phrase_translation');
+    state.selectionContext = selectionContextSentence(r, text);
     state.suppressNextClick = true;   // інакше слідом спрацює ще й тап по слову
     state.ctxPanelLang = '';
     // Одне слово — звичайний шлях (зі словниковою статтею); кілька — як фрагмент.
@@ -1578,6 +1577,23 @@ document.addEventListener('touchend', (e) => {
         }
     }
 }, { passive: false });
+
+// The sentence a dragged selection stands in, when the selection is a part of it: the translation then renders only the
+// selected words, in the sense they have in that sentence (js/translation.js). '' for a whole sentence or several.
+function selectionContextSentence(range, text) {
+    try {
+        // a PDF selection's first piece in reading order (the DOM order of its range can differ)
+        const piece = range._pdfPieces && range._pdfPieces[0];
+        let probe = range;
+        if (piece) { probe = document.createRange(); probe.setStart(piece.node, piece.start); probe.setEnd(piece.node, piece.end); }
+        const first = Array.from(probe.getClientRects()).find(b => b.width && b.height);
+        if (!first) return '';
+        const sentence = sentenceRangeAt(first.left + Math.min(4, first.width / 2), first.top + first.height / 2);
+        const whole = sentence ? sentence.toString().replace(/\s+/g, ' ').trim() : '';
+        const key = s => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+        return whole && key(whole) !== key(text) && key(whole).includes(key(text)) ? whole.slice(0, 400) : '';
+    } catch (e) { return ''; }
+}
 
 // Діапазон від слова A до слова B у правильному порядку, з межами по словах.
 function rangeBetweenWords(a, b) {

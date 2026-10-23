@@ -157,8 +157,10 @@ touch('touchStart', a); pause(.45)
 for i in range(1, 11):
     touch('touchMove', dict(x=b['x'] + 20, y=a['y'] + (b['y'] - a['y']) * i / 10)); pause(.03)
 touch('touchEnd'); pause(.3)
+# The hold was on «il» (the left edge of «il est»), the finger ended on «suis» (20px into «je suis»): exactly those words,
+# as highlighted -- not the whole cells (a selection is translated and narrated as what the reader dragged over).
 check('B4 reverse touch-only drag retains the original anchor and column',
-      "(() => {const t=state.canonicalSelection?.text || ''; return t.includes('je suis') && t.includes('il est') && !t.includes('you are') && !state.touchSelecting;})()")
+      "(() => {const t=state.canonicalSelection?.text || ''; const hl=[...document.querySelectorAll('.sel-word')].map(s=>s.textContent).join(' '); return t === 'suis tu es il' && hl === t && !state.touchSelecting || [t, hl].join(' | ');})()")
 check('B5 reverse selection does not scroll', f' Math.abs(els.container.scrollTop - {scroll_before}) < 1')
 
 fresh_touch_page()

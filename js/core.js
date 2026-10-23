@@ -764,6 +764,7 @@ const state = {
     // cleared) by the very next handleWordOrSelection so it can never leak into a later tap — see
     // js/selection.js's pointerup handler and js/translation.js's ttAiBtn.onclick.
     lastGrammarSourceText: null,
+    selectionContext: '',   // the sentence around a dragged part of it (js/selection.js), read once by the translation
     refinedKeys: new Set(),
     sourceLang: 'en-US', ctxSentence: '',
     ink: {}, inkMode: false, inkErase: false, inkColor: '#1a56db',
