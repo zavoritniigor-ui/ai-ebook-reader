@@ -77,5 +77,53 @@
     }
    ]
   }
- ]
+ ],
+ "lexiconStart": 27648,
+ "lexicon": {
+  "du": {
+   "text": "du",
+   "bytes": [
+    27648,
+    38880
+   ],
+   "start": 170,
+   "end": 630
+  },
+  "japon": {
+   "text": "Japon",
+   "bytes": [
+    38880,
+    49104
+   ],
+   "start": 185,
+   "end": 830
+  },
+  "je": {
+   "text": "Je",
+   "bytes": [
+    49104,
+    58464
+   ],
+   "start": 145,
+   "end": 650
+  },
+  "maroc": {
+   "text": "Maroc",
+   "bytes": [
+    58464,
+    69696
+   ],
+   "start": 170,
+   "end": 940
+  },
+  "viens": {
+   "text": "viens",
+   "bytes": [
+    69696,
+    80928
+   ],
+   "start": 165,
+   "end": 765
+  }
+ }
 }

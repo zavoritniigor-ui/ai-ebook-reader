@@ -2,7 +2,8 @@
 
 The narration is real: two sentences of the edge-tts voice fr-CA-SylvieNeural («Je viens du Maroc. Je viens du Japon.»),
 cut from the book's MP3 with their aligned JSON entries (tools/book_tts/align.py). The words repeat, so the test also
-checks that a tap plays the occurrence it touched, and what a selection or the expand button plays.
+checks that a tap finds the occurrence it touched, and what a selection or the expand button plays. A tap plays the word
+said on its own (the JSON's lexicon, tools/book_tts/words.py); without it, the word is cut from its sentence.
 """
 import base64, json, os, time
 from browser_cdp import CDP
@@ -40,6 +41,7 @@ with open(os.path.join(FIXTURE, 'speech_test.json'), encoding='utf-8') as f:
     SPEECH_JSON = f.read()
 META = json.loads(SPEECH_JSON)
 WORDS = [[(w['start'] / 1000, w['end'] / 1000) for w in s['words']] for s in META['sentences']]
+ALONE = {k: (v['start'] / 1000, v['end'] / 1000) for k, v in META['lexicon'].items()}   # words said on their own (words.py)
 
 c = CDP()
 c.call('Page.enable')
@@ -114,10 +116,10 @@ def word_point(word, nth=0):
 
 
 def played(expect):
-    """bsLast equals the plan [(sentence, from s, to s)] to the millisecond."""
+    """bsLast equals the plan [(sentence index or word key, from s, to s)] to the millisecond."""
     return f"""(() => {{
         const want = {json.dumps(expect)};
-        return !!bsLast && bsLast.length === want.length && bsLast.every((p, k) => p.i === want[k][0]
+        return !!bsLast && bsLast.length === want.length && bsLast.every((p, k) => (typeof want[k][0] === 'string' ? p.word : p.i) === want[k][0]
             && Math.abs(p.from - want[k][1]) < 0.001 && Math.abs(p.to - want[k][2]) < 0.001) || JSON.stringify(bsLast);
     }})()"""
 
@@ -138,22 +140,24 @@ check('4 Aligned timings are kept on import', "bsActiveSet().timing === 'aligned
 
 x, y = word_point('Maroc')
 c.touch_tap(x, y)   # a real tap on the word: the reader wraps it and calls bsTapWord
-check('5 Tapping «Maroc» plays exactly its aligned span from sentence 1 (no margin)', played([[0, *WORDS[0][3]]]))
-check('5b The real MP3 slice of that sentence decoded (only its bytes)', """(() => {
-    const set = bsActiveSet(), buf = bsDecoded.get(set.id + '#0');
-    return !!buf && Math.abs(buf.duration - set.sentences[0].duration) < 0.03 && !bsDecoded.has(set.id + '#1');
-})()""")
+check('5 Tapping «Maroc» plays the word said on its own (its sound, without the silence around it)', played([['maroc', *ALONE['maroc']]]))
+check('5b Only the bytes of that word were decoded (no sentence)', """(() => {
+    const set = bsActiveSet(), buf = bsDecoded.get(set.id + '#@maroc');
+    return !!buf && buf.duration > ALONE_END && bsDecoded.size === 1;
+})()""".replace('ALONE_END', str(ALONE['maroc'][1])))
 check('5c A tap the narration covers is not read again by the system voice', "window.__spoke === 0")
 
 clear_layer_marks()
 x, y = word_point('viens', 1)
 c.touch_tap(x, y)
-check('6 The second «viens» on the page plays the second sentence\'s «viens», not the first one', played([[1, *WORDS[1][1]]]))
+check('6 The second «viens» on the page is the second sentence\'s «viens», not the first one',
+      "bsWordCue(state.lastWordNode, 'viens').x.i === 1 || JSON.stringify(bsWordCue(state.lastWordNode, 'viens').x)")
+check('6b ...and plays «viens» said on its own', played([['viens', *ALONE['viens']]]))
 
 clear_layer_marks()
 x, y = word_point('Je', 1)
 c.touch_tap(x, y)
-check('7 The second «Je» plays from sentence 2', played([[1, *WORDS[1][0]]]))
+check('7 The second «Je» is found in sentence 2', "bsWordCue(state.lastWordNode, 'Je').x.i === 1")
 
 clear_layer_marks()
 c.js("els.ttExpandBtn.click(); els.ttExpandBtn.click();")   # word → to the sentence end → the whole sentence
@@ -188,7 +192,16 @@ check('11c A word printed in pieces («Jap» + a coloured «on») plays the whol
     r2.surroundContents(document.createElement('span'));
     return (await bsTapWord(jap, 'Jap')) === true;
 })()""")
-check('11d ...«Japon» of the second sentence', played([[1, *WORDS[1][3]]]))
+check('11d ...«Japon» said on its own', played([['japon', *ALONE['japon']]]))
+
+check('11e A word the lexicon lacks (a one-letter word) is cut exactly from its sentence', """(async () => {
+    const set = bsActiveSet();
+    delete set.lexicon.maroc;
+    const layer = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer');
+    const node = [...layer.querySelectorAll('.word-visited')].find(n => n.textContent === 'Maroc');
+    return (await bsTapWord(node, 'Maroc')) === true;
+})()""")
+check('11f ...from sentence 1, its aligned span with no margin', played([[0, *WORDS[0][3]]]))
 
 check('12 A word that is not in the narration is not played', """(async () => {
     const node = document.querySelector('.pdf-page-wrapper[data-page="1"] span');

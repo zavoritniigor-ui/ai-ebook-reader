@@ -5,6 +5,8 @@
  *
  * The JSON holds, for every sentence: page, text, bytes [start, end) in the MP3, duration (s) and for every word the
  * character span in the sentence (s, e) and its time span in ms (start, end) from the sentence start.
+ * "lexicon" (tools/book_tts/words.py): every word said on its own, appended to the MP3 — a tap on a word plays that, the
+ * natural word; a selected sentence or fragment plays the sentence narration.
  * "timing": "aligned" (tools/book_tts/align.py) means the spans were measured on the audio and cut at the quiet point
  * between two words: they are played exactly. Older files carry the edge-tts estimates and get a small margin.
  * The pure helpers (bsWordKey, bsKeys, bsWordCues, bsPickCue, bsPhraseRun) are checked by tests/book_speech_test.mjs. */
@@ -156,7 +158,8 @@ async function bsImport(fileList) {
     bsImporting = true;
     try {
         await bsPut({ id: key + '\u0000' + meta.voice, bookKey: key, voice: meta.voice, audioName: mp3.name,
-            timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences, blob: mp3 });
+            timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences,
+            lexicon: meta.lexicon && typeof meta.lexicon === 'object' ? meta.lexicon : null, blob: mp3 });
         await bsRefresh();
         renderBookAudioDialog(t('spkSaved').replace('{voice}', meta.voice).replace('{n}', meta.sentences.length));
     } catch (e) {
@@ -170,10 +173,11 @@ function bsContext() {
     if (bsCtx.state === 'suspended') bsCtx.resume().catch(() => {});
     return bsCtx;
 }
+// index: a sentence; or a word said on its own, given as its key («@maroc», the set's lexicon).
 async function bsDecode(set, index) {
     const id = set.id + '#' + index;
     if (bsDecoded.has(id)) { const buf = bsDecoded.get(id); bsDecoded.delete(id); bsDecoded.set(id, buf); return buf; }
-    const [a, b] = set.sentences[index].bytes;
+    const [a, b] = typeof index === 'string' ? set.lexicon[index.slice(1)].bytes : set.sentences[index].bytes;
     const buf = await bsContext().decodeAudioData(await set.blob.slice(a, b).arrayBuffer());
     bsDecoded.set(id, buf);
     if (bsDecoded.size > BS_DECODED_MAX) bsDecoded.delete(bsDecoded.keys().next().value);
@@ -269,13 +273,27 @@ function bsWordCue(node, word) {
     return n < 0 ? null : { set, x: words[n] };
 }
 // Synchronous: does the narration cover this tap? (The app's own voice must then stay silent: translation.js.)
-function bsCanWord(node, word) { return !!bsWordCue(node, word); }
+function bsCanWord(node, word) { return !!bsWordCue(node, word) || !!bsAlone(bsActiveSet(), node, bsWordKey(word)); }
+// The word said on its own (tools/book_tts/words.py), for a tap in a PDF page: { key, entry } or null.
+function bsAlone(set, node, key) {
+    const entry = set && set.lexicon && key && Object.prototype.hasOwnProperty.call(set.lexicon, key) ? set.lexicon[key] : null;
+    return entry && bsPageOf(node) ? { key, entry } : null;
+}
 
-// Plays the tapped word from the speech of its sentence. Returns false when the narration does not cover the word.
+// Plays the tapped word: said on its own when the narration has it so (as if there were no other text), else cut from
+// the speech of its sentence. Returns false when the narration does not cover the word.
 async function bsTapWord(node, word) {
     const found = bsWordCue(node, word);
-    if (!found) return false;
+    const set = found ? found.set : bsActiveSet();
+    const alone = bsAlone(set, node, found ? found.x.key : bsWordKey(word));
+    if (!found && !alone) return false;
     try {
+        if (alone) {
+            const buf = await bsDecode(set, '@' + alone.key), from = alone.entry.start / 1000, to = alone.entry.end / 1000;
+            bsPlay([{ buf, from, to }]);
+            bsLast = [{ word: alone.key, from, to }];
+            return true;
+        }
         const buf = await bsDecode(found.set, found.x.i);
         const [from, to] = bsSpan(found.set, found.x);
         bsPlay([{ buf, from, to }]);
