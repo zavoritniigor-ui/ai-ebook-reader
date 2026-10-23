@@ -315,7 +315,10 @@ async function deviceLlmTranslate(text, src, tgt, contextSentence, signal) {
     // translation of the sentence it found the sense (нестача, надходження) — measured on livre 56 sentences.
     const prompt = word
         ? `${name(src)} sentence: ${ctx.slice(0, 400)}\nFirst translate the whole sentence into ${name(tgt)}. Then, on the last line, write only the ${name(tgt)} translation of the word «${clean}» as used in it, in the form: WORD: <translation>`
-        : `Translate this ${name(src)} text into ${name(tgt)}. Answer with the translation only.\n\n${clean}`;
+        : ctx && ctx !== clean
+            // a part of a sentence: only those words, in the sense the sentence gives them
+            ? `${name(src)} sentence: ${ctx.slice(0, 400)}\nTranslate into ${name(tgt)} only this part of it, as used there: ${clean}\nAnswer with the translation of that part only.`
+            : `Translate this ${name(src)} text into ${name(tgt)}. Answer with the translation only.\n\n${clean}`;
     try {
         let out = await deviceLlmGenerate(prompt, signal, { task: 'translation' });
         if (word) {
