@@ -17,6 +17,7 @@ Usage:
 Needs: torch, torchaudio (2.5), numpy, num2words; ffmpeg. A GPU is used when there is one.
 """
 import argparse
+import copy
 import json
 import os
 import re
@@ -85,6 +86,20 @@ class Aligner:
         self.model = bundle.get_model(with_star=False).to(self.device).eval()
         self.dictionary = bundle.get_dict(star=None)
         self.labels = set(self.dictionary)
+        self.cpu_model = None
+
+    def emission(self, wave):
+        """The model's output for one sentence; a long sentence the GPU has no room for (another run holds it) goes to the CPU."""
+        with torch.inference_mode():
+            try:
+                emission, _ = self.model(torch.from_numpy(wave.copy()).unsqueeze(0).to(self.device))
+                return emission
+            except torch.OutOfMemoryError:
+                torch.cuda.empty_cache()
+                if self.cpu_model is None:
+                    self.cpu_model = copy.deepcopy(self.model).to('cpu')
+                emission, _ = self.cpu_model(torch.from_numpy(wave.copy()).unsqueeze(0))
+                return emission
 
     def spans(self, wave, tokens):
         """[(start s, end s)] of every token that has letters; None for the others."""
@@ -93,12 +108,11 @@ class Aligner:
         result = [None] * len(tokens)
         if not keep:
             return result
-        with torch.inference_mode():
-            emission, _ = self.model(torch.from_numpy(wave.copy()).unsqueeze(0).to(self.device))
+        emission = self.emission(wave)
         targets = [self.dictionary[c] for _, r in keep for c in r]
         if emission.size(1) < len(targets):
             return result
-        aligned, scores = torchaudio.functional.forced_align(emission, torch.tensor([targets], device=self.device))
+        aligned, scores = torchaudio.functional.forced_align(emission, torch.tensor([targets], device=emission.device))
         token_spans = torchaudio.functional.merge_tokens(aligned[0], scores[0].exp())
         seconds = len(wave) / MODEL_RATE / emission.size(1)
         at = 0
