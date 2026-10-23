@@ -144,24 +144,68 @@ function bsActiveSet() {
 }
 
 // ---------- importing -----------------------------------------------------------------------------------------------------------------
+// One file per voice (tools/book_tts/pack.py): an MP3 whose ID3v2 tag holds the JSON in a GEOB frame described
+// «ai-ebook-reader-narration». Returns { meta, blob (the audio after the tag) } or null for any other file.
+async function bsUnpack(file) {
+    const head = new Uint8Array(await file.slice(0, 10).arrayBuffer());
+    if (head.length < 10 || head[0] !== 0x49 || head[1] !== 0x44 || head[2] !== 0x33) return null;   // «ID3»
+    const safe = (u, i) => (u[i] << 21) | (u[i + 1] << 14) | (u[i + 2] << 7) | u[i + 3];
+    const size = safe(head, 6), end = 10 + size;
+    const tag = new Uint8Array(await file.slice(10, end).arrayBuffer());
+    for (let i = 0; i + 10 <= tag.length && tag[i]; ) {
+        const id = String.fromCharCode(tag[i], tag[i + 1], tag[i + 2], tag[i + 3]);
+        const len = head[3] >= 4 ? safe(tag, i + 4) : ((tag[i + 4] << 24) | (tag[i + 5] << 16) | (tag[i + 6] << 8) | tag[i + 7]) >>> 0;
+        const body = tag.subarray(i + 10, i + 10 + len);
+        if (id === 'GEOB') {
+            // encoding byte, then mime, file name and description, each ended by a zero byte (UTF-8), then the data
+            let at = 1;
+            const field = () => { const z = body.indexOf(0, at); const v = new TextDecoder().decode(body.subarray(at, z)); at = z + 1; return v; };
+            field(); field();
+            if (field() === 'ai-ebook-reader-narration') {
+                try { return { meta: JSON.parse(new TextDecoder().decode(body.subarray(at))), blob: file.slice(end) }; } catch (e) { return null; }
+            }
+        }
+        i += 10 + len;
+    }
+    return null;
+}
+function bsValidMeta(meta) { return !!meta && Array.isArray(meta.sentences) && meta.sentences.length > 0 && !!meta.voice; }
+
 let bsImporting = false;
+// Imports narrations for the open book: one-file narrations (several voices at once) or an MP3 + JSON pair.
 async function bsImport(fileList) {
     const key = state.bookKey;
     if (!key || bsImporting) return;
     const files = Array.from(fileList || []);
-    const jsonFile = files.find(f => /\.json$/i.test(f.name)), mp3 = files.find(f => /\.mp3$/i.test(f.name));
-    if (!jsonFile || !mp3) { showToast(t('spkNeedBoth')); return; }
-    let meta = null;
-    try { meta = JSON.parse(await jsonFile.text()); } catch (e) { meta = null; }
-    if (!meta || !Array.isArray(meta.sentences) || !meta.sentences.length || !meta.voice) { showToast(t('spkBadJson')); return; }
-    if (meta.audio !== mp3.name) { showToast(t('spkMismatch').replace('{audio}', meta.audio || '?')); return; }
+    const jsonFile = files.find(f => /\.json$/i.test(f.name)), mp3s = files.filter(f => /\.mp3$/i.test(f.name));
     bsImporting = true;
     try {
-        await bsPut({ id: key + '\u0000' + meta.voice, bookKey: key, voice: meta.voice, audioName: mp3.name,
-            timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences,
-            lexicon: meta.lexicon && typeof meta.lexicon === 'object' ? meta.lexicon : null, blob: mp3 });
+        const items = [];
+        if (jsonFile) {
+            let meta = null;
+            try { meta = JSON.parse(await jsonFile.text()); } catch (e) { meta = null; }
+            if (!bsValidMeta(meta)) { showToast(t('spkBadJson')); return; }
+            const mp3 = mp3s.find(f => f.name === meta.audio);
+            if (!mp3) { showToast(t('spkMismatch').replace('{audio}', meta.audio || '?')); return; }
+            items.push({ meta, blob: mp3, name: mp3.name });
+        }
+        for (const f of mp3s) {
+            if (items.some(x => x.name === f.name)) continue;
+            const packed = await bsUnpack(f);
+            if (packed && bsValidMeta(packed.meta)) items.push({ ...packed, name: f.name });
+        }
+        if (!items.length) { showToast(t('spkNeedBoth')); return; }
+        // a narration made for another book: its page count differs from the open PDF's
+        const other = items.find(x => x.meta.pdf && x.meta.pdf.pages && state.format === 'pdf' && state.totalPages && x.meta.pdf.pages !== state.totalPages);
+        if (other) { showToast(t('spkWrongBook').replace('{book}', other.meta.pdf.name || '?')); return; }
+        for (const { meta, blob, name } of items) {
+            await bsPut({ id: key + '\u0000' + meta.voice, bookKey: key, voice: meta.voice, audioName: name,
+                timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences,
+                lexicon: meta.lexicon && typeof meta.lexicon === 'object' ? meta.lexicon : null, blob });
+        }
         await bsRefresh();
-        renderBookAudioDialog(t('spkSaved').replace('{voice}', meta.voice).replace('{n}', meta.sentences.length));
+        const last = items[items.length - 1].meta;
+        renderBookAudioDialog(t('spkSaved').replace('{voice}', items.map(x => x.meta.voice).join(', ')).replace('{n}', last.sentences.length));
     } catch (e) {
         showToast(t('spkFailed'));
     } finally { bsImporting = false; }
@@ -355,9 +399,10 @@ function bsSpeakTap(node, text, isWord) {
 
 // ---------- i18n ----------------------------------------------------------------------------------------------------------------------------
 Object.assign(I18N, {
-    spkPick: { uk: 'Озвучка книги (MP3 + JSON)', en: 'Book narration (MP3 + JSON)', fr: 'Narration du livre (MP3 + JSON)', ru: 'Озвучка книги (MP3 + JSON)', es: 'Narración del libro (MP3 + JSON)' },
+    spkPick: { uk: '🗣️ Озвучка книги', en: '🗣️ Book narration', fr: '🗣️ Narration du livre', ru: '🗣️ Озвучка книги', es: '🗣️ Narración del libro' },
     spkRemove: { uk: 'Видалити озвучку', en: 'Remove narration', fr: 'Supprimer la narration', ru: 'Удалить озвучку', es: 'Eliminar la narración' },
-    spkNeedBoth: { uk: 'Виберіть файл .mp3 і файл .json цього самого голосу.', en: 'Choose one .mp3 and one .json file of the same voice.', fr: 'Choisissez un fichier .mp3 et un fichier .json de la même voix.', ru: 'Выберите файл .mp3 и файл .json одного голоса.', es: 'Elija un archivo .mp3 y un archivo .json de la misma voz.' },
+    spkNeedBoth: { uk: 'Це не файл озвучки. Виберіть файл озвучки .mp3 (або пару .mp3 + .json).', en: 'Not a narration file. Choose a narration .mp3 (or an .mp3 + .json pair).', fr: 'Ce n’est pas un fichier de narration. Choisissez un .mp3 de narration (ou une paire .mp3 + .json).', ru: 'Это не файл озвучки. Выберите файл озвучки .mp3 (или пару .mp3 + .json).', es: 'No es un archivo de narración. Elija un .mp3 de narración (o un par .mp3 + .json).' },
+    spkWrongBook: { uk: 'Ця озвучка для іншої книги: {book}. Відкрийте її і підключіть там.', en: 'This narration belongs to another book: {book}. Open that book and add it there.', fr: 'Cette narration appartient à un autre livre : {book}. Ouvrez ce livre et ajoutez-la là.', ru: 'Эта озвучка для другой книги: {book}. Откройте её и подключите там.', es: 'Esta narración es de otro libro: {book}. Abra ese libro y añádala allí.' },
     spkBadJson: { uk: 'Це не файл озвучки: не вдалося прочитати JSON.', en: 'Not a narration file: the JSON could not be read.', fr: 'Ce n’est pas un fichier de narration : JSON illisible.', ru: 'Это не файл озвучки: JSON не читается.', es: 'No es un archivo de narración: no se pudo leer el JSON.' },
     spkMismatch: { uk: 'JSON описує файл {audio}. Виберіть саме цей MP3.', en: 'The JSON describes the file {audio}. Choose that MP3.', fr: 'Le JSON décrit le fichier {audio}. Choisissez ce MP3.', ru: 'JSON описывает файл {audio}. Выберите этот MP3.', es: 'El JSON describe el archivo {audio}. Elija ese MP3.' },
     spkSaved: { uk: 'Озвучку збережено: голос {voice}, речень: {n}.', en: 'Narration saved: voice {voice}, sentences: {n}.', fr: 'Narration enregistrée : voix {voice}, phrases : {n}.', ru: 'Озвучка сохранена: голос {voice}, предложений: {n}.', es: 'Narración guardada: voz {voice}, frases: {n}.' },

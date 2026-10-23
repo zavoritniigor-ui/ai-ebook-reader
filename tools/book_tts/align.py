@@ -12,6 +12,7 @@ so the times are times in the buffer the reader gets.
 
 Usage:
   python3 align.py "~/Books/Par Ici/tts/a1-full/fr-CA-SylvieNeural_p1-162.json"   # rewrites it in place (keeps a .bak)
+  python3 align.py --marked JSON     # only the sentences repair.py re-synthesized
 
 Needs: torch, torchaudio (2.5), numpy, num2words; ffmpeg. A GPU is used when there is one.
 """
@@ -146,12 +147,14 @@ def cuts(spans, env, duration):
     return out
 
 
-def align_file(path, aligner):
+def align_file(path, aligner, marked=False):
     with open(path, encoding='utf-8') as f:
         meta = json.load(f)
     with open(os.path.join(os.path.dirname(path), meta['audio']), 'rb') as f:
         audio = f.read()
     for n, sentence in enumerate(meta['sentences']):
+        if marked and not sentence.pop('realign', False):
+            continue
         blob = audio[sentence['bytes'][0]:sentence['bytes'][1]]
         play = decode(blob, PLAY_RATE)
         duration = len(play) / PLAY_RATE
@@ -171,12 +174,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('json', nargs='+')
     parser.add_argument('--out', help='write here instead of rewriting the JSON (one input only)')
+    parser.add_argument('--marked', action='store_true', help='only the sentences repair.py marked "realign"')
     args = parser.parse_args()
     aligner = Aligner()
     print(f'device: {aligner.device}', file=sys.stderr)
     for name in args.json:
         path = os.path.expanduser(name)
-        meta = align_file(path, aligner)
+        meta = align_file(path, aligner, args.marked)
         target = os.path.expanduser(args.out) if args.out else path
         if target == path and not os.path.exists(path + '.bak'):
             shutil.copyfile(path, path + '.bak')
