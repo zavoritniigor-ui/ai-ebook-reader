@@ -79,5 +79,27 @@ check('tablet: every button is inside the popup',
       """(() => { const tr = els.tooltip.getBoundingClientRect(); return %s.every(b => { const r = b.getBoundingClientRect();
         return r.width > 0 && r.left >= tr.left - 1 && r.right <= tr.right + 1 && r.top >= tr.top - 1 && r.bottom <= tr.bottom + 1; }); })()""" % BUTTONS)
 
+# ---- the translation's 🔊 holds only while its window is open (owner: then back to the book's language) ----------
+check('speak side: the translation speaker makes the translation the read side',
+      "(() => { setSpeakSide('original'); els.ttSpeakTranslation.click(); return state.speakSide === 'translation'; })()")
+check('speak side: closing the window (✕) returns it to the book\'s language, also in storage',
+      """(async () => { els.ttCloseBtn.click(); await new Promise(r => setTimeout(r, 0));
+        return els.tooltip.style.display === 'none' && state.speakSide === 'original' && localStorage.getItem('reader_speak_side') === 'original'; })()""")
+check('speak side: the auto-hide of the window returns it too',
+      r"""(async () => {
+        const p = els.pages.querySelector('p'), r = document.createRange(); r.setStart(p.firstChild, 0); r.setEnd(p.firstChild, 2);
+        const b = r.getBoundingClientRect(); state.lastSelectedRange = r;
+        handleWordOrSelection('Le', b.left + 5, b.top + 5, b);
+        await new Promise(res => setTimeout(res, 300));
+        els.ttSpeakTranslation.click();
+        const during = state.speakSide === 'translation';
+        scheduleTooltipHide(10);
+        await new Promise(res => setTimeout(res, 100));
+        return during && els.tooltip.style.display === 'none' && state.speakSide === 'original'; })()""")
+c.js("localStorage.setItem('reader_speak_side', 'translation'); 1")
+c.call('Page.navigate', url=URL)
+c.wait("document.readyState==='complete' && !document.body.inert && typeof setSpeakSide==='function'", timeout=30)
+check('speak side: a translation side stored by an older version starts as the book\'s language', "state.speakSide === 'original'")
+
 check('no application errors', "!window.__errors || window.__errors.length === 0")
 print('ALL TOOLTIP TOUCH UX CHECKS PASSED')
