@@ -222,6 +222,8 @@ function sharedAiProvider(preferred) {
     return [preferred, 'openai', 'groq'].find(p => p && sharedAiProviders[p] === true) || null;
 }
 function aiAvailable() { return !!aiEffectiveKey(aiProviderForTask('default')); }
+// A text request can be answered: by the cloud AI, or by the model installed on the device (js/device-llm.js) when there is none.
+function aiCanAnswer() { return aiAvailable() || (typeof deviceLlmReady === 'function' && deviceLlmReady()); }
 // ---- Task routing --------------------------------------------------------------------------------------------------
 // With routing 'auto' (default) EVERY request goes to Groq first (answers in a second or two), IF a Groq key is stored or the
 // site has a shared one -- whatever other keys the learner saved; OpenAI is only the backup: when Groq does not answer (network
@@ -602,7 +604,37 @@ function callAIVision(prompt, dataUrl, signal, options) { return requestAI(promp
 // Shared key only: when the shared provider refuses (bad key, quota, provider outage), the request is repeated ONCE on the
 // other shared provider, so visitors keep working.
 const SHARED_FALLBACK_STATUS = s => s === 401 || s === 403 || s === 429 || s >= 500;
+// The on-device model (js/device-llm.js) answers when no cloud AI can: offline or without any key at once, otherwise after Groq
+// and its backup both failed. Not for a picture (it reads text only) and not for a caller that chose its provider itself
+// (translation runs its own order and asks the device in js/translation.js).
 async function requestAI(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
+    const device = !dataUrl && !options.provider && typeof deviceLlmReady === 'function' && deviceLlmReady();
+    if (device && (navigator.onLine === false || !aiAvailable())) return requestDeviceAI(prompt, signal, task, onDelta, options);
+    try { return await requestCloudAI(prompt, dataUrl, signal, task, onDelta, options); }
+    catch (err) {
+        if (!device || signal?.aborted || !err || err.name === 'AbortError') throw err;
+        return requestDeviceAI(prompt, signal, task, onDelta, options);
+    }
+}
+async function requestDeviceAI(prompt, signal, task, onDelta, options) {
+    const meta = options.meta || (options.meta = {});
+    for (const k of Object.keys(meta)) delete meta[k];
+    Object.assign(meta, { provider: 'device', model: DEVICE_LLM_CATALOG.model.name, task });
+    const started = performance.now();
+    try {
+        const text = sanitizeAI(await deviceLlmGenerate(prompt, signal, { task, onDelta }));
+        meta.elapsedMs = Math.round(performance.now() - started);
+        meta.rawChars = text.length;
+        recordAiRequest({ task, provider: 'device', model: meta.model, ok: true, ms: meta.elapsedMs });
+        return text;
+    } catch (err) {
+        if (err && err.name === 'AbortError') throw err;
+        meta.elapsedMs = Math.round(performance.now() - started);
+        recordAiRequest({ task, provider: 'device', model: meta.model, ok: false, reason: err && err.deviceLlm || 'error', ms: meta.elapsedMs });
+        throw new AiRequestError(err && err.deviceLlm === 'too long' ? t('dlTooLong') : t('offTestFail').replace('{why}', err && err.message || '—'), 'device', { providerMessage: err && err.message });
+    }
+}
+async function requestCloudAI(prompt, dataUrl, signal, task = 'default', onDelta, options = {}) {
     const probe = ensureSharedAiProviders();
     if (probe) await probe;   // only while the site's shared keys are still unknown; otherwise the request starts at once, as always
     const forced = options.provider && Object.hasOwn(AI_PROVIDERS, options.provider) ? options.provider : null;

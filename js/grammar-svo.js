@@ -140,7 +140,9 @@ function createStreamingUpdater(content, task, panel, mode, requestId) {
 }
 
 async function startAiTask(contextText, mode, userPrompt = "") {
-    if (!aiAvailable()) return showToast(t('needKey'));
+    // Without a cloud key the on-device model (js/device-llm.js) still answers, if it is installed.
+    const deviceFirst = typeof deviceLlmReady === 'function' && deviceLlmReady() && (navigator.onLine === false || !aiAvailable());
+    if (!aiCanAnswer()) return showToast(t('needKey'));
     // Ручне виділення (на відміну від тапу по слову чи кнопки "розгорнути до
     // абзацу") нічим не обмежене на вході — без цього протягнутих кілька сторінок
     // пішло б у промпт цілком.
@@ -176,16 +178,19 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     const taskType = mode === 'level' ? 'language_level' : 'ask';
 
     // For streaming tasks (ask, language_level on OpenAI), provide incremental callback
-    const isStreaming = (aiProviderForTask(taskType) === 'openai') && (mode === 'ask' || mode === 'level');
+    const isStreaming = (aiProviderForTask(taskType) === 'openai' || deviceFirst) && (mode === 'ask' || mode === 'level');
     const onDelta = isStreaming ? createStreamingUpdater(content, task, panel, mode, requestId) : undefined;
 
     try {
-        const text = await callAI(prompt, task.signal, taskType, onDelta);
+        const meta = {};
+        const text = await callAI(prompt, task.signal, taskType, onDelta, { meta });
         if (!task.current()) { settleCancelledAskRequest(task, requestId, retry); return; }   // see A3 above
         panel.classList.remove('loading'); panel.classList.add('ready'); // Вмикаємо зелений неон!
         // Final render with safeHtml (even if streaming already updated incrementally,
         // this ensures the final state is properly sanitized)
         content.innerHTML = safeHtml(text, true);
+        // The on-device model is weaker than the cloud AI: the reader sees who answered.
+        if (meta.provider === 'device') content.append(Object.assign(document.createElement('p'), { className: 'tt-note device-llm-mark', textContent: t('dlMark') + ' · ' + DEVICE_LLM_CATALOG.model.name }));
     } catch (err) {
         // Cancelled (incl. the page/book changing under the request): not a server error -- see A3 above.
         if (isAskAbort(err, task)) { settleCancelledAskRequest(task, requestId, retry); return; }
@@ -1023,7 +1028,7 @@ document.getElementById('btn-lang-level').onclick = () => {
     if (!frag) { showToast(t('selectFirst')); return; }
     // No AI configured: say so and change nothing -- the reader's typed Ask question stays in the field and no
     // "help requested" is recorded for a request that never happened (audit P1-3). The panel still opens.
-    if (!aiAvailable()) { showToast(t('needKey')); els.askPanel.classList.add('expanded'); return; }
+    if (!aiCanAnswer()) { showToast(t('needKey')); els.askPanel.classList.add('expanded'); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
     if (els.askInput) els.askInput.value = '';
     // An explicit selection action: this IS the new context a typed follow-up question may use.
@@ -1047,7 +1052,7 @@ document.getElementById('btn-explain').onclick = () => {
     if (!frag) { showToast(t('selectFirst')); return; }
     // No AI configured: say so and change nothing -- the reader's typed Ask question stays in the field and no
     // "help requested" is recorded for a request that never happened (audit P1-3). The panel still opens.
-    if (!aiAvailable()) { showToast(t('needKey')); els.askPanel.classList.add('expanded'); return; }
+    if (!aiCanAnswer()) { showToast(t('needKey')); els.askPanel.classList.add('expanded'); return; }
     if (context.lastReaderHelpContext) recordHelpForSpan(context.lastReaderHelpContext, 'ask_ai');
     if (els.askInput) els.askInput.value = '';
     // An explicit selection action: this IS the new context a typed follow-up question may use.
@@ -1440,7 +1445,7 @@ async function ensureAdjectiveForms(item, langCode, { force = false } = {}) {
     const cacheKey = 'adj|' + langCode + '|' + item.lemma.toLowerCase();
     const cached = grammarContext.paradigmCache.get(cacheKey);
     if (cached && accept(cached)) return;
-    if (!aiAvailable()) { settle({ formsState: 'error', formsError: t('needKey'), formsTask: undefined }); return; }
+    if (!aiCanAnswer()) { settle({ formsState: 'error', formsError: t('needKey'), formsTask: undefined }); return; }
     const prompt = buildAdjectiveFormsPrompt(item.lemma, langCode);
     const task = beginAsyncTask('grammarParadigm');
     // The state belongs to THIS request: a card left while it was loading (the request is cancelled) is asked afresh when it is
@@ -1660,7 +1665,7 @@ function showGrammarLookupItem(item, langCode) {
 async function runGrammarLookup(rawQuery, { query, pos } = {}) {
     const text = normalizeGrammarText(rawQuery).slice(0, 60);
     if (!text) { setGrammarLookupStatus(t('grammarLookupEmpty')); return; }
-    if (!aiAvailable()) { showToast(t('needKey')); return; }
+    if (!aiCanAnswer()) { showToast(t('needKey')); return; }
     const langCode = grammarLookupLanguage();
     const wantPos = pos || (grammarContext.mode === 'adjectives' ? 'adjective' : 'verb');
     const shown = query || text;                       // an alternative keeps the learner's original word on screen
