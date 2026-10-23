@@ -224,6 +224,30 @@ check('12 Tapping bare piste 7 when both CD1 and CD2 have track 7 shows the ambi
     return !!toast && toast.classList.contains('show') && toast.textContent.includes('piste 7');
 })()""")
 
+check('12b Tapping a piste whose track was not chosen opens the dialog to add it (not just a toast)', """(() => {
+    const dialog = document.getElementById('book-audio-dialog');
+    if (dialog.open) dialog.close();
+    const btn = document.createElement('button');
+    btn.dataset.cd = '1'; btn.dataset.track = '42';
+    tapBookAudioMark(btn);
+    const msg = dialog.querySelector('.ba-message');
+    const ok = dialog.open && !msg.hidden && msg.textContent.includes('piste 42');
+    dialog.close();
+    return ok;
+})()""")
+
+check('12c A book narration chosen as tracks is not saved as a track («Par ici 3-4 …» is not track 4)', """(async () => {
+    const safe = n => [(n >> 21) & 0x7f, (n >> 14) & 0x7f, (n >> 7) & 0x7f, n & 0x7f];
+    const meta = { voice: 'test-voice', sentences: [{ page: 1, text: 'Bonjour.', bytes: [0, 4], duration: 1, words: [] }] };
+    const body = [...new TextEncoder().encode('\\u0003application/json\\u0000narration.json\\u0000ai-ebook-reader-narration\\u0000' + JSON.stringify(meta))];
+    const frame = [...new TextEncoder().encode('GEOB'), ...safe(body.length), 0, 0, ...body];
+    const bytes = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, ...safe(frame.length), ...frame, 0xff, 0xfb, 0x90, 0]);
+    const before = bookAudio.tracks.length;
+    await importBookAudio([new File([bytes], 'Par ici 3-4 - Kokoro (ff_siwis).mp3', { type: 'audio/mpeg' })]);
+    return bookAudio.tracks.length === before && !bookAudio.tracks.some(r => r.track === 4)
+        && bsTrace.some(x => x.ev === 'tracks-narration') || JSON.stringify([before, bookAudio.tracks.map(r => r.name)]);
+})()""")
+
 # ---------------------------------------------------------------- 5. Rotated PDF page (page 2 has /Rotate 90)
 c.js("navigateToPdfPage(2, { instant: true }); 1")
 check('13 Rotated page 2 builds its .pdf-audio-marker for CD1 - piste 3', """(() => {

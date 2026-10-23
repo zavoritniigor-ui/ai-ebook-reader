@@ -43,17 +43,19 @@ META = json.loads(SPEECH_JSON)
 WORDS = [[(w['start'] / 1000, w['end'] / 1000) for w in s['words']] for s in META['sentences']]
 
 
-def packed(pages):
+def packed(pages, meta=META):
     """One-file narration as tools/book_tts/pack.py writes it: the JSON in an ID3v2.4 GEOB frame before the MP3."""
     def safe(n):
         return bytes([(n >> 21) & 0x7f, (n >> 14) & 0x7f, (n >> 7) & 0x7f, n & 0x7f])
-    meta = dict(META, pdf={'name': 'Speech_test.pdf', 'pages': pages})
+    meta = dict(meta, pdf={'name': 'Speech_test.pdf', 'pages': pages})
     body = (b'\x03application/json\x00narration.json\x00ai-ebook-reader-narration\x00'
             + json.dumps(meta, ensure_ascii=False).encode('utf-8'))
     frame = b'GEOB' + safe(len(body)) + b'\x00\x00' + body
     return b'ID3\x04\x00\x00' + safe(len(frame)) + frame + SPEECH_MP3
 
 
+# another book with the same page count: the same timings over other words
+OTHER_TEXT = dict(META, sentences=[dict(x, text=t) for x, t in zip(META['sentences'], ['Nous partons pour Lyon.', 'Elle aime le chocolat.'])])
 ALONE = {k: (v['start'] / 1000, v['end'] / 1000) for k, v in META['lexicon'].items()}   # words said on their own (words.py)
 
 c = CDP()
@@ -91,6 +93,7 @@ c.js(f"""(async () => {{
     window.__mp3 = toFile('{SPEECH_MP3_B64}', 'speech_test.mp3', 'audio/mpeg');
     window.__json = toFile('{SPEECH_JSON_B64}', 'speech_test.json', 'application/json');
     window.__packed = toFile('{base64.b64encode(packed(1)).decode()}', 'Speech test - voice.mp3', 'audio/mpeg');
+    window.__sameSize = toFile('{base64.b64encode(packed(1, OTHER_TEXT)).decode()}', 'Same size - voice.mp3', 'audio/mpeg');
     window.__otherBook = toFile('{base64.b64encode(packed(99)).decode()}', 'Other book - voice.mp3', 'audio/mpeg');
 }})()""")
 
@@ -266,6 +269,10 @@ check('13d A narration made for another book (other page count) is refused', """
     await bsRemoveFromDialog();
     await bsImport([window.__otherBook]);
     return bsSets.list.length === 0;
+})()""", timeout=20)
+check('13d2 Another book with the same page count is refused by its text', """(async () => {
+    await bsImport([window.__sameSize]);
+    return bsSets.list.length === 0 && bsTrace.some(x => x.ev === 'import-refused' && x.why === 'another book (text differs)');
 })()""", timeout=20)
 check('13e A plain MP3 that is not a narration is refused', """(async () => {
     await bsImport([new File([new Uint8Array([0xff, 0xfb, 0x90, 0x00, 1, 2, 3, 4, 5, 6, 7, 8])], 'song.mp3', { type: 'audio/mpeg' })]);

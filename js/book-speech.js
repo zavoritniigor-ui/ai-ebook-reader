@@ -206,6 +206,28 @@ async function bsUnpack(file) {
     }
     return null;
 }
+// Is the open PDF the book this narration was made from? Its page count alone is not enough («Par ici» 3-4, 5-6 and 7-8
+// all have 203 pages): a few sentences spread over the narration must be printed on their pages. Returns 'same', 'other',
+// or 'unknown' when the pages have no text to compare (a scan).
+async function bsSameBook(meta) {
+    const doc = state.pdfDoc;
+    if (state.format !== 'pdf' || !doc) return 'unknown';
+    const long = meta.sentences.filter(s => s.page >= 1 && s.page <= doc.numPages && bsKeys(s.text).length >= 4);
+    if (!long.length) return 'unknown';
+    const pick = [...new Set([0.1, 0.25, 0.4, 0.55, 0.7, 0.85].map(f => long[Math.floor(f * (long.length - 1))]))];
+    let checked = 0, found = 0;
+    for (const s of pick) {
+        let printed;
+        try { printed = new Set(bsKeys((await (await doc.getPage(s.page)).getTextContent()).items.map(it => it.str).join(' '))); }
+        catch (e) { continue; }
+        if (printed.size < 3) continue;   // a scanned or picture page
+        const keys = bsKeys(s.text);
+        checked++;
+        if (keys.filter(k => printed.has(k)).length >= keys.length * 0.6) found++;
+    }
+    if (!checked) return 'unknown';
+    return found * 2 >= checked ? 'same' : 'other';
+}
 function bsValidMeta(meta) { return !!meta && Array.isArray(meta.sentences) && meta.sentences.length > 0 && !!meta.voice; }
 
 let bsImporting = false;
@@ -236,6 +258,13 @@ async function bsImport(fileList) {
         // a narration made for another book: its page count differs from the open PDF's
         const other = items.find(x => x.meta.pdf && x.meta.pdf.pages && state.format === 'pdf' && state.totalPages && x.meta.pdf.pages !== state.totalPages);
         if (other) { bsNote('import-refused', { why: 'another book', its: other.meta.pdf, open: state.totalPages }); showToast(t('spkWrongBook').replace('{book}', other.meta.pdf.name || '?')); return; }
+        for (const x of items) {
+            const same = await bsSameBook(x.meta);
+            if (same !== 'other') continue;
+            bsNote('import-refused', { why: 'another book (text differs)', its: x.meta.pdf || null, open: state.totalPages });
+            showToast(t('spkWrongBook').replace('{book}', (x.meta.pdf && x.meta.pdf.name) || x.name));
+            return;
+        }
         for (const { meta, blob, name } of items) {
             await bsPut({ id: key + '\u0000' + meta.voice, bookKey: key, voice: meta.voice, audioName: name,
                 timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences,
