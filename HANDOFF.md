@@ -11,11 +11,11 @@
 - **Claude Code** (Branch: `chore/remove-dictionaries`, PR #282 open — dictionaries removed + bilingual one-language-per-voice; PR #281 merged):
   - Selection/narration/Grammar work below; also took over the book narrations of the previous narration agent.
   - Isolation rule: Do NOT touch or edit files in the main folder while Claude is active.
-  - **Stopped 2026-10-23 22:55 (owner switched the computer off). Resume:**
-    - Complete French: `bash ~/tools/book-tts/cf_lang.sh` (FR then EN, each voice only its language's sentences + unclear ones via `generate.py --lang`; cached sentences reused; then align → words → repair → rejoin → align --marked → pack into `~/Books/Complete French/Озвучка Complete French`). Stopped while the FR run was assembling (18 667 sentences, all synthesized). Then upload: `rclone copy "~/Books/Complete French/Озвучка Complete French" "gdrive:Озвучка Complete French"`.
-    - Bescherelle upload was interrupted: `rclone copy "~/Books/Bescherelle/Озвучка Bescherelle" "gdrive:Озвучка Bescherelle"`, then `rclone check --size-only`.
-    - Done and on Drive (rclone check: 0 differences): «Озвучка Par ici», 7 rebuilt files (one-letter words recorded, line-end broken words re-said) + updated «ЯК ПІДКЛЮЧИТИ.txt»; the owner must re-import them on the tablet.
-    - Bescherelle Antoine + Sylvie packed (aligned, no words said alone: conjugation tables, owner's choice) in `~/Books/Bescherelle/Озвучка Bescherelle`.
+  - **State 2026-10-24 (all narration jobs finished; nothing running):**
+    - Complete French: FR (`ff_siwis`, 18 667 sentences, 579.6 MB) and EN (`af_heart`, 14 899 sentences, 518.4 MB) packed in `~/Books/Complete French/Озвучка Complete French` and uploaded to `gdrive:Озвучка Complete French` (rclone check --size-only: 0 differences). Rebuild: `bash ~/tools/book-tts/cf_lang.sh` (cached sentences reused).
+    - Bescherelle Antoine + Sylvie (aligned, no words said alone: conjugation tables, owner's choice) in `~/Books/Bescherelle/Озвучка Bescherelle`, uploaded to `gdrive:Озвучка Bescherelle` (rclone check: 0 differences).
+    - «Озвучка Par ici» on Drive (rclone check: 0 differences): 7 rebuilt files (one-letter words recorded, line-end broken words re-said) + updated «ЯК ПІДКЛЮЧИТИ.txt».
+    - Owner must re-import all narration files on the tablet («Аудіо до книги» → «Озвучка книги»).
     - Highlight stress harness kept at `~/tools/book-tts/hl_stress.py` (real touch/mouse drags on real PDF pages).
 
 ## Open Product Tasks Pending Device Verification
