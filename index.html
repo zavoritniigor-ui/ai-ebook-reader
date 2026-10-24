@@ -1232,6 +1232,10 @@
         .grammar-grid-row.current .grammar-grid-label { color: var(--text-color); font-weight: 650; }
         .grammar-grid-row.person { background: var(--hl-soft); box-shadow: inset 4px 0 0 var(--hl-ring); }
         .grammar-grid-row.person .grammar-grid-label { color: var(--text-color); }
+        /* a verb's rows are said with one tap (js/grammar-svo.js grammarSpeakRow) */
+        .grammar-grid-row.speakable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .grammar-grid-row.speakable:hover { background: var(--hl-soft); }
+        .grammar-grid-row.speaking { background: var(--hl-bg); transition: background .2s; }
         .grammar-grid-change { font-family: ui-monospace, monospace; font-size: 12px; opacity: .7; white-space: nowrap; }
         .grammar-grid-change.irregular { opacity: 1; color: #d9822b; font-weight: 700; }
         .grammar-grid-note { font-size: 13px; opacity: .7; margin: 4px 0 8px; }
@@ -1975,7 +1979,7 @@
     <script src="js/ui-tooltip.js?v=2cc75b85d696"></script>
     <script src="js/translation.js?v=7f9ad4799a09"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
-    <script src="js/grammar-svo.js?v=09f4a532efb2"></script>
+    <script src="js/grammar-svo.js?v=96b403646073"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
@@ -1995,8 +1999,8 @@
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
     <script src="js/pdf-render.js?v=135d442641bb"></script>
-    <script src="js/book-audio.js?v=22a822b11e9e"></script>
-    <script src="js/book-speech.js?v=8cb0274346cc"></script>
+    <script src="js/book-audio.js?v=d2a67e5a38f9"></script>
+    <script src="js/book-speech.js?v=6cf9abbc5a1a"></script>
     <script src="js/formats.js?v=0adff3b5d013"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=a266be538226"></script>

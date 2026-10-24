@@ -320,5 +320,43 @@ check('13g A book without narration: the tap is recorded as falling to the syste
     return said === false && last.ev === 'tap' && last.why === 'no narration for this book' || JSON.stringify(last);
 })()""")
 
+# A narration imported as a pronunciation dictionary (Bescherelle) serves every book; the Grammar panel's conjugation rows
+# are said with one tap: a recorded sentence saying exactly the row, else its words said alone, else the system voice.
+check('16 A narration imported as a pronunciation dictionary is kept for every book (no book narration left)', """(async () => {
+    await bsRemoveFromDialog();
+    openBookAudioDialog('');
+    await bsImportDictionary([window.__packed]);
+    const status = document.querySelector('#book-audio-dialog .ba-status').textContent;
+    document.getElementById('book-audio-dialog').close();
+    return bsSets.list.length === 0 && bsSets.global.length === 1 && bsSets.global[0].sentences.length === 2
+        && status.includes(t('spkDictCount').replace('{n}', 1)) || status;
+})()""", timeout=20)
+check('16b A phrase that is a whole recorded sentence plays that sentence, whole', """(() => {
+    const f = bsPhraseAnywhere('Je viens du Maroc.');
+    return !!f && f.plan.length === 1 && f.plan[0].i === 0 && f.plan[0].word === undefined || JSON.stringify(f && f.plan);
+})()""")
+check('16c A phrase no sentence says («je viens») plays its words said alone', """(() => {
+    const f = bsPhraseAnywhere('je viens');
+    return !!f && f.plan.map(p => p.word).join() === 'je,viens' || JSON.stringify(f && f.plan);
+})()""")
+check('16d A phrase with a word nobody recorded is left to the system voice', "bsPhraseAnywhere('nous venons') === null")
+c.js("""(() => {
+    window.__spoke = 0; bsLast = null;
+    window.__sayIn = []; const sayIn = window.speakInLang; window.speakInLang = (text, lang, ...rest) => { __sayIn.push([text, lang]); };
+    renderGrammarFocusDetail({ pos: 'verb', surface: 'viens', lemma: 'venir', features: {},
+        forms: { 'je': 'viens', 'tu': 'viens', 'il / elle / on': 'vient', 'nous': 'venons', 'vous': 'venez', 'ils / elles': 'viennent' } }, 'fr');
+    return 1;
+})()""")
+check("17 A verb's conjugation rows in Grammar are buttons saying «je viens», «nous venons»…", """(() => {
+    const rows = [...els.grammarContent.querySelectorAll('.grammar-grid-row.speakable')];
+    return rows.length === 6 && rows[0].getAttribute('aria-label') === 'je viens' && rows[2].getAttribute('aria-label') === 'il vient' || rows.map(r => r.getAttribute('aria-label')).join();
+})()""")
+c.js("els.tooltip.style.display = 'none'; els.grammarContent.querySelector('.grammar-grid-row.speakable').click(); 1")
+check('17b One tap on «je viens»: its words said alone from the dictionary, no window, no system voice', """(() =>
+    !!bsLast && bsLast.map(p => p.word).join() === 'je,viens' && __sayIn.length === 0 && els.tooltip.style.display !== 'flex' || [JSON.stringify(bsLast), JSON.stringify(__sayIn)].join(' | '))()""")
+c.js("bsLast = null; els.grammarContent.querySelectorAll('.grammar-grid-row.speakable')[3].click(); 1")
+check('17c One tap on «nous venons» (not recorded): the system voice, in French', "bsLast === null && JSON.stringify(__sayIn) === JSON.stringify([['nous venons', 'fr']]) || JSON.stringify(__sayIn)")
+check('17d Removing the dictionaries empties them', """(async () => { await bsRemoveDictionaries(); return bsSets.global.length === 0; })()""")
+
 check('14 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK SPEECH CHECKS PASSED')

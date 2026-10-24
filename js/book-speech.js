@@ -19,7 +19,9 @@ const BS_FADE = 0.008;    // a short fade in/out so the cut makes no click
 const BS_GAP = 0.25;      // the pause between two sentences of one selection
 const BS_WORD_GAP = 0.08; // the pause between two words said alone (a selected part of a sentence)
 const BS_DECODED_MAX = 24;
-const bsSets = { key: null, list: [] };   // the speech sets of the open book: { id, voice, audioName, sentences, blob }
+const bsSets = { key: null, list: [], global: [] };   // the speech sets of the open book: { id, voice, audioName, sentences, blob };
+// global: narrations imported as pronunciation dictionaries for every book (Bescherelle), stored under BS_GLOBAL
+const BS_GLOBAL = '\u0001dictionary';
 const bsDecoded = new Map();              // «set#sentence» -> AudioBuffer, least recently used first
 const bsPageCache = new Map();            // «set#page» -> the narration's words on that page, in reading order
 let bsCtx = null, bsCurrent = null, bsLast = null;   // bsLast: what was played last ([{ i, from, to }]), for the tests
@@ -141,12 +143,14 @@ async function bsRefresh() {
     bsDecoded.clear();
     bsPageCache.clear();
     bsReadStored();
+    try { bsSets.global = (await bsList(BS_GLOBAL)).filter(r => r && Array.isArray(r.sentences) && r.blob); }
+    catch (e) { bsSets.global = []; }
     if (!key) { bsSets.list = []; return; }
     try {
         const rows = await bsList(key);
         if (bsSets.key !== key) return;
         bsSets.list = rows.filter(r => r && Array.isArray(r.sentences) && r.blob);
-        bsNote('refresh', { book: key, rows: rows.length, usable: bsSets.list.length });
+        bsNote('refresh', { book: key, rows: rows.length, usable: bsSets.list.length, dictionaries: bsSets.global.length });
     } catch (e) { bsSets.list = []; bsNote('refresh', { book: key, error: String(e && (e.name || e.message) || e) }); }
 }
 // For the report: which books have a narration or tracks here (the ids start with the book key), and the storage quota.
@@ -169,6 +173,7 @@ function bsReport() {
         format: state.format, book: state.bookKey || null, pages: state.totalPages || null,
         narrations: bsSets.list.map(s => ({ voice: s.voice, sentences: s.sentences.length, timing: s.timing,
             words: s.lexicon ? Object.keys(s.lexicon).length : 0, mb: s.blob ? Math.round(s.blob.size / 1048576) : null })),
+        dictionaries: bsSets.global.map(s => ({ voice: s.voice, name: s.audioName, sentences: s.sentences.length, words: s.lexicon ? Object.keys(s.lexicon).length : 0 })),
         active: set ? set.voice : null, audio: bsCtx ? bsCtx.state : 'not started',
         markers: document.querySelectorAll('.pdf-audio-marker').length,
         tracks: typeof bookAudio !== 'undefined' ? bookAudio.tracks.length : null,
@@ -433,7 +438,7 @@ async function bsPlayPlan(set, plan, what) {
     bsReplayable = { set, plan };
     try {
         const pieces = [];
-        for (const p of plan) pieces.push({ buf: await bsDecode(set, p.word !== undefined ? '@' + p.word : p.i), from: p.from, to: p.to,
+        for (const p of plan) pieces.push({ buf: await bsDecode(p.set || set, p.word !== undefined ? '@' + p.word : p.i), from: p.from, to: p.to,
             gap: p.word !== undefined ? BS_WORD_GAP : BS_GAP });
         if (seq !== bsSeq) return true;   // a newer tap (the expand button, another word) plays instead
         bsPlay(pieces);
@@ -445,7 +450,7 @@ async function bsPlayPlan(set, plan, what) {
 function bsTakeReplay() { const r = bsReplayable; bsReplayable = null; return r; }
 // The translation window's 🔊: plays that word or passage again, from its start (also when pressed while it plays).
 function bsReplay(r) {
-    if (!r || !bsSets.list.includes(r.set)) return false;
+    if (!r || !(bsSets.list.includes(r.set) || bsSets.global.includes(r.set))) return false;
     bsNote('replay', { pieces: r.plan.length });
     bsPlayPlan(r.set, r.plan, 'replay');
     return true;
@@ -510,6 +515,84 @@ function bsSpeakTap(node, text, isWord) {
     return true;
 }
 
+// ---------- a phrase from anywhere (the Grammar panel's conjugation rows) ----------------------------------------------------------
+// The narrations to read a phrase from: the open book's (the chosen voice first), then the dictionaries, the same voice first.
+function bsSpeechSources() {
+    const book = bsActiveSet(), voice = book ? book.voice : null;
+    const rest = bsSets.list.filter(x => x !== book);
+    const dict = bsSets.global.slice().sort((a, b) => (b.voice === voice) - (a.voice === voice));
+    return [book, ...rest, ...dict].filter(Boolean);
+}
+const bsSentenceIndexes = new WeakMap();   // set -> Map(«key key key» -> sentence index)
+function bsSentenceIndex(set) {
+    if (!bsSentenceIndexes.has(set)) {
+        const map = new Map();
+        set.sentences.forEach((x, i) => { const k = bsKeys(x.text).join(' '); if (k && !map.has(k)) map.set(k, i); });
+        bsSentenceIndexes.set(set, map);
+    }
+    return bsSentenceIndexes.get(set);
+}
+// What a phrase that is not on the page plays («tu gis», «nous recevons»): a recorded sentence saying exactly it, whole;
+// else its words said alone, one after another; null when a word has no recording anywhere (the system voice reads it).
+// Never a piece cut out of a longer sentence.
+function bsPhraseAnywhere(text) {
+    const keys = bsKeys(text), sources = bsSpeechSources();
+    if (!keys.length || !sources.length) return null;
+    for (const set of sources) {
+        const i = bsSentenceIndex(set).get(keys.join(' '));
+        if (i === undefined) continue;
+        const s = set.sentences[i], words = (s.words || []).filter(w => bsWordKey(s.text.slice(w.s, w.e)));
+        const whole = set.timing === 'aligned' && words.length
+            ? { from: words[0].start / 1000, to: words[words.length - 1].end / 1000 } : { from: 0, to: s.duration };
+        return { set, plan: [{ set, i, ...whole }] };
+    }
+    const plan = [];
+    for (const key of keys) {
+        const set = sources.find(x => x.lexicon && Object.prototype.hasOwnProperty.call(x.lexicon, key));
+        if (!set) return null;
+        const entry = set.lexicon[key];
+        plan.push({ set, word: key, from: entry.start / 1000, to: entry.end / 1000 });
+    }
+    return { set: plan[0].set, plan };
+}
+// Plays a phrase from the narrations; false when they do not have it (the caller reads it with the system voice).
+function bsSpeakPhrase(text) {
+    const found = bsPhraseAnywhere(text);
+    bsNote('phrase', { text: String(text || '').slice(0, 40), how: found ? (found.plan[0].word !== undefined ? 'words' : 'sentence') : 'system voice' });
+    if (!found) return false;
+    bsPlayPlan(found.set, found.plan, text);
+    return true;
+}
+
+// ---------- pronunciation dictionaries (a narration for every book, e.g. Bescherelle) ---------------------------------------------
+async function bsImportDictionary(fileList) {
+    const files = Array.from(fileList || []).filter(f => /\.mp3$/i.test(f.name));
+    bsNote('dictionary-import', { files: files.map(f => [f.name, Math.round(f.size / 1048576) + ' MB']) });
+    if (bsImporting) return;
+    bsImporting = true;
+    try {
+        const items = [];
+        for (const f of files) { const packed = await bsUnpack(f); if (packed && bsValidMeta(packed.meta)) items.push({ ...packed, name: f.name }); }
+        if (!items.length) { showToast(t('spkNeedBoth')); return; }
+        for (const { meta, blob, name } of items) {
+            await bsPut({ id: BS_GLOBAL + '\u0000' + name, bookKey: BS_GLOBAL, voice: meta.voice, audioName: name,
+                timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences,
+                lexicon: meta.lexicon && typeof meta.lexicon === 'object' ? meta.lexicon : null, blob });
+        }
+        await bsRefresh();
+        renderBookAudioDialog(t('spkDictSaved').replace('{name}', items.map(x => x.name).join(', ')));
+    } catch (e) {
+        bsNote('dictionary-import-failed', { error: String(e && (e.name + ': ' + e.message) || e) });
+        showToast(t('spkFailed'));
+    } finally { bsImporting = false; }
+}
+async function bsRemoveDictionaries() {
+    bsStop();
+    try { await bsDelete(BS_GLOBAL); } catch (e) { /* nothing to remove */ }
+    await bsRefresh();
+    renderBookAudioDialog('');
+}
+
 // ---------- i18n ----------------------------------------------------------------------------------------------------------------------------
 Object.assign(I18N, {
     spkPick: { uk: '🗣️ Озвучка книги', en: '🗣️ Book narration', fr: '🗣️ Narration du livre', ru: '🗣️ Озвучка книги', es: '🗣️ Narración del libro' },
@@ -520,6 +603,10 @@ Object.assign(I18N, {
     spkMismatch: { uk: 'JSON описує файл {audio}. Виберіть саме цей MP3.', en: 'The JSON describes the file {audio}. Choose that MP3.', fr: 'Le JSON décrit le fichier {audio}. Choisissez ce MP3.', ru: 'JSON описывает файл {audio}. Выберите этот MP3.', es: 'El JSON describe el archivo {audio}. Elija ese MP3.' },
     spkSaved: { uk: 'Озвучку збережено: голос {voice}, речень: {n}.', en: 'Narration saved: voice {voice}, sentences: {n}.', fr: 'Narration enregistrée : voix {voice}, phrases : {n}.', ru: 'Озвучка сохранена: голос {voice}, предложений: {n}.', es: 'Narración guardada: voz {voice}, frases: {n}.' },
     spkFailed: { uk: 'Не вдалося зберегти озвучку на цьому пристрої.', en: 'The narration could not be saved on this device.', fr: 'La narration n’a pas pu être enregistrée sur cet appareil.', ru: 'Озвучку не удалось сохранить на этом устройстве.', es: 'No se pudo guardar la narración en este dispositivo.' },
+    spkDictPick: { uk: '📚 Словник вимови (для всіх книг)', en: '📚 Pronunciation dictionary (all books)', fr: '📚 Dictionnaire de prononciation (tous les livres)', ru: '📚 Словарь произношения (для всех книг)', es: '📚 Diccionario de pronunciación (todos los libros)' },
+    spkDictRemove: { uk: 'Видалити словники вимови', en: 'Remove pronunciation dictionaries', fr: 'Supprimer les dictionnaires de prononciation', ru: 'Удалить словари произношения', es: 'Eliminar los diccionarios de pronunciación' },
+    spkDictSaved: { uk: 'Словник вимови підключено: {name}. Він звучить у «Граматиці» для всіх книг.', en: 'Pronunciation dictionary added: {name}. Grammar uses it in every book.', fr: 'Dictionnaire de prononciation ajouté : {name}. La grammaire l’utilise dans tous les livres.', ru: 'Словарь произношения подключён: {name}. Он звучит в «Грамматике» для всех книг.', es: 'Diccionario de pronunciación añadido: {name}. La gramática lo usa en todos los libros.' },
+    spkDictCount: { uk: 'Словники вимови: {n}', en: 'Pronunciation dictionaries: {n}', fr: 'Dictionnaires de prononciation : {n}', ru: 'Словари произношения: {n}', es: 'Diccionarios de pronunciación: {n}' },
     spkCount: { uk: 'Озвучка: {n} речень', en: 'Narration: {n} sentences', fr: 'Narration : {n} phrases', ru: 'Озвучка: {n} предложений', es: 'Narración: {n} frases' },
 });
 

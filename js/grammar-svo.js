@@ -1206,6 +1206,27 @@ function occurrenceAdjectiveSlot(item, langCode) {
     const id = gender && number ? gender + number : null;
     return id && ids.includes(id) ? id : null;
 }
+// A conjugation row as it is said: the person's pronoun (the first of «il / elle / on») and the form, French elision included
+// («je» + «aime» → «j'aime»). A form that already carries its subject («j'ai mangé», «que je fasse») is said as it is.
+const GRAMMAR_SUBJECT_RE = /^(?:qu(?:e\s+|['’])\s*)?(?:j['’]|je|tu|il|elle|on|nous|vous|ils|elles|i|you|he|she|it|we|they)\b/iu;
+function grammarRowPhrase(personId, form, langCode) {
+    const value = String(form || '').trim();
+    if (!value || GRAMMAR_SUBJECT_RE.test(value)) return value;
+    const pronoun = String(personId || '').split('/')[0].trim();
+    if (!pronoun) return value;
+    if (langCode === 'fr' && /^je$/i.test(pronoun) && /^(?:[aeiouyâàéèêëîïôûùœ]|h(?:abit|abill|érit|ésit|onor|umili|umect|ydrat|ypnot|éberg|orrifi|ébét))/i.test(value)) return pronoun.slice(0, 1) + '’' + value;
+    return pronoun + ' ' + value;
+}
+// Says one conjugation row: from the narrations when they have it, else the system voice in the language of the grammar.
+function grammarSpeakRow(row, phrase, langCode) {
+    if (!phrase) return;
+    row.classList.add('speaking');
+    setTimeout(() => row.classList.remove('speaking'), 900);
+    if (typeof stopTooltipSpeech === 'function' && state.speakingSide) stopTooltipSpeech();
+    if (typeof bsStop === 'function') bsStop();
+    if (typeof bsSpeakPhrase === 'function' && bsSpeakPhrase(phrase)) return;
+    speakInLang(phrase, langCode);
+}
 function grammarFormLabel(pos, langCode, formId) {
     if (pos !== 'adjective') return formId;
     const match = grammarConfigFor(langCode).adjective.forms.find(f => f.id === formId);
@@ -1322,6 +1343,17 @@ function renderGrammarFocusDetail(item, langCode) {
             const val = document.createElement('span'); val.className = 'grammar-grid-value';
             appendMarkedForm(val, formValue, endings[id]);
             row.append(label, val);
+            if (item.pos === 'verb') {
+                // one tap on a person's row: that row said as one phrase («tu reçois»), no window (js/book-speech.js, else the system voice)
+                const phrase = grammarRowPhrase(id, formValue, langCode);
+                row.classList.add('speakable');
+                row.tabIndex = 0;
+                row.setAttribute('role', 'button');
+                row.setAttribute('aria-label', phrase);
+                const say = (e) => { e.stopPropagation(); grammarSpeakRow(row, phrase, langCode); };
+                row.addEventListener('click', say);
+                row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); say(e); } });
+            }
             const change = item.transformations && item.transformations[id];
             if (change) {
                 const chip = document.createElement('span');
