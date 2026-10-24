@@ -24,11 +24,10 @@
    - Pending owner reproduction: Owner reported tablet only played system voice; `bookSpeech` diagnostic trace added to 📋 report to log file imports, piste taps, and codec matching.
    - Awaiting owner's 📋 report from physical tablet.
 3. **Exact-Words Drag Highlight & Translation (PR #279 merged) + PR #281 (open)**:
-   - #281: a part of a sentence plays its words said alone, a whole sentence its speech, nothing is ever cut out of a sentence (else the system voice); a drag end never highlights past the finger (`wordBoundsAt` with the anchor: geometry, anchor side in a space, not-reached = keep, only the finger's line); Grammar verb rows said with one tap (recorded sentence → words alone → system voice); narrations as pronunciation dictionaries for every book (Bescherelle); a bilingual book picks the narration by the sentence's language; `tools/book_tts/words.py` records one-letter words («y» as «i»), `rejoin.py` re-says words broken at a line end. ~600 real drags on 4 books checked (scratch `hl_stress.py`).
+   - #281: a part of a sentence plays its words said alone, a whole sentence its speech, nothing is ever cut out of a sentence (else the system voice); a drag end never highlights past the finger (`wordBoundsAt` with the anchor: geometry, anchor side in a space, not-reached = keep, only the finger's line); Grammar verb rows said with one tap from the open book's narration (recorded sentence → words alone → system voice); pronunciation dictionaries for every book were built and then REMOVED at the owner's request (Bescherelle rows are mostly not recorded as rows; Grammar stays AI-driven as before); a bilingual book picks the narration by the sentence's language; `tools/book_tts/words.py` records one-letter words («y» as «i»), `rejoin.py` re-says words broken at a line end. ~600 real drags on 4 books checked (scratch `hl_stress.py`).
    - Narration files must be re-imported on the tablet after the rebuilt ones are uploaded.
 
 ## Open Pull Requests
-- PR #281: selection = dragged words, words said alone, Grammar rows, dictionaries (`fix/selection-words-alone`)
 - PR #266: `docs(handoff): local speech engine...` (`docs/handoff-2026-10-20`)
 - PR #254: `feat(sidebar): the Contents drawer closes automatically...` (`feat/sidebar-autoclose`)
 - PR #252: `feat(drive): save a library book to Google Drive...` (`feat/google-drive-save`)
