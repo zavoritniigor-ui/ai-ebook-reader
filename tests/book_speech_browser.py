@@ -220,17 +220,28 @@ check('9 A later lookup from another path is read by the system voice again (the
     return window.__spoke === 1 || window.__spoke;
 })()""")
 
-check('10 A selected part of a sentence plays exactly its words', f"""(async () => {{
+check('10 A selected part of a sentence plays its words said alone', f"""(async () => {{
+    window.__starts = [];   // when each piece is scheduled (AudioBufferSourceNode.start)
+    const start = AudioBufferSourceNode.prototype.start;
+    if (!start.__wrapped) {{ AudioBufferSourceNode.prototype.start = function (when, ...rest) {{ __starts.push([when, ...rest]); return start.call(this, when, ...rest); }}; AudioBufferSourceNode.prototype.start.__wrapped = true; }}
     const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
     return (await bsTapPhrase(node, 'viens du')) === true;
 }})()""")
-check('10b ...from the start of «viens» to the end of «du» (first sentence: nearest place)', played([[0, WORDS[0][1][0], WORDS[0][2][1]]]))
+check('10b ...«viens» then «du», each said on its own (never a piece cut out of the sentence: its melody sounds broken)',
+      played([['viens', *ALONE['viens']], ['du', *ALONE['du']]]))
+check('10c ...the second word starts a short pause (0.08 s) after the first, not the pause between sentences',
+      "__starts.length === 2 && Math.abs(__starts[1][0] - (__starts[0][0] + __starts[0][2] + 0.08)) < 0.002 || JSON.stringify(__starts)")
 
-check('11 Two sentences play one after the other', f"""(async () => {{
+check('11 A selection over the end of one sentence and the start of the next', f"""(async () => {{
     const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
     return (await bsTapPhrase(node, 'du Maroc. Je viens')) === true;
 }})()""")
-check('11b ...«du Maroc» then «Je viens»', played([[0, WORDS[0][2][0], WORDS[0][3][1]], [1, WORDS[1][0][0], WORDS[1][1][1]]]))
+check('11b ...plays «du», «Maroc», «Je», «viens», each said on its own', played([['du', *ALONE['du']], ['maroc', *ALONE['maroc']], ['je', *ALONE['je']], ['viens', *ALONE['viens']]]))
+check('11b2 A selection of a whole sentence plus a part of the next: the sentence\'s speech, then the words', f"""(async () => {{
+    const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
+    return (await bsTapPhrase(node, 'Je viens du Maroc. Je viens')) === true;
+}})()""")
+check('11b3 ...sentence 1 whole, then «Je», «viens» said alone', played([[0, WORDS[0][0][0], WORDS[0][3][1]], ['je', *ALONE['je']], ['viens', *ALONE['viens']]]))
 
 check('11c A word printed in pieces («Jap» + a coloured «on») plays the whole word', """(async () => {
     const layer = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer');
@@ -245,14 +256,18 @@ check('11c A word printed in pieces («Jap» + a coloured «on») plays the whol
 })()""")
 check('11d ...«Japon» said on its own', played([['japon', *ALONE['japon']]]))
 
-check('11e A word the lexicon lacks (a one-letter word) is cut exactly from its sentence', """(async () => {
+check('11e A word the lexicon lacks is NOT cut from its sentence: the tap falls to the system voice', """(async () => {
     const set = bsActiveSet();
     delete set.lexicon.maroc;
+    bsLast = null;
     const layer = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer');
     const node = [...layer.querySelectorAll('.word-visited')].find(n => n.textContent === 'Maroc');
-    return (await bsTapWord(node, 'Maroc')) === true;
+    return (await bsTapWord(node, 'Maroc')) === false && bsCanWord(node, 'Maroc') === false && bsLast === null;
 })()""")
-check('11f ...from sentence 1, its aligned span with no margin', played([[0, *WORDS[0][3]]]))
+check('11f ...and a part of a sentence holding that word is not played either (no piece cut out of the sentence)', """(() => {
+    const node = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-text-layer span');
+    return bsCanPhrase(node, 'du Maroc') === false && bsCanPhrase(node, 'Je viens du Maroc.') === true;
+})()""")
 
 check('12 A word that is not in the narration is not played', """(async () => {
     const node = document.querySelector('.pdf-page-wrapper[data-page="1"] span');

@@ -344,5 +344,33 @@ key = layout([
 assert all(r['joined'] for r in key[::2]), key
 print('PASS run-in answer-key items that line up by chance are not a column gutter', flush=True)
 
+# Where a drag's end lands (wordBoundsAt with the drag's anchor): never on a word the finger has not reached. Found with real
+# touch drags on livre 56 (scratch hl_stress.py): an end in the space after the last word highlighted the next word too.
+ends = c.js(r'''(() => {
+    const box = document.createElement('div'); box.className = 'pdf-text-layer';
+    box.style.cssText = 'position:fixed;left:0;top:0;width:1000px;height:600px;background:#fff;z-index:2147483647;font:20px monospace;';
+    document.body.appendChild(box);
+    const put = (text, left, top) => { const s = document.createElement('span'); s.textContent = text;
+        s.style.cssText = 'position:absolute;white-space:pre;left:' + left + 'px;top:' + top + 'px;--font-height:20px;pointer-events:auto;transform:none;'; box.appendChild(s); return s; };
+    const line = put('dorée pour la suite', 100, 100), a = put('soleil', 100, 200), b = put('cette', 190, 200), far = put('ailleurs', 400, 320);
+    const at = (span, word) => { const n = span.firstChild, i = n.nodeValue.indexOf(word), r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + word.length);
+        return { node: n, start: i, end: i + word.length, box: r.getBoundingClientRect() }; };
+    const said = w => w === false ? 'kept' : w === null ? 'none' : w.node.nodeValue.slice(w.start, w.end);
+    const dorée = at(line, 'dorée'), pour = at(line, 'pour'), la = at(line, 'la'), suite = at(line, 'suite'), soleil = at(a, 'soleil'), cette = at(b, 'cette');
+    const mid = (l, r) => [(l.box.right + r.box.left) / 2, (l.box.top + l.box.bottom) / 2];
+    const out = {
+        forwardGap: said(wordBoundsAt(...mid(dorée, pour), dorée)),          // a forward drag stops in the space after «dorée»
+        backwardGap: said(wordBoundsAt(...mid(pour, la), suite)),             // a backward drag stops in the space before «la»
+        onWord: said(wordBoundsAt(pour.box.left + 3, (pour.box.top + pour.box.bottom) / 2, dorée)),
+        nextItemNotReached: said(wordBoundsAt(cette.box.left - 2, (cette.box.top + cette.box.bottom) / 2, soleil)),   // «cette» is another text item
+        nextItemReached: said(wordBoundsAt(cette.box.left + 3, (cette.box.top + cette.box.bottom) / 2, soleil)),
+        otherLine: said(wordBoundsAt(far.getBoundingClientRect().left + 10, 210, soleil)),   // beside the line, text only lower on the page
+        noAnchorGap: said(wordBoundsAt(pour.box.right + 2, (pour.box.top + pour.box.bottom) / 2)),   // a tap or hold: the nearer word
+    };
+    box.remove(); return out; })()''')
+assert ends == {'forwardGap': 'dorée', 'backwardGap': 'la', 'onWord': 'pour', 'nextItemNotReached': 'kept', 'nextItemReached': 'cette',
+                'otherLine': 'none', 'noAnchorGap': 'pour'}, ends
+print('PASS a drag never reaches past the finger: a space takes the word on the anchor side, the next text item counts only once touched, text on another line is not taken', flush=True)
+
 check('no application errors', 'window.__errors.length===0 || JSON.stringify(window.__errors)')
 print('ALL PDF BILINGUAL COLUMN CHECKS PASSED', flush=True)

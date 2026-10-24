@@ -6,7 +6,9 @@
  * The JSON holds, for every sentence: page, text, bytes [start, end) in the MP3, duration (s) and for every word the
  * character span in the sentence (s, e) and its time span in ms (start, end) from the sentence start.
  * "lexicon" (tools/book_tts/words.py): every word said on its own, appended to the MP3 — a tap on a word plays that, the
- * natural word; a selected sentence or fragment plays the sentence narration.
+ * natural word, and a selected part of a sentence plays its words said alone, one after another. Only a whole sentence plays
+ * the sentence narration: a piece cut out of it carries the melody of the whole sentence (falling, rising) and sounds broken.
+ * A word the lexicon lacks is never cut from its sentence: the system voice reads that tap or selection instead.
  * "timing": "aligned" (tools/book_tts/align.py) means the spans were measured on the audio and cut at the quiet point
  * between two words: they are played exactly. Older files carry the edge-tts estimates and get a small margin.
  * The pure helpers (bsWordKey, bsKeys, bsWordCues, bsPickCue, bsPhraseRun) are checked by tests/book_speech_test.mjs. */
@@ -15,6 +17,7 @@ const BS_STORE = 'speech';
 const BS_MARGIN = 0.04;   // seconds of the neighbouring sound kept on each side of a word (estimated timings only)
 const BS_FADE = 0.008;    // a short fade in/out so the cut makes no click
 const BS_GAP = 0.25;      // the pause between two sentences of one selection
+const BS_WORD_GAP = 0.08; // the pause between two words said alone (a selected part of a sentence)
 const BS_DECODED_MAX = 24;
 const bsSets = { key: null, list: [] };   // the speech sets of the open book: { id, voice, audioName, sentences, blob }
 const bsDecoded = new Map();              // «set#sentence» -> AudioBuffer, least recently used first
@@ -308,7 +311,7 @@ function bsPlay(pieces) {
     bsStop();
     const sources = [];
     let at = ctx.currentTime + 0.01;
-    for (const { buf, from, to } of pieces) {
+    for (const { buf, from, to, gap } of pieces) {
         const start = Math.max(0, from), dur = Math.max(0.05, Math.min(to, buf.duration) - start);
         const src = ctx.createBufferSource(), gain = ctx.createGain(), fade = Math.min(BS_FADE, dur / 3);
         src.buffer = buf;
@@ -320,7 +323,7 @@ function bsPlay(pieces) {
         gain.gain.linearRampToValueAtTime(0, at + dur);
         src.start(at, start, dur);
         sources.push(src);
-        at += dur + BS_GAP;
+        at += dur + (gap === undefined ? BS_GAP : gap);
     }
     const last = sources[sources.length - 1];
     if (last) last.onended = () => { if (bsCurrent === sources) bsCurrent = null; };
@@ -386,24 +389,40 @@ function bsWordCue(node, word) {
     }
     return n < 0 ? null : { set, x: words[n] };
 }
-// Synchronous: does the narration cover this tap? (The app's own voice must then stay silent: translation.js.)
-function bsCanWord(node, word) { return !!bsWordCue(node, word) || !!bsAlone(bsActiveSet(), node, bsWordKey(word)); }
+// Synchronous: does the narration cover this tap? Only with the word said on its own (The app's own voice must then stay silent: translation.js.)
+function bsCanWord(node, word) {
+    const found = bsWordCue(node, word);
+    return !!bsTapAlone(found ? found.set : bsActiveSet(), node, found, word);
+}
+// The tapped word said alone; half of a word broken at a line end plays the whole word.
+function bsTapAlone(set, node, found, word) {
+    const split = found && bsSplitWord(set, found.x);
+    return (split && bsAlone(set, node, split.key)) || bsAlone(set, node, found ? found.x.key : bsWordKey(word));
+}
+// A word the book breaks at the end of a line («contri- buer»): the narration has its two halves as two words. The whole
+// word's key («contribuer») when x is one half and the other half is its neighbour, else null. first: x is the first half.
+function bsSplitWord(set, x) {
+    const s = set.sentences[x.i], words = s && s.words;
+    if (!words) return null;
+    const join = (a, b) => /^-\s+$/.test(s.text.slice(a.e, b.s)) ? bsWordKey(s.text.slice(a.s, a.e) + s.text.slice(b.s, b.e)) : null;
+    if (x.j + 1 < words.length) { const key = join(words[x.j], words[x.j + 1]); if (key) return { key, first: true }; }
+    if (x.j > 0) { const key = join(words[x.j - 1], words[x.j]); if (key) return { key, first: false }; }
+    return null;
+}
 // The word said on its own (tools/book_tts/words.py), for a tap in a PDF page: { key, entry } or null.
 function bsAlone(set, node, key) {
     const entry = set && set.lexicon && key && Object.prototype.hasOwnProperty.call(set.lexicon, key) ? set.lexicon[key] : null;
     return entry && bsPageOf(node) ? { key, entry } : null;
 }
 
-// Plays the tapped word: said on its own when the narration has it so (as if there were no other text), else cut from
-// the speech of its sentence. Returns false when the narration does not cover the word.
+// Plays the tapped word said on its own (as if there were no other text). Never cut from the speech of its sentence: returns
+// false when the narration has no such word (the system voice reads it).
 async function bsTapWord(node, word) {
     const found = bsWordCue(node, word);
     const set = found ? found.set : bsActiveSet();
-    const alone = bsAlone(set, node, found ? found.x.key : bsWordKey(word));
-    if (!found && !alone) return false;
-    if (alone) return bsPlayPlan(set, [{ word: alone.key, from: alone.entry.start / 1000, to: alone.entry.end / 1000 }], word);
-    const [from, to] = bsSpan(found.set, found.x);
-    return bsPlayPlan(found.set, [{ i: found.x.i, from, to }], word);
+    const alone = bsTapAlone(set, node, found, word);
+    if (!alone) return false;
+    return bsPlayPlan(set, [{ word: alone.key, from: alone.entry.start / 1000, to: alone.entry.end / 1000 }], word);
 }
 
 // The last thing the narration was asked to play ({ set, plan }): the 🔊 of the translation window plays it again.
@@ -414,7 +433,8 @@ async function bsPlayPlan(set, plan, what) {
     bsReplayable = { set, plan };
     try {
         const pieces = [];
-        for (const p of plan) pieces.push({ buf: await bsDecode(set, p.word !== undefined ? '@' + p.word : p.i), from: p.from, to: p.to });
+        for (const p of plan) pieces.push({ buf: await bsDecode(set, p.word !== undefined ? '@' + p.word : p.i), from: p.from, to: p.to,
+            gap: p.word !== undefined ? BS_WORD_GAP : BS_GAP });
         if (seq !== bsSeq) return true;   // a newer tap (the expand button, another word) plays instead
         bsPlay(pieces);
         bsLast = plan;
@@ -431,8 +451,9 @@ function bsReplay(r) {
     return true;
 }
 
-// What a selection plays: [{ i (sentence), from, to (s) }] in reading order, or null when the narration does not cover it.
-// A whole sentence plays from its first sound to its last; a part of a sentence plays exactly its words.
+// What a selection plays, in reading order, or null when the narration does not cover it: a sentence selected whole plays its
+// speech, from its first sound to its last ({ i, from, to }); the words of a part of a sentence play said alone, one after
+// another ({ word, from, to }). A word of that part the lexicon lacks: null (never a piece cut from the sentence).
 function bsPhrasePlan(node, text) {
     const set = bsActiveSet();
     const where = bsPageOf(node);
@@ -442,19 +463,28 @@ function bsPhrasePlan(node, text) {
     const dom = bsDomWords(where.wrap, node);
     const run = bsPhraseRun(words, sel, dom.at < 0 || !dom.keys.length ? -1 : dom.at / dom.keys.length);
     if (!run) return null;
+    const covered = words.slice(run.from, run.to + 1);
     const plan = [];
-    for (let n = run.from; n <= run.to; n++) {
-        const x = words[n], [from, to] = bsSpan(set, x), last = plan[plan.length - 1];
-        if (last && last.i === x.i) last.to = to;
-        else plan.push({ i: x.i, from, to });
-    }
-    // a whole sentence of estimated timings keeps its own start and end (the estimates are least sure at the edges)
-    if (set.timing !== 'aligned') {
-        for (const p of plan) {
-            const s = set.sentences[p.i];
-            const covered = words.filter(x => x.i === p.i);
-            if (bsSpan(set, covered[0])[0] === p.from && bsSpan(set, covered[covered.length - 1])[1] === p.to) { p.from = 0; p.to = s.duration; }
+    for (let k = 0; k < covered.length; ) {
+        const i = covered[k].i;
+        let end = k;
+        while (end + 1 < covered.length && covered[end + 1].i === i) end++;
+        const part = covered.slice(k, end + 1);
+        if (part.length === words.filter(x => x.i === i).length) {
+            const [from] = bsSpan(set, part[0]), [, to] = bsSpan(set, part[part.length - 1]);
+            // estimated timings are least sure at the edges: a whole sentence keeps its own start and end
+            plan.push(set.timing === 'aligned' ? { i, from, to } : { i, from: 0, to: set.sentences[i].duration });
+        } else {
+            for (let n = 0; n < part.length; n++) {
+                const x = part[n], split = bsSplitWord(set, x);
+                // a word broken at a line end: said once, whole (when the selection has both halves, the second is skipped)
+                const alone = (split && bsAlone(set, node, split.key)) || bsAlone(set, node, x.key);
+                if (!alone) return null;
+                plan.push({ word: alone.key, from: alone.entry.start / 1000, to: alone.entry.end / 1000 });
+                if (split && split.first && alone.key === split.key && part[n + 1] && part[n + 1].j === x.j + 1) n++;
+            }
         }
+        k = end + 1;
     }
     return { set, plan };
 }
