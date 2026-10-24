@@ -513,9 +513,18 @@ async function bsTapPhrase(node, text) {
 // synchronously, whether it does — the app's own voice then stays silent for it (translation.js).
 function bsSpeakTap(node, text, isWord) {
     // the language of the sentence decides which narration of a bilingual book reads it (taken only when it has two languages)
-    const langs = new Set(bsSets.list.map(s => bsVoiceLang(s.voice)));
-    bsLangHint = langs.size > 1 && typeof langForText === 'function' ? String(langForText(isWord ? (state.ctxSentence || text) : text) || '').slice(0, 2) : '';
-    try { return bsSpeakTapIn(node, text, isWord); } finally { bsLangHint = ''; }
+    const langs = [...new Set(bsSets.list.map(s => bsVoiceLang(s.voice)))];
+    const lang = langs.length > 1 && typeof langForText === 'function' ? String(langForText(isWord ? (state.ctxSentence || text) : text) || '').slice(0, 2) : '';
+    // each narration of a bilingual book reads only its language's sentences (tools/book_tts/generate.py --lang): when the one in
+    // the sentence's language does not have it (the two language checks disagree), the other one may
+    const order = lang ? [lang, ...langs.filter(l => l !== lang)] : [''];
+    try {
+        for (const l of order) {
+            bsLangHint = l;
+            if (bsSpeakTapIn(node, text, isWord)) return true;
+        }
+        return false;
+    } finally { bsLangHint = ''; }
 }
 function bsSpeakTapIn(node, text, isWord) {
     const note = why => bsNote('tap', { word: !!isWord, text: String(text || '').slice(0, 40), why, lang: bsLangHint || undefined });
