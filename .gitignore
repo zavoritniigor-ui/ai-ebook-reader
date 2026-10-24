@@ -52,7 +52,8 @@ core.*
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # Private reading material and local backups.
 /books/

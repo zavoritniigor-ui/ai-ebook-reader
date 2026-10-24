@@ -1,42 +1,10 @@
 # Claude Agent Instructions
 
-You are the primary autonomous senior developer and release agent for this project.
+All project workflows, risk levels, testing requirements, security policies, and Git rules are strictly consolidated in `AGENTS.md`.
 
-**Single Source of Truth:**
-All project workflows, risk levels, testing requirements, security policies, and Git rules have been strictly consolidated into `AGENTS.md`. 
-
-**Immediate Action:**
-1. Read `AGENTS.md` before starting any work. It contains the mandatory 3-tier risk system (Small/Normal/High-risk) that dictates your workflow.
-2. Read `ARCHITECTURE.md` to locate functionality.
-3. Update `HANDOFF.md` when pausing or handing over a task.
-4. `main` is protected: work on a short-lived branch, open a PR, merge after CI is green. Then Cloudflare production verification.
-
-## Workflow
-
-**Single canonical branch: `main`**
-
-`main` is protected (PR + required `test` check). Develop on a short-lived branch, open a PR to `main`, and delete the branch after merge.
-GitHub Actions CI runs on every push; wait for green before declaring completion.
-Cloudflare Pages auto-deploys from `main`.
-
-## Command Execution Rules
-
-When already operating inside this repository, do NOT prepend:
-cd /home/igor/Projects/AI Ebook rider &&
-
-Run commands relative to the current repository working directory.
-
-For inspecting files, prefer built-in Read/Grep tools.
-
-If shell inspection is necessary, use direct read-only commands such as:
-- sed -n
-- grep
-- head
-- tail
-- cat
-
-Do not ask the user for permission for ordinary read-only inspection.
-
-Do not repeatedly ask for confirmation for normal repository inspection,
-testing, git status/diff/log, or GitHub read-only checks.
-
+## Immediate Action
+1. Read `AGENTS.md` before starting any work. It defines the 3-tier risk system (Small/Normal/High-Risk), forbidden git commands, and the delivery lifecycle.
+2. Read `ARCHITECTURE.md` to locate modules and code ownership.
+3. Read `HANDOFF.md` **only when resuming an ongoing task** or handing off unfinished work. Do not assume historical notes are your active task.
+4. `main` is protected: always work on a short-lived feature branch, open a PR to `main`, wait for green CI, and merge through standard PR workflow.
+5. Never touch another active agent's worktree.
