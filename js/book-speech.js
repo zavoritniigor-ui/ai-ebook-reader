@@ -180,12 +180,24 @@ function bsReport() {
         stored: bsStored, trace: bsTrace.slice()
     };
 }
-// The voice to use: the one chosen last on this device, else the first set.
+// The language a narration's voice speaks: «fr-CA-SylvieNeural» → fr, Kokoro «kokoro:ff_siwis» → fr, «kokoro:af_heart» → en.
+function bsVoiceLang(voice) {
+    const v = String(voice || '').replace(/^kokoro:/, '');
+    const m = v.match(/^([a-z]{2})-[A-Z]{2}-/);
+    if (m) return m[1];
+    return ({ a: 'en', b: 'en', f: 'fr', e: 'es', i: 'it', p: 'pt', h: 'hi', j: 'ja', z: 'zh' })[v[0]] || '';
+}
+// The language of what is being read now (a bilingual book has a narration per language): set by bsSpeakTap.
+let bsLangHint = '';
+// The voice to use: among the narrations in the language of the text read (when the book has narrations in several), the
+// one chosen last on this device, else the first.
 function bsActiveSet() {
     if (!bsSets.list.length) return null;
     let voice = null;
     try { voice = localStorage.getItem('reader_speech_voice'); } catch (e) { /* not remembered */ }
-    return bsSets.list.find(s => s.voice === voice) || bsSets.list[0];
+    const sameLang = bsLangHint ? bsSets.list.filter(s => bsVoiceLang(s.voice) === bsLangHint) : [];
+    const pool = sameLang.length ? sameLang : bsSets.list;
+    return pool.find(s => s.voice === voice) || pool[0];
 }
 
 // ---------- importing -----------------------------------------------------------------------------------------------------------------
@@ -505,7 +517,13 @@ async function bsTapPhrase(node, text) {
 // One entry for the reader (js/selection.js): plays what a PDF tap or selection means in the narration and returns,
 // synchronously, whether it does — the app's own voice then stays silent for it (translation.js).
 function bsSpeakTap(node, text, isWord) {
-    const note = why => bsNote('tap', { word: !!isWord, text: String(text || '').slice(0, 40), why });
+    // the language of the sentence decides which narration of a bilingual book reads it (taken only when it has two languages)
+    const langs = new Set(bsSets.list.map(s => bsVoiceLang(s.voice)));
+    bsLangHint = langs.size > 1 && typeof langForText === 'function' ? String(langForText(isWord ? (state.ctxSentence || text) : text) || '').slice(0, 2) : '';
+    try { return bsSpeakTapIn(node, text, isWord); } finally { bsLangHint = ''; }
+}
+function bsSpeakTapIn(node, text, isWord) {
+    const note = why => bsNote('tap', { word: !!isWord, text: String(text || '').slice(0, 40), why, lang: bsLangHint || undefined });
     if (state.format !== 'pdf') return false;
     if (!bsSets.list.length) { note('no narration for this book'); return false; }
     if (!bsPageOf(node)) { note('not on a PDF page'); return false; }

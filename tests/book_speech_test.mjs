@@ -80,5 +80,14 @@ check('a repeated phrase: the one at the selection\'s place', run20('je viens', 
 check('a text the narration does not read is not played', run20('Leçon un : les nationalités'), null);
 check('empty selection', run20('  '), null);
 
+// A bilingual book (Complete French) has a narration per language: the voice's language picks the one that reads the text.
+check('voice language: edge-tts fr-CA', ctx.bsVoiceLang('fr-CA-SylvieNeural'), 'fr');
+check('voice language: Kokoro French', ctx.bsVoiceLang('kokoro:ff_siwis'), 'fr');
+check('voice language: Kokoro English', ctx.bsVoiceLang('kokoro:af_heart'), 'en');
+runInContext(`state = { bookKey: 'b' }; bsSets.list = [{ voice: 'kokoro:ff_siwis' }, { voice: 'kokoro:af_heart' }];`, ctx);
+check('an English sentence of a bilingual book is read by the English narration', runInContext(`bsLangHint = 'en'; bsActiveSet().voice`, ctx), 'kokoro:af_heart');
+check('a French one by the French narration', runInContext(`bsLangHint = 'fr'; bsActiveSet().voice`, ctx), 'kokoro:ff_siwis');
+check('no language known: the first narration', runInContext(`bsLangHint = ''; bsActiveSet().voice`, ctx), 'kokoro:ff_siwis');
+
 if (failed) { console.log(`\n${failed} check(s) failed`); process.exit(1); }
 console.log('\nall book_speech checks passed');
