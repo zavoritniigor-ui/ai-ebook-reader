@@ -438,15 +438,12 @@ function renderBookAudioDialog(message) {
     const speech = typeof bsActiveSet === 'function' ? bsActiveSet() : null;
     const parts = [bookAudio.tracks.length ? t('baCount').replace('{n}', bookAudio.tracks.length) : t('baNone')];
     if (speech) parts.push(t('spkCount').replace('{n}', speech.sentences.length));
-    const dictionaries = typeof bsSets !== 'undefined' ? bsSets.global.length : 0;
-    if (dictionaries) parts.push(t('spkDictCount').replace('{n}', dictionaries));
     dialog.querySelector('.ba-status').textContent = parts.join(' · ');
     const msg = dialog.querySelector('.ba-message');
     if (message !== undefined) msg.textContent = message;
     msg.hidden = !msg.textContent;
     dialog.querySelector('.ba-remove').hidden = !bookAudio.tracks.length;
     dialog.querySelector('.ba-speech-remove').hidden = !speech;
-    dialog.querySelector('.ba-dict-remove').hidden = !dictionaries;
 }
 function buildBookAudioDialog() {
     const dialog = bookAudioDialog();
@@ -455,19 +452,14 @@ function buildBookAudioDialog() {
         + '<div class="pn-titles"><h3 class="ba-title"></h3><p class="pn-sub ba-subtitle"></p></div>'
         + '<button type="button" class="close-panel-btn ba-close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>'
         + '<div class="ba-body"><p class="ba-status"></p><p class="ba-message" hidden></p>'
-        + '<div class="ba-actions"><button type="button" class="btn-primary ba-folder"></button><button type="button" class="btn-secondary ba-files"></button><button type="button" class="btn-secondary ba-speech"></button><button type="button" class="btn-secondary ba-dict"></button></div>'
+        + '<div class="ba-actions"><button type="button" class="btn-primary ba-folder"></button><button type="button" class="btn-secondary ba-files"></button><button type="button" class="btn-secondary ba-speech"></button></div>'
         + '<div class="ba-progress" id="ba-progress" hidden><div class="ba-progress-text"></div><div class="ba-progress-bar"></div></div>'
-        + '<button type="button" class="btn-ghost ba-remove"></button><button type="button" class="btn-ghost ba-speech-remove"></button><button type="button" class="btn-ghost ba-dict-remove" hidden></button><p class="ba-note"></p></div>';
+        + '<button type="button" class="btn-ghost ba-remove"></button><button type="button" class="btn-ghost ba-speech-remove"></button><p class="ba-note"></p></div>';
     const folder = document.createElement('input'), files = document.createElement('input'), speech = document.createElement('input');
     folder.type = 'file'; folder.multiple = true; folder.setAttribute('webkitdirectory', ''); folder.hidden = true; folder.id = 'ba-input-folder';
     files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.opus'; files.hidden = true; files.id = 'ba-input-files';
     speech.type = 'file'; speech.multiple = true; speech.accept = '.mp3,.json,audio/mpeg,application/json'; speech.hidden = true; speech.id = 'ba-input-speech';
-    const dict = document.createElement('input');
-    dict.type = 'file'; dict.multiple = true; dict.accept = '.mp3,audio/mpeg'; dict.hidden = true; dict.id = 'ba-input-dict';
-    dialog.append(folder, files, speech, dict);
-    dialog.querySelector('.ba-dict').onclick = () => dict.click();
-    dialog.querySelector('.ba-dict-remove').onclick = () => bsRemoveDictionaries();
-    dict.onchange = () => { const list = Array.from(dict.files); dict.value = ''; bsImportDictionary(list); };
+    dialog.append(folder, files, speech);
     dialog.querySelector('.ba-folder').onclick = () => folder.click();
     dialog.querySelector('.ba-files').onclick = () => files.click();
     dialog.querySelector('.ba-speech').onclick = () => speech.click();
@@ -493,8 +485,6 @@ function labelBookAudioDialog() {
     dialog.querySelector('.ba-files').textContent = t('baPickFiles');
     dialog.querySelector('.ba-speech').textContent = t('spkPick');
     dialog.querySelector('.ba-speech-remove').textContent = t('spkRemove');
-    dialog.querySelector('.ba-dict').textContent = t('spkDictPick');
-    dialog.querySelector('.ba-dict-remove').textContent = t('spkDictRemove');
     dialog.querySelector('.ba-remove').textContent = t('baRemove');
     dialog.querySelector('.ba-note').textContent = t('baNote');
     dialog.querySelector('.ba-close').setAttribute('aria-label', t('tClose'));

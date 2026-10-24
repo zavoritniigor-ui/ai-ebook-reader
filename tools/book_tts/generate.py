@@ -59,6 +59,31 @@ def sentences_of(pdf, pages):
     return result
 
 
+# The language of a sentence of a bilingual book (Complete French: English explanations, French examples), so that each voice
+# reads only its own language: function words of each language, accents count for French. '' when unclear (both voices
+# read it: a heading, a number, a single name). The reader picks the narration by the sentence's language and falls back to
+# the other one, so a sentence judged differently there is still played.
+FR_WORDS = set('le la les un une des du de et est je tu il elle nous vous ils elles ce cette ces que qui ne pas au aux en dans '
+               'pour avec sur mon ma mes ton ta tes son sa ses leur leurs très mais ou où y à être avoir ai sont suis es êtes '
+               'sommes fait bonjour merci oui non c j l d qu n s m t chez se lui moi toi aussi comme'.split())
+EN_WORDS = set('the an and is are was were i you he she it we they this that these those of to in for with at by from not do '
+               'does did have has had be been will would can could should my your his her its our their which what who how '
+               'when where or but if so there here yes please thank example exercise answer note word words verb verbs'.split())
+
+
+def sentence_lang(text):
+    words = re.findall(r"[^\W\d_]+", text.lower())
+    fr = sum(w in FR_WORDS for w in words) + 0.5 * len(re.findall(r'[éèêàçùûôîœ]', text.lower()))
+    en = sum(w in EN_WORDS for w in words)
+    if fr >= 2 and en >= 2 and min(fr, en) > max(fr, en) / 3:
+        return ''   # both languages (a French line printed beside its English translation): both voices read it
+    if fr >= 1 and fr > en * 1.2:
+        return 'fr'
+    if en >= 1 and en > fr * 1.2:
+        return 'en'
+    return ''
+
+
 def cache_key(voice, rate, text):
     return hashlib.sha1(f'{voice}|{rate}|{text}'.encode('utf-8')).hexdigest()
 
@@ -160,6 +185,7 @@ def main():
     parser.add_argument('--rate', default='-10%')
     parser.add_argument('--out', required=True)
     parser.add_argument('--concurrency', type=int, default=6)
+    parser.add_argument('--lang', choices=['fr', 'en'], help='a bilingual book: only the sentences in this language (and unclear ones)')
     args = parser.parse_args()
 
     pdf = os.path.expanduser(args.pdf)
@@ -170,6 +196,9 @@ def main():
     pages = parse_pages(args.pages)
     sentences = sentences_of(pdf, pages)
     print(f'{len(sentences)} sentences on pages {args.pages}', file=sys.stderr)
+    if args.lang:
+        sentences = [x for x in sentences if sentence_lang(x['text']) in (args.lang, '')]
+        print(f'{len(sentences)} of them in {args.lang} (or unclear)', file=sys.stderr)
 
     failed = asyncio.run(fill_cache(sentences, args.voice, args.rate, cache_dir, args.concurrency))
     if failed:
