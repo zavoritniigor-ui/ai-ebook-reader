@@ -72,7 +72,7 @@ def main():
         offset = out.tell()
         for s in todo:
             say = spoken(s['text'], seen)
-            data, duration = asyncio.run(fresh(say, meta['voice'], meta['rate']))
+            data, duration = asyncio.run(fresh(say, s.get('voice', meta['voice']), s.get('rate', meta['rate'])))
             if data is None:
                 print(f'  failed, kept: {s["text"][:60]!r}', file=sys.stderr)
                 continue

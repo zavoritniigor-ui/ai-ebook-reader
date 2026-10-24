@@ -64,7 +64,7 @@ def main():
     with open(os.path.join(os.path.dirname(path), meta['audio']), 'ab') as out:
         offset = out.tell()
         for s in bad:
-            data, duration = asyncio.run(fresh(s['text'], meta['voice'], meta['rate']))
+            data, duration = asyncio.run(fresh(s['text'], s.get('voice', meta['voice']), s.get('rate', meta['rate'])))
             if data is None:
                 print(f'  still short, kept: {s["text"][:60]!r}', file=sys.stderr)
                 continue
