@@ -132,11 +132,41 @@ def parse_mix(spec):
     return mix
 
 
+def language_parts(sentences):
+    """A bilingual book's lines often hold both languages («le besoin need le miroir mirror», a French sentence printed
+    beside its translation): each line is split into its French and English runs (lingua), each run one entry with its
+    language. A run with no letters (a number) joins its neighbour."""
+    from lingua import Language, LanguageDetectorBuilder
+    detector = LanguageDetectorBuilder.from_languages(Language.FRENCH, Language.ENGLISH).build()
+    out = []
+    for x in sentences:
+        text = x['text']
+        runs = [('fr' if r.language == Language.FRENCH else 'en', r.start_index, r.end_index)
+                for r in detector.detect_multiple_languages_of(text)]
+        if not runs:
+            out.append({**x, 'lang': sentence_lang(x['text']) or ''})
+            continue
+        parts = []
+        for lang, a, b in runs:
+            piece = text[a:b].strip()
+            if not piece:
+                continue
+            if parts and (parts[-1][0] == lang or not re.search(r'[^\W\d_]', piece)):
+                parts[-1][1] += ' ' + piece
+            elif parts and not re.search(r'[^\W\d_]', parts[-1][1]):
+                parts[-1] = [lang, parts[-1][1] + ' ' + piece]
+            else:
+                parts.append([lang, piece])
+        out += [{'page': x['page'], 'text': piece, 'lang': lang} for lang, piece in parts]
+    return out
+
+
 def assign_voices(sentences, voice, rate, mix):
     """Each sentence gets the voice that reads it: one voice, or with --mix the voice of the sentence's language."""
     first = next(iter(mix.values())) if mix else None
     for x in sentences:
-        x['voice'], x['rate'] = (mix.get(sentence_lang(x['text'])) or first) if mix else (voice, rate)
+        lang = x.get('lang', sentence_lang(x['text'])) if mix else ''
+        x['voice'], x['rate'] = (mix.get(lang) or first) if mix else (voice, rate)
 
 
 async def fill_cache(sentences, cache_dir, concurrency):
@@ -229,6 +259,9 @@ def main():
         sentences = [x for x in sentences if sentence_lang(x['text']) in (args.lang, '')]
         print(f'{len(sentences)} of them in {args.lang} (or unclear)', file=sys.stderr)
 
+    if mix:
+        sentences = language_parts(sentences)
+        print(f'{len(sentences)} parts after splitting the lines by language', file=sys.stderr)
     assign_voices(sentences, args.voice, args.rate, mix)
     if mix:
         for lang, (voice, _) in mix.items():
