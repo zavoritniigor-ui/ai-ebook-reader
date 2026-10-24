@@ -6,7 +6,9 @@
  * The JSON holds, for every sentence: page, text, bytes [start, end) in the MP3, duration (s) and for every word the
  * character span in the sentence (s, e) and its time span in ms (start, end) from the sentence start.
  * "lexicon" (tools/book_tts/words.py): every word said on its own, appended to the MP3 — a tap on a word plays that, the
- * natural word; a selected sentence or fragment plays the sentence narration.
+ * natural word, and a selected part of a sentence plays its words said alone, one after another. Only a whole sentence plays
+ * the sentence narration: a piece cut out of it carries the melody of the whole sentence (falling, rising) and sounds broken.
+ * A word the lexicon lacks is never cut from its sentence: the system voice reads that tap or selection instead.
  * "timing": "aligned" (tools/book_tts/align.py) means the spans were measured on the audio and cut at the quiet point
  * between two words: they are played exactly. Older files carry the edge-tts estimates and get a small margin.
  * The pure helpers (bsWordKey, bsKeys, bsWordCues, bsPickCue, bsPhraseRun) are checked by tests/book_speech_test.mjs. */
@@ -15,8 +17,11 @@ const BS_STORE = 'speech';
 const BS_MARGIN = 0.04;   // seconds of the neighbouring sound kept on each side of a word (estimated timings only)
 const BS_FADE = 0.008;    // a short fade in/out so the cut makes no click
 const BS_GAP = 0.25;      // the pause between two sentences of one selection
+const BS_WORD_GAP = 0.08; // the pause between two words said alone (a selected part of a sentence)
 const BS_DECODED_MAX = 24;
-const bsSets = { key: null, list: [] };   // the speech sets of the open book: { id, voice, audioName, sentences, blob }
+const bsSets = { key: null, list: [], global: [] };   // the speech sets of the open book: { id, voice, audioName, sentences, blob };
+// global: narrations imported as pronunciation dictionaries for every book (Bescherelle), stored under BS_GLOBAL
+const BS_GLOBAL = '\u0001dictionary';
 const bsDecoded = new Map();              // «set#sentence» -> AudioBuffer, least recently used first
 const bsPageCache = new Map();            // «set#page» -> the narration's words on that page, in reading order
 let bsCtx = null, bsCurrent = null, bsLast = null;   // bsLast: what was played last ([{ i, from, to }]), for the tests
@@ -138,12 +143,14 @@ async function bsRefresh() {
     bsDecoded.clear();
     bsPageCache.clear();
     bsReadStored();
+    try { bsSets.global = (await bsList(BS_GLOBAL)).filter(r => r && Array.isArray(r.sentences) && r.blob); }
+    catch (e) { bsSets.global = []; }
     if (!key) { bsSets.list = []; return; }
     try {
         const rows = await bsList(key);
         if (bsSets.key !== key) return;
         bsSets.list = rows.filter(r => r && Array.isArray(r.sentences) && r.blob);
-        bsNote('refresh', { book: key, rows: rows.length, usable: bsSets.list.length });
+        bsNote('refresh', { book: key, rows: rows.length, usable: bsSets.list.length, dictionaries: bsSets.global.length });
     } catch (e) { bsSets.list = []; bsNote('refresh', { book: key, error: String(e && (e.name || e.message) || e) }); }
 }
 // For the report: which books have a narration or tracks here (the ids start with the book key), and the storage quota.
@@ -166,18 +173,31 @@ function bsReport() {
         format: state.format, book: state.bookKey || null, pages: state.totalPages || null,
         narrations: bsSets.list.map(s => ({ voice: s.voice, sentences: s.sentences.length, timing: s.timing,
             words: s.lexicon ? Object.keys(s.lexicon).length : 0, mb: s.blob ? Math.round(s.blob.size / 1048576) : null })),
+        dictionaries: bsSets.global.map(s => ({ voice: s.voice, name: s.audioName, sentences: s.sentences.length, words: s.lexicon ? Object.keys(s.lexicon).length : 0 })),
         active: set ? set.voice : null, audio: bsCtx ? bsCtx.state : 'not started',
         markers: document.querySelectorAll('.pdf-audio-marker').length,
         tracks: typeof bookAudio !== 'undefined' ? bookAudio.tracks.length : null,
         stored: bsStored, trace: bsTrace.slice()
     };
 }
-// The voice to use: the one chosen last on this device, else the first set.
+// The language a narration's voice speaks: «fr-CA-SylvieNeural» → fr, Kokoro «kokoro:ff_siwis» → fr, «kokoro:af_heart» → en.
+function bsVoiceLang(voice) {
+    const v = String(voice || '').replace(/^kokoro:/, '');
+    const m = v.match(/^([a-z]{2})-[A-Z]{2}-/);
+    if (m) return m[1];
+    return ({ a: 'en', b: 'en', f: 'fr', e: 'es', i: 'it', p: 'pt', h: 'hi', j: 'ja', z: 'zh' })[v[0]] || '';
+}
+// The language of what is being read now (a bilingual book has a narration per language): set by bsSpeakTap.
+let bsLangHint = '';
+// The voice to use: among the narrations in the language of the text read (when the book has narrations in several), the
+// one chosen last on this device, else the first.
 function bsActiveSet() {
     if (!bsSets.list.length) return null;
     let voice = null;
     try { voice = localStorage.getItem('reader_speech_voice'); } catch (e) { /* not remembered */ }
-    return bsSets.list.find(s => s.voice === voice) || bsSets.list[0];
+    const sameLang = bsLangHint ? bsSets.list.filter(s => bsVoiceLang(s.voice) === bsLangHint) : [];
+    const pool = sameLang.length ? sameLang : bsSets.list;
+    return pool.find(s => s.voice === voice) || pool[0];
 }
 
 // ---------- importing -----------------------------------------------------------------------------------------------------------------
@@ -308,7 +328,7 @@ function bsPlay(pieces) {
     bsStop();
     const sources = [];
     let at = ctx.currentTime + 0.01;
-    for (const { buf, from, to } of pieces) {
+    for (const { buf, from, to, gap } of pieces) {
         const start = Math.max(0, from), dur = Math.max(0.05, Math.min(to, buf.duration) - start);
         const src = ctx.createBufferSource(), gain = ctx.createGain(), fade = Math.min(BS_FADE, dur / 3);
         src.buffer = buf;
@@ -320,7 +340,7 @@ function bsPlay(pieces) {
         gain.gain.linearRampToValueAtTime(0, at + dur);
         src.start(at, start, dur);
         sources.push(src);
-        at += dur + BS_GAP;
+        at += dur + (gap === undefined ? BS_GAP : gap);
     }
     const last = sources[sources.length - 1];
     if (last) last.onended = () => { if (bsCurrent === sources) bsCurrent = null; };
@@ -386,24 +406,40 @@ function bsWordCue(node, word) {
     }
     return n < 0 ? null : { set, x: words[n] };
 }
-// Synchronous: does the narration cover this tap? (The app's own voice must then stay silent: translation.js.)
-function bsCanWord(node, word) { return !!bsWordCue(node, word) || !!bsAlone(bsActiveSet(), node, bsWordKey(word)); }
+// Synchronous: does the narration cover this tap? Only with the word said on its own (The app's own voice must then stay silent: translation.js.)
+function bsCanWord(node, word) {
+    const found = bsWordCue(node, word);
+    return !!bsTapAlone(found ? found.set : bsActiveSet(), node, found, word);
+}
+// The tapped word said alone; half of a word broken at a line end plays the whole word.
+function bsTapAlone(set, node, found, word) {
+    const split = found && bsSplitWord(set, found.x);
+    return (split && bsAlone(set, node, split.key)) || bsAlone(set, node, found ? found.x.key : bsWordKey(word));
+}
+// A word the book breaks at the end of a line («contri- buer»): the narration has its two halves as two words. The whole
+// word's key («contribuer») when x is one half and the other half is its neighbour, else null. first: x is the first half.
+function bsSplitWord(set, x) {
+    const s = set.sentences[x.i], words = s && s.words;
+    if (!words) return null;
+    const join = (a, b) => /^-\s+$/.test(s.text.slice(a.e, b.s)) ? bsWordKey(s.text.slice(a.s, a.e) + s.text.slice(b.s, b.e)) : null;
+    if (x.j + 1 < words.length) { const key = join(words[x.j], words[x.j + 1]); if (key) return { key, first: true }; }
+    if (x.j > 0) { const key = join(words[x.j - 1], words[x.j]); if (key) return { key, first: false }; }
+    return null;
+}
 // The word said on its own (tools/book_tts/words.py), for a tap in a PDF page: { key, entry } or null.
 function bsAlone(set, node, key) {
     const entry = set && set.lexicon && key && Object.prototype.hasOwnProperty.call(set.lexicon, key) ? set.lexicon[key] : null;
     return entry && bsPageOf(node) ? { key, entry } : null;
 }
 
-// Plays the tapped word: said on its own when the narration has it so (as if there were no other text), else cut from
-// the speech of its sentence. Returns false when the narration does not cover the word.
+// Plays the tapped word said on its own (as if there were no other text). Never cut from the speech of its sentence: returns
+// false when the narration has no such word (the system voice reads it).
 async function bsTapWord(node, word) {
     const found = bsWordCue(node, word);
     const set = found ? found.set : bsActiveSet();
-    const alone = bsAlone(set, node, found ? found.x.key : bsWordKey(word));
-    if (!found && !alone) return false;
-    if (alone) return bsPlayPlan(set, [{ word: alone.key, from: alone.entry.start / 1000, to: alone.entry.end / 1000 }], word);
-    const [from, to] = bsSpan(found.set, found.x);
-    return bsPlayPlan(found.set, [{ i: found.x.i, from, to }], word);
+    const alone = bsTapAlone(set, node, found, word);
+    if (!alone) return false;
+    return bsPlayPlan(set, [{ word: alone.key, from: alone.entry.start / 1000, to: alone.entry.end / 1000 }], word);
 }
 
 // The last thing the narration was asked to play ({ set, plan }): the 🔊 of the translation window plays it again.
@@ -414,7 +450,8 @@ async function bsPlayPlan(set, plan, what) {
     bsReplayable = { set, plan };
     try {
         const pieces = [];
-        for (const p of plan) pieces.push({ buf: await bsDecode(set, p.word !== undefined ? '@' + p.word : p.i), from: p.from, to: p.to });
+        for (const p of plan) pieces.push({ buf: await bsDecode(p.set || set, p.word !== undefined ? '@' + p.word : p.i), from: p.from, to: p.to,
+            gap: p.word !== undefined ? BS_WORD_GAP : BS_GAP });
         if (seq !== bsSeq) return true;   // a newer tap (the expand button, another word) plays instead
         bsPlay(pieces);
         bsLast = plan;
@@ -425,14 +462,15 @@ async function bsPlayPlan(set, plan, what) {
 function bsTakeReplay() { const r = bsReplayable; bsReplayable = null; return r; }
 // The translation window's 🔊: plays that word or passage again, from its start (also when pressed while it plays).
 function bsReplay(r) {
-    if (!r || !bsSets.list.includes(r.set)) return false;
+    if (!r || !(bsSets.list.includes(r.set) || bsSets.global.includes(r.set))) return false;
     bsNote('replay', { pieces: r.plan.length });
     bsPlayPlan(r.set, r.plan, 'replay');
     return true;
 }
 
-// What a selection plays: [{ i (sentence), from, to (s) }] in reading order, or null when the narration does not cover it.
-// A whole sentence plays from its first sound to its last; a part of a sentence plays exactly its words.
+// What a selection plays, in reading order, or null when the narration does not cover it: a sentence selected whole plays its
+// speech, from its first sound to its last ({ i, from, to }); the words of a part of a sentence play said alone, one after
+// another ({ word, from, to }). A word of that part the lexicon lacks: null (never a piece cut from the sentence).
 function bsPhrasePlan(node, text) {
     const set = bsActiveSet();
     const where = bsPageOf(node);
@@ -442,19 +480,28 @@ function bsPhrasePlan(node, text) {
     const dom = bsDomWords(where.wrap, node);
     const run = bsPhraseRun(words, sel, dom.at < 0 || !dom.keys.length ? -1 : dom.at / dom.keys.length);
     if (!run) return null;
+    const covered = words.slice(run.from, run.to + 1);
     const plan = [];
-    for (let n = run.from; n <= run.to; n++) {
-        const x = words[n], [from, to] = bsSpan(set, x), last = plan[plan.length - 1];
-        if (last && last.i === x.i) last.to = to;
-        else plan.push({ i: x.i, from, to });
-    }
-    // a whole sentence of estimated timings keeps its own start and end (the estimates are least sure at the edges)
-    if (set.timing !== 'aligned') {
-        for (const p of plan) {
-            const s = set.sentences[p.i];
-            const covered = words.filter(x => x.i === p.i);
-            if (bsSpan(set, covered[0])[0] === p.from && bsSpan(set, covered[covered.length - 1])[1] === p.to) { p.from = 0; p.to = s.duration; }
+    for (let k = 0; k < covered.length; ) {
+        const i = covered[k].i;
+        let end = k;
+        while (end + 1 < covered.length && covered[end + 1].i === i) end++;
+        const part = covered.slice(k, end + 1);
+        if (part.length === words.filter(x => x.i === i).length) {
+            const [from] = bsSpan(set, part[0]), [, to] = bsSpan(set, part[part.length - 1]);
+            // estimated timings are least sure at the edges: a whole sentence keeps its own start and end
+            plan.push(set.timing === 'aligned' ? { i, from, to } : { i, from: 0, to: set.sentences[i].duration });
+        } else {
+            for (let n = 0; n < part.length; n++) {
+                const x = part[n], split = bsSplitWord(set, x);
+                // a word broken at a line end: said once, whole (when the selection has both halves, the second is skipped)
+                const alone = (split && bsAlone(set, node, split.key)) || bsAlone(set, node, x.key);
+                if (!alone) return null;
+                plan.push({ word: alone.key, from: alone.entry.start / 1000, to: alone.entry.end / 1000 });
+                if (split && split.first && alone.key === split.key && part[n + 1] && part[n + 1].j === x.j + 1) n++;
+            }
         }
+        k = end + 1;
     }
     return { set, plan };
 }
@@ -470,7 +517,13 @@ async function bsTapPhrase(node, text) {
 // One entry for the reader (js/selection.js): plays what a PDF tap or selection means in the narration and returns,
 // synchronously, whether it does — the app's own voice then stays silent for it (translation.js).
 function bsSpeakTap(node, text, isWord) {
-    const note = why => bsNote('tap', { word: !!isWord, text: String(text || '').slice(0, 40), why });
+    // the language of the sentence decides which narration of a bilingual book reads it (taken only when it has two languages)
+    const langs = new Set(bsSets.list.map(s => bsVoiceLang(s.voice)));
+    bsLangHint = langs.size > 1 && typeof langForText === 'function' ? String(langForText(isWord ? (state.ctxSentence || text) : text) || '').slice(0, 2) : '';
+    try { return bsSpeakTapIn(node, text, isWord); } finally { bsLangHint = ''; }
+}
+function bsSpeakTapIn(node, text, isWord) {
+    const note = why => bsNote('tap', { word: !!isWord, text: String(text || '').slice(0, 40), why, lang: bsLangHint || undefined });
     if (state.format !== 'pdf') return false;
     if (!bsSets.list.length) { note('no narration for this book'); return false; }
     if (!bsPageOf(node)) { note('not on a PDF page'); return false; }
@@ -478,6 +531,84 @@ function bsSpeakTap(node, text, isWord) {
     note('narration');
     if (isWord) bsTapWord(node, text); else bsTapPhrase(node, text);
     return true;
+}
+
+// ---------- a phrase from anywhere (the Grammar panel's conjugation rows) ----------------------------------------------------------
+// The narrations to read a phrase from: the open book's (the chosen voice first), then the dictionaries, the same voice first.
+function bsSpeechSources() {
+    const book = bsActiveSet(), voice = book ? book.voice : null;
+    const rest = bsSets.list.filter(x => x !== book);
+    const dict = bsSets.global.slice().sort((a, b) => (b.voice === voice) - (a.voice === voice));
+    return [book, ...rest, ...dict].filter(Boolean);
+}
+const bsSentenceIndexes = new WeakMap();   // set -> Map(«key key key» -> sentence index)
+function bsSentenceIndex(set) {
+    if (!bsSentenceIndexes.has(set)) {
+        const map = new Map();
+        set.sentences.forEach((x, i) => { const k = bsKeys(x.text).join(' '); if (k && !map.has(k)) map.set(k, i); });
+        bsSentenceIndexes.set(set, map);
+    }
+    return bsSentenceIndexes.get(set);
+}
+// What a phrase that is not on the page plays («tu gis», «nous recevons»): a recorded sentence saying exactly it, whole;
+// else its words said alone, one after another; null when a word has no recording anywhere (the system voice reads it).
+// Never a piece cut out of a longer sentence.
+function bsPhraseAnywhere(text) {
+    const keys = bsKeys(text), sources = bsSpeechSources();
+    if (!keys.length || !sources.length) return null;
+    for (const set of sources) {
+        const i = bsSentenceIndex(set).get(keys.join(' '));
+        if (i === undefined) continue;
+        const s = set.sentences[i], words = (s.words || []).filter(w => bsWordKey(s.text.slice(w.s, w.e)));
+        const whole = set.timing === 'aligned' && words.length
+            ? { from: words[0].start / 1000, to: words[words.length - 1].end / 1000 } : { from: 0, to: s.duration };
+        return { set, plan: [{ set, i, ...whole }] };
+    }
+    const plan = [];
+    for (const key of keys) {
+        const set = sources.find(x => x.lexicon && Object.prototype.hasOwnProperty.call(x.lexicon, key));
+        if (!set) return null;
+        const entry = set.lexicon[key];
+        plan.push({ set, word: key, from: entry.start / 1000, to: entry.end / 1000 });
+    }
+    return { set: plan[0].set, plan };
+}
+// Plays a phrase from the narrations; false when they do not have it (the caller reads it with the system voice).
+function bsSpeakPhrase(text) {
+    const found = bsPhraseAnywhere(text);
+    bsNote('phrase', { text: String(text || '').slice(0, 40), how: found ? (found.plan[0].word !== undefined ? 'words' : 'sentence') : 'system voice' });
+    if (!found) return false;
+    bsPlayPlan(found.set, found.plan, text);
+    return true;
+}
+
+// ---------- pronunciation dictionaries (a narration for every book, e.g. Bescherelle) ---------------------------------------------
+async function bsImportDictionary(fileList) {
+    const files = Array.from(fileList || []).filter(f => /\.mp3$/i.test(f.name));
+    bsNote('dictionary-import', { files: files.map(f => [f.name, Math.round(f.size / 1048576) + ' MB']) });
+    if (bsImporting) return;
+    bsImporting = true;
+    try {
+        const items = [];
+        for (const f of files) { const packed = await bsUnpack(f); if (packed && bsValidMeta(packed.meta)) items.push({ ...packed, name: f.name }); }
+        if (!items.length) { showToast(t('spkNeedBoth')); return; }
+        for (const { meta, blob, name } of items) {
+            await bsPut({ id: BS_GLOBAL + '\u0000' + name, bookKey: BS_GLOBAL, voice: meta.voice, audioName: name,
+                timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences,
+                lexicon: meta.lexicon && typeof meta.lexicon === 'object' ? meta.lexicon : null, blob });
+        }
+        await bsRefresh();
+        renderBookAudioDialog(t('spkDictSaved').replace('{name}', items.map(x => x.name).join(', ')));
+    } catch (e) {
+        bsNote('dictionary-import-failed', { error: String(e && (e.name + ': ' + e.message) || e) });
+        showToast(t('spkFailed'));
+    } finally { bsImporting = false; }
+}
+async function bsRemoveDictionaries() {
+    bsStop();
+    try { await bsDelete(BS_GLOBAL); } catch (e) { /* nothing to remove */ }
+    await bsRefresh();
+    renderBookAudioDialog('');
 }
 
 // ---------- i18n ----------------------------------------------------------------------------------------------------------------------------
@@ -490,6 +621,10 @@ Object.assign(I18N, {
     spkMismatch: { uk: 'JSON описує файл {audio}. Виберіть саме цей MP3.', en: 'The JSON describes the file {audio}. Choose that MP3.', fr: 'Le JSON décrit le fichier {audio}. Choisissez ce MP3.', ru: 'JSON описывает файл {audio}. Выберите этот MP3.', es: 'El JSON describe el archivo {audio}. Elija ese MP3.' },
     spkSaved: { uk: 'Озвучку збережено: голос {voice}, речень: {n}.', en: 'Narration saved: voice {voice}, sentences: {n}.', fr: 'Narration enregistrée : voix {voice}, phrases : {n}.', ru: 'Озвучка сохранена: голос {voice}, предложений: {n}.', es: 'Narración guardada: voz {voice}, frases: {n}.' },
     spkFailed: { uk: 'Не вдалося зберегти озвучку на цьому пристрої.', en: 'The narration could not be saved on this device.', fr: 'La narration n’a pas pu être enregistrée sur cet appareil.', ru: 'Озвучку не удалось сохранить на этом устройстве.', es: 'No se pudo guardar la narración en este dispositivo.' },
+    spkDictPick: { uk: '📚 Словник вимови (для всіх книг)', en: '📚 Pronunciation dictionary (all books)', fr: '📚 Dictionnaire de prononciation (tous les livres)', ru: '📚 Словарь произношения (для всех книг)', es: '📚 Diccionario de pronunciación (todos los libros)' },
+    spkDictRemove: { uk: 'Видалити словники вимови', en: 'Remove pronunciation dictionaries', fr: 'Supprimer les dictionnaires de prononciation', ru: 'Удалить словари произношения', es: 'Eliminar los diccionarios de pronunciación' },
+    spkDictSaved: { uk: 'Словник вимови підключено: {name}. Він звучить у «Граматиці» для всіх книг.', en: 'Pronunciation dictionary added: {name}. Grammar uses it in every book.', fr: 'Dictionnaire de prononciation ajouté : {name}. La grammaire l’utilise dans tous les livres.', ru: 'Словарь произношения подключён: {name}. Он звучит в «Грамматике» для всех книг.', es: 'Diccionario de pronunciación añadido: {name}. La gramática lo usa en todos los libros.' },
+    spkDictCount: { uk: 'Словники вимови: {n}', en: 'Pronunciation dictionaries: {n}', fr: 'Dictionnaires de prononciation : {n}', ru: 'Словари произношения: {n}', es: 'Diccionarios de pronunciación: {n}' },
     spkCount: { uk: 'Озвучка: {n} речень', en: 'Narration: {n} sentences', fr: 'Narration : {n} phrases', ru: 'Озвучка: {n} предложений', es: 'Narración: {n} frases' },
 });
 

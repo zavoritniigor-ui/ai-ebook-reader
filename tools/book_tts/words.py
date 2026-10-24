@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Every word of a narration spoken on its own, as if there were no other text (the voice of a tap on a word).
 
-A word cut out of a sentence carries its neighbours: the liaison, the enchaînement, the melody of the sentence. For a
-tap the reader plays the word said alone instead; the sentence narration stays for a selected sentence or a fragment.
+A word cut out of a sentence carries its neighbours: the liaison, the enchaînement, the melody of the sentence. The reader
+plays the word said alone instead: for a tap, and word after word for a selected part of a sentence; the sentence narration
+only for a whole sentence. It never cuts a piece out of a sentence, so every word needs its entry here.
 
 For each distinct word of the JSON (its key: lower case, no punctuation) the most frequent printed form is synthesized
 with the same voice and rate (engines.py: edge-tts or Kokoro), cached, and appended to the narration MP3 after the sentences. The JSON gets
 "lexicon": { key: { text, bytes: [a, b), start, end (ms of the decoded clip: its sound without the silence) } } and
-"lexiconStart" (the MP3 size before the words; a new run cuts the file there first). One-letter words («a», «y», «à»)
-are left out: said alone they become the letter's name; the reader cuts them from the sentence.
+"lexiconStart" (the MP3 size before the words; a new run cuts the file there first). One-letter words are in too: «à», «a»,
+«ô» said alone are the word itself; «y» alone is read as the letter's name «i grec» (670 ms), so it is said as «i» (SAY).
 
 Usage:
   python3 words.py "~/Books/Par Ici/tts/a1-full/fr-CA-SylvieNeural_p1-162.json"     # after align.py
@@ -36,6 +37,10 @@ LEAD = 0.020   # kept before the first sound
 TAIL = 0.060   # kept after the last sound (the decay of a final consonant)
 
 
+# words whose printed form, said alone, is read as something else
+SAY = {'y': 'i', 'Y': 'I'}
+
+
 def key_of(form):
     return re.sub(r'[\W_]+', '', form.lower())
 
@@ -47,7 +52,7 @@ def forms_of(meta):
         for w in s['words']:
             form = s['text'][w['s']:w['e']].replace('’', "'")
             key = key_of(form)
-            if len(key) > 1:
+            if key:
                 seen[key][form] += 1
     out = {}
     for key, counts in seen.items():
@@ -57,7 +62,7 @@ def forms_of(meta):
         else:
             form = max(counts, key=counts.get)
             out[key] = form if not form.isupper() else form.capitalize()   # «BONJOUR» in a heading is the word bonjour
-    return out
+    return {key: SAY.get(form, form) for key, form in out.items()}
 
 
 async def synthesize(text, voice, rate):
@@ -122,7 +127,7 @@ def build(path, concurrency):
     print(f'{path}: {len(forms)} words', file=sys.stderr)
     failed = asyncio.run(fill_cache(sorted(set(forms.values())), meta['voice'], meta['rate'], cache_dir, concurrency))
     for form, error in failed:
-        print(f'skipped (the reader cuts it from its sentence): {form!r}: {error}', file=sys.stderr)
+        print(f'skipped (the reader reads it with the system voice): {form!r}: {error}', file=sys.stderr)
     if len(failed) > len(forms) // 100:   # more than a word here and there: the service is down, run again later
         sys.exit(1)
     skipped = {form for form, _ in failed}

@@ -1248,7 +1248,11 @@ function reflowWordBounds(node, offset) {
     }
     return null;
 }
-function wordBoundsAt(clientX, clientY) {
+// anchor (optional): the word a drag started from. A point in the space between two words then takes the word on the anchor's
+// side, so a drag never highlights past the point where the finger stopped; without one, the nearer word. With an anchor the
+// result is false when the only word found lies beyond the finger (in another text item, on the far side of the space): the
+// drag keeps what it has rather than reach a word the finger has not touched.
+function wordBoundsAt(clientX, clientY, anchor = null) {
     const r = caretRangeAt(clientX, clientY);
     if (!r || r.startContainer.nodeType !== Node.TEXT_NODE) return null;
     if (state.format !== 'pdf' && els.pages.contains(r.startContainer)) {
@@ -1261,13 +1265,52 @@ function wordBoundsAt(clientX, clientY) {
         return wBounds;
     }
     const node = r.startContainer, text = node.nodeValue || '';
+    // The words of this text item and where they are on screen. The word under the point wins. A point in the space between two
+    // words (the caret then sits at the edge of one of them) takes the word on the anchor's side: a drag that ended in the space
+    // after its last word used to highlight the next word too («dorée» → «dorée pour»). Without an anchor: the nearer word.
+    const words = [];
+    for (let i = 0; i < text.length; ) {
+        if (!IS_WORD_CH(text[i])) { i++; continue; }
+        let j = i; while (j < text.length && IS_WORD_CH(text[j])) j++;
+        const probe = document.createRange(); probe.setStart(node, i); probe.setEnd(node, j);
+        const box = probe.getBoundingClientRect();
+        // only words on the finger's line: the caret of a point beside a line can come from text elsewhere on the page
+        const slack = box.height * 0.35;
+        if (box.width && clientY >= box.top - slack && clientY <= box.bottom + slack) words.push({ start: i, end: j, left: box.left, right: box.right });
+        i = j;
+    }
+    if (!words.length && /[\p{L}\p{N}]/u.test(text)) return null;
     let s = r.startOffset, e = r.startOffset;
-    while (s > 0 && IS_WORD_CH(text[s - 1])) s--;
-    while (e < text.length && IS_WORD_CH(text[e])) e++;
-    if (s === e) {                     // потрапили в пробіл — беремо найближче слово
-        while (e < text.length && !IS_WORD_CH(text[e])) e++;
-        s = e;
-        while (e < text.length && IS_WORD_CH(text[e])) e++;
+    const hit = words.find(w => w.right > w.left && clientX >= w.left && clientX <= w.right);
+    if (hit) { s = hit.start; e = hit.end; }
+    else if (words.length) {
+        const left = words.filter(w => w.right > w.left && w.right < clientX).pop(), right = words.find(w => w.right > w.left && w.left > clientX);
+        let pick = !left ? right : !right ? left : (clientX - left.right <= right.left - clientX ? left : right);
+        if (anchor && left && right) {
+            try {
+                const here = document.createRange(); here.setStart(node, right.start); here.collapse(true);
+                const from = document.createRange(); from.setStart(anchor.node, anchor.start); from.collapse(true);
+                pick = from.compareBoundaryPoints(Range.START_TO_START, here) < 0 ? left : right;   // a forward drag stops before the space
+            } catch (err) { /* the nearer word */ }
+        }
+        if (pick) { s = pick.start; e = pick.end; }
+        // the finger on the punctuation right after the word («illustration.»): it is selected with it, never the next word
+        if (pick && pick.right < clientX) {
+            let p = pick.end; while (p < text.length && !IS_WORD_CH(text[p]) && !/\s/.test(text[p])) p++;
+            if (p > pick.end) {
+                const probe = document.createRange(); probe.setStart(node, pick.end); probe.setEnd(node, p);
+                if (clientX <= probe.getBoundingClientRect().right + 1) e = p;
+            }
+        }
+        if (pick && anchor) {
+            try {
+                // the drag's direction: the anchor before or after the finger (its word may be the one picked)
+                const here = document.createRange(); here.setStart(node, r.startOffset); here.collapse(true);
+                const from = document.createRange(); from.setStart(anchor.node, anchor.start); from.collapse(true);
+                const forward = from.compareBoundaryPoints(Range.START_TO_START, here) < 0;
+                if (forward ? pick.left > clientX : pick.right < clientX) return false;   // not reached yet
+            } catch (err) { /* the word found */ }
+        }
     }
     const wBounds = { node, start: s, end: e };
     const rTest = document.createRange();
@@ -1470,11 +1513,13 @@ function updateDragSelection(e) {
         if (Math.abs(e.clientX - dragStartX) < 6 && Math.abs(e.clientY - dragStartY) < 6) return;
         dragMoved = true;
     }
-    let w = wordBoundsAt(e.clientX, e.clientY);
+    let w = wordBoundsAt(e.clientX, e.clientY, dragSel);
+    if (w === false) return;   // the finger is in the space before the next word: the selection stays as it is
     if (!w && state.format === 'pdf' && dragSel) {
+        // between two lines: the nearest line above or below, but never a word the finger has not reached on it
         for (const dy of [-8, 8, -16, 16, -24, 24]) {
-            w = wordBoundsAt(e.clientX, e.clientY + dy);
-            if (w) break;
+            w = wordBoundsAt(e.clientX, e.clientY + dy, dragSel);
+            if (w !== null) break;
         }
     }
     if (!w) return;
