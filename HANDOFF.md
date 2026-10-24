@@ -8,10 +8,15 @@
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
   - Task: Token optimization (compact rules, docs archiving, .vscode search exclusions) and Antigravity workflow definitions.
   - Status: In progress.
-- **Claude Code** (Branch: `fix/selection-words-alone`, PR #281, main directory):
+- **Claude Code** (Branch: `chore/remove-dictionaries`, PR #282 open — dictionaries removed + bilingual one-language-per-voice; PR #281 merged):
   - Selection/narration/Grammar work below; also took over the book narrations of the previous narration agent.
   - Isolation rule: Do NOT touch or edit files in the main folder while Claude is active.
-  - Background narration jobs (scratch scripts, logs in the session scratchpad): `rejoin_all.sh` (Par ici 1-8: sentences with a word broken at a line end re-said whole, then pack into `~/Books/Par Ici/tts/relex-out`), `bescherelle.sh` (Bescherelle Antoine + Sylvie → `~/Books/Bescherelle/Озвучка Bescherelle`), `complete_french.sh` (waits for the two Kokoro generate runs, FR `ff_siwis` + EN `af_heart`, 24 647 sentences each → `~/Books/Complete French/Озвучка Complete French`). Aligns share the GPU through the align.py lock. Then: copy to the delivery folders, upload to Drive, owner re-imports.
+  - **Stopped 2026-10-23 22:55 (owner switched the computer off). Resume:**
+    - Complete French: `bash ~/tools/book-tts/cf_lang.sh` (FR then EN, each voice only its language's sentences + unclear ones via `generate.py --lang`; cached sentences reused; then align → words → repair → rejoin → align --marked → pack into `~/Books/Complete French/Озвучка Complete French`). Stopped while the FR run was assembling (18 667 sentences, all synthesized). Then upload: `rclone copy "~/Books/Complete French/Озвучка Complete French" "gdrive:Озвучка Complete French"`.
+    - Bescherelle upload was interrupted: `rclone copy "~/Books/Bescherelle/Озвучка Bescherelle" "gdrive:Озвучка Bescherelle"`, then `rclone check --size-only`.
+    - Done and on Drive (rclone check: 0 differences): «Озвучка Par ici», 7 rebuilt files (one-letter words recorded, line-end broken words re-said) + updated «ЯК ПІДКЛЮЧИТИ.txt»; the owner must re-import them on the tablet.
+    - Bescherelle Antoine + Sylvie packed (aligned, no words said alone: conjugation tables, owner's choice) in `~/Books/Bescherelle/Озвучка Bescherelle`.
+    - Highlight stress harness kept at `~/tools/book-tts/hl_stress.py` (real touch/mouse drags on real PDF pages).
 
 ## Open Product Tasks Pending Device Verification
 1. **On-Device LLM (Gemma 4 E2B via MediaPipe, PR #278 merged)**:
