@@ -28,7 +28,9 @@ import os
 import re
 import subprocess
 import sys
+from collections import Counter
 
+from columns import page_items
 from engines import synthesize as engine_synthesize
 
 SENTENCE_END = re.compile(r'(?<=[.!?…])\s+')
@@ -47,17 +49,45 @@ def page_text(pdf, page):
     return ' '.join(out.split())
 
 
+def column_languages(items):
+    """The language each column of a table is read in: French for the first column, English for the second, and so on
+    (the columns alternate), unless most of a column's sentences are clearly the other language (an exercise whose right
+    column is French): then the majority's."""
+    out = {}
+    for k in sorted({x[2] for x in items if x[0] == 'cell'}):
+        votes = Counter(sentence_lang(x[1]) for x in items if x[0] == 'cell' and x[2] == k)
+        decided = {lang: n for lang, n in votes.items() if lang}
+        out[k] = 'fr' if k % 2 == 0 else 'en'
+        if decided:
+            lang, n = max(decided.items(), key=lambda kv: kv[1])
+            if n >= 0.6 * sum(decided.values()):
+                out[k] = lang
+    return out
+
+
 def sentences_of(pdf, pages):
     result = []
     for page in pages:
-        text = PISTE_MARK.sub(' ', page_text(pdf, page))
-        # the printed folio at the foot of the page, e.g. «20 vingt» (the number written out)
-        text = re.sub(rf'\s{page}\s+\S+$', ' ', text.strip())
-        for part in SENTENCE_END.split(text.strip()):
-            # exercise bullets («*», «•», a checkbox «o») are not spoken; they would take the first word's timing
-            part = re.sub(r'^(?:[*•●]|o(?=\s))\s*', '', part.strip())
-            if re.search(r'\w', part):
-                result.append({'page': page, 'text': part})
+        items = page_items(pdf, page)
+        if items is None:   # no two-column table on this page: its text as it always was
+            items = [('flow', page_text(pdf, page))]
+        column_lang = column_languages(items)
+        for n, item in enumerate(items):
+            if item[0] == 'cell':
+                # a cell of a two-column table is one whole sentence in its column's language (columns.py)
+                text = ' '.join(PISTE_MARK.sub(' ', item[1]).split())
+                if re.search(r'[^\W\d_]', text):   # a number alone («1.») is not a sentence
+                    result.append({'page': page, 'text': text, 'lang': column_lang[item[2]], 'column': True})
+                continue
+            text = PISTE_MARK.sub(' ', item[1])
+            if n == len(items) - 1:
+                # the printed folio at the foot of the page, e.g. «20 vingt» (the number written out)
+                text = re.sub(rf'\s{page}\s+\S+$', ' ', text.strip())
+            for part in SENTENCE_END.split(text.strip()):
+                # exercise bullets («*», «•», a checkbox «o») are not spoken; they would take the first word's timing
+                part = re.sub(r'^(?:[*•●]|o(?=\s))\s*', '', part.strip())
+                if re.search(r'[^\W\d_]', part):   # a page number or a bare «10.» is not read
+                    result.append({'page': page, 'text': part})
     return result
 
 
@@ -140,8 +170,11 @@ def language_parts(sentences):
     detector = LanguageDetectorBuilder.from_languages(Language.FRENCH, Language.ENGLISH).build()
     out = []
     for x in sentences:
+        if x.get('column'):   # a table cell is one sentence in the language of its column (sentences_of)
+            out.append(x)
+            continue
         text = x['text']
-        runs = [('fr' if r.language == Language.FRENCH else 'en', r.start_index, r.end_index)
+        runs =[('fr' if r.language == Language.FRENCH else 'en', r.start_index, r.end_index)
                 for r in detector.detect_multiple_languages_of(text)]
         if not runs:
             out.append({**x, 'lang': sentence_lang(x['text']) or ''})
@@ -256,7 +289,7 @@ def main():
     sentences = sentences_of(pdf, pages)
     print(f'{len(sentences)} sentences on pages {args.pages}', file=sys.stderr)
     if args.lang:
-        sentences = [x for x in sentences if sentence_lang(x['text']) in (args.lang, '')]
+        sentences = [x for x in sentences if x.get('lang', sentence_lang(x['text'])) in (args.lang, '')]
         print(f'{len(sentences)} of them in {args.lang} (or unclear)', file=sys.stderr)
 
     if mix:
