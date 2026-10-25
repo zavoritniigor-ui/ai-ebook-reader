@@ -74,7 +74,7 @@ async def fill_cache(forms, voice, rate, cache_dir, concurrency):
     failed = []
 
     async def one(form):
-        path = os.path.join(cache_dir, hashlib.sha1(f'{voice}|{rate}|{form}'.encode()).hexdigest() + '.mp3')
+        path = clip_path(cache_dir, voice, rate, form)
         if os.path.exists(path):
             return
         async with semaphore:
@@ -116,6 +116,23 @@ def sound_span(blob):
     return round(start * 1000), round(end * 1000)
 
 
+def voices_of(meta):
+    """key -> (voice, rate) that says the word: the book's voice, or for a mixed narration (generate.py --mix) the voice
+    of the parts the word is printed in most often («table» in the English explanations is said in English)."""
+    seen = collections.defaultdict(collections.Counter)
+    for s in meta['sentences']:
+        vr = (s.get('voice', meta['voice']), s.get('rate', meta['rate']))
+        for w in s['words']:
+            key = key_of(s['text'][w['s']:w['e']].replace('’', "'"))
+            if key:
+                seen[key][vr] += 1
+    return {key: counts.most_common(1)[0][0] for key, counts in seen.items()}
+
+
+def clip_path(cache_dir, voice, rate, form):
+    return os.path.join(cache_dir, hashlib.sha1(f'{voice}|{rate}|{form}'.encode()).hexdigest() + '.mp3')
+
+
 def build(path, concurrency):
     with open(path, encoding='utf-8') as f:
         meta = json.load(f)
@@ -125,7 +142,11 @@ def build(path, concurrency):
     os.makedirs(cache_dir, exist_ok=True)
     forms = forms_of(meta)
     print(f'{path}: {len(forms)} words', file=sys.stderr)
-    failed = asyncio.run(fill_cache(sorted(set(forms.values())), meta['voice'], meta['rate'], cache_dir, concurrency))
+    voices = voices_of(meta)
+    failed = []
+    for vr in sorted(set(voices.values())):
+        wanted = sorted({form for key, form in forms.items() if voices[key] == vr})
+        failed += asyncio.run(fill_cache(wanted, vr[0], vr[1], cache_dir, concurrency))
     for form, error in failed:
         print(f'skipped (the reader reads it with the system voice): {form!r}: {error}', file=sys.stderr)
     if len(failed) > len(forms) // 100:   # more than a word here and there: the service is down, run again later
@@ -141,7 +162,7 @@ def build(path, concurrency):
         offset = start
         for key in sorted(forms):
             form = forms[key]
-            with open(os.path.join(cache_dir, hashlib.sha1(f'{meta["voice"]}|{meta["rate"]}|{form}'.encode()).hexdigest() + '.mp3'), 'rb') as f:
+            with open(clip_path(cache_dir, *voices[key], form), 'rb') as f:
                 data = f.read()
             a, b = sound_span(data)
             out.write(data)

@@ -11,6 +11,8 @@ Usage:
   python3 generate.py --pdf livre.pdf --pages 20-21 --voice fr-CA-SylvieNeural \
       --out ~/Books/Par\\ Ici/tts/a1-ch1
   ~/tools/kokoro-venv/bin/python generate.py --pdf livre.pdf --pages 1-203 --voice kokoro:ff_siwis --out ...
+  python3 generate.py --pdf book.pdf --pages 1-657 --mix 'fr=fr-FR-DeniseNeural@-10%,en=en-GB-SoniaNeural@+0%' --out ...
+      # a bilingual book in one file: each sentence read by the voice of its language
 
 Needs: edge-tts (pip) or kokoro, pdftotext and ffprobe (poppler / ffmpeg).
 
@@ -117,11 +119,62 @@ def duration_of(path):
     return float(out.strip())
 
 
-async def fill_cache(sentences, voice, rate, cache_dir, concurrency):
+def parse_mix(spec):
+    """«fr=fr-FR-DeniseNeural@-10%,en=en-GB-SoniaNeural@+0%» -> {'fr': (voice, rate), 'en': (voice, rate)}, in that order:
+    the first language also reads the sentences whose language is unclear."""
+    mix = {}
+    for part in spec.split(','):
+        lang, _, rest = part.strip().partition('=')
+        voice, _, rate = rest.partition('@')
+        if lang not in ('fr', 'en') or not voice:
+            raise SystemExit(f'--mix: bad part {part!r}')
+        mix[lang] = (voice, rate or '+0%')
+    return mix
+
+
+def language_parts(sentences):
+    """A bilingual book's lines often hold both languages («le besoin need le miroir mirror», a French sentence printed
+    beside its translation): each line is split into its French and English runs (lingua), each run one entry with its
+    language. A run with no letters (a number) joins its neighbour."""
+    from lingua import Language, LanguageDetectorBuilder
+    detector = LanguageDetectorBuilder.from_languages(Language.FRENCH, Language.ENGLISH).build()
+    out = []
+    for x in sentences:
+        text = x['text']
+        runs = [('fr' if r.language == Language.FRENCH else 'en', r.start_index, r.end_index)
+                for r in detector.detect_multiple_languages_of(text)]
+        if not runs:
+            out.append({**x, 'lang': sentence_lang(x['text']) or ''})
+            continue
+        parts = []
+        for lang, a, b in runs:
+            piece = text[a:b].strip()
+            if not piece:
+                continue
+            if parts and (parts[-1][0] == lang or not re.search(r'[^\W\d_]', piece)):
+                parts[-1][1] += ' ' + piece
+            elif parts and not re.search(r'[^\W\d_]', parts[-1][1]):
+                parts[-1] = [lang, parts[-1][1] + ' ' + piece]
+            else:
+                parts.append([lang, piece])
+        out += [{'page': x['page'], 'text': piece, 'lang': lang} for lang, piece in parts]
+    return out
+
+
+def assign_voices(sentences, voice, rate, mix):
+    """Each sentence gets the voice that reads it: one voice, or with --mix the voice of the sentence's language."""
+    first = next(iter(mix.values())) if mix else None
+    for x in sentences:
+        lang = x.get('lang', sentence_lang(x['text'])) if mix else ''
+        x['voice'], x['rate'] = (mix.get(lang) or first) if mix else (voice, rate)
+
+
+async def fill_cache(sentences, cache_dir, concurrency):
     semaphore = asyncio.Semaphore(concurrency)
     failed = []
 
     async def one(sentence):
+        voice, rate = sentence['voice'], sentence['rate']
         key = cache_key(voice, rate, sentence['text'])
         path = os.path.join(cache_dir, key + '.json')
         if os.path.exists(path):
@@ -150,14 +203,14 @@ async def fill_cache(sentences, voice, rate, cache_dir, concurrency):
     return failed
 
 
-def assemble(sentences, voice, rate, cache_dir, out_dir, name):
+def assemble(sentences, cache_dir, out_dir, name, mixed=False):
     mp3_path = os.path.join(out_dir, name + '.mp3')
     offset = 0
     entries = []
     total_misses = 0
     with open(mp3_path, 'wb') as out:
         for sentence in sentences:
-            key = cache_key(voice, rate, sentence['text'])
+            key = cache_key(sentence['voice'], sentence['rate'], sentence['text'])
             with open(os.path.join(cache_dir, key + '.mp3'), 'rb') as f:
                 data = f.read()
             with open(os.path.join(cache_dir, key + '.json'), encoding='utf-8') as f:
@@ -171,6 +224,7 @@ def assemble(sentences, voice, rate, cache_dir, out_dir, name):
                 'bytes': [offset, offset + len(data)],
                 'duration': round(duration_of(os.path.join(cache_dir, key + '.mp3')), 3),
                 'words': spans,
+                **({'voice': sentence['voice'], 'rate': sentence['rate']} if mixed else {}),
             })
             offset += len(data)
     print(f'word tokens not found in the text: {total_misses}', file=sys.stderr)
@@ -181,12 +235,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--pdf', required=True)
     parser.add_argument('--pages', required=True, help='e.g. 20-21')
-    parser.add_argument('--voice', required=True)
+    parser.add_argument('--voice', help='one voice for the whole book')
+    parser.add_argument('--mix', help='a bilingual book in ONE file, each sentence read by the voice of its language: '
+                                      '«fr=fr-FR-DeniseNeural@-10%%,en=en-GB-SoniaNeural@+0%%» (the first reads unclear ones)')
     parser.add_argument('--rate', default='-10%')
     parser.add_argument('--out', required=True)
     parser.add_argument('--concurrency', type=int, default=6)
     parser.add_argument('--lang', choices=['fr', 'en'], help='a bilingual book: only the sentences in this language (and unclear ones)')
     args = parser.parse_args()
+    if bool(args.voice) == bool(args.mix):
+        parser.error('give --voice or --mix')
+    mix = parse_mix(args.mix) if args.mix else {}
 
     pdf = os.path.expanduser(args.pdf)
     out_dir = os.path.expanduser(args.out)
@@ -200,15 +259,24 @@ def main():
         sentences = [x for x in sentences if sentence_lang(x['text']) in (args.lang, '')]
         print(f'{len(sentences)} of them in {args.lang} (or unclear)', file=sys.stderr)
 
-    failed = asyncio.run(fill_cache(sentences, args.voice, args.rate, cache_dir, args.concurrency))
+    if mix:
+        sentences = language_parts(sentences)
+        print(f'{len(sentences)} parts after splitting the lines by language', file=sys.stderr)
+    assign_voices(sentences, args.voice, args.rate, mix)
+    if mix:
+        for lang, (voice, _) in mix.items():
+            print(f'{sum(x["voice"] == voice for x in sentences)} sentences read by {voice} ({lang})', file=sys.stderr)
+    failed = asyncio.run(fill_cache(sentences, cache_dir, args.concurrency))
     if failed:
         for text, error in failed:
             print(f'FAILED: {text[:60]!r}: {error}', file=sys.stderr)
         sys.exit(1)
 
-    name = f"{args.voice.replace(':', '-')}_p{args.pages}"
-    mp3_path, entries = assemble(sentences, args.voice, args.rate, cache_dir, out_dir, name)
-    meta = {'voice': args.voice, 'rate': args.rate, 'pages': pages,
+    voice = 'mix:' + '+'.join(v for v, _ in mix.values()) if mix else args.voice
+    rate = 'mix' if mix else args.rate
+    name = f"{voice.replace(':', '-')}_p{args.pages}"
+    mp3_path, entries = assemble(sentences, cache_dir, out_dir, name, mixed=bool(mix))
+    meta = {'voice': voice, 'rate': rate, 'pages': pages,
             'audio': os.path.basename(mp3_path), 'sentences': entries}
     with open(os.path.join(out_dir, name + '.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)

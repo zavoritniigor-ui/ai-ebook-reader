@@ -17,6 +17,10 @@ def is_kokoro(voice):
     return voice.startswith('kokoro:')
 
 
+# 48 kbps sounded «like a bad speaker» (owner, 2026-10-24); Kokoro's own audio is 24 kHz, 128 kbps keeps all of it
+KOKORO_BITRATE = '128k'
+
+
 def kokoro_speed(rate):
     """edge-tts rate «-10%» -> Kokoro speed 0.9."""
     m = re.fullmatch(r'([+-]\d+)%', rate or '+0%')
@@ -49,7 +53,7 @@ def _kokoro_mp3(text, voice, rate):
         raise RuntimeError('no audio returned')
     pcm = np.concatenate(chunks).tobytes()
     return subprocess.run(['ffmpeg', '-v', 'error', '-f', 'f32le', '-ar', '24000', '-ac', '1', '-i', 'pipe:0',
-                           '-c:a', 'libmp3lame', '-b:a', '48k', '-write_xing', '0', '-id3v2_version', '0', '-f', 'mp3', 'pipe:1'],
+                           '-c:a', 'libmp3lame', '-b:a', KOKORO_BITRATE, '-write_xing', '0', '-id3v2_version', '0', '-f', 'mp3', 'pipe:1'],
                           input=pcm, capture_output=True, check=True).stdout
 
 

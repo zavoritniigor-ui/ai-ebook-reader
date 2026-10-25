@@ -6,9 +6,10 @@
  * The JSON holds, for every sentence: page, text, bytes [start, end) in the MP3, duration (s) and for every word the
  * character span in the sentence (s, e) and its time span in ms (start, end) from the sentence start.
  * "lexicon" (tools/book_tts/words.py): every word said on its own, appended to the MP3 — a tap on a word plays that, the
- * natural word, and a selected part of a sentence plays its words said alone, one after another. Only a whole sentence plays
- * the sentence narration: a piece cut out of it carries the melody of the whole sentence (falling, rising) and sounds broken.
- * A word the lexicon lacks is never cut from its sentence: the system voice reads that tap or selection instead.
+ * natural word. Only a whole sentence plays the sentence narration: a piece cut out of it carries the melody of the whole
+ * sentence (falling, rising) and sounds broken. A part of a sentence of two words or more (a pair) is read by the system voice:
+ * words said alone one after another sound choppy (owner, 2026-10-24). A word the lexicon lacks is never cut from its
+ * sentence: the system voice reads that tap instead.
  * "timing": "aligned" (tools/book_tts/align.py) means the spans were measured on the audio and cut at the quiet point
  * between two words: they are played exactly. Older files carry the edge-tts estimates and get a small margin.
  * The pure helpers (bsWordKey, bsKeys, bsWordCues, bsPickCue, bsPhraseRun) are checked by tests/book_speech_test.mjs. */
@@ -17,7 +18,7 @@ const BS_STORE = 'speech';
 const BS_MARGIN = 0.04;   // seconds of the neighbouring sound kept on each side of a word (estimated timings only)
 const BS_FADE = 0.008;    // a short fade in/out so the cut makes no click
 const BS_GAP = 0.25;      // the pause between two sentences of one selection
-const BS_WORD_GAP = 0.08; // the pause between two words said alone (a selected part of a sentence)
+const BS_WORD_GAP = 0.08; // the pause before a word said alone that follows a sentence in one selection
 const BS_DECODED_MAX = 24;
 const bsSets = { key: null, list: [] };   // the speech sets of the open book: { id, voice, audioName, sentences, blob }
 const bsDecoded = new Map();              // «set#sentence» -> AudioBuffer, least recently used first
@@ -464,8 +465,9 @@ function bsReplay(r) {
 }
 
 // What a selection plays, in reading order, or null when the narration does not cover it: a sentence selected whole plays its
-// speech, from its first sound to its last ({ i, from, to }); the words of a part of a sentence play said alone, one after
-// another ({ word, from, to }). A word of that part the lexicon lacks: null (never a piece cut from the sentence).
+// speech, from its first sound to its last ({ i, from, to }); one word of a sentence plays that word said alone ({ word, from,
+// to }). A part of a sentence of two words or more, or a word the lexicon lacks: null — the system voice reads the selection
+// (never a piece cut from the sentence, never words said alone strung together).
 function bsPhrasePlan(node, text) {
     const set = bsActiveSet();
     const where = bsPageOf(node);
@@ -487,6 +489,10 @@ function bsPhrasePlan(node, text) {
             // estimated timings are least sure at the edges: a whole sentence keeps its own start and end
             plan.push(set.timing === 'aligned' ? { i, from, to } : { i, from: 0, to: set.sentences[i].duration });
         } else {
+            // two words or more of a sentence (a pair): the system voice says them as one phrase; a word broken at a line
+            // end («contri- buer») is one word in two pieces
+            const split = part.length === 2 && bsSplitWord(set, part[0]);
+            if (part.length > 1 && !(split && split.first)) return null;
             for (let n = 0; n < part.length; n++) {
                 const x = part[n], split = bsSplitWord(set, x);
                 // a word broken at a line end: said once, whole (when the selection has both halves, the second is skipped)
@@ -553,8 +559,8 @@ function bsSentenceIndex(set) {
     return bsSentenceIndexes.get(set);
 }
 // What a phrase that is not on the page plays («tu gis», «nous recevons»): a recorded sentence saying exactly it, whole;
-// else its words said alone, one after another; null when a word has no recording anywhere (the system voice reads it).
-// Never a piece cut out of a longer sentence.
+// else one word said alone; null for several words no sentence says, or a word with no recording anywhere (the system voice
+// reads it). Never a piece cut out of a longer sentence, never words said alone strung together.
 function bsPhraseAnywhere(text) {
     const keys = bsKeys(text), sources = bsSpeechSources();
     if (!keys.length || !sources.length) return null;
@@ -566,6 +572,7 @@ function bsPhraseAnywhere(text) {
             ? { from: words[0].start / 1000, to: words[words.length - 1].end / 1000 } : { from: 0, to: s.duration };
         return { set, plan: [{ set, i, ...whole }] };
     }
+    if (keys.length > 1) return null;
     const plan = [];
     for (const key of keys) {
         const set = sources.find(x => x.lexicon && Object.prototype.hasOwnProperty.call(x.lexicon, key));
