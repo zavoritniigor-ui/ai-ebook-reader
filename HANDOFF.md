@@ -1,4 +1,4 @@
-# AI Ebook Reader — Current Handoff State (2026-10-23)
+# AI Ebook Reader — Current Handoff State (2026-10-24)
 
 > **RULE FOR AGENTS**: Replace your section with the current state when handing off.
 > **NEVER append history dumps** to this file. Historical logs through 2026-10-23 are archived
@@ -8,15 +8,15 @@
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
   - Task: Token optimization (compact rules, docs archiving, .vscode search exclusions) and Antigravity workflow definitions.
   - Status: In progress.
-- **Claude Code** (Branch: `chore/remove-dictionaries`, PR #282 open — dictionaries removed + bilingual one-language-per-voice; PR #281 merged):
-  - Selection/narration/Grammar work below; also took over the book narrations of the previous narration agent.
-  - Isolation rule: Do NOT touch or edit files in the main folder while Claude is active.
-  - **State 2026-10-24 (all narration jobs finished; nothing running):**
-    - Complete French: FR (`ff_siwis`, 18 667 sentences, 579.6 MB) and EN (`af_heart`, 14 899 sentences, 518.4 MB) packed in `~/Books/Complete French/Озвучка Complete French` and uploaded to `gdrive:Озвучка Complete French` (rclone check --size-only: 0 differences). Rebuild: `bash ~/tools/book-tts/cf_lang.sh` (cached sentences reused).
-    - Bescherelle Antoine + Sylvie (aligned, no words said alone: conjugation tables, owner's choice) in `~/Books/Bescherelle/Озвучка Bescherelle`, uploaded to `gdrive:Озвучка Bescherelle` (rclone check: 0 differences).
-    - «Озвучка Par ici» on Drive (rclone check: 0 differences): 7 rebuilt files (one-letter words recorded, line-end broken words re-said) + updated «ЯК ПІДКЛЮЧИТИ.txt».
-    - Owner must re-import all narration files on the tablet («Аудіо до книги» → «Озвучка книги»).
-    - Highlight stress harness kept at `~/tools/book-tts/hl_stress.py` (real touch/mouse drags on real PDF pages).
+- **Claude Code** (Branch: `feat/narration-mixed-voices`, PR #283 open on `main`; PR #282 merged 2026-10-24):
+  - Book narration restarted from scratch on 2026-10-24. Isolation rule: do NOT edit files in the main folder while Claude is active.
+  - **Owner's rule (final):** a whole sentence plays its recording (its own intonation); ONE word plays that word said alone (`words.py`); TWO OR MORE selected words go to the SYSTEM VOICE (never words alone strung together, never a piece cut out of a sentence). App side is PR #283 (`bsPhrasePlan` / `bsPhraseAnywhere` return null for 2+ words; tests in `tests/book_speech_browser.py`). Not live until #283 is merged.
+  - **Old narrations rejected** («неприродно», «як з поганого динаміка» = edge-tts is fixed at 24 kHz / 48 kbps). All old MP3s + caches were moved to the local Trash (not emptied) and to the Drive trash. Drive now has one folder per book: «Par ici», «Complete French», «Bescherelle» (book PDFs + new narrations).
+  - **Par ici 1-2 (done):** Microsoft Sylvie (fr-CA, −10%), 7 138 sentences + 4 781 words alone, 240 MB, `~/Books/Par ici 1-2 - Sylvie (fr-CA).mp3` (+ copy `~/Books/livre 12.pdf`), uploaded to `gdrive:Par ici`. Driver: `~/tools/book-tts/narrate_sentences.sh` then `words.py`, `rejoin.py`, `align.py --marked`, `pack.py`. Owner still to verify on the computer/tablet.
+  - **Complete French (running 2026-10-24 evening, ends ~23:10):** ONE file, Kokoro `ff_siwis` (−10%) for French, Kokoro `am_adam` for English; lines holding both languages are split by `lingua` into parts (`generate.py --mix`), 36 497 parts (22 702 FR, 13 795 EN), 12 846 words alone (each by the voice of its language). Kokoro is now encoded at 128 kbps. Driver `~/tools/book-tts/cf_mix.sh`, log `~/Books/Complete French/cf_mix.log`, output `~/Books/Complete French - Kokoro FR+EN (ff_siwis, am_adam).mp3` → upload to `gdrive:Complete French`.
+  - **Known weak spots:** lingua mislabels some parts («coin corner» → EN, a heading split mid-phrase); a real sentence glued to a heading/page number in the PDF text («féminin 19 Le séisme…») is one recorded part, so selecting just the sentence = 2+ words of a part → system voice. Count those and re-cut them next. Par ici PDF has letter-spaced headings («J e s u i s») read letter by letter.
+  - **Voice tests** (owner listening): `~/Books/Par Ici/xtts-test/` (13 Microsoft FR voices, 4 XTTS-v2, Kokoro), `~/Books/Complete French/kokoro-test/` (12 Kokoro EN voices, p.30 mixed), `~/Books/Par Ici/pairs-test/` (pairs cut vs said alone). XTTS-v2 venv `~/tools/xtts-venv` (owner accepted CPML; torch 2.6 + transformers 4.57). Azure Speech (48 kHz) declined — paid.
+  - **Next:** merge #283 after green CI + production check; owner re-imports narrations on the tablet; fix glued headings / letter-spaced text; Bescherelle not redone yet.
 
 ## Open Product Tasks Pending Device Verification
 1. **On-Device LLM (Gemma 4 E2B via MediaPipe, PR #278 merged)**:
