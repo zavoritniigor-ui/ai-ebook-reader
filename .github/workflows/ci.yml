@@ -33,6 +33,7 @@ jobs:
           python3 tests/app_shell_versions.py
           python3 tests/browser_cdp_transport.py
           python3 tests/ci_suite_coverage.py
+          python3 tests/book_tts_columns_test.py
           node --check sw.js
           node --check archive-guard.worker.js
           node tests/shared_ai_proxy_test.mjs
