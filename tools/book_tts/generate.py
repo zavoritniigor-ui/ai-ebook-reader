@@ -43,25 +43,19 @@ def parse_pages(spec):
     return list(range(int(first), int(last or first) + 1))
 
 
-def page_text(pdf, page):
-    out = subprocess.run(['pdftotext', '-f', str(page), '-l', str(page), '-raw', pdf, '-'],
-                         check=True, capture_output=True, text=True).stdout
-    return ' '.join(out.split())
-
-
 def column_languages(items):
-    """The language each column of a table is read in: French for the first column, English for the second, and so on
+    """The language each column of each table is read in: French for the first column, English for the second, and so on
     (the columns alternate), unless most of a column's sentences are clearly the other language (an exercise whose right
-    column is French): then the majority's."""
+    column is French): then the majority's. Keyed by (table, column)."""
     out = {}
-    for k in sorted({x[2] for x in items if x[0] == 'cell'}):
-        votes = Counter(sentence_lang(x[1]) for x in items if x[0] == 'cell' and x[2] == k)
+    for key in sorted({(x[3], x[2]) for x in items if x[0] == 'cell'}):
+        votes = Counter(sentence_lang(x[1]) for x in items if x[0] == 'cell' and (x[3], x[2]) == key)
         decided = {lang: n for lang, n in votes.items() if lang}
-        out[k] = 'fr' if k % 2 == 0 else 'en'
+        out[key] = 'fr' if key[1] % 2 == 0 else 'en'
         if decided:
             lang, n = max(decided.items(), key=lambda kv: kv[1])
             if n >= 0.6 * sum(decided.values()):
-                out[k] = lang
+                out[key] = lang
     return out
 
 
@@ -69,15 +63,13 @@ def sentences_of(pdf, pages):
     result = []
     for page in pages:
         items = page_items(pdf, page)
-        if items is None:   # no two-column table on this page: its text as it always was
-            items = [('flow', page_text(pdf, page))]
         column_lang = column_languages(items)
         for n, item in enumerate(items):
             if item[0] == 'cell':
                 # a cell of a two-column table is one whole sentence in its column's language (columns.py)
                 text = ' '.join(PISTE_MARK.sub(' ', item[1]).split())
-                if re.search(r'[^\W\d_]', text):   # a number alone («1.») is not a sentence
-                    result.append({'page': page, 'text': text, 'lang': column_lang[item[2]], 'column': True})
+                if len(re.findall(r'[^\W\d_]', text)) >= 2:   # a bare label («1.», «a.») is not a sentence
+                    result.append({'page': page, 'text': text, 'lang': column_lang[(item[3], item[2])], 'column': True})
                 continue
             text = PISTE_MARK.sub(' ', item[1])
             if n == len(items) - 1:
@@ -86,7 +78,7 @@ def sentences_of(pdf, pages):
             for part in SENTENCE_END.split(text.strip()):
                 # exercise bullets («*», «•», a checkbox «o») are not spoken; they would take the first word's timing
                 part = re.sub(r'^(?:[*•●]|o(?=\s))\s*', '', part.strip())
-                if re.search(r'[^\W\d_]', part):   # a page number or a bare «10.» is not read
+                if len(re.findall(r'[^\W\d_]', part)) >= 2:   # a page number or a bare label («10.», «a.») is not read
                     result.append({'page': page, 'text': part})
     return result
 
@@ -163,9 +155,9 @@ def parse_mix(spec):
 
 
 def language_parts(sentences):
-    """A bilingual book's lines often hold both languages («le besoin need le miroir mirror», a French sentence printed
-    beside its translation): each line is split into its French and English runs (lingua), each run one entry with its
-    language. A run with no letters (a number) joins its neighbour."""
+    """Each sentence gets ONE language: the one most of its words are in (lingua). A sentence is never cut into pieces by
+    language: a piece is not the sentence, so a selection of the whole sentence would not match its recording (the
+    «plus-que-parfait» inside an English sentence is a French-looking word, not a French sentence)."""
     from lingua import Language, LanguageDetectorBuilder
     detector = LanguageDetectorBuilder.from_languages(Language.FRENCH, Language.ENGLISH).build()
     out = []
@@ -173,24 +165,15 @@ def language_parts(sentences):
         if x.get('column'):   # a table cell is one sentence in the language of its column (sentences_of)
             out.append(x)
             continue
-        text = x['text']
-        runs =[('fr' if r.language == Language.FRENCH else 'en', r.start_index, r.end_index)
-                for r in detector.detect_multiple_languages_of(text)]
-        if not runs:
-            out.append({**x, 'lang': sentence_lang(x['text']) or ''})
-            continue
-        parts = []
-        for lang, a, b in runs:
-            piece = text[a:b].strip()
-            if not piece:
-                continue
-            if parts and (parts[-1][0] == lang or not re.search(r'[^\W\d_]', piece)):
-                parts[-1][1] += ' ' + piece
-            elif parts and not re.search(r'[^\W\d_]', parts[-1][1]):
-                parts[-1] = [lang, parts[-1][1] + ' ' + piece]
-            else:
-                parts.append([lang, piece])
-        out += [{'page': x['page'], 'text': piece, 'lang': lang} for lang, piece in parts]
+        words = {'fr': 0, 'en': 0}
+        for run in detector.detect_multiple_languages_of(x['text']):
+            n = len(re.findall(r'[^\W\d_]+', x['text'][run.start_index:run.end_index]))
+            words['fr' if run.language == Language.FRENCH else 'en'] += n
+        if words['fr'] != words['en']:
+            lang = 'fr' if words['fr'] > words['en'] else 'en'
+        else:
+            lang = sentence_lang(x['text']) or ''
+        out.append({**x, 'lang': lang})
     return out
 
 

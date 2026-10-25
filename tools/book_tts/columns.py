@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""The text of a PDF page for the narration, with side-by-side columns read sentence by sentence (generate.py).
+"""The text of a PDF page for the narration, cut into the book's own sentences (generate.py).
 
-Complete French prints its vocabulary and exercises in columns: a French word, sentence or example on the left, its English
-on the right, row by row. Every sentence of a column is one whole sentence for the narration, in its column's language, even
-when it is two words with no full stop («devenir» / «to become»): said once, with its own intonation. A line that wraps
-goes on in the same sentence (it is indented under the column's start). The text outside the columns is read in reading
-order, as before, and split into sentences by its punctuation.
+A sentence of the book is one unit for the narration, from its first word to its full stop, so that a selection of exactly
+that sentence matches one recording. Two things keep the units right:
+- a heading is a block of its own (pdftotext puts it in a block of its own): it is not glued to the sentence below it. A
+  paragraph's block goes on into the next block only when a sentence is still open at its end;
+- side-by-side columns (Complete French: a French sentence on the left, its English on the right, row by row) are read cell
+  by cell, in their column's language, even when a cell is two words with no full stop («devenir» / «to become»). A line that
+  wraps goes on in the same cell (it is indented under the column's start).
 
-A page with no such columns gives None: generate.py then reads it as it always did.
+The items are [('flow', text) | ('cell', text, column)] in reading order; a flow text is split into sentences by its
+punctuation (generate.py). A cell is one sentence, read in the language of its column.
 """
 import html
 import re
@@ -20,15 +23,19 @@ WRAP = (3.0, 30.0)   # pt a wrapped line is indented past its column's start (Co
 ROW = 4.0            # pt: a column's cell and its neighbour's share a row when their tops are this close (validation)
 ROW_ORDER = 8.0      # pt: the same, to read a row's left cell before its right one
 GAP_MAX = 1.6        # × line height: a wrapped line follows the one above it at most this far below
-SENTENCE_END = re.compile(r'(?<=[.!?…»])\s+')
-LINE = re.compile(r'<line xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</line>', re.S)
-WORD = re.compile(r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</word>', re.S)
 GAP = 14.0           # pt between two words that means a new column on the same line (a word space is about 3 pt)
 COLUMN_WIDTH = 230.0 # pt: the widest a column's text runs (a footer far to the right is not in any column)
+SENTENCE_END = re.compile(r'(?<=[.!?…»])\s+')
+TERMINAL = re.compile(r'[.!?…][»”"’)\]]*$')
+BLOCK = re.compile(r'<block [^>]*>(.*?)</block>', re.S)
+LINE = re.compile(r'<line xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</line>', re.S)
+WORD = re.compile(r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</word>', re.S)
 
 
 def page_lines(pdf, page):
-    """The page's text lines in reading order: [(y, height, [(x, text), ...])], one (x, text) per column segment."""
+    """The page's text lines in reading order: [(y, height, [(x, text), ...], block)].
+
+    block = (number, lines in the block, whether the block ends with a full stop): the blocks are pdftotext's own."""
     with tempfile.TemporaryDirectory() as tmp:
         out = f'{tmp}/page.html'
         subprocess.run(['pdftotext', '-f', str(page), '-l', str(page), '-bbox-layout', pdf, out], check=True,
@@ -36,46 +43,87 @@ def page_lines(pdf, page):
         with open(out, encoding='utf-8') as f:
             raw = f.read()
     lines = []
-    for m in LINE.finditer(raw):
-        words = [(float(w.group(1)), float(w.group(3)), html.unescape(w.group(5))) for w in WORD.finditer(m.group(5))]
-        if not words:
+    for number, block in enumerate(BLOCK.finditer(raw)):
+        block_lines = []
+        for m in LINE.finditer(block.group(1)):
+            words = [(float(w.group(1)), float(w.group(3)), html.unescape(w.group(5))) for w in WORD.finditer(m.group(5))]
+            if not words:
+                continue
+            segments = []
+            for x0, x1, text in words:
+                if segments and x0 - segments[-1][1] <= GAP:
+                    segments[-1][1] = max(segments[-1][1], x1)
+                    segments[-1][2].append(text)
+                else:
+                    segments.append([x0, x1, [text]])
+            block_lines.append((float(m.group(2)), float(m.group(4)) - float(m.group(2)),
+                                [(s[0], ' '.join(s[2])) for s in segments]))
+        if not block_lines:
             continue
-        segments = []
-        for x0, x1, text in words:
-            if segments and x0 - segments[-1][1] <= GAP:
-                segments[-1][1] = max(segments[-1][1], x1)
-                segments[-1][2].append(text)
-            else:
-                segments.append([x0, x1, [text]])
-        lines.append((float(m.group(2)), float(m.group(4)) - float(m.group(2)),
-                      [(s[0], ' '.join(s[2])) for s in segments]))
+        last = ' '.join(text for _, text in block_lines[-1][2]).strip()
+        info = (number, len(block_lines), bool(TERMINAL.search(last)))
+        lines += [(y, h, segs, info) for y, h, segs in block_lines]
     return lines
 
 
-def table_columns(lines):
-    """The x where each column of the page's table starts (left to right), or None when the page has no table.
+def _median(values):
+    values = sorted(values)
+    return values[len(values) // 2]
 
-    A table is two columns whose rows line up: most of the left column's lines have a right-column line on the same row.
-    Starts that lie a few points apart are one column (a wrapped line is indented under its column's start)."""
-    counts = Counter(round(x / TOL) for _, _, segs in lines for x, _ in segs)
-    starts = sorted(b * TOL for b, c in counts.items() if c >= 4)
-    best = None
+
+def _pair_rows(lines, a, b):
+    """The rows where a line at column start a has a partner at column start b on the same row: (score, [xl], [xr], [y])."""
+    lefts = [(y, x) for y, _, segs, _ in lines for x, _ in segs if abs(x - a) <= TOL]
+    rights = [(y, x) for y, _, segs, _ in lines for x, _ in segs if abs(x - b) <= TOL]
+    paired_l = [(y, x) for y, x in lefts if any(abs(y - z) <= ROW for z, _ in rights)]
+    paired_r = [(y, x) for y, x in rights if any(abs(y - z) <= ROW for z, _ in lefts)]
+    return paired_l, paired_r, len(lefts)
+
+
+def find_tables(lines):
+    """The page's tables, [{'columns': [x starts from the left], 'y0', 'y1'}], the main one first.
+
+    A table is two columns whose rows line up: a line at one column start has a partner on the same row at another. Two
+    rows are enough (a short example); the rows must be most of the left column's lines. The main table is the one with the
+    most rows; a further table is one that lies in its own rows (a page can hold an example and an exercise)."""
+    counts = Counter(round(x / TOL) for _, _, segs, _ in lines for x, _ in segs)
+    starts = sorted(b * TOL for b, c in counts.items() if c >= 2)
+    cands = []
     for i, a in enumerate(starts):
         for b in starts[i + 1:]:
             if b - a < 100:
                 continue
-            lefts = [y for y, _, segs in lines for x, _ in segs if abs(x - a) <= TOL]
-            rights = [y for y, _, segs in lines for x, _ in segs if abs(x - b) <= TOL]
-            pairs = sum(any(abs(y - z) <= ROW for z in rights) for y in lefts)
-            if pairs >= 3 and pairs >= 0.6 * len(lefts):
-                score = min(len(lefts), len(rights))
-                if best is None or score > best[0]:
-                    best = (score, a, b)
-    if best is None:
-        return None
-    _, a, _ = best
-    # the columns: every start from the table's left one on, a few points apart at most one column (a wrapped line is
-    # indented under it); a column starts where most of its lines start
+            paired_l, paired_r, _ = _pair_rows(lines, a, b)
+            if len(paired_l) < 2:
+                continue
+            # most of the left lines near these rows must have a partner (the same column on another part of the page does not count)
+            ys = [y for y, _ in paired_l]
+            near = sum(1 for y, _, segs, _ in lines for x, _ in segs
+                       if abs(x - a) <= TOL and min(ys) - 30 <= y <= max(ys) + 30)
+            if len(paired_l) >= 0.6 * near:
+                cands.append((len(paired_l), a, b, paired_l, paired_r))
+    if not cands:
+        return []
+    cands.sort(key=lambda c: -c[0])
+    tables = []
+    for score, a, b, paired_l, paired_r in cands:
+        rows = [y for y, _ in paired_l]
+        y0, y1 = min(rows) - 2, max(rows) + 25
+        if tables:
+            if any(y0 <= t['y1'] and t['y0'] <= y1 for t in tables):
+                continue   # the rows of another table
+            # the main table: its further columns (a page of four columns) are the other starts beyond its right one
+            cols = [_median([x for _, x in paired_l]), _median([x for _, x in paired_r])]
+        else:
+            cols = _table_columns(lines, a, b, counts, starts, paired_l, paired_r)
+        tables.append({'columns': cols, 'y0': y0, 'y1': y1})
+    return tables
+
+
+def _table_columns(lines, a, b, counts, starts, paired_l, paired_r):
+    """The columns of the main table: where its cells start (the rows that share a line), then the further starts beyond."""
+    rep_a = _median([x for _, x in paired_l])
+    rep_b = _median([x for _, x in paired_r])
     clusters = []
     for s in starts:
         if s < a - TOL:
@@ -84,91 +132,110 @@ def table_columns(lines):
             clusters[-1].append(s)
         else:
             clusters.append([s])
-    return [max(c, key=lambda s: counts[round(s / TOL)]) for c in clusters]
+    columns = []
+    for c in clusters:
+        if any(abs(s - a) < 25 for s in c):
+            columns.append(rep_a)
+        elif any(abs(s - b) < 25 for s in c):
+            columns.append(rep_b)
+        else:
+            columns.append(max(c, key=lambda s: counts[round(s / TOL)]))
+    return columns
 
 
-def page_items(pdf, page):
-    """[('flow', text) | ('cell', text, column)] in reading order, or None when the page has no table.
-
-    'column' counts the table's columns from the left (0, 1, ...); the text of a cell is one sentence (generate.py reads it
-    in the language of its column)."""
-    return items_from_lines(page_lines(pdf, page))
+def continues(prev, block):
+    """Whether the text of the block before (prev) goes on into this block: only when that block is several lines long and
+    still has a sentence open at its end. A heading (one line, no full stop) and a finished paragraph start a new unit."""
+    return prev is not None and block is not None and prev[1] >= 2 and not prev[2]
 
 
 def items_from_lines(lines):
-    """page_items for the page's lines as page_lines gives them (a pure function: the tests use it on made-up lines)."""
-    columns = table_columns(lines)
-    if columns is None:
+    """The items of a page's lines (see the module docstring). A page with no table is all 'flow'."""
+    tables = find_tables(lines)
+
+    def locate(x, y):
+        """(table, column) of a piece: the table whose rows it is in, and the column its x falls in; None for running text."""
+        for t, table in enumerate(tables):
+            if not table['y0'] <= y <= table['y1']:
+                continue
+            cols = table['columns']
+            for k, start in enumerate(cols):
+                end = cols[k + 1] - TOL if k + 1 < len(cols) else start + COLUMN_WIDTH
+                if start - TOL <= x < end:
+                    return (t, k)
         return None
 
-    def column_of(x):
-        for k, start in enumerate(columns):
-            end = columns[k + 1] - TOL if k + 1 < len(columns) else start + COLUMN_WIDTH
-            if start - TOL <= x < end:
-                return k
-        return None
+    # each piece of a line: (y, height, x, text, block, (table, column) or None)
+    pieces = [(y, h, x, text, block, locate(x, y)) for y, h, segs, block in lines for x, text in segs]
 
-    # each piece of a line: (y, height, x, text, column or None)
-    pieces = []
-    for y, h, segs in lines:
-        for x, text in segs:
-            pieces.append((y, h, x, text, column_of(x)))
-    in_table = [p for p in pieces if p[4] is not None]
-    if not in_table:
-        return None
-    top = min(p[0] for p in in_table) - 2
-    bottom = max(p[0] for p in in_table) + 25
-
-    # the text of each column, in units: a line that starts a new row opens a unit; an indented line that follows
-    # closely is a wrap of the unit above it
-    units = []   # [column, y, last_y, text]
+    # a table's cells: a line that starts a new row opens a unit; an indented line that follows closely wraps it
+    units = []   # [(table, column), y, last_y, text]
     open_unit = {}
-    flows = []   # (y, text): the running text around the table
-    for y, h, x, text, k in sorted(pieces, key=lambda p: p[0]):
-        if k is None or not (top <= y <= bottom):
-            flows.append((y, text))
+    flows = []   # (y, text, block): the running text, in reading order
+    for y, h, x, text, block, where in sorted(pieces, key=lambda p: p[0]):
+        if where is None:
+            flows.append((y, text, block))
             continue
-        u = open_unit.get(k)
-        indent = x - columns[k]
+        t, k = where
+        u = open_unit.get(where)
+        indent = x - tables[t]['columns'][k]
         if u is not None and WRAP[0] <= indent <= WRAP[1] and y - u[2] <= GAP_MAX * h:
             u[3] += ' ' + text
             u[2] = y
         else:
-            u = [k, y, y, text]
+            u = [where, y, y, text]
             units.append(u)
-            open_unit[k] = u
+            open_unit[where] = u
 
     # a unit may hold several sentences: each one is a cell
     cells = []
-    for k, y, _, text in units:
+    for where, y, _, text in units:
         for n, sentence in enumerate(SENTENCE_END.split(text.strip())):
             if sentence.strip():
-                cells.append((y + 0.01 * n, k, sentence.strip()))
+                cells.append((y + 0.01 * n, where, sentence.strip()))
 
-    # reading order: the running text and the cells by their tops; a row's left cell before its right one
-    left_tops = [y for y, k, _ in cells if k == 0]
+    # reading order: a row's right cell after its left one, even when the right line sits a point higher
+    left_tops = {}
+    for y, (t, k), _ in cells:
+        if k == 0:
+            left_tops.setdefault(t, []).append(y)
 
-    def order(item):
-        y, k = item[0], item[1]
-        if k not in (None, 0):
-            near = [t for t in left_tops if abs(t - y) <= ROW_ORDER]
+    def cell_key(y, where):
+        t, k = where
+        if k:
+            near = [top for top in left_tops.get(t, []) if abs(top - y) <= ROW_ORDER]
             if near:
-                return min(near, key=lambda t: abs(t - y)) + 0.5 * k
+                return min(near, key=lambda top: abs(top - y)) + 0.5 * k
         return y
 
-    events = [(y, k, text) for y, k, text in cells] + [(y, None, text) for y, text in flows]
-    items, flow = [], []
+    events = [(cell_key(y, where), 'cell', where, text) for y, where, text in cells]
+    events += [(y, 'flow', block, text) for y, text, block in flows]
+
+    items, current = [], None   # current: [text, block] of the running text being built
 
     def flush():
-        if flow:
-            items.append(('flow', ' '.join(flow)))
-            flow.clear()
+        nonlocal current
+        if current is not None:
+            items.append(('flow', current[0]))
+            current = None
 
-    for y, k, text in sorted(events, key=order):
-        if k is None:
-            flow.append(text)
+    for _, kind, a, b in sorted(events, key=lambda e: e[0]):
+        if kind == 'flow':
+            block = a
+            if current is not None and (current[1] is not None and block is not None and current[1][0] == block[0]
+                                        or continues(current[1], block)):
+                current[0] += ' ' + b
+                current[1] = block
+            else:
+                flush()
+                current = [b, block]
         else:
             flush()
-            items.append(('cell', text, k))
+            items.append(('cell', b, a[1], a[0]))   # text, column, table
     flush()
     return items
+
+
+def page_items(pdf, page):
+    """The items of a page (see the module docstring): ('flow', text) or ('cell', text, column, table)."""
+    return items_from_lines(page_lines(pdf, page))
