@@ -199,6 +199,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     els.ttOriginal.title = cleanText;
     els.ttOriginal.setAttribute('aria-label', cleanText);
     els.ttTranslation.textContent = t('translating');
+    if (typeof clearDictionaries === 'function') clearDictionaries();
     els.tooltip.style.visibility = 'hidden';
     els.tooltip.style.display = 'flex';
     positionTooltip(clientX, clientY, anchorRect);
@@ -430,6 +431,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         }
     }
     if (task.current() && alignmentResult) installAlignment(cleanText, alignmentResult, lookupRoot);
+    // Free dictionaries under a word's translation, by themselves (js/dictionaries.js): Wiktionary, Wikipedia for a name.
+    if (!isMultiWord && translated && task.current() && typeof appendDictionaries === 'function') appendDictionaries(cleanText, srcCode, myLookup, task.signal);
     // Якщо активна сторона — переклад, озвучуємо його саме зараз: раніше тексту
     // ще не існувало, бо він приходить із мережі.
     if (task.current() && els.tooltip.style.display !== 'none' && state.speakSide === 'translation') speakInLang(mainTranslationText(), targetLang, 'tr');

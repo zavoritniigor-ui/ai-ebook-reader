@@ -915,6 +915,7 @@
         .tt-extra { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--tt-line, rgba(255,255,255,0.1)); font-weight: normal; font-size: 13.5px; color: #c9ced6; }
         .tt-sense { margin: 5px 0; line-height: 1.5; }
         .tt-pos { display: inline-block; margin-right: 8px; padding: 0 8px; font-size: 11px; line-height: 18px; font-weight: 700; letter-spacing: .02em; font-style: normal; border-radius: 999px; background: color-mix(in srgb, var(--tt-accent, #8ab4ff) 16%, transparent); color: var(--tt-accent, #8ab4ff); }
+        .tt-dict-src { margin-bottom: 4px; font-size: 11px; font-weight: 700; letter-spacing: .02em; opacity: .75; }
         /* Позначка, хто саме переклав (⚡ Groq, 🧠 OpenAI, ⌂ пристрій): тиха «пігулка» поруч із перекладом. */
         .tt-note { display: inline-block; vertical-align: .18em; margin-left: 4px; padding: 0 7px; font-weight: 600; font-size: 11px; line-height: 18px; border-radius: 999px; background: var(--tt-soft, rgba(128,128,128,.14)); color: var(--tt-muted, var(--text-muted)); }
         .tt-note.ask-cancelled { display: block; margin: 0 0 8px; padding: 0; border-radius: 0; background: none; font-size: 14px; line-height: 1.5; font-weight: 400; }
@@ -1785,6 +1786,7 @@
                         <div class="tt-translation" id="tt-translation" aria-live="polite" data-i18n="translating">Переклад...</div>
                         <button class="tt-replay-btn" id="tt-speak-translation" data-i18n-title="tSpeakTr" data-i18n-aria="tSpeakTr" aria-pressed="false" data-icon="speak"><svg class="mi" aria-hidden="true"><use href="#i-speak"/></svg></button>
                     </div>
+                    <div id="tt-dict-host" class="tt-dict-host"></div>
                 </div>
                 <div class="tt-actions">
                     <button class="tt-ask-btn" id="tt-ask-btn"><svg class="mi" aria-hidden="true"><use href="#i-ask"/></svg><span data-i18n="btnAsk" data-i18n-plain>Запитай AI</span></button>
@@ -1982,7 +1984,8 @@
     <script src="js/navigation.js?v=92bb75bc6057"></script>
     <script src="js/pdf-zoom-pan.js?v=e43f726a17a1"></script>
     <script src="js/ui-tooltip.js?v=2cc75b85d696"></script>
-    <script src="js/translation.js?v=7f9ad4799a09"></script>
+    <script src="js/translation.js?v=805394f3a2fe"></script>
+    <script src="js/dictionaries.js?v=b3e9018f37c1"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
     <script src="js/grammar-svo.js?v=96b403646073"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
