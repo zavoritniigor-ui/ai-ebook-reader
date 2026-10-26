@@ -328,6 +328,7 @@ function goNext() {
     // through the SAME continuous viewer via the canonical navigateToPdfPage,
     // instead of rebuilding the document view through a separate path.
     if (state.format === 'pdf') { if (state.currentIndex < state.totalPages) navigateToPdfPage(state.currentIndex + 1); return; }
+    if (state.format === 'cbz') { if (state.currentIndex < state.totalPages - 1) renderCbzPage(state.currentIndex + 1); return; }
     if (state.pageInChapter < state.totalPagesInChapter - 1) goToPageInChapter(state.pageInChapter + 1);
     else if (state.currentIndex < state.totalPages - 1) { if (state.format === 'epub') loadEpubChapter(state.currentIndex + 1); else if (state.docChapters) renderDocChapter(state.currentIndex + 1); else renderTxtPage(state.currentIndex + 1); }
 }
@@ -336,6 +337,7 @@ function goPrev() {
     invalidateSelection();
     if (isSpeakingGlobal) stopGlobalTTS();
     if (state.format === 'pdf') { if (state.currentIndex > 1) navigateToPdfPage(state.currentIndex - 1); return; }
+    if (state.format === 'cbz') { if (state.currentIndex > 0) renderCbzPage(state.currentIndex - 1); return; }
     if (state.pageInChapter > 0) goToPageInChapter(state.pageInChapter - 1);
     else if (state.currentIndex > 0) { if (state.format === 'epub') loadEpubChapter(state.currentIndex - 1, true); else if (state.docChapters) renderDocChapter(state.currentIndex - 1, true); else renderTxtPage(state.currentIndex - 1, true); }
 }

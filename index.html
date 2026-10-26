@@ -555,6 +555,7 @@
            зіпсувало б вигляд, тому залишаємо як є. */
         body:not(.pdf-mode) #reader-pages img { max-width: 100%; max-height: 90%; width: auto; height: auto; object-fit: contain; break-inside: avoid; }
         #reader-pages .txt-block { white-space: pre-wrap; text-align: initial; hyphens: manual; }
+        #reader-pages .cbz-page { display: block; max-width: 100%; height: auto; margin: 0 auto; }
         #reader-pages { height: 100%; transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1); }
         /* will-change вмикаємо ЛИШЕ на час анімації: постійно піднятий на GPU багатоколонковий
            блок такого розміру на Android лишає застарілі фрагменти попередньої сторінки —
@@ -1617,7 +1618,7 @@
             <section class="menu-section" aria-labelledby="ms-book">
                 <h3 class="menu-section-title" id="ms-book" data-i18n="mSecBook">Книга</h3>
                 <label class="menu-cta" for="file-upload" id="menu-open-file"><svg class="mi" aria-hidden="true"><use href="#i-open"/></svg><span class="mr-text"><span class="mr-title" data-i18n="mOpen">Відкрити файл</span><span class="mr-desc" data-i18n="mOpenDesc">EPUB, PDF, FB2, DOCX, TXT з пристрою</span></span></label>
-                <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown">
+                <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown,.cbz">
                 <button type="button" class="menu-row my-books-btn" id="btn-my-books" aria-labelledby="mr-shelf-t" aria-describedby="mr-shelf-d"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span class="mr-text"><span class="mr-title" id="mr-shelf-t" data-i18n="mShelf">Мої книги</span><span class="mr-desc" id="mr-shelf-d" data-i18n="mShelfDesc">Нещодавні й збережені на пристрої</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-free-library" aria-labelledby="mr-lib-t" aria-describedby="mr-lib-d"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span class="mr-text"><span class="mr-title" id="mr-lib-t" data-i18n="mLibrary">Безкоштовна бібліотека</span><span class="mr-desc" id="mr-lib-d" data-i18n="mLibraryDesc">Gutenberg, Вікіджерела, Internet Archive</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="toggle-toc-desktop" aria-labelledby="mr-toc-t" aria-describedby="mr-toc-d"><svg class="mi book-nav-icon" aria-hidden="true"><use href="#i-toc"/></svg><span class="mr-text"><span class="mr-title" id="mr-toc-t" data-i18n="mToc">Зміст</span><span class="mr-desc" id="mr-toc-d" data-i18n="mTocDesc">Розділи та мініатюри сторінок</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
@@ -1974,7 +1975,7 @@
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
-    <script src="js/navigation.js?v=6bf46382cd5d"></script>
+    <script src="js/navigation.js?v=92bb75bc6057"></script>
     <script src="js/pdf-zoom-pan.js?v=e43f726a17a1"></script>
     <script src="js/ui-tooltip.js?v=2cc75b85d696"></script>
     <script src="js/translation.js?v=7f9ad4799a09"></script>
@@ -2002,12 +2003,13 @@
     <script src="js/book-audio.js?v=22a822b11e9e"></script>
     <script src="js/book-speech.js?v=4edf60aa3966"></script>
     <script src="js/formats.js?v=0adff3b5d013"></script>
+    <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=a266be538226"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
     <script src="js/quick-wheel.js?v=2aa4f9bca460"></script>
-    <script src="js/main.js?v=b8108bb9f439"></script>
+    <script src="js/main.js?v=039b113cffd6"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
     <script src="js/i18n-es.js?v=b9c66b612a0b"></script>
 </body>

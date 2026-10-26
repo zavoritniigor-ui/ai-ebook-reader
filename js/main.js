@@ -176,6 +176,7 @@ async function openBookFile(file) {
         if (ext === 'epub') { state.format = 'epub'; document.body.classList.remove('pdf-mode'); await initEpub(file, epoch); }
         else if (ext === 'pdf') { state.format = 'pdf'; document.body.classList.add('pdf-mode'); await initPdf(file, epoch); }
         else if (ext === 'txt') { state.format = 'txt'; document.body.classList.remove('pdf-mode'); await initTxt(file, epoch); }
+        else if (ext === 'cbz') { state.format = 'cbz'; document.body.classList.remove('pdf-mode'); await initCbz(file, epoch); }
         // Формати, що зводяться до готового HTML: Word, FictionBook, веб-сторінка, RTF.
         else if (['docx', 'fb2', 'fb2.zip', 'md', 'markdown', 'html', 'htm', 'rtf'].includes(ext)) {
             state.format = 'txt'; document.body.classList.remove('pdf-mode');
