@@ -54,11 +54,23 @@ Complete French (`--mix`) except for the better: diff its units before/after.
 Open the packed file's JSON (ID3 GEOB tag, see `pack.py`) and check: `lexicon` present (words said alone, from
 `words.py`: without it EVERY single-word tap is the system voice), every page has units, no zero-length units.
 
-## 5. The pipeline (one voice, Par ici)
+## 5. Names (owner's rule, 2026-10-26)
+
+- **A book keeps the exact name it has in its RAR archive.** Never rename a book file (`livre 56.pdf` stays `livre 56.pdf`).
+  `Par Ici.rar` holds `livre 12/34/56.pdf`, `corriges 12/34/56.pdf`, `audio 12`, `audio 56`; the other books come from
+  `Par Ici 7-8.rar` and `Par Ici cahier 7-8-compréhension 5-6.rar` with the names they have on disk.
+- **The narration is named EXACTLY like its book**, with `.mp3`: `livre 56.pdf` → `livre 56.mp3`,
+  `Par Ici 5-6 Manuel de compréhension orale.pdf` → `Par Ici 5-6 Manuel de compréhension orale.mp3`. No voice, no level
+  in the name (the voice is inside the file).
+- **A package folder is named like the archive's books** (`Par Ici 5-6`), the same locally and on Drive.
+- A folder can hold several books (5-6: `livre 56.pdf` and the `Manuel de compréhension orale`): each needs its own
+  narration. A narration made for one is refused by the other — that is right, not a bug.
+
+## 6. The pipeline (one voice, Par ici)
 
 `generate.py --voice fr-CA-AntoineNeural --rate=-10%` → `align.py` → `repair.py` → `align.py --marked` → **`words.py`**
-→ `pack.py --pdf <book.pdf>`. One file per book, named `<Book> - Antoine (fr-CA).mp3`, next to the book PDF (the reader
-finds it there). The bilingual pipeline is `narrate_book.sh` (Kokoro, `--mix`).
+→ `pack.py --pdf <book.pdf>`. One file per book, named like the book (section 5), next to the book PDF (the reader
+finds it there). Driver: `~/tools/book-tts/narrate_par_ici.sh <folder> <book.pdf>`. The bilingual pipeline is `narrate_book.sh` (Kokoro, `--mix`).
 
 The narration's units are fixed when it is made: after any change to these rules or to `columns.py`, a book narrated
 before must be made again for whole sentences to match.
