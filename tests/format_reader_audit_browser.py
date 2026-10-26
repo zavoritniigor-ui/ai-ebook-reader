@@ -102,7 +102,7 @@ def main():
         check(ext + ' open ' + suffix, f'state.format==={json.dumps(expected)} && !document.body.inert')
 
     check('picker exactly matches separately exercised extensions',
-          'JSON.stringify(els.upload.accept.split(",").sort())===' + json.dumps(json.dumps(sorted('.' + ext for ext in data), separators=(',', ':'))))
+          'JSON.stringify(els.upload.accept.split(",").sort())===' + json.dumps(json.dumps(sorted(['.' + ext for ext in data] + ['.cbz']), separators=(',', ':'))))   # .cbz: its own suite (comics_browser.py)
     for ext in data:
         upload(ext, 'features')
         check(ext + ' visible settled content', VISIBLE)
