@@ -66,7 +66,7 @@ c.js("dictBlock('suis', 'fr')")
 check('the same word is asked once (cached)', c.js("__urls.length") == before)
 
 # appendDictionaries: only into the lookup that is still shown
-c.js("""(() => { els.tooltip.style.display = 'block'; els.ttTranslation.innerHTML = 'je suis → я є'; state.lookupToken = 7; return true; })()""")
+c.js("""(() => { els.tooltip.style.display = 'block'; els.tooltip.style.top = '10px'; els.ttTranslation.innerHTML = 'je suis → я є'; state.lookupToken = 7; return true; })()""")
 c.js("appendDictionaries('suis', 'fr', 6)")
 check('an older lookup does not add its dictionaries to a newer one', c.js("!document.querySelector('#tt-dict-host .tt-dict')"))
 c.js("appendDictionaries('suis', 'fr', 7)")
@@ -78,8 +78,15 @@ c.js("""(() => { aiAvailable = () => true; speakText = () => {}; speakInLang = (
   aiTranslateText = async () => 'я є'; machineTranslate = async () => ({ html: '', extras: '' });
   translationProviders = () => ['groq']; ensureSharedAiProviders = () => null; langForText = () => 'fr';
   els.ttTranslation.innerHTML = ''; return true; })()""")
-c.js("handleWordOrSelection('suis', 200, 200, null)")
+c.js("handleWordOrSelection('suis', 200, 60, null)")
 c.wait("els.ttTranslation.textContent.includes('я є') && !!document.querySelector('#tt-dict-host .tt-dict')", timeout=10)
 check('a word looked up in the reader shows the dictionaries by themselves', c.js("document.getElementById('tt-dict-host').textContent.includes('first-person singular')"))
-check('a new lookup clears the previous word\'s dictionaries at once', c.js("(() => { handleWordOrSelection('autre', 200, 200, null); return document.getElementById('tt-dict-host').textContent === ''; })()"))
+check('a new lookup clears the previous word\'s dictionaries at once', c.js("(() => { handleWordOrSelection('autre', 200, 60, null); return document.getElementById('tt-dict-host').textContent === ''; })()"))
+check('a button of the popup (Grammar) puts the dictionaries aside at once', c.js("(() => { document.getElementById('tt-dict-host').innerHTML = '<div class=\"tt-dict\">x</div>'; document.getElementById('tt-ai-btn').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); return document.getElementById('tt-dict-host').textContent === ''; })()"))
+check('with a side panel open a late answer adds nothing', c.js("(async () => { els.tooltip.style.display = 'flex'; document.getElementById('grammar-panel').classList.add('expanded'); state.lookupToken = 99; await appendDictionaries('suis', 'fr', 99); const empty = document.getElementById('tt-dict-host').textContent === ''; document.getElementById('grammar-panel').classList.remove('expanded'); return empty; })()"))
+check('a side panel opening puts the dictionaries aside', c.js("(async () => { document.getElementById('tt-dict-host').innerHTML = '<div class=\"tt-dict\">x</div>'; document.getElementById('ask-panel').classList.add('expanded'); await new Promise(r => setTimeout(r, 50)); const empty = document.getElementById('tt-dict-host').textContent === ''; document.getElementById('ask-panel').classList.remove('expanded'); return empty; })()"))
+check('the popup never moves for the dictionaries; with no room below it they are not shown', c.js("""(async () => {
+  els.tooltip.style.display = 'flex'; els.tooltip.style.top = (innerHeight - 40) + 'px'; state.lookupToken = 120;
+  const before = els.tooltip.getBoundingClientRect().top; await appendDictionaries('suis', 'fr', 120);
+  return els.tooltip.getBoundingClientRect().top === before && document.getElementById('tt-dict-host').textContent === ''; })()"""))
 print('PASS: all free dictionary checks')

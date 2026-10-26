@@ -7,6 +7,7 @@
 // Their HTML is never inserted: it is reduced to plain text and escaped.
 
 const DICT_TIMEOUT_MS = 6000;
+const DICT_MIN_ROOM = 64;   // px below the popup, at least, for the block
 const DICT_MAX_POS = 2, DICT_MAX_SENSES = 3, DICT_WIKI_CHARS = 220;
 const dictCache = new Map();   // 'lang|word' → html ('' = nothing found)
 
@@ -74,8 +75,22 @@ async function dictBlock(word, lang, signal) {
 
 function dictHost() { return document.getElementById('tt-dict-host'); }
 function clearDictionaries() { const host = dictHost(); if (host) host.textContent = ''; }
+// A side panel (Ask AI, Grammar) open: the reader has moved on from the word; on a phone a taller popup would cover the panel.
+function dictPanelOpen() {
+    return ['ask-panel', 'grammar-panel'].some(id => { const p = document.getElementById(id); return !!p && p.classList.contains('expanded'); });
+}
+// A button of the popup (Ask AI, Grammar, Structure) takes the reader on: the dictionaries step aside at once.
+// (pointerdown: a touch tap on these buttons gives no click.) A side panel opening by any way does the same.
+document.addEventListener('pointerdown', e => { if (e.target && e.target.closest && e.target.closest('#word-tooltip .tt-actions')) clearDictionaries(); }, true);
+if (typeof MutationObserver === 'function') {
+    const watch = () => ['ask-panel', 'grammar-panel'].forEach(id => {
+        const p = document.getElementById(id);
+        if (p) new MutationObserver(() => { if (dictPanelOpen()) clearDictionaries(); }).observe(p, { attributes: true, attributeFilter: ['class'] });
+    });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch, { once: true }); else watch();
+}
 
-// Adds the dictionaries under a word's translation in the popup (#tt-dict-host, outside #tt-translation: the translation's
+// Adds the dictionaries at the foot of the word popup (#tt-dict-host, below its buttons, outside #tt-translation: the translation's
 // own text, spoken and cached, stays as it is), when that lookup is still the one shown.
 async function appendDictionaries(word, lang, lookupToken, signal) {
     clearDictionaries();
@@ -84,8 +99,15 @@ async function appendDictionaries(word, lang, lookupToken, signal) {
     try { html = await dictBlock(word, lang, signal); } catch (e) { return; }
     const host = dictHost();
     if (!html || !host || lookupToken !== state.lookupToken || (signal && signal.aborted)) return;
-    if (els.tooltip.style.display === 'none') return;
+    if (els.tooltip.style.display === 'none' || dictPanelOpen()) return;
+    // The popup never moves for the dictionaries (a moved popup would stay over what the reader taps next): the block takes
+    // only the room left below it, scrolling inside; with too little room it is not shown.
+    // A popup above the word must not grow over it (the word, and the pointer resting on it, would be covered).
+    const bottom = els.tooltip.getBoundingClientRect().bottom, a = state.tooltipAnchor;
+    const wordTop = a ? (a.anchorRect ? a.anchorRect.top : a.clientY - 12) : Infinity;
+    const limit = wordTop >= bottom - 1 ? wordTop - 8 : innerHeight - 12;
+    const room = Math.min(innerHeight * 0.32, limit - bottom);
+    if (room < DICT_MIN_ROOM) return;
+    host.style.maxHeight = Math.floor(room) + 'px';
     host.innerHTML = html;
-    const a = state.tooltipAnchor;
-    if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
 }
