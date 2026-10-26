@@ -916,7 +916,9 @@
         .tt-sense { margin: 5px 0; line-height: 1.5; }
         .tt-pos { display: inline-block; margin-right: 8px; padding: 0 8px; font-size: 11px; line-height: 18px; font-weight: 700; letter-spacing: .02em; font-style: normal; border-radius: 999px; background: color-mix(in srgb, var(--tt-accent, #8ab4ff) 16%, transparent); color: var(--tt-accent, #8ab4ff); }
         .tt-dict-src { margin-bottom: 4px; font-size: 11px; font-weight: 700; letter-spacing: .02em; opacity: .75; }
-        .tt-dict-host { overflow-y: auto; overscroll-behavior: contain; }
+        .tt-dict-host { overflow-y: auto; overscroll-behavior: contain; width: 0; min-width: 100%; }   /* the popup's width, never wider: a late block must not widen it */
+        .tt-dict-host.tt-dict-up { order: -1; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--tt-line, rgba(255,255,255,0.1)); }
+        .tt-dict-host.tt-dict-up .tt-extra:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
         .tt-dict-host:empty { display: none; }
         /* Позначка, хто саме переклав (⚡ Groq, 🧠 OpenAI, ⌂ пристрій): тиха «пігулка» поруч із перекладом. */
         .tt-note { display: inline-block; vertical-align: .18em; margin-left: 4px; padding: 0 7px; font-weight: 600; font-size: 11px; line-height: 18px; border-radius: 999px; background: var(--tt-soft, rgba(128,128,128,.14)); color: var(--tt-muted, var(--text-muted)); }
@@ -1987,8 +1989,8 @@
     <script src="js/navigation.js?v=92bb75bc6057"></script>
     <script src="js/pdf-zoom-pan.js?v=e43f726a17a1"></script>
     <script src="js/ui-tooltip.js?v=2cc75b85d696"></script>
-    <script src="js/translation.js?v=805394f3a2fe"></script>
-    <script src="js/dictionaries.js?v=51835edd0bb3"></script>
+    <script src="js/translation.js?v=1b922b857399"></script>
+    <script src="js/dictionaries.js?v=01221512f250"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
     <script src="js/grammar-svo.js?v=96b403646073"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
