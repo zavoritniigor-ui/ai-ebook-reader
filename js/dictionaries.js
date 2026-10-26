@@ -8,6 +8,7 @@
 
 const DICT_TIMEOUT_MS = 6000;
 const DICT_MIN_ROOM = 48;   // px on the block's side of the popup, at least
+const DICT_HEIGHT = 84;     // px: the block is a short strip (about three lines) that scrolls; it never makes the popup tall (owner)
 const DICT_MAX_POS = 2, DICT_MAX_SENSES = 3, DICT_WIKI_CHARS = 220;
 const dictCache = new Map();   // 'lang|word' → html ('' = nothing found)
 
@@ -118,7 +119,7 @@ async function appendDictionaries(word, lang, lookupToken, signal) {
     // that side is used (scrolling inside); with too little room it is not shown.
     const box = els.tooltip.getBoundingClientRect();
     const up = els.tooltip.classList.contains('tooltip-above') || innerWidth <= 600;
-    const room = Math.min(innerHeight * 0.3, up ? box.top - 10 : innerHeight - 10 - box.bottom);
+    const room = Math.min(DICT_HEIGHT, up ? box.top - 10 : innerHeight - 10 - box.bottom);
     if (room < DICT_MIN_ROOM) return;
     host.classList.toggle('tt-dict-up', up);
     host.style.maxHeight = Math.floor(room) + 'px';
