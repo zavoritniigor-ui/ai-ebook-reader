@@ -208,8 +208,16 @@ const LANGUAGE_CONFIG = {
     // Німецька — лише МОВА ПЕРЕКЛАДУ та озвучення (targetOnly): не стає мовою меню, граматичного розбору чи правил.
     de: { locale: 'de-DE', aiName: 'німецькою', promptName: 'German', targetOnly: true },
     // Іспанська — і мова перекладу, і мова меню (рядки меню — js/i18n-es.js).
-    es: { locale: 'es-ES', aiName: 'іспанською', promptName: 'Spanish' }
+    es: { locale: 'es-ES', aiName: 'іспанською', promptName: 'Spanish' },
+    // Перська (фарсі) — лише МОВА ПЕРЕКЛАДУ та озвучення (targetOnly), письмо справа наліво (owner, 2026-10-26).
+    fa: { locale: 'fa-IR', aiName: 'перською (фарсі)', promptName: 'Persian (Farsi)', targetOnly: true }
 };
+// Прапорець країни мови: його бачить кожен список мов у меню (owner, 2026-10-26). Без прапорця — порожньо.
+const LANG_FLAGS = { uk: '🇺🇦', en: '🇬🇧', fr: '🇫🇷', ru: '🇷🇺', zh: '🇨🇳', ko: '🇰🇷', hi: '🇮🇳', ga: '🇮🇪', de: '🇩🇪', es: '🇪🇸', fa: '🇮🇷',
+    it: '🇮🇹', pt: '🇵🇹', nl: '🇳🇱', pl: '🇵🇱', ja: '🇯🇵', ar: '🇸🇦', tr: '🇹🇷', cs: '🇨🇿', sv: '🇸🇪', fi: '🇫🇮', da: '🇩🇰', no: '🇳🇴', nb: '🇳🇴',
+    el: '🇬🇷', hu: '🇭🇺', ro: '🇷🇴', bg: '🇧🇬', sk: '🇸🇰', sl: '🇸🇮', hr: '🇭🇷', et: '🇪🇪', lv: '🇱🇻', lt: '🇱🇹', he: '🇮🇱', id: '🇮🇩', vi: '🇻🇳',
+    th: '🇹🇭', ms: '🇲🇾', ca: '🇪🇸', sq: '🇦🇱', is: '🇮🇸', mt: '🇲🇹', sr: '🇷🇸', bs: '🇧🇦', mk: '🇲🇰', be: '🇧🇾', kk: '🇰🇿' };
+function langFlag(code) { return LANG_FLAGS[String(code || '').slice(0, 2).toLowerCase()] || ''; }
 // Мови меню / вивчення (мають повний набір рядків і граматичні налаштування).
 const SUPPORTED_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG).filter(code => !LANGUAGE_CONFIG[code].targetOnly);
 // Мови, якими можна перекладати й озвучувати переклад (+ німецька та іспанська); голоси для них теж підбираються й запам'ятовуються.
@@ -821,7 +829,7 @@ const VOICE_POOR_RE = /compact|eloquence|espeak|pico|festival|sapi\s?4|robot|cla
 // «network» — серверні голоси Google TTS на Android (ru-ru-x-dfc-network): помітно кращі за -local того ж рушія.
 const VOICE_TOP_RE  = /neural|natural|wavenet|studio|journey|siri|premium|enhanced|network/i;
 // Улюблена локаль для кожної мови: fr-FR звучить звичніше за fr-CA, en-US за en-IN.
-const PREFERRED_LOCALE = { fr: ['fr-fr', 'fr-ca'], en: ['en-us', 'en-gb'], uk: ['uk-ua'], ru: ['ru-ru'], zh: ['zh-cn', 'zh-tw'], ko: ['ko-kr'], hi: ['hi-in'], ga: ['ga-ie'],
+const PREFERRED_LOCALE = { fr: ['fr-fr', 'fr-ca'], en: ['en-us', 'en-gb'], uk: ['uk-ua'], ru: ['ru-ru'], zh: ['zh-cn', 'zh-tw'], ko: ['ko-kr'], hi: ['hi-in'], ga: ['ga-ie'], fa: ['fa-ir'],
     de: ['de-de', 'de-at', 'de-ch'], es: ['es-es', 'es-mx', 'es-us'], it: ['it-it'], pt: ['pt-br', 'pt-pt'], nl: ['nl-nl', 'nl-be'], pl: ['pl-pl'] };
 // Голос формально тієї ж мови, але читає НЕ ТАК: переклад китайською — спрощений путунхуа, а кантонський
 // голос (zh-HK / yue) вимовляє ці ієрогліфи зовсім інакше. Такий голос — лише якщо іншого немає.
@@ -1102,6 +1110,7 @@ const I18N = {
     voicesDe:       { uk: 'Німецька',        en: 'German',         fr: 'Allemand',        ru: 'Немецкий' },
     voicesEs:       { uk: 'Іспанська',       en: 'Spanish',        fr: 'Espagnol',        ru: 'Испанский' },
     voicesGa:       { uk: 'Ірландська',      en: 'Irish',          fr: 'Irlandais',       ru: 'Ирландский' },
+    voicesFa:       { uk: 'Перська (фарсі)', en: 'Persian (Farsi)', fr: 'Persan (farsi)', ru: 'Персидский (фарси)' },
     statsTitle:     { uk: 'Допомога під час читання', en: 'Reading help', fr: 'Aide à la lecture', ru: 'Помощь при чтении' },
     statsReading:   { uk: 'Прочитано без допомоги', en: 'Read without help', fr: 'Lu sans aide', ru: 'Прочитано без помощи' },
     statsReadWithoutHelp: { uk: 'Прочитано без допомоги', en: 'Read without help', fr: 'Lu sans aide', ru: 'Прочитано без помощи' },

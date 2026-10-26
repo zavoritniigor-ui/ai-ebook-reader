@@ -817,7 +817,8 @@ const TRANSLATION_SCRIPT_RULES = {
     es: { primary: /\p{Script=Latin}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
     zh: { primary: /\p{Script=Han}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Cyrillic}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
     ko: { primary: /[\p{Script=Hangul}\p{Script=Han}]/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Cyrillic}\p{Script=Devanagari}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
-    hi: { primary: /\p{Script=Devanagari}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u }
+    hi: { primary: /\p{Script=Devanagari}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Thai}]+[\s)\]}]*$/u },
+    fa: { primary: /\p{Script=Arabic}/u, alienBlock: /(?:[\s(\[{—–-]+)?[\p{Script=Han}\p{Script=Hangul}\p{Script=Devanagari}\p{Script=Cyrillic}\p{Script=Thai}]+[\s)\]}]*$/u }
 };
 
 function normalizeTranslation(raw, targetLang = state.targetLang, isWord = false) {

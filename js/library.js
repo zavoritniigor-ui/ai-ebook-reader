@@ -62,10 +62,10 @@ Object.assign(I18N, {
 const LIBRARY_GENRES = [['', 'genAll'], ['fiction', 'genFiction'], ['adventure', 'genAdventure'], ['detective', 'genDetective'], ['historical', 'genHistorical'],
     ['love', 'genLove'], ['scifi', 'genScifi'], ['stories', 'genStories'], ['poetry', 'genPoetry'], ['drama', 'genDrama'], ['children', 'genChildren'],
     ['humor', 'genHumor'], ['biography', 'genBiography'], ['history', 'genHistory'], ['philosophy', 'genPhilosophy'], ['myth', 'genMyth'], ['travel', 'genTravel']];
-const LIBRARY_LANGS = [['fr', 'Français'], ['en', 'English'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano'], ['', null]];
+const LIBRARY_LANGS = [['fr', '🇫🇷 Français'], ['en', '🇬🇧 English'], ['de', '🇩🇪 Deutsch'], ['es', '🇪🇸 Español'], ['it', '🇮🇹 Italiano'], ['', null]];
 const LIBRARY_PAGE = 30;
 // Вікіджерела (Wikisource): живий пошук через свій проксі; твір збирається з розділів-підсторінок в одну HTML-книгу.
-const LIBRARY_WS_LANGS = [['uk', 'Українська'], ['fr', 'Français'], ['en', 'English'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano']];
+const LIBRARY_WS_LANGS = [['uk', '🇺🇦 Українська'], ['fr', '🇫🇷 Français'], ['en', '🇬🇧 English'], ['de', '🇩🇪 Deutsch'], ['es', '🇪🇸 Español'], ['it', '🇮🇹 Italiano']];
 const WS_MAX_CHAPTERS = 150, WS_CONCURRENCY = 6, WS_PAGE = 40;
 // Жанри Вікіджерел — справжні категорії кожного мовного розділу (назви з «_» замість пробілів; пошук бере лише прямих членів
 // категорії, тож підкатегорії перелічено явно). Жанру, якого в розділі немає (напр. детективів в українських), у списку не буде.
@@ -93,7 +93,7 @@ const LIBRARY_WS_GENRES = {
           children: 'Fiabe|Letteratura_per_ragazzi', biography: 'Biografie|Memorie', history: 'Storia', philosophy: 'Filosofia', myth: 'Mitologia|Mitologia_greca|Favole' }
 };
 // Internet Archive: живий пошук через свій проксі; коди мов — як у самому архіві (MARC).
-const LIBRARY_IA_LANGS = [['ukr', 'Українська'], ['eng', 'English'], ['fre', 'Français'], ['ger', 'Deutsch'], ['spa', 'Español'], ['ita', 'Italiano'], ['pol', 'Polski'], ['rus', 'Русский'], ['', null]];
+const LIBRARY_IA_LANGS = [['ukr', '🇺🇦 Українська'], ['eng', '🇬🇧 English'], ['fre', '🇫🇷 Français'], ['ger', '🇩🇪 Deutsch'], ['spa', '🇪🇸 Español'], ['ita', '🇮🇹 Italiano'], ['pol', '🇵🇱 Polski'], ['rus', '🇷🇺 Русский'], ['', null]];
 const LIBRARY_MAX_BYTES = 300 * 1024 * 1024;
 const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'shelf'];
 
