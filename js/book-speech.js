@@ -474,7 +474,75 @@ function bsReplay(r) {
 // speech, from its first sound to its last ({ i, from, to }); one word of a sentence plays that word said alone ({ word, from,
 // to }). A part of a sentence of two words or more, or a word the lexicon lacks: null — the system voice reads the selection
 // (never a piece cut from the sentence, never words said alone strung together).
+// A number, an ordinal («1er», «2e», «16e») or a bare label letter is printed differently in the PDF's text layer and in the
+// narration («1er» / «1 er», «2e étage» / «2 étage»), and labels («a.», «1.», «x», «o») are not read at all: none of them
+// decides whether a sentence is in the narration.
+function bsContentKeys(keys) {
+    const out = [];
+    for (let k = 0; k < keys.length; k++) {
+        const w = keys[k];
+        if (/^\d+(?:er|re|e|ème|eme|es|ers|[a-z])?$/.test(w)) continue;   // also an exercise label «1c», «4a»
+        if (/^(?:er|re|e|ème|eme)$/.test(w) && k > 0 && /^\d+$/.test(keys[k - 1])) continue;
+        if (w.length < 2 && !/^[àaôy]$/.test(w)) continue;
+        out.push({ w, k });
+    }
+    return out;
+}
+// The narration's units a selection holds WHOLE (owner, 2026-10-26: «кожне повне речення — озвучкою»): every unit of the
+// page whose words all appear, in order, among the selection's words. Labels, numbers and words of a box beside the text
+// that the app's sentence takes in are skipped; a unit only partly selected is never played (never a piece of a sentence).
+// Played in the narration's order when they hold most of the selection's words; else null.
+function bsWholeUnitsPlan(set, words, text) {
+    const sel = bsContentKeys(bsKeys(text)).map(x => x.w);
+    if (sel.length < 2) return null;
+    const units = new Map();
+    for (const x of words) { if (!units.has(x.i)) units.set(x.i, []); units.get(x.i).push(x); }
+    const used = new Array(sel.length).fill(false), whole = [];
+    const candidates = [...units].map(([i, ws]) => ({ i, ws, keys: bsContentKeys(ws.map(x => x.key)).map(x => x.w) }))
+        .filter(u => u.keys.length && u.keys.length <= sel.length).sort((a, b) => b.keys.length - a.keys.length);
+    for (const u of candidates) {
+        // the unit's words, in order, on positions of the selection not taken by another unit: the most compact such
+        // place (a sentence's first word «je» may also begin the sentence before it)
+        let at = null;
+        for (let start = 0; start < sel.length; start++) {
+            if (used[start] || !bsSameWord(sel[start], u.keys[0])) continue;
+            const got = [start];
+            let p = start + 1;
+            for (let n = 1; n < u.keys.length; n++) {
+                while (p < sel.length && (used[p] || !bsSameWord(sel[p], u.keys[n]))) p++;
+                if (p >= sel.length) break;
+                got.push(p++);
+            }
+            if (got.length === u.keys.length && (!at || got[got.length - 1] - got[0] < at[at.length - 1] - at[0])) at = got;
+        }
+        if (!at) continue;
+        // a unit's words spread over the whole selection would be a coincidence of common words, not this unit
+        if (u.keys.length > 1 && at[at.length - 1] - at[0] + 1 > u.keys.length * 2 + 4) continue;
+        at.forEach(q => { used[q] = true; });
+        whole.push(u);
+    }
+    const covered = used.filter(Boolean).length;
+    if (!whole.length || covered < Math.max(2, Math.ceil(sel.length * 0.6))) return null;
+    // two words or more left over that go on together in another unit are a piece of a sentence (owner: pairs of words →
+    // the system voice): the selection is then not whole sentences
+    const pieceOf = (a, b) => candidates.concat([...units].map(([i, ws]) => ({ keys: bsContentKeys(ws.map(x => x.key)).map(x => x.w) })))
+        .some(u => u.keys.some((k, n) => n + 1 < u.keys.length && bsSameWord(k, a) && bsSameWord(u.keys[n + 1], b)));
+    for (let q = 0; q + 1 < sel.length; q++) if (!used[q] && !used[q + 1] && pieceOf(sel[q], sel[q + 1])) return null;
+    whole.sort((a, b) => a.i - b.i);
+    return whole.map(u => {
+        const [from] = bsSpan(set, u.ws[0]), [, to] = bsSpan(set, u.ws[u.ws.length - 1]);
+        return set.timing === 'aligned' ? { i: u.i, from, to } : { i: u.i, from: 0, to: set.sentences[u.i].duration };
+    });
+}
 function bsPhrasePlan(node, text) {
+    const found = bsPhrasePlanRun(node, text);
+    if (found) return found;
+    const set = bsActiveSet(), where = bsPageOf(node);
+    if (!set || !where) return null;
+    const plan = bsWholeUnitsPlan(set, bsWordsOn(set, where.page), text);
+    return plan ? { set, plan } : null;
+}
+function bsPhrasePlanRun(node, text) {
     const set = bsActiveSet();
     const where = bsPageOf(node);
     if (!set || !where) return null;
