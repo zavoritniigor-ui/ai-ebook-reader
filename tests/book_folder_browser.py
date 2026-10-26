@@ -179,4 +179,38 @@ check('7 Opening the book imports its dialogue track from the package folder', "
     return bookAudio.tracks.length === 1 && bookAudio.tracks[0].track === 74 && bookAudio.tracks[0].cd === 1;
 })()""", timeout=30)
 
+# 8-11 (owner, 2026-10-26: «знаходить папку, і все»): a whole storage chosen as the folder, a newer narration file,
+# and nothing left silent
+c.js("""(async () => {
+    await bsDelete(state.bookKey); await bsRefresh(); window.__perm = 'granted';
+    window.__toasts = []; const keep = showToast; window.showToast = (m) => { window.__toasts.push(String(m)); return keep(m); };
+    const deep = window.__folderEntry('Par ici 5-6', [['Speech test - voice.mp3', window.__file('Speech test - voice.mp3', window.__match)]]);
+    window.__remember(window.__folder([['Download', window.__folderEntry('Download', [['Books', window.__folderEntry('Books', [['Par ici', window.__folderEntry('Par ici', [['Par ici 5-6', deep]])]])]])]]));
+})()""")
+check('8 A narration four folders down (a whole storage chosen as the folder) is found, with a message', """(async () => {
+    const got = await bsAutoImportFromFolder(true);
+    return got === true && bsSets.list.length === 1 && window.__toasts.some(m => m === t('bfFound')) && window.__toasts.some(m => m.startsWith(t('bfSearching').split('«')[0]));
+})()""", timeout=30)
+c.js("""(async () => {
+    window.__toasts = [];
+    window.__remember(window.__folder([['Speech test - voice v2.mp3', window.__file('Speech test - voice v2.mp3', new File([window.__match], 'Speech test - voice v2.mp3', { type: 'audio/mpeg' }))]]));
+})()""")
+check('9 A newer narration file of the same voice replaces the one the book has (was: left alone forever)', """(async () => {
+    const got = await bsAutoImportFromFolder(false);
+    return got === true && bsSets.list.length === 1 && bsSets.list[0].audioName === 'Speech test - voice v2.mp3';
+})()""", timeout=30)
+check('10 The same file again: nothing is stored twice, a click says it is connected already', """(async () => {
+    window.__toasts = []; const got = await bsAutoImportFromFolder(true);
+    return got === false && bsSets.list.length === 1 && window.__toasts.includes(t('bfUpToDate'));
+})()""")
+c.js("""(async () => { window.__toasts = []; window.__remember(window.__folder([['Other book - voice.mp3', window.__file('Other book - voice.mp3', window.__other)]])); })()""")
+check('11 No narration of this book in the folder: a click says so (never silent)', """(async () => {
+    const got = await bsAutoImportFromFolder(true);
+    return got === false && window.__toasts.some(m => m.includes('Speech_test.pdf'));
+})()""")
+check('12 A narration chosen with no book open, or while one is still being connected, says why', """(async () => {
+    window.__toasts = []; bsImporting = true; await bsImport([window.__match]); bsImporting = false;
+    return window.__toasts.includes(t('spkBusy'));
+})()""")
+
 print('PASS: all book folder checks')

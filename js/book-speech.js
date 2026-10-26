@@ -252,7 +252,8 @@ async function bsImport(fileList) {
     const key = state.bookKey;
     const files = Array.from(fileList || []);
     bsNote('import', { book: key || null, busy: bsImporting, files: files.map(f => [f.name, f.type, Math.round(f.size / 1048576) + ' MB']) });
-    if (!key || bsImporting) return;
+    if (!key) { showToast(t('spkNoBook')); return; }
+    if (bsImporting) { showToast(t('spkBusy')); return; }
     const jsonFile = files.find(f => /\.json$/i.test(f.name)), mp3s = files.filter(f => /\.mp3$/i.test(f.name));
     bsImporting = true;
     try {
@@ -271,6 +272,9 @@ async function bsImport(fileList) {
             if (packed && bsValidMeta(packed.meta)) items.push({ ...packed, name: f.name });
         }
         if (!items.length) { bsNote('import-refused', { why: 'not a narration' }); showToast(t('spkNeedBoth')); return; }
+        // a big file takes a while to be stored on the device (a phone: tens of seconds): say so, never look idle
+        const mb = Math.round(items.reduce((n, x) => n + (x.blob ? x.blob.size : 0), 0) / 1048576);
+        if (mb >= 20) showToast(t('spkLoading').replace('{mb}', mb));
         // a narration made for another book: its page count differs from the open PDF's
         const other = items.find(x => x.meta.pdf && x.meta.pdf.pages && state.format === 'pdf' && state.totalPages && x.meta.pdf.pages !== state.totalPages);
         if (other) { bsNote('import-refused', { why: 'another book', its: other.meta.pdf, open: state.totalPages }); showToast(t('spkWrongBook').replace('{book}', other.meta.pdf.name || '?')); return; }
@@ -289,7 +293,9 @@ async function bsImport(fileList) {
         await bsRefresh();
         bsNote('import-saved', { voices: items.map(x => x.meta.voice) });
         const last = items[items.length - 1].meta;
-        renderBookAudioDialog(t('spkSaved').replace('{voice}', items.map(x => x.meta.voice).join(', ')).replace('{n}', last.sentences.length));
+        const saved = t('spkSaved').replace('{voice}', items.map(x => x.meta.voice).join(', ')).replace('{n}', last.sentences.length);
+        renderBookAudioDialog(saved);
+        showToast(saved);   // also seen with the dialog closed (a narration found in the folder)
     } catch (e) {
         bsNote('import-failed', { error: String(e && (e.name + ': ' + e.message) || e) });
         showToast(t('spkFailed'));
@@ -595,7 +601,9 @@ function bsSpeakPhrase(text) {
 // The folder the user gave once (browsers with the File System Access API: Chrome, Edge on a computer). A book opened later
 // looks for its narration there and in its subfolders: an MP3 whose tag names this book (the PDF's name, or its page count
 // and text) is imported exactly as if it had been chosen by hand. The folder's handle is kept in IndexedDB on this device.
-const BF_ID = 'books', BF_DEPTH = 2;
+// BF_DEPTH: how deep the remembered folder is searched. A whole storage chosen as the folder (Android: «Internal storage» →
+// Download → Books → Par ici 5-6) is four levels down from the book's files (owner, 2026-10-26: «знаходить папку, і все»).
+const BF_ID = 'books', BF_DEPTH = 4;
 let bfBusy = false;
 const bfSupported = () => typeof window.showDirectoryPicker === 'function' && typeof indexedDB !== 'undefined';
 // The record lives in its own database: a version change of the narrations' database would wait for every other window
@@ -635,11 +643,12 @@ async function bsAutoImportFromFolder(interactive = false) {
     try { record = await bfGet(); } catch (e) { return false; }
     if (!record || !record.handle) return false;
     bfBusy = true;
-    let imported = false;
+    let imported = false, found = false;
     try {
         await bsRefresh();
-        if (state.bookKey !== key || bsSets.list.length) return false;   // another book is open, or this one has its narration
-        if (!(await bfGranted(record.handle, interactive))) return false;
+        if (state.bookKey !== key) return false;
+        if (!(await bfGranted(record.handle, interactive))) { if (interactive) showToast(t('bfNeedAllow')); return false; }
+        if (interactive) showToast(t('bfSearching').replace('{name}', record.name || ''));
         for await (const file of bfMp3s(record.handle)) {
             if (state.bookKey !== key) return false;
             let packed = null;
@@ -647,11 +656,26 @@ async function bsAutoImportFromFolder(interactive = false) {
             const pdf = packed && packed.meta && packed.meta.pdf;
             if (!pdf || pdf.pages !== state.totalPages) continue;   // a narration of another book (or a music file)
             if (pdf.name !== state.bookFileName && await bsSameBook(packed.meta) !== 'same') continue;
+            found = true;
+            // the book has this very file already (same name and size): nothing to do; an older or another file is replaced
+            const have = bsSets.list.find(r => r.voice === packed.meta.voice);
+            if (have && have.audioName === file.name && have.blob && have.blob.size === packed.blob.size) {
+                bsNote('folder', { up_to_date: file.name });
+                if (interactive) showToast(t('bfUpToDate'));
+                break;
+            }
+            bsNote('folder', { importing: file.name, mb: Math.round(file.size / 1048576), replaces: have ? have.audioName : null });
             await bsImport([file]);
-            if (bsSets.list.length) { imported = true; showToast(t('bfFound')); break; }
+            if (bsSets.list.some(r => r.voice === packed.meta.voice && r.audioName === file.name)) { imported = true; showToast(t('bfFound')); }
+            break;
+        }
+        if (!found) {
+            bsNote('folder', { not_found: state.bookFileName, pages: state.totalPages, folder: record.name || '' });
+            if (interactive) showToast(t('bfNotFound').replace('{name}', record.name || '').replace('{book}', state.bookFileName || ''));
         }
     } catch (e) {
         bsNote('folder', { error: String(e && (e.name || e.message) || e) });
+        if (interactive) showToast(t('spkFailed'));
     } finally {
         bfBusy = false;
         bsRenderFolderRow();
@@ -686,10 +710,10 @@ async function bsChooseBooksFolder() {
     try { await bfSet({ id: BF_ID, handle, name: handle.name, at: Date.now() }); }
     catch (e) { showToast(t('spkFailed')); return; }
     showToast(t('bfSaved').replace('{name}', handle.name));
-    await bsAutoImportFromFolder(true);
+    await bfAutoImportFromFolder(true);   // the narration and the dialogue tracks
     bsRenderFolderRow();
 }
-async function bsAllowBooksFolder() { await bsAutoImportFromFolder(true); }
+async function bsAllowBooksFolder() { await bfAutoImportFromFolder(true); }
 async function bsForgetBooksFolder() { try { await bfDelete(); } catch (e) { /* nothing remembered */ } bsRenderFolderRow(); }
 
 // The package: a folder with the book's PDF, its «audio …» folders (the dialogue tracks, CD by CD) and its narration. A book
@@ -778,6 +802,12 @@ Object.assign(I18N, {
     bfNeedAllow: { uk: 'Дозвольте доступ, щоб знайти озвучку книги.', en: 'Allow access to find the book’s narration.', fr: 'Autorisez l’accès pour trouver la narration du livre.', ru: 'Разрешите доступ, чтобы найти озвучку книги.', es: 'Permita el acceso para encontrar la narración del libro.' },
     bfSaved: { uk: 'Папку з книгами запам’ятано: {name}', en: 'Books folder remembered: {name}', fr: 'Dossier des livres mémorisé : {name}', ru: 'Папка с книгами запомнена: {name}', es: 'Carpeta de libros guardada: {name}' },
     bfFound: { uk: 'Озвучку книги знайдено в папці й підключено.', en: 'The book’s narration was found in the folder and connected.', fr: 'La narration du livre a été trouvée dans le dossier et ajoutée.', ru: 'Озвучка книги найдена в папке и подключена.', es: 'La narración del libro se encontró en la carpeta y se conectó.' },
+    bfSearching: { uk: 'Шукаю озвучку книги в папці «{name}»…', en: 'Looking for the book’s narration in «{name}»…', fr: 'Recherche de la narration du livre dans « {name} »…', ru: 'Ищу озвучку книги в папке «{name}»…', es: 'Buscando la narración del libro en «{name}»…' },
+    bfNotFound: { uk: 'У папці «{name}» немає озвучки для «{book}». Покладіть файл озвучки (.mp3) поруч із книгою.', en: 'No narration for «{book}» in «{name}». Put the narration file (.mp3) next to the book.', fr: 'Aucune narration pour « {book} » dans « {name} ». Placez le fichier de narration (.mp3) à côté du livre.', ru: 'В папке «{name}» нет озвучки для «{book}». Положите файл озвучки (.mp3) рядом с книгой.', es: 'No hay narración para «{book}» en «{name}». Ponga el archivo de narración (.mp3) junto al libro.' },
+    bfUpToDate: { uk: 'Озвучку цієї книги вже підключено.', en: 'This book’s narration is already connected.', fr: 'La narration de ce livre est déjà ajoutée.', ru: 'Озвучка этой книги уже подключена.', es: 'La narración de este libro ya está conectada.' },
+    spkLoading: { uk: 'Підключаю озвучку ({mb} МБ)… це може тривати до хвилини.', en: 'Connecting the narration ({mb} MB)… this can take up to a minute.', fr: 'Ajout de la narration ({mb} Mo)… cela peut prendre jusqu’à une minute.', ru: 'Подключаю озвучку ({mb} МБ)… это может занять до минуты.', es: 'Conectando la narración ({mb} MB)… puede tardar hasta un minuto.' },
+    spkBusy: { uk: 'Озвучка ще підключається, зачекайте.', en: 'The narration is still being connected, please wait.', fr: 'La narration est encore en cours d’ajout, patientez.', ru: 'Озвучка ещё подключается, подождите.', es: 'La narración aún se está conectando, espere.' },
+    spkNoBook: { uk: 'Спершу відкрийте книгу, потім підключайте озвучку.', en: 'Open the book first, then add its narration.', fr: 'Ouvrez d’abord le livre, puis ajoutez sa narration.', ru: 'Сначала откройте книгу, потом подключайте озвучку.', es: 'Abra primero el libro y luego añada su narración.' },
     spkCount: { uk: 'Озвучка: {n} речень', en: 'Narration: {n} sentences', fr: 'Narration : {n} phrases', ru: 'Озвучка: {n} предложений', es: 'Narración: {n} frases' },
 });
 
