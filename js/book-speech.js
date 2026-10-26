@@ -692,6 +692,73 @@ async function bsChooseBooksFolder() {
 async function bsAllowBooksFolder() { await bsAutoImportFromFolder(true); }
 async function bsForgetBooksFolder() { try { await bfDelete(); } catch (e) { /* nothing remembered */ } bsRenderFolderRow(); }
 
+// The package: a folder with the book's PDF, its «audio …» folders (the dialogue tracks, CD by CD) and its narration. A book
+// opened from the remembered folder gets its dialogue tracks from its package too, when it has none yet: the same import as
+// a folder chosen by hand (importBookAudio), with the paths the track names come from.
+let bfTracksBusy = false;
+const BF_AUDIO_EXT = /\.(m4a|mp3|ogg|oga|opus|wav|flac|aac)$/i;
+// The folder (within BF_DEPTH levels) that holds a file with this name, or null.
+async function bfFindFolderWith(dir, name, depth = 0) {
+    for await (const [entryName, entry] of dir.entries()) {
+        if (entry.kind === 'file' && entryName === name) return dir;
+    }
+    if (depth < BF_DEPTH) {
+        for await (const [entryName, entry] of dir.entries()) {
+            if (entry.kind === 'directory' && !entryName.startsWith('.')) {
+                const found = await bfFindFolderWith(entry, name, depth + 1);
+                if (found) return found;
+            }
+        }
+    }
+    return null;
+}
+// The audio files inside the package's «audio …» folders, each with the path it has in the package (the CD folder is in it).
+async function bfPackageTracks(pkg) {
+    const out = [];
+    const walk = async (dir, path, depth) => {
+        for await (const [name, entry] of dir.entries()) {
+            if (entry.kind === 'file' && BF_AUDIO_EXT.test(name)) {
+                const file = await entry.getFile();
+                Object.defineProperty(file, 'webkitRelativePath', { value: `${path}/${name}` });
+                out.push(file);
+            } else if (entry.kind === 'directory' && depth < BF_DEPTH + 1 && !name.startsWith('.')) {
+                await walk(entry, `${path}/${name}`, depth + 1);
+            }
+        }
+    };
+    for await (const [name, entry] of pkg.entries()) {
+        if (entry.kind === 'directory' && /^audio/i.test(name)) await walk(entry, name, 1);
+    }
+    return out;
+}
+// The dialogue tracks of the open book, from its package in the remembered folder. Quiet unless interactive.
+async function bfAutoTracks(interactive = false) {
+    const key = state.bookKey;
+    if (!bfSupported() || !key || state.format !== 'pdf' || bfTracksBusy) return false;
+    let record = null;
+    try { record = await bfGet(); } catch (e) { return false; }
+    if (!record || !record.handle) return false;
+    bfTracksBusy = true;
+    try {
+        if ((await baList(key)).length) return false;   // the book has its tracks already
+        if (!(await bfGranted(record.handle, interactive))) return false;
+        const pkg = await bfFindFolderWith(record.handle, state.bookFileName);
+        if (!pkg || state.bookKey !== key) return false;
+        const files = await bfPackageTracks(pkg);
+        if (!files.length || state.bookKey !== key) return false;
+        await importBookAudio(files);
+        return true;
+    } catch (e) {
+        bsNote('folder-tracks', { error: String(e && (e.name || e.message) || e) });
+        return false;
+    } finally { bfTracksBusy = false; }
+}
+// Everything the folder gives an opened book: its narration, then its dialogue tracks.
+async function bfAutoImportFromFolder(interactive = false) {
+    await bsAutoImportFromFolder(interactive);
+    await bfAutoTracks(interactive);
+}
+
 // ---------- i18n ----------------------------------------------------------------------------------------------------------------------------
 Object.assign(I18N, {
     spkPick: { uk: '🗣️ Озвучка книги', en: '🗣️ Book narration', fr: '🗣️ Narration du livre', ru: '🗣️ Озвучка книги', es: '🗣️ Narración del libro' },
