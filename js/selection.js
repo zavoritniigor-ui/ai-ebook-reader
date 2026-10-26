@@ -1407,6 +1407,9 @@ window.addEventListener('blur', cancelDragSelection);
 let dragSel = null;   // { node, start, end } — слово, з якого почалось виділення
 let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 
+// The start screen (no book open) is not a text to translate: its buttons, the app's name and the list of recent books.
+const onStartScreen = (target) => !state.format || !!target?.closest?.('#home-screen, #recent-books');
+
 els.mainArea.addEventListener('pointerdown', (e) => {
     if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
@@ -1414,6 +1417,7 @@ els.mainArea.addEventListener('pointerdown', (e) => {
     if (state.inkMode) return;
     if (!state.translateMode) return;
     if (e.button !== 0) return;
+    if (onStartScreen(e.target)) return;
     if (e.target.closest('#word-tooltip') || e.target.closest('.side-panel') ||
         e.target.closest('.pdf-audio-marker') || e.target.closest('#audio-player') || e.target.closest('#book-audio-dialog') ||
         e.target.closest('#tts-controls') || e.target.closest('nav') || e.target.closest('header')) return;
@@ -1683,6 +1687,7 @@ function rangeBetweenWords(a, b) {
 els.mainArea.addEventListener('click', (e) => {
     if (e.target.closest('#pdf-scrubber')) return;
     if (state.inkMode) return;   // у режимі письма тап малює, а не перекладає
+    if (onStartScreen(e.target)) return;   // стартовий екран: кнопки, назви, список книг — не текст для перекладу
     if (state.suppressNextClick) { state.suppressNextClick = false; return; } // клік після свайпу — ігноруємо
     if(e.target.closest('#word-tooltip') || e.target.closest('.side-panel') || e.target.closest('nav') || e.target.closest('#menu-handle') || e.target.closest('#footer-handle') || e.target.closest('#tts-controls') || e.target.closest('.pdf-audio-marker') || e.target.closest('#audio-player') || e.target.closest('#book-audio-dialog')) return;
     // Зона язичка меню (лівий верхній кут) — тут ніколи не спрацьовує переклад слова.

@@ -10,7 +10,7 @@
   - Status: In progress.
 - **Claude Code** (2026-10-26; branch `feat/cbz-comics`, PR #289; PR #288 `fix/start-screen-no-translate` in worktree `../wt-start-screen`):
   - Merged 2026-10-25: #284 two-column table cells = whole sentences in their column's language; #285 each sentence is one narration unit; #286 practice buttons keep their size; #287 narration found in the remembered books folder; #290 dialogue tracks from the book's package folder.
-  - 2026-10-26: #288 (start screen not translated) and #289 (CBZ comics/magazines) had conflicts with main (ci.yml test list + app-shell versions only); resolved, re-versioned, focused tests green locally. Order: merge #288, then re-merge main into #289, CI, merge, verify production.
+  - 2026-10-26: #288 (start screen not translated; MERGED 2026-10-26) and #289 (CBZ comics/magazines) had conflicts with main (ci.yml test list + app-shell versions only); resolved, re-versioned, focused tests green locally. Order: merge #288, then re-merge main into #289, CI, merge, verify production.
   - Owner checks pending on the tablet: auto narration from folder (#287/#290), 2.1 GB Complete French import, 📋 report on the system-voice-only problem.
   - Narration next: glued headings («féminin 19 Le séisme…»), letter-spaced Par ici headings («J e s u i s»), Bescherelle not redone.
 - **Claude Code — narration history** (PR #283 merged 2026-10-24; PR #282 merged 2026-10-24):
@@ -40,7 +40,6 @@
 
 ## Open Pull Requests
 - PR #289: `feat(reader): CBZ comics and magazine archives` (`feat/cbz-comics`)
-- PR #288: `fix(reader): the start screen is not a text to translate` (`fix/start-screen-no-translate`)
 - PR #266: `docs(handoff): local speech engine...` (`docs/handoff-2026-10-20`)
 - PR #254: `feat(sidebar): the Contents drawer closes automatically...` (`feat/sidebar-autoclose`)
 - PR #252: `feat(drive): save a library book to Google Drive...` (`feat/google-drive-save`)
