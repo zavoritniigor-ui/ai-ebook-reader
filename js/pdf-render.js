@@ -42,6 +42,9 @@ async function initPdf(file, epoch = readerEpoch.book) {
     if (epoch !== readerEpoch.book) { await loading.destroy(); return; }
     pdfLoadedPages.clear();   // the previous document's page objects are gone with it
     state.pdfDoc = doc; state.totalPages = doc.numPages;
+    // The narration and the dialogue tracks are looked for in the remembered folder as soon as the book is known, not after
+    // its first page is drawn: a big PDF on a tablet can take long to draw, and the narration waited for it (js/book-speech.js).
+    if (typeof bfAutoImportFromFolder === 'function') setTimeout(() => { if (epoch === readerEpoch.book) bfAutoImportFromFolder(); }, 0);
     const bm = loadBookmark();
     const startPage = (bm && bm.format === 'pdf' && bm.currentIndex >= 1 && bm.currentIndex <= state.totalPages) ? bm.currentIndex : 1;
     await setupContinuousPdf(doc, startPage, bm);
