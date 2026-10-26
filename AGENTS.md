@@ -45,6 +45,7 @@ Agents operate FAIL-CLOSED: if any required gate fails, do not advance. Diagnose
 4. **Push & PR CI**: Push only to active feature branch. Monitor exact PR head SHA with `tools/ci_wait.sh <branch|sha>` until green.
 5. **Merge & Post-Merge**: Merge via standard PR merge. Monitor main CI run (`tools/ci_wait.sh main`), verify production (`https://ai-ebook-reader.pages.dev`), and clean up merged branch.
 - Detailed procedures: [Delivery Lifecycle](docs/agents/delivery_lifecycle.md), [Debugging](docs/agents/debugging_procedures.md), [Syntax & Quotes](docs/agents/syntax_and_quotes.md), [Testing & Versioning](docs/agents/testing_and_versioning.md).
+- **Book narration (binding):** how the book text is cut into recorded sentences, and what to check before and after making audio: [Narration Text Rules](docs/agents/narration_text_rules.md). Read it before touching `tools/book_tts/` or narrating a book.
 
 ## 7. Testing & Verification Commands
 - `python3 tools/run_tests.py <test1.py> [test2.py ...]`: Standard local test runner (prints one PASS/FAIL line + 40-line error tail; starts ephemeral test server/Chrome if needed).
