@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Checks tools/book_tts/columns.py on made-up lines (no PDF): a two-column table is read cell by cell, a wrapped cell goes
 on in the same sentence, a cell of several sentences is split, a heading is a unit of its own, and a paragraph goes on
-across blocks only while a sentence is open."""
+across blocks only while a sentence is open. A book in one voice (Par ici) has no tables: its boxes are running text in
+pdftotext's reading order, and a word printed in touching pieces is one word."""
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools' / 'book_tts'))
-from columns import items_from_lines  # noqa: E402
+from columns import _touches, items_from_lines  # noqa: E402
 
 H = 12.0   # line height, pt
 ROWS = [('changer', 'to change'), ('devenir', 'to become'), ('être', 'to be'), ('évoluer', 'to evolve'), ('exister', 'to exist')]
@@ -98,6 +99,40 @@ results.append(check('a sentence still open at the end of a block goes on into t
 paragraph = [(43 + 13 * i, H, [(90.3, f'Running text line {i}.')], (5, 8, True)) for i in range(8)]
 results.append(check('a page with no two-column table is all running text (read as before)',
                      all(item[0] == 'flow' for item in items_from_lines(paragraph))))
+
+box = [   # a box of short lines, each a block of its own (Par ici 3-4 p. 25)
+    (451, H, [(434.0, 'Au Canada, le numéro d’assurance')], (30, 1, False)),
+    (463, H, [(434.0, 'social (NAS) est confidentiel.')], (31, 1, True)),
+]
+results.append(check('a box line that ends on a word goes on into the next block when that one starts in lower case',
+                     flows(items_from_lines(box)) == ['Au Canada, le numéro d’assurance social (NAS) est confidentiel.']))
+
+opened = [
+    (61, H, [(90.3, 'Nouns ending in -ac tend to be masculine:')], (6, 1, False)),
+    (75, H, [(90.3, 'l’ammoniac')], (7, 1, True)),
+    (89, H, [(90.3, '26')], (8, 1, False)),
+    (103, H, [(90.3, 'practice makes perfect')], (9, 1, False)),
+]
+results.append(check('a colon opening a list and a page number do not go on into the next block',
+                     flows(items_from_lines(opened)) == ['Nouns ending in -ac tend to be masculine:', 'l’ammoniac', '26',
+                                                        'practice makes perfect']))
+
+results.append(check('a book in one voice (tables=False) reads a two-column layout as running text',
+                     all(item[0] == 'flow' for item in items_from_lines(table_lines(), tables=False))))
+
+side = [   # pdftotext reads the left column, then the right one; the right one starts higher on the page
+    (300, H, [(60.0, 'Left column, first line')], (1, 2, False)),
+    (313, H, [(60.0, 'goes on here.')], (1, 2, True)),
+    (290, H, [(330.0, 'Right column sentence.')], (2, 1, True)),
+]
+results.append(check('with no table, side-by-side columns keep pdftotext\'s order (not mixed line by line)',
+                     flows(items_from_lines(side, tables=False)) == ['Left column, first line goes on here.',
+                                                                   'Right column sentence.']))
+
+results.append(check('a word printed in two touching pieces is one word; a space or punctuation between words is not',
+                     _touches((349.7, 398.3, 'déterminan', 689.7), (398.3, 405.0, 'ts', 693.5))
+                     and not _touches((332.8, 346.5, 'Les', 688.4), (349.7, 398.3, 'déterminan', 689.7))
+                     and not _touches((10.0, 20.0, 'l’', 5.0), (20.0, 40.0, 'école', 5.0))))
 
 if not all(results):
     sys.exit(1)
