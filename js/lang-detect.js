@@ -447,7 +447,7 @@ function normalizeBookLang(value) {
 }
 function explicitBookLang() { return state.bookLangManual || state.bookLangMeta || ''; }
 const BOOK_LANG_STORE = 'reader_book_lang:';
-const BOOK_LANG_NAMES = { en: 'English', fr: 'Français', es: 'Español', de: 'Deutsch', it: 'Italiano', pt: 'Português', nl: 'Nederlands', pl: 'Polski' };
+const BOOK_LANG_NAMES = { en: '🇬🇧 English', fr: '🇫🇷 Français', es: '🇪🇸 Español', de: '🇩🇪 Deutsch', it: '🇮🇹 Italiano', pt: '🇵🇹 Português', nl: '🇳🇱 Nederlands', pl: '🇵🇱 Polski' };
 Object.assign(I18N, {
     bookLangLabel: { uk: '📖 Мова книги', en: '📖 Book language', fr: '📖 Langue du livre', ru: '📖 Язык книги', zh: '📖 书籍语言', ko: '📖 책 언어', hi: '📖 पुस्तक की भाषा', ga: '📖 Teanga an leabhair' },
     bookLangAuto: { uk: 'Автоматично', en: 'Automatic', fr: 'Automatique', ru: 'Автоматически', zh: '自动', ko: '자동', hi: 'स्वचालित', ga: 'Uathoibríoch' },

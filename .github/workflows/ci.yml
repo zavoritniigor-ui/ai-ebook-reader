@@ -403,6 +403,9 @@ jobs:
           echo "Running dictionaries_browser.py..."
           python3 -u tests/dictionaries_browser.py
 
+          echo "Running target_lang_fa_browser.py..."
+          python3 -u tests/target_lang_fa_browser.py
+
           echo "All tests passed successfully!"
 
       - name: Upload Chrome crash reports

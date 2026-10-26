@@ -326,10 +326,11 @@ function offlineTrReport() {
 
 // ========== НАЛАШТУВАННЯ: секція в діалозі 🔑 ==========
 const offlineTrUi = { controller: null, lastPaint: 0 };
-function offlineTrLangName(code) {
+function offlineTrLangName(code, flag = true) {
     let name = code;
     try { name = new Intl.DisplayNames([state.uiLang], { type: 'language' }).of(code) || code; } catch (e) { /* без Intl.DisplayNames лишається код */ }
-    return name.charAt(0).toLocaleUpperCase(state.uiLang) + name.slice(1);
+    name = name.charAt(0).toLocaleUpperCase(state.uiLang) + name.slice(1);
+    return flag && langFlag(code) ? langFlag(code) + ' ' + name : name;
 }
 const offlineTrMb = (bytes) => Math.max(1, Math.round(bytes / 1e6));   // як у файловому менеджері Android: десяткові мегабайти
 const offlineTrUnitMb = () => ' ' + t('offUnitMb');
@@ -338,7 +339,7 @@ function offlineTrSources(tgt) {
     const back = Object.fromEntries(Object.entries(OFFLINE_CATALOG.codes).map(([app, catalog]) => [catalog, app]));
     const langs = new Set();
     for (const key of Object.keys(OFFLINE_CATALOG.models)) for (const code of key.split('>')) langs.add(back[code] || code);
-    return [...langs].filter(code => offlineTrRoute(code, tgt)).sort((a, b) => offlineTrLangName(a).localeCompare(offlineTrLangName(b), state.uiLang));
+    return [...langs].filter(code => offlineTrRoute(code, tgt)).sort((a, b) => offlineTrLangName(a, false).localeCompare(offlineTrLangName(b, false), state.uiLang));
 }
 function offlineTrBuildBox() {
     const content = document.querySelector('#settings-modal .modal-content');
