@@ -91,9 +91,11 @@ c.js("""(() => { const p = document.createElement('p'); p.id = 'dict-word-p'; p.
 WORD_RECT = "(() => { const n = document.getElementById('dict-word-p').firstChild, r = document.createRange(); r.setStart(n, 3); r.setEnd(n, 7); return r.getBoundingClientRect(); })()"
 c.js(f"""(async () => {{ const b = {WORD_RECT}; els.tooltip.style.display = 'flex'; els.ttTranslation.textContent = 'є';
   state.tooltipAnchor = {{ clientX: b.left + b.width / 2, clientY: b.top + b.height / 2, anchorRect: b }};
-  positionTooltip(b.left + b.width / 2, b.top + b.height / 2, b); window.__beforeTop = els.tooltip.getBoundingClientRect().top;
+  positionTooltip(b.left + b.width / 2, b.top + b.height / 2, b); window.__beforeTop = els.tooltip.getBoundingClientRect().top; window.__btnTop = document.getElementById('tt-ai-btn').getBoundingClientRect().top; window.__width = els.tooltip.getBoundingClientRect().width;
   state.lookupToken = 130; await appendDictionaries('suis', 'fr', 130); return true; }})()""")
 check('a popup above the word shows the block', c.js("document.getElementById('tt-dict-host').textContent.includes('first-person singular')"))
+check('the popup\'s buttons stay where they were (the block grows away from the word)', c.js("Math.abs(document.getElementById('tt-ai-btn').getBoundingClientRect().top - __btnTop) < 1"))
+check('the block does not widen the popup', c.js("Math.abs(els.tooltip.getBoundingClientRect().width - __width) < 1"))
 check('the popup with the block never covers the word', c.js(f"(() => {{ const b = {WORD_RECT}, t = els.tooltip.getBoundingClientRect(); return t.bottom <= b.top || t.top >= b.bottom; }})()"))
 check('the block cleared, the popup goes back to its place', c.js("(() => { clearDictionaries(); return Math.abs(els.tooltip.getBoundingClientRect().top - __beforeTop) < 1; })()"))
 check('one short word detected in the wrong language still gets the book\'s entry', c.js("(async () => { state.sourceLang = 'fr-FR'; state.lookupToken = 131; await appendDictionaries('suis', 'de', 131); return document.getElementById('tt-dict-host').textContent.includes('être'); })()"))

@@ -7,6 +7,7 @@
 // Their HTML is never inserted: it is reduced to plain text and escaped.
 
 const DICT_TIMEOUT_MS = 6000;
+const DICT_MIN_ROOM = 48;   // px on the block's side of the popup, at least
 const DICT_MAX_POS = 2, DICT_MAX_SENSES = 3, DICT_WIKI_CHARS = 220;
 const dictCache = new Map();   // 'lang|word' → html ('' = nothing found)
 
@@ -76,13 +77,14 @@ async function dictBlock(word, langs, signal) {
 }
 
 function dictHost() { return document.getElementById('tt-dict-host'); }
-// Clears the block; a popup that was placed again for it goes back to its size and place.
+// Clears the block; a popup that grew upwards for it goes back down by as much (its buttons stay where they were).
 function clearDictionaries() {
     const host = dictHost();
     if (!host || !host.firstChild) return;
+    const shift = Number(host.dataset.shift || 0);
     host.textContent = '';
-    const a = state.tooltipAnchor;
-    if (a && els.tooltip.style.display !== 'none') positionTooltip(a.clientX, a.clientY, a.anchorRect);
+    host.dataset.shift = '';
+    if (shift) els.tooltip.style.top = (parseFloat(els.tooltip.style.top) + shift) + 'px';
 }
 // A side panel (Ask AI, Grammar) open: the reader has moved on from the word; on a phone a taller popup would cover the panel.
 function dictPanelOpen() {
@@ -110,9 +112,20 @@ async function appendDictionaries(word, lang, lookupToken, signal) {
     const host = dictHost();
     if (!html || !host || lookupToken !== state.lookupToken || (signal && signal.aborted)) return;
     if (els.tooltip.style.display === 'none' || dictPanelOpen()) return;
+    // The popup's buttons and translation never move (a late block must not shift a button under the finger or the
+    // pointer): the block grows AWAY from the word. A popup above the word (or docked at the foot of a phone) gets it
+    // on top and grows upwards; a popup below the word gets it at the foot and grows downwards. Only the room left on
+    // that side is used (scrolling inside); with too little room it is not shown.
+    const box = els.tooltip.getBoundingClientRect();
+    const up = els.tooltip.classList.contains('tooltip-above') || innerWidth <= 600;
+    const room = Math.min(innerHeight * 0.3, up ? box.top - 10 : innerHeight - 10 - box.bottom);
+    if (room < DICT_MIN_ROOM) return;
+    host.classList.toggle('tt-dict-up', up);
+    host.style.maxHeight = Math.floor(room) + 'px';
     host.innerHTML = html;
-    // The popup is placed again with the block in it (above or below the word, never over it; docked on a phone); a
-    // button pressed or a panel opened clears the block and puts the popup back (clearDictionaries).
-    const a = state.tooltipAnchor;
-    if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+    if (up) {
+        const shift = els.tooltip.getBoundingClientRect().height - box.height;
+        host.dataset.shift = String(shift);
+        els.tooltip.style.top = (parseFloat(els.tooltip.style.top) - shift) + 'px';
+    }
 }
