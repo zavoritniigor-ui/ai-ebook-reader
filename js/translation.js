@@ -39,6 +39,9 @@ function validateAlignment(source, translation, links) {
         const target = exactSpan(translation, link.target);
         const sourceSpans = link.source.map(piece => exactSpan(source, piece));
         if (!target || sourceSpans.some(span => !span)) continue;
+        // Words, not sentences (owner, 2026-10-26): a link of a whole sentence or clause would light up everything at once.
+        const words = piece => (String(piece).match(/[\p{L}\p{N}]+/gu) || []).length;
+        if (link.source.reduce((n, piece) => n + words(piece), 0) > 6 || words(link.target) > 6) continue;
         const sorted = [...sourceSpans].sort((a,b) => a.start-b.start);
         if (sorted.some((span,i) => i && span.start < sorted[i-1].end)) continue;
         valid.push({ source: sourceSpans, target });

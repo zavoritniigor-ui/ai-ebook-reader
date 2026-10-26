@@ -46,4 +46,14 @@ c.js(STUB + "1")
 # groqMaxTokens: the caller's budget plus room for gpt-oss hidden reasoning (never less than asked); the profile otherwise
 check('5 Groq honours the per-request budget', """(() => groqMaxTokens('translation', {maxOutputTokens: 900}) >= 900 && groqMaxTokens('translation', {maxOutputTokens: 900}) > groqMaxTokens('translation', {maxOutputTokens: 300})
   && groqMaxTokens('translation', {}) === GROQ_TASK_PROFILES.translation.max_completion_tokens && callGroq.toString().includes('groqMaxTokens(task, options)'))()""")
+# Word alignment (owner, 2026-10-26: a tapped word lights up its pair, not the whole sentence)
+check('6 the prompt asks for word links, never one link of the whole sentence', """(async () => { let prompt = ''; const keep = callAI;
+  callAI = async (p) => { prompt = p; return '{"translation":"Кіт спить.","alignment":[]}'; };
+  await aiTranslateText('Le chat dort.', 'fr', null, 'uk', '', true); callAI = keep;
+  return /links WORDS, not sentences/.test(prompt) && /NEVER give one link for the whole fragment/.test(prompt); })()""")
+check('7 a link of the whole sentence is dropped, word links are kept', """(() => {
+  const src = 'Vous êtes émus en voyant des images de votre père.', tr = 'Ви зворушені, коли бачите зображення свого батька.';
+  const whole = validateAlignment(src, tr, [{ source: [src], target: tr, confidence: 'high' }]);
+  const words = validateAlignment(src, tr, [{ source: ['êtes émus'], target: 'зворушені', confidence: 'high' }, { source: ['des images'], target: 'зображення', confidence: 'high' }]);
+  return whole.length === 0 && words.length === 2; })()""")
 print('ALL PASS')
