@@ -95,6 +95,7 @@ c.js(f"""(async () => {{ const b = {WORD_RECT}; els.tooltip.style.display = 'fle
   state.lookupToken = 130; await appendDictionaries('suis', 'fr', 130); return true; }})()""")
 check('a popup above the word shows the block', c.js("document.getElementById('tt-dict-host').textContent.includes('first-person singular')"))
 check('the popup\'s buttons stay where they were (the block grows away from the word)', c.js("Math.abs(document.getElementById('tt-ai-btn').getBoundingClientRect().top - __btnTop) < 1"))
+check('the block is a short strip that scrolls (owner: no tall popup)', c.js("(() => { const h = document.getElementById('tt-dict-host'); return h.getBoundingClientRect().height <= 85 && getComputedStyle(h).overflowY === 'auto'; })()"))
 check('the block does not widen the popup', c.js("Math.abs(els.tooltip.getBoundingClientRect().width - __width) < 1"))
 check('the popup with the block never covers the word', c.js(f"(() => {{ const b = {WORD_RECT}, t = els.tooltip.getBoundingClientRect(); return t.bottom <= b.top || t.top >= b.bottom; }})()"))
 check('the block cleared, the popup goes back to its place', c.js("(() => { clearDictionaries(); return Math.abs(els.tooltip.getBoundingClientRect().top - __beforeTop) < 1; })()"))
