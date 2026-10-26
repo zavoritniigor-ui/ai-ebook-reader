@@ -308,6 +308,9 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     const ctxKey = isMultiWord ? (selectionContext ? '@' + selectionContext.slice(0, 80).toLowerCase() : '') : '@' + (contextSentence || '').slice(0, 80).toLowerCase();
     const cacheKey = srcCode + '>' + state.targetLang + '|' + (isMultiWord ? cleanText : cleanText.toLowerCase()) + ctxKey;
     const myLookup = ++state.lookupToken;   // щоб пізня відповідь не перебила новий тап
+    // Free dictionaries for a word, by themselves (js/dictionaries.js): asked at once, beside the translation -- never after
+    // it (the dictionary meanings from machine translation can take long or never answer).
+    if (!isMultiWord && typeof appendDictionaries === 'function') appendDictionaries(cleanText, srcCode, myLookup, task.signal);
 
     let alignmentResult = null;
     let translated = true;   // false only when no translation arrived (the error text is shown instead)
@@ -431,8 +434,6 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         }
     }
     if (task.current() && alignmentResult) installAlignment(cleanText, alignmentResult, lookupRoot);
-    // Free dictionaries under a word's translation, by themselves (js/dictionaries.js): Wiktionary, Wikipedia for a name.
-    if (!isMultiWord && translated && task.current() && typeof appendDictionaries === 'function') appendDictionaries(cleanText, srcCode, myLookup, task.signal);
     // Якщо активна сторона — переклад, озвучуємо його саме зараз: раніше тексту
     // ще не існувало, бо він приходить із мережі.
     if (task.current() && els.tooltip.style.display !== 'none' && state.speakSide === 'translation') speakInLang(mainTranslationText(), targetLang, 'tr');
