@@ -45,7 +45,7 @@ const I18N_ES = {
     dictationStop: 'Detener el dictado', dictationListening: 'Escuchando… Puedes hacer pausas. ■ para detener.',
     dictationStopped: 'Dictado detenido. Tu texto sigue en el campo; toca 🎤 para continuar.', micNetwork: 'Problema de red durante el reconocimiento.',
     noChapters: 'No se encontraron capítulos.', chapterMissing: 'No se encontró el capítulo en el archivo.',
-    voicesFr: 'Francés', voicesEn: 'Inglés', voicesUk: 'Ucraniano', voicesRu: 'Ruso', voicesZh: 'Chino (simplificado)', voicesKo: 'Coreano', voicesHi: 'Hindi',
+    voicesFr: 'Francés', voicesEn: 'Inglés', voicesUk: 'Ucraniano', voicesRu: 'Ruso', voicesZh: 'Chino (simplificado)', voicesKo: 'Coreano', voicesHi: 'Hindi', voicesFa: 'Persa (farsi)',
     voicesDe: 'Alemán', voicesEs: 'Español', voicesGa: 'Irlandés',
     statsTitle: 'Ayuda de lectura', statsReading: 'Leído sin ayuda', statsReadWithoutHelp: 'Leído sin ayuda', statsHelpRequested: 'Ayuda pedida',
     statsPageWords: 'Palabras en la página', statsIndependentWords: 'Sin ayuda', statsUniqueTapped: 'Palabras distintas tocadas',
