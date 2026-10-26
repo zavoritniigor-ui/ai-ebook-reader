@@ -1,4 +1,4 @@
-# AI Ebook Reader — Current Handoff State (2026-10-24)
+# AI Ebook Reader — Current Handoff State (2026-10-26)
 
 > **RULE FOR AGENTS**: Replace your section with the current state when handing off.
 > **NEVER append history dumps** to this file. Historical logs through 2026-10-23 are archived
@@ -8,7 +8,12 @@
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
   - Task: Token optimization (compact rules, docs archiving, .vscode search exclusions) and Antigravity workflow definitions.
   - Status: In progress.
-- **Claude Code** (Branch: `feat/narration-mixed-voices`, PR #283 open on `main`; PR #282 merged 2026-10-24):
+- **Claude Code** (2026-10-26; branch `feat/cbz-comics`, PR #289; PR #288 `fix/start-screen-no-translate` in worktree `../wt-start-screen`):
+  - Merged 2026-10-25: #284 two-column table cells = whole sentences in their column's language; #285 each sentence is one narration unit; #286 practice buttons keep their size; #287 narration found in the remembered books folder; #290 dialogue tracks from the book's package folder.
+  - 2026-10-26: #288 (start screen not translated; MERGED 2026-10-26) and #289 (CBZ comics/magazines) had conflicts with main (ci.yml test list + app-shell versions only); resolved, re-versioned, focused tests green locally. Order: merge #288, then re-merge main into #289, CI, merge, verify production.
+  - Owner checks pending on the tablet: auto narration from folder (#287/#290), 2.1 GB Complete French import, 📋 report on the system-voice-only problem.
+  - Narration next: glued headings («féminin 19 Le séisme…»), letter-spaced Par ici headings («J e s u i s»), Bescherelle not redone.
+- **Claude Code — narration history** (PR #283 merged 2026-10-24; PR #282 merged 2026-10-24):
   - Book narration restarted from scratch on 2026-10-24. Isolation rule: do NOT edit files in the main folder while Claude is active.
   - **Owner's rule (final):** a whole sentence plays its recording (its own intonation); ONE word plays that word said alone (`words.py`); TWO OR MORE selected words go to the SYSTEM VOICE (never words alone strung together, never a piece cut out of a sentence). App side is PR #283 (`bsPhrasePlan` / `bsPhraseAnywhere` return null for 2+ words; tests in `tests/book_speech_browser.py`). Not live until #283 is merged.
   - **Old narrations rejected** («неприродно», «як з поганого динаміка» = edge-tts is fixed at 24 kHz / 48 kbps). All old MP3s + caches were moved to the local Trash (not emptied) and to the Drive trash. Drive now has one folder per book: «Par ici», «Complete French», «Bescherelle» (book PDFs + new narrations).
@@ -34,6 +39,7 @@
    - Narration files must be re-imported on the tablet after the rebuilt ones are uploaded.
 
 ## Open Pull Requests
+- PR #289: `feat(reader): CBZ comics and magazine archives` (`feat/cbz-comics`)
 - PR #266: `docs(handoff): local speech engine...` (`docs/handoff-2026-10-20`)
 - PR #254: `feat(sidebar): the Contents drawer closes automatically...` (`feat/sidebar-autoclose`)
 - PR #252: `feat(drive): save a library book to Google Drive...` (`feat/google-drive-save`)

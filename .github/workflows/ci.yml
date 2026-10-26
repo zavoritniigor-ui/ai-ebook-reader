@@ -391,6 +391,9 @@ jobs:
           echo "Running book_speech_browser.py..."
           python3 -u tests/book_speech_browser.py
 
+          echo "Running comics_browser.py..."
+          python3 -u tests/comics_browser.py
+
           echo "Running start_screen_browser.py..."
           python3 -u tests/start_screen_browser.py
 
