@@ -591,6 +591,174 @@ function bsSpeakPhrase(text) {
     return true;
 }
 
+// ---------- a folder of books: the narration is found by itself ------------------------------------------------------------------
+// The folder the user gave once (browsers with the File System Access API: Chrome, Edge on a computer). A book opened later
+// looks for its narration there and in its subfolders: an MP3 whose tag names this book (the PDF's name, or its page count
+// and text) is imported exactly as if it had been chosen by hand. The folder's handle is kept in IndexedDB on this device.
+const BF_ID = 'books', BF_DEPTH = 2;
+let bfBusy = false;
+const bfSupported = () => typeof window.showDirectoryPicker === 'function' && typeof indexedDB !== 'undefined';
+// The record lives in its own database: a version change of the narrations' database would wait for every other window
+// that still has it open, and the narrations would stop with it.
+const BF_DB = 'reader-books-folder', BF_STORE = 'folders';
+let bfDbPromise = null;
+function bfDb() {
+    if (!bfDbPromise) bfDbPromise = new Promise((resolve, reject) => {
+        const req = indexedDB.open(BF_DB, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(BF_STORE, { keyPath: 'id' });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    }).catch(err => { bfDbPromise = null; throw err; });
+    return bfDbPromise;
+}
+async function bfGet() { const db = await bfDb(); return baReq(db.transaction(BF_STORE, 'readonly').objectStore(BF_STORE).get(BF_ID)); }
+async function bfSet(record) { const db = await bfDb(), tx = db.transaction(BF_STORE, 'readwrite'); tx.objectStore(BF_STORE).put(record); await baTxDone(tx); }
+async function bfDelete() { const db = await bfDb(), tx = db.transaction(BF_STORE, 'readwrite'); tx.objectStore(BF_STORE).delete(BF_ID); await baTxDone(tx); }
+// The MP3 files of a folder and of its subfolders (BF_DEPTH levels down), one at a time.
+async function* bfMp3s(dir, depth = 0) {
+    for await (const [name, entry] of dir.entries()) {
+        if (entry.kind === 'directory') { if (depth < BF_DEPTH && !name.startsWith('.')) yield* bfMp3s(entry, depth + 1); }
+        else if (/\.mp3$/i.test(name)) yield await entry.getFile();
+    }
+}
+// Reading needs the user's permission: asked for only from a click (a browser refuses it when nobody clicked).
+async function bfGranted(handle, interactive) {
+    if (await handle.queryPermission({ mode: 'read' }) === 'granted') return true;
+    return !!interactive && await handle.requestPermission({ mode: 'read' }) === 'granted';
+}
+// Imports the open PDF's narration from the remembered folder when the book has none yet. Quiet unless interactive
+// (then the permission may be asked for). Returns true when a narration was imported.
+async function bsAutoImportFromFolder(interactive = false) {
+    const key = state.bookKey;
+    if (!bfSupported() || !key || state.format !== 'pdf' || !state.totalPages || bfBusy || bsImporting) return false;
+    let record = null;
+    try { record = await bfGet(); } catch (e) { return false; }
+    if (!record || !record.handle) return false;
+    bfBusy = true;
+    let imported = false;
+    try {
+        await bsRefresh();
+        if (state.bookKey !== key || bsSets.list.length) return false;   // another book is open, or this one has its narration
+        if (!(await bfGranted(record.handle, interactive))) return false;
+        for await (const file of bfMp3s(record.handle)) {
+            if (state.bookKey !== key) return false;
+            let packed = null;
+            try { packed = await bsUnpack(file); } catch (e) { packed = null; }
+            const pdf = packed && packed.meta && packed.meta.pdf;
+            if (!pdf || pdf.pages !== state.totalPages) continue;   // a narration of another book (or a music file)
+            if (pdf.name !== state.bookFileName && await bsSameBook(packed.meta) !== 'same') continue;
+            await bsImport([file]);
+            if (bsSets.list.length) { imported = true; showToast(t('bfFound')); break; }
+        }
+    } catch (e) {
+        bsNote('folder', { error: String(e && (e.name || e.message) || e) });
+    } finally {
+        bfBusy = false;
+        bsRenderFolderRow();
+    }
+    return imported;
+}
+// The dialog's folder row: which folder is remembered, and whether the permission to read it is still needed.
+async function bsRenderFolderRow() {
+    const dialog = bookAudioDialog(), row = dialog && dialog.querySelector('.ba-books');
+    if (!row) return;
+    if (!bfSupported()) { row.hidden = true; return; }
+    let record = null, granted = false;
+    try {
+        record = await bfGet();
+        if (record && record.handle) granted = await record.handle.queryPermission({ mode: 'read' }) === 'granted';
+    } catch (e) { record = null; }
+    row.hidden = false;
+    row.querySelector('.ba-books-text').textContent = record
+        ? t('bfHave').replace('{name}', record.name || '') + (granted ? '' : ' ' + t('bfNeedAllow'))
+        : t('bfNone');
+    row.querySelector('.ba-books-pick').textContent = record ? t('bfChange') : t('bfChoose');
+    row.querySelector('.ba-books-allow').textContent = t('bfAllow');
+    row.querySelector('.ba-books-allow').hidden = !record || granted;
+    row.querySelector('.ba-books-forget').textContent = t('bfForget');
+    row.querySelector('.ba-books-forget').hidden = !record;
+}
+// The button «Вибрати папку»: the folder is chosen by the user, remembered, and searched for this book's narration at once.
+async function bsChooseBooksFolder() {
+    if (!bfSupported()) return;
+    let handle = null;
+    try { handle = await window.showDirectoryPicker({ id: 'reader-books', mode: 'read' }); } catch (e) { return; }   // cancelled
+    try { await bfSet({ id: BF_ID, handle, name: handle.name, at: Date.now() }); }
+    catch (e) { showToast(t('spkFailed')); return; }
+    showToast(t('bfSaved').replace('{name}', handle.name));
+    await bsAutoImportFromFolder(true);
+    bsRenderFolderRow();
+}
+async function bsAllowBooksFolder() { await bsAutoImportFromFolder(true); }
+async function bsForgetBooksFolder() { try { await bfDelete(); } catch (e) { /* nothing remembered */ } bsRenderFolderRow(); }
+
+// The package: a folder with the book's PDF, its «audio …» folders (the dialogue tracks, CD by CD) and its narration. A book
+// opened from the remembered folder gets its dialogue tracks from its package too, when it has none yet: the same import as
+// a folder chosen by hand (importBookAudio), with the paths the track names come from.
+let bfTracksBusy = false;
+const BF_AUDIO_EXT = /\.(m4a|mp3|ogg|oga|opus|wav|flac|aac)$/i;
+// The folder (within BF_DEPTH levels) that holds a file with this name, or null.
+async function bfFindFolderWith(dir, name, depth = 0) {
+    for await (const [entryName, entry] of dir.entries()) {
+        if (entry.kind === 'file' && entryName === name) return dir;
+    }
+    if (depth < BF_DEPTH) {
+        for await (const [entryName, entry] of dir.entries()) {
+            if (entry.kind === 'directory' && !entryName.startsWith('.')) {
+                const found = await bfFindFolderWith(entry, name, depth + 1);
+                if (found) return found;
+            }
+        }
+    }
+    return null;
+}
+// The audio files inside the package's «audio …» folders, each with the path it has in the package (the CD folder is in it).
+async function bfPackageTracks(pkg) {
+    const out = [];
+    const walk = async (dir, path, depth) => {
+        for await (const [name, entry] of dir.entries()) {
+            if (entry.kind === 'file' && BF_AUDIO_EXT.test(name)) {
+                const file = await entry.getFile();
+                Object.defineProperty(file, 'webkitRelativePath', { value: `${path}/${name}` });
+                out.push(file);
+            } else if (entry.kind === 'directory' && depth < BF_DEPTH + 1 && !name.startsWith('.')) {
+                await walk(entry, `${path}/${name}`, depth + 1);
+            }
+        }
+    };
+    for await (const [name, entry] of pkg.entries()) {
+        if (entry.kind === 'directory' && /^audio/i.test(name)) await walk(entry, name, 1);
+    }
+    return out;
+}
+// The dialogue tracks of the open book, from its package in the remembered folder. Quiet unless interactive.
+async function bfAutoTracks(interactive = false) {
+    const key = state.bookKey;
+    if (!bfSupported() || !key || state.format !== 'pdf' || bfTracksBusy) return false;
+    let record = null;
+    try { record = await bfGet(); } catch (e) { return false; }
+    if (!record || !record.handle) return false;
+    bfTracksBusy = true;
+    try {
+        if ((await baList(key)).length) return false;   // the book has its tracks already
+        if (!(await bfGranted(record.handle, interactive))) return false;
+        const pkg = await bfFindFolderWith(record.handle, state.bookFileName);
+        if (!pkg || state.bookKey !== key) return false;
+        const files = await bfPackageTracks(pkg);
+        if (!files.length || state.bookKey !== key) return false;
+        await importBookAudio(files);
+        return true;
+    } catch (e) {
+        bsNote('folder-tracks', { error: String(e && (e.name || e.message) || e) });
+        return false;
+    } finally { bfTracksBusy = false; }
+}
+// Everything the folder gives an opened book: its narration, then its dialogue tracks.
+async function bfAutoImportFromFolder(interactive = false) {
+    await bsAutoImportFromFolder(interactive);
+    await bfAutoTracks(interactive);
+}
+
 // ---------- i18n ----------------------------------------------------------------------------------------------------------------------------
 Object.assign(I18N, {
     spkPick: { uk: '🗣️ Озвучка книги', en: '🗣️ Book narration', fr: '🗣️ Narration du livre', ru: '🗣️ Озвучка книги', es: '🗣️ Narración del libro' },
@@ -601,6 +769,15 @@ Object.assign(I18N, {
     spkMismatch: { uk: 'JSON описує файл {audio}. Виберіть саме цей MP3.', en: 'The JSON describes the file {audio}. Choose that MP3.', fr: 'Le JSON décrit le fichier {audio}. Choisissez ce MP3.', ru: 'JSON описывает файл {audio}. Выберите этот MP3.', es: 'El JSON describe el archivo {audio}. Elija ese MP3.' },
     spkSaved: { uk: 'Озвучку збережено: голос {voice}, речень: {n}.', en: 'Narration saved: voice {voice}, sentences: {n}.', fr: 'Narration enregistrée : voix {voice}, phrases : {n}.', ru: 'Озвучка сохранена: голос {voice}, предложений: {n}.', es: 'Narración guardada: voz {voice}, frases: {n}.' },
     spkFailed: { uk: 'Не вдалося зберегти озвучку на цьому пристрої.', en: 'The narration could not be saved on this device.', fr: 'La narration n’a pas pu être enregistrée sur cet appareil.', ru: 'Озвучку не удалось сохранить на этом устройстве.', es: 'No se pudo guardar la narración en este dispositivo.' },
+    bfChoose: { uk: 'Вибрати папку з книгами', en: 'Choose the books folder', fr: 'Choisir le dossier des livres', ru: 'Выбрать папку с книгами', es: 'Elegir la carpeta de libros' },
+    bfChange: { uk: 'Змінити папку', en: 'Change folder', fr: 'Changer de dossier', ru: 'Сменить папку', es: 'Cambiar carpeta' },
+    bfAllow: { uk: 'Дозволити доступ', en: 'Allow access', fr: 'Autoriser l’accès', ru: 'Разрешить доступ', es: 'Permitir el acceso' },
+    bfForget: { uk: 'Забути папку', en: 'Forget the folder', fr: 'Oublier le dossier', ru: 'Забыть папку', es: 'Olvidar la carpeta' },
+    bfNone: { uk: 'Папку з книгами не вибрано: озвучка з цієї папки не підтягуватиметься сама.', en: 'No books folder chosen: the narration is not found there by itself.', fr: 'Aucun dossier de livres choisi : la narration n’est pas trouvée automatiquement.', ru: 'Папка с книгами не выбрана: озвучка из неё не подтягивается сама.', es: 'No hay carpeta de libros: la narración no se busca sola.' },
+    bfHave: { uk: 'Папка з книгами: {name}', en: 'Books folder: {name}', fr: 'Dossier des livres : {name}', ru: 'Папка с книгами: {name}', es: 'Carpeta de libros: {name}' },
+    bfNeedAllow: { uk: 'Дозвольте доступ, щоб знайти озвучку книги.', en: 'Allow access to find the book’s narration.', fr: 'Autorisez l’accès pour trouver la narration du livre.', ru: 'Разрешите доступ, чтобы найти озвучку книги.', es: 'Permita el acceso para encontrar la narración del libro.' },
+    bfSaved: { uk: 'Папку з книгами запам’ятано: {name}', en: 'Books folder remembered: {name}', fr: 'Dossier des livres mémorisé : {name}', ru: 'Папка с книгами запомнена: {name}', es: 'Carpeta de libros guardada: {name}' },
+    bfFound: { uk: 'Озвучку книги знайдено в папці й підключено.', en: 'The book’s narration was found in the folder and connected.', fr: 'La narration du livre a été trouvée dans le dossier et ajoutée.', ru: 'Озвучка книги найдена в папке и подключена.', es: 'La narración del libro se encontró en la carpeta y se conectó.' },
     spkCount: { uk: 'Озвучка: {n} речень', en: 'Narration: {n} sentences', fr: 'Narration : {n} phrases', ru: 'Озвучка: {n} предложений', es: 'Narración: {n} frases' },
 });
 

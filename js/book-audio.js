@@ -444,6 +444,7 @@ function renderBookAudioDialog(message) {
     msg.hidden = !msg.textContent;
     dialog.querySelector('.ba-remove').hidden = !bookAudio.tracks.length;
     dialog.querySelector('.ba-speech-remove').hidden = !speech;
+    if (typeof bsRenderFolderRow === 'function') bsRenderFolderRow();
 }
 function buildBookAudioDialog() {
     const dialog = bookAudioDialog();
@@ -453,6 +454,7 @@ function buildBookAudioDialog() {
         + '<button type="button" class="close-panel-btn ba-close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>'
         + '<div class="ba-body"><p class="ba-status"></p><p class="ba-message" hidden></p>'
         + '<div class="ba-actions"><button type="button" class="btn-primary ba-folder"></button><button type="button" class="btn-secondary ba-files"></button><button type="button" class="btn-secondary ba-speech"></button></div>'
+        + '<div class="ba-books" hidden><p class="ba-books-text"></p><div class="ba-actions"><button type="button" class="btn-secondary ba-books-pick"></button><button type="button" class="btn-secondary ba-books-allow"></button><button type="button" class="btn-ghost ba-books-forget"></button></div></div>'
         + '<div class="ba-progress" id="ba-progress" hidden><div class="ba-progress-text"></div><div class="ba-progress-bar"></div></div>'
         + '<button type="button" class="btn-ghost ba-remove"></button><button type="button" class="btn-ghost ba-speech-remove"></button><p class="ba-note"></p></div>';
     const folder = document.createElement('input'), files = document.createElement('input'), speech = document.createElement('input');
@@ -464,6 +466,9 @@ function buildBookAudioDialog() {
     dialog.querySelector('.ba-files').onclick = () => files.click();
     dialog.querySelector('.ba-speech').onclick = () => speech.click();
     dialog.querySelector('.ba-speech-remove').onclick = () => bsRemoveFromDialog();
+    dialog.querySelector('.ba-books-pick').onclick = () => bsChooseBooksFolder();
+    dialog.querySelector('.ba-books-allow').onclick = () => bsAllowBooksFolder();
+    dialog.querySelector('.ba-books-forget').onclick = () => bsForgetBooksFolder();
     for (const input of [folder, files]) input.onchange = () => { const list = Array.from(input.files); input.value = ''; importBookAudio(list); };
     speech.onchange = () => { const list = Array.from(speech.files); speech.value = ''; bsImport(list); };
     dialog.querySelector('.ba-close').onclick = () => dialog.close();
