@@ -59,10 +59,11 @@ def column_languages(items):
     return out
 
 
-def sentences_of(pdf, pages):
+def sentences_of(pdf, pages, tables=True):
+    """tables: find two-column tables (a bilingual book, --mix); a book in one voice reads them as running text."""
     result = []
     for page in pages:
-        items = page_items(pdf, page)
+        items = page_items(pdf, page, tables)
         column_lang = column_languages(items)
         for n, item in enumerate(items):
             if item[0] == 'cell':
@@ -269,7 +270,7 @@ def main():
     os.makedirs(cache_dir, exist_ok=True)
 
     pages = parse_pages(args.pages)
-    sentences = sentences_of(pdf, pages)
+    sentences = sentences_of(pdf, pages, tables=bool(args.mix))
     print(f'{len(sentences)} sentences on pages {args.pages}', file=sys.stderr)
     if args.lang:
         sentences = [x for x in sentences if x.get('lang', sentence_lang(x['text'])) in (args.lang, '')]

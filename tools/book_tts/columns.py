@@ -42,28 +42,47 @@ def page_lines(pdf, page):
                        capture_output=True)
         with open(out, encoding='utf-8') as f:
             raw = f.read()
-    lines = []
+    # [block number, y, height, words [(x0, x1, text, y)]] in pdftotext's order
+    raw_lines = []
     for number, block in enumerate(BLOCK.finditer(raw)):
-        block_lines = []
         for m in LINE.finditer(block.group(1)):
-            words = [(float(w.group(1)), float(w.group(3)), html.unescape(w.group(5))) for w in WORD.finditer(m.group(5))]
+            words = [(float(w.group(1)), float(w.group(3)), html.unescape(w.group(5)), float(w.group(2)))
+                     for w in WORD.finditer(m.group(5))]
             if not words:
                 continue
+            # slanted text (Par ici): pdftotext cuts a word into pieces on lines of their own («réside» + «nce»). A line
+            # whose first word touches the end of the line before goes on that line, its first piece glued to the last word.
+            if raw_lines and _touches(raw_lines[-1][3][-1], words[0]):
+                before = raw_lines[-1][3]
+                x0, _, text, y = before[-1]
+                before[-1] = (x0, words[0][1], text + words[0][2], y)
+                before.extend(words[1:])
+                continue
+            raw_lines.append([number, float(m.group(2)), float(m.group(4)) - float(m.group(2)), words])
+    lines = []
+    for number in sorted({r[0] for r in raw_lines}):
+        block_lines = []
+        for _, y, h, words in (r for r in raw_lines if r[0] == number):
             segments = []
-            for x0, x1, text in words:
-                if segments and x0 - segments[-1][1] <= GAP:
+            for k, (x0, x1, text, _) in enumerate(words):
+                if segments and k and _touches(words[k - 1], words[k]):
+                    segments[-1][1] = max(segments[-1][1], x1)
+                    segments[-1][2][-1] += text   # a piece of the same word, printed apart
+                elif segments and x0 - segments[-1][1] <= GAP:
                     segments[-1][1] = max(segments[-1][1], x1)
                     segments[-1][2].append(text)
                 else:
                     segments.append([x0, x1, [text]])
-            block_lines.append((float(m.group(2)), float(m.group(4)) - float(m.group(2)),
-                                [(s[0], ' '.join(s[2])) for s in segments]))
-        if not block_lines:
-            continue
+            block_lines.append((y, h, [(s[0], ' '.join(s[2])) for s in segments]))
         last = ' '.join(text for _, text in block_lines[-1][2]).strip()
         info = (number, len(block_lines), bool(TERMINAL.search(last)))
         lines += [(y, h, segs, info) for y, h, segs in block_lines]
     return lines
+
+
+def _touches(a, b):
+    """Word b is the next piece of word a: it starts where a ends (within 0.5 pt), about on its line, both letters there."""
+    return abs(b[0] - a[1]) <= 0.5 and abs(b[3] - a[3]) <= 8.0 and a[2][-1:].isalpha() and b[2][:1].isalpha()
 
 
 def _median(values):
@@ -143,15 +162,21 @@ def _table_columns(lines, a, b, counts, starts, paired_l, paired_r):
     return columns
 
 
-def continues(prev, block):
-    """Whether the text of the block before (prev) goes on into this block: only when that block is several lines long and
-    still has a sentence open at its end. A heading (one line, no full stop) and a finished paragraph start a new unit."""
-    return prev is not None and block is not None and prev[1] >= 2 and not prev[2]
+def continues(prev, block, text='', before=''):
+    """Whether the text of the block before (prev) goes on into this block: only when that block still has a sentence open
+    at its end and is several lines long, or this block starts in lower case (a box of short lines, each a block of its
+    own: «Au Canada, le numéro d'assurance» / «social (NAS) est confidentiel.») after a word or a comma (not after a
+    colon that opens a list, nor after a page number). A heading (one line, no full stop, the
+    next block in capitals) and a finished paragraph start a new unit."""
+    if prev is None or block is None or prev[2]:
+        return False
+    return prev[1] >= 2 or bool(re.match(r'[a-zà-öø-ÿœ]', text) and re.search(r'[^\W\d_],?$', before.rstrip()))
 
 
-def items_from_lines(lines):
-    """The items of a page's lines (see the module docstring). A page with no table is all 'flow'."""
-    tables = find_tables(lines)
+def items_from_lines(lines, tables=True):
+    """The items of a page's lines (see the module docstring). A page with no table is all 'flow'. tables=False: a book
+    read by one voice has no column languages to keep apart; its boxes and forms (Par ici) are running text."""
+    tables = find_tables(lines) if tables else []
 
     def locate(x, y):
         """(table, column) of a piece: the table whose rows it is in, and the column its x falls in; None for running text."""
@@ -172,9 +197,11 @@ def items_from_lines(lines):
     units = []   # [(table, column), y, last_y, text]
     open_unit = {}
     flows = []   # (y, text, block): the running text, in reading order
-    for y, h, x, text, block, where in sorted(pieces, key=lambda p: p[0]):
+    for n, (y, h, x, text, block, where) in sorted(enumerate(pieces), key=lambda p: p[1][0]):
         if where is None:
-            flows.append((y, text, block))
+            # a page with no table keeps pdftotext's reading order (its columns one after the other, Par ici); sorting by
+            # the height on the page would read side-by-side columns line by line, mixed
+            flows.append((y if tables else n, text, block))
             continue
         t, k = where
         u = open_unit.get(where)
@@ -223,7 +250,7 @@ def items_from_lines(lines):
         if kind == 'flow':
             block = a
             if current is not None and (current[1] is not None and block is not None and current[1][0] == block[0]
-                                        or continues(current[1], block)):
+                                        or continues(current[1], block, b, current[0])):
                 current[0] += ' ' + b
                 current[1] = block
             else:
@@ -236,6 +263,6 @@ def items_from_lines(lines):
     return items
 
 
-def page_items(pdf, page):
+def page_items(pdf, page, tables=True):
     """The items of a page (see the module docstring): ('flow', text) or ('cell', text, column, table)."""
-    return items_from_lines(page_lines(pdf, page))
+    return items_from_lines(page_lines(pdf, page), tables)
