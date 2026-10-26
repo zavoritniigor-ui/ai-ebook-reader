@@ -185,7 +185,7 @@ async function openBookFile(file) {
         if (epoch === readerEpoch.book) { state.bookOpening = false; saveBookmark(); }
         if (epoch === readerEpoch.book) { setPageArrows(true); scheduleShelveBook(file); }   // «Мої книги» (js/book-shelf.js): книга не губиться після закриття
         // The book is open: its narration is taken from the remembered books folder, when it has one (js/book-speech.js).
-        if (epoch === readerEpoch.book && typeof bsAutoImportFromFolder === 'function') bsAutoImportFromFolder();
+        if (epoch === readerEpoch.book && typeof bfAutoImportFromFolder === 'function') bfAutoImportFromFolder();
     } catch (err) {
         if (epoch !== readerEpoch.book) return;
         state.bookOpening = false;
