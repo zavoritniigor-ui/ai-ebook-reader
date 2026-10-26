@@ -941,13 +941,13 @@ const practiceStyles = `
 .practice-sentence-translation[hidden] {
     display: none;
 }
-/* Comfortable touch targets without enlarging the icons themselves (still "compact"). */
-@media (max-width: 480px) {
-    .practice-action-btn {
-        min-width: 34px;
-        min-height: 32px;
-        font-size: 15px;
-    }
+/* The icon keeps its size at every width: a narrow window, or a bigger text size that narrows the layout, must not grow
+   these buttons. On a touch screen the button is at least 28px wide, and an invisible margin widens its hit area (the same
+   pattern as the translation tools in index.html); the icon itself does not change. */
+.practice-action-btn { position: relative; }
+@media (pointer: coarse) {
+    .practice-action-btn { min-width: 28px; }
+    .practice-action-btn::after { content: ''; position: absolute; inset: -6px -3px; }
 }
 
 .practice-actions {
