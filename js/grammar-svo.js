@@ -140,8 +140,6 @@ function createStreamingUpdater(content, task, panel, mode, requestId) {
 }
 
 async function startAiTask(contextText, mode, userPrompt = "") {
-    // Without a cloud key the on-device model (js/device-llm.js) still answers, if it is installed.
-    const deviceFirst = typeof deviceLlmReady === 'function' && deviceLlmReady() && (navigator.onLine === false || !aiAvailable());
     if (!aiCanAnswer()) return showToast(t('needKey'));
     // Ручне виділення (на відміну від тапу по слову чи кнопки "розгорнути до
     // абзацу") нічим не обмежене на вході — без цього протягнутих кілька сторінок
@@ -178,7 +176,7 @@ async function startAiTask(contextText, mode, userPrompt = "") {
     const taskType = mode === 'level' ? 'language_level' : 'ask';
 
     // For streaming tasks (ask, language_level on OpenAI), provide incremental callback
-    const isStreaming = (aiProviderForTask(taskType) === 'openai' || deviceFirst) && (mode === 'ask' || mode === 'level');
+    const isStreaming = aiProviderForTask(taskType) === 'openai' && (mode === 'ask' || mode === 'level');
     const onDelta = isStreaming ? createStreamingUpdater(content, task, panel, mode, requestId) : undefined;
 
     try {
@@ -189,8 +187,6 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         // Final render with safeHtml (even if streaming already updated incrementally,
         // this ensures the final state is properly sanitized)
         content.innerHTML = safeHtml(text, true);
-        // The on-device model is weaker than the cloud AI: the reader sees who answered.
-        if (meta.provider === 'device') content.append(Object.assign(document.createElement('p'), { className: 'tt-note device-llm-mark', textContent: t('dlMark') + ' · ' + DEVICE_LLM_CATALOG.model.name }));
     } catch (err) {
         // Cancelled (incl. the page/book changing under the request): not a server error -- see A3 above.
         if (isAskAbort(err, task)) { settleCancelledAskRequest(task, requestId, retry); return; }

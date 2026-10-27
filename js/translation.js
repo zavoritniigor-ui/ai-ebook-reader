@@ -397,12 +397,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             let local = null, mark = '⌂';
             try { local = await waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 20000); } catch (e) { if (e && e.name === 'AbortError') return; }
             if (local) quality = 'local';
-            else {
-                // The AI on the device (js/device-llm.js) sees the context and translates better than the offline pack, which is the last resort.
-                try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, selectionContext, task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
-                if (local) { quality = 'device'; mark = t('dlMark'); }
-                else if ((local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal))) quality = 'device';
-            }
+            else if ((local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal))) quality = 'device';
             if (myLookup !== state.lookupToken || !task.current()) return;
             if (local) html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`;
             else {
@@ -416,12 +411,10 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 if (myLookup !== state.lookupToken || !task.current()) return;
                 html = m.html; quality = 'mt';
             } catch (e) {
-                // Ні мережі, ні моделі Chrome: слово перекладає AI на пристрої (з контекстом речення), інакше встановлений офлайн-пакет.
+                // Ні мережі, ні моделі Chrome: слово перекладає встановлений офлайн-пакет.
                 if (e && e.name === 'AbortError') return;
-                let local = null, mark = '⌂';
-                try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, contextSentence, task.signal); } catch (err) { if (err && err.name === 'AbortError') return; }
-                if (local) mark = t('dlMark');
-                else local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal);
+                const mark = '⌂';
+                const local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal);
                 if (myLookup !== state.lookupToken || !task.current()) return;
                 if (local) { html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`; quality = 'device'; }
                 else { els.ttTranslation.textContent = e.message || t('error'); translated = false; offlineTrSuggest(srcCode, targetLang); }

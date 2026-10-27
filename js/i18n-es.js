@@ -205,8 +205,7 @@ const I18N_ES = {
     dlDone: 'Listo: la traducción y las explicaciones funcionarán también sin internet. Pulsa Probar.', dlInstalled: 'Instalado: {name}, {gb} GB.',
     dlLoading: 'Iniciando el modelo (la primera vez, hasta un minuto)…', dlUnsupported: 'Este navegador no puede ejecutar la IA en el dispositivo: hace falta un Chrome reciente con WebGPU.',
     dlNoGpu: 'El chip gráfico de este dispositivo no puede ejecutar el modelo ({why}).', dlNoGpuShort: 'El chip gráfico de este dispositivo no puede ejecutar el modelo.',
-    dlErrQuota: 'No hay espacio suficiente: hacen falta ~2,1 GB libres. Libera espacio y vuelve a intentarlo; lo descargado se conserva.',
-    dlMark: '📱 en el dispositivo', dlTooLong: 'El fragmento es demasiado largo para la IA del dispositivo. Selecciona uno más corto.'
+    dlErrQuota: 'No hay espacio suficiente: hacen falta ~2,1 GB libres. Libera espacio y vuelve a intentarlo; lo descargado se conserva.'
 };
 for (const [key, value] of Object.entries(I18N_ES)) if (I18N[key]) I18N[key].es = value;
 // El menú ya se pintó en main.js (antes de este archivo): con el español elegido se vuelve a pintar.

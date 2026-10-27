@@ -173,6 +173,9 @@ try:
     check('2a the section is in the Settings dialog with the book languages that can reach the target',
           "document.getElementById('offline-box') && document.querySelectorAll('#offline-src option').length >= 8 && !document.querySelector('#offline-src option[value=\"hi\"]') "
           "&& [...document.querySelectorAll('#offline-src option')].some(o => o.value === 'uk')")
+    check('2a2 no «AI on the device» any more (removed 2026-10-26: it worked poorly): no section, no code, the service worker drops its 2 GB cache',
+          "!document.getElementById('device-llm-box') && typeof deviceLlmReady === 'undefined' && typeof DEVICE_LLM_CATALOG === 'undefined' "
+          "&& fetch('sw.js').then(r => r.text()).then(t => t.includes(\"name === 'reader-device-llm'\") && !t.includes('mediapipe'))")
     open_settings('uk')
     check('2b the button says how much will be downloaded (engine + two models through English)',
           "/^⬇ .*[0-9]+/.test(document.getElementById('offline-install').textContent) && !document.getElementById('offline-install').disabled")

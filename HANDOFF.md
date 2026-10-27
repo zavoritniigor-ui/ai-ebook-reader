@@ -25,11 +25,7 @@
   - **Next:** merge #283 after green CI + production check; owner re-imports narrations on the tablet; fix glued headings / letter-spaced text; Bescherelle not redone yet.
 
 ## Open Product Tasks Pending Device Verification
-1. **On-Device LLM (Gemma 4 E2B via MediaPipe, PR #278 merged)**:
-   - Built: 2.0 GB model download in 64 MiB parts, WebGPU inference for offline translation and explanations.
-   - Pending owner validation: Owner's Android 12+ tablet (requires WebGPU, ~6–8 GB RAM, 2.1 GB storage).
-   - Check GPU and tokens/s in 📋 `deviceAi` diagnostics.
-   - Lighter model: Gemma 3 1B web measured 2026-10-23 — 2–3× faster but unusable (words in Russian/French, explanations in English); owner: «не потрібно, точка». Do not propose again.
+1. **On-Device LLM (Gemma 4, PR #278): REMOVED 2026-10-26** at the owner's request (it worked poorly). The service worker deletes the `reader-device-llm` cache (≈2 GB) on update.
 2. **Book Narration & Piste Dialogues (PR #269, #270, #276 merged)**:
    - Built: Aligned sentence audio, exact dragged words playback, 3-column narrow gutter fixes.
    - Pending owner reproduction: Owner reported tablet only played system voice; `bookSpeech` diagnostic trace added to 📋 report to log file imports, piste taps, and codec matching.
