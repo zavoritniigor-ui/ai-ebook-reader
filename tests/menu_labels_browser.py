@@ -122,7 +122,7 @@ load(390, 844, keep=True)
 KEYS = ['mTagline','mSecBook','mOpen','mOpenDesc','mShelf','mShelfDesc','mLibrary','mLibraryDesc','mToc','mTocDesc','mAudio','mAudioDesc','mSecReading','mRead','mPause','mResume','mReadDesc',
         'mTwoVoices','mTwoVoicesDesc','mFontSize','mFontSizeDesc','mPdfFit','mPdfFitDesc','mFitWidth','mFitPage','mFitFree','mTheme','mThemeDesc','mSecLearning','mStudy',
         'mStudyDesc','mTargetLang','mTargetLangDesc','mRules','mRulesDesc','mStats','mStatsDesc','mSecTools','mInk','mInkDesc','mRegion','mRegionDesc','mPrint','mPrintDesc',
-        'mSecSettings','mUiLang','mUiLangDesc','mAi','mAiDesc','mUpdate','mUpdateDesc','mExit','mHomeFormats']
+        'mSecSettings','mUiLang','mUiLangDesc','mAi','mAiDesc','mDev','mDevDesc','mUpdate','mUpdateDesc','mExit','mHomeFormats']
 check('20 every menu text exists in all 9 languages with its own wording (no raw key, no English fallback)',
       """(() => { const keys = %s; const langs = ['uk','en','fr','ru','zh','ko','hi','ga','es']; const bad = [];
          for (const k of keys) for (const l of langs) { const v = I18N[k] && I18N[k][l]; if (!v || v === k) bad.push(k + ':' + l); else if (l !== 'en' && v === I18N[k].en && !/^[^a-z]*$/i.test(v)) bad.push('same as English ' + k + ':' + l); }
