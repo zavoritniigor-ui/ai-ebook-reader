@@ -813,18 +813,33 @@ const openToc = () => { els.sidebar.classList.toggle('collapsed'); };
 
 if(toggleTocDesktopBtn) toggleTocDesktopBtn.onclick = openToc;
 // The Contents / thumbnails panel hides by itself as soon as the reader works with the book again (owner, 2026-10-26: «вибрав
-// сторінку… при першому тапі на слово, при збільшенні чи прокрутці зміст має швиденько ховатися»): a touch, a stylus or a
-// click on the book, the mouse wheel or a pinch over it, or the keys that scroll it. Only the reader's own input counts --
-// the panel's jump to the chosen page scrolls the book by itself and does not close it -- and nothing inside the panel does.
+// сторінку… при першому тапі на слово, при збільшенні чи прокрутці зміст має швиденько ховатися»): a tap (finger, stylus,
+// mouse) on the book, a scroll of it (wheel, keys) closes it at once. A zoom (two-finger pinch, Ctrl + wheel) does not: the
+// book would widen under the fingers in the middle of the zoom and the page would jump; the first tap or scroll after it
+// closes the panel. A finger's touch waits 180 ms to tell a tap from the first finger of a pinch. Only the reader's own input
+// counts (the panel's jump to the chosen page does not close it), and nothing done inside the panel does.
+let tocHideTimer = 0;
+function tocOnBook(e) { return !!(e.target && e.target.closest && e.target.closest('#reader-container') && !e.target.closest('#sidebar')); }
+function hideToc() { clearTimeout(tocHideTimer); if (!els.sidebar.classList.contains('collapsed')) els.sidebar.classList.add('collapsed'); }
 function hideTocOnReading(e) {
     if (els.sidebar.classList.contains('collapsed')) return;
     if (e.type === 'keydown') {
         if (!['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) return;
         if (e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable], #sidebar')) return;
-    } else if (!e.target || !e.target.closest || !e.target.closest('#reader-container') || e.target.closest('#sidebar')) return;
-    els.sidebar.classList.add('collapsed');
+        return hideToc();
+    }
+    if (!tocOnBook(e)) return;
+    if (e.type === 'touchstart') {
+        clearTimeout(tocHideTimer);
+        if (e.touches.length > 1) return;   // a pinch: keep the layout still while it zooms
+        tocHideTimer = setTimeout(hideToc, 180);
+        return;
+    }
+    if (e.type === 'touchmove') { if (e.touches.length === 1) hideToc(); return; }   // a one-finger scroll
+    if (e.type === 'pointerdown') { if (e.pointerType !== 'touch') hideToc(); return; }   // mouse, stylus; a finger goes by touchstart
+    if (e.type === 'wheel') { if (!e.ctrlKey) hideToc(); }   // Ctrl + wheel is a zoom
 }
-for (const type of ['pointerdown', 'touchstart', 'wheel']) document.addEventListener(type, hideTocOnReading, { capture: true, passive: true });
+for (const type of ['pointerdown', 'touchstart', 'touchmove', 'wheel']) document.addEventListener(type, hideTocOnReading, { capture: true, passive: true });
 document.addEventListener('keydown', hideTocOnReading, true);
 
 // TTS
