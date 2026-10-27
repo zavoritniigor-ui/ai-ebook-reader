@@ -184,8 +184,8 @@ check('7 Opening the book imports its dialogue track from the package folder', "
 c.js("""(async () => {
     await bsDelete(state.bookKey); await bsRefresh(); window.__perm = 'granted';
     window.__toasts = []; const keep = showToast; window.showToast = (m) => { window.__toasts.push(String(m)); return keep(m); };
-    const deep = window.__folderEntry('Par ici 5-6', [['Speech test - voice.mp3', window.__file('Speech test - voice.mp3', window.__match)]]);
-    window.__remember(window.__folder([['Download', window.__folderEntry('Download', [['Books', window.__folderEntry('Books', [['Par ici', window.__folderEntry('Par ici', [['Par ici 5-6', deep]])]])]])]]));
+    const deep = window.__folderEntry('textbook 5-6', [['Speech test - voice.mp3', window.__file('Speech test - voice.mp3', window.__match)]]);
+    window.__remember(window.__folder([['Download', window.__folderEntry('Download', [['Books', window.__folderEntry('Books', [['a French textbook', window.__folderEntry('a French textbook', [['textbook 5-6', deep]])]])]])]]));
 })()""")
 check('8 A narration four folders down (a whole storage chosen as the folder) is found, with a message', """(async () => {
     const got = await bsAutoImportFromFolder(true);

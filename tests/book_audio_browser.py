@@ -23,7 +23,7 @@ def make_wav_b64(duration_ms=250, freq=440, sample_rate=8000):
 
 
 def make_piste_pdf_b64():
-    """Two-page synthetic PDF with Par ici style piste marks:
+    """Two-page synthetic PDF with textbook-style piste marks:
       Page 1:
         - 'Activite 1 (CD1 - piste 3) Ecoutez le dialogue.' in one text item
         - 'CD2 -' and 'piste 15' split across two adjacent text items on one line
@@ -87,7 +87,7 @@ c.wait("document.readyState === 'complete' && !document.body.inert")
 c.js("window.__errors = []; window.addEventListener('error', e => __errors.push(e.message));")
 
 # ---------------------------------------------------------------- 1. File-name & mark parsing unit contracts
-check('1 baParseFile parses Par ici folder/file names and FLS2_EP01_P1 without confusing EP01 for track 1', """(() => {
+check('1 baParseFile parses a French textbook folder/file names and FLS2_EP01_P1 without confusing EP01 for track 1', """(() => {
     const a = baParseFile('01 Track 01.m4a', 'audio 12/A1 CD1/01 Track 01.m4a');
     const b = baParseFile('15 Track 15.m4a', 'audio 12/A1 CD2/15 Track 15.m4a');
     const c = baParseFile('03 Track 03 1.m4a', '03 Track 03 1.m4a');
@@ -236,14 +236,14 @@ check('12b Tapping a piste whose track was not chosen opens the dialog to add it
     return ok;
 })()""")
 
-check('12c A book narration chosen as tracks is not saved as a track («Par ici 3-4 …» is not track 4)', """(async () => {
+check('12c A book narration chosen as tracks is not saved as a track («textbook 3-4 …» is not track 4)', """(async () => {
     const safe = n => [(n >> 21) & 0x7f, (n >> 14) & 0x7f, (n >> 7) & 0x7f, n & 0x7f];
     const meta = { voice: 'test-voice', sentences: [{ page: 1, text: 'Bonjour.', bytes: [0, 4], duration: 1, words: [] }] };
     const body = [...new TextEncoder().encode('\\u0003application/json\\u0000narration.json\\u0000ai-ebook-reader-narration\\u0000' + JSON.stringify(meta))];
     const frame = [...new TextEncoder().encode('GEOB'), ...safe(body.length), 0, 0, ...body];
     const bytes = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, ...safe(frame.length), ...frame, 0xff, 0xfb, 0x90, 0]);
     const before = bookAudio.tracks.length;
-    await importBookAudio([new File([bytes], 'Par ici 3-4 - Kokoro (ff_siwis).mp3', { type: 'audio/mpeg' })]);
+    await importBookAudio([new File([bytes], 'textbook 3-4 - Kokoro (ff_siwis).mp3', { type: 'audio/mpeg' })]);
     return bookAudio.tracks.length === before && !bookAudio.tracks.some(r => r.track === 4)
         && bsTrace.some(x => x.ev === 'tracks-narration') || JSON.stringify([before, bookAudio.tracks.map(r => r.name)]);
 })()""")

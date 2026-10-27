@@ -11,7 +11,7 @@ The sentences are decoded with ffmpeg from the same byte ranges the reader decod
 so the times are times in the buffer the reader gets.
 
 Usage:
-  python3 align.py "~/Books/Par Ici/tts/a1-full/fr-CA-SylvieNeural_p1-162.json"   # rewrites it in place (keeps a .bak)
+  python3 align.py "~/Books/Textbook/tts/a1-full/fr-CA-SylvieNeural_p1-162.json"   # rewrites it in place (keeps a .bak)
   python3 align.py --marked JSON     # only the sentences repair.py re-synthesized
 
 Needs: torch, torchaudio (2.5), numpy, num2words; ffmpeg. A GPU is used when there is one.

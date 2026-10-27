@@ -12,7 +12,7 @@ with the same voice and rate (engines.py: edge-tts or Kokoro), cached, and appen
 «ô» said alone are the word itself; «y» alone is read as the letter's name «i grec» (670 ms), so it is said as «i» (SAY).
 
 Usage:
-  python3 words.py "~/Books/Par Ici/tts/a1-full/fr-CA-SylvieNeural_p1-162.json"     # after align.py
+  python3 words.py "~/Books/Textbook/tts/a1-full/fr-CA-SylvieNeural_p1-162.json"     # after align.py
 
 Needs: edge-tts or kokoro, numpy; ffmpeg.
 """

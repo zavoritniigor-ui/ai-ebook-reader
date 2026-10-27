@@ -50,7 +50,7 @@ def page_lines(pdf, page):
                      for w in WORD.finditer(m.group(5))]
             if not words:
                 continue
-            # slanted text (Par ici): pdftotext cuts a word into pieces on lines of their own («réside» + «nce»). A line
+            # slanted text (a French textbook): pdftotext cuts a word into pieces on lines of their own («réside» + «nce»). A line
             # whose first word touches the end of the line before goes on that line, its first piece glued to the last word.
             if raw_lines and _touches(raw_lines[-1][3][-1], words[0]):
                 before = raw_lines[-1][3]
@@ -175,7 +175,7 @@ def continues(prev, block, text='', before=''):
 
 def items_from_lines(lines, tables=True):
     """The items of a page's lines (see the module docstring). A page with no table is all 'flow'. tables=False: a book
-    read by one voice has no column languages to keep apart; its boxes and forms (Par ici) are running text."""
+    read by one voice has no column languages to keep apart; its boxes and forms (a French textbook) are running text."""
     tables = find_tables(lines) if tables else []
 
     def locate(x, y):
@@ -199,7 +199,7 @@ def items_from_lines(lines, tables=True):
     flows = []   # (y, text, block): the running text, in reading order
     for n, (y, h, x, text, block, where) in sorted(enumerate(pieces), key=lambda p: p[1][0]):
         if where is None:
-            # a page with no table keeps pdftotext's reading order (its columns one after the other, Par ici); sorting by
+            # a page with no table keeps pdftotext's reading order (its columns one after the other, a French textbook); sorting by
             # the height on the page would read side-by-side columns line by line, mixed
             flows.append((y if tables else n, text, block))
             continue

@@ -312,7 +312,7 @@ async function deviceLlmTranslate(text, src, tgt, contextSentence, signal) {
     const word = !/\s/.test(clean) && ctx && ctx !== clean;
     // A word alone: the model first translates the whole sentence and then names the word's translation in it. Asked for the word
     // directly, the small model guessed from the word's look (carence → «недосконалість», apport → «додаток»); through its own
-    // translation of the sentence it found the sense (нестача, надходження) — measured on livre 56 sentences.
+    // translation of the sentence it found the sense (нестача, надходження) — measured on book 56 sentences.
     const prompt = word
         ? `${name(src)} sentence: ${ctx.slice(0, 400)}\nFirst translate the whole sentence into ${name(tgt)}. Then, on the last line, write only the ${name(tgt)} translation of the word «${clean}» as used in it, in the form: WORD: <translation>`
         : ctx && ctx !== clean

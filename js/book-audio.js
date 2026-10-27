@@ -1,4 +1,4 @@
-/* book-audio.js — the audio that comes with a book ("Par ici": «CD1 - piste 33»): tap the mark in the PDF, hear the track.
+/* book-audio.js — the audio that comes with a book (a French textbook: «CD1 - piste 33»): tap the mark in the PDF, hear the track.
  *
  * The learner points the app at the folder (or the files) with the book's audio ONCE on a device; the tracks are kept on THAT device
  * (IndexedDB, one record per track with the audio Blob inside), so it works offline and on any device that has the files. Nothing
@@ -289,7 +289,7 @@ async function importBookAudio(fileList) {
     const key = state.bookKey;
     if (!key || baImporting) return;
     let files = Array.from(fileList || []).filter(baIsAudio);
-    // a book narration chosen here by mistake (it is an MP3 too) goes where it belongs, not in as «track 4» of «Par ici 3-4»
+    // a book narration chosen here by mistake (it is an MP3 too) goes where it belongs, not in as «track 4» of «textbook 3-4»
     const narrations = [];
     if (typeof bsUnpack === 'function') {
         for (const f of files) {

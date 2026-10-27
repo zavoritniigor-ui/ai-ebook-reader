@@ -222,7 +222,7 @@ async function bsUnpack(file) {
     }
     return null;
 }
-// Is the open PDF the book this narration was made from? Its page count alone is not enough («Par ici» 3-4, 5-6 and 7-8
+// Is the open PDF the book this narration was made from? Its page count alone is not enough (three volumes of one textbook series, 3-4, 5-6 and 7-8,
 // all have 203 pages): a few sentences spread over the narration must be printed on their pages. Returns 'same', 'other',
 // or 'unknown' when the pages have no text to compare (a scan).
 async function bsSameBook(meta) {
@@ -670,7 +670,7 @@ function bsSpeakPhrase(text) {
 // looks for its narration there and in its subfolders: an MP3 whose tag names this book (the PDF's name, or its page count
 // and text) is imported exactly as if it had been chosen by hand. The folder's handle is kept in IndexedDB on this device.
 // BF_DEPTH: how deep the remembered folder is searched. A whole storage chosen as the folder (Android: «Internal storage» →
-// Download → Books → Par ici 5-6) is four levels down from the book's files (owner, 2026-10-26: «знаходить папку, і все»).
+// Download → Books → textbook 5-6) is four levels down from the book's files (owner, 2026-10-26: «знаходить папку, і все»).
 const BF_ID = 'books', BF_DEPTH = 4;
 let bfBusy = false;
 const bfSupported = () => typeof window.showDirectoryPicker === 'function' && typeof indexedDB !== 'undefined';

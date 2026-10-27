@@ -21,13 +21,13 @@ stop.** A unit that is a piece of a sentence, or two sentences glued, can never 
    is joined until its sentence ends.
 2. **A heading is a unit of its own**: one line, no full stop, the next block starting in capitals. Never glue it to the
    sentence below («Use of the plus-que-parfait As we mentioned…» is wrong).
-3. **A box of short lines** (each line its own pdftotext block, Par ici) goes on into the next block when the line ends on
+3. **A box of short lines** (each line its own pdftotext block, a French textbook) goes on into the next block when the line ends on
    a word or a comma and the next block starts in lower case. Not after a colon that opens a list, not after a page number.
 4. **Reading order is pdftotext's block order.** Never sort running text by its height on the page: side-by-side columns
    would be read line by line, mixed («Écrivez B plat est bon ou fie-t-elle que le»).
 5. **Two-column tables only for a bilingual book (`--mix`)**, e.g. Complete French: a French cell, then its English one,
-   each one sentence in its column's language. **A book in one voice (Par ici, Bescherelle) has no tables**: its boxes,
-   forms and exercises are running text. Table detection on Par ici turned every line of a box into a unit.
+   each one sentence in its column's language. **A book in one voice (a French textbook, Bescherelle) has no tables**: its boxes,
+   forms and exercises are running text. Table detection on a French textbook turned every line of a box into a unit.
 6. **A word printed in touching pieces is one word.** pdftotext cuts slanted text into pieces on lines of their own
    («réside» + «nce», «déterminan» + «ts»): a piece that starts where the word before ends (≤ 0.5 pt, about the same
    line, letters on both sides) is glued to it.
@@ -40,11 +40,11 @@ Generating a book takes hours. Measure the cut first:
 
 ```bash
 cd tools/book_tts
-~/tools/book-tts/.venv/bin/python check_units.py "~/Books/Par Ici 3-4/livre 34.pdf" --pages 15-60
+~/tools/book-tts/.venv/bin/python check_units.py "~/Books/textbook 3-4/book 34.pdf" --pages 15-60
 ~/tools/book-tts/.venv/bin/python check_units.py "~/Books/Complete French/<book>.pdf" --pages 30-60 --mix
 ```
 
-Reference (2026-10-26, after PR #291), pages 15-60: Par ici 1-2 **3** cut sentences of 1694 units; Par ici 3-4 **25**.
+Reference (2026-10-26, after PR #291), pages 15-60: textbook 1-2 **3** cut sentences of 1694 units; textbook 3-4 **25**.
 Before the fix: 220 and 252. If a book shows dozens of cut sentences, read the examples it prints and fix `columns.py`
 first. Any change to `columns.py` / `generate.py` must keep `tests/book_tts_columns_test.py` green and must not change
 Complete French (`--mix`) except for the better: diff its units before/after.
@@ -56,17 +56,17 @@ Open the packed file's JSON (ID3 GEOB tag, see `pack.py`) and check: `lexicon` p
 
 ## 5. Names (owner's rule, 2026-10-26)
 
-- **A book keeps the exact name it has in its RAR archive.** Never rename a book file (`livre 56.pdf` stays `livre 56.pdf`).
-  `Par Ici.rar` holds `livre 12/34/56.pdf`, `corriges 12/34/56.pdf`, `audio 12`, `audio 56`; the other books come from
-  `Par Ici 7-8.rar` and `Par Ici cahier 7-8-compréhension 5-6.rar` with the names they have on disk.
-- **The narration is named EXACTLY like its book**, with `.mp3`: `livre 56.pdf` → `livre 56.mp3`,
-  `Par Ici 5-6 Manuel de compréhension orale.pdf` → `Par Ici 5-6 Manuel de compréhension orale.mp3`. No voice, no level
+- **A book keeps the exact name it has in its RAR archive.** Never rename a book file (`book 56.pdf` stays `book 56.pdf`).
+  The book's archive holds e.g. `book 56.pdf`, `answers 56.pdf`, `audio 56`; a book from another archive keeps the name it
+  has on disk.
+- **The narration is named EXACTLY like its book**, with `.mp3`: `book 56.pdf` → `book 56.mp3`,
+  `Textbook 5-6 listening.pdf` → `Textbook 5-6 listening.mp3`. No voice, no level
   in the name (the voice is inside the file).
-- **A package folder is named like the archive's books** (`Par Ici 5-6`), the same locally and on Drive.
-- A folder can hold several books (5-6: `livre 56.pdf` and the `Manuel de compréhension orale`): each needs its own
+- **A package folder is named like the archive's books** (`textbook 5-6`), the same locally and on Drive.
+- A folder can hold several books (5-6: `book 56.pdf` and the `Manuel de compréhension orale`): each needs its own
   narration. A narration made for one is refused by the other — that is right, not a bug.
 
-## 6. The pipeline (one voice, Par ici)
+## 6. The pipeline (one voice, a French textbook)
 
 `generate.py --voice fr-CA-AntoineNeural --rate=-10%` → `align.py` → `repair.py` → `align.py --marked` → **`words.py`**
 → `pack.py --pdf <book.pdf>`. One file per book, named like the book (section 5), next to the book PDF (the reader
