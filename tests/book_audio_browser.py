@@ -284,6 +284,46 @@ check('17 Removing a book also removes tracks saved under the same name and size
     return left.length === 0;
 })()""")
 
+check('14b AIFF and AIFC (NONE, sowt) convert to WAV that decodes to the same samples; compressed AIFC is left alone', """(async () => {
+    // 441 frames, 2 channels, 16-bit, 44100 Hz: left +12000, right -12000 in every frame
+    function build(form, compression, le) {
+        const frames = 441, pcm = new Uint8Array(frames * 4), pv = new DataView(pcm.buffer);
+        for (let i = 0; i < frames; i++) { pv.setInt16(i * 4, 12000, le); pv.setInt16(i * 4 + 2, -12000, le); }
+        const comm = new Uint8Array(form === 'AIFC' ? 24 : 18), cv = new DataView(comm.buffer);
+        cv.setUint16(0, 2); cv.setUint32(2, frames); cv.setUint16(6, 16); cv.setUint16(8, 16398); cv.setBigUint64(10, BigInt(44100) << 48n);
+        if (form === 'AIFC') for (let i = 0; i < 4; i++) comm[18 + i] = compression.charCodeAt(i);
+        const ssnd = new Uint8Array(8 + pcm.length); ssnd.set(pcm, 8);
+        const parts = [];
+        for (const [id, body] of [['COMM', comm], ['SSND', ssnd]]) {
+            const h = new Uint8Array(8), hv = new DataView(h.buffer);
+            for (let i = 0; i < 4; i++) h[i] = id.charCodeAt(i);
+            hv.setUint32(4, body.length); parts.push(h, body);
+        }
+        const sum = parts.reduce((n, x) => n + x.length, 0), out = new Uint8Array(12 + sum), ov = new DataView(out.buffer);
+        for (let i = 0; i < 4; i++) out[i] = 'FORM'.charCodeAt(i);
+        ov.setUint32(4, 4 + sum);
+        for (let i = 0; i < 4; i++) out[8 + i] = (form === 'AIFC' ? 'AIFC' : 'AIFF').charCodeAt(i);
+        let o = 12; for (const x of parts) { out.set(x, o); o += x.length; }
+        return out;
+    }
+    async function decodes(bytes) {
+        const blob = baAiffToWav(bytes.buffer);
+        if (!blob) return false;
+        const buf = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(await blob.arrayBuffer());
+        const L = buf.getChannelData(0), R = buf.getChannelData(1);
+        return buf.numberOfChannels === 2 && buf.sampleRate === 44100 && buf.length === 441 &&
+               Math.abs(L[100] - 12000 / 32768) < 0.001 && Math.abs(R[100] + 12000 / 32768) < 0.001;
+    }
+    const aiff = await decodes(build('AIFF', null, false));
+    const aifcNone = await decodes(build('AIFC', 'NONE', false));
+    const aifcSowt = await decodes(build('AIFC', 'sowt', true));
+    const compressed = baAiffToWav(build('AIFC', 'ulaw', false).buffer) === null;
+    const notAiff = baAiffToWav(new TextEncoder().encode('ID3 not an aiff file').buffer) === null;
+    const kept = (await baPlayableBlob(new File([build('AIFC', 'ulaw', false)], 'x.aiff'))).type === '';
+    const converted = (await baPlayableBlob(new File([build('AIFF', null, false)], 'x.aiff'))).type === 'audio/wav';
+    return aiff && aifcNone && aifcSowt && compressed && notAiff && kept && converted;
+})()""")
+
 check('14a .aif/.aiff files are audio and «N Audio Track.aiff» parses to track N, with no CD guessed for a flat set', """(() => {
     const names = ['1 Audio Track.aiff', '2 Audio Track.aiff', '3 Audio Track.aiff', '4 Audio Track.aiff', '5 Audio Track.aiff', '6 Audio Track.aiff'];
     const audio = names.every(n => baIsAudio({ name: n, type: '' }));
