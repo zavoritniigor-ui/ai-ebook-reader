@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Ebook Reader</title>
+    <title>AI E-book Reader</title>
     <meta name="theme-color" content="#f5f5f3">
     <meta name="description" content="Читання книг з перекладом, граматичним розбором і озвученням тексту.">
 
@@ -1568,6 +1568,21 @@
                 height: auto !important;
             }
         }
+        /* «Від розробника» (js/developer.js) */
+        #developer-dialog { position: fixed; inset: 0; margin: auto; width: min(480px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+            padding: 0; border-radius: 16px; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); box-shadow: 0 24px 60px -20px rgba(0,0,0,.5); }
+        #developer-dialog::backdrop { background: rgba(0,0,0,.55); backdrop-filter: blur(2px); }
+        #developer-dialog .dev-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border-color); }
+        #developer-dialog .dev-logo { border-radius: 10px; flex: 0 0 auto; }
+        #developer-dialog .dev-title { margin: 0; flex: 1; font-size: 17px; }
+        #developer-dialog .dev-close { position: static; }
+        #developer-dialog .dev-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 14.5px; line-height: 1.55; }
+        #developer-dialog .dev-body p { margin: 0; }
+        #developer-dialog .dev-data { padding: 12px 14px; border-radius: 12px; border-left: 4px solid #ff9f1c; background: color-mix(in srgb, #ff9f1c 14%, transparent); }
+        #developer-dialog .dev-data-title { font-weight: 700; margin-bottom: 6px !important; }
+        #developer-dialog .dev-avoid, #developer-dialog .dev-write-note, #developer-dialog .dev-sign { color: var(--text-muted); font-size: 13.5px; }
+        #developer-dialog .dev-write { display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 12px; font-weight: 700; text-decoration: none; }
+        #developer-dialog .dev-mail { color: var(--accent-color); }
     </style>
 </head>
 <body data-theme="light" class="immersive-mode" inert>
@@ -1630,7 +1645,7 @@
         <div class="menu-top">
             <img class="menu-logo" src="icons/icon-192.png" alt="" width="36" height="36">
             <div class="menu-top-text">
-                <h2 id="menu-heading">AI Ebook Reader</h2>
+                <h2 id="menu-heading">AI E-book Reader</h2>
                 <p id="menu-subheading" data-i18n="mTagline">Читання з перекладом, граматикою й озвученням</p>
             </div>
             <button type="button" class="menu-close" id="menu-close" data-i18n-title="tClose" data-i18n-aria="tClose"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button>
@@ -1739,6 +1754,7 @@
                 </div>
                 <button type="button" class="menu-row" id="btn-local-speech" role="switch" aria-checked="false" aria-labelledby="mr-local-t" aria-describedby="mr-local-d"><svg class="mi" aria-hidden="true"><use href="#i-voices"/></svg><span class="mr-text"><span class="mr-title" id="mr-local-t" data-i18n="mLocalSpeech">Локальний голос</span><span class="mr-desc" id="mr-local-d" data-i18n="mLocalSpeechDesc">Озвучка через ваш сервер; без нього — голос браузера</span></span><span class="mr-switch" aria-hidden="true"></span></button>
                 <button type="button" class="menu-row" id="btn-ai-key" aria-labelledby="mr-ai-t" aria-describedby="mr-ai-d"><svg class="mi" aria-hidden="true"><use href="#i-key"/></svg><span class="mr-text"><span class="mr-title" id="mr-ai-t" data-i18n="mAi">AI та офлайн-переклад</span><span class="mr-desc" id="mr-ai-d" data-i18n="mAiDesc">Ключі AI, пакети без інтернету, діагностика</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-developer" aria-labelledby="mr-dev-t" aria-describedby="mr-dev-d"><svg class="mi" aria-hidden="true"><use href="#i-sparkle"/></svg><span class="mr-text"><span class="mr-title" id="mr-dev-t" data-i18n="mDev">Від розробника</span><span class="mr-desc" id="mr-dev-d" data-i18n="mDevDesc">Безкоштовно, ключі AI, ваші тексти, написати листа</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-update-app" aria-labelledby="mr-upd-t" aria-describedby="mr-upd-d" data-i18n-title="tUpdateApp"><svg class="mi" aria-hidden="true"><use href="#i-update"/></svg><span class="mr-text"><span class="mr-title" id="mr-upd-t" data-i18n="mUpdate">Оновити застосунок</span><span class="mr-desc" id="mr-upd-d" data-i18n="mUpdateDesc">Перевірити й встановити нову версію</span></span></button>
                 <button type="button" class="menu-row" id="btn-exit-app" style="display:none;" aria-labelledby="mr-exit-t" data-i18n-title="tExitApp"><svg class="mi" aria-hidden="true"><use href="#i-exit"/></svg><span class="mr-text"><span class="mr-title" id="mr-exit-t" data-i18n="mExit">Вийти із застосунку</span></span></button>
             </section>
@@ -1772,7 +1788,7 @@
                 <!-- Стартовий екран (книгу ще не відкрито): головні дії великими кнопками й останні книги. Меню на старті закрите. -->
                 <section class="home" id="home-screen">
                     <img class="home-logo" src="icons/icon-192.png" alt="" width="64" height="64">
-                    <h1 class="home-title">AI Ebook Reader</h1>
+                    <h1 class="home-title">AI E-book Reader</h1>
                     <p class="home-tagline" data-i18n="mTagline">Читання з перекладом, граматикою й озвученням</p>
                     <div class="home-actions">
                         <label class="home-cta" for="file-upload"><svg class="mi" aria-hidden="true"><use href="#i-open"/></svg><span data-i18n="mOpen">Відкрити файл</span></label>
@@ -2035,6 +2051,7 @@
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
     <script src="js/quick-wheel.js?v=c1f1802144fc"></script>
+    <script src="js/developer.js?v=fe21b853df3f"></script>
     <script src="js/main.js?v=a55b6a10f6e6"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
     <script src="js/i18n-es.js?v=c934aa680491"></script>
