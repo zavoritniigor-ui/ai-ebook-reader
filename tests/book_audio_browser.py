@@ -284,5 +284,17 @@ check('17 Removing a book also removes tracks saved under the same name and size
     return left.length === 0;
 })()""")
 
+check('14a .aif/.aiff files are audio and «N Audio Track.aiff» parses to track N, with no CD guessed for a flat set', """(() => {
+    const names = ['1 Audio Track.aiff', '2 Audio Track.aiff', '3 Audio Track.aiff', '4 Audio Track.aiff', '5 Audio Track.aiff', '6 Audio Track.aiff'];
+    const audio = names.every(n => baIsAudio({ name: n, type: '' }));
+    const aif = baIsAudio({ name: '7 Audio Track.aif', type: '' });
+    const notAudio = !baIsAudio({ name: 'Audio Track.txt', type: '' });
+    const parsed = baAssignDiscs(names.map(n => baParseFile(n, n)));
+    const tracks = parsed.map(p => p.track).join(',') === '1,2,3,4,5,6';
+    const noCd = parsed.every(p => p.cd === null && p.copy === 0);
+    const inFolder = baParseFile('1 Audio Track.aiff', 'Audio CD2/1 Audio Track.aiff');
+    return audio && aif && notAudio && tracks && noCd && inFolder.cd === 2 && inFolder.track === 1;
+})()""")
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')
