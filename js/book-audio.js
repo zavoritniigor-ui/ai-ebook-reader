@@ -133,6 +133,56 @@ async function baDeleteBook(bookKey) {
 // ---------- file names -> (disc, track) ---------------------------------------------------------------------------------------
 const BA_AUDIO_RE = /\.(?:mp3|m4a|m4b|aac|wav|ogg|oga|opus|flac|wma|aif|aiff)$/i;
 const baIsAudio = file => (file.type && file.type.startsWith('audio/')) || BA_AUDIO_RE.test(file.name || '');
+
+// ---------- AIFF / AIFC -> WAV ----------------------------------------------------------------------------------------------------
+// Chrome and Firefox cannot play AIFF (Safari can), so an AIFF track is stored as WAV: the same PCM at the same bit depth, only
+// the container changes. AIFF and AIFC with «NONE» (big-endian PCM) or «sowt» (little-endian PCM) are converted; any compressed
+// AIFC returns null and the file is kept as it is.
+function baAiffToWav(buf) {
+    if (buf.byteLength < 12) return null;
+    const v = new DataView(buf), tag = o => String.fromCharCode(v.getUint8(o), v.getUint8(o + 1), v.getUint8(o + 2), v.getUint8(o + 3));
+    if (tag(0) !== 'FORM' || (tag(8) !== 'AIFF' && tag(8) !== 'AIFC')) return null;
+    let fmt = null, sound = null;
+    for (let o = 12; o + 8 <= buf.byteLength;) {
+        const id = tag(o), size = v.getUint32(o + 4), body = o + 8;
+        if (id === 'COMM' && size >= 18) {
+            // the sample rate is an 80-bit IEEE extended float: exponent (15 bits), sign (1 bit), 64-bit mantissa
+            const exponent = v.getUint16(body + 8) & 0x7fff, mantissa = v.getBigUint64(body + 10);
+            let littleEndian = false;
+            if (tag(8) === 'AIFC') {
+                if (size < 22) return null;
+                const compression = tag(body + 18);
+                if (compression === 'sowt') littleEndian = true;
+                else if (compression !== 'NONE') return null;
+            }
+            fmt = { channels: v.getUint16(body), frames: v.getUint32(body + 2), bits: v.getUint16(body + 6),
+                rate: Math.round(Number(mantissa) * 2 ** (exponent - 16383 - 63)), littleEndian };
+        } else if (id === 'SSND' && size >= 8) {
+            sound = { start: body + 8 + v.getUint32(body), length: Math.max(0, Math.min(body + size, buf.byteLength) - (body + 8 + v.getUint32(body))) };
+        }
+        o = body + size + (size & 1);
+    }
+    if (!fmt || !sound || ![8, 16, 24, 32].includes(fmt.bits) || !fmt.channels || !fmt.rate) return null;
+    const bytes = fmt.bits / 8, blockAlign = fmt.channels * bytes;
+    const frames = Math.min(fmt.frames, Math.floor(sound.length / blockAlign)), pcmLength = frames * blockAlign;
+    const src = new Uint8Array(buf, sound.start, pcmLength), out = new Uint8Array(44 + pcmLength), dv = new DataView(out.buffer);
+    const put = (o, s) => { for (let i = 0; i < s.length; i++) out[o + i] = s.charCodeAt(i); };
+    put(0, 'RIFF'); dv.setUint32(4, 36 + pcmLength, true); put(8, 'WAVE'); put(12, 'fmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, fmt.channels, true); dv.setUint32(24, fmt.rate, true);
+    dv.setUint32(28, fmt.rate * blockAlign, true); dv.setUint16(32, blockAlign, true); dv.setUint16(34, fmt.bits, true);
+    put(36, 'data'); dv.setUint32(40, pcmLength, true);
+    // AIFF samples are signed and big-endian; WAV 8-bit samples are unsigned, WAV 16/24/32-bit samples little-endian
+    for (let i = 0; i < pcmLength; i += bytes) {
+        if (bytes === 1) { out[44 + i] = (src[i] + 128) & 255; continue; }
+        for (let b = 0; b < bytes; b++) out[44 + i + b] = fmt.littleEndian ? src[i + b] : src[i + bytes - 1 - b];
+    }
+    return new Blob([out], { type: 'audio/wav' });
+}
+// The blob a track is stored as: an AIFF file becomes WAV, anything else (and AIFF that cannot be converted) stays as it is.
+async function baPlayableBlob(file) {
+    if (!/\.(?:aif|aiff)$/i.test(file.name || '')) return file;
+    return baAiffToWav(await file.arrayBuffer()) || file;
+}
 // «A1 CD1/01 Track 01.m4a», «CD2 - 05.mp3», «Piste 12.mp3», «FLS2_EP01_P3.mp3», «01 Track 01 1.m4a» (the trailing 1 = a second copy of the number).
 function baParseFile(name, path) {
     const base = String(name || '').replace(/\.[^.]+$/, '');
@@ -312,7 +362,8 @@ async function importBookAudio(fileList) {
         for (const p of parsed) {
             if (state.bookKey !== key) break;
             setBookAudioProgress(t('baSaving').replace('{i}', saved + 1).replace('{n}', parsed.length), saved / parsed.length);
-            await baPut({ id: key + '\u0000' + (p.cd || 0) + '-' + p.track, bookKey: key, cd: p.cd, track: p.track, name: p.name, path: p.path, type: p.file.type || '', size: p.file.size, blob: p.file });
+            const blob = await baPlayableBlob(p.file);
+            await baPut({ id: key + '\u0000' + (p.cd || 0) + '-' + p.track, bookKey: key, cd: p.cd, track: p.track, name: p.name, path: p.path, type: blob.type || '', size: blob.size, blob });
             saved++;
         }
     } catch (err) {
@@ -459,7 +510,7 @@ function buildBookAudioDialog() {
         + '<button type="button" class="btn-ghost ba-remove"></button><button type="button" class="btn-ghost ba-speech-remove"></button><p class="ba-note"></p></div>';
     const folder = document.createElement('input'), files = document.createElement('input'), speech = document.createElement('input');
     folder.type = 'file'; folder.multiple = true; folder.setAttribute('webkitdirectory', ''); folder.hidden = true; folder.id = 'ba-input-folder';
-    files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.opus'; files.hidden = true; files.id = 'ba-input-files';
+    files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.opus,.aif,.aiff'; files.hidden = true; files.id = 'ba-input-files';
     speech.type = 'file'; speech.multiple = true; speech.accept = '.mp3,.json,audio/mpeg,application/json'; speech.hidden = true; speech.id = 'ba-input-speech';
     dialog.append(folder, files, speech);
     dialog.querySelector('.ba-folder').onclick = () => folder.click();
