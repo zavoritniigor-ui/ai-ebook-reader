@@ -80,6 +80,17 @@ check('a repeated phrase: the one at the selection\'s place', run20('je viens', 
 check('a text the narration does not read is not played', run20('Leçon un : les nationalités'), null);
 check('empty selection', run20('  '), null);
 
+// Whole units (owner, 2026-10-26): a sentence as the app selects it on a PDF page plays every narration unit it holds whole;
+// labels, numbers, ordinals and words of a box beside it are skipped; a unit only partly selected is never played.
+const set20 = `{ timing: 'aligned', sentences: ${JSON.stringify(sentences)} }`;
+const whole = (sel) => { const r = run(`bsWholeUnitsPlan(${set20}, ${words20}, ${JSON.stringify(sel)})`); return r && r.map(p => p.i); };
+check('labels and numbers around a sentence are skipped', whole('x A. 1. Je suis espagnol et je viens de Madrid. i CD1 - piste 16'), [1]);
+check('two sentences with a label between them', whole('Je viens du Maroc. b. Je suis espagnol et je viens de Madrid.'), [0, 1]);
+check('words of a box beside the sentence are skipped', whole('Je suis espagnol Ailleurs, autrement ? et je viens de Madrid.'), [1]);
+check('a unit only partly selected is never played', whole('Je suis espagnol et je viens'), null);
+check('a whole sentence plus two words of the next: the system voice (a piece of a sentence)', whole('Je viens du Maroc. Je suis'), null);
+check('ordinals printed apart do not matter', run(`bsContentKeys(["le", "1", "er", "mai", "16e", "siècle", "1c"]).map(x => x.w)`), ['le', 'mai', 'siècle']);
+
 // A bilingual book (Complete French) has a narration per language: the voice's language picks the one that reads the text.
 check('voice language: edge-tts fr-CA', ctx.bsVoiceLang('fr-CA-SylvieNeural'), 'fr');
 check('voice language: Kokoro French', ctx.bsVoiceLang('kokoro:ff_siwis'), 'fr');
