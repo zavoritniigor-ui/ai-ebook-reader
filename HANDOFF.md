@@ -17,8 +17,8 @@
     Reader» name + Z/I logo + «Від розробника» + mailto feedback, #308 no book titles or book text in the code.
     If a PR is still open tomorrow: merge origin/main into its worktree (`../wt-sidebar`, `../wt-hideai`, `../wt-brand`,
     `../wt-neutral`), re-version (`tools/version_app_shell.py`), wait CI, merge; then verify production.
-  - Narration: every book of the four textbook folders narrated (Antoine fr-CA, words alone) and on Drive
-    «Par Ici X-Y» (owner's local/Drive names); narration file = book name + .mp3 (docs/agents/narration_text_rules.md §5).
+  - Narration: every book of the four textbook folders narrated (Antoine fr-CA, words alone) and on the owner's Drive
+    (one folder per textbook); narration file = book name + .mp3 (docs/agents/narration_text_rules.md §5).
   - Next: a French presentation with screenshots and an in-app «what it can do» tour in the menu language (owner);
     the demo book must be free to show (not the commercial textbooks): a self-made colour Québec «newspaper» from
     Wikipedia/Wikinews + Wikimedia Commons was proposed, owner postponed the choice.
