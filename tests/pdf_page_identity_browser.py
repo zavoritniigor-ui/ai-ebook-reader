@@ -2,14 +2,13 @@
 Validates:
 1. Strict separation of physicalPdfPage (1..N) and bookPageLabel.
 2. goToPhysicalPage(page) and goToBookPage(label).
-3. Mapping: physical page 221 -> book page 210.
+3. Mapping: a physical page -> its printed book page label.
 4. Physical page with bookPageLabel null (unnumbered/blank).
-5. Physical page 597 ("This page intentionally left blank") does not shift subsequent numbering (596 is 585, 597 is null, 598 is 587).
+5. An unnumbered blank page does not shift the numbering of the pages after it.
 6. Blank pages remain in continuous scroll (placeholder / wrapper preserved).
 7. pdfDisplayLabel(n) returns '—' for unnumbered, never a fake number.
-8. Scrubber & progress indicator format: 'p. 210 (221/N)' and '— (597/N)'.
+8. Scrubber & progress indicator format: 'p. <label> (<physical>/N)' and '— (<physical>/N)'.
 9. Persistence restores physical position and resolves book label.
-10. End-to-end validation with the real 657-page Complete French All-in-One PDF when present.
 """
 import base64, json, os, sys, time
 from browser_cdp import CDP
@@ -139,111 +138,6 @@ check('Scrubber preview for numbered page reflects book page',
 c.js("goToPhysicalPage(5, {instant:true})")
 check('Scrubber preview for unnumbered page reflects —',
       "document.getElementById('pdf-page-preview').value === '— (5)'", timeout=5)
-
-# ============================================================
-# PART 2: Real Document Acceptance Test (Complete French All-in-One)
-# ============================================================
-candidate_paths = [
-    'books/Complete French All-in-One .pdf',
-    os.path.expanduser('~/Books/Complete French All-in-One .pdf'),
-    os.path.expanduser('~/books/Complete French All-in-One .pdf'),
-]
-real_book_path = next((p for p in candidate_paths if os.path.exists(p)), None)
-if real_book_path:
-    print("\n=== PART 2: Real Textbook Acceptance Test (657 pages) ===")
-    with open(real_book_path, 'rb') as f:
-        real_bytes = f.read()
-    print(f"Loaded real textbook: {len(real_bytes)} bytes")
-    upload(real_bytes, 'Complete_French_All_in_One.pdf', timeout=30)
-
-    check('Total pages is 657', "state.totalPages === 657", timeout=5)
-
-    # Resolve book page 210 -> physical page 221
-    print("Testing goToBookPage('210')...")
-    c.js("""(async () => {
-        window.__navResult = await goToBookPage('210', {instant: true});
-    })()""")
-    check('goToBookPage("210") resolves and returns true', "window.__navResult === true", timeout=10)
-    check('goToBookPage("210") lands on physical page 221', "state.currentIndex === 221")
-    check('Progress text for page 221 displays p. 210 (221/657)',
-          "els.progress.textContent === 'p. 210 (221/657)'")
-    check('Scrubber preview displays p. 210 (221)',
-          "document.getElementById('pdf-page-preview').value === 'p. 210 (221)'")
-
-    # Navigate to page 596
-    print("Testing page 596...")
-    c.js("goToPhysicalPage(596, {instant: true})")
-    c.wait("pdfRenderedPages.has(596)", timeout=15)
-    check('Physical page 596 has bookPageLabel "585"', "pdfBookPageLabel(596) === '585'", timeout=5)
-    check('Progress text for page 596 displays p. 585 (596/657)',
-          "els.progress.textContent === 'p. 585 (596/657)'")
-
-    # Navigate to unnumbered blank page 597
-    print("Testing unnumbered blank page 597...")
-    c.js("goToPhysicalPage(597, {instant: true})")
-    c.wait("pdfRenderedPages.has(597)", timeout=15)
-    check('Physical page 597 wrapper is in DOM', "!!pdfPageWrappers[597]")
-    check('Physical page 597 has bookPageLabel null', "pdfBookPageLabel(597) === null", timeout=5)
-    check('Physical page 597 display label is —', "pdfDisplayLabel(597) === '—'")
-    check('Progress text for page 597 displays — (597/657)',
-          "els.progress.textContent === '— (597/657)'")
-
-    # Navigate to page 598 (immediately after blank)
-    print("Testing page 598 after blank...")
-    c.js("goToPhysicalPage(598, {instant: true})")
-    c.wait("pdfRenderedPages.has(598)", timeout=15)
-    check('Physical page 598 has bookPageLabel "587"', "pdfBookPageLabel(598) === '587'", timeout=5)
-    check('Blank page 597 did NOT shift subsequent numbering',
-          "pdfBookPageLabel(598) === '587' && pdfBookPageLabel(596) === '585'")
-
-    # Test single-word click on page 221
-    print("Testing single-word click on page 221...")
-    c.js("goToPhysicalPage(221, {instant: true})")
-    c.wait("pdfRenderedPages.has(221)", timeout=5)
-    word_click_res = c.js("""
-    (async () => {
-        state.translateMode = true;
-        document.body.classList.add('mode-translate-on');
-        els.container.classList.add('mode-translate');
-        window.__wordsClicked = [];
-        handleWordOrSelection = function(word, x, y, rect, helpContext, sourceType) { window.__wordsClicked.push({ word: word.trim(), sourceType }); };
-
-        const w = pdfPageWrappers[221];
-        const span = Array.from(w.querySelectorAll('.pdf-text-layer span')).find(s => s.textContent.trim().length > 3);
-        if (!span) return { error: 'no span found on page 221' };
-
-        span.scrollIntoView({ block: 'center' });
-        await new Promise(r => setTimeout(r, 100));
-        const rect = span.getBoundingClientRect();
-        const event = new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            view: window,
-            clientX: rect.left + rect.width / 2,
-            clientY: rect.top + rect.height / 2
-        });
-        span.dispatchEvent(event);
-        await new Promise(r => setTimeout(r, 100));
-
-        return {
-            spanText: span.textContent.trim(),
-            wordsClicked: window.__wordsClicked
-        };
-    })()
-    """)
-    assert len(word_click_res.get('wordsClicked', [])) > 0, f"Word click should trigger lookup: {word_click_res}"
-    print(f"PASS single-word click extracted: {word_click_res['wordsClicked'][0]['word']!r}")
-
-    # Test thumbnail sidebar synchronization
-    print("Testing thumbnail active sync...")
-    check('Active thumbnail for page 221 has .active class',
-          "pdfThumbItems[221].classList.contains('active')")
-    c.js("pdfThumbItems[12].click()")
-    check('Clicking thumbnail 12 navigates to physical page 12', "state.currentIndex === 12", timeout=3)
-    check('Active thumbnail is now 12', "pdfThumbItems[12].classList.contains('active')")
-
-else:
-    print("\nSkipping Part 2 (real textbook not available in this environment)")
 
 print("\n=== ALL PDF PAGE IDENTITY TESTS PASSED ===")
 c.sock.close()

@@ -523,7 +523,7 @@ tiny = run_practice([dict(mode='truncate', text=FULL[:700])])
 assert not tiny['ok'] and tiny['reason'] == 'truncated' and tiny['message'] == msg('aiTruncated') and tiny['diag']['reason'] == 'truncated', tiny
 print("PASS 7: a cut-off Practice reply with too little material is a specific retryable error ('%s'), never a broken reading" % tiny['message'], flush=True)
 for label, text, reason in [('not JSON', 'Désolé, je ne peux pas.', 'json_extraction_failed'),
-                            ('exercises', json.dumps(dict(title='x', language='fr', mode='verbs', sections=[dict(heading='p', kind='examples', items=[dict(text='Ils ____ la pauvre femme %d.' % i, targets=[]) for i in range(12)])]), ensure_ascii=False), 'made_of_exercises'),
+                            ('exercises', json.dumps(dict(title='x', language='fr', mode='verbs', sections=[dict(heading='p', kind='examples', items=[dict(text='Ils ____ le vieux voisin %d.' % i, targets=[]) for i in range(12)])]), ensure_ascii=False), 'made_of_exercises'),
                             ('wrong language', json.dumps(dict(PF.VERBS_FR, language='en'), ensure_ascii=False), 'language_mismatch')]:
     r = run_practice([dict(mode='raw', text=text)])
     assert not r['ok'] and r['diag']['reason'] == reason, (label, r)

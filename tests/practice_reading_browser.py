@@ -1,6 +1,6 @@
 """Practice is a READING / EXAMPLES surface -- acceptance through the real UI.
 
-The learner selects text in a French book (here even a textbook EXERCISE line, "Ils (plaindre) la pauvre
+The learner selects text in a French book (here even a textbook EXERCISE line, "Ils (plaindre) le pauvre
 femme."), opens Grammar -> Practice, and must get natural example sentences + connected paragraphs with
 clickable highlighted target forms -- and NOTHING to solve: no blanks, numbering, hints, questions, inputs,
 answers, check/submit buttons or grading. Clicking a target focuses the EXACT occurrence in the (unchanged)
@@ -23,13 +23,13 @@ URL = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html')
 c = CDP(); c.sock.settimeout(90)
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
 
-SENT = 'Ils (plaindre) la pauvre femme.'
+SENT = 'Ils (plaindre) le pauvre voisin.'
 BOOK = "# Exercices de grammaire\n\nElle (craindre) de profonds changements.\n\n" + SENT + "\n\nLa petite fille est heureuse.\n"
 ANALYSIS = json.dumps(dict(language='fr', items=[
     dict(pos='verb', lemma='plaindre', surface='plaindre', sentence=SENT, occurrence=1, agreesWith='Ils', features=dict(mood='infinitif'),
          explanation="Infinitive given in parentheses: the verb to conjugate.", stemBreakdown=None, forms=None),
-    dict(pos='adjective', lemma='pauvre', surface='pauvre', sentence=SENT, occurrence=1, agreesWith='femme',
-         features=dict(gender='féminin', number='singulier'), explanation="Describes 'femme'.", stemBreakdown=None, forms=None)]), ensure_ascii=False)
+    dict(pos='adjective', lemma='pauvre', surface='pauvre', sentence=SENT, occurrence=1, agreesWith='voisin',
+         features=dict(gender='masculin', number='singulier'), explanation="Describes 'voisin'.", stemBreakdown=None, forms=None)]), ensure_ascii=False)
 # The canned Practice reading for Adjectives mode must actually cover the requested lemma ('pauvre', the
 # one adjective ANALYSIS above ever detects) -- not just demonstrate an unrelated stock set -- now that
 # validatePracticeReading checks requested-lemma coverage (js/practice-session.js); the ORIGINAL sentence
@@ -176,10 +176,10 @@ print("PASS B: every displayed sentence/paragraph passes the exercise-artifact d
 
 # B. the validator itself drops exercise artifacts a model might still emit (the selection was a book exercise)
 BAD_ITEMS = [
-    PF.item('Ils ____ la pauvre femme.', PF.tgt('plaignent', 'plaindre', 'blank')),                     # underscore blank
-    PF.item('3. Ils plaignent la pauvre femme.', PF.tgt('plaignent', 'plaindre', 'numbered')),          # numbered item
-    PF.item('Ils (plaindre) la pauvre femme.', PF.tgt('plaindre', 'plaindre', 'cue verb in parentheses')),  # the book's own exercise
-    PF.item('La muraille (ceindre) la ville de tous les côtés.'),                                        # cue after a noun subject
+    PF.item('Ils ____ le vieux voisin.', PF.tgt('plaignent', 'plaindre', 'blank')),                     # underscore blank
+    PF.item('3. Ils plaignent le vieux voisin.', PF.tgt('plaignent', 'plaindre', 'numbered')),          # numbered item
+    PF.item('Ils (plaindre) le vieux voisin.', PF.tgt('plaindre', 'plaindre', 'cue verb in parentheses')),  # the book's own exercise
+    PF.item('Le mur (ceindre) le jardin de tous les côtés.'),                                        # cue after a noun subject
     PF.item('Elle ..... à la banque tous les matins.'),                                                  # dotted blank
     PF.item('Je parle.'), PF.item('Tu parles.'),                                                         # one-line conjugation drill
 ]
@@ -190,7 +190,7 @@ bad_texts = [i['text'] for i in BAD_ITEMS]
 assert not any(t in v['paragraphs'] for t in bad_texts), [t for t in bad_texts if t in v['paragraphs']]
 assert len(v['paragraphs']) == sum(len(x['items']) for x in GOOD_BASE), len(v['paragraphs'])
 assert not any(t['surface'] in ('plaignent', 'plaindre') and v['paragraphs'][t['paragraphIndex']] in bad_texts for t in v['targets'])
-print("PASS B: blanks, numbered items, the parenthesised-cue exercise ('Ils (plaindre)…', 'La muraille (ceindre)…'), dotted blanks and one-line drills are DROPPED by the validator (with their targets)", flush=True)
+print("PASS B: blanks, numbered items, the parenthesised-cue exercise ('Ils (plaindre)…', 'Le mur (ceindre)…'), dotted blanks and one-line drills are DROPPED by the validator (with their targets)", flush=True)
 only_exercises = PF.reading('Ex', 'verbs', PF.section('plaindre', 'examples', *BAD_ITEMS[:5], *[PF.item('Elle ____ tout le temps et personne ne le voit vraiment.') for _ in range(6)]))
 err = c.js("(()=>{ try { validatePracticeReading(%s,{language:'fr',mode:'verbs'}); return 'accepted'; } catch(e){ return e.message } })()" % PF.to_json(only_exercises))
 assert err != 'accepted' and 'exercises' in err, err
@@ -413,7 +413,7 @@ LEGACY = """(()=>{
   const now=Date.now();
   // 1) the retired exercise worksheet: same keys, same "ready" status, worksheet shape (exercises/hints/answers/pages)
   localStorage.setItem('practice_session:legacy1', JSON.stringify({id:'legacy1', status:'ready', createdAt:now, sourceLanguage:'fr', targetLanguage:'uk', mode:'verbs', currentPage:0,
-      hints:{ex1:2}, answers:{ex1:{answer:'plaint', feedback:'correct'}}, exercises:[{id:'ex1', type:'multiple_choice', question:'Choose the correct verb: Ils ____ la pauvre femme.', options:['plaint','plaignent'], expectedAnswer:'plaignent', hints:['h1','h2']}]}));
+      hints:{ex1:2}, answers:{ex1:{answer:'plaint', feedback:'correct'}}, exercises:[{id:'ex1', type:'multiple_choice', question:'Choose the correct verb: Ils ____ le vieux voisin.', options:['plaint','plaignent'], expectedAnswer:'plaignent', hints:['h1','h2']}]}));
   // 2) an earlier reading draft (no schema version)
   localStorage.setItem('practice_session:draft1', JSON.stringify({id:'draft1', status:'ready', createdAt:now, mode:'verbs', reading:{title:'old draft', language:'fr', mode:'verbs', paragraphs:['Un texte assez long pour un ancien brouillon de lecture sans schéma ni sections du tout.'], targets:[]}}));
   // 3) corrupt JSON, 4) an orphan legacy key, 5) a half-finished 'generating' entry, 6) another schema number

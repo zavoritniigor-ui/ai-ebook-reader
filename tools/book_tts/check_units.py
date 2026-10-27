@@ -7,7 +7,7 @@ same page), with examples. A one-voice book must show (almost) no cut sentences;
 
 Usage:
   python3 check_units.py "~/Books/textbook 3-4/book 34.pdf" --pages 15-60            # a book in one voice
-  python3 check_units.py "~/Books/Complete French/....pdf" --pages 30-60 --mix      # a bilingual book (--mix)
+  python3 check_units.py "~/Books/Workbook/....pdf" --pages 30-60 --mix      # a bilingual book (--mix)
 """
 import argparse
 import os

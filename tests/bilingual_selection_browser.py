@@ -1,4 +1,4 @@
-"""Multi-verb selections from a bilingual French/English PDF (real report: physical page 349 of "Complete French All-in-One").
+"""Multi-verb selections from a bilingual French/English PDF (real report: physical page 349 of a bilingual French/English grammar workbook).
 
 The learner drags across a side-by-side table -- French forms on the left, their English translation on the right --
 and Grammar used to show ONLY the first verb ("voir"). Root cause, measured on the real page: a PDF text layer's

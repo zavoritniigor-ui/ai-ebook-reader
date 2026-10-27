@@ -331,7 +331,7 @@ async function loadPdfOutline(doc) {
         const raw = await doc.getOutline();
         if (!isCurrent()) return;
         if (!raw || !raw.length) {
-            // No bookmarks in the file (e.g. the real "Complete French All-in-One"): Contents would stay disabled
+            // No bookmarks in the file (e.g. the real a bilingual French/English grammar workbook): Contents would stay disabled
             // forever. Build one from the book's own headings in the background instead.
             schedulePdfHeadingScan(doc);
             return;

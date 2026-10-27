@@ -25,8 +25,8 @@ stop.** A unit that is a piece of a sentence, or two sentences glued, can never 
    a word or a comma and the next block starts in lower case. Not after a colon that opens a list, not after a page number.
 4. **Reading order is pdftotext's block order.** Never sort running text by its height on the page: side-by-side columns
    would be read line by line, mixed («Écrivez B plat est bon ou fie-t-elle que le»).
-5. **Two-column tables only for a bilingual book (`--mix`)**, e.g. Complete French: a French cell, then its English one,
-   each one sentence in its column's language. **A book in one voice (a French textbook, Bescherelle) has no tables**: its boxes,
+5. **Two-column tables only for a bilingual book (`--mix`)**, e.g. the bilingual workbook: a French cell, then its English one,
+   each one sentence in its column's language. **A book in one voice (a French textbook, a conjugation reference) has no tables**: its boxes,
    forms and exercises are running text. Table detection on a French textbook turned every line of a box into a unit.
 6. **A word printed in touching pieces is one word.** pdftotext cuts slanted text into pieces on lines of their own
    («réside» + «nce», «déterminan» + «ts»): a piece that starts where the word before ends (≤ 0.5 pt, about the same
@@ -41,13 +41,13 @@ Generating a book takes hours. Measure the cut first:
 ```bash
 cd tools/book_tts
 ~/tools/book-tts/.venv/bin/python check_units.py "~/Books/textbook 3-4/book 34.pdf" --pages 15-60
-~/tools/book-tts/.venv/bin/python check_units.py "~/Books/Complete French/<book>.pdf" --pages 30-60 --mix
+~/tools/book-tts/.venv/bin/python check_units.py "~/Books/Workbook/<book>.pdf" --pages 30-60 --mix
 ```
 
 Reference (2026-10-26, after PR #291), pages 15-60: textbook 1-2 **3** cut sentences of 1694 units; textbook 3-4 **25**.
 Before the fix: 220 and 252. If a book shows dozens of cut sentences, read the examples it prints and fix `columns.py`
 first. Any change to `columns.py` / `generate.py` must keep `tests/book_tts_columns_test.py` green and must not change
-Complete French (`--mix`) except for the better: diff its units before/after.
+the bilingual workbook (`--mix`) except for the better: diff its units before/after.
 
 ## 4. After making audio (required)
 

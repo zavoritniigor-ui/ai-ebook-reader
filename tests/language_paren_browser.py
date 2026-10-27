@@ -34,9 +34,9 @@ cases = [
     [('fr', 'Il est très important'), ('en', 'to pronounce it correctly.')],
     # Вправи з французькими дієсловами в дужках: інфінітив лишається французькою,
     # а не помилково розпізнається як англійська (Defect 2).
-    [('fr', 'Ils (plaindre) la pauvre femme.')],
-    [('fr', 'La muraille (ceindre) la ville.')],
-    [('fr', '3. Ils (plaindre) la pauvre femme.')],
+    [('fr', 'Ils (plaindre) le vieux voisin.')],
+    [('fr', 'Le mur (ceindre) le jardin.')],
+    [('fr', '3. Ils (plaindre) le vieux voisin.')],
     [('fr', 'Elle (se plaindre) souvent.')],
     [('fr', 'Tu (finir) le travail.')],
     [('fr', 'Nous (être) là.')],
@@ -55,10 +55,10 @@ for expected in cases:
 assert not failures, json.dumps(failures, ensure_ascii=False, indent=2)
 
 # Targeted API checks for Defect 2 (fragmentLangInContext and grammarSourceLanguageFor)
-assert c.js("fragmentLangInContext('plaindre', 'Ils (plaindre) la pauvre femme.')") == 'fr'
-assert c.js("grammarSourceLanguageFor('plaindre', 'Ils (plaindre) la pauvre femme.')") == 'fr'
-assert c.js("fragmentLangInContext('ceindre', '4. La muraille (ceindre) la ville.')") == 'fr'
-assert c.js("grammarSourceLanguageFor('ceindre', '4. La muraille (ceindre) la ville.')") == 'fr'
+assert c.js("fragmentLangInContext('plaindre', 'Ils (plaindre) le vieux voisin.')") == 'fr'
+assert c.js("grammarSourceLanguageFor('plaindre', 'Ils (plaindre) le vieux voisin.')") == 'fr'
+assert c.js("fragmentLangInContext('ceindre', '4. Le mur (ceindre) le jardin.')") == 'fr'
+assert c.js("grammarSourceLanguageFor('ceindre', '4. Le mur (ceindre) le jardin.')") == 'fr'
 assert c.js("fragmentLangInContext('hello', 'bonjour (hello)')") == 'en'
 assert c.js("grammarSourceLanguageFor('hello', 'bonjour (hello)')") == 'en'
 assert c.js("fragmentLangInContext('maison', 'house (maison)')") == 'fr'
@@ -77,7 +77,7 @@ def lang_of(fragment, context):
 
 # (context, clicked fragment) -> French. The first four are the reported cases.
 EXERCISE_CUES = [
-    ('Ils (plaindre) la pauvre femme.', 'plaindre'),
+    ('Ils (plaindre) le vieux voisin.', 'plaindre'),
     ('Nous (finir) le travail.', 'finir'),
     ('Elle (aller) à Paris.', 'aller'),
     ('Vous (être) prêts.', 'être'),
@@ -90,7 +90,7 @@ EXERCISE_CUES = [
     ('Ils (se lever) tôt.', 'lever'),                                              # reflexive
     ("Nous voulons (s'écrire) plus souvent.", 'écrire'),
     ('Elle (ne pas savoir) si il travaille lundi.', 'savoir'),                     # negated
-    ('La muraille (ceindre) la ville.', 'ceindre'),                                # noun subject, French-only ending
+    ('Le mur (ceindre) le jardin.', 'ceindre'),                                # noun subject, French-only ending
     ('Cette organisation (promouvoir) la recherche scientifique.', 'promouvoir'),
     ('Quel jour (partir) ?', 'partir'),
     ('Molière (mourir) en 1673.', 'mourir'),
@@ -131,7 +131,7 @@ print('PASS %d French glosses after English stay fr' % len(EN_WITH_FR_GLOSS), fl
 # The predicate itself (shared with js/selection.js): structure decides, shape alone never does.
 CUE = lambda inner, before: c.js('isFrenchExerciseCue(%s,%s)' % (json.dumps(inner, ensure_ascii=False), json.dumps(before, ensure_ascii=False)))
 assert CUE('plaindre', '3. Ils ') is True and CUE('manger', 'Ils ') is True and CUE('finir', 'Ils ') is True
-assert CUE('ceindre', 'La muraille ') is True and CUE('se marier', 'Ils doivent ') is True and CUE('ne pas être', 'Leurs méthodes ') is True
+assert CUE('ceindre', 'Le mur ') is True and CUE('se marier', 'Ils doivent ') is True and CUE('ne pas être', 'Leurs méthodes ') is True
 assert CUE('father', 'Le père ') is False and CUE('teacher', 'le ') is False and CUE('water', 'eau ') is False
 assert CUE('manger', 'Les enfants ') is False, 'a noun subject + plain -er is not claimed (indistinguishable from an English gloss)'
 assert CUE('they', 'Ils ') is False and CUE('m.', "l'allemand ") is False and CUE('familiar', 'vous êtes you are ') is False

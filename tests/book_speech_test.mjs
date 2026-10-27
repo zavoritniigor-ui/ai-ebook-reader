@@ -91,7 +91,7 @@ check('a unit only partly selected is never played', whole('Je suis espagnol et 
 check('a whole sentence plus two words of the next: the system voice (a piece of a sentence)', whole('Je viens du Maroc. Je suis'), null);
 check('ordinals printed apart do not matter', run(`bsContentKeys(["le", "1", "er", "mai", "16e", "siècle", "1c"]).map(x => x.w)`), ['le', 'mai', 'siècle']);
 
-// A bilingual book (Complete French) has a narration per language: the voice's language picks the one that reads the text.
+// A bilingual book (the bilingual workbook) has a narration per language: the voice's language picks the one that reads the text.
 check('voice language: edge-tts fr-CA', ctx.bsVoiceLang('fr-CA-SylvieNeural'), 'fr');
 check('voice language: Kokoro French', ctx.bsVoiceLang('kokoro:ff_siwis'), 'fr');
 check('voice language: Kokoro English', ctx.bsVoiceLang('kokoro:af_heart'), 'en');

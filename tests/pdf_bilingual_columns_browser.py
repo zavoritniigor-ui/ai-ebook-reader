@@ -133,22 +133,22 @@ exercise_test = c.js('''(() => {
     container.className = 'pdf-text-layer';
     container.style.cssText = 'position:relative;width:1000px;height:200px;';
 
-    // Exercise line 3: "3. Ils (plaindre)" [175px gap] "la pauvre femme."
+    // Exercise line 3: "3. Ils (plaindre)" [175px gap] "le vieux voisin."
     const span3a = document.createElement('span');
     span3a.textContent = '3. Ils (plaindre)';
     span3a.style.cssText = 'position:absolute;left:190px;top:50px;width:130px;height:20px;';
 
     const span3b = document.createElement('span');
-    span3b.textContent = 'la pauvre femme.';
+    span3b.textContent = 'le vieux voisin.';
     span3b.style.cssText = 'position:absolute;left:495px;top:50px;width:150px;height:20px;';
 
-    // Exercise line 4: "4. La muraille (ceindre)" [175px gap] "la ville."
+    // Exercise line 4: "4. Le mur (ceindre)" [175px gap] "le jardin."
     const span4a = document.createElement('span');
-    span4a.textContent = '4. La muraille (ceindre)';
+    span4a.textContent = '4. Le mur (ceindre)';
     span4a.style.cssText = 'position:absolute;left:190px;top:90px;width:190px;height:20px;';
 
     const span4b = document.createElement('span');
-    span4b.textContent = 'la ville.';
+    span4b.textContent = 'le jardin.';
     span4b.style.cssText = 'position:absolute;left:555px;top:90px;width:60px;height:20px;';
 
     container.appendChild(span3a);
@@ -170,12 +170,12 @@ exercise_test = c.js('''(() => {
     return result;
 })()''')
 assert exercise_test['sameGroup'] is True, exercise_test
-assert exercise_test['sentence'] == 'Ils (plaindre) la pauvre femme.', exercise_test
+assert exercise_test['sentence'] == 'Ils (plaindre) le vieux voisin.', exercise_test
 print('PASS Defect 1 regression: fill-in-the-blank exercise preserves complete sentence across gap', flush=True)
 
 # ---------------------------------------------------------------------------------------
-# Fill-in-the-blank exercise lines vs REAL column gutters (the PDF is "Complete French All-in-One":
-# "3. Ils (plaindre)   <blank>   la pauvre femme."). The blank is wider than a column gap but the
+# Fill-in-the-blank exercise lines vs REAL column gutters (the PDF is a bilingual French/English grammar workbook:
+# "3. Ils (plaindre)   <blank>   le vieux voisin."). The blank is wider than a column gap but the
 # halves are ONE line -- and ONLY unmistakable exercise content may bridge it. Geometry below is the
 # real page 221 one (left fragment x=176..296, right fragment x=457..594 on a ~1000px layer).
 # ---------------------------------------------------------------------------------------
@@ -201,15 +201,15 @@ def layout(rows):
 
 # --- exercise lines with the real page-221 geometry: every one becomes its complete sentence
 real221 = layout([
-    [('3. Ils (plaindre)', 176, 120), ('la pauvre femme.', 457, 137)],
-    [('4. La muraille (ceindre)', 176, 150), ('la ville.', 457, 60)],
-    [('5. Vous (feindre)', 176, 120), ('l’indifférence.', 457, 100)],
-    [('6. Nous (craindre)', 176, 125), ('le ridicule.', 457, 80)],
-    [('10. Elle (se plaindre)', 176, 140), ('tout le temps.', 457, 90)],
+    [('3. Ils (plaindre)', 176, 120), ('le vieux voisin.', 457, 137)],
+    [('4. Le mur (ceindre)', 176, 150), ('le jardin.', 457, 60)],
+    [('5. Vous (feindre)', 176, 120), ('la surprise.', 457, 100)],
+    [('6. Nous (craindre)', 176, 125), ('l’orage.', 457, 80)],
+    [('10. Elle (se plaindre)', 176, 140), ('chaque matin.', 457, 90)],
 ])
 assert all(r['joined'] for r in real221), real221
-wanted = ['Ils (plaindre) la pauvre femme.', 'La muraille (ceindre) la ville.', 'Vous (feindre) l’indifférence.',
-          'Nous (craindre) le ridicule.', 'Elle (se plaindre) tout le temps.']
+wanted = ['Ils (plaindre) le vieux voisin.', 'Le mur (ceindre) le jardin.', 'Vous (feindre) la surprise.',
+          'Nous (craindre) l’orage.', 'Elle (se plaindre) chaque matin.']
 for row, sentence in zip(real221, wanted):
     assert sentence in row['sentences'], (sentence, row['sentences'])
 print('PASS real page-221 exercise geometry: each line yields its complete sentence (not "Ils (plaindre) 4.")', flush=True)
@@ -334,13 +334,13 @@ print('PASS a drag inside one column of that page reads only the dragged words (
 table = layout([[('je', 176, 20), ('faisais', 217, 50), ('je', 300, 20), ('prenais', 341, 55)] for _ in range(5)])
 assert all(r['joined'] for r in table), table
 print('PASS the narrow gaps of a conjugation table are not column gutters', flush=True)
-# the run-in items of an answer key (Complete French p. 640) line up at one x by chance, but the lines between them run across it
+# the run-in items of an answer key (the bilingual workbook p. 640) line up at one x by chance, but the lines between them run across it
 key = layout([
-    [('7. En courant très vite, j’ai attrapé le bus.', 189, 320), ('8. En prenant la deuxième rue à droite,', 530, 300)],
-    [('vous arriverez à la gare. 9. En voyageant, on apprend beaucoup de choses.', 189, 640)],
-    [('10. En lisant le journal, il a appris la nouvelle.', 189, 320), ('11. En faisant du yoga, je me détends.', 530, 280)],
-    [('12. En travaillant dur, nous réussirons. 13. Sachant la vérité, elle ne dit rien.', 189, 660)],
-    [('14. N’ayant pas vu le film, je me tais.', 189, 320), ('15. En s’entraînant tous les jours, ils gagnent.', 530, 320)],
+    [('7. En marchant vite, j’ai rattrapé mon ami.', 189, 320), ('8. En tournant à gauche après le pont,', 530, 300)],
+    [('vous verrez la poste. 9. En lisant chaque jour, on progresse beaucoup en français.', 189, 640)],
+    [('10. En ouvrant la fenêtre, elle a vu la neige.', 189, 320), ('11. En chantant, il oublie la pluie.', 530, 280)],
+    [('12. En cuisinant ensemble, nous parlons beaucoup. 13. Voyant le ciel, il sourit.', 189, 660)],
+    [('14. N’ayant pas lu le livre, je l’écoute.', 189, 320), ('15. En courant le matin, ils restent en forme.', 530, 320)],
 ])
 assert all(r['joined'] for r in key[::2]), key
 print('PASS run-in answer-key items that line up by chance are not a column gutter', flush=True)

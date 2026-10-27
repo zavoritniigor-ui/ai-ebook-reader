@@ -206,16 +206,16 @@ def span(text, left, top, width, height):
     return dict(text=text, left=left, top=top, width=width, height=height)
 
 
-# 5a. the real geometry of page 221 of "Complete French All-in-One": a stacked label in the left margin (EXERCICE / 12·16, fonts
+# 5a. the real geometry of page 221 of a bilingual French/English grammar workbook: a stacked label in the left margin (EXERCICE / 3·1, fonts
 # 8.7 and 21px) and the instruction to its right (13px), body lines at the margin. The indented instruction used to count as a
 # second «column».
 label = [span('The sky was grey.', 120, 60, 150, 14), span('Elle regarde la télévision.', 120, 100, 215, 14), span('Il ouvre la porte.', 120, 140, 150, 14),
-         span('EXERCICE', 138, 335, 46, 9), span('12·16', 133, 347, 56, 21),
-         span('Traduire les phrases suivantes en utilisant', 220, 373, 218, 13), span('tu', 440, 373, 12, 13), span('et la forme', 455, 373, 57, 13),
+         span('EXERCICE', 138, 335, 46, 9), span('3·1', 133, 347, 56, 21),
+         span('Écrire chaque phrase ci-dessous en employant', 220, 373, 218, 13), span('tu', 440, 373, 12, 13), span('et la forme', 455, 373, 57, 13),
          span('est-ce que', 515, 373, 56, 13), span('si nécessaire.', 573, 373, 68, 13),
          span('1. She is painting the kitchen.', 126, 409, 180, 14), span('2. There is a dog in the car.', 126, 462, 163, 14), span('3. They pity the poor child.', 126, 516, 163, 14)]
 load(label, list(range(len(label))), 600)
-check('5a a stacked «EXERCICE 12·16» label beside its instruction (real page 221 geometry) is not a second column', columns() == 1, columns())
+check('5a a stacked «EXERCICE 3·1» label beside its instruction (real page 221 geometry) is not a second column', columns() == 1, columns())
 # 5e. a sentence that wraps from a deeply indented first line (page 180: "...either on Saturday or on / Sunday.") was cut at the end of
 # the first line: the indented line counted as a column of its own.
 wrap = [span('The children were happy.', 60, 100, 200, 14),

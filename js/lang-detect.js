@@ -43,7 +43,7 @@ const EN_COMMON_WORDS = new Set('means'.split(' '));
 const FR_SHAPE_RE = /(eaux?$|eux$|oir$|oire$|aient$|ais$|ez$|ent$|ique$|té$|tion$|aison$|ance$|ence$|euse$|ette$|eur$|ère$|ien$|ienne$|ois$|elle$|ille|ouill|jour|oux$|ault$|gn[aeiou]|^qu[aeiou])/i;
 const EN_SHAPE_RE = /(ing$|ed$|ly$|ness$|ship$|ough|augh|^wh|ck|^sh|oo|ee|y$)/i;
 // Французькі вправи "поставте дієслово у потрібну форму" друкують інфінітив у дужках
-// прямо в реченні: "Ils (plaindre) la pauvre femme." Це французька ПІДКАЗКА, а не англійська
+// прямо в реченні: "Ils (plaindre) le vieux voisin." Це французька ПІДКАЗКА, а не англійська
 // глоса, яку зазвичай містять дужки "слово (переклад)" — тож їй не можна давати підказку
 // протилежної мови. САМА ФОРМА слова цього не розрізняє: père (father), eau (water),
 // le dîner (dinner) закінчуються на -er/-re так само, як французькі інфінітиви. Тому
@@ -53,8 +53,8 @@ const EN_SHAPE_RE = /(ing$|ed$|ly$|ness$|ship$|ough|augh|^wh|ck|^sh|oo|ee|y$)/i;
 //    тож вона сюди не потрапляє), або
 //  * підказка зворотна — "(se lever)", "(s'appeler)": англійська глоса не починається з se/s' —, або
 //  * закінчення дієслова, якого не має жодне англійське слово (-dre, -ttre, -uire, -ivre,
-//    -oir, приголосна+-ir, або être/avoir/aller…) — для іменних підметів: "La muraille
-//    (ceindre) la ville."
+//    -oir, приголосна+-ir, або être/avoir/aller…) — для іменних підметів: "Le mur
+//    (ceindre) le jardin."
 // Іменний підмет із звичайним -er ("Les enfants (manger)") свідомо НЕ визнається: без
 // словника його не відрізнити від "le professeur (teacher)", а глоса — безпечне
 // значення за замовчуванням, яке зберігає двомовні тексти правильними.
