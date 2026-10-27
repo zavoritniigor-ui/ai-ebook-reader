@@ -108,7 +108,7 @@ const quickMenu = (() => {
         ['printPage', 'btn-print', '🖨️'],
         ['wheelInk', 'btn-ink', '✏️'],
         ['wheelRegion', 'btn-region', '✂️'],
-        ['wheelVoices', 'btn-alt-voices', '🎵'],
+        // «Голоси» (two alternating voices) was removed from the wheel (owner, 2026-10-26): the voices list is gone
         ['wheelLevel', 'btn-lang-level', '📊'],
         ['wheelLibrary', 'btn-library', '🏛️'],
         ['wheelRules', 'btn-rules', '📚'],
