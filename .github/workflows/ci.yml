@@ -409,6 +409,9 @@ jobs:
           echo "Running developer_browser.py..."
           python3 -u tests/developer_browser.py
 
+          echo "Running sidebar_hide_on_reading_browser.py..."
+          python3 -u tests/sidebar_hide_on_reading_browser.py
+
           echo "All tests passed successfully!"
 
       - name: Upload Chrome crash reports

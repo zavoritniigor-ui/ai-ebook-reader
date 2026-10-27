@@ -83,6 +83,18 @@
         .menu-section { padding: 10px 10px 8px; border-bottom: 1px solid var(--border-color); }
         .menu-section:last-child { border-bottom: 0; }
         .menu-section-title { margin: 6px 10px 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+        /* Each section of the main menu has its own light rainbow colour (owner, 2026-10-26): a transparent tint, a coloured
+           stripe on the left and a coloured title, so a section is found again by its colour. Book red, Reading orange,
+           Learning green, Tools blue, Settings violet. A tint, not a dark fill: the text keeps its own colour and contrast. */
+        .menu-section { --sec: transparent; margin: 8px 10px; padding: 6px 6px 6px; border: 0; border-left: 4px solid var(--sec);
+            border-radius: var(--radius-md, 12px); background: color-mix(in srgb, var(--sec) 13%, transparent); }
+        .menu-section:last-child { border-bottom: 0; }
+        .menu-section .menu-section-title { color: color-mix(in srgb, var(--sec) 72%, var(--text-color)); }
+        .menu-section[aria-labelledby="ms-book"] { --sec: #ff5d73; }
+        .menu-section[aria-labelledby="ms-reading"] { --sec: #ff9f1c; }
+        .menu-section[aria-labelledby="ms-learning"] { --sec: #4cc94c; }
+        .menu-section[aria-labelledby="ms-tools"] { --sec: #33a9ff; }
+        .menu-section[aria-labelledby="ms-settings"] { --sec: #a46bff; }
         svg.mi, svg.mi-chev { width: 22px; height: 22px; flex: 0 0 22px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
         svg.mi-chev { width: 18px; height: 18px; flex-basis: 18px; color: var(--text-muted); margin-left: auto; }
         .menu-row, .menu-cta, button.menu-row-main {
@@ -1995,7 +2007,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=ebbe60b842cb"></script>
+    <script src="js/core.js?v=2cb00068e511"></script>
     <script src="js/lang-detect.js?v=82cfee96c337"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
@@ -2023,7 +2035,7 @@
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-translate.js?v=99fcb4c27ae8"></script>
     <script src="js/device-llm-catalog.js?v=c63f891a1ce2"></script>
-    <script src="js/device-llm.js?v=09aa92ecae82"></script>
+    <script src="js/device-llm.js?v=d4218cd1730f"></script>
     <script src="js/pdf-ink.js?v=defbefcd482f"></script>
     <script src="js/pdf-crop.js?v=d075e66bd44c"></script>
     <script src="js/pdf-outline.js?v=5930b9d8bb4e"></script>
