@@ -36,4 +36,9 @@ check('the reading-progress indicator is explained (tooltip title; name already 
 check('opening the AI panel still hides its handle and shows the microphone row', "(() => { els.askPanel.classList.add('expanded'); return true; })()")
 c.js("new Promise(r => setTimeout(r, 600))")
 check('... microphone and send are visible inside the panel', "[els.micBtn, els.askSendBtn].every(b => { const r = b.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; })")
+check('each main-menu section has its own light rainbow colour (tint, left stripe, coloured title) for finding it again',
+      """(() => { const secs = [...document.querySelectorAll('.menu-section')]; if (secs.length !== 5) return secs.length;
+        const bg = secs.map(s => getComputedStyle(s).backgroundColor), stripe = secs.map(s => getComputedStyle(s).borderLeftColor);
+        const alpha = c => { const m = c.match(/\/ ([\d.]+)\)|rgba\([^)]*,\s*([\d.]+)\)/); return m ? Number(m[1] || m[2]) : 1; };
+        return new Set(bg).size === 5 && new Set(stripe).size === 5 && bg.every(c => alpha(c) > 0 && alpha(c) <= 0.25); })()""")
 print('ALL MENU DISCOVERABILITY CHECKS PASSED')

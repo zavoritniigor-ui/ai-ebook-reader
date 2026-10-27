@@ -99,6 +99,7 @@ let tooltipHideTimer;
 function scheduleTooltipHide(delay = 1800) {
     clearTimeout(tooltipHideTimer);
     tooltipHideTimer = setTimeout(() => {
+        if (state.tooltipPersistent) return;   // the reader is using the popup (holdTooltip): it stays until closed
         els.tooltip.style.display = 'none';
         clearSelectionHighlight();
         state.lastSelectedRange = null;
@@ -106,10 +107,20 @@ function scheduleTooltipHide(delay = 1800) {
     }, delay);
 }
 function cancelTooltipHide() { clearTimeout(tooltipHideTimer); }
+// Вікно, з яким щось роблять, не закривається само (owner, 2026-10-26: «тапаю стилусом по вікні, а воно все одно
+// закривається»): дотик пальцем чи стилусом, утримання, прокрутка (словники) чи колесо миші всередині вікна роблять його
+// постійним — воно лишається, доки його не закриють (✕ або дотик поза вікном). Раніше після дотику стилус/палець «покидав»
+// вікно (pointerleave приходить і при відриві), і за 1,2 с вікно зникало. Лише наведення мишею лишилось як було:
+// навели — не закривається, прибрали — закриється.
+function holdTooltip() { cancelTooltipHide(); state.tooltipPersistent = true; }
 els.tooltip.addEventListener('pointerenter', cancelTooltipHide);
-els.tooltip.addEventListener('pointerdown', cancelTooltipHide);
-els.tooltip.addEventListener('pointerleave', () => {
-    // Для речення вікно не закриваємо — воно має лишатись, поки читаєш оригінал.
+els.tooltip.addEventListener('pointerdown', holdTooltip);
+els.tooltip.addEventListener('wheel', holdTooltip, { passive: true });
+els.tooltip.addEventListener('scroll', holdTooltip, { capture: true, passive: true });   // the dictionaries' strip, a long text
+els.tooltip.addEventListener('touchstart', holdTooltip, { passive: true });
+els.tooltip.addEventListener('pointerleave', (e) => {
+    // Для речення вікно не закриваємо — воно має лишатись, поки читаєш оригінал. Дотик/стилус не закриває (див. вище).
+    if (e.pointerType !== 'mouse') return;
     if (!state.tooltipPersistent && !state.tooltipLoading) scheduleTooltipHide(1200);
 });
 
