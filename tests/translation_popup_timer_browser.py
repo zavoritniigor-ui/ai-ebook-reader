@@ -150,4 +150,28 @@ pause((DURATION + 1500) / 1000)
 check('10 a sentence translation stays open until the reader closes it', "els.tooltip.style.display !== 'none' && els.ttTranslation.textContent.includes('nice today')")
 c.js("els.ttCloseBtn.click(); 1"); pause(.2)
 check('10 ... and closes when dismissed', "els.tooltip.style.display === 'none'")
+
+# 11 (owner, 2026-10-26): a popup the reader uses stays open by itself -- a stylus or finger touch (also when lifted), a
+# held touch, a scroll of the dictionaries' strip; only a mouse merely passing over it still lets it close
+def touch_popup(kind):
+    r = c.js("(() => { const b = els.ttTranslation.getBoundingClientRect(); return { x: b.left + 5, y: b.top + b.height / 2 }; })()")
+    if kind == 'pen':
+        for t in ('mousePressed', 'mouseReleased'):
+            c.call('Input.dispatchMouseEvent', type=t, x=r['x'], y=r['y'], button='left', clickCount=1, pointerType='pen')
+    else:
+        c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[{'x': r['x'], 'y': r['y']}])
+        pause(.6)
+        c.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+for label, kind in (('11a a stylus tap', 'pen'), ('11b a finger held, then lifted', 'touch')):
+    reset(); tap('chat'); resolve(len(c.js('__pending')) - 1, 'cat')
+    pause(.3); touch_popup(kind)
+    pause((DURATION + 1500) / 1000)
+    check(f'{label} on the word popup keeps it open (no auto close)', "els.tooltip.style.display !== 'none'")
+    c.js("els.ttCloseBtn.click(); 1"); pause(.2)
+reset(); tap('chat'); resolve(len(c.js('__pending')) - 1, 'cat')
+pause(.3); c.js("els.tooltip.dispatchEvent(new Event('scroll')); document.getElementById('tt-dict-host')?.dispatchEvent(new Event('scroll')); 1")
+pause((DURATION + 1500) / 1000)
+check('11c scrolling inside the popup (the dictionaries) keeps it open', "els.tooltip.style.display !== 'none'")
+c.js("els.ttCloseBtn.click(); 1"); pause(.2)
+check('11d ... and it closes when dismissed', "els.tooltip.style.display === 'none'")
 print('ALL TRANSLATION POPUP TIMER CHECKS PASSED')
