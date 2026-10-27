@@ -8,11 +8,21 @@
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
   - Task: Token optimization (compact rules, docs archiving, .vscode search exclusions) and Antigravity workflow definitions.
   - Status: In progress.
-- **Claude Code** (2026-10-26; branch `feat/cbz-comics`, PR #289; PR #288 `fix/start-screen-no-translate` in worktree `../wt-start-screen`):
-  - Merged 2026-10-25: #284 two-column table cells = whole sentences in their column's language; #285 each sentence is one narration unit; #286 practice buttons keep their size; #287 narration found in the remembered books folder; #290 dialogue tracks from the book's package folder.
-  - 2026-10-26: #288 (start screen not translated; MERGED 2026-10-26) and #289 (CBZ comics/magazines) had conflicts with main (ci.yml test list + app-shell versions only); resolved, re-versioned, focused tests green locally. Order: merge #288, then re-merge main into #289, CI, merge, verify production.
-  - Owner checks pending on the tablet: auto narration from folder (#287/#290), 2.1 GB the bilingual workbook import, 📋 report on the system-voice-only problem.
-  - Narration next: glued headings («féminin 19 Le séisme…»), letter-spaced a French textbook headings («J e s u i s»), a conjugation reference not redone.
+- **Claude Code** (2026-10-26 evening; merge chain running unattended):
+  - Merged + in production today: #288 #289 #291 #292 #293 #294 #295 #296 #297 #298 #299 #300 #301 #302 #303
+    (CBZ, narration text rules, free dictionaries, Persian + flags, word-level alignment, folder narration import,
+    whole-unit sentence matching, popup stays while used, wheel without «Голоси», menu section colours).
+  - Open, merged one by one by a background script (`scratchpad/chain2.sh`: merge main → CI → merge): #304 sidebar
+    hides on reading (a zoom keeps it), #306 «AI на пристрої» section hidden from Settings (code stays), #307 «AI E-book
+    Reader» name + Z/I logo + «Від розробника» + mailto feedback, #308 no book titles or book text in the code.
+    If a PR is still open tomorrow: merge origin/main into its worktree (`../wt-sidebar`, `../wt-hideai`, `../wt-brand`,
+    `../wt-neutral`), re-version (`tools/version_app_shell.py`), wait CI, merge; then verify production.
+  - Narration: every book of the four textbook folders narrated (Antoine fr-CA, words alone) and on Drive
+    «Par Ici X-Y» (owner's local/Drive names); narration file = book name + .mp3 (docs/agents/narration_text_rules.md §5).
+  - Next: a French presentation with screenshots and an in-app «what it can do» tour in the menu language (owner);
+    the demo book must be free to show (not the commercial textbooks): a self-made colour Québec «newspaper» from
+    Wikipedia/Wikinews + Wikimedia Commons was proposed, owner postponed the choice.
+  - Owner to remove locally: worktrees `../wt-noai`, `../wt-start-screen`, `../wt-main-check` (deletion denied to me).
 - **Claude Code — narration history** (PR #283 merged 2026-10-24; PR #282 merged 2026-10-24):
   - Book narration restarted from scratch on 2026-10-24. Isolation rule: do NOT edit files in the main folder while Claude is active.
   - **Owner's rule (final):** a whole sentence plays its recording (its own intonation); ONE word plays that word said alone (`words.py`); TWO OR MORE selected words go to the SYSTEM VOICE (never words alone strung together, never a piece cut out of a sentence). App side is PR #283 (`bsPhrasePlan` / `bsPhraseAnywhere` return null for 2+ words; tests in `tests/book_speech_browser.py`). Not live until #283 is merged.
