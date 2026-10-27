@@ -29,7 +29,7 @@ Object.assign(I18N, {
                     zh: '选择音频文件夹', ko: '오디오 폴더 선택', hi: 'ऑडियो फ़ोल्डर चुनें', ga: 'Roghnaigh an fillteán fuaime' },
     baPickFiles: { uk: 'Вибрати файли', en: 'Choose files', fr: 'Choisir des fichiers', ru: 'Выбрать файлы', es: 'Elegir archivos', zh: '选择文件', ko: '파일 선택', hi: 'फ़ाइलें चुनें', ga: 'Roghnaigh comhaid' },
     baDiscLabel: { uk: 'Диск для вибраних файлів:', en: 'Disc for the chosen files:', fr: 'Disque des fichiers choisis :', ru: 'Диск для выбранных файлов:', es: 'Disco de los archivos elegidos:', zh: '所选文件的光盘：', ko: '선택한 파일의 디스크:', hi: 'चुनी फ़ाइलों की डिस्क:', ga: 'Diosca na gcomhad roghnaithe:' },
-    baDiscAuto: { uk: 'Авто', en: 'Auto', fr: 'Auto', ru: 'Авто', es: 'Auto', zh: '自动', ko: '자동', hi: 'स्वचालित', ga: 'Uathoibríoch' },
+    baDiscAuto: { uk: 'Авто', en: 'Auto', fr: 'Auto', ru: 'Авто', es: 'Automático',zh: '自动', ko: '자동', hi: 'स्वचालित', ga: 'Uathoibríoch' },
     baDrop: { uk:'Або перетягніть сюди папку з аудіо (разом із підпапками)', en: 'Or drag the audio folder here (with its sub-folders)', fr: 'Ou glissez ici le dossier audio (avec ses sous-dossiers)', ru: 'Или перетащите сюда папку с аудио (вместе с подпапками)', es: 'O arrastre aquí la carpeta de audio (con sus subcarpetas)', zh: '或将音频文件夹（含子文件夹）拖到这里', ko: '또는 오디오 폴더(하위 폴더 포함)를 여기로 끌어다 놓으세요', hi: 'या ऑडियो फ़ोल्डर (उप-फ़ोल्डरों सहित) यहाँ खींचें', ga: 'Nó tarraing an fillteán fuaime (leis na fo-fhillteáin) anseo' },
     baRemove: { uk: 'Видалити аудіо цієї книги', en: 'Remove this book’s audio', fr: 'Supprimer l’audio de ce livre', ru: 'Удалить аудио этой книги', es: 'Quitar el audio de este libro',
                 zh: '删除这本书的音频', ko: '이 책의 오디오 삭제', hi: 'इस किताब का ऑडियो हटाएँ', ga: 'Bain fuaim an leabhair seo' },
