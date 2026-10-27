@@ -522,6 +522,13 @@
         #book-audio-dialog .ba-books { display: flex; flex-direction: column; gap: 8px; }
         #book-audio-dialog .ba-books[hidden] { display: none; }
         #book-audio-dialog button[hidden] { display: none; }   /* the global button rule sets display, which would show a hidden button */
+        #book-audio-dialog .ba-drop { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+        #book-audio-dialog .ba-drop[hidden], #book-audio-dialog .ba-disc-ask[hidden] { display: none; }
+        #book-audio-dialog.ba-dragging { outline: 3px dashed var(--accent-color); outline-offset: -6px; }
+        #book-audio-dialog .ba-disc-ask { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px;
+            background: color-mix(in srgb, var(--accent-color) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent); }
+        #book-audio-dialog .ba-disc-text { margin: 0; font-size: 14px; font-weight: 600; }
+        #book-audio-dialog .ba-disc-choices button { flex: 1 1 70px; }
         #book-audio-dialog .ba-books-text { margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.45; }
 
         main { flex: 1; display: flex; justify-content: center; position: relative; overflow: hidden; background: var(--bg-color); }
@@ -2042,7 +2049,7 @@
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
     <script src="js/pdf-render.js?v=e39d8c10f9af"></script>
-    <script src="js/book-audio.js?v=eb6320602511"></script>
+    <script src="js/book-audio.js?v=2ed417f4d321"></script>
     <script src="js/book-speech.js?v=f9c51b011df0"></script>
     <script src="js/formats.js?v=0adff3b5d013"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
