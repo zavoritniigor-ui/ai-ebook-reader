@@ -812,6 +812,20 @@ const toggleTocDesktopBtn = document.getElementById('toggle-toc-desktop');
 const openToc = () => { els.sidebar.classList.toggle('collapsed'); };
 
 if(toggleTocDesktopBtn) toggleTocDesktopBtn.onclick = openToc;
+// The Contents / thumbnails panel hides by itself as soon as the reader works with the book again (owner, 2026-10-26: «вибрав
+// сторінку… при першому тапі на слово, при збільшенні чи прокрутці зміст має швиденько ховатися»): a touch, a stylus or a
+// click on the book, the mouse wheel or a pinch over it, or the keys that scroll it. Only the reader's own input counts --
+// the panel's jump to the chosen page scrolls the book by itself and does not close it -- and nothing inside the panel does.
+function hideTocOnReading(e) {
+    if (els.sidebar.classList.contains('collapsed')) return;
+    if (e.type === 'keydown') {
+        if (!['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) return;
+        if (e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable], #sidebar')) return;
+    } else if (!e.target || !e.target.closest || !e.target.closest('#reader-container') || e.target.closest('#sidebar')) return;
+    els.sidebar.classList.add('collapsed');
+}
+for (const type of ['pointerdown', 'touchstart', 'wheel']) document.addEventListener(type, hideTocOnReading, { capture: true, passive: true });
+document.addEventListener('keydown', hideTocOnReading, true);
 
 // TTS
 let ttsSynth = window.speechSynthesis;
