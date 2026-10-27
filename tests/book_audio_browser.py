@@ -336,5 +336,19 @@ check('14a .aif/.aiff files are audio and «N Audio Track.aiff» parses to track
     return audio && aif && notAudio && tracks && noCd && inFolder.cd === 2 && inFolder.track === 1;
 })()""")
 
+check('14c A plain file pick with a chosen disc stores its files on that disc; the same files without a disc stay unplaced', """(async () => {
+    const saved = state.bookKey, probe = 'probe_disc_pick';
+    state.bookKey = probe;
+    try {
+        const file = name => new File([new Uint8Array(8)], name, { type: '' });
+        await importBookAudio([file('1 Audio Track.aiff'), file('2 Audio Track.aiff')], 2);
+        const rows = await baList(probe);
+        return rows.length === 2 && rows.every(r => r.cd === 2) && rows.map(r => r.track).sort().join(',') === '1,2';
+    } finally {
+        await baDeleteBook(probe);
+        state.bookKey = saved;
+    }
+})()""")
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')
