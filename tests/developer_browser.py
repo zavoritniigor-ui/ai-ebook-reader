@@ -1,7 +1,7 @@
 """«Від розробника» (js/developer.js, owner 2026-10-26) and the app's name «AI E-book Reader».
 
-The Settings section of the main menu has the row; it opens a dialog that says the app is free for now, runs on the
-developer's free AI keys, that OpenAI may train on the texts (its key is in a data-sharing programme) while Groq does not,
+The Settings section of the main menu has the row; it opens a dialog that says the app is free, runs on AI keys the
+developer provides (no tip request), that OpenAI may train on the texts (its key is in a data-sharing programme) while Groq does not,
 how to avoid it, and «Написати розробнику»: a mailto link to the developer with a subject and the app version filled in.
 The texts follow the menu language. The page, the menu and the start screen say «AI E-book Reader».
 """
@@ -30,8 +30,10 @@ check('2 the Settings section of the main menu has «Від розробника
       "(() => { const b = document.getElementById('btn-developer'); return !!b && !!b.closest('.menu-section[aria-labelledby=\"ms-settings\"]') && b.querySelector('.mr-title').textContent === 'Від розробника'; })()")
 c.js("document.getElementById('btn-developer').click(); 1"); time.sleep(0.3)
 check('3 the row opens the dialog', "document.getElementById('developer-dialog').open === true")
-check('4 it says the app is free and runs on the free AI keys of the developer',
-      "(() => { const t = document.querySelector('#developer-dialog .dev-free').textContent; return /безкоштовний/.test(t) && /безкоштовні ключі AI/.test(t); })()")
+check('4 it says the app is free, runs on the developer\'s AI keys and asks for no tips',
+      "(() => { const t = document.querySelector('#developer-dialog').textContent; return /безкоштовний застосунок/.test(document.querySelector('#developer-dialog .dev-free').textContent) && /ключі AI, які надає розробник/.test(t) && !/чайов/.test(t); })()")
+check('4b it asks to send all wishes by email',
+      "/побажання[^.]*надсилайте мені на пошту/.test(document.querySelector('#developer-dialog .dev-write-note').textContent)")
 check('5 it says OpenAI may train on the texts and Groq does not',
       "(() => { const t = document.querySelector('#developer-dialog .dev-data-text').textContent; return /OpenAI може використовувати ці тексти для навчання/.test(t) && /Groq[^.]*не використовує/.test(t); })()")
 href = c.js("document.querySelector('#developer-dialog .dev-write').getAttribute('href')")
