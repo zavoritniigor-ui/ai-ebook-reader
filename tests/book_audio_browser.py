@@ -370,7 +370,8 @@ check('14b AIFF and AIFC (NONE, sowt) convert to WAV that decodes to the same sa
     const compressed = baAiffToWav(build('AIFC', 'ulaw', false).buffer) === null;
     const notAiff = baAiffToWav(new TextEncoder().encode('ID3 not an aiff file').buffer) === null;
     const kept = (await baPlayableBlob(new File([build('AIFC', 'ulaw', false)], 'x.aiff'))).type === '';
-    const converted = (await baPlayableBlob(new File([build('AIFF', null, false)], 'x.aiff'))).type === 'audio/wav';
+    // stored as Opus where the browser can make it (14i), else as WAV: never as the AIFF Chrome cannot play
+    const converted = ['audio/ogg', 'audio/wav'].includes((await baPlayableBlob(new File([build('AIFF', null, false)], 'x.aiff'))).type);
     return aiff && aifcNone && aifcSowt && compressed && notAiff && kept && converted;
 })()""")
 
@@ -494,6 +495,86 @@ check('14h The 📋 report names the audio code version, the stored sets and the
     const r = bsReport(), last = bsTrace.filter(x => x.ev === 'tracks-import').pop();
     return /^[0-9a-f]{12}$/.test(r.audioJs) && r.trackSets && r.trackSets.CD1 >= 1 && r.marks && r.marks.all === 4 && r.marks.playing === 4
         && last && last.audio >= 1 && last.sets && last.sample.length >= 1 || JSON.stringify({ audioJs: r.audioJs, trackSets: r.trackSets, marks: r.marks, last });
+})()""")
+
+check('14i AIFF and WAV are stored as Opus about ten times smaller, same length and level, and <audio> plays it; MP3 is stored untouched', """(async () => {
+    // 2 s, stereo, 16-bit, 44100 Hz: a 440 Hz tone at 12000 / 32768 left, 220 Hz right
+    const rate = 44100, frames = rate * 2, pcm = new Uint8Array(frames * 4), pv = new DataView(pcm.buffer);
+    for (let i = 0; i < frames; i++) { pv.setInt16(i * 4, Math.round(12000 * Math.sin(2 * Math.PI * 440 * i / rate))); pv.setInt16(i * 4 + 2, Math.round(12000 * Math.sin(2 * Math.PI * 220 * i / rate))); }
+    const comm = new Uint8Array(18), cv = new DataView(comm.buffer);
+    cv.setUint16(0, 2); cv.setUint32(2, frames); cv.setUint16(6, 16); cv.setUint16(8, 16398); cv.setBigUint64(10, BigInt(rate) << 48n);
+    const ssnd = new Uint8Array(8 + pcm.length); ssnd.set(pcm, 8);
+    const chunk = (id, body) => { const h = new Uint8Array(8 + body.length), hv = new DataView(h.buffer); for (let i = 0; i < 4; i++) h[i] = id.charCodeAt(i); hv.setUint32(4, body.length); h.set(body, 8); return h; };
+    const c1 = chunk('COMM', comm), c2 = chunk('SSND', ssnd), aiff = new Uint8Array(12 + c1.length + c2.length), av = new DataView(aiff.buffer);
+    aiff.set([70, 79, 82, 77]); av.setUint32(4, 4 + c1.length + c2.length); aiff.set([65, 73, 70, 70], 8); aiff.set(c1, 12); aiff.set(c2, 12 + c1.length);
+    const wav = baAiffToWav(aiff.buffer);
+    const opus = await baPlayableBlob(new File([aiff], 'CD1 - 01 Audio Track.aiff'));
+    const fromWav = await baPlayableBlob(new File([wav], '02 Audio Track.wav', { type: 'audio/wav' }));
+    const mp3 = new File([new Uint8Array([73, 68, 51, 4, 0, 0, 0, 0, 0, 0])], '03 Track 03.mp3', { type: 'audio/mpeg' });
+    const keptMp3 = (await baPlayableBlob(mp3)) === mp3;
+    const buf = await new OfflineAudioContext(2, 1, 48000).decodeAudioData(await opus.arrayBuffer());
+    let peak = 0; const L = buf.getChannelData(0); for (let i = 4800; i < L.length - 4800; i++) peak = Math.max(peak, Math.abs(L[i]));
+    const url = URL.createObjectURL(opus), el = new Audio();
+    const played = await new Promise(r => { el.onloadedmetadata = () => r(el.duration); el.onerror = () => r(-1); el.src = url; });
+    URL.revokeObjectURL(url);
+    const ok = opus.type === 'audio/ogg' && fromWav.type === 'audio/ogg' && opus.size * 8 < wav.size && keptMp3
+        && Math.abs(buf.duration - 2) < 0.03 && buf.numberOfChannels === 2 && Math.abs(peak - 12000 / 32768) < 0.06 && Math.abs(played - 2) < 0.1;
+    return ok || JSON.stringify({ type: opus.type, wavType: fromWav.type, opus: opus.size, wav: wav.size, keptMp3, duration: buf.duration, ch: buf.numberOfChannels, peak, played });
+})()""", timeout=40)
+
+check('14j MP4 is audio; WMA (which Chrome cannot play) is refused with a message that names it, and nothing is stored', """(async () => {
+    const mp4 = baIsAudio(new File([new Uint8Array(4)], '05 Audio Track.mp4', { type: 'video/mp4' }));
+    const wmaRefused = baUnplayable({ name: '04 Track 04.wma' }) && !baUnplayable({ name: '04 Track 04.mp3' }) && !baUnplayable({ name: 'x.mp4' });
+    stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
+    const f = new File([new Uint8Array(64)], '04 Track 04.wma', { type: 'audio/x-ms-wma' });
+    Object.defineProperty(f, 'webkitRelativePath', { value: 'Book/CD1/04 Track 04.wma' });
+    await importBookAudio([f]);
+    const d = document.getElementById('book-audio-dialog'), msg = d && d.open ? d.querySelector('.ba-message').textContent : '';
+    const said = msg === t('baUnsupported').replace('{n}', 1).replace('{ext}', 'WMA');
+    if (d && d.open) d.close();
+    return mp4 && wmaRefused && said && bookAudio.tracks.length === 0 || JSON.stringify({ mp4, wmaRefused, msg, n: bookAudio.tracks.length });
+})()""")
+
+check('14k A book\'s track table decides the track: rows read per disc column, page shift measured, «CDn - piste k» and «CDn - Exercice k» play their row; table rows give no buttons', """(() => {
+    const it = (str, x, y) => ({ str, transform: [10, 0, 0, 10, x, y], width: str.length * 5, height: 10 });
+    const items = [it('CD1 : 6 pistes', 50, 700), it('CD2 : 5 pistes', 320, 700)];
+    const left = [['Épisode 1 - piste 1', '10'], ['Épisode 1 - piste 2', '11'], ['Épisode 1 - piste 3', '11, 12'], ['Épisode 2 - piste 1', '14'], ['Épisode 2 - piste 2', '15'], ['Épisode 3 - piste 1', '18']];
+    const right = [['Épisode 4 - piste 1', '20'], ['Épisode 4 - piste 2', '21'], ['Épisode 5 - piste 1', '24'], ['Phonétique - exercice 1', '30'], ['Phonétique - exercice 2', '30, 31']];
+    left.forEach(([name, pages], i) => items.push(it(String(i + 1), 55, 670 - 20 * i), it(name, 90, 670 - 20 * i), it(pages, 250, 670 - 20 * i)));
+    right.forEach(([name, pages], i) => items.push(it(String(i + 1), 325, 670 - 20 * i), it(name, 360, 670 - 20 * i), it(pages, 520, 670 - 20 * i)));
+    const rows = baTableRows(items), tables = baWholeTables(rows);
+    const vp = { width: 600, height: 800, convertToViewportPoint: (x, y) => [x, 800 - y] };
+    const noButtons = buildPdfAudioLayer(items, vp, 200) === null;
+    // the marks on the pages: the PDF page = the book's page + 2 (cover and title pages)
+    const m = (cd, track, page, kind = 'piste') => ({ cd, track, page, kind });
+    const list = [m(1, 1, 12), m(1, 2, 13), m(1, 3, 14), m(1, 1, 16), m(1, 2, 17), m(1, 1, 20), m(2, 1, 22), m(2, 2, 23), m(2, 1, 26), m(2, 1, 32, 'ex'), m(2, 2, 33, 'ex'), m(1, 4, 12), Object.assign(m(1, 1, 150), { ref: 14 })];
+    Object.assign(baMarks, { key: state.bookKey, list, tables, shift: baPageShift(list, tables), busy: null });
+    const rec = (cd, track) => ({ id: 'x' + cd + '-' + track, cd, track, section: null });
+    bookAudio.tracks = [1, 2, 3, 4, 5, 6].map(n => rec(1, n)).concat([1, 2, 3, 4, 5].map(n => rec(2, n)));
+    const plays = x => { const f = baFindMark(x); return f.rec ? f.rec.cd + '-' + f.rec.track : f.blocked; };
+    const got = list.map(plays).join(' ');
+    const want = '1-1 1-2 1-3 1-4 1-5 1-6 2-1 2-2 2-3 2-4 2-5 row 1-4';   // the last: a transcript's «CD1 - piste 1, p. 14»
+    const named = baTarget(m(2, 1, 26)).name === 'Épisode 5';
+    const refRead = JSON.stringify(baFindMarks('i CD1 - piste 5, p. 22   Dialogue').map(x => [x.cd, x.track, x.ref])) === '[[1,5,22]]';
+    return rows.length === 11 && tables.size === 2 && tables.get(1).length === 6 && tables.get(2).length === 5 && baMarks.shift === 2 && noButtons && got === want && named && refRead
+        || JSON.stringify({ refRead, rows: rows.map(r => [r.cd, r.track, r.kind, r.piste, r.pages]), shift: baMarks.shift, noButtons, got });
+})()""")
+
+check('14l Without a table, numbers that restart per section do not play and the status says so in amber; numbers that run through the disc play as printed', """(() => {
+    const m = (track, page) => ({ cd: 1, track, page, kind: 'piste' });
+    const rec = n => ({ id: 'y' + n, cd: 1, track: n, section: null });
+    bookAudio.tracks = Array.from({ length: 12 }, (_, i) => rec(i + 1));
+    Object.assign(baMarks, { key: state.bookKey, tables: new Map(), shift: 0, busy: null,
+        list: [m(1, 5), m(2, 6), m(3, 7), m(1, 10), m(2, 11), m(1, 15), m(2, 16), m(3, 17)] });
+    const restart = baFindMark(m(2, 11)).blocked === 'restart';
+    openBookAudioDialog('');
+    const st = document.getElementById('book-audio-dialog').querySelector('.ba-status');
+    const amber = st.textContent === t('baRestart') && st.classList.contains('ba-warn') && !st.classList.contains('ba-ok');
+    baMarks.list = Array.from({ length: 12 }, (_, i) => m(i + 1, 5 + i));
+    const through = baFindMark(m(7, 11)).rec && baFindMark(m(7, 11)).rec.track === 7;
+    document.getElementById('book-audio-dialog').close();
+    Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0 });
+    return restart && amber && through || JSON.stringify({ restart, amber, through, text: st.textContent });
 })()""")
 
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
