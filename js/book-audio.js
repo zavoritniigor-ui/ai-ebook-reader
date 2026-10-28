@@ -17,10 +17,10 @@
  */
 Object.assign(I18N, {
     mAudio: { uk: 'Аудіо до книги', en: 'Book audio', fr: 'Audio du livre', ru: 'Аудио к книге', es: 'Audio del libro', zh: '书籍音频', ko: '책 오디오', hi: 'पुस्तक का ऑडियो', ga: 'Fuaim an leabhair' },
-    mAudioDesc: { uk: 'Папка з доріжками: тап на «piste» у книзі вмикає запис', en: 'Audio folder: tap a «piste» mark in the book to play it',
-                  fr: 'Dossier audio : touchez une mention « piste » du livre pour écouter', ru: 'Папка с дорожками: тап по «piste» в книге включает запись',
-                  es: 'Carpeta de audio: toca una marca «piste» del libro para escucharla', zh: '音频文件夹：点按书中的“piste”标记即可播放', ko: '오디오 폴더: 책의 “piste” 표시를 누르면 재생됩니다',
-                  hi: 'ऑडियो फ़ोल्डर: किताब में “piste” पर टैप करें और सुनें', ga: 'Fillteán fuaime: tapáil marc «piste» sa leabhar chun éisteacht' },
+    mAudioDesc: { uk: 'Діалоги й записи до підручника: тап на позначку в книзі вмикає запис', en: 'The textbook’s dialogues and recordings: tap a mark in the book to play it',
+                  fr: 'Dialogues et enregistrements du manuel : touchez une mention du livre pour écouter', ru: 'Диалоги и записи к учебнику: тап по отметке в книге включает запись',
+                  es: 'Diálogos y grabaciones del libro de texto: toque una marca del libro para escucharla', zh: '课本的对话和录音：点按书中的标记即可播放', ko: '교재의 대화와 녹음: 책의 표시를 누르면 재생됩니다',
+                  hi: 'पाठ्यपुस्तक के संवाद और रिकॉर्डिंग: किताब में चिह्न पर टैप करें और सुनें', ga: 'Comhráite agus taifeadtaí an téacsleabhair: tapáil marc sa leabhar chun éisteacht' },
     baNone: { uk: 'До цієї книги ще не підключено аудіо.', en: 'No audio is connected to this book yet.', fr: 'Aucun audio n’est encore relié à ce livre.', ru: 'К этой книге ещё не подключено аудио.',
               es: 'Todavía no hay audio conectado a este libro.', zh: '这本书还没有连接音频。', ko: '이 책에는 아직 오디오가 연결되지 않았습니다.', hi: 'इस किताब से अभी कोई ऑडियो जुड़ा नहीं है।', ga: 'Níl aon fhuaim ceangailte leis an leabhar seo go fóill.' },
     baCount: { uk: 'Підключено доріжок: {n}', en: 'Tracks connected: {n}', fr: 'Pistes reliées : {n}', ru: 'Подключено дорожек: {n}', es: 'Pistas conectadas: {n}',
@@ -33,6 +33,20 @@ Object.assign(I18N, {
     baDrop: { uk:'Або перетягніть сюди папку з аудіо (разом із підпапками)', en: 'Or drag the audio folder here (with its sub-folders)', fr: 'Ou glissez ici le dossier audio (avec ses sous-dossiers)', ru: 'Или перетащите сюда папку с аудио (вместе с подпапками)', es: 'O arrastre aquí la carpeta de audio (con sus subcarpetas)', zh: '或将音频文件夹（含子文件夹）拖到这里', ko: '또는 오디오 폴더(하위 폴더 포함)를 여기로 끌어다 놓으세요', hi: 'या ऑडियो फ़ोल्डर (उप-फ़ोल्डरों सहित) यहाँ खींचें', ga: 'Nó tarraing an fillteán fuaime (leis na fo-fhillteáin) anseo' },
     baRemove: { uk: 'Видалити аудіо цієї книги', en: 'Remove this book’s audio', fr: 'Supprimer l’audio de ce livre', ru: 'Удалить аудио этой книги', es: 'Quitar el audio de este libro',
                 zh: '删除这本书的音频', ko: '이 책의 오디오 삭제', hi: 'इस किताब का ऑडियो हटाएँ', ga: 'Bain fuaim an leabhair seo' },
+    baLead: { uk: 'Вкажіть папку з аудіо до цієї книги, і застосунок сам підключить усе, що в ній знайде.', en: 'Point to the folder with this book’s audio, and the app connects everything it finds there.',
+              fr: 'Indiquez le dossier audio de ce livre : l’app ajoute tout ce qu’elle y trouve.', ru: 'Укажите папку с аудио к этой книге, и приложение само подключит всё, что в ней найдёт.',
+              es: 'Indique la carpeta con el audio de este libro y la app conectará todo lo que encuentre.', zh: '指定这本书的音频文件夹，应用会自动连接其中找到的全部内容。', ko: '이 책의 오디오 폴더를 지정하면 앱이 찾은 것을 모두 연결합니다.',
+              hi: 'इस किताब के ऑडियो वाला फ़ोल्डर चुनें, ऐप उसमें मिली हर चीज़ अपने-आप जोड़ देगा।', ga: 'Taispeáin an fillteán le fuaim an leabhair seo agus ceanglóidh an aip gach rud a aimsíonn sí ann.' },
+    baManual: { uk: 'Додати вручну', en: 'Add by hand', fr: 'Ajouter à la main', ru: 'Добавить вручную', es: 'Añadir a mano', zh: '手动添加', ko: '직접 추가', hi: 'हाथ से जोड़ें', ga: 'Cuir leis de láimh' },
+    baRemoveShort: { uk: 'Видалити', en: 'Remove', fr: 'Supprimer', ru: 'Удалить', es: 'Quitar', zh: '删除', ko: '삭제', hi: 'हटाएँ', ga: 'Bain' },
+    baRemoveAsk: { uk: 'Видалити все аудіо цієї книги з пристрою?', en: 'Remove all of this book’s audio from the device?', fr: 'Supprimer tout l’audio de ce livre de l’appareil ?', ru: 'Удалить всё аудио этой книги с устройства?',
+                   es: '¿Quitar todo el audio de este libro del dispositivo?', zh: '要从设备中删除这本书的全部音频吗？', ko: '이 책의 오디오를 기기에서 모두 삭제할까요?', hi: 'इस किताब का सारा ऑडियो डिवाइस से हटाएँ?', ga: 'An bhfuil tú chun fuaim uile an leabhair seo a bhaint den ghléas?' },
+    baConnected: { uk: 'Аудіо підключено', en: 'Audio connected', fr: 'Audio ajouté', ru: 'Аудио подключено', es: 'Audio conectado', zh: '音频已连接', ko: '오디오 연결됨', hi: 'ऑडियो जुड़ गया', ga: 'Fuaim ceangailte' },
+    baTapHint: { uk: 'Тапніть позначку аудіо в книзі, щоб послухати.', en: 'Tap an audio mark in the book to listen.', fr: 'Touchez une mention audio du livre pour écouter.', ru: 'Коснитесь отметки аудио в книге, чтобы послушать.',
+                 es: 'Toque una marca de audio del libro para escuchar.', zh: '点按书中的音频标记即可收听。', ko: '책의 오디오 표시를 누르면 들을 수 있습니다.', hi: 'सुनने के लिए किताब में ऑडियो चिह्न पर टैप करें।', ga: 'Tapáil marc fuaime sa leabhar chun éisteacht.' },
+    baAutoFail: { uk: 'Аудіо в цій папці не розпізнано. Додайте файли вручну.', en: 'No audio could be recognised in this folder. Add the files by hand.', fr: 'Aucun audio reconnu dans ce dossier. Ajoutez les fichiers à la main.',
+                  ru: 'Аудио в этой папке не распознано. Добавьте файлы вручную.', es: 'No se reconoció audio en esta carpeta. Añada los archivos a mano.', zh: '无法识别此文件夹中的音频。请手动添加文件。',
+                  ko: '이 폴더에서 오디오를 인식하지 못했습니다. 파일을 직접 추가하세요.', hi: 'इस फ़ोल्डर में ऑडियो पहचाना नहीं गया। फ़ाइलें हाथ से जोड़ें।', ga: 'Níor aithníodh fuaim san fhillteán seo. Cuir na comhaid leis de láimh.' },
     baNote: { uk: 'Файли зберігаються лише на цьому пристрої. На іншому пристрої вкажіть папку так само.', en: 'The files stay on this device only. On another device, choose the folder the same way.',
               fr: 'Les fichiers restent sur cet appareil. Sur un autre appareil, choisissez le dossier de la même façon.', ru: 'Файлы хранятся только на этом устройстве. На другом устройстве укажите папку так же.',
               es: 'Los archivos se quedan solo en este dispositivo. En otro dispositivo, elige la carpeta del mismo modo.', zh: '文件只保存在这台设备上。在其他设备上请用同样的方法选择文件夹。',
@@ -338,6 +352,13 @@ function syncAudioMenuRow() {
 
 // ---------- importing files ---------------------------------------------------------------------------------------------------
 let baImporting = false;
+// Nothing recognisable was found: say so in the dialog and light up «Add by hand».
+function baAutoFailed() {
+    const dialog = bookAudioDialog();
+    if (!dialog || !dialog.open) { showToast(t('baNoFiles')); return; }
+    renderBookAudioDialog(t('baAutoFail'));
+    dialog.querySelector('.ba-files').classList.add('ba-hint');
+}
 async function importBookAudio(fileList, disc = null) {
     const key = state.bookKey;
     if (!key || baImporting) return;
@@ -354,7 +375,7 @@ async function importBookAudio(fileList, disc = null) {
         files = files.filter(f => !narrations.includes(f));
         if (narrations.length) bsNote('tracks-narration', { files: narrations.map(f => f.name) });
     }
-    if (!files.length) { if (narrations.length) bsImport(narrations); else showToast(t('baNoFiles')); return; }
+    if (!files.length) { if (narrations.length) bsImport(narrations); else baAutoFailed(); return; }
     baImporting = true;
     const parsed = baAssignDiscs(files.map(f => {
         const p = Object.assign(baParseFile(f.name, f.webkitRelativePath || ''), { file: f });
@@ -381,6 +402,7 @@ async function importBookAudio(fileList, disc = null) {
     setBookAudioProgress('', 0);
     await refreshBookAudio();
     if (!failed && saved) showToast(t('baSaved').replace('{n}', saved));
+    if (!failed && !saved && !narrations.length) baAutoFailed();
     if (narrations.length) bsImport(narrations);
 }
 
@@ -493,15 +515,19 @@ function renderBookAudioDialog(message) {
     if (!dialog || !dialog.querySelector('.ba-body')) return;
     const subName = state.bookFileName || (state.bookKey ? String(state.bookKey).replace(/:\d+$/, '') : '');
     dialog.querySelector('.ba-subtitle').textContent = (typeof shelfTitle === 'function' ? shelfTitle(subName) : subName) || '';
+    // one status: the tracks (what the learner taps in the book); a narration alone just reads «Audio connected»
     const speech = typeof bsActiveSet === 'function' ? bsActiveSet() : null;
-    const parts = [bookAudio.tracks.length ? t('baCount').replace('{n}', bookAudio.tracks.length) : t('baNone')];
-    if (speech) parts.push(t('spkCount').replace('{n}', speech.sentences.length));
-    dialog.querySelector('.ba-status').textContent = parts.join(' · ');
+    const n = bookAudio.tracks.length, has = n > 0 || !!speech;
+    const status = dialog.querySelector('.ba-status');
+    status.textContent = n ? t('baCount').replace('{n}', n) : speech ? t('baConnected') : t('baNone');
+    status.classList.toggle('ba-ok', has);
+    status.parentElement.classList.toggle('ba-ok-box', has);
+    dialog.querySelector('.ba-tap').hidden = !n;
     const msg = dialog.querySelector('.ba-message');
     if (message !== undefined) msg.textContent = message;
     msg.hidden = !msg.textContent;
-    dialog.querySelector('.ba-remove').hidden = !bookAudio.tracks.length;
-    dialog.querySelector('.ba-speech-remove').hidden = !speech;
+    if (!msg.textContent) dialog.querySelector('.ba-files').classList.remove('ba-hint');
+    dialog.querySelector('.ba-remove').hidden = !has;
     if (typeof bsRenderFolderRow === 'function') bsRenderFolderRow();
 }
 // A folder dropped on the dialog: every file below it, each with its path from the top of the drop (the same webkitRelativePath that
@@ -561,18 +587,20 @@ function buildBookAudioDialog() {
     dialog.innerHTML = '<div class="ba-head"><span class="pn-icon" aria-hidden="true"><svg class="mi"><use href="#i-audio"/></svg></span>'
         + '<div class="pn-titles"><h3 class="ba-title"></h3><p class="pn-sub ba-subtitle"></p></div>'
         + '<button type="button" class="close-panel-btn ba-close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>'
-        + '<div class="ba-body"><p class="ba-status"></p><p class="ba-message" hidden></p>'
-        + '<div class="ba-actions"><button type="button" class="btn-primary ba-folder"></button><button type="button" class="btn-secondary ba-files"></button><button type="button" class="btn-secondary ba-speech"></button></div>'
-        + '<p class="ba-drop"></p>'
+        // one way in: point to the folder, the app sorts out tracks and narration; «Add by hand» when that finds nothing; one «Remove»
+        + '<div class="ba-body"><p class="ba-lead"></p>'
+        + '<button type="button" class="btn-primary ba-folder"></button>'
+        + '<div class="ba-actions ba-row"><button type="button" class="ba-tint ba-files"></button><button type="button" class="ba-tint ba-red ba-remove"></button></div>'
+        + '<p class="ba-drop"></p><p class="ba-message" hidden></p>'
         + '<div class="ba-disc-ask" hidden><p class="ba-disc-text"></p><div class="ba-actions ba-disc-choices"></div></div>'
-        + '<div class="ba-books" hidden><p class="ba-books-text"></p><div class="ba-actions"><button type="button" class="btn-secondary ba-books-pick"></button><button type="button" class="btn-secondary ba-books-allow"></button><button type="button" class="btn-ghost ba-books-forget"></button></div></div>'
         + '<div class="ba-progress" id="ba-progress" hidden><div class="ba-progress-text"></div><div class="ba-progress-bar"></div></div>'
-        + '<button type="button" class="btn-ghost ba-remove"></button><button type="button" class="btn-ghost ba-speech-remove"></button><p class="ba-note"></p></div>';
-    const folder = document.createElement('input'), files = document.createElement('input'), speech = document.createElement('input');
+        + '<div class="ba-status-box"><p class="ba-status"></p><p class="ba-tap" hidden></p></div>'
+        + '<div class="ba-books" hidden><p class="ba-books-text"></p><button type="button" class="ba-tint ba-books-allow"></button></div>'
+        + '<p class="ba-note"></p></div>';
+    const folder = document.createElement('input'), files = document.createElement('input');
     folder.type = 'file'; folder.multiple = true; folder.setAttribute('webkitdirectory', ''); folder.hidden = true; folder.id = 'ba-input-folder';
     files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.opus,.aif,.aiff'; files.hidden = true; files.id = 'ba-input-files';
-    speech.type = 'file'; speech.multiple = true; speech.accept = '.mp3,.json,audio/mpeg,application/json'; speech.hidden = true; speech.id = 'ba-input-speech';
-    dialog.append(folder, files, speech);
+    dialog.append(folder, files);
     // a folder (with its sub-folders) dragged onto the dialog; plain files dropped on it work too. The dialog lights up while one is over it.
     const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
     dialog.addEventListener('dragover', e => { if (hasFiles(e)) { e.preventDefault(); dialog.classList.add('ba-dragging'); } });
@@ -587,23 +615,19 @@ function buildBookAudioDialog() {
     });
     dialog.querySelector('.ba-folder').onclick = () => folder.click();
     dialog.querySelector('.ba-files').onclick = () => files.click();
-    dialog.querySelector('.ba-speech').onclick = () => speech.click();
-    dialog.querySelector('.ba-speech-remove').onclick = () => bsRemoveFromDialog();
-    dialog.querySelector('.ba-books-pick').onclick = () => bsChooseBooksFolder();
     dialog.querySelector('.ba-books-allow').onclick = () => bsAllowBooksFolder();
-    dialog.querySelector('.ba-books-forget').onclick = () => bsForgetBooksFolder();
     for (const input of [folder, files]) input.onchange = () => {
         const list = Array.from(input.files);
         input.value = '';
         baImportOrAskDisc(list);
     };
-    speech.onchange = () => { const list = Array.from(speech.files); speech.value = ''; bsImport(list); };
     dialog.querySelector('.ba-close').onclick = () => dialog.close();
     dialog.querySelector('.ba-remove').onclick = async () => {
-        if (!state.bookKey) return;
+        if (!state.bookKey || !confirm(t('baRemoveAsk'))) return;
         stopBookAudio();
         try { await baDeleteBook(state.bookKey); } catch (e) { /* nothing to remove */ }
         await refreshBookAudio();
+        if (typeof bsActiveSet === 'function' && bsActiveSet()) await bsRemoveFromDialog();   // the narration goes too: one «Remove» for all of it
     };
     dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });   // the backdrop
     labelBookAudioDialog();
@@ -613,16 +637,17 @@ function labelBookAudioDialog() {
     if (!dialog || !dialog.querySelector('.ba-body')) return;
     dialog.setAttribute('aria-label', t('mAudio'));
     dialog.querySelector('.ba-title').textContent = t('mAudio');
+    dialog.querySelector('.ba-lead').textContent = t('baLead');
     dialog.querySelector('.ba-folder').textContent = t('baPickFolder');
-    dialog.querySelector('.ba-files').textContent = t('baPickFiles');
+    dialog.querySelector('.ba-files').textContent = t('baManual');
+    dialog.querySelector('.ba-remove').textContent = t('baRemoveShort');
+    dialog.querySelector('.ba-remove').setAttribute('aria-label', t('baRemove'));
+    dialog.querySelector('.ba-tap').textContent = t('baTapHint');
     dialog.querySelector('.ba-drop').textContent = t('baDrop');
     dialog.querySelector('.ba-drop').hidden = !baCanDrag();
     dialog.querySelector('.ba-disc-text').textContent = t('baDiscAsk');
     const none = dialog.querySelector('.ba-disc-choices [data-disc=""]');
     if (none) none.textContent = t('baDiscNone');
-    dialog.querySelector('.ba-speech').textContent = t('spkPick');
-    dialog.querySelector('.ba-speech-remove').textContent = t('spkRemove');
-    dialog.querySelector('.ba-remove').textContent = t('baRemove');
     dialog.querySelector('.ba-note').textContent = t('baNote');
     dialog.querySelector('.ba-close').setAttribute('aria-label', t('tClose'));
 }
@@ -632,7 +657,10 @@ function openBookAudioDialog(message) {
     buildBookAudioDialog();
     labelBookAudioDialog();
     renderBookAudioDialog(message || '');
-    if (!dialog.open) { dialog.querySelector('.ba-disc-ask').hidden = true; dialog.showModal(); }   // a question left from an earlier pick is stale
+    if (!dialog.open) {
+        dialog.querySelector('.ba-disc-ask').hidden = true;   // a question left from an earlier pick is stale
+        dialog.showModal();
+    }
 }
 const baBtn = document.getElementById('btn-book-audio');
 if (baBtn) baBtn.onclick = () => openBookAudioDialog('');
