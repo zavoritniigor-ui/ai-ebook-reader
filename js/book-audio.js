@@ -28,6 +28,9 @@ Object.assign(I18N, {
     baPickFolder: { uk: 'Вибрати папку з аудіо', en: 'Choose the audio folder', fr: 'Choisir le dossier audio', ru: 'Выбрать папку с аудио', es: 'Elegir la carpeta de audio',
                     zh: '选择音频文件夹', ko: '오디오 폴더 선택', hi: 'ऑडियो फ़ोल्डर चुनें', ga: 'Roghnaigh an fillteán fuaime' },
     baPickFiles: { uk: 'Вибрати файли', en: 'Choose files', fr: 'Choisir des fichiers', ru: 'Выбрать файлы', es: 'Elegir archivos', zh: '选择文件', ko: '파일 선택', hi: 'फ़ाइलें चुनें', ga: 'Roghnaigh comhaid' },
+    baDiscLabel: { uk: 'Диск для вибраних файлів:', en: 'Disc for the chosen files:', fr: 'Disque des fichiers choisis :', ru: 'Диск для выбранных файлов:', es: 'Disco de los archivos elegidos:', zh: '所选文件的光盘：', ko: '선택한 파일의 디스크:', hi: 'चुनी फ़ाइलों की डिस्क:', ga: 'Diosca na gcomhad roghnaithe:' },
+    baDiscAuto: { uk: 'Авто', en: 'Auto', fr: 'Auto', ru: 'Авто', es: 'Automático',zh: '自动', ko: '자동', hi: 'स्वचालित', ga: 'Uathoibríoch' },
+    baDrop: { uk:'Або перетягніть сюди папку з аудіо (разом із підпапками)', en: 'Or drag the audio folder here (with its sub-folders)', fr: 'Ou glissez ici le dossier audio (avec ses sous-dossiers)', ru: 'Или перетащите сюда папку с аудио (вместе с подпапками)', es: 'O arrastre aquí la carpeta de audio (con sus subcarpetas)', zh: '或将音频文件夹（含子文件夹）拖到这里', ko: '또는 오디오 폴더(하위 폴더 포함)를 여기로 끌어다 놓으세요', hi: 'या ऑडियो फ़ोल्डर (उप-फ़ोल्डरों सहित) यहाँ खींचें', ga: 'Nó tarraing an fillteán fuaime (leis na fo-fhillteáin) anseo' },
     baRemove: { uk: 'Видалити аудіо цієї книги', en: 'Remove this book’s audio', fr: 'Supprimer l’audio de ce livre', ru: 'Удалить аудио этой книги', es: 'Quitar el audio de este libro',
                 zh: '删除这本书的音频', ko: '이 책의 오디오 삭제', hi: 'इस किताब का ऑडियो हटाएँ', ga: 'Bain fuaim an leabhair seo' },
     baNote: { uk: 'Файли зберігаються лише на цьому пристрої. На іншому пристрої вкажіть папку так само.', en: 'The files stay on this device only. On another device, choose the folder the same way.',
@@ -335,7 +338,7 @@ function syncAudioMenuRow() {
 
 // ---------- importing files ---------------------------------------------------------------------------------------------------
 let baImporting = false;
-async function importBookAudio(fileList) {
+async function importBookAudio(fileList, disc = null) {
     const key = state.bookKey;
     if (!key || baImporting) return;
     let files = Array.from(fileList || []).filter(baIsAudio);
@@ -353,7 +356,11 @@ async function importBookAudio(fileList) {
     }
     if (!files.length) { if (narrations.length) bsImport(narrations); else showToast(t('baNoFiles')); return; }
     baImporting = true;
-    const parsed = baAssignDiscs(files.map(f => Object.assign(baParseFile(f.name, f.webkitRelativePath || ''), { file: f }))).filter(p => p.track !== null);
+    const parsed = baAssignDiscs(files.map(f => {
+        const p = Object.assign(baParseFile(f.name, f.webkitRelativePath || ''), { file: f });
+        if (p.cd === null && disc) p.cd = disc;   // the disc the user chose for these files: a phone's file picker does not show the folders
+        return p;
+    })).filter(p => p.track !== null);
     const total = parsed.reduce((n, p) => n + p.file.size, 0);
     let saved = 0, failed = false;
     try {
@@ -497,6 +504,27 @@ function renderBookAudioDialog(message) {
     dialog.querySelector('.ba-speech-remove').hidden = !speech;
     if (typeof bsRenderFolderRow === 'function') bsRenderFolderRow();
 }
+// A folder dropped on the dialog: every file below it, each with its path from the top of the drop (the same webkitRelativePath that
+// the folder picker gives), so the disc of a sub-folder («CD 1-1», «CD2-3») is read the same way.
+async function baFilesFromEntries(entries) {
+    const out = [];
+    const readAll = reader => new Promise((resolve, reject) => {
+        const all = [];
+        const next = () => reader.readEntries(batch => { if (!batch.length) resolve(all); else { all.push(...batch); next(); } }, reject);
+        next();
+    });
+    const walk = async (entry, prefix) => {
+        if (entry.isFile) {
+            const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+            Object.defineProperty(file, 'webkitRelativePath', { value: prefix + entry.name });
+            out.push(file);
+        } else if (entry.isDirectory) {
+            for (const child of await readAll(entry.createReader())) await walk(child, prefix + entry.name + '/');
+        }
+    };
+    for (const entry of entries) await walk(entry, '');
+    return out;
+}
 function buildBookAudioDialog() {
     const dialog = bookAudioDialog();
     if (!dialog || dialog.querySelector('.ba-body')) return;
@@ -505,6 +533,8 @@ function buildBookAudioDialog() {
         + '<button type="button" class="close-panel-btn ba-close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>'
         + '<div class="ba-body"><p class="ba-status"></p><p class="ba-message" hidden></p>'
         + '<div class="ba-actions"><button type="button" class="btn-primary ba-folder"></button><button type="button" class="btn-secondary ba-files"></button><button type="button" class="btn-secondary ba-speech"></button></div>'
+        + '<p class="ba-drop"></p>'
+        + '<p class="ba-disc-row"><label><span class="ba-disc-label"></span> <select class="ba-disc"><option value=""></option><option value="1">CD1</option><option value="2">CD2</option><option value="3">CD3</option><option value="4">CD4</option></select></label></p>'
         + '<div class="ba-books" hidden><p class="ba-books-text"></p><div class="ba-actions"><button type="button" class="btn-secondary ba-books-pick"></button><button type="button" class="btn-secondary ba-books-allow"></button><button type="button" class="btn-ghost ba-books-forget"></button></div></div>'
         + '<div class="ba-progress" id="ba-progress" hidden><div class="ba-progress-text"></div><div class="ba-progress-bar"></div></div>'
         + '<button type="button" class="btn-ghost ba-remove"></button><button type="button" class="btn-ghost ba-speech-remove"></button><p class="ba-note"></p></div>';
@@ -513,6 +543,16 @@ function buildBookAudioDialog() {
     files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.opus,.aif,.aiff'; files.hidden = true; files.id = 'ba-input-files';
     speech.type = 'file'; speech.multiple = true; speech.accept = '.mp3,.json,audio/mpeg,application/json'; speech.hidden = true; speech.id = 'ba-input-speech';
     dialog.append(folder, files, speech);
+    // a folder (with its sub-folders) dragged onto the dialog; plain files dropped on it work too
+    const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+    dialog.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+    dialog.addEventListener('drop', async e => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        const entries = Array.from(e.dataTransfer.items || []).map(item => item.webkitGetAsEntry && item.webkitGetAsEntry()).filter(Boolean);
+        const list = entries.length ? await baFilesFromEntries(entries) : Array.from(e.dataTransfer.files || []);
+        if (list.length) importBookAudio(list);
+    });
     dialog.querySelector('.ba-folder').onclick = () => folder.click();
     dialog.querySelector('.ba-files').onclick = () => files.click();
     dialog.querySelector('.ba-speech').onclick = () => speech.click();
@@ -520,7 +560,12 @@ function buildBookAudioDialog() {
     dialog.querySelector('.ba-books-pick').onclick = () => bsChooseBooksFolder();
     dialog.querySelector('.ba-books-allow').onclick = () => bsAllowBooksFolder();
     dialog.querySelector('.ba-books-forget').onclick = () => bsForgetBooksFolder();
-    for (const input of [folder, files]) input.onchange = () => { const list = Array.from(input.files); input.value = ''; importBookAudio(list); };
+    for (const input of [folder, files]) input.onchange = () => {
+        const list = Array.from(input.files);
+        input.value = '';
+        const disc = input === files ? Number(dialog.querySelector('.ba-disc').value) || null : null;   // the picked files' disc, if the user chose one
+        importBookAudio(list, disc);
+    };
     speech.onchange = () => { const list = Array.from(speech.files); speech.value = ''; bsImport(list); };
     dialog.querySelector('.ba-close').onclick = () => dialog.close();
     dialog.querySelector('.ba-remove').onclick = async () => {
@@ -539,6 +584,9 @@ function labelBookAudioDialog() {
     dialog.querySelector('.ba-title').textContent = t('mAudio');
     dialog.querySelector('.ba-folder').textContent = t('baPickFolder');
     dialog.querySelector('.ba-files').textContent = t('baPickFiles');
+    dialog.querySelector('.ba-drop').textContent = t('baDrop');
+    dialog.querySelector('.ba-disc-label').textContent = t('baDiscLabel');
+    dialog.querySelector('.ba-disc option').textContent = t('baDiscAuto');
     dialog.querySelector('.ba-speech').textContent = t('spkPick');
     dialog.querySelector('.ba-speech-remove').textContent = t('spkRemove');
     dialog.querySelector('.ba-remove').textContent = t('baRemove');
