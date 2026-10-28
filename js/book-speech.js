@@ -222,7 +222,7 @@ async function bsUnpack(file) {
     }
     return null;
 }
-// Is the open PDF the book this narration was made from? Its page count alone is not enough («Par ici» 3-4, 5-6 and 7-8
+// Is the open PDF the book this narration was made from? Its page count alone is not enough (three volumes of one textbook series, 3-4, 5-6 and 7-8,
 // all have 203 pages): a few sentences spread over the narration must be printed on their pages. Returns 'same', 'other',
 // or 'unknown' when the pages have no text to compare (a scan).
 async function bsSameBook(meta) {
@@ -670,7 +670,7 @@ function bsSpeakPhrase(text) {
 // looks for its narration there and in its subfolders: an MP3 whose tag names this book (the PDF's name, or its page count
 // and text) is imported exactly as if it had been chosen by hand. The folder's handle is kept in IndexedDB on this device.
 // BF_DEPTH: how deep the remembered folder is searched. A whole storage chosen as the folder (Android: «Internal storage» →
-// Download → Books → Par ici 5-6) is four levels down from the book's files (owner, 2026-10-26: «знаходить папку, і все»).
+// Download → Books → textbook 5-6) is four levels down from the book's files (owner, 2026-10-26: «знаходить папку, і все»).
 const BF_ID = 'books', BF_DEPTH = 4;
 let bfBusy = false;
 const bfSupported = () => typeof window.showDirectoryPicker === 'function' && typeof indexedDB !== 'undefined';
@@ -780,11 +780,11 @@ async function bsChooseBooksFolder() {
 async function bsAllowBooksFolder() { await bfAutoImportFromFolder(true); }
 async function bsForgetBooksFolder() { try { await bfDelete(); } catch (e) { /* nothing remembered */ } bsRenderFolderRow(); }
 
-// The package: a folder with the book's PDF, its «audio …» folders (the dialogue tracks, CD by CD) and its narration. A book
-// opened from the remembered folder gets its dialogue tracks from its package too, when it has none yet: the same import as
-// a folder chosen by hand (importBookAudio), with the paths the track names come from.
+// The package: the folder that holds the book's file, with its audio in any sub-folders, whatever they are called, and its
+// narration (docs/agents/book_audio_rules.md §5.1). A book opened from the remembered folder gets its tracks from its package
+// too, when it has none yet: the same import as a folder chosen by hand (importBookAudio), with the paths the track names come from.
 let bfTracksBusy = false;
-const BF_AUDIO_EXT = /\.(m4a|mp3|ogg|oga|opus|wav|flac|aac)$/i;
+const BF_BOOK_EXT = /\.(pdf|epub|djvu|cbz|fb2)$/i;
 // The folder (within BF_DEPTH levels) that holds a file with this name, or null.
 async function bfFindFolderWith(dir, name, depth = 0) {
     for await (const [entryName, entry] of dir.entries()) {
@@ -800,23 +800,30 @@ async function bfFindFolderWith(dir, name, depth = 0) {
     }
     return null;
 }
-// The audio files inside the package's «audio …» folders, each with the path it has in the package (the CD folder is in it).
+// Every audio file of the package and of its sub-folders, each with the path it has in the package (the CD folder is in it).
+// Not read: hidden and system folders (a «.work» cache), a sub-folder that holds a book of its own (another book's package),
+// and the narration, which bsAutoImportFromFolder has already looked at.
 async function bfPackageTracks(pkg) {
     const out = [];
+    const holdsBook = async dir => { for await (const [name, entry] of dir.entries()) if (entry.kind === 'file' && BF_BOOK_EXT.test(name)) return true; return false; };
     const walk = async (dir, path, depth) => {
         for await (const [name, entry] of dir.entries()) {
-            if (entry.kind === 'file' && BF_AUDIO_EXT.test(name)) {
+            const at = path ? `${path}/${name}` : name;
+            if (entry.kind === 'file' && baIsAudio({ name })) {
                 const file = await entry.getFile();
-                Object.defineProperty(file, 'webkitRelativePath', { value: `${path}/${name}` });
+                if (/\.mp3$/i.test(name)) {
+                    let packed = null;
+                    try { packed = await bsUnpack(file); } catch (e) { /* a plain MP3 */ }
+                    if (packed && bsValidMeta(packed.meta)) continue;
+                }
+                Object.defineProperty(file, 'webkitRelativePath', { value: at });
                 out.push(file);
-            } else if (entry.kind === 'directory' && depth < BF_DEPTH + 1 && !name.startsWith('.')) {
-                await walk(entry, `${path}/${name}`, depth + 1);
+            } else if (entry.kind === 'directory' && depth < BF_DEPTH + 1 && !name.startsWith('.') && name !== '__MACOSX' && !(await holdsBook(entry))) {
+                await walk(entry, at, depth + 1);
             }
         }
     };
-    for await (const [name, entry] of pkg.entries()) {
-        if (entry.kind === 'directory' && /^audio/i.test(name)) await walk(entry, name, 1);
-    }
+    await walk(pkg, '', 0);
     return out;
 }
 // The dialogue tracks of the open book, from its package in the remembered folder. Quiet unless interactive.

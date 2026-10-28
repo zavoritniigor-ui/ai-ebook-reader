@@ -3,11 +3,11 @@
 
 A unit must be one whole sentence of the book. This prints, for some pages: the number of units, their median length in
 words, and the sentences cut across two units (a unit ending on a letter or a comma, the next starting in lower case on the
-same page), with examples. A one-voice book must show (almost) no cut sentences; Par ici 1-2, pages 15-60: 3.
+same page), with examples. A one-voice book must show (almost) no cut sentences; textbook 1-2, pages 15-60: 3.
 
 Usage:
-  python3 check_units.py "~/Books/Par Ici 3-4/livre 34.pdf" --pages 15-60            # a book in one voice
-  python3 check_units.py "~/Books/Complete French/....pdf" --pages 30-60 --mix      # a bilingual book (--mix)
+  python3 check_units.py "~/Books/textbook 3-4/book 34.pdf" --pages 15-60            # a book in one voice
+  python3 check_units.py "~/Books/Workbook/....pdf" --pages 30-60 --mix      # a bilingual book (--mix)
 """
 import argparse
 import os

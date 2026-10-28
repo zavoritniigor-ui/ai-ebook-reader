@@ -1,4 +1,4 @@
-/* book-audio.js — the audio that comes with a book ("Par ici": «CD1 - piste 33»): tap the mark in the PDF, hear the track.
+/* book-audio.js — the audio that comes with a book (a French textbook: «CD1 - piste 33»): tap the mark in the PDF, hear the track.
  *
  * The learner points the app at the folder (or the files) with the book's audio ONCE on a device; the tracks are kept on THAT device
  * (IndexedDB, one record per track with the audio Blob inside), so it works offline and on any device that has the files. Nothing
@@ -121,9 +121,11 @@ async function baList(bookKey) {
     }
     return rows.map(({ blob, ...meta }) => meta);
 }
-async function baPut(record) {
+async function baPut(record, legacyId = null) {
     const { blob, ...meta } = record;
     const db = await baDb(), tx = db.transaction([BA_STORE, BA_BLOB_STORE], 'readwrite');
+    // a track saved before sets were kept apart («<book> 0-3») is replaced by this one, not listed twice
+    if (legacyId && legacyId !== meta.id) { tx.objectStore(BA_STORE).delete(legacyId); tx.objectStore(BA_BLOB_STORE).delete(legacyId); }
     tx.objectStore(BA_STORE).put(meta);
     tx.objectStore(BA_BLOB_STORE).put({ id: meta.id, bookKey: meta.bookKey, blob });
     await baTxDone(tx);
@@ -150,6 +152,9 @@ async function baDeleteBook(bookKey) {
 // ---------- file names -> (disc, track) ---------------------------------------------------------------------------------------
 const BA_AUDIO_RE = /\.(?:mp3|m4a|m4b|aac|wav|ogg|oga|opus|flac|wma|aif|aiff)$/i;
 const baIsAudio = file => (file.type && file.type.startsWith('audio/')) || BA_AUDIO_RE.test(file.name || '');
+// Hidden and system folders are never read (docs/agents/book_audio_rules.md §4.3): a book's «.work» folder holds thousands of
+// cache files of the narration pipeline.
+const baHiddenPath = path => String(path || '').split('/').slice(0, -1).some(seg => seg.startsWith('.') || seg === '__MACOSX');
 
 // ---------- AIFF / AIFC -> WAV ----------------------------------------------------------------------------------------------------
 // Chrome and Firefox cannot play AIFF (Safari can), so an AIFF track is stored as WAV: the same PCM at the same bit depth, only
@@ -200,29 +205,38 @@ async function baPlayableBlob(file) {
     if (!/\.(?:aif|aiff)$/i.test(file.name || '')) return file;
     return baAiffToWav(await file.arrayBuffer()) || file;
 }
-// «A1 CD1/01 Track 01.m4a», «CD2 - 05.mp3», «Piste 12.mp3», «FLS2_EP01_P3.mp3», «01 Track 01 1.m4a» (the trailing 1 = a second copy of the number).
+// «A1 CD1/01 Track 01.m4a», «CD2 - 05.mp3», «Piste 12.mp3», «XYZ_EP01_P3.mp3», «01 Track 01 1.m4a» (the trailing 1 = a second copy of the number).
+// The generic name rules of docs/agents/book_audio_rules.md §4.2: a disc («CD1», «CD1-2» = part 2 of disc 1), a section («EP01»,
+// «Unit 4»), a track («Track 06», «t006», «P3»); «p011» is a page when the name has a track of its own («…_p011_t006» = track 6).
+const BA_DISC_RE = /(?:^|[^\p{L}])(?:cd|disc|disk|диск)\s*[-_ ]?\s*0*([1-9])(?![\p{L}\d])/iu;
+const BA_SECTION_RE = /(?:^|[^\p{L}])(?:ep|episode|épisode|unit|unité|unite|leçon|lecon|lesson|module)\s*[-_ ]?\s*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
+const BA_TRACK_RE = /(?:^|[^\p{L}\d])(?:track|piste|plage|pista|tr|t)[ _-]*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
+const BA_P_RE = /(?:^|[^\p{L}\d])p[ _-]*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
 function baParseFile(name, path) {
     const base = String(name || '').replace(/\.[^.]+$/, '');
-    const segments = String(path || name || '').split('/');
-    let cd = null;
-    for (const seg of segments.slice(0, -1).reverse()) {
-        const m = seg.match(/(?:^|[^\p{L}])(?:cd|disc|disk|диск)\s*[-_ ]?\s*0*([1-9])(?![\p{L}\d])/iu);
-        if (m) { cd = Number(m[1]); break; }
-    }
+    const folders = String(path || name || '').split('/').slice(0, -1).reverse();
+    let cd = null, section = null;
+    for (const seg of folders) { const m = seg.match(BA_DISC_RE); if (m) { cd = Number(m[1]); break; } }
     if (cd === null) { const m = base.match(/(?:^|[^\p{L}])(?:cd|disc)\s*[-_ ]?\s*0*([1-9])(?![\p{L}\d])/iu); if (m) cd = Number(m[1]); }
-    let track = null, copy = 0, m = base.match(/(?:^|[^\p{L}\d])(?:track|piste|plage|pista|tr|p)[ _-]*0*([1-9]\d{0,2})(?![\p{L}\d])/iu);
+    for (const seg of [base, ...folders]) { const m = seg.match(BA_SECTION_RE); if (m) { section = Number(m[1]); break; } }
+    // the bare-number fallbacks never take the disc's or the section's own number for the track
+    const rest = base.replace(BA_SECTION_RE, ' ').replace(/(?:^|[^\p{L}])(?:cd|disc)\s*[-_ ]?\s*0*[1-9](?![\p{L}\d])/iu, ' ');
+    let track = null, copy = 0, m = base.match(BA_TRACK_RE) || base.match(BA_P_RE);
     if (m) {
         track = Number(m[1]);
         const dup = base.slice(m.index + m[0].length).match(/^[\s_(-]*(\d)\)?\s*$/);
         if (dup) copy = Number(dup[1]);
-    } else if ((m = base.match(/^\s*0*([1-9]\d{0,2})(?![\d])/))) track = Number(m[1]);
-    else if ((m = base.match(/0*([1-9]\d{0,2})(?!.*\d)/))) track = Number(m[1]);
-    return { name, path: path || name, cd, track, copy };
+    } else if ((m = rest.match(/^\s*0*([1-9]\d{0,2})(?![\d])/))) track = Number(m[1]);
+    else if ((m = rest.match(/0*([1-9]\d{0,2})(?!.*\d)/))) track = Number(m[1]);
+    return { name, path: path || name, cd, section, track, copy };
 }
+// The set a track belongs to: disc tracks, section tracks and plain numbered tracks of one book are stored apart, so one set
+// never overwrites another (rules §6.4). Tracks saved before this have no section and keep working as disc or plain tracks.
+const baSetOf = p => p.cd ? 'cd' : p.section ? 'sec' : 'one';
 // A plain file picker has no folder names, so two sets with the same track numbers cannot be told apart by CD: the ones whose name
-// carries a copy suffix («Track 01 1») are the later disc. Only tracks without a disc of their own are touched.
+// carries a copy suffix («Track 01 1») are the later disc. Only tracks without a disc or a section of their own are touched.
 function baAssignDiscs(parsed) {
-    const loose = parsed.filter(p => p.cd === null && p.track !== null);
+    const loose = parsed.filter(p => p.cd === null && !p.section && p.track !== null);
     const byTrack = new Map();
     for (const p of loose) { if (!byTrack.has(p.track)) byTrack.set(p.track, []); byTrack.get(p.track).push(p); }
     for (const group of byTrack.values()) {
@@ -233,22 +247,26 @@ function baAssignDiscs(parsed) {
     return parsed;
 }
 function baLabel(cd, track) { return (cd ? 'CD' + cd + ' · ' : '') + 'piste ' + track; }
-// The track a mark names: the exact disc, else a disc-less track number that exists once.
+// The track a mark names: the exact disc, else a disc-less track number that exists once. A disc mark never plays a section track
+// (another set of the book); a mark without a disc prefers the one disc-less track of that number over disc tracks.
 function baFind(cd, track, tracks = bookAudio.tracks) {
     const same = tracks.filter(x => x.track === track);
     if (cd) {
         const exact = same.find(x => x.cd === cd);
         if (exact) return { rec: exact };
-        const open = same.filter(x => x.cd === null);
+        const open = same.filter(x => x.cd === null && !x.section);
         return open.length === 1 && same.length === 1 ? { rec: open[0] } : { rec: null };
     }
     if (same.length === 1) return { rec: same[0] };
+    const discless = same.filter(x => x.cd === null);
+    if (discless.length === 1) return { rec: discless[0] };
     return { rec: null, ambiguous: same.length > 1 };
 }
 
 // ---------- marks in the text -----------------------------------------------------------------------------------------------
 // «CD2 - piste 35», «CD2- piste 34», «CD1 - Piste 3», or a bare «piste 37» (a mark whose disc sits in another text item).
-const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:CD\s*([1-9])\s*[-–—:.]*\s*(?:piste|plage|track|pista)\s*0*([1-9]\d{0,2})|(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
+// A headphones icon set in a symbol font comes out of the text as one small letter glued to the mark («iCD1- piste 4»).
+const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:\p{Ll}(?=CD\s*[1-9]))?(?:CD\s*([1-9])\s*[-–—:.]*\s*(?:piste|plage|track|pista)\s*0*([1-9]\d{0,2})|(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
 function baFindMarks(text) {
     const out = [];
     for (const m of String(text).matchAll(BA_MARK_RE)) out.push({ cd: m[2] ? Number(m[2]) : null, track: Number(m[3] || m[4]), start: m.index + m[1].length, end: m.index + m[0].length });
@@ -267,6 +285,9 @@ function baMarkBoxes(items, vp) {
         line.parts.push(it);
     }
     const boxes = [];
+    // top line first: a bare «piste 41» takes the disc of the «CD2 - piste 40» before it on the page (rules §6.2)
+    lines.sort((a, b) => b.y - a.y);
+    let disc = null;
     for (const line of lines) {
         line.parts.sort((a, b) => a.transform[4] - b.transform[4]);
         let text = '', last = null;
@@ -289,7 +310,8 @@ function baMarkBoxes(items, vp) {
                     x1 = Math.min(x1, px); y1 = Math.min(y1, py); x2 = Math.max(x2, px); y2 = Math.max(y2, py);
                 }
             }
-            if (x1 < x2 && y1 < y2) boxes.push({ cd: mark.cd, track: mark.track, x1, y1, x2, y2 });
+            if (mark.cd) disc = mark.cd;
+            if (x1 < x2 && y1 < y2) boxes.push({ cd: mark.cd || disc, track: mark.track, x1, y1, x2, y2 });
         }
     }
     return boxes;
@@ -362,8 +384,8 @@ function baAutoFailed() {
 async function importBookAudio(fileList, disc = null) {
     const key = state.bookKey;
     if (!key || baImporting) return;
-    let files = Array.from(fileList || []).filter(baIsAudio);
-    // a book narration chosen here by mistake (it is an MP3 too) goes where it belongs, not in as «track 4» of «Par ici 3-4»
+    let files = Array.from(fileList || []).filter(f => baIsAudio(f) && !baHiddenPath(f.webkitRelativePath));
+    // a book narration chosen here by mistake (it is an MP3 too) goes where it belongs, not in as «track 4» of «textbook 3-4»
     const narrations = [];
     if (typeof bsUnpack === 'function') {
         for (const f of files) {
@@ -379,7 +401,7 @@ async function importBookAudio(fileList, disc = null) {
     baImporting = true;
     const parsed = baAssignDiscs(files.map(f => {
         const p = Object.assign(baParseFile(f.name, f.webkitRelativePath || ''), { file: f });
-        if (p.cd === null && disc) p.cd = disc;   // the disc the user chose for these files: a phone's file picker does not show the folders
+        if (p.cd === null && !p.section && disc) p.cd = disc;   // the disc the user chose for these files: a phone's file picker does not show the folders
         return p;
     })).filter(p => p.track !== null);
     const total = parsed.reduce((n, p) => n + p.file.size, 0);
@@ -391,7 +413,9 @@ async function importBookAudio(fileList, disc = null) {
             if (state.bookKey !== key) break;
             setBookAudioProgress(t('baSaving').replace('{i}', saved + 1).replace('{n}', parsed.length), saved / parsed.length);
             const blob = await baPlayableBlob(p.file);
-            await baPut({ id: key + '\u0000' + (p.cd || 0) + '-' + p.track, bookKey: key, cd: p.cd, track: p.track, name: p.name, path: p.path, type: blob.type || '', size: blob.size, blob });
+            const id = key + '\u0000' + baSetOf(p) + '\u0000' + (p.cd || 0) + '-' + (p.section || 0) + '-' + p.track;
+            await baPut({ id, bookKey: key, cd: p.cd, section: p.section, track: p.track, name: p.name, path: p.path, type: blob.type || '', size: blob.size, blob },
+                p.section ? null : key + '\u0000' + (p.cd || 0) + '-' + p.track);
             saved++;
         }
     } catch (err) {
@@ -544,7 +568,7 @@ async function baFilesFromEntries(entries) {
             const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
             Object.defineProperty(file, 'webkitRelativePath', { value: prefix + entry.name });
             out.push(file);
-        } else if (entry.isDirectory) {
+        } else if (entry.isDirectory && !entry.name.startsWith('.') && entry.name !== '__MACOSX') {
             for (const child of await readAll(entry.createReader())) await walk(child, prefix + entry.name + '/');
         }
     };
@@ -564,8 +588,8 @@ function baKnownDiscs() {
 // are from, after the pick, instead of a setting the learner has to find first. A book with bare «piste N» marks only takes them as they are.
 function baImportOrAskDisc(list) {
     const dialog = bookAudioDialog(), ask = dialog && dialog.querySelector('.ba-disc-ask');
-    const audio = Array.from(list || []).filter(baIsAudio);
-    const loose = baAssignDiscs(audio.map(f => baParseFile(f.name, f.webkitRelativePath || ''))).some(p => p.cd === null && p.track !== null);
+    const audio = Array.from(list || []).filter(f => baIsAudio(f) && !baHiddenPath(f.webkitRelativePath));
+    const loose = baAssignDiscs(audio.map(f => baParseFile(f.name, f.webkitRelativePath || ''))).some(p => p.cd === null && !p.section && p.track !== null);
     const known = loose ? baKnownDiscs() : [];
     if (!ask || !known.length) { if (ask) ask.hidden = true; importBookAudio(list); return; }
     const choices = ask.querySelector('.ba-disc-choices');

@@ -988,7 +988,7 @@ function buildLanguageLevelPrompt(fragment, sentence, langName) {
     const found = fragmentLangInContext(fragment, sentence || fragment);
     const src = found === 'fr' ? 'fr-FR' : found === 'en' ? 'en-US' : detectLang(sentence || fragment);
     const srcName = src.startsWith('fr') ? 'французькою' : 'англійською';
-    // Англійський фрагмент у підручнику ФРАНЦУЗЬКОЇ (пояснення чи завдання англійською, як у «Complete French All-in-One»):
+    // Англійський фрагмент у підручнику ФРАНЦУЗЬКОЇ (пояснення чи завдання англійською, як у a bilingual French/English grammar workbook):
     // учень вивчає французьку, тож варіанти A2/B1 — французькою (той самий зміст), а не англійською (скарга користувача).
     // Мову навчання сторінки визначає та сама rulesStudyLang, що й у вікні «Правила» (js/grammar-rules.js).
     const pageText = typeof collectVisibleText === 'function' ? collectVisibleText().text : '';

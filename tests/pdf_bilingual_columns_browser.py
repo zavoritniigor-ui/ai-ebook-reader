@@ -133,22 +133,22 @@ exercise_test = c.js('''(() => {
     container.className = 'pdf-text-layer';
     container.style.cssText = 'position:relative;width:1000px;height:200px;';
 
-    // Exercise line 3: "3. Ils (plaindre)" [175px gap] "la pauvre femme."
+    // Exercise line 3: "3. Ils (plaindre)" [175px gap] "le vieux voisin."
     const span3a = document.createElement('span');
     span3a.textContent = '3. Ils (plaindre)';
     span3a.style.cssText = 'position:absolute;left:190px;top:50px;width:130px;height:20px;';
 
     const span3b = document.createElement('span');
-    span3b.textContent = 'la pauvre femme.';
+    span3b.textContent = 'le vieux voisin.';
     span3b.style.cssText = 'position:absolute;left:495px;top:50px;width:150px;height:20px;';
 
-    // Exercise line 4: "4. La muraille (ceindre)" [175px gap] "la ville."
+    // Exercise line 4: "4. Le mur (ceindre)" [175px gap] "le jardin."
     const span4a = document.createElement('span');
-    span4a.textContent = '4. La muraille (ceindre)';
+    span4a.textContent = '4. Le mur (ceindre)';
     span4a.style.cssText = 'position:absolute;left:190px;top:90px;width:190px;height:20px;';
 
     const span4b = document.createElement('span');
-    span4b.textContent = 'la ville.';
+    span4b.textContent = 'le jardin.';
     span4b.style.cssText = 'position:absolute;left:555px;top:90px;width:60px;height:20px;';
 
     container.appendChild(span3a);
@@ -170,12 +170,12 @@ exercise_test = c.js('''(() => {
     return result;
 })()''')
 assert exercise_test['sameGroup'] is True, exercise_test
-assert exercise_test['sentence'] == 'Ils (plaindre) la pauvre femme.', exercise_test
+assert exercise_test['sentence'] == 'Ils (plaindre) le vieux voisin.', exercise_test
 print('PASS Defect 1 regression: fill-in-the-blank exercise preserves complete sentence across gap', flush=True)
 
 # ---------------------------------------------------------------------------------------
-# Fill-in-the-blank exercise lines vs REAL column gutters (the PDF is "Complete French All-in-One":
-# "3. Ils (plaindre)   <blank>   la pauvre femme."). The blank is wider than a column gap but the
+# Fill-in-the-blank exercise lines vs REAL column gutters (the PDF is a bilingual French/English grammar workbook:
+# "3. Ils (plaindre)   <blank>   le vieux voisin."). The blank is wider than a column gap but the
 # halves are ONE line -- and ONLY unmistakable exercise content may bridge it. Geometry below is the
 # real page 221 one (left fragment x=176..296, right fragment x=457..594 on a ~1000px layer).
 # ---------------------------------------------------------------------------------------
@@ -201,15 +201,15 @@ def layout(rows):
 
 # --- exercise lines with the real page-221 geometry: every one becomes its complete sentence
 real221 = layout([
-    [('3. Ils (plaindre)', 176, 120), ('la pauvre femme.', 457, 137)],
-    [('4. La muraille (ceindre)', 176, 150), ('la ville.', 457, 60)],
-    [('5. Vous (feindre)', 176, 120), ('l’indifférence.', 457, 100)],
-    [('6. Nous (craindre)', 176, 125), ('le ridicule.', 457, 80)],
-    [('10. Elle (se plaindre)', 176, 140), ('tout le temps.', 457, 90)],
+    [('3. Ils (plaindre)', 176, 120), ('le vieux voisin.', 457, 137)],
+    [('4. Le mur (ceindre)', 176, 150), ('le jardin.', 457, 60)],
+    [('5. Vous (feindre)', 176, 120), ('la surprise.', 457, 100)],
+    [('6. Nous (craindre)', 176, 125), ('l’orage.', 457, 80)],
+    [('10. Elle (se plaindre)', 176, 140), ('chaque matin.', 457, 90)],
 ])
 assert all(r['joined'] for r in real221), real221
-wanted = ['Ils (plaindre) la pauvre femme.', 'La muraille (ceindre) la ville.', 'Vous (feindre) l’indifférence.',
-          'Nous (craindre) le ridicule.', 'Elle (se plaindre) tout le temps.']
+wanted = ['Ils (plaindre) le vieux voisin.', 'Le mur (ceindre) le jardin.', 'Vous (feindre) la surprise.',
+          'Nous (craindre) l’orage.', 'Elle (se plaindre) chaque matin.']
 for row, sentence in zip(real221, wanted):
     assert sentence in row['sentences'], (sentence, row['sentences'])
 print('PASS real page-221 exercise geometry: each line yields its complete sentence (not "Ils (plaindre) 4.")', flush=True)
@@ -287,29 +287,30 @@ assert '¡ Observation visuelle et olfactive' in joined and 'Utilisation appropr
 print('PASS real gaps are kept: bullet / word space / next line still separate the words', flush=True)
 
 # ---------------------------------------------------------------------------------------
-# A gutter narrower than the column gap threshold (real page: livre 56 «Par ici», p. 67 «L’essentiel sur la vitamine D»):
+# A gutter narrower than the column gap threshold (seen on a real textbook page with a three-column article; the text here is
+# the test's own):
 # three justified columns 264px wide with 21px between them, about one line height. The lines of all three used to fuse
 # into one, and the «sentence» button selected the neighbouring columns too.
 # ---------------------------------------------------------------------------------------
 COLS = (141, 426, 711)
 article = layout([[(text, x, 264) for text, x in zip(row, COLS)] for row in [
-    ('La vitamine D est importante. Princi-', 'des meilleurs moyens de la prévenir', 'Il est primordial de s’assurer à tout'),
-    ('palement fabriquée par notre peau à', 'est de s’assurer d’un apport suffisant', 'âge d’un apport en vitamine D opti-'),
-    ('la suite de l’exposition aux rayons du', 'en calcium et en vitamine D, et ce,', 'mal. Cela dit, certaines personnes'),
-    ('soleil, cette vitamine peut également', 'dès l’enfance. La santé du squelette', 'sont davantage à risque de carence'),
-    ('provenir de l’alimentation.', 'reflète l’apport total dont une per-', 'en vitamine D, par exemple les gens'),
+    ('Le fleuve est très ancien. Princi-', 'des plus belles routes de la région', 'Il est conseillé de réserver à tout'),
+    ('palement alimenté par les lacs du', 'est de suivre le fleuve en bateau', 'moment de l’année une place opti-'),
+    ('nord du continent américain, ce fleuve', 'au printemps ou en été, et ce,', 'male. Cela dit, certaines personnes'),
+    ('traverse aussi des villes et des', 'dès le matin. La lumière du fleuve', 'préfèrent voyager en hiver quand'),
+    ('forêts immenses.', 'change toute la journée pour une per-', 'le fleuve est couvert de glace'),
 ]])
 assert not any(r['joined'] for r in article), article
-assert 'Princi- palement fabriquée par notre peau à la suite de l’exposition aux rayons du soleil, cette vitamine peut également provenir de l’alimentation.' in article[0]['sentences'], article[0]
-assert not any('meilleurs' in t or 'primordial' in t for t in article[0]['sentences']), article[0]
+assert 'Princi- palement alimenté par les lacs du nord du continent américain, ce fleuve traverse aussi des villes et des forêts immenses.' in article[0]['sentences'], article[0]
+assert not any('belles' in t or 'conseillé' in t for t in article[0]['sentences']), article[0]
 third = c.js(LAYOUT_JS.replace('pdfVisualGroup(container, row[0])', 'pdfVisualGroup(container, row[2])') % json.dumps(
-    [[(t, x, 264) for t, x in zip(('La vitamine D est importante.', 'des meilleurs moyens', 'Il est primordial de s’assurer à tout'), COLS)],
-     [(t, x, 264) for t, x in zip(('Sa fonction principale est de', 'est de s’assurer d’un apport', 'âge d’un apport en vitamine D opti-'), COLS)],
-     [(t, x, 264) for t, x in zip(('favoriser l’absorption du calcium', 'en calcium et en vitamine D.', 'mal. Cela dit, certaines personnes'), COLS)]], ensure_ascii=False))
-assert 'Il est primordial de s’assurer à tout âge d’un apport en vitamine D opti- mal.' in third[0]['sentences'], third
+    [[(t, x, 264) for t, x in zip(('Le fleuve est très ancien.', 'des plus belles routes', 'Il est conseillé de réserver à tout'), COLS)],
+     [(t, x, 264) for t, x in zip(('Sa source principale est un', 'est de suivre le fleuve', 'moment de l’année une place opti-'), COLS)],
+     [(t, x, 264) for t, x in zip(('grand lac au sud-ouest', 'en bateau, au printemps.', 'male. Cela dit, certaines personnes'), COLS)]], ensure_ascii=False))
+assert 'Il est conseillé de réserver à tout moment de l’année une place opti- male.' in third[0]['sentences'], third
 print('PASS a three-column article with a 21px gutter: each column reads its own sentences', flush=True)
-# A drag over a few words of one column reads exactly those words, not their whole lines: «fabriquée par notre» was translated
-# and narrated as «palement fabriquée par notre peau à» (each PDF item of that page is a whole line).
+# A drag over a few words of one column reads exactly those words, not their whole lines: three words were translated and
+# narrated as their whole line (each PDF item of that page is a whole line). The texts here are the test's own.
 drags = c.js('''(rows => {
     const container = document.createElement('div'); container.className = 'pdf-text-layer';
     container.style.cssText = 'position:relative;width:1000px;height:' + (rows.length * 40 + 80) + 'px;';
@@ -321,31 +322,31 @@ drags = c.js('''(rows => {
     const word = (w) => { const s = [...container.children].find(x => x.textContent.includes(w)), n = s.firstChild, at = n.nodeValue.indexOf(w);
         return { node: n, start: at, end: at + w.length }; };
     const read = (a, b) => resolveCanonicalPdfSelection(rangeBetweenWords(word(a), word(b))).text;
-    const out = [read('fabriquée', 'notre'), read('rayons', 'fabriquée'), read('meilleurs', 'prévenir')];
+    const out = [read('alimenté', 'lacs'), read('continent', 'alimenté'), read('plus', 'région')];
     container.remove(); return out; })(%s)''' % json.dumps([[(text, x, 264) for text, x in zip(row, COLS)] for row in [
-    ('La vitamine D est importante. Princi-', 'des meilleurs moyens de la prévenir', 'Il est primordial de s’assurer à tout'),
-    ('palement fabriquée par notre peau à', 'est de s’assurer d’un apport suffisant', 'âge d’un apport en vitamine D opti-'),
-    ('la suite de l’exposition aux rayons du', 'en calcium et en vitamine D, et ce,', 'mal. Cela dit, certaines personnes'),
+    ('Le fleuve est très ancien. Princi-', 'des plus belles routes de la région', 'Il est conseillé de réserver à tout'),
+    ('palement alimenté par les lacs du', 'est de suivre le fleuve en bateau', 'moment de l’année une place opti-'),
+    ('nord du continent américain, ce fleuve', 'au printemps ou en été, et ce,', 'male. Cela dit, certaines personnes'),
 ]], ensure_ascii=False))
-assert drags == ['fabriquée par notre', 'fabriquée par notre peau à la suite de l’exposition aux rayons', 'meilleurs moyens de la prévenir'], drags
+assert drags == ['alimenté par les lacs', 'alimenté par les lacs du nord du continent', 'plus belles routes de la région'], drags
 print('PASS a drag inside one column of that page reads only the dragged words (also over two lines, also upwards)', flush=True)
 # the cells of a table («je | faisais», short words a narrow gap apart) do not count as such a gutter: one line stays one line
 table = layout([[('je', 176, 20), ('faisais', 217, 50), ('je', 300, 20), ('prenais', 341, 55)] for _ in range(5)])
 assert all(r['joined'] for r in table), table
 print('PASS the narrow gaps of a conjugation table are not column gutters', flush=True)
-# the run-in items of an answer key (Complete French p. 640) line up at one x by chance, but the lines between them run across it
+# the run-in items of an answer key (the bilingual workbook p. 640) line up at one x by chance, but the lines between them run across it
 key = layout([
-    [('7. En courant très vite, j’ai attrapé le bus.', 189, 320), ('8. En prenant la deuxième rue à droite,', 530, 300)],
-    [('vous arriverez à la gare. 9. En voyageant, on apprend beaucoup de choses.', 189, 640)],
-    [('10. En lisant le journal, il a appris la nouvelle.', 189, 320), ('11. En faisant du yoga, je me détends.', 530, 280)],
-    [('12. En travaillant dur, nous réussirons. 13. Sachant la vérité, elle ne dit rien.', 189, 660)],
-    [('14. N’ayant pas vu le film, je me tais.', 189, 320), ('15. En s’entraînant tous les jours, ils gagnent.', 530, 320)],
+    [('7. En marchant vite, j’ai rattrapé mon ami.', 189, 320), ('8. En tournant à gauche après le pont,', 530, 300)],
+    [('vous verrez la poste. 9. En lisant chaque jour, on progresse beaucoup en français.', 189, 640)],
+    [('10. En ouvrant la fenêtre, elle a vu la neige.', 189, 320), ('11. En chantant, il oublie la pluie.', 530, 280)],
+    [('12. En cuisinant ensemble, nous parlons beaucoup. 13. Voyant le ciel, il sourit.', 189, 660)],
+    [('14. N’ayant pas lu le livre, je l’écoute.', 189, 320), ('15. En courant le matin, ils restent en forme.', 530, 320)],
 ])
 assert all(r['joined'] for r in key[::2]), key
 print('PASS run-in answer-key items that line up by chance are not a column gutter', flush=True)
 
 # Where a drag's end lands (wordBoundsAt with the drag's anchor): never on a word the finger has not reached. Found with real
-# touch drags on livre 56 (scratch hl_stress.py): an end in the space after the last word highlighted the next word too.
+# touch drags on book 56 (scratch hl_stress.py): an end in the space after the last word highlighted the next word too.
 ends = c.js(r'''(() => {
     const box = document.createElement('div'); box.className = 'pdf-text-layer';
     box.style.cssText = 'position:fixed;left:0;top:0;width:1000px;height:600px;background:#fff;z-index:2147483647;font:20px monospace;';

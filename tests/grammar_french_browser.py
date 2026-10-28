@@ -594,9 +594,9 @@ print("PASS English labels its auxiliary chip in English ('auxiliary: has been')
 c.js("grammarContext.analysis=null; grammarContext.focused=null; grammarContext.mode='verbs'; grammarContext.sourceLanguage=null")
 
 print("\n=== SECTION 6c: a fill-in-the-blank cue is analysed as FRENCH (real tap); an English gloss stays English ===")
-# Real reproduction (Complete French All-in-One, p.221): tapping "plaindre" in "Ils (plaindre) la pauvre femme."
+# Real reproduction (a bilingual French/English grammar workbook, p.221): tapping "plaindre" in "Ils (plaindre) le vieux voisin."
 # detected English, the prompt asked for English, the model answered French and the validator showed an error.
-EX = ["Ils (plaindre) la pauvre femme.", "Nous (finir) le travail.", "Elle (aller) à Paris.", "Vous (être) prêts."]
+EX = ["Ils (plaindre) le vieux voisin.", "Nous (finir) le travail.", "Elle (aller) à Paris.", "Vous (être) prêts."]
 EX_ITEMS = {'plaindre': ('plaindre', EX[0]), 'finir': ('finir', EX[1]), 'aller': ('aller', EX[2]), 'être': ('être', EX[3])}
 
 

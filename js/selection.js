@@ -194,7 +194,7 @@ function pdfTextSpans(layer) {
         !s.parentElement.closest('span:not(.markedContent)'));
 }
 // Вправа "поставте дієслово у потрібну форму" друкує підказку в дужках і лишає широкий
-// пропуск перед рештою речення: "3. Ils (plaindre)            la pauvre femme." Пропуск
+// пропуск перед рештою речення: "3. Ils (plaindre)            le vieux voisin." Пропуск
 // ширший за міжколонковий, але обидва фрагменти — ОДИН рядок. Тому рядок продовжується лише
 // коли ліворуч безсумнівна ознака вправи: французька дієслівна підказка (той самий предикат
 // isFrenchExerciseCue з js/lang-detect.js, що й для визначення мови) або явна лінія-пропуск.
@@ -320,8 +320,7 @@ function pdfLayerColumnInfo(layer, layerWidth) {
     pdfColumnStartCache.set(layer, info);
     return info;
 }
-// Column edges behind a gutter narrower than the column gap threshold: a three-column article (livre 56, p. 67, «L'essentiel
-// sur la vitamine D») leaves 21 px between columns of a 1085 px page, about one line height, and its lines of all three columns
+// Column edges behind a gutter narrower than the column gap threshold: a three-column article on a textbook page leaves 21 px between columns of a 1085 px page, about one line height, and its lines of all three columns
 // used to fuse into one, so the «sentence» button selected the neighbouring columns too. A gap of at least 0.8 line height
 // between two lines of text, after which the text resumes at the same x on three or more lines, is such a gutter when it runs
 // down the page like a river: hardly any line between the first and the last of them has text across it. The run-in items
@@ -662,8 +661,8 @@ function resolveCanonicalPdfSelection(range, options = {}) {
         range._pdfPieces = pieces;
         // The text the reader sees selected: the spans in reading order, words joined the PDF way (pdfSpansToChars), cut at
         // the first / last character of the selection (a born-digital span is often a whole line). A drag inside one column
-        // of a multi-column page used to read whole fragments: two words selected in livre 56 p.67 were translated and
-        // narrated as their whole lines («palement fabriquée par notre peau à» for «fabriquée par notre»).
+        // of a multi-column page used to read whole fragments: two words selected in book 56 p.67 were translated and
+        // narrated as their whole lines (three words came back as the whole line they stand in).
         const byNode = new Map(pieces.map(p => [p.node, p]));
         const cleanText = pdfSpansToChars(selectedSpans)
             .filter(c => c.separator || (byNode.has(c.node) && c.offset >= byNode.get(c.node).start && c.offset < byNode.get(c.node).end))

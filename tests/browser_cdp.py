@@ -257,7 +257,7 @@ VERB_TABLE_ROWS = [
 
 
 def verb_table_pdf_bytes(order='rows', rows=None):
-    """A bilingual grammar page like the real "Complete French All-in-One" p.338: an English explanation line, then a row-aligned
+    """A bilingual grammar page like the real a bilingual French/English grammar workbook p.338: an English explanation line, then a row-aligned
     two-column table -- French forms on the left, their English translation on the right (a wide gutter between them) -- then
     French example sentences with their English translations, two lines each.
 
@@ -274,7 +274,7 @@ def verb_table_pdf_bytes(order='rows', rows=None):
         return b'BT %d %d Td /F1 12 Tf (' % (x, y) + enc(text) + b') Tj ET'
     left_x, right_x = 72, 330
     y = 700
-    ops = [cell(left_x, y, 'When an action precedes another one, avoir and être in the participe présent can be combined.')]
+    ops = [cell(left_x, y, 'When one action comes before another, the participe présent of avoir or être is used.')]
     y -= 40
     fr_cells, en_cells = [], []
     for fr, en in rows:

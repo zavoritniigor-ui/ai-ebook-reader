@@ -190,7 +190,7 @@ function practiceContextFromSession(session) {
 }
 
 // ---- what a reading may NOT contain -------------------------------------------------------------
-// The source selection is often a textbook EXERCISE ("Ils (plaindre) la pauvre femme."). Practice
+// The source selection is often a textbook EXERCISE ("Ils (plaindre) le vieux voisin."). Practice
 // must never reproduce that: a blank, a numbered item or a parenthesised cue verb is an exercise
 // artifact, not an example sentence, and such an item is dropped before it can be shown.
 const PRACTICE_BLANK_RE = /_{2,}|\.{4,}|…{2,}|\[\s*(?:\.{2,}|…)\s*\]/;

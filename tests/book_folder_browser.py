@@ -164,13 +164,16 @@ check('6 With no folder remembered the book opens without a narration and no err
     return got === false && bsSets.list.length === 0 && typeof bsRenderFolderRow === 'function';
 })()""")
 
-# 7. the book's package (its PDF and an «audio …» folder with a CD track) gives the dialogue tracks when the book opens
+# 7. the book's package (its PDF and an audio folder of any name with a CD track) gives the dialogue tracks when the book opens
 c.js("""(async () => {
     await bsDelete(state.bookKey); await bsRefresh(); await baDeleteBook(state.bookKey); await refreshBookAudio();
     window.__m4a = new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], '74 Track 74.m4a', { type: 'audio/mp4' });
     window.bfGet = async () => ({ id: 'books', handle: window.__folder([
         ['Speech_test.pdf', window.__file('Speech_test.pdf', window.__pdf)],
-        ['audio 12', window.__folderEntry('audio 12', [['A1 CD1', window.__folderEntry('A1 CD1', [['74 Track 74.m4a', window.__file('74 Track 74.m4a', window.__m4a)]])]])],
+        // the audio folder may be called anything (book_audio_rules §5.1); a «.work» cache and another book's package are not read
+        ['Tracks', window.__folderEntry('Tracks', [['A1 CD1', window.__folderEntry('A1 CD1', [['74 Track 74.m4a', window.__file('74 Track 74.m4a', window.__m4a)]])]])],
+        ['.work', window.__folderEntry('.work', [['0001.m4a', window.__file('0001.m4a', window.__m4a)]])],
+        ['Other book', window.__folderEntry('Other book', [['Other.pdf', window.__file('Other.pdf', window.__pdf)], ['12 Track 12.m4a', window.__file('12 Track 12.m4a', window.__m4a)]])],
     ]), name: 'Books' });
     openBookFile(window.__pdf);
 })()""")
@@ -184,8 +187,8 @@ check('7 Opening the book imports its dialogue track from the package folder', "
 c.js("""(async () => {
     await bsDelete(state.bookKey); await bsRefresh(); window.__perm = 'granted';
     window.__toasts = []; const keep = showToast; window.showToast = (m) => { window.__toasts.push(String(m)); return keep(m); };
-    const deep = window.__folderEntry('Par ici 5-6', [['Speech test - voice.mp3', window.__file('Speech test - voice.mp3', window.__match)]]);
-    window.__remember(window.__folder([['Download', window.__folderEntry('Download', [['Books', window.__folderEntry('Books', [['Par ici', window.__folderEntry('Par ici', [['Par ici 5-6', deep]])]])]])]]));
+    const deep = window.__folderEntry('textbook 5-6', [['Speech test - voice.mp3', window.__file('Speech test - voice.mp3', window.__match)]]);
+    window.__remember(window.__folder([['Download', window.__folderEntry('Download', [['Books', window.__folderEntry('Books', [['a French textbook', window.__folderEntry('a French textbook', [['textbook 5-6', deep]])]])]])]]));
 })()""")
 check('8 A narration four folders down (a whole storage chosen as the folder) is found, with a message', """(async () => {
     const got = await bsAutoImportFromFolder(true);

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks tools/book_tts/columns.py on made-up lines (no PDF): a two-column table is read cell by cell, a wrapped cell goes
 on in the same sentence, a cell of several sentences is split, a heading is a unit of its own, and a paragraph goes on
-across blocks only while a sentence is open. A book in one voice (Par ici) has no tables: its boxes are running text in
+across blocks only while a sentence is open. A book in one voice (a French textbook) has no tables: its boxes are running text in
 pdftotext's reading order, and a word printed in touching pieces is one word."""
 import sys
 from pathlib import Path
@@ -100,22 +100,22 @@ paragraph = [(43 + 13 * i, H, [(90.3, f'Running text line {i}.')], (5, 8, True))
 results.append(check('a page with no two-column table is all running text (read as before)',
                      all(item[0] == 'flow' for item in items_from_lines(paragraph))))
 
-box = [   # a box of short lines, each a block of its own (Par ici 3-4 p. 25)
-    (451, H, [(434.0, 'Au Canada, le numéro d’assurance')], (30, 1, False)),
-    (463, H, [(434.0, 'social (NAS) est confidentiel.')], (31, 1, True)),
+box = [   # a box of short lines, each a block of its own (textbook 3-4 p. 25)
+    (451, H, [(434.0, 'À Montréal, le métro de la ville')], (30, 1, False)),
+    (463, H, [(434.0, 'ferme tard le samedi soir.')], (31, 1, True)),
 ]
 results.append(check('a box line that ends on a word goes on into the next block when that one starts in lower case',
-                     flows(items_from_lines(box)) == ['Au Canada, le numéro d’assurance social (NAS) est confidentiel.']))
+                     flows(items_from_lines(box)) == ['À Montréal, le métro de la ville ferme tard le samedi soir.']))
 
 opened = [
-    (61, H, [(90.3, 'Nouns ending in -ac tend to be masculine:')], (6, 1, False)),
-    (75, H, [(90.3, 'l’ammoniac')], (7, 1, True)),
+    (61, H, [(90.3, 'Most nouns ending in -age are masculine:')], (6, 1, False)),
+    (75, H, [(90.3, 'le fromage')], (7, 1, True)),
     (89, H, [(90.3, '26')], (8, 1, False)),
-    (103, H, [(90.3, 'practice makes perfect')], (9, 1, False)),
+    (103, H, [(90.3, 'grammaire du quotidien')], (9, 1, False)),
 ]
 results.append(check('a colon opening a list and a page number do not go on into the next block',
-                     flows(items_from_lines(opened)) == ['Nouns ending in -ac tend to be masculine:', 'l’ammoniac', '26',
-                                                        'practice makes perfect']))
+                     flows(items_from_lines(opened)) == ['Most nouns ending in -age are masculine:', 'le fromage', '26',
+                                                        'grammaire du quotidien']))
 
 results.append(check('a book in one voice (tables=False) reads a two-column layout as running text',
                      all(item[0] == 'flow' for item in items_from_lines(table_lines(), tables=False))))

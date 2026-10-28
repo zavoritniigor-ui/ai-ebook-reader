@@ -80,7 +80,7 @@ assert 'англійською' in result['lastLine'], result
 print('PASS end-to-end tap -> Запитай AI names the tapped fragment\'s own language', flush=True)
 
 # ---- 3. An English passage in a FRENCH textbook (user: «приклади мають бути на французькій мові») ----
-# The page mixes English instructions with French examples (Complete French All-in-One): A2/B1 variants must be French.
+# The page mixes English instructions with French examples (a bilingual French/English grammar workbook): A2/B1 variants must be French.
 page = ('Christian talks about his holiday with his son, Thomas. Listen and answer the questions. '
         'Nous allons à la plage la semaine prochaine. Je vais visiter le musée avec mon fils. Il fait très beau aujourd\'hui.')
 textbook = c.js('''(()=>{ els.pages.replaceChildren(Object.assign(document.createElement('p'),{textContent:''' + json.dumps(page) + '''}));

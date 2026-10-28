@@ -23,7 +23,7 @@ def make_wav_b64(duration_ms=250, freq=440, sample_rate=8000):
 
 
 def make_piste_pdf_b64():
-    """Two-page synthetic PDF with Par ici style piste marks:
+    """Two-page synthetic PDF with textbook-style piste marks:
       Page 1:
         - 'Activite 1 (CD1 - piste 3) Ecoutez le dialogue.' in one text item
         - 'CD2 -' and 'piste 15' split across two adjacent text items on one line
@@ -87,7 +87,7 @@ c.wait("document.readyState === 'complete' && !document.body.inert")
 c.js("window.__errors = []; window.addEventListener('error', e => __errors.push(e.message));")
 
 # ---------------------------------------------------------------- 1. File-name & mark parsing unit contracts
-check('1 baParseFile parses Par ici folder/file names and FLS2_EP01_P1 without confusing EP01 for track 1', """(() => {
+check('1 baParseFile parses a French textbook folder/file names and FLS2_EP01_P1 without confusing EP01 for track 1', """(() => {
     const a = baParseFile('01 Track 01.m4a', 'audio 12/A1 CD1/01 Track 01.m4a');
     const b = baParseFile('15 Track 15.m4a', 'audio 12/A1 CD2/15 Track 15.m4a');
     const c = baParseFile('03 Track 03 1.m4a', '03 Track 03 1.m4a');
@@ -98,6 +98,25 @@ check('1 baParseFile parses Par ici folder/file names and FLS2_EP01_P1 without c
            c.cd === null && c.track === 3 && c.copy === 1 &&
            d.cd === null && d.track === 3 &&
            e.track === null;
+})()""")
+
+check('1b Generic name rules (book_audio_rules §4): sections, «t006» over a page «p011», parts of discs, disc and section numbers never taken for the track, hidden folders', """(() => {
+    const s = baParseFile('XYZ_EP02_P12.mp3', 'audio/XYZ_EP02_P12.mp3');
+    const page = baParseFile('ABC_CA_B2_p011_t006.mp3', 'ABC_CA_B2_p011_t006.mp3');
+    const part = baParseFile('23 Audio Track.m4a', 'audio/A2 CD1-2/23 Audio Track.m4a');
+    const part2 = baParseFile('5 Audio Track.aiff', 'audio/CD 2-1/5 Audio Track.aiff');
+    const unit = baParseFile('02.mp3', 'Unit 4/02.mp3');
+    const flat = baParseFile('CD1 - 14 Audio Track.aiff', 'CD1 - 14 Audio Track.aiff');
+    const onlyEp = baParseFile('EP03.mp3', 'EP03.mp3');
+    return s.section === 2 && s.track === 12 && s.cd === null && baSetOf(s) === 'sec' &&
+           page.track === 6 && page.section === null &&
+           part.cd === 1 && part.track === 23 && baSetOf(part) === 'cd' &&
+           part2.cd === 2 && part2.track === 5 &&
+           unit.section === 4 && unit.track === 2 &&
+           flat.cd === 1 && flat.track === 14 &&
+           onlyEp.section === 3 && onlyEp.track === null &&
+           baHiddenPath('Book/.work/cache/0001.mp3') && baHiddenPath('__MACOSX/a/b.mp3') && !baHiddenPath('Book/audio 12/A1 CD1/01 Track 01.m4a') && !baHiddenPath('.hidden-name.mp3')
+        || JSON.stringify([s, page, part, part2, unit, flat, onlyEp]);
 })()""")
 
 check('2 baAssignDiscs splits flat duplicate track numbers into CD1 and CD2 by copy suffix', """(() => {
@@ -115,26 +134,27 @@ check('2 baAssignDiscs splits flat duplicate track numbers into CD1 and CD2 by c
 })()""")
 
 check('3 baFindMarks finds CD+piste and bare French/Spanish piste/plage/pista, ignoring bare English track and piste 0', """(() => {
-    const m = baFindMarks('Activite (CD1 - piste 3), CD2- piste 015, bare piste 7, track 5, CD1 - track 9, apiste 2, piste 0.');
-    return JSON.stringify(m.map(x => [x.cd, x.track])) === JSON.stringify([[1,3],[2,15],[null,7],[1,9]]);
+    const m = baFindMarks('Activite (CD1 - piste 3), CD2- piste 015, bare piste 7, track 5, CD1 - track 9, apiste 2, piste 0, étage. iCD1- piste 4');
+    return JSON.stringify(m.map(x => [x.cd, x.track])) === JSON.stringify([[1,3],[2,15],[null,7],[1,9],[1,4]]);
 })()""")
 
 # ---------------------------------------------------------------- 2. Open PDF and verify markers
 PDF_B64 = make_piste_pdf_b64()
 WAV_B64 = make_wav_b64()
+c.js(f"window.__WAV = '{WAV_B64}'; 1")
 
 c.js(f"""(async () => {{
     const raw = atob('{PDF_B64}');
     const u8 = new Uint8Array(raw.length);
     for (let i = 0; i < raw.length; i++) u8[i] = raw.charCodeAt(i);
-    const file = new File([u8], 'Par_ici_test.pdf', {{ type: 'application/pdf' }});
+    const file = new File([u8], 'Textbook_test.pdf', {{ type: 'application/pdf' }});
     await openBookFile(file);
 }})()""")
 
-check('4 PDF opens with 3 piste markers on page 1 (single-item CD1-piste 3, split-item CD2-piste 15, bare piste 7)', """(() => {
+check('4 PDF opens with 3 piste markers on page 1 (single-item CD1-piste 3, split-item CD2-piste 15, bare piste 7 taking CD2 from the mark above)', """(() => {
     const marks = [...document.querySelectorAll('.pdf-page-wrapper[data-page="1"] .pdf-audio-marker')];
     return marks.length === 3 &&
-           JSON.stringify(marks.map(b => [b.dataset.cd, b.dataset.track])) === JSON.stringify([['1','3'],['2','15'],['','7']]);
+           JSON.stringify(marks.map(b => [b.dataset.cd, b.dataset.track])) === JSON.stringify([['1','3'],['2','15'],['2','7']]);
 })()""")
 
 check('5 Tapping a piste marker before audio is connected opens #book-audio-dialog with the connect prompt and does not trigger word translation', """(() => {
@@ -143,7 +163,7 @@ check('5 Tapping a piste marker before audio is connected opens #book-audio-dial
     btn.click();
     const dlg = document.getElementById('book-audio-dialog');
     return dlg && dlg.open &&
-           dlg.querySelector('.ba-subtitle').textContent.includes('Par_ici_test') &&
+           dlg.querySelector('.ba-subtitle').textContent.includes('Textbook_test') &&
            !dlg.querySelector('.ba-message').hidden &&
            els.tooltip.style.display !== 'flex';
 })()""")
@@ -181,7 +201,7 @@ check('7 Tracks imported: metadata is in tracks store without blobs, blobs are i
            blobRows.length === 4 && blobRows.every(r => r.blob instanceof Blob) &&
            p1Marks[0].classList.contains('has-audio') &&
            p1Marks[1].classList.contains('has-audio') &&
-           !p1Marks[2].classList.contains('has-audio');
+           p1Marks[2].dataset.cd === '2' && p1Marks[2].classList.contains('has-audio');   // bare «piste 7» under «CD2 - piste 15»
 })()""")
 
 # ---------------------------------------------------------------- 4. Playback, pause/resume, rate, TTS coordination, stop
@@ -217,11 +237,17 @@ check('11 Closing #audio-player stops playback without firing a false baError to
     return !bookAudio.playing && document.getElementById('audio-player').hidden && !errShown;
 })()""")
 
-check('12 Tapping bare piste 7 when both CD1 and CD2 have track 7 shows the ambiguous-disc toast', """(() => {
+check('12 A bare piste 7 under «CD2 - piste 15» plays CD2 track 7; a bare piste with no disc on its page and two discs is ambiguous', """(async () => {
     const btn = document.querySelector('.pdf-page-wrapper[data-page="1"] .pdf-audio-marker[data-track="7"]');
     btn.click();
+    await new Promise(r => setTimeout(r, 80));
+    const played = !!bookAudio.playing && bookAudio.playing.label === 'CD2 · piste 7';
+    stopBookAudio();
+    const loose = document.createElement('button');
+    loose.dataset.cd = ''; loose.dataset.track = '7';
+    tapBookAudioMark(loose);
     const toast = document.getElementById('reader-toast');
-    return !!toast && toast.classList.contains('show') && toast.textContent.includes('piste 7');
+    return played && !!toast && toast.classList.contains('show') && toast.textContent.includes('piste 7');
 })()""")
 
 check('12b Tapping a piste whose track was not chosen opens the dialog to add it (not just a toast)', """(() => {
@@ -236,14 +262,14 @@ check('12b Tapping a piste whose track was not chosen opens the dialog to add it
     return ok;
 })()""")
 
-check('12c A book narration chosen as tracks is not saved as a track («Par ici 3-4 …» is not track 4)', """(async () => {
+check('12c A book narration chosen as tracks is not saved as a track («textbook 3-4 …» is not track 4)', """(async () => {
     const safe = n => [(n >> 21) & 0x7f, (n >> 14) & 0x7f, (n >> 7) & 0x7f, n & 0x7f];
     const meta = { voice: 'test-voice', sentences: [{ page: 1, text: 'Bonjour.', bytes: [0, 4], duration: 1, words: [] }] };
     const body = [...new TextEncoder().encode('\\u0003application/json\\u0000narration.json\\u0000ai-ebook-reader-narration\\u0000' + JSON.stringify(meta))];
     const frame = [...new TextEncoder().encode('GEOB'), ...safe(body.length), 0, 0, ...body];
     const bytes = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, ...safe(frame.length), ...frame, 0xff, 0xfb, 0x90, 0]);
     const before = bookAudio.tracks.length;
-    await importBookAudio([new File([bytes], 'Par ici 3-4 - Kokoro (ff_siwis).mp3', { type: 'audio/mpeg' })]);
+    await importBookAudio([new File([bytes], 'textbook 3-4 - Kokoro (ff_siwis).mp3', { type: 'audio/mpeg' })]);
     return bookAudio.tracks.length === before && !bookAudio.tracks.some(r => r.track === 4)
         && bsTrace.some(x => x.ev === 'tracks-narration') || JSON.stringify([before, bookAudio.tracks.map(r => r.name)]);
 })()""")
@@ -413,6 +439,25 @@ check('14e Without audio the status is grey and there is no «Remove»; a folder
         await baDeleteBook(probe);
         state.bookKey = saved; bookAudio.tracks = kept;
     }
+})()""")
+
+check('14f A disc set and a section set of one book live side by side; a «.work» cache is not read; a track saved before sets were kept apart is replaced, not doubled', """(async () => {
+    stopBookAudio();
+    await baDeleteBook(state.bookKey); await refreshBookAudio();
+    const wav = await (await fetch('data:audio/wav;base64,' + window.__WAV)).blob();
+    const make = (name, rel) => { const f = new File([wav], name, { type: 'audio/wav' }); Object.defineProperty(f, 'webkitRelativePath', { value: rel }); return f; };
+    await baPut({ id: state.bookKey + '\u0000' + '1-3', bookKey: state.bookKey, cd: 1, track: 3, name: 'old.wav', path: 'old.wav', type: 'audio/wav', size: wav.size, blob: wav });
+    await importBookAudio([
+        make('03 Track 03.wav', 'Book/Tracks/A1 CD1/03 Track 03.wav'),
+        make('XYZ_EP01_P3.wav', 'Book/audio 56/XYZ_EP01_P3.wav'),
+        make('0003.wav', 'Book/.work/cache/0003.wav'),
+        make('0004.wav', 'Book/__MACOSX/0004.wav'),
+    ]);
+    const rows = bookAudio.tracks;
+    const disc = baFind(1, 3).rec, bare = baFind(null, 3).rec;
+    return rows.length === 2 && rows.filter(r => r.cd === 1 && r.track === 3).length === 1 &&
+           disc && disc.name === '03 Track 03.wav' && bare && bare.name === 'XYZ_EP01_P3.wav' && bare.section === 1 &&
+           !rows.some(r => /0003|0004|old/.test(r.name)) || JSON.stringify(rows.map(r => [r.id, r.name]));
 })()""")
 
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")

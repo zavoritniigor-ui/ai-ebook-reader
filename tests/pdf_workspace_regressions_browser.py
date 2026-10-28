@@ -1,4 +1,4 @@
-"""PDF workspace / selection regressions found on the real "Complete French All-in-One" (PR #122), each driven
+"""PDF workspace / selection regressions found on the real a bilingual French/English grammar workbook (PR #122), each driven
 through the real controls and real input events:
 
   A  a paradigm-table row whose long gloss narrows the gutter ("tu es  you are (familiar, singular)  vous êtes")

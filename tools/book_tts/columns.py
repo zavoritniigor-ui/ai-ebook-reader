@@ -5,7 +5,7 @@ A sentence of the book is one unit for the narration, from its first word to its
 that sentence matches one recording. Two things keep the units right:
 - a heading is a block of its own (pdftotext puts it in a block of its own): it is not glued to the sentence below it. A
   paragraph's block goes on into the next block only when a sentence is still open at its end;
-- side-by-side columns (Complete French: a French sentence on the left, its English on the right, row by row) are read cell
+- side-by-side columns (the bilingual workbook: a French sentence on the left, its English on the right, row by row) are read cell
   by cell, in their column's language, even when a cell is two words with no full stop («devenir» / «to become»). A line that
   wraps goes on in the same cell (it is indented under the column's start).
 
@@ -19,7 +19,7 @@ import tempfile
 from collections import Counter
 
 TOL = 6.0            # pt: a column starts at the same x on every row
-WRAP = (3.0, 30.0)   # pt a wrapped line is indented past its column's start (Complete French: about 12)
+WRAP = (3.0, 30.0)   # pt a wrapped line is indented past its column's start (the bilingual workbook: about 12)
 ROW = 4.0            # pt: a column's cell and its neighbour's share a row when their tops are this close (validation)
 ROW_ORDER = 8.0      # pt: the same, to read a row's left cell before its right one
 GAP_MAX = 1.6        # × line height: a wrapped line follows the one above it at most this far below
@@ -50,7 +50,7 @@ def page_lines(pdf, page):
                      for w in WORD.finditer(m.group(5))]
             if not words:
                 continue
-            # slanted text (Par ici): pdftotext cuts a word into pieces on lines of their own («réside» + «nce»). A line
+            # slanted text (a French textbook): pdftotext cuts a word into pieces on lines of their own («réside» + «nce»). A line
             # whose first word touches the end of the line before goes on that line, its first piece glued to the last word.
             if raw_lines and _touches(raw_lines[-1][3][-1], words[0]):
                 before = raw_lines[-1][3]
@@ -165,7 +165,7 @@ def _table_columns(lines, a, b, counts, starts, paired_l, paired_r):
 def continues(prev, block, text='', before=''):
     """Whether the text of the block before (prev) goes on into this block: only when that block still has a sentence open
     at its end and is several lines long, or this block starts in lower case (a box of short lines, each a block of its
-    own: «Au Canada, le numéro d'assurance» / «social (NAS) est confidentiel.») after a word or a comma (not after a
+    own: «À Montréal, le métro de la ville» / «ferme tard le samedi soir.») after a word or a comma (not after a
     colon that opens a list, nor after a page number). A heading (one line, no full stop, the
     next block in capitals) and a finished paragraph start a new unit."""
     if prev is None or block is None or prev[2]:
@@ -175,7 +175,7 @@ def continues(prev, block, text='', before=''):
 
 def items_from_lines(lines, tables=True):
     """The items of a page's lines (see the module docstring). A page with no table is all 'flow'. tables=False: a book
-    read by one voice has no column languages to keep apart; its boxes and forms (Par ici) are running text."""
+    read by one voice has no column languages to keep apart; its boxes and forms (a French textbook) are running text."""
     tables = find_tables(lines) if tables else []
 
     def locate(x, y):
@@ -199,7 +199,7 @@ def items_from_lines(lines, tables=True):
     flows = []   # (y, text, block): the running text, in reading order
     for n, (y, h, x, text, block, where) in sorted(enumerate(pieces), key=lambda p: p[1][0]):
         if where is None:
-            # a page with no table keeps pdftotext's reading order (its columns one after the other, Par ici); sorting by
+            # a page with no table keeps pdftotext's reading order (its columns one after the other, a French textbook); sorting by
             # the height on the page would read side-by-side columns line by line, mixed
             flows.append((y if tables else n, text, block))
             continue

@@ -84,7 +84,7 @@ def sentences_of(pdf, pages, tables=True):
     return result
 
 
-# The language of a sentence of a bilingual book (Complete French: English explanations, French examples), so that each voice
+# The language of a sentence of a bilingual book (the bilingual workbook: English explanations, French examples), so that each voice
 # reads only its own language: function words of each language, accents count for French. '' when unclear (both voices
 # read it: a heading, a number, a single name). The reader picks the narration by the sentence's language and falls back to
 # the other one, so a sentence judged differently there is still played.

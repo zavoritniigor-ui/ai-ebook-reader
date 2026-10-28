@@ -6,7 +6,7 @@ and keeps the bytes after it as the audio, so the byte ranges of the JSON stay a
 book it belongs to ("pdf": { name, pages }), so a narration picked for another book is refused.
 
 Usage:
-  python3 pack.py JSON --pdf "livre 34.pdf" --out "Par ici 3-4 - Kokoro ff_siwis.mp3"
+  python3 pack.py JSON --pdf "book 34.pdf" --out "textbook 3-4 - Kokoro ff_siwis.mp3"
 """
 import argparse
 import json
