@@ -490,5 +490,11 @@ check('14g The status counts the book\'s marks that play, not the files: all / s
     return total === 4 && some && empty && none && all || JSON.stringify({ total, some, empty, none, all, text: st.textContent });
 })()""")
 
+check('14h The 📋 report names the audio code version, the stored sets and the marks that play, and what the last pick held', """(() => {
+    const r = bsReport(), last = bsTrace.filter(x => x.ev === 'tracks-import').pop();
+    return /^[0-9a-f]{12}$/.test(r.audioJs) && r.trackSets && r.trackSets.CD1 >= 1 && r.marks && r.marks.all === 4 && r.marks.playing === 4
+        && last && last.audio >= 1 && last.sets && last.sample.length >= 1 || JSON.stringify({ audioJs: r.audioJs, trackSets: r.trackSets, marks: r.marks, last });
+})()""")
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')

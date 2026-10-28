@@ -173,6 +173,11 @@ function bsReport() {
         active: set ? set.voice : null, audio: bsCtx ? bsCtx.state : 'not started',
         markers: document.querySelectorAll('.pdf-audio-marker').length,
         tracks: typeof bookAudio !== 'undefined' ? bookAudio.tracks.length : null,
+        // which version of the audio code this device runs (a device that did not update shows an old one), and what the tracks are
+        audioJs: (Array.from(document.scripts).map(x => x.src).find(x => /book-audio\.js/.test(x)) || '').split('?v=')[1] || null,
+        trackSets: typeof bookAudio !== 'undefined' ? bookAudio.tracks.reduce((o, r) => { const k = r.cd ? 'CD' + r.cd : r.section ? 'sections' : 'plain'; o[k] = (o[k] || 0) + 1; return o; }, {}) : null,
+        marks: typeof baMarks !== 'undefined' && baMarks.key === state.bookKey && baMarks.list
+            ? { all: baMarks.list.length, playing: baMarks.list.filter(m => baFind(m.cd, m.track).rec).length } : null,
         stored: bsStored, trace: bsTrace.slice()
     };
 }

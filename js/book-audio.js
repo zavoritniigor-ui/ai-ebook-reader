@@ -426,6 +426,15 @@ async function importBookAudio(fileList, disc = null) {
         if (p.cd === null && !p.section && disc) p.cd = disc;   // the disc the user chose for these files: a phone's file picker does not show the folders
         return p;
     })).filter(p => p.track !== null);
+    // the 📋 report: what this pick held and how it was read (a folder that «finds nothing» shows why)
+    if (typeof bsNote === 'function') {
+        const all = Array.from(fileList || []);
+        bsNote('tracks-import', { picked: all.length, audio: files.length, hidden: all.filter(f => baHiddenPath(f.webkitRelativePath)).length,
+            withPath: files.filter(f => f.webkitRelativePath).length, parsed: parsed.length, disc: disc || null,
+            sets: parsed.reduce((o, p) => { const k = baSetOf(p); o[k] = (o[k] || 0) + 1; return o; }, {}),
+            noTrack: files.filter(f => baParseFile(f.name, f.webkitRelativePath || '').track === null).slice(0, 3).map(f => f.name),
+            sample: parsed.slice(0, 2).map(p => (p.path || p.name) + ' → ' + baLabel(p.cd, p.track)) });
+    }
     const total = parsed.reduce((n, p) => n + p.file.size, 0);
     let saved = 0, failed = false;
     try {
