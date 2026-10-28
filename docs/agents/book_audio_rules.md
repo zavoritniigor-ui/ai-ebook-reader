@@ -87,17 +87,18 @@ drop of a folder onto the dialog does exactly the same.
 
 ## 6. Which track a mark in the book plays
 
-Marks are found in the PDF text: «CD2 - piste 35», «CD1 - Piste 3», a bare «piste 37» / «plage 4» / «track 12».
+Marks are found in the PDF text: «CD2 - piste 35», «CD1 - Piste 3», a bare «piste 37» / «plage 4» / «track 12». A headphones
+icon set in a symbol font comes out as one small letter glued to the mark («iCD1- piste 4») and does not hide it.
 
 1. **Disc marks** («CD2 - piste 35») play the disc-2 track 35 of a disc set (A).
-2. **Bare marks** take the disc from the nearest disc mark before them on the page; without one, a track that exists
-   once (a set without discs, B).
+2. **Bare marks** take the disc from the nearest disc mark above them on the page («CD2 - piste 40, piste 41» = CD2 · 41);
+   without one, a track that exists once, else the one disc-less track of that number (a set without discs, B).
 3. **Numbering that restarts** (bare marks going 1, 2, … and back to 1 inside the book) means sections: the k-th run of
    marks is section k, matched to a section set (B). *Not verified yet on real files: the only such book on the owner's
    computer has no matching audio. Check it on real files before relying on it.*
-4. **Two sets never overwrite each other.** Tracks are stored per set (the top audio folder they came from), so a disc
-   set and a section set of one book live side by side. A mark plays from the set whose numbering fits it (disc marks →
-   the disc set; restarting bare marks → the section set).
+4. **Two sets never overwrite each other.** Tracks are stored per kind of set (`baSetOf`: disc / section / plain), so a
+   disc set and a section set of one book live side by side. A disc mark plays only a disc track (or the one plain track
+   of that number); it never plays a section track. Two copies of the same set are one set.
 5. A mark whose track is on the device is drawn solid, one that is not yet is dashed; a tap on a dashed mark opens the
    dialog with the reason («у вибраних файлах немає доріжки CD2 · piste 35»).
 
@@ -133,12 +134,17 @@ gives the expected result **both automatically (remembered folder) and by hand (
 Report the numbers: tracks stored per disc / set, marks found vs marks solid, narration sentences. A browser test for
 each row lives in `tests/book_audio_browser.py` / `tests/book_folder_browser.py`, with invented names (§2).
 
-## 9. Known gaps in `main` (2026-10-28) — to be fixed by the code step, not one by one
+## 9. State (2026-10-28, PR «book audio from any folder»)
 
-- Automatic tracks come only from package sub-folders whose name starts with `audio` (`bfPackageTracks`): breaks §5.1.
-- Choosing a folder by hand does not skip hidden folders: a book folder with `.work` imports cache files (§4.3).
-- `…_p011_t006` is read as track 11 (page wins over track): breaks §4.2.
-- `CD1-2` is read correctly as disc 1, but its parts are not told apart from a second copy; check with §8 rows 2–3.
-- Tracks are stored by (disc, track) only, so a section set and a disc set of one book overwrite each other (§6.4).
-- No section numbering (§6.3).
-- Book names are still in comments until PR #308 is merged.
+Fixed in code: package audio of any folder name; hidden / system folders skipped (pick, drop, package); a sub-folder holding
+another book is not read; `…_p011_t006` = track 6; sections parsed; sets kept apart (old tracks replaced, not doubled); bare
+marks take the disc above them; an icon letter glued to «CD1» is ignored.
+
+Measured on the owner's real books (marks found / marks in the text, by choosing the book's folder):
+four-level textbook 1-2: 258/258; 3-4: 178/178 (+87 entries of its «tracks ↔ episodes» table page stay dashed); 7-8: 157/157;
+5-6: 205/205 with its CD folder, the section set kept beside it. 10 000–35 000 cache files per book folder skipped.
+
+Still open:
+- Section numbering that restarts (§6.3): no book with matching audio yet.
+- A «tracks ↔ episodes» table page shows dashed marks (they are table entries, not exercises).
+- A book whose audio lies outside its folder is found only by hand (§5.1), by design.
