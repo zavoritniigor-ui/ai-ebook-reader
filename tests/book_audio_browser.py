@@ -350,5 +350,36 @@ check('14c A plain file pick with a chosen disc stores its files on that disc; t
     }
 })()""")
 
+check('14d Disc-less files in a book with discs ask «which disc» after the pick; the answer places them; files whose folder names the disc are not asked', """(async () => {
+    const saved = state.bookKey, probe = 'probe_disc_ask', dialog = document.getElementById('book-audio-dialog');
+    const file = name => new File([new Uint8Array(8)], name, { type: '' });
+    const rowsAfter = async n => { for (let i = 0; i < 40; i++) { const rows = await baList(probe); if (rows.length >= n && !baImporting) return rows; await new Promise(r => setTimeout(r, 50)); } return baList(probe); };
+    state.bookKey = probe;
+    try {
+        openBookAudioDialog('');
+        const ask = dialog.querySelector('.ba-disc-ask');
+        if (!dialog.querySelector('.pdf-audio-marker[data-cd="1"]') && !document.querySelector('.pdf-audio-marker[data-cd="1"]')) return 'no CD1 marker on the page';
+        const noSelect = !dialog.querySelector('select');
+        baImportOrAskDisc([file('1 Audio Track.aiff'), file('2 Audio Track.aiff')]);
+        const labels = Array.from(ask.querySelectorAll('button')).map(b => b.textContent).join('|');
+        if (ask.hidden || labels !== 'CD1|CD2|' + t('baDiscNone')) return 'ask: ' + ask.hidden + ' ' + labels;
+        if ((await baList(probe)).length) return 'imported before the answer';
+        ask.querySelector('[data-disc="2"]').click();
+        const rows = await rowsAfter(2);
+        const placed = ask.hidden && rows.length === 2 && rows.every(r => r.cd === 2);
+        // files whose folder names the disc are not asked about
+        baImportOrAskDisc([Object.defineProperty(file('3 Audio Track.aiff'), 'webkitRelativePath', { value: 'Audio/CD 1-1/3 Audio Track.aiff' })]);
+        const folderNotAsked = ask.hidden;
+        const rows2 = await rowsAfter(3);
+        const dropHint = dialog.querySelector('.ba-drop').hidden === !matchMedia('(any-pointer: fine)').matches;
+        return noSelect && placed && folderNotAsked && rows2.some(r => r.cd === 1 && r.track === 3) && dropHint
+            || JSON.stringify({ noSelect, placed, folderNotAsked, rows2: rows2.map(r => [r.cd, r.track]), dropHint });
+    } finally {
+        await baDeleteBook(probe);
+        state.bookKey = saved;
+        dialog.close();
+    }
+})()""")
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')
