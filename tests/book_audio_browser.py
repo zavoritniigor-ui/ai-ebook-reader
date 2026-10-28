@@ -258,15 +258,17 @@ check('13 Rotated page 2 builds its .pdf-audio-marker for CD1 - piste 3', """(()
 })()""")
 
 # ---------------------------------------------------------------- 6. Remove book audio
-check('13b With tracks the dialog shows a green status, «Replace or add» and a red «Remove» side by side; «More» holds the audiobook', """(() => {
+check('13b The dialog is one folder button, «Add by hand» beside a red «Remove», and a green status under them; no «piste», no extra sections', """(() => {
     openBookAudioDialog('');
-    const d = document.getElementById('book-audio-dialog'), folder = d.querySelector('.ba-folder'), remove = d.querySelector('.ba-remove');
-    const side = Math.abs(folder.getBoundingClientRect().top - remove.getBoundingClientRect().top) < 4;
-    const red = getComputedStyle(remove).color !== getComputedStyle(folder).color;
-    const more = d.querySelector('details.ba-more');
-    return d.querySelector('.ba-status').classList.contains('ba-ok') && folder.textContent === t('baReplace') && !folder.classList.contains('btn-primary')
-        && !remove.hidden && side && red && !!more && !!more.querySelector('.ba-speech') && !/piste/i.test(d.querySelector('.ba-lead').textContent)
-        || JSON.stringify({ status: d.querySelector('.ba-status').className, folder: folder.textContent, side, red });
+    const d = document.getElementById('book-audio-dialog'), folder = d.querySelector('.ba-folder'), files = d.querySelector('.ba-files'), remove = d.querySelector('.ba-remove');
+    const side = Math.abs(files.getBoundingClientRect().top - remove.getBoundingClientRect().top) < 4;
+    const red = getComputedStyle(remove).color !== getComputedStyle(files).color;
+    const below = d.querySelector('.ba-status').getBoundingClientRect().top > remove.getBoundingClientRect().bottom;
+    const buttons = Array.from(d.querySelectorAll('.ba-body button')).filter(b => b.offsetParent).length;
+    return d.querySelector('.ba-status').classList.contains('ba-ok') && folder.classList.contains('btn-primary') && folder.textContent === t('baPickFolder')
+        && files.textContent === t('baManual') && !remove.hidden && side && red && below && buttons === 3
+        && !d.querySelector('details, .ba-speech') && !/piste/i.test(d.querySelector('.ba-lead').textContent + t('mAudioDesc'))
+        || JSON.stringify({ status: d.querySelector('.ba-status').className, folder: folder.textContent, side, red, below, buttons });
 })()""")
 
 # the remove asks first: a «no» keeps the audio
@@ -395,16 +397,22 @@ check('14d Disc-less files in a book with discs ask «which disc» after the pic
     }
 })()""")
 
-check('14e Without tracks the dialog offers one solid «Choose the audio folder» and no «Remove»', """(() => {
-    const kept = bookAudio.tracks;
-    bookAudio.tracks = [];
-    openBookAudioDialog('');
-    const d = document.getElementById('book-audio-dialog'), folder = d.querySelector('.ba-folder');
-    const ok = folder.classList.contains('btn-primary') && folder.textContent === t('baPickFolder')
-        && d.querySelector('.ba-remove').hidden && !d.querySelector('.ba-status').classList.contains('ba-ok');
-    d.close();
-    bookAudio.tracks = kept;
-    return ok || JSON.stringify({ n: kept.length, cls: folder.className, txt: folder.textContent });
+check('14e Without audio the status is grey and there is no «Remove»; a folder with nothing recognisable says so and lights up «Add by hand»', """(async () => {
+    const saved = state.bookKey, kept = bookAudio.tracks, probe = 'probe_auto_fail';
+    state.bookKey = probe; bookAudio.tracks = [];
+    try {
+        openBookAudioDialog('');
+        const d = document.getElementById('book-audio-dialog');
+        const empty = d.querySelector('.ba-remove').hidden && !d.querySelector('.ba-status').classList.contains('ba-ok');
+        await importBookAudio([new File([new Uint8Array(8)], 'Intro.mp3', { type: 'audio/mpeg' })]);
+        const msg = d.querySelector('.ba-message');
+        const told = !msg.hidden && msg.textContent === t('baAutoFail') && d.querySelector('.ba-files').classList.contains('ba-hint');
+        d.close();
+        return empty && told || JSON.stringify({ empty, msg: msg.textContent, hint: d.querySelector('.ba-files').className });
+    } finally {
+        await baDeleteBook(probe);
+        state.bookKey = saved; bookAudio.tracks = kept;
+    }
 })()""")
 
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")

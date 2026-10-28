@@ -760,15 +760,11 @@ async function bsRenderFolderRow() {
         record = await bfGet();
         if (record && record.handle) granted = await record.handle.queryPermission({ mode: 'read' }) === 'granted';
     } catch (e) { record = null; }
-    row.hidden = false;
-    row.querySelector('.ba-books-text').textContent = record
-        ? t('bfHave').replace('{name}', record.name || '') + (granted ? '' : ' ' + t('bfNeedAllow'))
-        : t('bfDesc');
-    row.querySelector('.ba-books-pick').textContent = record ? t('bfChange') : t('bfChoose');
+    // only a remembered folder that lost its permission shows up here: the one tap that lets it be searched again
+    row.hidden = !record || granted;
+    if (row.hidden) return;
+    row.querySelector('.ba-books-text').textContent = t('bfHave').replace('{name}', record.name || '') + ' ' + t('bfNeedAllow');
     row.querySelector('.ba-books-allow').textContent = t('bfAllow');
-    row.querySelector('.ba-books-allow').hidden = !record || granted;
-    row.querySelector('.ba-books-forget').textContent = t('bfForget');
-    row.querySelector('.ba-books-forget').hidden = !record;
 }
 // The button «Вибрати папку»: the folder is chosen by the user, remembered, and searched for this book's narration at once.
 async function bsChooseBooksFolder() {
@@ -875,14 +871,6 @@ Object.assign(I18N, {
     spkLoading: { uk: 'Підключаю озвучку ({mb} МБ)… це може тривати до хвилини.', en: 'Connecting the narration ({mb} MB)… this can take up to a minute.', fr: 'Ajout de la narration ({mb} Mo)… cela peut prendre jusqu’à une minute.', ru: 'Подключаю озвучку ({mb} МБ)… это может занять до минуты.', es: 'Conectando la narración ({mb} MB)… puede tardar hasta un minuto.' },
     spkBusy: { uk: 'Озвучка ще підключається, зачекайте.', en: 'The narration is still being connected, please wait.', fr: 'La narration est encore en cours d’ajout, patientez.', ru: 'Озвучка ещё подключается, подождите.', es: 'La narración aún se está conectando, espere.' },
     spkNoBook: { uk: 'Спершу відкрийте книгу, потім підключайте озвучку.', en: 'Open the book first, then add its narration.', fr: 'Ouvrez d’abord le livre, puis ajoutez sa narration.', ru: 'Сначала откройте книгу, потом подключайте озвучку.', es: 'Abra primero el libro y luego añada su narración.' },
-    spkTitle: { uk: 'Аудіокнига, створена в застосунку', en: 'Audiobook made in the app', fr: 'Livre audio créé dans l’app', ru: 'Аудиокнига, созданная в приложении', es: 'Audiolibro creado en la app' },
-    spkDesc: { uk: 'Файл .mp3, де вся книга прочитана вголос.', en: 'An .mp3 file with the whole book read aloud.', fr: 'Un fichier .mp3 où tout le livre est lu à voix haute.', ru: 'Файл .mp3, где вся книга прочитана вслух.', es: 'Un archivo .mp3 con todo el libro leído en voz alta.' },
-    spkHave: { uk: 'Підключено: {n} речень.', en: 'Connected: {n} sentences.', fr: 'Ajouté : {n} phrases.', ru: 'Подключено: {n} предложений.', es: 'Conectado: {n} frases.' },
-    spkAdd: { uk: 'Додати файл', en: 'Add the file', fr: 'Ajouter le fichier', ru: 'Добавить файл', es: 'Añadir el archivo' },
-    spkReplace: { uk: 'Замінити файл', en: 'Replace the file', fr: 'Remplacer le fichier', ru: 'Заменить файл', es: 'Sustituir el archivo' },
-    spkRemoveAsk: { uk: 'Видалити аудіокнигу цієї книги з пристрою?', en: 'Remove this book’s audiobook from the device?', fr: 'Supprimer le livre audio de ce livre de l’appareil ?', ru: 'Удалить аудиокнигу этой книги с устройства?', es: '¿Quitar el audiolibro de este libro del dispositivo?' },
-    bfTitle: { uk: 'Папка з книгами', en: 'Books folder', fr: 'Dossier des livres', ru: 'Папка с книгами', es: 'Carpeta de libros' },
-    bfDesc: { uk: 'Аудіо й аудіокнига підключатимуться самі, коли ви відкриваєте книгу з цієї папки.', en: 'The audio and the audiobook connect by themselves when you open a book from this folder.', fr: 'L’audio et le livre audio s’ajoutent seuls quand vous ouvrez un livre de ce dossier.', ru: 'Аудио и аудиокнига будут подключаться сами, когда вы открываете книгу из этой папки.', es: 'El audio y el audiolibro se conectan solos cuando abre un libro de esta carpeta.' },
     spkCount: { uk: 'Озвучка: {n} речень', en: 'Narration: {n} sentences', fr: 'Narration : {n} phrases', ru: 'Озвучка: {n} предложений', es: 'Narración: {n} frases' },
 });
 
