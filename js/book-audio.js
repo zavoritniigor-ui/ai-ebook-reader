@@ -33,6 +33,16 @@ Object.assign(I18N, {
     baDrop: { uk:'Або перетягніть сюди папку з аудіо (разом із підпапками)', en: 'Or drag the audio folder here (with its sub-folders)', fr: 'Ou glissez ici le dossier audio (avec ses sous-dossiers)', ru: 'Или перетащите сюда папку с аудио (вместе с подпапками)', es: 'O arrastre aquí la carpeta de audio (con sus subcarpetas)', zh: '或将音频文件夹（含子文件夹）拖到这里', ko: '또는 오디오 폴더(하위 폴더 포함)를 여기로 끌어다 놓으세요', hi: 'या ऑडियो फ़ोल्डर (उप-फ़ोल्डरों सहित) यहाँ खींचें', ga: 'Nó tarraing an fillteán fuaime (leis na fo-fhillteáin) anseo' },
     baRemove: { uk: 'Видалити аудіо цієї книги', en: 'Remove this book’s audio', fr: 'Supprimer l’audio de ce livre', ru: 'Удалить аудио этой книги', es: 'Quitar el audio de este libro',
                 zh: '删除这本书的音频', ko: '이 책의 오디오 삭제', hi: 'इस किताब का ऑडियो हटाएँ', ga: 'Bain fuaim an leabhair seo' },
+    baLead: { uk: 'Аудіо до підручника: діалоги, вправи, тексти. Тапніть у книзі позначку аудіо, щоб послухати запис.', en: 'The textbook’s audio: dialogues, exercises, texts. Tap an audio mark in the book to hear its recording.',
+              fr: 'L’audio du manuel : dialogues, exercices, textes. Touchez une mention audio dans le livre pour écouter l’enregistrement.', ru: 'Аудио к учебнику: диалоги, упражнения, тексты. Коснитесь в книге отметки аудио, чтобы послушать запись.',
+              es: 'El audio del libro de texto: diálogos, ejercicios, textos. Toque una marca de audio en el libro para escuchar la grabación.', zh: '课本的音频：对话、练习、课文。点按书中的音频标记即可收听录音。', ko: '교재 오디오: 대화, 연습, 본문. 책의 오디오 표시를 누르면 녹음을 들을 수 있습니다.',
+              hi: 'पाठ्यपुस्तक का ऑडियो: संवाद, अभ्यास, पाठ। रिकॉर्डिंग सुनने के लिए किताब में ऑडियो चिह्न पर टैप करें।', ga: 'Fuaim an téacsleabhair: comhráite, cleachtaí, téacsanna. Tapáil marc fuaime sa leabhar chun an taifeadadh a chloisteáil.' },
+    baReplace: { uk: 'Замінити або додати', en: 'Replace or add', fr: 'Remplacer ou ajouter', ru: 'Заменить или добавить', es: 'Sustituir o añadir', zh: '替换或添加', ko: '바꾸기 또는 추가', hi: 'बदलें या जोड़ें', ga: 'Athraigh nó cuir leis' },
+    baOrFiles: { uk: 'Або виберіть окремі файли', en: 'Or choose single files', fr: 'Ou choisissez des fichiers', ru: 'Или выберите отдельные файлы', es: 'O elija archivos sueltos', zh: '或选择单个文件', ko: '또는 개별 파일 선택', hi: 'या अलग-अलग फ़ाइलें चुनें', ga: 'Nó roghnaigh comhaid aonair' },
+    baRemoveShort: { uk: 'Видалити', en: 'Remove', fr: 'Supprimer', ru: 'Удалить', es: 'Quitar', zh: '删除', ko: '삭제', hi: 'हटाएँ', ga: 'Bain' },
+    baRemoveAsk: { uk: 'Видалити все аудіо цієї книги з пристрою?', en: 'Remove all of this book’s audio from the device?', fr: 'Supprimer tout l’audio de ce livre de l’appareil ?', ru: 'Удалить всё аудио этой книги с устройства?',
+                   es: '¿Quitar todo el audio de este libro del dispositivo?', zh: '要从设备中删除这本书的全部音频吗？', ko: '이 책의 오디오를 기기에서 모두 삭제할까요?', hi: 'इस किताब का सारा ऑडियो डिवाइस से हटाएँ?', ga: 'An bhfuil tú chun fuaim uile an leabhair seo a bhaint den ghléas?' },
+    baMore: { uk: 'Додатково', en: 'More', fr: 'Plus', ru: 'Дополнительно', es: 'Más opciones', zh: '更多', ko: '더 보기', hi: 'और', ga: 'Tuilleadh' },
     baNote: { uk: 'Файли зберігаються лише на цьому пристрої. На іншому пристрої вкажіть папку так само.', en: 'The files stay on this device only. On another device, choose the folder the same way.',
               fr: 'Les fichiers restent sur cet appareil. Sur un autre appareil, choisissez le dossier de la même façon.', ru: 'Файлы хранятся только на этом устройстве. На другом устройстве укажите папку так же.',
               es: 'Los archivos se quedan solo en este dispositivo. En otro dispositivo, elige la carpeta del mismo modo.', zh: '文件只保存在这台设备上。在其他设备上请用同样的方法选择文件夹。',
@@ -494,13 +504,21 @@ function renderBookAudioDialog(message) {
     const subName = state.bookFileName || (state.bookKey ? String(state.bookKey).replace(/:\d+$/, '') : '');
     dialog.querySelector('.ba-subtitle').textContent = (typeof shelfTitle === 'function' ? shelfTitle(subName) : subName) || '';
     const speech = typeof bsActiveSet === 'function' ? bsActiveSet() : null;
-    const parts = [bookAudio.tracks.length ? t('baCount').replace('{n}', bookAudio.tracks.length) : t('baNone')];
-    if (speech) parts.push(t('spkCount').replace('{n}', speech.sentences.length));
-    dialog.querySelector('.ba-status').textContent = parts.join(' · ');
+    const has = bookAudio.tracks.length > 0;
+    const status = dialog.querySelector('.ba-status');
+    status.textContent = has ? t('baCount').replace('{n}', bookAudio.tracks.length) : t('baNone');
+    status.classList.toggle('ba-ok', has);
     const msg = dialog.querySelector('.ba-message');
     if (message !== undefined) msg.textContent = message;
     msg.hidden = !msg.textContent;
-    dialog.querySelector('.ba-remove').hidden = !bookAudio.tracks.length;
+    // no audio yet: one solid «Choose the audio folder»; audio kept: «Replace or add» beside a red «Remove»
+    const folderBtn = dialog.querySelector('.ba-folder');
+    folderBtn.textContent = has ? t('baReplace') : t('baPickFolder');
+    folderBtn.classList.toggle('btn-primary', !has);
+    folderBtn.classList.toggle('ba-tint', has);
+    dialog.querySelector('.ba-remove').hidden = !has;
+    dialog.querySelector('.ba-speech-text').textContent = t('spkDesc') + (speech ? ' ' + t('spkHave').replace('{n}', speech.sentences.length) : '');
+    dialog.querySelector('.ba-speech').textContent = speech ? t('spkReplace') : t('spkAdd');
     dialog.querySelector('.ba-speech-remove').hidden = !speech;
     if (typeof bsRenderFolderRow === 'function') bsRenderFolderRow();
 }
@@ -561,13 +579,18 @@ function buildBookAudioDialog() {
     dialog.innerHTML = '<div class="ba-head"><span class="pn-icon" aria-hidden="true"><svg class="mi"><use href="#i-audio"/></svg></span>'
         + '<div class="pn-titles"><h3 class="ba-title"></h3><p class="pn-sub ba-subtitle"></p></div>'
         + '<button type="button" class="close-panel-btn ba-close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>'
-        + '<div class="ba-body"><p class="ba-status"></p><p class="ba-message" hidden></p>'
-        + '<div class="ba-actions"><button type="button" class="btn-primary ba-folder"></button><button type="button" class="btn-secondary ba-files"></button><button type="button" class="btn-secondary ba-speech"></button></div>'
-        + '<p class="ba-drop"></p>'
+        // the textbook's audio first and plain; the rare narration and the books folder fold away under «More»
+        + '<div class="ba-body"><p class="ba-lead"></p><p class="ba-status"></p><p class="ba-message" hidden></p>'
+        + '<div class="ba-actions ba-main"><button type="button" class="ba-folder"></button><button type="button" class="ba-tint ba-red ba-remove"></button></div>'
+        + '<div class="ba-alt"><button type="button" class="ba-link ba-files"></button><p class="ba-drop"></p></div>'
         + '<div class="ba-disc-ask" hidden><p class="ba-disc-text"></p><div class="ba-actions ba-disc-choices"></div></div>'
-        + '<div class="ba-books" hidden><p class="ba-books-text"></p><div class="ba-actions"><button type="button" class="btn-secondary ba-books-pick"></button><button type="button" class="btn-secondary ba-books-allow"></button><button type="button" class="btn-ghost ba-books-forget"></button></div></div>'
         + '<div class="ba-progress" id="ba-progress" hidden><div class="ba-progress-text"></div><div class="ba-progress-bar"></div></div>'
-        + '<button type="button" class="btn-ghost ba-remove"></button><button type="button" class="btn-ghost ba-speech-remove"></button><p class="ba-note"></p></div>';
+        + '<details class="ba-more"><summary class="ba-more-title"></summary>'
+        + '<div class="ba-card ba-violet"><p class="ba-card-title ba-speech-title"></p><p class="ba-card-text ba-speech-text"></p>'
+        + '<div class="ba-actions"><button type="button" class="ba-tint ba-speech"></button><button type="button" class="ba-tint ba-red ba-speech-remove"></button></div></div>'
+        + '<div class="ba-card ba-amber ba-books" hidden><p class="ba-card-title ba-books-title"></p><p class="ba-card-text ba-books-text"></p>'
+        + '<div class="ba-actions"><button type="button" class="ba-tint ba-books-pick"></button><button type="button" class="ba-tint ba-books-allow"></button><button type="button" class="btn-ghost ba-books-forget"></button></div></div>'
+        + '</details><p class="ba-note"></p></div>';
     const folder = document.createElement('input'), files = document.createElement('input'), speech = document.createElement('input');
     folder.type = 'file'; folder.multiple = true; folder.setAttribute('webkitdirectory', ''); folder.hidden = true; folder.id = 'ba-input-folder';
     files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.opus,.aif,.aiff'; files.hidden = true; files.id = 'ba-input-files';
@@ -588,7 +611,7 @@ function buildBookAudioDialog() {
     dialog.querySelector('.ba-folder').onclick = () => folder.click();
     dialog.querySelector('.ba-files').onclick = () => files.click();
     dialog.querySelector('.ba-speech').onclick = () => speech.click();
-    dialog.querySelector('.ba-speech-remove').onclick = () => bsRemoveFromDialog();
+    dialog.querySelector('.ba-speech-remove').onclick = () => { if (confirm(t('spkRemoveAsk'))) bsRemoveFromDialog(); };
     dialog.querySelector('.ba-books-pick').onclick = () => bsChooseBooksFolder();
     dialog.querySelector('.ba-books-allow').onclick = () => bsAllowBooksFolder();
     dialog.querySelector('.ba-books-forget').onclick = () => bsForgetBooksFolder();
@@ -600,7 +623,7 @@ function buildBookAudioDialog() {
     speech.onchange = () => { const list = Array.from(speech.files); speech.value = ''; bsImport(list); };
     dialog.querySelector('.ba-close').onclick = () => dialog.close();
     dialog.querySelector('.ba-remove').onclick = async () => {
-        if (!state.bookKey) return;
+        if (!state.bookKey || !confirm(t('baRemoveAsk'))) return;
         stopBookAudio();
         try { await baDeleteBook(state.bookKey); } catch (e) { /* nothing to remove */ }
         await refreshBookAudio();
@@ -613,16 +636,20 @@ function labelBookAudioDialog() {
     if (!dialog || !dialog.querySelector('.ba-body')) return;
     dialog.setAttribute('aria-label', t('mAudio'));
     dialog.querySelector('.ba-title').textContent = t('mAudio');
-    dialog.querySelector('.ba-folder').textContent = t('baPickFolder');
-    dialog.querySelector('.ba-files').textContent = t('baPickFiles');
+    dialog.querySelector('.ba-lead').textContent = t('baLead');
+    dialog.querySelector('.ba-files').textContent = t('baOrFiles');
+    dialog.querySelector('.ba-more-title').textContent = t('baMore');
+    dialog.querySelector('.ba-speech-title').textContent = t('spkTitle');
+    dialog.querySelector('.ba-books-title').textContent = t('bfTitle');
     dialog.querySelector('.ba-drop').textContent = t('baDrop');
     dialog.querySelector('.ba-drop').hidden = !baCanDrag();
     dialog.querySelector('.ba-disc-text').textContent = t('baDiscAsk');
     const none = dialog.querySelector('.ba-disc-choices [data-disc=""]');
     if (none) none.textContent = t('baDiscNone');
-    dialog.querySelector('.ba-speech').textContent = t('spkPick');
-    dialog.querySelector('.ba-speech-remove').textContent = t('spkRemove');
-    dialog.querySelector('.ba-remove').textContent = t('baRemove');
+    dialog.querySelector('.ba-speech-remove').textContent = t('baRemoveShort');
+    dialog.querySelector('.ba-remove').textContent = t('baRemoveShort');
+    dialog.querySelector('.ba-remove').setAttribute('aria-label', t('baRemove'));
+    dialog.querySelector('.ba-speech-remove').setAttribute('aria-label', t('spkRemove'));
     dialog.querySelector('.ba-note').textContent = t('baNote');
     dialog.querySelector('.ba-close').setAttribute('aria-label', t('tClose'));
 }
@@ -632,7 +659,11 @@ function openBookAudioDialog(message) {
     buildBookAudioDialog();
     labelBookAudioDialog();
     renderBookAudioDialog(message || '');
-    if (!dialog.open) { dialog.querySelector('.ba-disc-ask').hidden = true; dialog.showModal(); }   // a question left from an earlier pick is stale
+    if (!dialog.open) {
+        dialog.querySelector('.ba-disc-ask').hidden = true;   // a question left from an earlier pick is stale
+        dialog.querySelector('.ba-more').open = !!(typeof bsActiveSet === 'function' && bsActiveSet());   // «More» opens by itself only for a book with a narration
+        dialog.showModal();
+    }
 }
 const baBtn = document.getElementById('btn-book-audio');
 if (baBtn) baBtn.onclick = () => openBookAudioDialog('');

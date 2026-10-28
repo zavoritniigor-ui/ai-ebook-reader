@@ -763,7 +763,7 @@ async function bsRenderFolderRow() {
     row.hidden = false;
     row.querySelector('.ba-books-text').textContent = record
         ? t('bfHave').replace('{name}', record.name || '') + (granted ? '' : ' ' + t('bfNeedAllow'))
-        : t('bfNone');
+        : t('bfDesc');
     row.querySelector('.ba-books-pick').textContent = record ? t('bfChange') : t('bfChoose');
     row.querySelector('.ba-books-allow').textContent = t('bfAllow');
     row.querySelector('.ba-books-allow').hidden = !record || granted;
@@ -865,7 +865,6 @@ Object.assign(I18N, {
     bfChange: { uk: 'Змінити папку', en: 'Change folder', fr: 'Changer de dossier', ru: 'Сменить папку', es: 'Cambiar carpeta' },
     bfAllow: { uk: 'Дозволити доступ', en: 'Allow access', fr: 'Autoriser l’accès', ru: 'Разрешить доступ', es: 'Permitir el acceso' },
     bfForget: { uk: 'Забути папку', en: 'Forget the folder', fr: 'Oublier le dossier', ru: 'Забыть папку', es: 'Olvidar la carpeta' },
-    bfNone: { uk: 'Папку з книгами не вибрано: озвучка з цієї папки не підтягуватиметься сама.', en: 'No books folder chosen: the narration is not found there by itself.', fr: 'Aucun dossier de livres choisi : la narration n’est pas trouvée automatiquement.', ru: 'Папка с книгами не выбрана: озвучка из неё не подтягивается сама.', es: 'No hay carpeta de libros: la narración no se busca sola.' },
     bfHave: { uk: 'Папка з книгами: {name}', en: 'Books folder: {name}', fr: 'Dossier des livres : {name}', ru: 'Папка с книгами: {name}', es: 'Carpeta de libros: {name}' },
     bfNeedAllow: { uk: 'Дозвольте доступ, щоб знайти озвучку книги.', en: 'Allow access to find the book’s narration.', fr: 'Autorisez l’accès pour trouver la narration du livre.', ru: 'Разрешите доступ, чтобы найти озвучку книги.', es: 'Permita el acceso para encontrar la narración del libro.' },
     bfSaved: { uk: 'Папку з книгами запам’ятано: {name}', en: 'Books folder remembered: {name}', fr: 'Dossier des livres mémorisé : {name}', ru: 'Папка с книгами запомнена: {name}', es: 'Carpeta de libros guardada: {name}' },
@@ -876,6 +875,14 @@ Object.assign(I18N, {
     spkLoading: { uk: 'Підключаю озвучку ({mb} МБ)… це може тривати до хвилини.', en: 'Connecting the narration ({mb} MB)… this can take up to a minute.', fr: 'Ajout de la narration ({mb} Mo)… cela peut prendre jusqu’à une minute.', ru: 'Подключаю озвучку ({mb} МБ)… это может занять до минуты.', es: 'Conectando la narración ({mb} MB)… puede tardar hasta un minuto.' },
     spkBusy: { uk: 'Озвучка ще підключається, зачекайте.', en: 'The narration is still being connected, please wait.', fr: 'La narration est encore en cours d’ajout, patientez.', ru: 'Озвучка ещё подключается, подождите.', es: 'La narración aún se está conectando, espere.' },
     spkNoBook: { uk: 'Спершу відкрийте книгу, потім підключайте озвучку.', en: 'Open the book first, then add its narration.', fr: 'Ouvrez d’abord le livre, puis ajoutez sa narration.', ru: 'Сначала откройте книгу, потом подключайте озвучку.', es: 'Abra primero el libro y luego añada su narración.' },
+    spkTitle: { uk: 'Аудіокнига, створена в застосунку', en: 'Audiobook made in the app', fr: 'Livre audio créé dans l’app', ru: 'Аудиокнига, созданная в приложении', es: 'Audiolibro creado en la app' },
+    spkDesc: { uk: 'Файл .mp3, де вся книга прочитана вголос.', en: 'An .mp3 file with the whole book read aloud.', fr: 'Un fichier .mp3 où tout le livre est lu à voix haute.', ru: 'Файл .mp3, где вся книга прочитана вслух.', es: 'Un archivo .mp3 con todo el libro leído en voz alta.' },
+    spkHave: { uk: 'Підключено: {n} речень.', en: 'Connected: {n} sentences.', fr: 'Ajouté : {n} phrases.', ru: 'Подключено: {n} предложений.', es: 'Conectado: {n} frases.' },
+    spkAdd: { uk: 'Додати файл', en: 'Add the file', fr: 'Ajouter le fichier', ru: 'Добавить файл', es: 'Añadir el archivo' },
+    spkReplace: { uk: 'Замінити файл', en: 'Replace the file', fr: 'Remplacer le fichier', ru: 'Заменить файл', es: 'Sustituir el archivo' },
+    spkRemoveAsk: { uk: 'Видалити аудіокнигу цієї книги з пристрою?', en: 'Remove this book’s audiobook from the device?', fr: 'Supprimer le livre audio de ce livre de l’appareil ?', ru: 'Удалить аудиокнигу этой книги с устройства?', es: '¿Quitar el audiolibro de este libro del dispositivo?' },
+    bfTitle: { uk: 'Папка з книгами', en: 'Books folder', fr: 'Dossier des livres', ru: 'Папка с книгами', es: 'Carpeta de libros' },
+    bfDesc: { uk: 'Аудіо й аудіокнига підключатимуться самі, коли ви відкриваєте книгу з цієї папки.', en: 'The audio and the audiobook connect by themselves when you open a book from this folder.', fr: 'L’audio et le livre audio s’ajoutent seuls quand vous ouvrez un livre de ce dossier.', ru: 'Аудио и аудиокнига будут подключаться сами, когда вы открываете книгу из этой папки.', es: 'El audio y el audiolibro se conectan solos cuando abre un libro de esta carpeta.' },
     spkCount: { uk: 'Озвучка: {n} речень', en: 'Narration: {n} sentences', fr: 'Narration : {n} phrases', ru: 'Озвучка: {n} предложений', es: 'Narración: {n} frases' },
 });
 

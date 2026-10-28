@@ -498,7 +498,44 @@
         #book-audio-dialog .ba-subtitle:empty { display: none; }
         #book-audio-dialog .ba-close { position: static; }
         #book-audio-dialog .ba-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-        #book-audio-dialog .ba-status { margin: 0; font-size: 14.5px; font-weight: 600; }
+        /* Colour says what a control is: green = connected, blue = the audio itself, red = remove, violet = the audiobook, amber = the
+           books folder. Each tint mixes its hue with the theme's text colour, so it stays readable in light, dark and sepia. */
+        #book-audio-dialog { --ba-green: #1e9e5a; --ba-blue: #2f6fed; --ba-red: #d93a4a; --ba-violet: #7b4fd6; --ba-amber: #d48806; }
+        [data-theme="dark"] #book-audio-dialog { --ba-green: #4fd08b; --ba-blue: #7aa2ff; --ba-red: #ff7d88; --ba-violet: #b79cff; --ba-amber: #f3b54a; }
+        #book-audio-dialog .ba-lead { margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.45; }
+        #book-audio-dialog .ba-status {
+            --ba-hue: var(--text-muted);
+            margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 14.5px; font-weight: 600;
+            background: color-mix(in srgb, var(--ba-hue) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ba-hue) 30%, transparent);
+        }
+        #book-audio-dialog .ba-status.ba-ok { --ba-hue: var(--ba-green); color: color-mix(in srgb, var(--ba-green) 75%, var(--text-color)); }
+        #book-audio-dialog .ba-status.ba-ok::before { content: "✓ "; }
+        #book-audio-dialog .ba-tint, #book-audio-dialog .ba-card { --ba-hue: var(--ba-blue); }
+        #book-audio-dialog .ba-red { --ba-hue: var(--ba-red) !important; }
+        #book-audio-dialog .ba-violet, #book-audio-dialog .ba-violet .ba-tint:not(.ba-red) { --ba-hue: var(--ba-violet); }
+        #book-audio-dialog .ba-amber, #book-audio-dialog .ba-amber .ba-tint:not(.ba-red) { --ba-hue: var(--ba-amber); }
+        #book-audio-dialog button.ba-tint {
+            background: color-mix(in srgb, var(--ba-hue) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ba-hue) 45%, transparent);
+            color: color-mix(in srgb, var(--ba-hue) 80%, var(--text-color));
+        }
+        #book-audio-dialog button.ba-tint:hover { background: color-mix(in srgb, var(--ba-hue) 24%, transparent); }
+        #book-audio-dialog .ba-main .ba-remove { flex: 0 0 auto; padding: 0 18px; }
+        #book-audio-dialog .ba-alt { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        #book-audio-dialog button.ba-link {
+            background: none; border: none; min-height: 32px; padding: 0 8px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+            color: color-mix(in srgb, var(--ba-blue) 85%, var(--text-color)); text-decoration: underline; text-underline-offset: 3px;
+        }
+        #book-audio-dialog .ba-more { border-top: 1px solid var(--border-color); padding-top: 10px; }
+        #book-audio-dialog .ba-more-title { cursor: pointer; font-size: 14px; font-weight: 600; padding: 6px 0; }
+        #book-audio-dialog .ba-more[open] .ba-more-title { margin-bottom: 8px; }
+        #book-audio-dialog .ba-card {
+            display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
+            background: color-mix(in srgb, var(--ba-hue) 8%, transparent); border: 1px solid color-mix(in srgb, var(--ba-hue) 30%, transparent);
+        }
+        #book-audio-dialog .ba-card[hidden] { display: none; }
+        #book-audio-dialog .ba-card-title { margin: 0; font-size: 14px; font-weight: 600; color: color-mix(in srgb, var(--ba-hue) 70%, var(--text-color)); }
+        #book-audio-dialog .ba-card-text { margin: 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.45; }
+        #book-audio-dialog .ba-card .ba-actions button { min-height: 38px; flex: 1 1 120px; }
         #book-audio-dialog .ba-message {
             margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 13.5px;
             background: color-mix(in srgb, var(--accent-color) 12%, transparent);
@@ -517,19 +554,15 @@
             width: calc(var(--ba-fraction, 0) * 100%); background: var(--accent-color);
             transition: width 0.15s ease;
         }
-        #book-audio-dialog .ba-remove { align-self: flex-start; min-height: 38px; padding: 0 12px; font-size: 13px; cursor: pointer; }
         #book-audio-dialog .ba-note { margin: 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.45; }
-        #book-audio-dialog .ba-books { display: flex; flex-direction: column; gap: 8px; }
-        #book-audio-dialog .ba-books[hidden] { display: none; }
         #book-audio-dialog button[hidden] { display: none; }   /* the global button rule sets display, which would show a hidden button */
-        #book-audio-dialog .ba-drop { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+        #book-audio-dialog .ba-drop { margin: 0; font-size: 12.5px; color: var(--text-muted); text-align: center; }
         #book-audio-dialog .ba-drop[hidden], #book-audio-dialog .ba-disc-ask[hidden] { display: none; }
         #book-audio-dialog.ba-dragging { outline: 3px dashed var(--accent-color); outline-offset: -6px; }
         #book-audio-dialog .ba-disc-ask { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px;
             background: color-mix(in srgb, var(--accent-color) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent); }
         #book-audio-dialog .ba-disc-text { margin: 0; font-size: 14px; font-weight: 600; }
         #book-audio-dialog .ba-disc-choices button { flex: 1 1 70px; }
-        #book-audio-dialog .ba-books-text { margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.45; }
 
         main { flex: 1; display: flex; justify-content: center; position: relative; overflow: hidden; background: var(--bg-color); }
         #reader-container {
@@ -2049,8 +2082,8 @@
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
     <script src="js/pdf-render.js?v=e39d8c10f9af"></script>
-    <script src="js/book-audio.js?v=2ed417f4d321"></script>
-    <script src="js/book-speech.js?v=f9c51b011df0"></script>
+    <script src="js/book-audio.js?v=cef60adaa6f3"></script>
+    <script src="js/book-speech.js?v=03dd504f921f"></script>
     <script src="js/formats.js?v=0adff3b5d013"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
