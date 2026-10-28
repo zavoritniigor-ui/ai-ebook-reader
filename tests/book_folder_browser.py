@@ -161,7 +161,7 @@ c.js("""(async () => {
 })()""")
 check('6 With no folder remembered the book opens without a narration and no error', """(async () => {
     const got = await bsAutoImportFromFolder(true);
-    return got === false && bsSets.list.length === 0 && typeof bsRenderFolderRow === 'function';
+    return got === false && bsSets.list.length === 0 && typeof bsPickAudioFolder === 'function';
 })()""")
 
 # 7. the book's package (its PDF and an audio folder of any name with a CD track) gives the dialogue tracks when the book opens
@@ -215,5 +215,36 @@ check('12 A narration chosen with no book open, or while one is still being conn
     window.__toasts = []; bsImporting = true; await bsImport([window.__match]); bsImporting = false;
     return window.__toasts.includes(t('spkBusy'));
 })()""")
+
+# 13-14 the one button «Вибрати папку з аудіо» (book_audio_rules §3, §5.2): a folder holding the book is remembered and gives its
+# narration and tracks; a folder elsewhere gives its audio to the open book and does not replace the remembered folder
+c.js("""(async () => {
+    await bsDelete(state.bookKey); await bsRefresh(); stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
+    window.__perm = 'granted'; window.__saved = [];
+    window.bfSet = async rec => { window.__saved.push(rec.name); window.__remember(rec.handle); };
+    const books = window.__folder([['textbook', window.__folderEntry('textbook', [
+        ['Speech_test.pdf', window.__file('Speech_test.pdf', window.__pdf)],
+        ['Speech test - voice.mp3', window.__file('Speech test - voice.mp3', window.__match)],
+        ['Tracks', window.__folderEntry('Tracks', [['CD1', window.__folderEntry('CD1', [['74 Track 74.m4a', window.__file('74 Track 74.m4a', window.__m4a)]])]])],
+        ['.work', window.__folderEntry('.work', [['0001.m4a', window.__file('0001.m4a', window.__m4a)]])],
+    ])]]);
+    window.showDirectoryPicker = async () => books;
+    await bsPickAudioFolder();
+})()""")
+check('13 Choosing a folder that holds the book remembers it and connects the narration and the tracks (cache skipped)', """(async () => {
+    for (let i = 0; i < 100 && !(bookAudio.tracks.length && bsSets.list.length); i++) await new Promise(r => setTimeout(r, 100));
+    return window.__saved.length === 1 && bsSets.list.length === 1 && bookAudio.tracks.length === 1 && bookAudio.tracks[0].cd === 1 && bookAudio.tracks[0].track === 74
+        || JSON.stringify({ saved: window.__saved, speech: bsSets.list.length, tracks: bookAudio.tracks.map(r => r.name) });
+})()""", timeout=30)
+c.js("""(async () => {
+    const elsewhere = window.__folder([['CD 2-1', window.__folderEntry('CD 2-1', [['5 Audio Track.m4a', window.__file('5 Audio Track.m4a', new File([window.__m4a], '5 Audio Track.m4a', { type: 'audio/mp4' }))]])]]);
+    window.showDirectoryPicker = async () => elsewhere;
+    await bsPickAudioFolder();
+})()""")
+check('14 Choosing an audio folder somewhere else adds its tracks and keeps the remembered folder', """(async () => {
+    for (let i = 0; i < 100 && bookAudio.tracks.length < 2; i++) await new Promise(r => setTimeout(r, 100));
+    return window.__saved.length === 1 && bookAudio.tracks.some(r => r.cd === 2 && r.track === 5) && bookAudio.tracks.length === 2
+        || JSON.stringify({ saved: window.__saved, tracks: bookAudio.tracks.map(r => [r.cd, r.track]) });
+})()""", timeout=30)
 
 print('PASS: all book folder checks')

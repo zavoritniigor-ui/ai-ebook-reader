@@ -70,8 +70,17 @@ For every audio file found (`mp3 m4a m4b aac wav ogg oga opus flac wma aif aiff`
   - the book's **package**: the folder that holds the opened book file. **All** audio in the package and in its
     sub-folders, whatever they are called (not only folders named «audio…»), are its tracks, minus the narration
     and minus §4.3. A book whose audio lies in a sibling folder outside its package is not found automatically: §5.2.
-- Permission to read is asked for only from a tap (the browser refuses it otherwise); a remembered folder that lost its
-  permission shows one button «Дозволити доступ».
+- **The remembered folder is set by the one button** «Вибрати папку з аудіо» (§5.2): a picked folder that holds the open
+  book is remembered (one per device, the last one wins); a picked folder elsewhere is not. There is no separate
+  «books folder» row, no «Дозволити доступ» button: a folder whose permission lapsed is simply picked again (the picker
+  opens where it was).
+
+### 5.3 What the dialog says
+
+The status tells what plays in **this** book, never just how many files are stored:
+«Грають усі позначки книги: N» / «Грають K з N позначок книги» (green), or, when stored tracks match none of the book's
+marks, an amber line that names one missing mark («CD1 · piste 20») and asks for the folder with this book's recordings.
+The narration has its own line «Озвучка: N речень». A book without marks shows the track count.
 
 ### 5.2 By hand: «Вибрати папку з аудіо»
 
