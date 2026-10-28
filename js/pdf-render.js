@@ -46,7 +46,9 @@ async function initPdf(file, epoch = readerEpoch.book) {
     // its first page is drawn: a big PDF on a tablet can take long to draw, and the narration waited for it (js/book-speech.js).
     if (typeof bfAutoImportFromFolder === 'function') setTimeout(() => { if (epoch === readerEpoch.book) bfAutoImportFromFolder(); }, 0);
     // the audio dialog opened while the PDF was loading counts the book's marks now (js/book-audio.js)
-    if (typeof baScanMarks === 'function' && document.getElementById('book-audio-dialog')?.open) setTimeout(() => { if (epoch === readerEpoch.book) baScanMarks(); }, 0);
+    // the marks of every page: for the dialog's status, and for a book with tracks (its table decides what a mark plays)
+    if (typeof baScanMarks === 'function' && (document.getElementById('book-audio-dialog')?.open || (typeof bookAudio !== 'undefined' && bookAudio.tracks.length)))
+        setTimeout(() => { if (epoch === readerEpoch.book) baScanMarks(); }, 0);
     const bm = loadBookmark();
     const startPage = (bm && bm.format === 'pdf' && bm.currentIndex >= 1 && bm.currentIndex <= state.totalPages) ? bm.currentIndex : 1;
     await setupContinuousPdf(doc, startPage, bm);
