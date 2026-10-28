@@ -113,6 +113,24 @@ check('1 Opening the book imports its narration from the remembered folder', """
     return bsSets.list.length === 1 && bsSets.list[0].voice === 'fr-CA-SylvieNeural' && bsSets.list[0].sentences.length === 2;
 })()""", timeout=30)
 
+# 1b. the same PDF copied again (another lastModified, so another book key) still finds its narration (owner's tablet, 2026-10-28)
+check('1b A narration stored under an older copy of the book (same name and size) is found; Remove clears it too', """(async () => {
+    const db = await baDb();
+    const rows = await bsList(state.bookKey);
+    const moved = rows.map(r => Object.assign({}, r, { id: r.id.replace(state.bookKey, state.bookKey.replace(/_\\d+$/, '_1111')), bookKey: state.bookKey.replace(/_\\d+$/, '_1111') }));
+    const tx = db.transaction('speech', 'readwrite');
+    for (const r of rows) tx.objectStore('speech').delete(r.id);
+    for (const r of moved) tx.objectStore('speech').put(r);
+    await baTxDone(tx);
+    await bsRefresh();
+    const found = bsSets.list.length === 1 && bsSets.list[0].bookKey !== state.bookKey;
+    await bsDelete(state.bookKey); await bsRefresh();
+    const cleared = bsSets.list.length === 0;
+    // back as test 1 left it
+    const tx2 = db.transaction('speech', 'readwrite'); for (const r of rows) tx2.objectStore('speech').put(r); await baTxDone(tx2); await bsRefresh();
+    return found && cleared && bsSets.list.length === 1 || JSON.stringify({ found, cleared, rows: rows.length, keys: moved.map(r => r.bookKey) });
+})()""")
+
 # 2. the book has its narration now: a second run does nothing (and does not ask for anything)
 check('2 A book that has its narration is left alone', """(async () => {
     const before = bsSets.list.length;

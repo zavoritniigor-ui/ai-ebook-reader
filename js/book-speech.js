@@ -124,14 +124,20 @@ async function bsPut(record) {
     tx.objectStore(BS_STORE).put(record);
     await baTxDone(tx);
 }
+// The same PDF copied or sent again gets a new lastModified, so its key changes (owner's tablet, 2026-10-28: the narration of
+// «…_1595987480000» was not found for «…_1595976680000»). Like the tracks (baList), a narration is then found by name and size.
 async function bsList(bookKey) {
-    const db = await baDb();
-    return baReq(db.transaction(BS_STORE, 'readonly').objectStore(BS_STORE).index('book').getAll(IDBKeyRange.only(bookKey)));
+    const db = await baDb(), store = db.transaction(BS_STORE, 'readonly').objectStore(BS_STORE);
+    const rows = await baReq(store.index('book').getAll(IDBKeyRange.only(bookKey)));
+    if (rows.length) return rows;
+    const loose = baLooseKey(bookKey);
+    const seen = new Set();   // one row per voice: the same narration may sit under several older copies of the book
+    return ((await baReq(store.getAll())) || []).filter(r => baLooseKey(r.bookKey) === loose && !seen.has(r.voice) && seen.add(r.voice));
 }
 async function bsDelete(bookKey) {
     const db = await baDb(), tx = db.transaction(BS_STORE, 'readwrite'), store = tx.objectStore(BS_STORE);
-    const ids = (await baReq(store.index('book').getAllKeys(IDBKeyRange.only(bookKey)))) || [];
-    for (const id of ids) store.delete(id);
+    const loose = baLooseKey(bookKey);
+    for (const row of (await baReq(store.getAll())) || []) if (baLooseKey(row.bookKey) === loose) store.delete(row.id);
     await baTxDone(tx);
 }
 
