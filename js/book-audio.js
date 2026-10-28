@@ -284,7 +284,8 @@ function baFind(cd, track, tracks = bookAudio.tracks) {
 // ---------- marks in the text -----------------------------------------------------------------------------------------------
 // «CD2 - piste 35», «CD2- piste 34», «CD1 - Piste 3», or a bare «piste 37» (a mark whose disc sits in another text item).
 // A headphones icon set in a symbol font comes out of the text as one small letter glued to the mark («iCD1- piste 4»).
-const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:\p{Ll}(?=CD\s*[1-9]))?(?:CD\s*([1-9])\s*[-–—:.]*\s*(?:piste|plage|track|pista)\s*0*([1-9]\d{0,2})|(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
+// A bare «plage 11» after an article is the word in running text («J'aime la plage 11. le ruisseau» in a numbered list), not a mark.
+const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:\p{Ll}(?=CD\s*[1-9]))?(?:CD\s*([1-9])\s*[-–—:.]*\s*(?:piste|plage|track|pista)\s*0*([1-9]\d{0,2})|(?<!(?:^|[^\p{L}])(?:la|une|sa|ma|ta|cette|chaque|une autre)\s+)(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
 function baFindMarks(text) {
     const out = [];
     for (const m of String(text).matchAll(BA_MARK_RE)) out.push({ cd: m[2] ? Number(m[2]) : null, track: Number(m[3] || m[4]), start: m.index + m[1].length, end: m.index + m[0].length });
@@ -311,7 +312,10 @@ function baMarkBoxes(items, vp) {
         let text = '', last = null;
         const spans = [];
         for (const it of line.parts) {
-            if (last && it.transform[4] - (last.transform[4] + (last.width || 0)) > line.size * 0.2 && !/\s$/.test(text) && !/^\s/.test(it.str)) text += ' ';
+            const gap = last ? it.transform[4] - (last.transform[4] + (last.width || 0)) : 0;
+            // a gap of several letters is the next column of a table («10. plage    20. calepin»): its number is not the mark's
+            if (last && gap > line.size * 2) text += ' | ';
+            else if (last && gap > line.size * 0.2 && !/\s$/.test(text) && !/^\s/.test(it.str)) text += ' ';
             spans.push({ it, from: text.length, to: text.length + it.str.length });
             text += it.str; last = it;
         }

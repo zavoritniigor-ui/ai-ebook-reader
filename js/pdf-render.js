@@ -45,6 +45,8 @@ async function initPdf(file, epoch = readerEpoch.book) {
     // The narration and the dialogue tracks are looked for in the remembered folder as soon as the book is known, not after
     // its first page is drawn: a big PDF on a tablet can take long to draw, and the narration waited for it (js/book-speech.js).
     if (typeof bfAutoImportFromFolder === 'function') setTimeout(() => { if (epoch === readerEpoch.book) bfAutoImportFromFolder(); }, 0);
+    // the audio dialog opened while the PDF was loading counts the book's marks now (js/book-audio.js)
+    if (typeof baScanMarks === 'function' && document.getElementById('book-audio-dialog')?.open) setTimeout(() => { if (epoch === readerEpoch.book) baScanMarks(); }, 0);
     const bm = loadBookmark();
     const startPage = (bm && bm.format === 'pdf' && bm.currentIndex >= 1 && bm.currentIndex <= state.totalPages) ? bm.currentIndex : 1;
     await setupContinuousPdf(doc, startPage, bm);
