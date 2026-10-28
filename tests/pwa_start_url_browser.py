@@ -232,7 +232,7 @@ new_install.call('Page.enable'); new_install.call('Runtime.enable')
 new_install.call('Page.navigate', url=f'{ORIGIN}/')
 time.sleep(2)
 check('D: new-install start_url loads (no chrome-error)', new_install.js("location.href") == f'{ORIGIN}/')
-check('D: new-install renders real app content, not an error page', new_install.js("document.title") == 'AI Ebook Reader' or new_install.js("!!document.querySelector('#reader-pages')"))
+check('D: new-install renders real app content, not an error page', new_install.js("document.title") == 'AI E-book Reader' or new_install.js("!!document.querySelector('#reader-pages')"))
 
 # ==== E: OLD install self-heals -- the stale "/index.html" start_url now works,
 # under the SAME already-active worker, with ZERO reinstall/user action =========

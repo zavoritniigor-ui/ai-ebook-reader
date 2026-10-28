@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Ebook Reader</title>
+    <title>AI E-book Reader</title>
     <meta name="theme-color" content="#f5f5f3">
     <meta name="description" content="Читання книг з перекладом, граматичним розбором і озвученням тексту.">
 
@@ -498,7 +498,36 @@
         #book-audio-dialog .ba-subtitle:empty { display: none; }
         #book-audio-dialog .ba-close { position: static; }
         #book-audio-dialog .ba-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        /* The main menu's palette: the theme's accent for the audio itself, green = connected, red = remove; no dark slabs. Each tint mixes
+           its hue with the theme's text colour, so it stays readable in light, dark and sepia. */
+        #book-audio-dialog { --ba-green: #1e9e5a; --ba-red: #d93a4a; }
+        [data-theme="dark"] #book-audio-dialog { --ba-green: #4fd08b; --ba-red: #ff7d88; }
+        #book-audio-dialog .ba-lead { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.45; }
+        #book-audio-dialog button.ba-folder { min-height: 50px; border-radius: 12px; font-size: 15.5px; width: 100%; color: var(--accent-contrast); }
+        #book-audio-dialog .ba-tint { --ba-hue: var(--accent-color); }
+        #book-audio-dialog .ba-red { --ba-hue: var(--ba-red); }
+        #book-audio-dialog button.ba-tint {
+            background: color-mix(in srgb, var(--ba-hue) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ba-hue) 40%, transparent);
+            color: color-mix(in srgb, var(--ba-hue) 80%, var(--text-color));
+        }
+        #book-audio-dialog button.ba-tint:hover { background: color-mix(in srgb, var(--ba-hue) 22%, transparent); }
+        #book-audio-dialog .ba-row .ba-files { flex: 1 1 60%; }
+        #book-audio-dialog .ba-row .ba-remove { flex: 1 1 30%; }
+        #book-audio-dialog button.ba-files.ba-hint { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 35%, transparent); }
+        #book-audio-dialog .ba-status-box {
+            --ba-hue: var(--text-muted);
+            display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px;
+            background: color-mix(in srgb, var(--ba-hue) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ba-hue) 28%, transparent);
+        }
+        #book-audio-dialog .ba-status-box.ba-ok-box { --ba-hue: var(--ba-green); }
         #book-audio-dialog .ba-status { margin: 0; font-size: 14.5px; font-weight: 600; }
+        #book-audio-dialog .ba-status.ba-ok { color: color-mix(in srgb, var(--ba-green) 75%, var(--text-color)); }
+        #book-audio-dialog .ba-status.ba-ok::before { content: "✓ "; }
+        #book-audio-dialog .ba-tap { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+        #book-audio-dialog .ba-tap[hidden] { display: none; }
+        #book-audio-dialog .ba-books { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-muted); }
+        #book-audio-dialog .ba-books[hidden] { display: none; }
+        #book-audio-dialog .ba-books-text { margin: 0; line-height: 1.45; }
         #book-audio-dialog .ba-message {
             margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 13.5px;
             background: color-mix(in srgb, var(--accent-color) 12%, transparent);
@@ -517,12 +546,15 @@
             width: calc(var(--ba-fraction, 0) * 100%); background: var(--accent-color);
             transition: width 0.15s ease;
         }
-        #book-audio-dialog .ba-remove { align-self: flex-start; min-height: 38px; padding: 0 12px; font-size: 13px; cursor: pointer; }
         #book-audio-dialog .ba-note { margin: 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.45; }
-        #book-audio-dialog .ba-books { display: flex; flex-direction: column; gap: 8px; }
-        #book-audio-dialog .ba-books[hidden] { display: none; }
         #book-audio-dialog button[hidden] { display: none; }   /* the global button rule sets display, which would show a hidden button */
-        #book-audio-dialog .ba-books-text { margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.45; }
+        #book-audio-dialog .ba-drop { margin: 0; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+        #book-audio-dialog .ba-drop[hidden], #book-audio-dialog .ba-disc-ask[hidden] { display: none; }
+        #book-audio-dialog.ba-dragging { outline: 3px dashed var(--accent-color); outline-offset: -6px; }
+        #book-audio-dialog .ba-disc-ask { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px;
+            background: color-mix(in srgb, var(--accent-color) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent); }
+        #book-audio-dialog .ba-disc-text { margin: 0; font-size: 14px; font-weight: 600; }
+        #book-audio-dialog .ba-disc-choices button { flex: 1 1 70px; }
 
         main { flex: 1; display: flex; justify-content: center; position: relative; overflow: hidden; background: var(--bg-color); }
         #reader-container {
@@ -1568,6 +1600,21 @@
                 height: auto !important;
             }
         }
+        /* «Від розробника» (js/developer.js) */
+        #developer-dialog { position: fixed; inset: 0; margin: auto; width: min(480px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+            padding: 0; border-radius: 16px; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); box-shadow: 0 24px 60px -20px rgba(0,0,0,.5); }
+        #developer-dialog::backdrop { background: rgba(0,0,0,.55); backdrop-filter: blur(2px); }
+        #developer-dialog .dev-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border-color); }
+        #developer-dialog .dev-logo { border-radius: 10px; flex: 0 0 auto; }
+        #developer-dialog .dev-title { margin: 0; flex: 1; font-size: 17px; }
+        #developer-dialog .dev-close { position: static; }
+        #developer-dialog .dev-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 14.5px; line-height: 1.55; }
+        #developer-dialog .dev-body p { margin: 0; }
+        #developer-dialog .dev-data { padding: 12px 14px; border-radius: 12px; border-left: 4px solid #ff9f1c; background: color-mix(in srgb, #ff9f1c 14%, transparent); }
+        #developer-dialog .dev-data-title { font-weight: 700; margin-bottom: 6px !important; }
+        #developer-dialog .dev-avoid, #developer-dialog .dev-write-note, #developer-dialog .dev-sign { color: var(--text-muted); font-size: 13.5px; }
+        #developer-dialog .dev-write { display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 12px; font-weight: 700; text-decoration: none; }
+        #developer-dialog .dev-mail { color: var(--accent-color); }
     </style>
 </head>
 <body data-theme="light" class="immersive-mode" inert>
@@ -1630,7 +1677,7 @@
         <div class="menu-top">
             <img class="menu-logo" src="icons/icon-192.png" alt="" width="36" height="36">
             <div class="menu-top-text">
-                <h2 id="menu-heading">AI Ebook Reader</h2>
+                <h2 id="menu-heading">AI E-book Reader</h2>
                 <p id="menu-subheading" data-i18n="mTagline">Читання з перекладом, граматикою й озвученням</p>
             </div>
             <button type="button" class="menu-close" id="menu-close" data-i18n-title="tClose" data-i18n-aria="tClose"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button>
@@ -1644,7 +1691,7 @@
                 <button type="button" class="menu-row my-books-btn" id="btn-my-books" aria-labelledby="mr-shelf-t" aria-describedby="mr-shelf-d"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span class="mr-text"><span class="mr-title" id="mr-shelf-t" data-i18n="mShelf">Мої книги</span><span class="mr-desc" id="mr-shelf-d" data-i18n="mShelfDesc">Нещодавні й збережені на пристрої</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-free-library" aria-labelledby="mr-lib-t" aria-describedby="mr-lib-d"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span class="mr-text"><span class="mr-title" id="mr-lib-t" data-i18n="mLibrary">Безкоштовна бібліотека</span><span class="mr-desc" id="mr-lib-d" data-i18n="mLibraryDesc">Gutenberg, Вікіджерела, Internet Archive</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="toggle-toc-desktop" aria-labelledby="mr-toc-t" aria-describedby="mr-toc-d"><svg class="mi book-nav-icon" aria-hidden="true"><use href="#i-toc"/></svg><span class="mr-text"><span class="mr-title" id="mr-toc-t" data-i18n="mToc">Зміст</span><span class="mr-desc" id="mr-toc-d" data-i18n="mTocDesc">Розділи та мініатюри сторінок</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
-                <button type="button" class="menu-row" id="btn-book-audio" data-only="pdf" aria-labelledby="mr-audio-t" aria-describedby="mr-audio-d"><svg class="mi" aria-hidden="true"><use href="#i-audio"/></svg><span class="mr-text"><span class="mr-title" id="mr-audio-t" data-i18n="mAudio">Аудіо до книги</span><span class="mr-desc" id="mr-audio-d" data-i18n="mAudioDesc">Папка з доріжками: тап на «piste» у книзі вмикає запис</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-book-audio" data-only="pdf" aria-labelledby="mr-audio-t" aria-describedby="mr-audio-d"><svg class="mi" aria-hidden="true"><use href="#i-audio"/></svg><span class="mr-text"><span class="mr-title" id="mr-audio-t" data-i18n="mAudio">Аудіо до книги</span><span class="mr-desc" id="mr-audio-d" data-i18n="mAudioDesc">Діалоги й записи до підручника: тап на позначку в книзі вмикає запис</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
             </section>
             <!-- ЧИТАННЯ -->
             <section class="menu-section" aria-labelledby="ms-reading">
@@ -1739,6 +1786,7 @@
                 </div>
                 <button type="button" class="menu-row" id="btn-local-speech" role="switch" aria-checked="false" aria-labelledby="mr-local-t" aria-describedby="mr-local-d"><svg class="mi" aria-hidden="true"><use href="#i-voices"/></svg><span class="mr-text"><span class="mr-title" id="mr-local-t" data-i18n="mLocalSpeech">Локальний голос</span><span class="mr-desc" id="mr-local-d" data-i18n="mLocalSpeechDesc">Озвучка через ваш сервер; без нього — голос браузера</span></span><span class="mr-switch" aria-hidden="true"></span></button>
                 <button type="button" class="menu-row" id="btn-ai-key" aria-labelledby="mr-ai-t" aria-describedby="mr-ai-d"><svg class="mi" aria-hidden="true"><use href="#i-key"/></svg><span class="mr-text"><span class="mr-title" id="mr-ai-t" data-i18n="mAi">AI та офлайн-переклад</span><span class="mr-desc" id="mr-ai-d" data-i18n="mAiDesc">Ключі AI, пакети без інтернету, діагностика</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-developer" aria-labelledby="mr-dev-t" aria-describedby="mr-dev-d"><svg class="mi" aria-hidden="true"><use href="#i-sparkle"/></svg><span class="mr-text"><span class="mr-title" id="mr-dev-t" data-i18n="mDev">Від розробника</span><span class="mr-desc" id="mr-dev-d" data-i18n="mDevDesc">Безкоштовно, ключі AI, ваші тексти, написати листа</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-update-app" aria-labelledby="mr-upd-t" aria-describedby="mr-upd-d" data-i18n-title="tUpdateApp"><svg class="mi" aria-hidden="true"><use href="#i-update"/></svg><span class="mr-text"><span class="mr-title" id="mr-upd-t" data-i18n="mUpdate">Оновити застосунок</span><span class="mr-desc" id="mr-upd-d" data-i18n="mUpdateDesc">Перевірити й встановити нову версію</span></span></button>
                 <button type="button" class="menu-row" id="btn-exit-app" style="display:none;" aria-labelledby="mr-exit-t" data-i18n-title="tExitApp"><svg class="mi" aria-hidden="true"><use href="#i-exit"/></svg><span class="mr-text"><span class="mr-title" id="mr-exit-t" data-i18n="mExit">Вийти із застосунку</span></span></button>
             </section>
@@ -1772,7 +1820,7 @@
                 <!-- Стартовий екран (книгу ще не відкрито): головні дії великими кнопками й останні книги. Меню на старті закрите. -->
                 <section class="home" id="home-screen">
                     <img class="home-logo" src="icons/icon-192.png" alt="" width="64" height="64">
-                    <h1 class="home-title">AI Ebook Reader</h1>
+                    <h1 class="home-title">AI E-book Reader</h1>
                     <p class="home-tagline" data-i18n="mTagline">Читання з перекладом, граматикою й озвученням</p>
                     <div class="home-actions">
                         <label class="home-cta" for="file-upload"><svg class="mi" aria-hidden="true"><use href="#i-open"/></svg><span data-i18n="mOpen">Відкрити файл</span></label>
@@ -1991,7 +2039,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=ebbe60b842cb"></script>
+    <script src="js/core.js?v=2cb00068e511"></script>
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
@@ -2019,15 +2067,15 @@
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-translate.js?v=99fcb4c27ae8"></script>
     <script src="js/device-llm-catalog.js?v=c63f891a1ce2"></script>
-    <script src="js/device-llm.js?v=3ca3a833ef6b"></script>
+    <script src="js/device-llm.js?v=9b6f20f6d2d6"></script>
     <script src="js/pdf-ink.js?v=defbefcd482f"></script>
     <script src="js/pdf-crop.js?v=d075e66bd44c"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
     <script src="js/pdf-render.js?v=e39d8c10f9af"></script>
-    <script src="js/book-audio.js?v=6ce660d964a1"></script>
-    <script src="js/book-speech.js?v=d081562742d7"></script>
+    <script src="js/book-audio.js?v=93843d0375cb"></script>
+    <script src="js/book-speech.js?v=0c3d2bf65edc"></script>
     <script src="js/formats.js?v=0adff3b5d013"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
@@ -2035,6 +2083,7 @@
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
     <script src="js/quick-wheel.js?v=c1f1802144fc"></script>
+    <script src="js/developer.js?v=8f2df6094632"></script>
     <script src="js/main.js?v=a55b6a10f6e6"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
     <script src="js/i18n-es.js?v=c934aa680491"></script>

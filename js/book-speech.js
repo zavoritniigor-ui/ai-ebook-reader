@@ -760,15 +760,11 @@ async function bsRenderFolderRow() {
         record = await bfGet();
         if (record && record.handle) granted = await record.handle.queryPermission({ mode: 'read' }) === 'granted';
     } catch (e) { record = null; }
-    row.hidden = false;
-    row.querySelector('.ba-books-text').textContent = record
-        ? t('bfHave').replace('{name}', record.name || '') + (granted ? '' : ' ' + t('bfNeedAllow'))
-        : t('bfNone');
-    row.querySelector('.ba-books-pick').textContent = record ? t('bfChange') : t('bfChoose');
+    // only a remembered folder that lost its permission shows up here: the one tap that lets it be searched again
+    row.hidden = !record || granted;
+    if (row.hidden) return;
+    row.querySelector('.ba-books-text').textContent = t('bfHave').replace('{name}', record.name || '') + ' ' + t('bfNeedAllow');
     row.querySelector('.ba-books-allow').textContent = t('bfAllow');
-    row.querySelector('.ba-books-allow').hidden = !record || granted;
-    row.querySelector('.ba-books-forget').textContent = t('bfForget');
-    row.querySelector('.ba-books-forget').hidden = !record;
 }
 // The button «Вибрати папку»: the folder is chosen by the user, remembered, and searched for this book's narration at once.
 async function bsChooseBooksFolder() {
@@ -865,7 +861,6 @@ Object.assign(I18N, {
     bfChange: { uk: 'Змінити папку', en: 'Change folder', fr: 'Changer de dossier', ru: 'Сменить папку', es: 'Cambiar carpeta' },
     bfAllow: { uk: 'Дозволити доступ', en: 'Allow access', fr: 'Autoriser l’accès', ru: 'Разрешить доступ', es: 'Permitir el acceso' },
     bfForget: { uk: 'Забути папку', en: 'Forget the folder', fr: 'Oublier le dossier', ru: 'Забыть папку', es: 'Olvidar la carpeta' },
-    bfNone: { uk: 'Папку з книгами не вибрано: озвучка з цієї папки не підтягуватиметься сама.', en: 'No books folder chosen: the narration is not found there by itself.', fr: 'Aucun dossier de livres choisi : la narration n’est pas trouvée automatiquement.', ru: 'Папка с книгами не выбрана: озвучка из неё не подтягивается сама.', es: 'No hay carpeta de libros: la narración no se busca sola.' },
     bfHave: { uk: 'Папка з книгами: {name}', en: 'Books folder: {name}', fr: 'Dossier des livres : {name}', ru: 'Папка с книгами: {name}', es: 'Carpeta de libros: {name}' },
     bfNeedAllow: { uk: 'Дозвольте доступ, щоб знайти озвучку книги.', en: 'Allow access to find the book’s narration.', fr: 'Autorisez l’accès pour trouver la narration du livre.', ru: 'Разрешите доступ, чтобы найти озвучку книги.', es: 'Permita el acceso para encontrar la narración del libro.' },
     bfSaved: { uk: 'Папку з книгами запам’ятано: {name}', en: 'Books folder remembered: {name}', fr: 'Dossier des livres mémorisé : {name}', ru: 'Папка с книгами запомнена: {name}', es: 'Carpeta de libros guardada: {name}' },

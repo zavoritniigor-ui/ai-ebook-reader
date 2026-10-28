@@ -121,7 +121,7 @@ STUB = r"""(() => {
   return 1; })()"""
 
 
-def load():
+def load(build=True):
     c.call('Page.navigate', url=URL)
     c.wait("document.readyState === 'complete' && !document.body.inert && typeof deviceLlmInstall === 'function'", timeout=60)
     c.js(r"""(() => { localStorage.clear(); showUpdateBanner = () => {};
@@ -131,9 +131,14 @@ def load():
     c.js("DEVICE_LLM_CATALOG.engine.wasm.size = %d; DEVICE_LLM_CATALOG.engine.wasm.sha256 = %s; Object.assign(DEVICE_LLM_CATALOG.model, { size: %d, part: %d, parts: %s }); 1"
          % (len(FILES['wasm']), json.dumps(hashlib.sha256(FILES['wasm']).hexdigest()), len(FILES['model']), PART, json.dumps(PARTS)))
     c.js(STUB)
+    if build:
+        c.js("deviceLlmBuildBox(); 1")
 
 
-load()
+load(build=False)
+# The section is no longer shown in Settings (owner, 2026-10-26); the code stays and builds it when asked (as below)
+check('the on-device AI section is not in Settings any more', "!document.getElementById('device-llm-box') && typeof deviceLlmBuildBox === 'function'")
+c.js("deviceLlmBuildBox(); 1")
 c.js("caches.delete('reader-device-llm').then(() => 1)")
 c.js("deviceLlmState = null; deviceLlmLoad().then(() => 1)")
 

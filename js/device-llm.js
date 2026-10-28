@@ -425,7 +425,9 @@ async function deviceLlmSelfTest() {
         : t('offTestFail').replace('{why}', deviceLlmFailure || '—');
 }
 
-window.addEventListener('load', deviceLlmBuildBox, { once: true });
+// The section is no longer shown in Settings (owner, 2026-10-26: «тільки цю функцію потрібно видалити… код залишається»).
+// The code stays: deviceLlmBuildBox() builds the section when called (tests/device_llm_browser.py does), an installed model
+// still answers offline.
 // У фоні ~2 ГБ пам'яті відеокарти першими коштували б вкладці життя: щойно застосунок згорнули й модель нічого не робить — відпускаємо.
 document.addEventListener('visibilitychange', () => { if (document.hidden && !deviceLlmBusy) deviceLlmStop(); });
 deviceLlmLoad().catch(() => {});   // стан потрібен синхронно (deviceLlmReady) вже після першого запуску
