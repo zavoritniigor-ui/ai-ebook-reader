@@ -471,13 +471,15 @@ check('14g The status counts the book\'s marks that play, not the files: all / s
     stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
     const wav = await (await fetch('data:audio/wav;base64,' + window.__WAV)).blob();
     const make = (name, rel) => { const f = new File([wav], name, { type: 'audio/wav' }); Object.defineProperty(f, 'webkitRelativePath', { value: rel }); return f; };
+    // no tracks at all in a book with marks: amber, never «Audio connected» (owner 2026-10-28: a narration showed a green «connected»)
+    const empty = st.classList.contains('ba-warn') && st.textContent === t('baMarksEmpty').replace('{n}', 4);
     await importBookAudio([make('XYZ_EP01_P9.wav', 'Book/audio/XYZ_EP01_P9.wav')]);
     const none = st.classList.contains('ba-warn') && !st.classList.contains('ba-ok') && st.parentElement.classList.contains('ba-warn-box')
         && st.textContent.includes('CD1 · piste 3') && d.querySelector('.ba-tap').hidden;
     await importBookAudio(['CD1/03 Track 03.wav', 'CD2/15 Track 15.wav', 'CD2/07 Track 07.wav'].map(r => make(r.split('/')[1], 'Book/audio/' + r)));
     const all = st.textContent === t('baMarksAll').replace('{n}', 4) && st.classList.contains('ba-ok') && !st.classList.contains('ba-warn') && !d.querySelector('.ba-tap').hidden;
     d.close();
-    return total === 4 && some && none && all || JSON.stringify({ total, some, none, all, text: st.textContent });
+    return total === 4 && some && empty && none && all || JSON.stringify({ total, some, empty, none, all, text: st.textContent });
 })()""")
 
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")

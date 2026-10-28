@@ -80,7 +80,9 @@ For every audio file found (`mp3 m4a m4b aac wav ogg oga opus flac wma aif aiff`
 The status tells what plays in **this** book, never just how many files are stored:
 «Грають усі позначки книги: N» / «Грають K з N позначок книги» (green), or, when stored tracks match none of the book's
 marks, an amber line that names one missing mark («CD1 · piste 20») and asks for the folder with this book's recordings.
-The narration has its own line «Озвучка: N речень». A book without marks shows the track count.
+The narration has its own line «Озвучка: N речень». A book without marks shows the track count. A book WITH marks and no
+tracks is amber («Записів до позначок книги ще немає…») even when its narration is connected: the narration is never
+reported as the book's recordings (owner, 2026-10-28: a green «Аудіо підключено» hid that no dialogue was connected).
 
 ### 5.2 By hand: «Вибрати папку з аудіо»
 
