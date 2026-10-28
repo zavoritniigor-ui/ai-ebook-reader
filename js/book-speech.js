@@ -183,7 +183,9 @@ function bsReport() {
         audioJs: (Array.from(document.scripts).map(x => x.src).find(x => /book-audio\.js/.test(x)) || '').split('?v=')[1] || null,
         trackSets: typeof bookAudio !== 'undefined' ? bookAudio.tracks.reduce((o, r) => { const k = r.cd ? 'CD' + r.cd : r.section ? 'sections' : 'plain'; o[k] = (o[k] || 0) + 1; return o; }, {}) : null,
         marks: typeof baMarks !== 'undefined' && baMarks.key === state.bookKey && baMarks.list
-            ? { all: baMarks.list.length, playing: baMarks.list.filter(m => baFind(m.cd, m.track).rec).length } : null,
+            ? { all: baMarks.list.length, playing: baMarks.list.filter(m => baFindMark(m).rec).length,
+                restart: baMarks.list.filter(m => baFindMark(m).blocked === 'restart').length,
+                tables: Object.fromEntries([...(baMarks.tables || [])].map(([cd, r]) => ['CD' + cd, r.length])), shift: baMarks.shift } : null,
         stored: bsStored, trace: bsTrace.slice()
     };
 }

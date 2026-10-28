@@ -59,6 +59,26 @@ Object.assign(I18N, {
                     es: 'Aún no hay grabaciones para las marcas de audio del libro ({n} marcas). Elija la carpeta de audio de este libro.', zh: '书中的音频标记还没有录音（共 {n} 个）。请选择这本书的音频文件夹。',
                     ko: '책의 오디오 표시에 아직 녹음이 없습니다(표시 {n}개). 이 책의 오디오 폴더를 선택하세요.', hi: 'किताब के ऑडियो निशानों की रिकॉर्डिंग अभी नहीं है ({n} निशान)। इस किताब का ऑडियो फ़ोल्डर चुनें।',
                     ga: 'Níl taifid ann fós do mharcanna fuaime an leabhair ({n} marc). Roghnaigh fillteán fuaime an leabhair seo.' },
+    // numbers that restart per section, no track table in the book: the marks cannot be matched, so they do not play (rules §6.2)
+    baRestart: { uk: 'Позначки цієї книги нумеруються окремо в кожному розділі, а таблиці доріжок у книзі немає. Тому записи не можна зіставити з позначками, і вони не вмикаються.',
+                 en: 'This book numbers its audio marks anew in each section and has no track table, so the recordings cannot be matched to the marks and do not play.',
+                 fr: 'Ce livre numérote ses mentions audio dans chaque partie et n’a pas de tableau des pistes : les enregistrements ne peuvent pas être associés aux mentions et ne sont pas joués.',
+                 ru: 'Отметки этой книги нумеруются отдельно в каждом разделе, а таблицы дорожек в книге нет. Поэтому записи нельзя сопоставить с отметками, и они не включаются.',
+                 es: 'Este libro numera sus marcas de audio en cada sección y no tiene tabla de pistas, así que las grabaciones no se pueden asociar a las marcas y no suenan.',
+                 zh: '这本书的音频标记在每个章节重新编号，书中也没有音轨对照表，因此无法把录音与标记对应，录音不会播放。',
+                 ko: '이 책은 오디오 표시를 단원마다 새로 번호 매기고 트랙 표도 없어서, 녹음을 표시와 맞출 수 없으므로 재생하지 않습니다.',
+                 hi: 'यह किताब हर खंड में ऑडियो निशानों की गिनती फिर से शुरू करती है और इसमें ट्रैक तालिका नहीं है, इसलिए रिकॉर्डिंग निशानों से मिलाई नहीं जा सकतीं और नहीं चलतीं।',
+                 ga: 'Uimhríonn an leabhar seo a mharcanna fuaime as an nua i ngach roinn agus níl tábla rianta ann, mar sin ní féidir na taifid a mheaitseáil leis na marcanna agus ní sheinntear iad.' },
+    baNoRow: { uk: 'Позначку {label} не знайдено в таблиці доріжок книги, тому запис не вмикається.', en: 'The mark {label} is not in the book’s track table, so no recording plays.',
+               fr: 'La mention {label} n’est pas dans le tableau des pistes du livre : aucun enregistrement n’est joué.', ru: 'Отметка {label} не найдена в таблице дорожек книги, поэтому запись не включается.',
+               es: 'La marca {label} no está en la tabla de pistas del libro, así que no suena ninguna grabación.', zh: '书的音轨对照表中没有标记 {label}，因此不会播放录音。',
+               ko: '{label} 표시가 책의 트랙 표에 없어서 녹음을 재생하지 않습니다.', hi: 'निशान {label} किताब की ट्रैक तालिका में नहीं है, इसलिए कोई रिकॉर्डिंग नहीं चलती।',
+               ga: 'Níl an marc {label} i dtábla rianta an leabhair, mar sin ní sheinntear aon taifead.' },
+    baUnsupported: { uk: 'Файлів {ext} пропущено: {n}. Браузер не відтворює цей формат — перетворіть їх на MP3 або M4A.', en: '{ext} files skipped: {n}. The browser cannot play this format — convert them to MP3 or M4A.',
+                     fr: 'Fichiers {ext} ignorés : {n}. Le navigateur ne lit pas ce format — convertissez-les en MP3 ou M4A.', ru: 'Файлов {ext} пропущено: {n}. Браузер не воспроизводит этот формат — преобразуйте их в MP3 или M4A.',
+                     es: 'Archivos {ext} omitidos: {n}. El navegador no reproduce este formato: conviértalos a MP3 o M4A.', zh: '已跳过 {n} 个 {ext} 文件。浏览器无法播放此格式——请转换为 MP3 或 M4A。',
+                     ko: '{ext} 파일 {n}개를 건너뛰었습니다. 브라우저가 이 형식을 재생할 수 없습니다 — MP3 또는 M4A로 변환하세요.', hi: '{ext} फ़ाइलें छोड़ी गईं: {n}। ब्राउज़र यह प्रारूप नहीं चलाता — इन्हें MP3 या M4A में बदलें।',
+                     ga: 'Comhaid {ext} scipeáilte: {n}. Ní féidir leis an mbrabhsálaí an fhormáid seo a sheinm — tiontaigh go MP3 nó M4A iad.' },
     baConnected: { uk: 'Аудіо підключено', en: 'Audio connected', fr: 'Audio ajouté', ru: 'Аудио подключено', es: 'Audio conectado', zh: '音频已连接', ko: '오디오 연결됨', hi: 'ऑडियो जुड़ गया', ga: 'Fuaim ceangailte' },
     baTapHint: { uk: 'Тапніть позначку аудіо в книзі, щоб послухати.', en: 'Tap an audio mark in the book to listen.', fr: 'Touchez une mention audio du livre pour écouter.', ru: 'Коснитесь отметки аудио в книге, чтобы послушать.',
                  es: 'Toque una marca de audio del libro para escuchar.', zh: '点按书中的音频标记即可收听。', ko: '책의 오디오 표시를 누르면 들을 수 있습니다.', hi: 'सुनने के लिए किताब में ऑडियो चिह्न पर टैप करें।', ga: 'Tapáil marc fuaime sa leabhar chun éisteacht.' },
@@ -168,15 +188,22 @@ async function baDeleteBook(bookKey) {
 }
 
 // ---------- file names -> (disc, track) ---------------------------------------------------------------------------------------
-const BA_AUDIO_RE = /\.(?:mp3|m4a|m4b|aac|wav|ogg|oga|opus|flac|wma|aif|aiff)$/i;
+const BA_AUDIO_RE = /\.(?:mp3|m4a|m4b|mp4|aac|wav|ogg|oga|opus|flac|wma|aif|aiff)$/i;
 const baIsAudio = file => (file.type && file.type.startsWith('audio/')) || BA_AUDIO_RE.test(file.name || '');
+// A format this browser cannot play (WMA in Chrome) is refused with a message, never stored to fail on the first tap (rules §4.5).
+const BA_PROBE_TYPES = { wma: 'audio/x-ms-wma' };
+function baUnplayable(file) {
+    const type = BA_PROBE_TYPES[(String(file.name || '').match(/\.([^.]+)$/) || [])[1]?.toLowerCase()];
+    if (!type) return false;
+    try { return !document.createElement('audio').canPlayType(type); } catch (e) { return false; }
+}
 // Hidden and system folders are never read (docs/agents/book_audio_rules.md §4.3): a book's «.work» folder holds thousands of
 // cache files of the narration pipeline.
 const baHiddenPath = path => String(path || '').split('/').slice(0, -1).some(seg => seg.startsWith('.') || seg === '__MACOSX');
 
 // ---------- AIFF / AIFC -> WAV ----------------------------------------------------------------------------------------------------
-// Chrome and Firefox cannot play AIFF (Safari can), so an AIFF track is stored as WAV: the same PCM at the same bit depth, only
-// the container changes. AIFF and AIFC with «NONE» (big-endian PCM) or «sowt» (little-endian PCM) are converted; any compressed
+// Chrome and Firefox cannot play AIFF (Safari can), so an AIFF track becomes WAV first: the same PCM at the same bit depth, only
+// the container changes (and then Opus, below). AIFF and AIFC with «NONE» (big-endian PCM) or «sowt» (little-endian PCM) are converted; any compressed
 // AIFC returns null and the file is kept as it is.
 function baAiffToWav(buf) {
     if (buf.byteLength < 12) return null;
@@ -218,10 +245,105 @@ function baAiffToWav(buf) {
     }
     return new Blob([out], { type: 'audio/wav' });
 }
-// The blob a track is stored as: an AIFF file becomes WAV, anything else (and AIFF that cannot be converted) stays as it is.
+
+// ---------- uncompressed audio -> Opus in Ogg (rules §4.6) ------------------------------------------------------------------------
+// WAV is as big as the AIFF it came from (about 10 MB a minute); Opus at 64–96 kbit/s is 10–20 times smaller and the same for
+// speech. The browser decodes the file (resampled to 48 kHz, Opus's own rate), WebCodecs encodes it, and the packets are put in
+// an Ogg file that <audio> plays. No encoder, or no Opus playback (some Safari versions): null, and the caller keeps WAV.
+const BA_OPUS_RATE = 48000, BA_OPUS_FRAME = 960;   // 20 ms packets
+const baOpusConfig = channels => ({ codec: 'opus', sampleRate: BA_OPUS_RATE, numberOfChannels: channels, bitrate: channels === 1 ? 64000 : 96000, opus: { frameDuration: 20000 } });
+async function baCanOpus(channels) {
+    if (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined' || typeof OfflineAudioContext === 'undefined') return false;
+    try {
+        if (!document.createElement('audio').canPlayType('audio/ogg; codecs="opus"')) return false;
+        return (await AudioEncoder.isConfigSupported(baOpusConfig(channels))).supported === true;
+    } catch (e) { return false; }
+}
+async function baEncodeOpus(arrayBuffer) {
+    const decoded = await new OfflineAudioContext(1, 1, BA_OPUS_RATE).decodeAudioData(arrayBuffer);
+    const channels = Math.min(2, decoded.numberOfChannels), total = decoded.length;
+    if (!total || !(await baCanOpus(channels))) return null;
+    const packets = [];
+    let head = null, failure = null;
+    const encoder = new AudioEncoder({
+        output: (chunk, meta) => {
+            const bytes = new Uint8Array(chunk.byteLength); chunk.copyTo(bytes); packets.push(bytes);
+            const d = meta && meta.decoderConfig && meta.decoderConfig.description;
+            if (d && !head) head = d instanceof ArrayBuffer ? new Uint8Array(d) : new Uint8Array(d.buffer, d.byteOffset, d.byteLength);
+        },
+        error: e => { failure = e; },
+    });
+    encoder.configure(baOpusConfig(channels));
+    const data = Array.from({ length: channels }, (_, c) => decoded.getChannelData(c));
+    for (let i = 0; i < total && !failure; i += BA_OPUS_RATE) {
+        const n = Math.min(BA_OPUS_RATE, total - i), planar = new Float32Array(n * channels);
+        data.forEach((d, c) => planar.set(d.subarray(i, i + n), c * n));
+        const frame = new AudioData({ format: 'f32-planar', sampleRate: BA_OPUS_RATE, numberOfFrames: n, numberOfChannels: channels, timestamp: Math.round(i * 1e6 / BA_OPUS_RATE), data: planar });
+        encoder.encode(frame); frame.close();
+        while (encoder.encodeQueueSize > 4 && !failure) await new Promise(r => setTimeout(r, 0));   // the decoded track is in memory already: keep the queue short
+    }
+    await encoder.flush(); encoder.close();
+    if (failure || !packets.length) return null;
+    // the encoder's own «OpusHead» (when it gives one) knows its look-ahead; 312 samples is libopus's at 48 kHz
+    const preSkip = head && head.length >= 12 && String.fromCharCode(...head.subarray(0, 8)) === 'OpusHead' ? head[10] | (head[11] << 8) : 312;
+    return baOggOpus(packets, channels, preSkip, total, decoded.sampleRate);
+}
+const BA_OGG_CRC = (() => {
+    const table = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) { let r = i << 24; for (let k = 0; k < 8; k++) r = r & 0x80000000 ? (r << 1) ^ 0x04c11db7 : r << 1; table[i] = r >>> 0; }
+    return table;
+})();
+// One Ogg page (RFC 3533): header, segment table (a packet of n bytes takes ⌊n/255⌋ segments of 255 and one shorter), data, CRC.
+function baOggPage(packets, granule, serial, sequence, flags) {
+    const lacing = [];
+    for (const p of packets) { let n = p.length; while (n >= 255) { lacing.push(255); n -= 255; } lacing.push(n); }
+    const bodyLength = packets.reduce((n, p) => n + p.length, 0), page = new Uint8Array(27 + lacing.length + bodyLength), v = new DataView(page.buffer);
+    page.set([79, 103, 103, 83]); v.setUint8(5, flags); v.setBigUint64(6, BigInt(granule), true);
+    v.setUint32(14, serial, true); v.setUint32(18, sequence, true); v.setUint8(26, lacing.length); page.set(lacing, 27);
+    let o = 27 + lacing.length;
+    for (const p of packets) { page.set(p, o); o += p.length; }
+    let crc = 0;
+    for (const byte of page) crc = ((crc << 8) ^ BA_OGG_CRC[((crc >>> 24) ^ byte) & 255]) >>> 0;
+    v.setUint32(22, crc, true);
+    return page;
+}
+// An Ogg Opus file (RFC 7845): «OpusHead», «OpusTags», then the packets about a second a page; the last page's granule
+// (pre-skip + the real length) trims the encoder's padding at the end.
+function baOggOpus(packets, channels, preSkip, samples, inputRate) {
+    const head = new Uint8Array(19), hv = new DataView(head.buffer);
+    head.set([79, 112, 117, 115, 72, 101, 97, 100]); hv.setUint8(8, 1); hv.setUint8(9, channels); hv.setUint16(10, preSkip, true);
+    hv.setUint32(12, Math.round(inputRate) || BA_OPUS_RATE, true);
+    const vendor = new TextEncoder().encode('ai-ebook-reader'), tags = new Uint8Array(8 + 4 + vendor.length + 4), tv = new DataView(tags.buffer);
+    tags.set([79, 112, 117, 115, 84, 97, 103, 115]); tv.setUint32(8, vendor.length, true); tags.set(vendor, 12);
+    const serial = (Math.random() * 0xffffffff) >>> 0, pages = [baOggPage([head], 0, serial, 0, 2), baOggPage([tags], 0, serial, 1, 0)];
+    let granule = preSkip;
+    for (let i = 0; i < packets.length;) {
+        const group = [];
+        let segments = 0;
+        while (i < packets.length && group.length < 50) {
+            const need = Math.floor(packets[i].length / 255) + 1;
+            if (segments + need > 255) break;
+            group.push(packets[i++]); segments += need;
+        }
+        granule += group.length * BA_OPUS_FRAME;
+        const last = i >= packets.length;
+        pages.push(baOggPage(group, last ? Math.min(granule, preSkip + samples) : granule, serial, pages.length, last ? 4 : 0));
+    }
+    return new Blob(pages, { type: 'audio/ogg' });
+}
+// The blob a track is stored as: AIFF, WAV and FLAC become Opus (AIFF becomes WAV where Opus cannot be made, the others stay as
+// they are); compressed formats are stored untouched.
 async function baPlayableBlob(file) {
-    if (!/\.(?:aif|aiff)$/i.test(file.name || '')) return file;
-    return baAiffToWav(await file.arrayBuffer()) || file;
+    const name = file.name || '';
+    if (!/\.(?:aif|aiff|wav|flac)$/i.test(name)) return file;
+    let buf = await file.arrayBuffer(), fallback = file;
+    if (/\.(?:aif|aiff)$/i.test(name)) {
+        const wav = baAiffToWav(buf);
+        if (!wav) return file;
+        fallback = wav; buf = await wav.arrayBuffer();
+    }
+    try { const opus = await baEncodeOpus(buf); if (opus && opus.size < fallback.size) return opus; } catch (e) { /* not decodable or not encodable here: the fallback plays */ }
+    return fallback;
 }
 // «A1 CD1/01 Track 01.m4a», «CD2 - 05.mp3», «Piste 12.mp3», «XYZ_EP01_P3.mp3», «01 Track 01 1.m4a» (the trailing 1 = a second copy of the number).
 // The generic name rules of docs/agents/book_audio_rules.md §4.2: a disc («CD1», «CD1-2» = part 2 of disc 1), a section («EP01»,
@@ -264,7 +386,7 @@ function baAssignDiscs(parsed) {
     }
     return parsed;
 }
-function baLabel(cd, track) { return (cd ? 'CD' + cd + ' · ' : '') + 'piste ' + track; }
+function baLabel(cd, track, kind) { return (cd ? 'CD' + cd + ' · ' : '') + (kind === 'ex' ? 'exercice ' : 'piste ') + track; }
 // The track a mark names: the exact disc, else a disc-less track number that exists once. A disc mark never plays a section track
 // (another set of the book); a mark without a disc prefers the one disc-less track of that number over disc tracks.
 function baFind(cd, track, tracks = bookAudio.tracks) {
@@ -282,43 +404,60 @@ function baFind(cd, track, tracks = bookAudio.tracks) {
 }
 
 // ---------- marks in the text -----------------------------------------------------------------------------------------------
-// «CD2 - piste 35», «CD2- piste 34», «CD1 - Piste 3», or a bare «piste 37» (a mark whose disc sits in another text item).
+// «CD2 - piste 35», «CD2- piste 34», «CD1 - Piste 3», «CD2 - Exercice 4», or a bare «piste 37» (a mark whose disc sits in another
+// text item). «exercice N» is a mark only after its disc: alone it is the word in running text.
 // A headphones icon set in a symbol font comes out of the text as one small letter glued to the mark («iCD1- piste 4»).
 // A bare «plage 11» after an article is the word in running text («J'aime la plage 11. le ruisseau» in a numbered list), not a mark.
-const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:\p{Ll}(?=CD\s*[1-9]))?(?:CD\s*([1-9])\s*[-–—:.]*\s*(?:piste|plage|track|pista)\s*0*([1-9]\d{0,2})|(?<!(?:^|[^\p{L}])(?:la|une|sa|ma|ta|cette|chaque|une autre)\s+)(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
+const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:\p{Ll}(?=CD\s*[1-9]))?(?:CD\s*([1-9])\s*[-–—:.]*\s*(piste|plage|track|pista|exercice|exercise)\s*0*([1-9]\d{0,2})|(?<!(?:^|[^\p{L}])(?:la|une|sa|ma|ta|cette|chaque|une autre)\s+)(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
 function baFindMarks(text) {
     const out = [];
-    for (const m of String(text).matchAll(BA_MARK_RE)) out.push({ cd: m[2] ? Number(m[2]) : null, track: Number(m[3] || m[4]), start: m.index + m[1].length, end: m.index + m[0].length });
+    for (const m of String(text).matchAll(BA_MARK_RE)) {
+        const end = m.index + m[0].length;
+        // «CD1 - piste 5, p. 22» (a transcript at the end of the book): the mark names the page it belongs to (rules §6.1)
+        const ref = String(text).slice(end).match(/^\s*[,;(]?\s*(?:p\.|pp\.|page|pages)\s*(\d{1,3})(?!\d)/i);
+        out.push({ cd: m[2] ? Number(m[2]) : null, track: Number(m[4] || m[5]), kind: /^exerc/i.test(m[3] || '') ? 'ex' : 'piste',
+            ref: ref ? Number(ref[1]) : null, start: m.index + m[1].length, end });
+    }
     return out;
 }
 // The page's text items -> the boxes (in viewport pixels) of every mark. Items of one line are joined (a gap wider than a fifth of the
 // font height is a space); a mark inside a longer item is placed by its characters' share of the item's width.
-function baMarkBoxes(items, vp) {
-    if (!items || !items.some(it => /piste|plage|track|pista/i.test(it.str || ''))) return [];
+// A page's text items -> its lines, top line first, each as one string with the items' places in it. Items of one line are
+// joined (a gap wider than a fifth of the font height is a space); a gap of several letters is the next column of a table
+// («10. plage    20. calepin») and becomes « | », so a word and the next column's number are never read as one mark.
+function baTextLines(items) {
     const lines = [];
-    for (const it of items) {
+    for (const it of items || []) {
         if (!it.str || !it.transform) continue;
         const t = it.transform, size = Math.hypot(t[2], t[3]) || it.height || 1;
         let line = lines.find(l => Math.abs(l.y - t[5]) <= size * 0.45);
         if (!line) { line = { y: t[5], size, parts: [] }; lines.push(line); }
         line.parts.push(it);
     }
-    const boxes = [];
-    // top line first: a bare «piste 41» takes the disc of the «CD2 - piste 40» before it on the page (rules §6.2)
     lines.sort((a, b) => b.y - a.y);
-    let disc = null;
     for (const line of lines) {
         line.parts.sort((a, b) => a.transform[4] - b.transform[4]);
         let text = '', last = null;
         const spans = [];
         for (const it of line.parts) {
             const gap = last ? it.transform[4] - (last.transform[4] + (last.width || 0)) : 0;
-            // a gap of several letters is the next column of a table («10. plage    20. calepin»): its number is not the mark's
             if (last && gap > line.size * 2) text += ' | ';
             else if (last && gap > line.size * 0.2 && !/\s$/.test(text) && !/^\s/.test(it.str)) text += ' ';
             spans.push({ it, from: text.length, to: text.length + it.str.length });
             text += it.str; last = it;
         }
+        line.text = text; line.spans = spans;
+    }
+    return lines;
+}
+const baXAt = (line, index) => { const s = line.spans.find(sp => index < sp.to) || line.spans[line.spans.length - 1]; return s ? s.it.transform[4] : 0; };
+function baMarkBoxes(items, vp) {
+    if (!items || !items.some(it => /piste|plage|track|pista|exercice|exercise/i.test(it.str || ''))) return [];
+    const boxes = [];
+    // top line first: a bare «piste 41» takes the disc of the «CD2 - piste 40» before it on the page (rules §6)
+    let disc = null;
+    for (const line of baTextLines(items)) {
+        const { text, spans } = line;
         for (const mark of baFindMarks(text)) {
             let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
             for (const s of spans) {
@@ -333,13 +472,108 @@ function baMarkBoxes(items, vp) {
                 }
             }
             if (mark.cd) disc = mark.cd;
-            if (x1 < x2 && y1 < y2) boxes.push({ cd: mark.cd || disc, track: mark.track, x1, y1, x2, y2 });
+            if (x1 < x2 && y1 < y2) boxes.push({ cd: mark.cd || disc, track: mark.track, kind: mark.kind, ref: mark.ref, x1, y1, x2, y2 });
         }
     }
     return boxes;
 }
+// ---------- the book's own track table (rules §6.1) --------------------------------------------------------------------------
+// A row: the track number on the disc, a name with its piste / exercice number, the book pages it is used on
+// («12   Épisode 3 - piste 3   32», «43   Phonétique - exercice 3   167, 168»). The disc is the «CD n» header above the row's
+// column. A page with five rows or more is a table page: its rows are not marks.
+const BA_ROW_RE = /(?<![\p{L}\p{N}])(\d{1,3})\s+(\p{L}[\p{L}'’. ]*?(?:\s\d{1,3})?)\s*[-–—]\s*(piste|plage|track|pista|exercice|exercise)\s*0*(\d{1,3})\s+(\d{1,3}(?:\s*(?:,|et|and|à|-|–)\s*\d{1,3})*)(?![\p{L}\p{N}])/giu;
+const BA_TABLE_MIN = 5;
+function baTableRows(items) {
+    if (!items || !items.some(it => /piste|plage|track|pista|exercice|exercise/i.test(it.str || ''))) return [];
+    const lines = baTextLines(items), rows = [], heads = [];
+    for (const line of lines) {
+        const text = line.text.replace(/ \| /g, '   ');   // the same length: the places of the items stay right
+        let found = false;
+        for (const m of text.matchAll(BA_ROW_RE)) {
+            found = true;
+            rows.push({ track: Number(m[1]), name: m[2].trim(), kind: /^exerc/i.test(m[3]) ? 'ex' : 'piste', piste: Number(m[4]),
+                pages: (m[5].match(/\d{1,3}/g) || []).map(Number), x: baXAt(line, m.index), y: line.y, size: line.size });
+        }
+        if (found) continue;
+        for (const m of text.matchAll(/(?:^|[^\p{L}])CD\s*([1-9])(?![\p{L}\p{N}])(?!\s*[-–—]\s*(?:piste|plage|track|pista|exercice|exercise))/giu)) heads.push({ cd: Number(m[1]), x: baXAt(line, m.index + m[0].indexOf('C')), y: line.y });
+    }
+    if (rows.length < BA_TABLE_MIN) return [];
+    for (const r of rows) {
+        // the header above the row, in its column: the nearest one starting left of the row (a little slack for indents)
+        const above = heads.filter(h => h.y > r.y && h.x <= r.x + r.size * 3).sort((a, b) => b.x - a.x);
+        r.cd = above.length ? above[0].cd : null;
+    }
+    return rows;
+}
+// Every row of one disc's table, tracks 1…N each once — or no table for that disc (a table read wrong never decides).
+function baWholeTables(rows) {
+    const byDisc = new Map();
+    for (const r of rows) { const k = r.cd || 0; if (!byDisc.has(k)) byDisc.set(k, []); byDisc.get(k).push(r); }
+    for (const [k, list] of byDisc) {
+        const tracks = list.map(r => r.track).sort((a, b) => a - b);
+        if (list.length < BA_TABLE_MIN || tracks.some((n, i) => n !== i + 1)) byDisc.delete(k);
+    }
+    return byDisc;
+}
+// The table's pages are the book's own numbers; the PDF's are shifted by the cover and front pages. The shift is the most common
+// difference between a mark's PDF page and the pages of the rows it can be.
+function baPageShift(marks, tables) {
+    const votes = new Map();
+    for (const m of marks) {
+        if (m.ref) continue;   // a mark that names its page says nothing about the shift
+        for (const r of tables.get(m.cd || 0) || []) {
+            if (r.kind !== m.kind || r.piste !== m.track) continue;
+            for (const pg of r.pages) votes.set(m.page - pg, (votes.get(m.page - pg) || 0) + 1);
+        }
+    }
+    let best = 0, n = 0;
+    for (const [shift, k] of votes) if (k > n) { best = shift; n = k; }
+    return n >= 3 ? best : 0;
+}
+
+// ---------- which track a mark plays (rules §6) ---------------------------------------------------------------------------------
+// A mark → the disc track it means: through the book's table when it has one, as printed when the numbers run through the disc;
+// none when the numbers restart per section and nothing says how (guessing would play another page's dialogue).
+function baMarksReady() { return baMarks.key === state.bookKey && !!baMarks.list; }
+function baRestarts(cd) {
+    const marks = baMarks.list.filter(m => (m.cd || 0) === (cd || 0) && m.kind === 'piste');
+    const discTracks = bookAudio.tracks.filter(x => (x.cd || 0) === (cd || 0) && !x.section).length;
+    if (discTracks < 6 || !marks.length) return false;
+    const firstPages = new Set(marks.filter(m => m.track === 1).map(m => m.page));
+    return firstPages.size >= 3 && Math.max(...marks.map(m => m.track)) <= discTracks / 2;
+}
+function baTarget(m) {
+    if (!baMarksReady()) return { cd: m.cd, track: m.track, pending: true };
+    const tables = baMarks.tables;
+    if (tables && tables.size) {
+        const own = m.cd ? tables.get(m.cd) : null, pool = own ? [[m.cd, own]] : m.cd ? [] : [...tables];
+        const printed = m.ref || m.page - baMarks.shift;
+        let best = null, dist = Infinity;
+        for (const [cd, rows] of pool) {
+            for (const r of rows) {
+                if (r.kind !== m.kind || r.piste !== m.track) continue;
+                for (const pg of r.pages) if (Math.abs(pg - printed) < dist) { dist = Math.abs(pg - printed); best = { cd: cd || null, track: r.track, name: r.name }; }
+            }
+        }
+        if (best && dist <= 2) return best;
+        if (own || !m.cd) return { blocked: 'row' };
+    }
+    if (m.kind === 'ex') return { blocked: 'row' };
+    if (baRestarts(m.cd)) return { blocked: 'restart' };
+    return { cd: m.cd, track: m.track };
+}
+// The stored track a mark plays, and why not when it does not.
+function baFindMark(m) {
+    const target = baTarget(m);
+    if (target.blocked) return { rec: null, blocked: target.blocked, target };
+    return Object.assign(baFind(target.cd, target.track), { target });
+}
+const baMarkOf = btn => ({ cd: btn.dataset.cd ? Number(btn.dataset.cd) : null, track: Number(btn.dataset.track), kind: btn.dataset.kind || 'piste',
+    page: Number(btn.dataset.page), ref: btn.dataset.ref ? Number(btn.dataset.ref) : null });
+
 // The layer of buttons over a page's marks; the page's wrapper takes it beside the link layer (js/pdf-render.js).
 function buildPdfAudioLayer(items, vp, pageNum) {
+    if (baTableRows(items).length) return null;   // a table of tracks: its rows are entries, not marks
     const boxes = baMarkBoxes(items, vp);
     if (!boxes.length) return null;
     const layer = document.createElement('div');
@@ -350,7 +584,7 @@ function buildPdfAudioLayer(items, vp, pageNum) {
         const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2, w = Math.max(b.x2 - b.x1 + 8, minW), h = Math.max(b.y2 - b.y1 + 6, minH);
         const btn = document.createElement('button');
         btn.type = 'button'; btn.className = 'pdf-audio-marker';
-        btn.dataset.cd = b.cd === null ? '' : String(b.cd); btn.dataset.track = String(b.track); btn.dataset.page = String(pageNum);
+        btn.dataset.cd = b.cd === null ? '' : String(b.cd); btn.dataset.track = String(b.track); btn.dataset.kind = b.kind; btn.dataset.ref = b.ref ? String(b.ref) : ''; btn.dataset.page = String(pageNum);
         btn.style.left = `${Math.max(0, cx - w / 2)}px`; btn.style.top = `${Math.max(0, cy - h / 2)}px`; btn.style.width = `${w}px`; btn.style.height = `${h}px`;
         btn.addEventListener('pointerdown', e => e.stopPropagation());   // not the start of a text selection, a pan or a pinch
         btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); tapBookAudioMark(btn); });
@@ -371,6 +605,7 @@ async function refreshBookAudio() {
         try { const rows = await baList(key); if (bookAudio.key !== key) return; bookAudio.tracks = rows; }
         catch (e) { bookAudio.tracks = []; }
     }
+    if (bookAudio.tracks.length) baScanMarks();   // a table or restarting numbers can only be seen on every page (rules §6)
     syncAudioMarkers(); syncAudioMenuRow(); renderBookAudioDialog();
 }
 // A book was opened (js/main.js): its own tracks, and the previous book's recording stops.
@@ -382,8 +617,7 @@ function onBookAudioBookChanged() {
 // Every mark on screen shows whether its track is on this device (solid) or not yet (dashed), and which one plays.
 function syncAudioMarkers(root = document) {
     for (const btn of root.querySelectorAll('.pdf-audio-marker')) {
-        const cd = btn.dataset.cd ? Number(btn.dataset.cd) : null, track = Number(btn.dataset.track), found = baFind(cd, track).rec;
-        const label = baLabel(cd, track);
+        const m = baMarkOf(btn), found = baFindMark(m).rec, label = baLabel(m.cd, m.track, m.kind);
         btn.classList.toggle('has-audio', !!found);
         btn.classList.toggle('playing', !!found && !!bookAudio.playing && bookAudio.playing.id === found.id && !baAudio.paused);
         btn.setAttribute('aria-label', t('baPlayMark').replace('{label}', label)); btn.title = label;
@@ -407,6 +641,9 @@ async function importBookAudio(fileList, disc = null) {
     const key = state.bookKey;
     if (!key || baImporting) return;
     let files = Array.from(fileList || []).filter(f => baIsAudio(f) && !baHiddenPath(f.webkitRelativePath));
+    const refused = files.filter(baUnplayable);   // WMA in Chrome: said, not stored (rules §4.5)
+    files = files.filter(f => !refused.includes(f));
+    const refusedNote = () => { if (refused.length) openBookAudioDialog(t('baUnsupported').replace('{n}', refused.length).replace('{ext}', [...new Set(refused.map(f => f.name.split('.').pop().toUpperCase()))].join(', '))); };
     // a book narration chosen here by mistake (it is an MP3 too) goes where it belongs, not in as «track 4» of «textbook 3-4»
     const narrations = [];
     if (typeof bsUnpack === 'function') {
@@ -419,7 +656,7 @@ async function importBookAudio(fileList, disc = null) {
         files = files.filter(f => !narrations.includes(f));
         if (narrations.length) bsNote('tracks-narration', { files: narrations.map(f => f.name) });
     }
-    if (!files.length) { if (narrations.length) bsImport(narrations); else baAutoFailed(); return; }
+    if (!files.length) { if (narrations.length) bsImport(narrations); else if (refused.length) refusedNote(); else baAutoFailed(); return; }
     baImporting = true;
     const parsed = baAssignDiscs(files.map(f => {
         const p = Object.assign(baParseFile(f.name, f.webkitRelativePath || ''), { file: f });
@@ -457,7 +694,8 @@ async function importBookAudio(fileList, disc = null) {
     setBookAudioProgress('', 0);
     await refreshBookAudio();
     if (!failed && saved) showToast(t('baSaved').replace('{n}', saved));
-    if (!failed && !saved && !narrations.length) baAutoFailed();
+    if (!failed && !saved && !narrations.length && !refused.length) baAutoFailed();
+    refusedNote();
     if (narrations.length) bsImport(narrations);
 }
 
@@ -475,15 +713,24 @@ function baUnlock() {
         if (baAudio.paused && !bookAudio.playing && !baAudio.currentSrc) { baAudio.src = baSilentUrl; const p = baAudio.play(); if (p && p.catch) p.catch(() => {}); }
     } catch (e) { /* no unlock: the real play() decides */ }
 }
-function tapBookAudioMark(btn) {
+async function tapBookAudioMark(btn) {
     baUnlock();
-    const cd = btn.dataset.cd ? Number(btn.dataset.cd) : null, track = Number(btn.dataset.track), label = baLabel(cd, track);
-    const { rec, ambiguous } = baFind(cd, track);
-    if (typeof bsNote === 'function') bsNote('mark', { label, tracks: bookAudio.tracks.length, found: !!rec, ambiguous: !!ambiguous });
+    const m = baMarkOf(btn), label = baLabel(m.cd, m.track, m.kind);
     if (!bookAudio.tracks.length) { openBookAudioDialog(t('baConnect')); return; }
+    if (!baMarksReady()) {   // the book's marks are still being read: the track can depend on its table
+        const key = state.bookKey;
+        baScanMarks();
+        try { await baMarks.busy; } catch (e) { /* read as far as it went */ }
+        if (state.bookKey !== key) return;
+    }
+    const { rec, ambiguous, blocked, target } = baFindMark(m);
+    if (typeof bsNote === 'function') bsNote('mark', { label, page: m.page, plays: target && target.track ? baLabel(target.cd, target.track) : null,
+        how: blocked || (target && target.name ? 'table' : 'printed'), tracks: bookAudio.tracks.length, found: !!rec, ambiguous: !!ambiguous });
+    if (blocked === 'restart') { openBookAudioDialog(t('baRestart')); return; }
+    if (blocked) { openBookAudioDialog(t('baNoRow').replace('{label}', label)); return; }
     if (ambiguous) { showToast(t('baAmbiguous').replace('{label}', label)); return; }
-    if (!rec) { openBookAudioDialog(t('baMissing').replace('{label}', label)); return; }   // the dialog adds the missing files
-    playBookTrack(rec, label);
+    if (!rec) { openBookAudioDialog(t('baMissing').replace('{label}', baLabel(target.cd, target.track))); return; }   // the dialog adds the missing files
+    playBookTrack(rec, target.name ? label + ' · ' + target.name : label);
 }
 async function playBookTrack(rec, label) {
     // The same track again: the tap pauses / resumes it.
@@ -576,11 +823,13 @@ function renderBookAudioDialog(message) {
     const marks = baMarks.key === state.bookKey ? baMarks.list : null;
     let text = t('baNone'), ok = has, warn = false, tap = false;
     if (n && marks && marks.length) {
-        const playing = marks.filter(m => baFind(m.cd, m.track).rec).length;
-        const miss = marks.find(m => !baFind(m.cd, m.track).rec);
-        if (playing === marks.length) text = t('baMarksAll').replace('{n}', playing);
+        const found = marks.map(m => baFindMark(m));
+        const playing = found.filter(f => f.rec).length, restart = found.some(f => f.blocked === 'restart');
+        const miss = marks.find((m, i) => !found[i].rec);
+        if (restart) { text = t('baRestart'); ok = false; warn = true; }   // never «playing» when the numbers cannot be matched
+        else if (playing === marks.length) text = t('baMarksAll').replace('{n}', playing);
         else if (playing) text = t('baMarksSome').replace('{k}', playing).replace('{n}', marks.length);
-        else { text = t('baMarksNone').replace('{n}', n).replace('{label}', baLabel(miss.cd, miss.track)); ok = false; warn = true; }
+        else { text = t('baMarksNone').replace('{n}', n).replace('{label}', baLabel(miss.cd, miss.track, miss.kind)); ok = false; warn = true; }
         tap = playing > 0;
     } else if (n) { text = t('baCount').replace('{n}', n); tap = true; }
     else if (marks && marks.length) { text = t('baMarksEmpty').replace('{n}', marks.length); ok = false; warn = true; }   // the narration is not the book's recordings
@@ -602,24 +851,30 @@ function renderBookAudioDialog(message) {
     dialog.querySelector('.ba-remove').hidden = !has;
 }
 // Every audio mark of the open PDF, all pages (the status counts the ones that play). Read once per book, in the background.
-const baMarks = { key: null, list: null, busy: null };
+// The book's track table (rules §6.1) is read in the same pass: its rows, whole per disc, and the shift between its page numbers
+// and the PDF's.
+const baMarks = { key: null, list: null, busy: null, tables: null, shift: 0 };
 function baScanMarks() {
     const key = state.bookKey, doc = state.pdfDoc;
     if (!key || state.format !== 'pdf' || !doc) return;
     if (baMarks.key === key && (baMarks.list || baMarks.busy)) return;
-    baMarks.key = key; baMarks.list = null;
+    baMarks.key = key; baMarks.list = null; baMarks.tables = null; baMarks.shift = 0;
     baMarks.busy = (async () => {
-        const list = [];
+        const list = [], rows = [];
         for (let p = 1; p <= doc.numPages; p++) {
             if (state.bookKey !== key) return;
             try {
-                const page = await doc.getPage(p);
-                for (const b of baMarkBoxes((await page.getTextContent()).items, page.getViewport({ scale: 1 }))) list.push({ page: p, cd: b.cd, track: b.track });
+                const page = await doc.getPage(p), items = (await page.getTextContent()).items, table = baTableRows(items);
+                if (table.length) { rows.push(...table); continue; }
+                for (const b of baMarkBoxes(items, page.getViewport({ scale: 1 }))) list.push({ page: p, cd: b.cd, track: b.track, kind: b.kind, ref: b.ref });
             } catch (e) { /* a page without text */ }
         }
         if (baMarks.key !== key) return;
+        const tables = baWholeTables(rows);
+        baMarks.tables = tables; baMarks.shift = tables.size ? baPageShift(list, tables) : 0;
         baMarks.list = list;
-        renderBookAudioDialog();
+        if (typeof bsNote === 'function') bsNote('marks', { marks: list.length, tableRows: rows.length, tables: Object.fromEntries([...tables].map(([cd, r]) => ['CD' + cd, r.length])), shift: baMarks.shift });
+        syncAudioMarkers(); renderBookAudioDialog();
     })().finally(() => { if (baMarks.key === key) baMarks.busy = null; });
 }
 // A folder dropped on the dialog: every file below it, each with its path from the top of the drop (the same webkitRelativePath that
@@ -690,7 +945,7 @@ function buildBookAudioDialog() {
         + '<p class="ba-note"></p></div>';
     const folder = document.createElement('input'), files = document.createElement('input');
     folder.type = 'file'; folder.multiple = true; folder.setAttribute('webkitdirectory', ''); folder.hidden = true; folder.id = 'ba-input-folder';
-    files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac,.opus,.aif,.aiff'; files.hidden = true; files.id = 'ba-input-files';
+    files.type = 'file'; files.multiple = true; files.accept = 'audio/*,.mp3,.m4a,.mp4,.aac,.wav,.ogg,.flac,.opus,.aif,.aiff'; files.hidden = true; files.id = 'ba-input-files';
     dialog.append(folder, files);
     // a folder (with its sub-folders) dragged onto the dialog; plain files dropped on it work too. The dialog lights up while one is over it.
     const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
