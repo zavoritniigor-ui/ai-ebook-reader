@@ -54,6 +54,11 @@ Object.assign(I18N, {
                    zh: '已连接 {n} 条音轨，但书中没有标记指向它们（如“{label}”）。请选择这本书的录音文件夹。', ko: '{n}개 트랙이 연결됐지만 책의 표시가 가리키는 트랙이 없습니다(예: “{label}”). 이 책의 녹음 폴더를 선택하세요.',
                    hi: '{n} ट्रैक जुड़े हैं, पर किताब का कोई निशान उन्हें नहीं दिखाता (जैसे “{label}”)। इस किताब की रिकॉर्डिंग वाला फ़ोल्डर चुनें।',
                    ga: 'Rianta ceangailte: {n}, ach níl aon mharc sa leabhar ag tagairt dóibh (m.sh. «{label}»). Roghnaigh fillteán taifead an leabhair seo.' },
+    baMarksEmpty: { uk: 'Записів до позначок книги ще немає (позначок: {n}). Виберіть папку з аудіо до цієї книги.', en: 'No recordings for the book’s audio marks yet ({n} marks). Choose the folder with this book’s audio.',
+                    fr: 'Pas encore d’enregistrements pour les mentions audio du livre ({n} mentions). Choisissez le dossier audio de ce livre.', ru: 'Записей к отметкам книги ещё нет (отметок: {n}). Выберите папку с аудио к этой книге.',
+                    es: 'Aún no hay grabaciones para las marcas de audio del libro ({n} marcas). Elija la carpeta de audio de este libro.', zh: '书中的音频标记还没有录音（共 {n} 个）。请选择这本书的音频文件夹。',
+                    ko: '책의 오디오 표시에 아직 녹음이 없습니다(표시 {n}개). 이 책의 오디오 폴더를 선택하세요.', hi: 'किताब के ऑडियो निशानों की रिकॉर्डिंग अभी नहीं है ({n} निशान)। इस किताब का ऑडियो फ़ोल्डर चुनें।',
+                    ga: 'Níl taifid ann fós do mharcanna fuaime an leabhair ({n} marc). Roghnaigh fillteán fuaime an leabhair seo.' },
     baConnected: { uk: 'Аудіо підключено', en: 'Audio connected', fr: 'Audio ajouté', ru: 'Аудио подключено', es: 'Audio conectado', zh: '音频已连接', ko: '오디오 연결됨', hi: 'ऑडियो जुड़ गया', ga: 'Fuaim ceangailte' },
     baTapHint: { uk: 'Тапніть позначку аудіо в книзі, щоб послухати.', en: 'Tap an audio mark in the book to listen.', fr: 'Touchez une mention audio du livre pour écouter.', ru: 'Коснитесь отметки аудио в книге, чтобы послушать.',
                  es: 'Toque una marca de audio del libro para escuchar.', zh: '点按书中的音频标记即可收听。', ko: '책의 오디오 표시를 누르면 들을 수 있습니다.', hi: 'सुनने के लिए किताब में ऑडियो चिह्न पर टैप करें।', ga: 'Tapáil marc fuaime sa leabhar chun éisteacht.' },
@@ -279,7 +284,8 @@ function baFind(cd, track, tracks = bookAudio.tracks) {
 // ---------- marks in the text -----------------------------------------------------------------------------------------------
 // «CD2 - piste 35», «CD2- piste 34», «CD1 - Piste 3», or a bare «piste 37» (a mark whose disc sits in another text item).
 // A headphones icon set in a symbol font comes out of the text as one small letter glued to the mark («iCD1- piste 4»).
-const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:\p{Ll}(?=CD\s*[1-9]))?(?:CD\s*([1-9])\s*[-–—:.]*\s*(?:piste|plage|track|pista)\s*0*([1-9]\d{0,2})|(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
+// A bare «plage 11» after an article is the word in running text («J'aime la plage 11. le ruisseau» in a numbered list), not a mark.
+const BA_MARK_RE = /(^|[^\p{L}\p{N}])(?:\p{Ll}(?=CD\s*[1-9]))?(?:CD\s*([1-9])\s*[-–—:.]*\s*(?:piste|plage|track|pista)\s*0*([1-9]\d{0,2})|(?<!(?:^|[^\p{L}])(?:la|une|sa|ma|ta|cette|chaque|une autre)\s+)(?:piste|plage|pista)\s*0*([1-9]\d{0,2}))(?![\p{L}\p{N}])/giu;
 function baFindMarks(text) {
     const out = [];
     for (const m of String(text).matchAll(BA_MARK_RE)) out.push({ cd: m[2] ? Number(m[2]) : null, track: Number(m[3] || m[4]), start: m.index + m[1].length, end: m.index + m[0].length });
@@ -306,7 +312,10 @@ function baMarkBoxes(items, vp) {
         let text = '', last = null;
         const spans = [];
         for (const it of line.parts) {
-            if (last && it.transform[4] - (last.transform[4] + (last.width || 0)) > line.size * 0.2 && !/\s$/.test(text) && !/^\s/.test(it.str)) text += ' ';
+            const gap = last ? it.transform[4] - (last.transform[4] + (last.width || 0)) : 0;
+            // a gap of several letters is the next column of a table («10. plage    20. calepin»): its number is not the mark's
+            if (last && gap > line.size * 2) text += ' | ';
+            else if (last && gap > line.size * 0.2 && !/\s$/.test(text) && !/^\s/.test(it.str)) text += ' ';
             spans.push({ it, from: text.length, to: text.length + it.str.length });
             text += it.str; last = it;
         }
@@ -565,6 +574,7 @@ function renderBookAudioDialog(message) {
         else { text = t('baMarksNone').replace('{n}', n).replace('{label}', baLabel(miss.cd, miss.track)); ok = false; warn = true; }
         tap = playing > 0;
     } else if (n) { text = t('baCount').replace('{n}', n); tap = true; }
+    else if (marks && marks.length) { text = t('baMarksEmpty').replace('{n}', marks.length); ok = false; warn = true; }   // the narration is not the book's recordings
     else if (speech) text = t('baConnected');
     const status = dialog.querySelector('.ba-status');
     status.textContent = text;
@@ -574,7 +584,7 @@ function renderBookAudioDialog(message) {
     status.parentElement.classList.toggle('ba-warn-box', warn);
     dialog.querySelector('.ba-tap').hidden = !tap;
     const speechLine = dialog.querySelector('.ba-speech-line');
-    speechLine.hidden = !speech || !n;   // a narration alone is the status line itself
+    speechLine.hidden = !speech || text === t('baConnected');   // a narration alone (a book without marks) is the status line itself
     if (speech) speechLine.textContent = t('spkCount').replace('{n}', speech.sentences.length);
     const msg = dialog.querySelector('.ba-message');
     if (message !== undefined) msg.textContent = message;

@@ -80,7 +80,9 @@ For every audio file found (`mp3 m4a m4b aac wav ogg oga opus flac wma aif aiff`
 The status tells what plays in **this** book, never just how many files are stored:
 «Грають усі позначки книги: N» / «Грають K з N позначок книги» (green), or, when stored tracks match none of the book's
 marks, an amber line that names one missing mark («CD1 · piste 20») and asks for the folder with this book's recordings.
-The narration has its own line «Озвучка: N речень». A book without marks shows the track count.
+The narration has its own line «Озвучка: N речень». A book without marks shows the track count. A book WITH marks and no
+tracks is amber («Записів до позначок книги ще немає…») even when its narration is connected: the narration is never
+reported as the book's recordings (owner, 2026-10-28: a green «Аудіо підключено» hid that no dialogue was connected).
 
 ### 5.2 By hand: «Вибрати папку з аудіо»
 
@@ -98,6 +100,9 @@ drop of a folder onto the dialog does exactly the same.
 
 Marks are found in the PDF text: «CD2 - piste 35», «CD1 - Piste 3», a bare «piste 37» / «plage 4» / «track 12». A headphones
 icon set in a symbol font comes out as one small letter glued to the mark («iCD1- piste 4») and does not hide it.
+Not marks: a bare «plage 11» / «piste 3» after an article («la plage», «une piste») — the word in running text; and a word
+followed by a number of the NEXT table column (a gap of several letters: «10. plage      20. calepin»). A bilingual book with
+no audio must show no marks at all (checked: 0 on a 657-page French–English book).
 
 1. **Disc marks** («CD2 - piste 35») play the disc-2 track 35 of a disc set (A).
 2. **Bare marks** take the disc from the nearest disc mark above them on the page («CD2 - piste 40, piste 41» = CD2 · 41);

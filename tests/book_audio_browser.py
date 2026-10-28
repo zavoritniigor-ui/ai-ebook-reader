@@ -134,8 +134,16 @@ check('2 baAssignDiscs splits flat duplicate track numbers into CD1 and CD2 by c
 })()""")
 
 check('3 baFindMarks finds CD+piste and bare French/Spanish piste/plage/pista, ignoring bare English track and piste 0', """(() => {
-    const m = baFindMarks('Activite (CD1 - piste 3), CD2- piste 015, bare piste 7, track 5, CD1 - track 9, apiste 2, piste 0, étage. iCD1- piste 4');
+    const m = baFindMarks('Activite (CD1 - piste 3), CD2- piste 015, bare piste 7, track 5, CD1 - track 9, apiste 2, piste 0, étage. iCD1- piste 4, 10. la plage 11. le ruisseau, sur la plage 3');
     return JSON.stringify(m.map(x => [x.cd, x.track])) === JSON.stringify([[1,3],[2,15],[null,7],[1,9],[1,4]]);
+})()""")
+
+check('3b A word of the next table column is not a mark («10. plage      20. calepin»); a mark split over two touching items still is', """(() => {
+    const vp = { convertToViewportPoint: (x, y) => [x, 800 - y] };
+    const it = (str, x, w) => ({ str, transform: [12, 0, 0, 12, x, 500], width: w, height: 12 });
+    const table = baMarkBoxes([it('10. plage', 50, 50), it('20. calepin', 300, 60)], vp);
+    const split = baMarkBoxes([it('Dialogue : CD2 -', 50, 100), it('piste 15', 152, 45)], vp);
+    return table.length === 0 && split.length === 1 && split[0].cd === 2 && split[0].track === 15 || JSON.stringify({ table, split });
 })()""")
 
 # ---------------------------------------------------------------- 2. Open PDF and verify markers
@@ -471,13 +479,15 @@ check('14g The status counts the book\'s marks that play, not the files: all / s
     stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
     const wav = await (await fetch('data:audio/wav;base64,' + window.__WAV)).blob();
     const make = (name, rel) => { const f = new File([wav], name, { type: 'audio/wav' }); Object.defineProperty(f, 'webkitRelativePath', { value: rel }); return f; };
+    // no tracks at all in a book with marks: amber, never «Audio connected» (owner 2026-10-28: a narration showed a green «connected»)
+    const empty = st.classList.contains('ba-warn') && st.textContent === t('baMarksEmpty').replace('{n}', 4);
     await importBookAudio([make('XYZ_EP01_P9.wav', 'Book/audio/XYZ_EP01_P9.wav')]);
     const none = st.classList.contains('ba-warn') && !st.classList.contains('ba-ok') && st.parentElement.classList.contains('ba-warn-box')
         && st.textContent.includes('CD1 · piste 3') && d.querySelector('.ba-tap').hidden;
     await importBookAudio(['CD1/03 Track 03.wav', 'CD2/15 Track 15.wav', 'CD2/07 Track 07.wav'].map(r => make(r.split('/')[1], 'Book/audio/' + r)));
     const all = st.textContent === t('baMarksAll').replace('{n}', 4) && st.classList.contains('ba-ok') && !st.classList.contains('ba-warn') && !d.querySelector('.ba-tap').hidden;
     d.close();
-    return total === 4 && some && none && all || JSON.stringify({ total, some, none, all, text: st.textContent });
+    return total === 4 && some && empty && none && all || JSON.stringify({ total, some, empty, none, all, text: st.textContent });
 })()""")
 
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
