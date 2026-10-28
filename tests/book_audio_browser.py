@@ -293,7 +293,7 @@ check('13b The dialog is one folder button, «Add by hand» beside a red «Remov
     const buttons = Array.from(d.querySelectorAll('.ba-body button')).filter(b => b.offsetParent).length;
     return d.querySelector('.ba-status').classList.contains('ba-ok') && folder.classList.contains('btn-primary') && folder.textContent === t('baPickFolder')
         && files.textContent === t('baManual') && !remove.hidden && side && red && below && buttons === 3
-        && !d.querySelector('details, .ba-speech') && !/piste/i.test(d.querySelector('.ba-lead').textContent + t('mAudioDesc'))
+        && !d.querySelector('details, .ba-speech, .ba-books') && !/piste/i.test(d.querySelector('.ba-lead').textContent + t('mAudioDesc'))
         || JSON.stringify({ status: d.querySelector('.ba-status').className, folder: folder.textContent, side, red, below, buttons });
 })()""")
 
@@ -458,6 +458,26 @@ check('14f A disc set and a section set of one book live side by side; a «.work
     return rows.length === 2 && rows.filter(r => r.cd === 1 && r.track === 3).length === 1 &&
            disc && disc.name === '03 Track 03.wav' && bare && bare.name === 'XYZ_EP01_P3.wav' && bare.section === 1 &&
            !rows.some(r => /0003|0004|old/.test(r.name)) || JSON.stringify(rows.map(r => [r.id, r.name]));
+})()""")
+
+check('14g The status counts the book\'s marks that play, not the files: all / some / none (amber, names a missing mark); never a stale green', """(async () => {
+    openBookAudioDialog('');
+    const d = document.getElementById('book-audio-dialog'), st = d.querySelector('.ba-status');
+    const wait = async ok => { for (let i = 0; i < 50 && !ok(); i++) await new Promise(r => setTimeout(r, 100)); return ok(); };
+    await wait(() => baMarks.key === state.bookKey && baMarks.list);
+    const total = baMarks.list.length;   // page 1: CD1 · 3, CD2 · 15, CD2 · 7 (bare, under CD2); page 2: CD1 · 3
+    // left by 14f: CD1 · 3 and a section track
+    const some = st.textContent === t('baMarksSome').replace('{k}', 2).replace('{n}', 4) && st.classList.contains('ba-ok');
+    stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
+    const wav = await (await fetch('data:audio/wav;base64,' + window.__WAV)).blob();
+    const make = (name, rel) => { const f = new File([wav], name, { type: 'audio/wav' }); Object.defineProperty(f, 'webkitRelativePath', { value: rel }); return f; };
+    await importBookAudio([make('XYZ_EP01_P9.wav', 'Book/audio/XYZ_EP01_P9.wav')]);
+    const none = st.classList.contains('ba-warn') && !st.classList.contains('ba-ok') && st.parentElement.classList.contains('ba-warn-box')
+        && st.textContent.includes('CD1 · piste 3') && d.querySelector('.ba-tap').hidden;
+    await importBookAudio(['CD1/03 Track 03.wav', 'CD2/15 Track 15.wav', 'CD2/07 Track 07.wav'].map(r => make(r.split('/')[1], 'Book/audio/' + r)));
+    const all = st.textContent === t('baMarksAll').replace('{n}', 4) && st.classList.contains('ba-ok') && !st.classList.contains('ba-warn') && !d.querySelector('.ba-tap').hidden;
+    d.close();
+    return total === 4 && some && none && all || JSON.stringify({ total, some, none, all, text: st.textContent });
 })()""")
 
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")

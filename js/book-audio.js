@@ -41,6 +41,19 @@ Object.assign(I18N, {
     baRemoveShort: { uk: 'Видалити', en: 'Remove', fr: 'Supprimer', ru: 'Удалить', es: 'Quitar', zh: '删除', ko: '삭제', hi: 'हटाएँ', ga: 'Bain' },
     baRemoveAsk: { uk: 'Видалити все аудіо цієї книги з пристрою?', en: 'Remove all of this book’s audio from the device?', fr: 'Supprimer tout l’audio de ce livre de l’appareil ?', ru: 'Удалить всё аудио этой книги с устройства?',
                    es: '¿Quitar todo el audio de este libro del dispositivo?', zh: '要从设备中删除这本书的全部音频吗？', ko: '이 책의 오디오를 기기에서 모두 삭제할까요?', hi: 'इस किताब का सारा ऑडियो डिवाइस से हटाएँ?', ga: 'An bhfuil tú chun fuaim uile an leabhair seo a bhaint den ghléas?' },
+    // the status tells what really plays in THIS book: its marks, not just how many files were stored (rules §6)
+    baMarksAll: { uk: 'Грають усі позначки книги: {n}', en: 'All the book’s audio marks play: {n}', fr: 'Toutes les mentions audio du livre sont jouées : {n}', ru: 'Играют все отметки книги: {n}',
+                  es: 'Suenan todas las marcas de audio del libro: {n}', zh: '书中所有音频标记均可播放：{n}', ko: '책의 오디오 표시가 모두 재생됩니다: {n}', hi: 'किताब के सभी ऑडियो निशान चलते हैं: {n}', ga: 'Seinntear marcanna fuaime uile an leabhair: {n}' },
+    baMarksSome: { uk: 'Грають {k} з {n} позначок книги', en: '{k} of the book’s {n} audio marks play', fr: '{k} mentions audio sur {n} sont jouées', ru: 'Играют {k} из {n} отметок книги',
+                   es: 'Suenan {k} de {n} marcas de audio del libro', zh: '书中 {n} 个音频标记中有 {k} 个可播放', ko: '책의 오디오 표시 {n}개 중 {k}개가 재생됩니다', hi: 'किताब के {n} में से {k} ऑडियो निशान चलते हैं', ga: 'Seinntear {k} as {n} marc fuaime an leabhair' },
+    baMarksNone: { uk: 'Підключено доріжок: {n}, але жодна позначка книги на них не вказує (напр. «{label}»). Виберіть папку із записами до цієї книги.',
+                   en: 'Tracks connected: {n}, but none of the book’s marks points to them (e.g. «{label}»). Choose the folder with this book’s recordings.',
+                   fr: 'Pistes reliées : {n}, mais aucune mention du livre ne les désigne (p. ex. « {label} »). Choisissez le dossier des enregistrements de ce livre.',
+                   ru: 'Подключено дорожек: {n}, но ни одна отметка книги на них не указывает (напр. «{label}»). Выберите папку с записями к этой книге.',
+                   es: 'Pistas conectadas: {n}, pero ninguna marca del libro las señala (p. ej. «{label}»). Elija la carpeta con las grabaciones de este libro.',
+                   zh: '已连接 {n} 条音轨，但书中没有标记指向它们（如“{label}”）。请选择这本书的录音文件夹。', ko: '{n}개 트랙이 연결됐지만 책의 표시가 가리키는 트랙이 없습니다(예: “{label}”). 이 책의 녹음 폴더를 선택하세요.',
+                   hi: '{n} ट्रैक जुड़े हैं, पर किताब का कोई निशान उन्हें नहीं दिखाता (जैसे “{label}”)। इस किताब की रिकॉर्डिंग वाला फ़ोल्डर चुनें।',
+                   ga: 'Rianta ceangailte: {n}, ach níl aon mharc sa leabhar ag tagairt dóibh (m.sh. «{label}»). Roghnaigh fillteán taifead an leabhair seo.' },
     baConnected: { uk: 'Аудіо підключено', en: 'Audio connected', fr: 'Audio ajouté', ru: 'Аудио подключено', es: 'Audio conectado', zh: '音频已连接', ko: '오디오 연결됨', hi: 'ऑडियो जुड़ गया', ga: 'Fuaim ceangailte' },
     baTapHint: { uk: 'Тапніть позначку аудіо в книзі, щоб послухати.', en: 'Tap an audio mark in the book to listen.', fr: 'Touchez une mention audio du livre pour écouter.', ru: 'Коснитесь отметки аудио в книге, чтобы послушать.',
                  es: 'Toque una marca de audio del libro para escuchar.', zh: '点按书中的音频标记即可收听。', ko: '책의 오디오 표시를 누르면 들을 수 있습니다.', hi: 'सुनने के लिए किताब में ऑडियो चिह्न पर टैप करें।', ga: 'Tapáil marc fuaime sa leabhar chun éisteacht.' },
@@ -539,20 +552,56 @@ function renderBookAudioDialog(message) {
     if (!dialog || !dialog.querySelector('.ba-body')) return;
     const subName = state.bookFileName || (state.bookKey ? String(state.bookKey).replace(/:\d+$/, '') : '');
     dialog.querySelector('.ba-subtitle').textContent = (typeof shelfTitle === 'function' ? shelfTitle(subName) : subName) || '';
-    // one status: the tracks (what the learner taps in the book); a narration alone just reads «Audio connected»
+    // the status says what plays in THIS book: how many of its marks find a track (not how many files were stored), and the narration
     const speech = typeof bsActiveSet === 'function' ? bsActiveSet() : null;
     const n = bookAudio.tracks.length, has = n > 0 || !!speech;
+    const marks = baMarks.key === state.bookKey ? baMarks.list : null;
+    let text = t('baNone'), ok = has, warn = false, tap = false;
+    if (n && marks && marks.length) {
+        const playing = marks.filter(m => baFind(m.cd, m.track).rec).length;
+        const miss = marks.find(m => !baFind(m.cd, m.track).rec);
+        if (playing === marks.length) text = t('baMarksAll').replace('{n}', playing);
+        else if (playing) text = t('baMarksSome').replace('{k}', playing).replace('{n}', marks.length);
+        else { text = t('baMarksNone').replace('{n}', n).replace('{label}', baLabel(miss.cd, miss.track)); ok = false; warn = true; }
+        tap = playing > 0;
+    } else if (n) { text = t('baCount').replace('{n}', n); tap = true; }
+    else if (speech) text = t('baConnected');
     const status = dialog.querySelector('.ba-status');
-    status.textContent = n ? t('baCount').replace('{n}', n) : speech ? t('baConnected') : t('baNone');
-    status.classList.toggle('ba-ok', has);
-    status.parentElement.classList.toggle('ba-ok-box', has);
-    dialog.querySelector('.ba-tap').hidden = !n;
+    status.textContent = text;
+    status.classList.toggle('ba-ok', ok);
+    status.classList.toggle('ba-warn', warn);
+    status.parentElement.classList.toggle('ba-ok-box', ok);
+    status.parentElement.classList.toggle('ba-warn-box', warn);
+    dialog.querySelector('.ba-tap').hidden = !tap;
+    const speechLine = dialog.querySelector('.ba-speech-line');
+    speechLine.hidden = !speech || !n;   // a narration alone is the status line itself
+    if (speech) speechLine.textContent = t('spkCount').replace('{n}', speech.sentences.length);
     const msg = dialog.querySelector('.ba-message');
     if (message !== undefined) msg.textContent = message;
     msg.hidden = !msg.textContent;
     if (!msg.textContent) dialog.querySelector('.ba-files').classList.remove('ba-hint');
     dialog.querySelector('.ba-remove').hidden = !has;
-    if (typeof bsRenderFolderRow === 'function') bsRenderFolderRow();
+}
+// Every audio mark of the open PDF, all pages (the status counts the ones that play). Read once per book, in the background.
+const baMarks = { key: null, list: null, busy: null };
+function baScanMarks() {
+    const key = state.bookKey, doc = state.pdfDoc;
+    if (!key || state.format !== 'pdf' || !doc) return;
+    if (baMarks.key === key && (baMarks.list || baMarks.busy)) return;
+    baMarks.key = key; baMarks.list = null;
+    baMarks.busy = (async () => {
+        const list = [];
+        for (let p = 1; p <= doc.numPages; p++) {
+            if (state.bookKey !== key) return;
+            try {
+                const page = await doc.getPage(p);
+                for (const b of baMarkBoxes((await page.getTextContent()).items, page.getViewport({ scale: 1 }))) list.push({ page: p, cd: b.cd, track: b.track });
+            } catch (e) { /* a page without text */ }
+        }
+        if (baMarks.key !== key) return;
+        baMarks.list = list;
+        renderBookAudioDialog();
+    })().finally(() => { if (baMarks.key === key) baMarks.busy = null; });
 }
 // A folder dropped on the dialog: every file below it, each with its path from the top of the drop (the same webkitRelativePath that
 // the folder picker gives), so the disc of a sub-folder («CD 1-1», «CD2-3») is read the same way.
@@ -566,7 +615,7 @@ async function baFilesFromEntries(entries) {
     const walk = async (entry, prefix) => {
         if (entry.isFile) {
             const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
-            Object.defineProperty(file, 'webkitRelativePath', { value: prefix + entry.name });
+            Object.defineProperty(file, 'webkitRelativePath', { value: prefix + entry.name, configurable: true });
             out.push(file);
         } else if (entry.isDirectory && !entry.name.startsWith('.') && entry.name !== '__MACOSX') {
             for (const child of await readAll(entry.createReader())) await walk(child, prefix + entry.name + '/');
@@ -618,8 +667,7 @@ function buildBookAudioDialog() {
         + '<p class="ba-drop"></p><p class="ba-message" hidden></p>'
         + '<div class="ba-disc-ask" hidden><p class="ba-disc-text"></p><div class="ba-actions ba-disc-choices"></div></div>'
         + '<div class="ba-progress" id="ba-progress" hidden><div class="ba-progress-text"></div><div class="ba-progress-bar"></div></div>'
-        + '<div class="ba-status-box"><p class="ba-status"></p><p class="ba-tap" hidden></p></div>'
-        + '<div class="ba-books" hidden><p class="ba-books-text"></p><button type="button" class="ba-tint ba-books-allow"></button></div>'
+        + '<div class="ba-status-box"><p class="ba-status"></p><p class="ba-speech-line" hidden></p><p class="ba-tap" hidden></p></div>'
         + '<p class="ba-note"></p></div>';
     const folder = document.createElement('input'), files = document.createElement('input');
     folder.type = 'file'; folder.multiple = true; folder.setAttribute('webkitdirectory', ''); folder.hidden = true; folder.id = 'ba-input-folder';
@@ -637,9 +685,9 @@ function buildBookAudioDialog() {
         const list = entries.length ? await baFilesFromEntries(entries) : Array.from(e.dataTransfer.files || []);
         if (list.length) baImportOrAskDisc(list);
     });
-    dialog.querySelector('.ba-folder').onclick = () => folder.click();
+    // one button: where the browser can keep a folder (computer Chrome / Edge) it is also remembered, so later books find theirs alone
+    dialog.querySelector('.ba-folder').onclick = () => { if (typeof bfSupported === 'function' && bfSupported()) bsPickAudioFolder(); else folder.click(); };
     dialog.querySelector('.ba-files').onclick = () => files.click();
-    dialog.querySelector('.ba-books-allow').onclick = () => bsAllowBooksFolder();
     for (const input of [folder, files]) input.onchange = () => {
         const list = Array.from(input.files);
         input.value = '';
@@ -681,6 +729,7 @@ function openBookAudioDialog(message) {
     buildBookAudioDialog();
     labelBookAudioDialog();
     renderBookAudioDialog(message || '');
+    baScanMarks();
     if (!dialog.open) {
         dialog.querySelector('.ba-disc-ask').hidden = true;   // a question left from an earlier pick is stale
         dialog.showModal();
