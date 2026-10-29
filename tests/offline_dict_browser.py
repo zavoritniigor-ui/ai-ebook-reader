@@ -37,13 +37,16 @@ LEMMAS = [   # lemma, pos, gender, meanings, sources, confusions, forms
     ("aujourd'hui", 'ADV', '', 'сьогодні', 'w', '', []),
     ('voir', 'V', '', 'бачити|побачити', 'w', '', ['vois', 'voit']),
     ('être', 'V', '', 'бути', 'w', '', ['suis', 'est', 'es']),
-    ('avoir', 'V', '', 'мати', 'w', '', ['ai', 'as', 'a']),
+    ('avoir', 'V', '', 'мати', 'w', '', ['ai', 'as', 'a', 'avons']),
     ('pour', 'PRE', '', 'для', 'x', '', []),
     ('la', 'DET', '', '', '', '', []), ('le', 'DET', '', '', '', '', ['l\'']), ('je', 'PRO', '', 'я', 'x', '', ["j'"]),
     ('il', 'PRO', '', 'він', 'x', '', []), ('se', 'PRO', '', 'себе', 'x', '', ["s'", 'me', "m'"]), ('elle', 'PRO', '', 'вона', 'x', '', []),
     ('vite', 'ADV', '', 'швидко', 'x', '', []),
+    ('pendre', 'V', '', 'вішати|повісити', 'w', '', ['pendent']), ('crémaillère', 'N', 'f', '', '', '', []),
+    ('rendez-vous', 'N', 'm', 'зустріч', 'w', '', []), ('nous', 'PRO', '', 'ми', 'x', '', []), ('ils', 'PRO', '', 'вони', 'x', '', []),
 ]
-EXPR = ['se rendre compte\tусвідомлювати|усвідомити\twritten', 'il fait beau\tгарна погода\twritten', 'faire le ménage\tприбирати|прибрати\twritten']
+EXPR = ['se rendre compte\tусвідомлювати|усвідомити\twritten', 'il fait beau\tгарна погода\twritten', 'faire le ménage\tприбирати|прибрати\twritten',
+        'pendre la crémaillère\tсправляти новосілля\twritten', 'avoir rendez-vous\tмати зустріч\twritten']
 NOUN = ['ns', 'gs', 'ds', 'as', 'is', 'ls', 'vs', 'np', 'gp', 'dp', 'ap', 'ip', 'lp', 'vp']
 UK = {   # lemma: (kind, {slot: form})
     'черга': ('N:f', dict(zip(NOUN, 'черга черги черзі чергу чергою черзі черго черги черг чергам черги чергами чергах черги'.split()))),
@@ -60,6 +63,11 @@ UK = {   # lemma: (kind, {slot: form})
     'усвідомлювати': ('V:imperf', {'inf': 'усвідомлювати', 'r1s': 'усвідомлюю', 'r3s': 'усвідомлює', 'pm': 'усвідомлював', 'pf': 'усвідомлювала'}),
     'усвідомити': ('V:perf', {'inf': 'усвідомити', 'f1s': 'усвідомлю', 'pm': 'усвідомив', 'pf': 'усвідомила'}),
     'прибирати': ('V:imperf', {'inf': 'прибирати', 'r3s': 'прибирає', 'r1s': 'прибираю', 'pm': 'прибирав'}),
+    'вішати': ('V:imperf', {'inf': 'вішати', 'r1s': 'вішаю', 'r3p': 'вішають', 'pm': 'вішав'}),
+    'справляти': ('V:imperf', {'inf': 'справляти', 'r1s': 'справляю', 'r3p': 'справляють', 'pm': 'справляв'}),
+    'новосілля': ('N:n', dict(zip(NOUN, 'новосілля новосілля новосіллю новосілля новосіллям новосіллі новосілля новосілля новосіль новосіллям новосілля новосіллями новосіллях новосілля'.split()))),
+    'мати': ('V:imperf', {'inf': 'мати', 'r1p': 'маємо', 'r3s': 'має'}),
+    'зустріч': ('N:f', dict(zip(NOUN, 'зустріч зустрічі зустрічі зустріч зустріччю зустрічі зустрічі зустрічі зустрічей зустрічам зустрічі зустрічами зустрічах зустрічі'.split()))),
     'прибрати': ('V:perf', {'inf': 'прибрати', 'pm': 'прибрав', 'pf': 'прибрала'}),
 }
 GUESS = {'ла': 'pf', 'ив': 'pm', 'ав': 'pm', 'ює': 'r3s', 'ає': 'r3s'}
@@ -148,6 +156,10 @@ ANSWERS = {
     'Elle <b>se rend compte</b> de tout.': 'Вона <b>повертає рахунок</b> усього.',
     'Elle <b>fait le ménage</b>.': 'Вона <b>робить домогосподарство</b>.',
     'Elle file vite.': 'Вона швидко мчить.',
+    'Ils <b>pendent la crémaillère</b>.': 'Вони <b>вішають стійку</b>.',
+    'Nos voisins <b>pendent la crémaillère</b>.': 'Наші сусіди <b>вішають</b> стійку.',
+    'Nous <b>avons rendez-vous</b>.': 'У нас <b>зустріч</b>.',
+    'crémaillère': 'Стійка', 'Ils pendent la <b>crémaillère</b>.': 'Вони вішають <b>стійку</b>.',
     'beau': 'Гарний', "Il fait <b>beau</b> aujourd'hui.": 'Сьогодні <b>гарна</b> погода.',
     'fasses': 'Робиш',
     'zorglub': 'Зорглуб',
@@ -236,6 +248,8 @@ try:
     ok('3c a word inside a set expression shows the expression\'s translation, with the expression', r and r['text'] == 'гарна погода' and r['note'] == 'il fait beau', r)
     r = word('zorglub', 'Le zorglub zorglub.')
     ok('3d an unknown word is shown exactly as without the dictionary', r and r['text'] == 'зорглуб' and not r.get('senses') and '📖' not in r['html'], r)
+    r = word('crémaillère', 'Ils pendent la crémaillère.')
+    ok('3f a word with no meaning of its own inside a set expression shows the expression', r and r['text'] == 'справляти новосілля' and r['note'] == 'pendre la crémaillère', r)
     r = word('fasses', 'fasses')
     ok('3e a form alone: its lemma is named, its meaning comes from the dictionary', r and r['text'] == 'робити / зробити' and r['note'] == 'faire', r)
 
@@ -247,6 +261,9 @@ try:
     ok('4e «faire le ménage» -> «прибирати» in the present', sentence('Elle fait le ménage.') == 'Вона прибирає.', sentence('Elle fait le ménage.'))
     ok('4f a homonym the engine got wrong is corrected and put in the case of the word it replaces (лінію -> чергу)', sentence('Je vois la file pour la carte.') == 'Я бачу чергу для картки.', sentence('Je vois la file pour la carte.'))
     ok('4g ... the engine\'s right word stays', sentence('Je vois la file devant moi.') == 'Я бачу чергу переді мною.')
+    ok('4k ... a verbal expression takes the person of the engine\'s verb (вішають -> справляють)', sentence('Ils pendent la crémaillère.') == 'Вони справляють новосілля.', sentence('Ils pendent la crémaillère.'))
+    ok('4l ... the engine\'s marked words covering only part of the expression: nothing is replaced', sentence('Nos voisins pendent la crémaillère.') == 'Наші сусіди вішають стійку.', sentence('Nos voisins pendent la crémaillère.'))
+    ok('4m ... no verb in the engine\'s words for a French tense: no infinitive is put in', sentence('Nous avons rendez-vous.') == 'У нас зустріч.', sentence('Nous avons rendez-vous.'))
     js("__asked = []; 1")
     ok('4h a reading the context does not settle (a verb «file» has no known mistakes) changes nothing: one plain engine call', sentence('Elle file vite.') == 'Вона швидко мчить.' and js("__asked.length === 1 && __asked[0] === 'Elle file vite.'"), js("__asked"))
     ok('4i a direction without dictionary is the engine as it is', js("offlineTranslateSentence('Le temps passe vite.', 'fr', 'en').then(out => out === null && __asked.at(-1) === 'Le temps passe vite.')") is True)

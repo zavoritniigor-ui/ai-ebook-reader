@@ -200,10 +200,12 @@ function offlineDictWordMatches(d, token, pattern) {
     if (p === 'se') return OFFLINE_DICT_REFLEXIVE.has(token.norm);
     const own = offlineDictLookup(d, pattern), there = offlineDictLookup(d, token.text);
     // a word that has its own content (a noun, a verb…): any of its forms; a grammatical word only as written
-    const content = own.filter(e => ['N', 'V', 'A', 'ADV'].includes(e.pos));
+    const content = own.filter(e => OFFLINE_DICT_CONTENT.includes(e.pos));
     return !!content.length && there.some(e => content.some(c => c.lemma === e.lemma && c.pos === e.pos));
 }
-// Set expressions found in the sentence: [{ expr, from, to, aux }] (token indexes), longest first, never overlapping.
+const OFFLINE_DICT_CONTENT = ['N', 'V', 'A', 'ADV'];
+// Set expressions found in the sentence: [{ expr, from, to, aux, content, verb }] (token indexes), longest first, never overlapping;
+// `content` counts its words with a meaning of their own (nouns, verbs…), `verb` is its French verb as written.
 function offlineDictFindExpressions(d, tokens) {
     const found = [], used = new Set();
     for (const expr of d.expr) {
@@ -236,7 +238,9 @@ function offlineDictFindExpressions(d, tokens) {
             // «ils ont pendu la crémaillère»: the auxiliary of a compound tense before the expression
             for (let i = from - 1; i >= Math.max(0, from - 2) && !aux; i--)
                 if (offlineDictLookup(d, tokens[i].text).some(e => e.pos === 'V' && (e.lemma === 'avoir' || e.lemma === 'être'))) aux = true;
-            found.push({ expr, from, to, aux });
+            const content = take.filter(i => offlineDictLookup(d, tokens[i].text).some(e => OFFLINE_DICT_CONTENT.includes(e.pos)));
+            const verb = take.map(i => tokens[i]).find(t => offlineDictLookup(d, t.text).some(e => e.pos === 'V'));
+            found.push({ expr, from, to, aux, content: content.length, verb: verb ? verb.norm : '' });
         }
     }
     return found.sort((a, b) => a.from - b.from);
@@ -321,7 +325,8 @@ function offlineDictExpressionText(d, tokens, hit, picked) {
     const verbal = offlineDictUkForms(d, offlineDictHead(alts[0])).some(e => offlineDictKind(e.pos) === 'V');
     if (!verbal) return alts[0];
     const verb = offlineDictEngineVerb(d, tokens, hit, picked);
-    if (!verb) return hit.aux ? null : alts[0];   // no verb in the engine's words: the infinitive only where French has no tense
+    // no verb in the engine's words: the infinitive only where French has one («avant de faire le ménage»), never for a tense
+    if (!verb) return !hit.aux && offlineDictLookup(d, hit.verb).some(e => e.pos === 'V' && offlineDictNorm(e.lemma) === hit.verb) ? alts[0] : null;
     let alt = offlineDictAspect(alts, verb.slot, hit.aux || verb.aspect === 'perf');
     if (!alt) return null;
     const form = verb.slot === 'inf' ? offlineDictHead(alt) : offlineDictUkInflect(d, offlineDictHead(alt), verb.slot, 'V');
@@ -351,11 +356,11 @@ async function offlineDictWord(word, sentence, src, tgt, result, picked) {
         if (!ctxTokens.length) return null;
         const { entries } = offlineDictEntriesHere(d, ctxTokens, at);
         const all = offlineDictLookup(d, word).filter(e => e.meanings.length);
-        if (!all.length) return null;
         const lemmaNote = (e) => offlineDictNorm(e.lemma) !== offlineDictNorm(word) ? e.lemma : '';
         // 1) a set expression around the word
         const hit = ctxTokens === tokens ? offlineDictFindExpressions(d, tokens).find(h => at >= h.from && at <= h.to) : null;
         let main = null, note = '', chosen = null, how = '';
+        if (!all.length && !hit) return null;
         if (hit) { main = offlineDictAlternatives(hit.expr.uk)[0]; note = hit.expr.fr; how = 'expression'; }
         const pool = entries.length ? entries : all;
         if (!main && picked) {
@@ -418,7 +423,10 @@ async function offlineTranslateSentence(text, src, tgt, signal) {
         if (!x || !word) return inner;
         let fixed = null;
         if (x.kind === 'expr') {
-            if (offlineDictLiteral(d, tokens, x.hit, word)) fixed = offlineDictExpressionText(d, tokens, x.hit, word);
+            // the engine's words must cover the whole expression: «<b>вішаю</b> стійку» marks one word of two, and replacing it
+            // would leave the rest of the literal translation behind
+            const covers = word.split(/\s+/).length >= x.hit.content;
+            if (covers && offlineDictLiteral(d, tokens, x.hit, word)) fixed = offlineDictExpressionText(d, tokens, x.hit, word);
         } else if (!offlineDictMeaningOf(d, x.entries, word)) {
             const wrong = offlineDictConfusionOf(d, x.entries, word);
             const alts = wrong && offlineDictAlternatives(x.entries[0].meanings[0].uk);   // a verb keeps the aspect of the engine's word
