@@ -15,16 +15,22 @@ Sources (every download pinned by SHA-256; see dict/NOTICE for the licences):
                             the app needs to fit a substituted word into its sentence
     dict/src/*.tsv          meanings and set expressions written for this project (source "written")
 
-The output is one JSON file read by js/offline-dict.js:
+Output, read by js/offline-dict.js and pinned (size + SHA-256) in js/offline-dict-catalog.js; licences in dict/NOTICE:
+  dict/fr-uk.json (CC BY-SA 4.0)
     lemmas   "lemma TAB pos TAB gender TAB freq [TAB meanings TAB sources [TAB confusions]]"; meanings ';'-separated, an
-             aspect pair as 'imperfective|perfective', sources one letter per meaning (w = Wiktionary, x = written)
-    index    forms → lemma numbers, sorted, front-coded in blocks of INDEX_BLOCK (binary search over the block heads)
-    expr     set expressions "french TAB ukrainian TAB source"
-    uk       Ukrainian lemmas "lemma TAB pos TAB paradigm TAB cut"; a form is lemma[:len-cut] + the paradigm's ending for a slot
-    paradigms "slot=ending slot=ending …" (slots: see UK_SLOTS)
-    guess    Ukrainian verb endings → slot, for words of a translation that are not in `uk` (only endings that are unambiguous in VESUM)
+             aspect pair as 'imperfective|perfective', sources one letter per meaning (w = Wiktionary, x = written),
+             confusions: Ukrainian words the pivot through English is known to put for this word
+    index    forms → lemma numbers (hex), sorted, front-coded in blocks of INDEX_BLOCK; heads = first key of each block
+    expr     set expressions "french TAB ukrainian TAB w|x"
+  dict/uk-forms.json (VESUM, CC BY-NC-SA 4.0)
+    uk       Ukrainian lemmas "lemma TAB kind TAB paradigm TAB cut" (kind N:m|f|n|p, V:perf|imperf, A, …); a form is
+             lemma[:len-cut] + the paradigm's ending for a slot
+    paradigms "slot=ending …" (nouns: case n g d a i l v + number s p; adjectives: gender m f n p + case; verbs: inf, r1s… present,
+             f1s… perfective future, pm pf pn pp past, i2s… imperative)
+    alias    a form written in a meaning → its lemma («гарна» → гарний)
+    guess    verb endings → slot, for words of a translation that are not in `uk` (only endings VESUM reads one way)
 """
-import argparse, bz2, collections, gzip, hashlib, html, io, json, math, re, sys, unicodedata, urllib.request, zipfile
+import argparse, bz2, pickle, collections, gzip, hashlib, html, io, json, math, re, sys, unicodedata, urllib.request, zipfile
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -68,7 +74,8 @@ SUBJECT = {'je', "j'", 'tu', 'il', 'elle', 'on', 'nous', 'vous', 'ils', 'elles',
 CASES = {'v_naz': 'n', 'v_rod': 'g', 'v_dav': 'd', 'v_zna': 'a', 'v_oru': 'i', 'v_mis': 'l', 'v_kly': 'v'}
 UK_POS = {'noun': 'N', 'adj': 'A', 'verb': 'V', 'adv': 'ADV', 'prep': 'PRE', 'conj': 'CON', 'part': 'ADV', 'intj': 'INTJ',
           'numr': 'NUM', 'noninfl': 'ADV', 'onomat': 'INTJ', 'adjp': 'A', 'advp': 'ADV'}
-UK_BAD = re.compile(r':(bad|slang|arch|subst|obsc|vulg|alt|rare|short|long|prop|abbr|coll)\b')
+UK_BAD = re.compile(r':(bad|subst|arch|obsc|vulg|prop)\b')   # non-standard («суржик»), archaic, obscene, proper names: never a meaning
+UK_VARIANT = re.compile(r':(short|long|alt|rare|coll|slang|abbr)\b')   # a spelling or style variant: not the form the app generates
 
 
 def log(*a):
@@ -249,6 +256,16 @@ def uk_slot(pos, tags):
     return 'x'   # an uninflected word: one form
 
 
+def uk_kind(pos, tags):
+    """The part of speech the app needs: a noun with its gender (N:m, N:f, N:n, N:p = plural only), a verb with its aspect."""
+    t = tags.split(':')
+    if pos == 'N':
+        return 'N:' + next((x for x in ('m', 'f', 'n', 'p') if x in t), 'm')
+    if pos == 'V':
+        return 'V:' + ('perf' if 'perf' in t else 'imperf')
+    return pos
+
+
 def load_vesum(path):
     """{lemma: [(pos, {slot: form}, good)]} for every VESUM lemma (several entries for homographs), and the set of good forms."""
     lemmas, good_forms = collections.defaultdict(list), set()
@@ -270,7 +287,7 @@ def load_vesum(path):
                 continue
             if cur[2]:
                 good_forms.add(word)
-            slot = uk_slot(cur[0], tags)
+            slot = None if UK_VARIANT.search(tags) else uk_slot(cur[0], tags)
             if slot and slot not in cur[1]:
                 cur[1][slot] = word
     return lemmas, good_forms
@@ -354,14 +371,20 @@ def main():
     cache = Path(args.cache)
     cache.mkdir(parents=True, exist_ok=True)
 
-    log('reading Lexique 3.83 …')
-    lexique = load_lexique(fetch('lexique', cache))
-    log('reading Wiktionary (French headwords) …')
-    wikt = load_wiktionary_fr_en(fetch('wiktionary_fr_en', cache))
-    log('reading VESUM …')
-    vesum, uk_good = load_vesum(fetch('vesum', cache))
-    log('reading Wiktionary translations (ConceptNet) …')
-    trans = load_conceptnet_fr_uk(fetch('conceptnet', cache))
+    # The parsed sources are kept next to the downloads (keyed by this file's parsers): a rebuild after editing dict/src takes seconds.
+    parsed = cache / ('parsed-' + hashlib.sha256(Path(__file__).read_bytes().split(b'# ========== BUILD')[0]).hexdigest()[:16] + '.pickle')
+    if parsed.exists():
+        lexique, wikt, vesum, uk_good, trans = pickle.loads(parsed.read_bytes())
+    else:
+        log('reading Lexique 3.83 …')
+        lexique = load_lexique(fetch('lexique', cache))
+        log('reading Wiktionary (French headwords) …')
+        wikt = load_wiktionary_fr_en(fetch('wiktionary_fr_en', cache))
+        log('reading VESUM …')
+        vesum, uk_good = load_vesum(fetch('vesum', cache))
+        log('reading Wiktionary translations (ConceptNet) …')
+        trans = load_conceptnet_fr_uk(fetch('conceptnet', cache))
+        parsed.write_bytes(pickle.dumps((lexique, wikt, vesum, uk_good, trans), protocol=pickle.HIGHEST_PROTOCOL))
     for k in args.kaikki:
         for w, items in load_kaikki(k).items():
             trans[w].extend(items)
@@ -472,7 +495,7 @@ def main():
         bad = []
         for g in heads(english.get(key, [])):
             for other in by_english[g]:
-                if other == key:
+                if other == key or other[1] != key[1]:   # the pivot keeps the part of speech: «file» (noun) is not «filer»
                     continue
                 for m in meanings[other][:2]:
                     if m[0] not in own and m[0] not in bad and ' ' not in m[0]:
@@ -489,14 +512,22 @@ def main():
         needed.update(c)
     for _, uk, _ in expressions:
         needed.update(w.lower() for w in uk_words(uk))
+    # A meaning written in a form other than the lemma («гарна погода»): the form → its lemma, so the app finds the paradigm.
+    alias = {}
+    for lemma, entries in vesum.items():
+        for pos, forms, ok, _ in entries:
+            if ok:
+                for form in forms.values():
+                    if form in needed and form != lemma and not vesum.get(form) and form not in alias:
+                        alias[form] = lemma
     paradigms, uk_lines = {}, []
-    for word in sorted(needed):
-        for pos, forms, ok, _ in vesum.get(word, []):
+    for word in sorted(needed | set(alias.values())):
+        for pos, forms, ok, tags in vesum.get(word, []):
             if not ok or not forms:
                 continue
             cut, para = uk_paradigm(word, forms)
             pid = paradigms.setdefault(para, len(paradigms))
-            uk_lines.append(f'{word}\t{pos}\t{pid}\t{cut}')
+            uk_lines.append(f'{word}\t{uk_kind(pos, tags)}\t{pid}\t{cut}')
 
     # --- output ---
     keys = sorted(lex, key=lambda k: (norm(k[0]), POS.index(k[1])))
@@ -519,7 +550,7 @@ def main():
     blocks = front_code(index)
     fr_data = {'format': FORMAT, 'pos': POS, 'lemmas': lemma_lines, 'block': INDEX_BLOCK, 'index': blocks,
                'heads': [b.split('\t', 1)[0] for b in blocks], 'expr': ['\t'.join(e) for e in expressions]}
-    uk_data = {'format': FORMAT, 'uk': uk_lines, 'paradigms': list(paradigms), 'guess': verb_guesser(vesum)}
+    uk_data = {'format': FORMAT, 'uk': uk_lines, 'paradigms': list(paradigms), 'alias': dict(sorted(alias.items())), 'guess': verb_guesser(vesum)}
     files = []
     for path, data in ((OUT, fr_data), (OUT_UK, uk_data)):
         data['version'] = hashlib.sha256(json.dumps(data, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:12]

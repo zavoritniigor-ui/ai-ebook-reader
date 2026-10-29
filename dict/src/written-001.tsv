@@ -1,0 +1,296 @@
+# Meanings written for this project (source "written"): lemma TAB part of speech TAB meanings, the main one first.
+# A verb's aspect pair: imperfective|perfective. Every Ukrainian word is checked against VESUM by tools/build_dict_fr_uk.py.
+de	PRE	з; від; про
+je	PRO	я
+la	DET	означений артикль жіночого роду
+ne	ADV	не
+à	PRE	в; до; на
+avoir	V	мати
+le	DET	означений артикль чоловічого роду
+pas	ADV	не; ні
+il	PRO	він; воно
+les	DET	означений артикль множини
+tu	PRO	ти
+vous	PRO	ви; вас; вам
+un	DET	неозначений артикль чоловічого роду; один
+l'	DET	означений артикль
+d'	PRE	з; від; про
+des	DET	неозначений артикль множини
+aller	V	іти|піти; їхати|поїхати
+une	DET	неозначений артикль жіночого роду; одна
+ça	PRO	це; то
+en	PRE	в; у; на
+on	PRO	ми; люди
+dans	PRE	в; у; через
+qui	PRO	хто; який
+pour	PRE	для; щоб; за
+elle	PRO	вона
+du	DET	частковий артикль
+se	PRO	себе; собі
+dire	V	казати|сказати; говорити
+pouvoir	V	могти|змогти
+s'	PRO	себе; собі
+au	DET	до; в
+sur	PRE	на; про; над
+vouloir	V	хотіти|захотіти
+ce	PRO	це; то
+mais	CON	але; проте
+plus	ADV	більше; більш
+me	PRO	мене; мені
+nous	PRO	ми; нас; нам
+son	DET	його; її; свій
+savoir	V	знати; уміти
+y	PRO	там; туди
+t'	PRO	тебе; тобі
+lui	PRO	йому; їй; він
+bien	ADV	добре; дуже
+voir	V	бачити|побачити
+que	PRO	що; який
+te	PRO	тебе; тобі
+avec	PRE	з
+mon	DET	мій
+sa	DET	його; її; своя
+par	PRE	через; від; по
+moi	PRO	я; мене; мені
+en	PRO	його; їх; звідти
+comme	CON	як; оскільки
+le	PRO	його
+l'	PRO	його; її
+devoir	V	мусити; бути винним
+tout	A	весь; цілий
+tout	DET	весь; кожний
+ses	DET	його; її; свої
+venir	V	приходити|прийти; приїжджати|приїхати
+ce	DET	цей; той
+toi	PRO	ти; тебе
+ou	CON	або; чи
+ici	ADV	тут; сюди
+rien	PRO	ніщо; нічого
+ma	DET	моя
+cette	DET	ця; та
+sans	PRE	без
+où	PRO	де; куди
+si	ADV	так; такий
+là	ADV	там; тут
+suivre	V	іти слідом; стежити; слідувати
+parler	V	говорити|поговорити; розмовляти
+prendre	V	брати|взяти
+aux	DET	до; в
+votre	DET	ваш
+quand	CON	коли
+alors	ADV	тоді; отже
+chose	N	річ
+ton	DET	твій
+croire	V	вірити|повірити; думати
+falloir	V	бути потрібним; треба
+tout	ADV	зовсім; цілком
+très	ADV	дуже
+encore	ADV	ще; знову
+quoi	A	що
+deux	NUM	два
+bon	A	добрий; хороший; правильний
+ces	DET	ці; ті
+petit	A	малий; маленький
+passer	V	проходити|пройти; проводити|провести
+les	PRO	їх
+aussi	ADV	також; теж
+homme	N	чоловік; людина
+si	CON	якщо; чи
+tout	PRO	все
+même	ADV	навіть
+attendre	V	чекати|почекати; очікувати
+pourquoi	ADV	чому
+trouver	V	знаходити|знайти
+laisser	V	залишати|залишити; дозволяти|дозволити
+ta	DET	твоя
+arriver	V	прибувати|прибути; траплятися|трапитися
+grand	A	великий; високий
+la	PRO	її
+donner	V	давати|дати
+regarder	V	дивитися|подивитися
+appeler	V	кликати|покликати; телефонувати|зателефонувати; називати|назвати
+fois	N	раз
+partir	V	від'їжджати|від'їхати; іти|піти
+mes	DET	мої
+mettre	V	класти|покласти; ставити|поставити; вдягати|вдягти
+sous	PRE	під
+maintenant	ADV	зараз; тепер
+peu	N	трохи
+notre	DET	наш
+vie	N	життя
+arrêter	V	зупиняти|зупинити; припиняти|припинити; заарештовувати|заарештувати
+demander	V	питати|запитати; просити|попросити
+vraiment	ADV	справді; дійсно
+connaître	V	знати; бути знайомим
+vers	PRE	до; близько
+sûr	A	певний; упевнений; надійний
+tuer	V	убивати|убити
+heure	N	година
+quoi	PRO	що
+comment	ADV	як
+mourir	V	помирати|померти
+seul	A	один; самотній; єдиний
+peut-être	ADV	можливо
+comprendre	V	розуміти|зрозуміти; містити
+leurs	DET	їхні
+quelque	DET	якийсь; деякий
+sortir	V	виходити|вийти; виймати|вийняти
+autre	A	інший
+s'	CON	якщо
+trop	ADV	занадто; надто
+chez	PRE	у; до
+coup	N	удар; раз
+puis	CON	потім
+entre	PRE	між; серед
+monde	N	світ; люди
+après	PRE	після
+même	A	той самий; однаковий
+besoin	N	потреба
+accord	N	згода; угода; акорд
+cela	PRO	це; то
+tenir	V	тримати; стримувати|стримати
+quelques	DET	кілька; декілька
+entendre	V	чути|почути; розуміти
+voilà	PRE	ось; от
+sentir	V	відчувати|відчути; пахнути
+moins	ADV	менше; мінус
+chercher	V	шукати
+déjà	ADV	вже
+devant	PRE	перед
+tes	DET	твої
+aider	V	допомагати|допомогти
+moment	N	мить; момент
+premier	A	перший
+beau	A	гарний; красивий
+essayer	V	пробувати|спробувати; приміряти
+ni	CON	ні
+autre	PRO	інший
+trois	NUM	три
+quel	DET	який
+juste	A	справедливий; правильний; точний
+mieux	ADV	краще
+vos	DET	ваші
+quelqu'un	PRO	хтось
+beaucoup	ADV	багато; дуже
+revenir	V	повертатися|повернутися
+donc	CON	отже; тож
+plaire	V	подобатися|сподобатися
+elles	PRO	вони
+gens	N	люди
+contre	PRE	проти
+nos	DET	наші
+personne	PRO	ніхто
+soir	N	вечір
+avant	PRE	до; перед
+sembler	V	здаватися|здатися
+jouer	V	грати|зіграти; гратися
+jeune	A	молодий
+côté	N	бік; сторона
+peu	ADV	мало
+peur	N	страх
+un	PRO	один
+parce que	CON	тому що; бо
+perdre	V	губити|загубити; втрачати|втратити; програвати|програти
+depuis	PRE	з; від; протягом
+devenir	V	ставати|стати
+ouais	ADV	ага; так
+rentrer	V	повертатися|повернутися; заходити|зайти
+problème	N	проблема; задача
+quelle	DET	яка
+vivre	V	жити
+rendre	V	повертати|повернути; віддавати|віддати; робити|зробити
+eux	PRO	вони; їх
+cet	DET	цей
+ouvrir	V	відчиняти|відчинити; відкривати|відкрити
+vite	ADV	швидко
+pied	N	нога; ступня; підніжжя
+chaque	DET	кожний
+noir	A	чорний; темний
+corps	N	тіло; корпус
+porter	V	носити|нести; вдягати
+écouter	V	слухати|послухати
+ainsi	ADV	так; таким чином
+car	CON	бо; оскільки
+place	N	місце; площа
+raison	N	причина; розум; рація
+manger	V	їсти|з'їсти
+répondre	V	відповідати|відповісти
+presque	ADV	майже
+mort	N	смерть; мрець
+mal	ADV	погано
+loin	ADV	далеко
+pendant	PRE	під час; протягом
+entrer	V	входити|увійти
+paraître	V	здаватися|здатися; з'являтися|з'явитися; виходити друком
+long	A	довгий; тривалий
+tomber	V	падати|упасти
+lever	V	піднімати|підняти
+enfin	ADV	нарешті; зрештою
+commencer	V	починати|почати
+tant	ADV	стільки; так
+dernier	A	останній
+voiture	N	автомобіль; машина; вагон
+leur	PRO	їм
+regard	N	погляд
+assez	ADV	досить; достатньо
+payer	V	платити|заплатити
+retrouver	V	знаходити|знайти; зустрічатися|зустрітися
+tirer	V	тягти|потягти; стріляти|вистрілити
+fait	N	факт
+changer	V	змінювати|змінити; міняти|поміняти
+question	N	питання; запитання
+poser	V	класти|покласти; ставити|поставити
+monter	V	підніматися|піднятися; сідати|сісти
+foutre	V	робити; кидати
+peine	N	покарання; горе; зусилля
+excuser	V	вибачати|вибачити
+bout	N	кінець; шматок
+seulement	ADV	лише; тільки
+matin	N	ранок
+asseoir	V	садити|посадити
+affaire	N	справа; угода
+combien	ADV	скільки
+truc	N	штука; хитрощі
+tourner	V	повертати|повернути; крутити; знімати|зняти
+tous	PRO	усі
+fond	N	дно; глибина; фон
+pourtant	ADV	проте; однак
+autres	PRO	інші
+occuper	V	займати|зайняти
+plein	A	повний
+marcher	V	ходити; іти; працювати
+autour	ADV	навколо
+chance	N	удача; шанс
+aujourd'hui	ADV	сьогодні; нині
+envoyer	V	надсилати|надіслати; посилати|послати
+guerre	N	війна
+gros	A	товстий; великий; грубий
+tard	ADV	пізно
+doute	N	сумнів
+derrière	PRE	за; позаду
+apprendre	V	вивчати|вивчити; дізнаватися|дізнатися; навчати|навчити
+ailleurs	ADV	деінде
+force	N	сила
+minute	N	хвилина
+écrire	V	писати|написати
+instant	N	мить
+reprendre	V	забирати|забрати; продовжувати|продовжити
+boire	V	пити|випити
+garder	V	зберігати|зберегти; доглядати; охороняти
+lit	N	ліжко
+jeter	V	кидати|кинути; викидати|викинути
+longtemps	ADV	довго
+type	N	тип; хлопець
+pas	N	крок
+tout	N	ціле
+montrer	V	показувати|показати
+mal	N	біль; зло; труднощі
+mec	N	хлопець
+silence	N	тиша; мовчання
+lire	V	читати|прочитати
+point	N	крапка; точка; пункт
+fou	A	божевільний
+rire	V	сміятися|засміятися
+part	N	частина; частка
+celui	PRO	той
+quitter	V	залишати|залишити; кидати|кинути
