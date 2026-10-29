@@ -213,11 +213,12 @@ function offlineTrWorkerMain() {
         const [from, to] = step.id.split('>');
         return new bergamot.TranslationModel(from, to, config, memory.model, memory.lex || null, vocabs, null);
     }
-    function translate(text) {
+    function translate(text, html) {
         const parts = text.split('\n'), messages = new bergamot.VectorString(), options = new bergamot.VectorResponseOptions();
         let responses = null;
         try {
-            for (const part of parts) if (part.trim()) { messages.push_back(part); options.push_back({ qualityScores: false, alignment: false, html: false }); }
+            // html: the engine carries the markup onto the words it translated them to (its own alignment) -- a word in its sentence
+            for (const part of parts) if (part.trim()) { messages.push_back(part); options.push_back({ qualityScores: false, alignment: !!html, html: !!html }); }
             if (!messages.size()) return text;
             responses = loaded.length === 1 ? service.translate(loaded[0].model, messages, options)
                 : service.translateViaPivoting(loaded[0].model, loaded[1].model, messages, options);
@@ -237,7 +238,7 @@ function offlineTrWorkerMain() {
                 loaded = [];
                 for (const step of data.steps) loaded.push({ id: step.id, model: await load(step, data.cache) });
             }
-            const text = translate(data.text);
+            const text = translate(data.text, data.html);
             self.postMessage({ id, ok: true, text, ms: Math.round(performance.now() - started), log: log.slice(-4) });
         } catch (e) {
             for (const m of loaded) { try { m.model.delete(); } catch (err) { /* already gone */ } }
@@ -278,7 +279,7 @@ function offlineTrStart() {
 }
 // Переклад встановленим пакетом: рядок або null (нема пакета для напрямку, пристрій не потягне, рушій збоїть). Одна задача за раз;
 // скасований signal знімає задачу з черги, але вже запущений переклад не переривається.
-function offlineTranslate(text, src, tgt, signal) {
+function offlineTranslate(text, src, tgt, signal, html = false) {
     const run = async () => {
         clearTimeout(offlineTrIdleTimer);   // a minute of silence ends the engine -- never one that is about to translate
         if (signal && signal.aborted) return null;
@@ -289,7 +290,7 @@ function offlineTranslate(text, src, tgt, signal) {
             if (signal && signal.aborted) return null;
             const pack = await offlineTrLoad();
             const steps = route.map(id => ({ id, gemm: pack.models[id].gemm, keys: Object.fromEntries(pack.models[id].types.map(type => [type, offlineTrKey('file', id, type)])) }));
-            const res = await offlineTrCall({ cmd: 'translate', cache: OFFLINE_TR_CACHE, steps, text: clean });
+            const res = await offlineTrCall({ cmd: 'translate', cache: OFFLINE_TR_CACHE, steps, text: clean, html });
             offlineTrFailure = ''; offlineTrLast = { route: route.join(' ; '), chars: clean.length, ms: res.ms, at: Date.now() }; offlineTrLog = res.log || [];
             return String(res.text || '').trim() || null;
         } catch (e) {
@@ -305,6 +306,49 @@ function offlineTranslate(text, src, tgt, signal) {
     const job = offlineTrQueue.then(run, run);
     offlineTrQueue = job.catch(() => {});
     return job;
+}
+// ========== СЛОВО В КОНТЕКСТІ (owner, 2026-10-29) ==========
+// A tapped word translated alone loses its sense («rendu» → «рендеровано», «temps» → «час» in «il fait beau temps»). So the pack
+// translates the word's SENTENCE with the word marked, and the engine puts the mark on the words it became («s'est <b>rendu</b>
+// compte» → «<b>зрозуміла</b>»): the meaning here. Measured on a textbook: most words read better. Where the mark is lost or lands on
+// a scrap («та» for «associez»), the word alone is the answer, as before. Both differ: the sentence's meaning first, the word's own
+// after it. Returns { text, alone } (alone: the word's own translation when it differs) or null.
+const offlineTrEscape = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const offlineTrUnescape = s => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+// The sentence with the first whole-word occurrence of the word marked, as HTML; null when the word is not in it.
+function offlineTrMarked(word, sentence) {
+    const esc = String(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const m = String(sentence || '').match(new RegExp('(^|[^\\p{L}\\p{N}])(' + esc + ')(?![\\p{L}\\p{N}])', 'iu'));
+    if (!m) return null;
+    const at = m.index + m[1].length, s = String(sentence);
+    return offlineTrEscape(s.slice(0, at)) + '<b>' + offlineTrEscape(m[2]) + '</b>' + offlineTrEscape(s.slice(at + m[2].length));
+}
+// What the mark landed on in the translated sentence, cleaned; null when it is lost, empty, a scrap or most of the sentence.
+function offlineTrPicked(translated, word) {
+    const m = String(translated || '').match(/<b>([\s\S]*?)<\/b>/i);
+    if (!m) return null;
+    const picked = offlineTrUnescape(m[1].replace(/<[^>]*>/g, '')).replace(/^[\s\p{P}]+|[\s\p{P}]+$/gu, '');
+    const letters = (picked.match(/\p{L}/gu) || []).length, wordLetters = (String(word).match(/\p{L}/gu) || []).length;
+    if (!letters || (letters <= 2 && wordLetters >= 4) || picked.split(/\s+/).length > 5) return null;
+    return picked;
+}
+// The case of the book's word: «Ключі» for «clés» is «ключі» (a word alone comes out capitalised).
+const offlineTrCase = (out, word) => out && /^\p{Ll}/u.test(String(word)) && /^\p{Lu}\p{Ll}/u.test(out) ? out[0].toLocaleLowerCase() + out.slice(1) : out;
+async function offlineTranslateWord(word, sentence, src, tgt, signal) {
+    const aloneRaw = await offlineTranslate(word, src, tgt, signal);
+    if (!aloneRaw) return null;
+    const alone = offlineTrCase(aloneRaw.replace(/[\s.!?…]+$/u, ''), word);
+    const marked = sentence && String(sentence).trim() !== String(word).trim() ? offlineTrMarked(word, sentence) : null;
+    let inContext = null;
+    if (marked) inContext = offlineTrPicked(await offlineTranslate(marked, src, tgt, signal, true), word);
+    if (signal && signal.aborted) return null;
+    if (!inContext) return { text: alone, alone: null };
+    inContext = offlineTrCase(inContext, word);
+    return { text: inContext, alone: inContext.toLocaleLowerCase() === alone.toLocaleLowerCase() ? null : alone };
+}
+// The popup's line for it: the meaning here, the word's own after it, the ⌂ mark.
+function offlineTrWordHtml(result) {
+    return escapeHtml(result.text) + (result.alone ? ` <span class="tt-context">(${escapeHtml(t('offAlone'))}: ${escapeHtml(result.alone)})</span>` : '') + ' <span class="tt-note">⌂</span>';
 }
 // js/translation.js кличе це, коли переклад не вдався: пакет для цього напрямку існує, але не встановлений — один раз за запуск на
 // напрямок показуємо підказку, куди йти. Не в самому тексті вікна: його повідомлення (потрібен AI / потрібен інтернет) лишаються як були.
@@ -499,6 +543,7 @@ Object.assign(I18N, {
         zh: '“{src}” → “{out}” · {sec} 秒', ko: '“{src}” → “{out}” · {sec}초', hi: '“{src}” → “{out}” · {sec} सेकंड', ga: '“{src}” → “{out}” · {sec} s' },
     offTestFail: { uk: 'Не вдалося перекласти на цьому пристрої: {why}', en: 'Could not translate on this device: {why}', fr: "Impossible de traduire sur cet appareil : {why}", ru: 'Не удалось перевести на этом устройстве: {why}',
         zh: '无法在此设备上翻译：{why}', ko: '이 기기에서 번역하지 못했습니다: {why}', hi: 'इस डिवाइस पर अनुवाद नहीं हो सका: {why}', ga: 'Níorbh fhéidir aistriú ar an ngléas seo: {why}' },
+    offAlone: { uk: 'окремо', en: 'on its own', fr: 'seul', ru: 'отдельно', zh: '单独', ko: '단독', hi: 'अकेले', ga: 'leis féin', es: 'sola' },
     offNeedsPack: { uk: 'Щоб перекладати без інтернету, завантажте мовний пакет: Налаштування (🔑) → 📴 Офлайн-переклад.', en: 'To translate without internet, download a language pack: Settings (🔑) → 📴 Offline translation.',
         fr: 'Pour traduire sans internet, téléchargez un pack de langue : Réglages (🔑) → 📴 Traduction hors ligne.', ru: 'Чтобы переводить без интернета, скачайте языковой пакет: Настройки (🔑) → 📴 Офлайн-перевод.',
         zh: '要离线翻译，请下载语言包：设置（🔑）→ 📴 离线翻译。', ko: '인터넷 없이 번역하려면 언어 팩을 내려받으세요: 설정(🔑) → 📴 오프라인 번역.',
