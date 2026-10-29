@@ -23,6 +23,16 @@
     the demo book must be free to show (not the commercial textbooks): a self-made colour Québec «newspaper» from
     Wikipedia/Wikinews + Wikimedia Commons was proposed, owner postponed the choice.
   - Owner to remove locally: worktrees `../wt-noai`, `../wt-start-screen`, `../wt-main-check` (deletion denied to me).
+- **Claude Code — cloud session 2026-10-29 (start screen design; PAUSED by the owner):**
+  - Claude Code update checked: latest 2.1.312 (2026-10-27), bug and security fixes only; recommended to install.
+  - Start screen mockups on the canvas https://claude.ai/artifact/4rrn3mA9LrLjDiqKLamtD3 (owner's private link):
+    A «Папір і чорнило», B «Чистий синій» (refined with the owner: blue hero, yellow page = Ukrainian flag, unchanged
+    Z/I logo, blue outline heart with a maple leaf (Canada) + fleur-de-lis (Quebec) between Petrykivka branches),
+    C «Нічна бібліотека», D «Смарагд», E «Теракота», F «Океан», G «Соняшник».
+  - Variant B was built (`index.html` markup/CSS/sprite + `sw.js` version) on branch `claude/cloud-code-update-tretr6`,
+    PR #328 — the owner cancelled the release: PR CLOSED unmerged, production unchanged. The branch keeps the code
+    (preview https://claude-cloud-code-update-tre.ai-ebook-reader.pages.dev); reopen #328 if the owner picks B again.
+  - Next: the owner chooses a design (any of A–G or a mix) later; nothing is pending until then.
 - **Claude Code — narration history** (PR #283 merged 2026-10-24; PR #282 merged 2026-10-24):
   - Book narration restarted from scratch on 2026-10-24. Isolation rule: do NOT edit files in the main folder while Claude is active.
   - **Owner's rule (final):** a whole sentence plays its recording (its own intonation); ONE word plays that word said alone (`words.py`); TWO OR MORE selected words go to the SYSTEM VOICE (never words alone strung together, never a piece cut out of a sentence). App side is PR #283 (`bsPhrasePlan` / `bsPhraseAnywhere` return null for 2+ words; tests in `tests/book_speech_browser.py`). Not live until #283 is merged.
