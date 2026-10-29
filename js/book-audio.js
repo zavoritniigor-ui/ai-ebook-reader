@@ -79,6 +79,30 @@ Object.assign(I18N, {
                      es: 'Archivos {ext} omitidos: {n}. El navegador no reproduce este formato: conviértalos a MP3 o M4A.', zh: '已跳过 {n} 个 {ext} 文件。浏览器无法播放此格式——请转换为 MP3 或 M4A。',
                      ko: '{ext} 파일 {n}개를 건너뛰었습니다. 브라우저가 이 형식을 재생할 수 없습니다 — MP3 또는 M4A로 변환하세요.', hi: '{ext} फ़ाइलें छोड़ी गईं: {n}। ब्राउज़र यह प्रारूप नहीं चलाता — इन्हें MP3 या M4A में बदलें।',
                      ga: 'Comhaid {ext} scipeáilte: {n}. Ní féidir leis an mbrabhsálaí an fhormáid seo a sheinm — tiontaigh go MP3 nó M4A iad.' },
+    // a folder that also holds other things (a «Downloads»): only this book's recordings, shown before they are stored (rules §5.4)
+    baMixedFound: { uk: 'У папці «{folder}» є й інші файли. До цієї книги підходять: {what}. Підключити лише їх?',
+                    en: 'The folder «{folder}» also holds other files. What fits this book: {what}. Connect only these?',
+                    fr: 'Le dossier « {folder} » contient aussi d’autres fichiers. Ce qui correspond à ce livre : {what}. Ajouter seulement cela ?',
+                    ru: 'В папке «{folder}» есть и другие файлы. К этой книге подходят: {what}. Подключить только их?',
+                    es: 'La carpeta «{folder}» también contiene otros archivos. Lo que corresponde a este libro: {what}. ¿Conectar solo esto?',
+                    zh: '文件夹“{folder}”中还有其他文件。适合这本书的：{what}。只连接这些吗？',
+                    ko: '“{folder}” 폴더에는 다른 파일도 있습니다. 이 책에 맞는 것: {what}. 이것만 연결할까요?',
+                    hi: 'फ़ोल्डर «{folder}» में दूसरी फ़ाइलें भी हैं। इस किताब के लिए: {what}। केवल इन्हें जोड़ें?',
+                    ga: 'Tá comhaid eile san fhillteán «{folder}» freisin. An méid a oireann don leabhar seo: {what}. An gceanglófar iad seo amháin?' },
+    baMixedTracks: { uk: 'записів {n} (папки: {folders})', en: '{n} recordings (folders: {folders})', fr: '{n} enregistrements (dossiers : {folders})', ru: 'записей {n} (папки: {folders})',
+                     es: '{n} grabaciones (carpetas: {folders})', zh: '{n} 条录音（文件夹：{folders}）', ko: '녹음 {n}개(폴더: {folders})', hi: '{n} रिकॉर्डिंग (फ़ोल्डर: {folders})', ga: '{n} taifead (fillteáin: {folders})' },
+    baMixedSpeech: { uk: 'озвучка книги', en: 'the book’s narration', fr: 'la narration du livre', ru: 'озвучка книги', es: 'la narración del libro', zh: '这本书的朗读', ko: '책 낭독', hi: 'किताब का वाचन', ga: 'scéalaíocht an leabhair' },
+    baMixedNone: { uk: 'У папці «{folder}» не знайдено записів до цієї книги. Виберіть папку саме з аудіо до неї або додайте файли вручну.',
+                   en: 'No recordings for this book in the folder «{folder}». Choose the folder with this book’s audio, or add the files by hand.',
+                   fr: 'Aucun enregistrement de ce livre dans le dossier « {folder} ». Choisissez le dossier audio de ce livre ou ajoutez les fichiers à la main.',
+                   ru: 'В папке «{folder}» не найдено записей к этой книге. Выберите папку именно с аудио к ней или добавьте файлы вручную.',
+                   es: 'No hay grabaciones de este libro en la carpeta «{folder}». Elija la carpeta de audio de este libro o añada los archivos a mano.',
+                   zh: '文件夹“{folder}”中没有这本书的录音。请选择这本书的音频文件夹，或手动添加文件。',
+                   ko: '“{folder}” 폴더에 이 책의 녹음이 없습니다. 이 책의 오디오 폴더를 선택하거나 파일을 직접 추가하세요.',
+                   hi: 'फ़ोल्डर «{folder}» में इस किताब की रिकॉर्डिंग नहीं मिलीं। इसी किताब का ऑडियो फ़ोल्डर चुनें या फ़ाइलें हाथ से जोड़ें।',
+                   ga: 'Níl taifid an leabhair seo san fhillteán «{folder}». Roghnaigh fillteán fuaime an leabhair seo, nó cuir na comhaid leis de láimh.' },
+    baTakeYes: { uk: 'Підключити', en: 'Connect', fr: 'Ajouter', ru: 'Подключить', es: 'Conectar', zh: '连接', ko: '연결', hi: 'जोड़ें', ga: 'Ceangail' },
+    baTakeNo: { uk: 'Скасувати', en: 'Cancel', fr: 'Annuler', ru: 'Отмена', es: 'Cancelar', zh: '取消', ko: '취소', hi: 'रद्द करें', ga: 'Cealaigh' },
     baConnected: { uk: 'Аудіо підключено', en: 'Audio connected', fr: 'Audio ajouté', ru: 'Аудио подключено', es: 'Audio conectado', zh: '音频已连接', ko: '오디오 연결됨', hi: 'ऑडियो जुड़ गया', ga: 'Fuaim ceangailte' },
     baTapHint: { uk: 'Тапніть позначку аудіо в книзі, щоб послухати.', en: 'Tap an audio mark in the book to listen.', fr: 'Touchez une mention audio du livre pour écouter.', ru: 'Коснитесь отметки аудио в книге, чтобы послушать.',
                  es: 'Toque una marca de audio del libro para escuchar.', zh: '点按书中的音频标记即可收听。', ko: '책의 오디오 표시를 누르면 들을 수 있습니다.', hi: 'सुनने के लिए किताब में ऑडियो चिह्न पर टैप करें।', ga: 'Tapáil marc fuaime sa leabhar chun éisteacht.' },
@@ -909,6 +933,86 @@ function baKnownDiscs() {
 }
 // Files whose names and folders tell no disc (a phone's file picker shows no folders) in a book that has discs: ask which disc they
 // are from, after the pick, instead of a setting the learner has to find first. A book with bare «piste N» marks only takes them as they are.
+// ---------- a mixed folder (rules §5.4) -------------------------------------------------------------------------------------------
+// A folder the reader chose may be a «Downloads» with anything in it. Its documents, pictures and archives are never opened (only
+// their names are seen); a folder that holds them besides the audio is «mixed», and from it only the recordings that belong to the
+// open book are taken — its folders of numbered tracks that the book's marks point to, and the book's own narration beside it —
+// after the reader saw what they are. A mixed folder is not remembered as the books folder (js/book-speech.js).
+const BA_COMPANION_RE = /\.(?:pdf|epub|djvu|cbz|fb2|txt|nfo|cue|m3u8?|pls|ini|db|url|log)$/i, BA_PICTURE_RE = /\.(?:jpe?g|png|gif|webp|bmp)$/i;
+const baDirOf = path => { const p = String(path || ''); return p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : ''; };
+function baMixedFolder(paths) {
+    let other = 0;
+    const pictures = new Map();
+    for (const path of paths) {
+        const name = String(path).split('/').pop();
+        if (baHiddenPath(path) || name.startsWith('.') || BA_AUDIO_RE.test(name) || BA_COMPANION_RE.test(name)) continue;
+        if (BA_PICTURE_RE.test(name)) { const dir = baDirOf(path); pictures.set(dir, (pictures.get(dir) || 0) + 1); continue; }
+        other++;
+    }
+    for (const n of pictures.values()) other += Math.max(0, n - 2);   // a cover or two beside the tracks is part of an audio set
+    return other >= 3;
+}
+// A folder's tracks are this book's when the book's marks point to most of them (by disc and number, through its track table).
+// A book without marks (no text, not a PDF) cannot tell: a numbered set of three or more is offered, and the reader decides.
+function baSetFits(files) {
+    const parsed = files.map(f => baParseFile(f.name, f.webkitRelativePath || '')).filter(p => p.track !== null);
+    const marks = baMarksReady() ? baMarks.list : null;
+    if (!marks || !marks.length) return parsed.length >= 3;
+    if (!parsed.length || (parsed.length === 1 && parsed[0].cd === null)) return false;   // one loose «Voice 3» is no disc of the book
+    const wanted = new Set();
+    for (const m of marks) { const target = baTarget(m); if (target.track) wanted.add((target.cd || 0) + '-' + target.track); }
+    const discless = marks.filter(m => !m.cd).length * 2 >= marks.length;
+    const hits = parsed.filter(p => wanted.has((p.cd || 0) + '-' + p.track) || (discless && p.cd === null && [...wanted].some(k => k.endsWith('-' + p.track)))).length;
+    return hits >= 1 && hits >= parsed.length * 0.6;
+}
+// A folder chosen by the reader (all its files, with their paths): a plain one goes in as before; a mixed one gives only what fits,
+// shown first. bookDir: the folder of the open book inside it, when the caller knows it (its narration lies there).
+async function baTakeFolder(list, folderName, mixed = baMixedFolder(list.map(f => f.webkitRelativePath || f.name)), bookDir = null) {
+    const audio = Array.from(list || []).filter(f => baIsAudio(f) && !baHiddenPath(f.webkitRelativePath));
+    if (!mixed) { baImportOrAskDisc(audio); return; }
+    const key = state.bookKey;
+    if (bookDir === null) { const book = list.find(f => f.name === state.bookFileName); if (book) bookDir = baDirOf(book.webkitRelativePath || book.name); }
+    const narrations = [];
+    if (bookDir !== null && typeof bsUnpack === 'function') {
+        for (const f of audio) {
+            if (baDirOf(f.webkitRelativePath || f.name) !== bookDir || !/\.mp3$/i.test(f.name)) continue;
+            try { const packed = await bsUnpack(f); if (packed && bsValidMeta(packed.meta)) narrations.push(f); } catch (e) { /* a plain MP3 */ }
+        }
+    }
+    if (state.format === 'pdf' && !baMarksReady()) { baScanMarks(); try { await baMarks.busy; } catch (e) { /* read as far as it went */ } }
+    if (state.bookKey !== key) return;
+    const groups = new Map();
+    for (const f of audio) {
+        if (narrations.includes(f)) continue;
+        const dir = baDirOf(f.webkitRelativePath || f.name);
+        if (!groups.has(dir)) groups.set(dir, []);
+        groups.get(dir).push(f);
+    }
+    // the same track in two copies of the set (a disc folder and a flat folder of the same recordings): the smaller file only
+    const best = new Map();
+    for (const [dir, files] of groups) {
+        if (!baSetFits(files)) continue;
+        for (const f of files) {
+            const p = baParseFile(f.name, f.webkitRelativePath || '');
+            if (p.track === null) continue;
+            const id = baSetOf(p) + '-' + (p.cd || 0) + '-' + (p.section || 0) + '-' + p.track, had = best.get(id);
+            if (!had || f.size < had.file.size) best.set(id, { file: f, dir });
+        }
+    }
+    const keep = [...best.values()].map(x => x.file), folders = [...new Set([...best.values()].map(x => x.dir.split('/').pop() || folderName))];
+    if (typeof bsNote === 'function') bsNote('mixed-folder', { folder: folderName, audio: audio.length, groups: groups.size, keep: keep.length, folders: folders.slice(0, 8), narration: narrations.length });
+    if (!keep.length && !narrations.length) { openBookAudioDialog(t('baMixedNone').replace('{folder}', folderName)); return; }
+    const what = [];
+    if (keep.length) what.push(t('baMixedTracks').replace('{n}', keep.length).replace('{folders}', folders.sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join(', ')));
+    if (narrations.length) what.push(t('baMixedSpeech'));
+    openBookAudioDialog('');
+    const dialog = bookAudioDialog(), box = dialog.querySelector('.ba-take');
+    box.querySelector('.ba-take-text').textContent = t('baMixedFound').replace('{folder}', folderName).replace('{what}', what.join(', '));
+    box.hidden = false;
+    box.querySelector('.ba-take-yes').onclick = () => { box.hidden = true; if (state.bookKey === key) baImportOrAskDisc([...keep, ...narrations]); };
+    box.querySelector('.ba-take-no').onclick = () => { box.hidden = true; };
+    box.querySelector('.ba-take-yes').focus();
+}
 function baImportOrAskDisc(list) {
     const dialog = bookAudioDialog(), ask = dialog && dialog.querySelector('.ba-disc-ask');
     const audio = Array.from(list || []).filter(f => baIsAudio(f) && !baHiddenPath(f.webkitRelativePath));
@@ -940,6 +1044,7 @@ function buildBookAudioDialog() {
         + '<div class="ba-actions ba-row"><button type="button" class="ba-tint ba-files"></button><button type="button" class="ba-tint ba-red ba-remove"></button></div>'
         + '<p class="ba-drop"></p><p class="ba-message" hidden></p>'
         + '<div class="ba-disc-ask" hidden><p class="ba-disc-text"></p><div class="ba-actions ba-disc-choices"></div></div>'
+        + '<div class="ba-take" hidden><p class="ba-take-text"></p><div class="ba-actions"><button type="button" class="btn-primary ba-take-yes"></button><button type="button" class="ba-tint ba-take-no"></button></div></div>'
         + '<div class="ba-progress" id="ba-progress" hidden><div class="ba-progress-text"></div><div class="ba-progress-bar"></div></div>'
         + '<div class="ba-status-box"><p class="ba-status"></p><p class="ba-speech-line" hidden></p><p class="ba-tap" hidden></p></div>'
         + '<p class="ba-note"></p></div>';
@@ -957,15 +1062,17 @@ function buildBookAudioDialog() {
         e.preventDefault();
         const entries = Array.from(e.dataTransfer.items || []).map(item => item.webkitGetAsEntry && item.webkitGetAsEntry()).filter(Boolean);
         const list = entries.length ? await baFilesFromEntries(entries) : Array.from(e.dataTransfer.files || []);
-        if (list.length) baImportOrAskDisc(list);
+        if (list.length) baTakeFolder(list, entries.length === 1 && entries[0].isDirectory ? entries[0].name : '');
     });
     // one button: where the browser can keep a folder (computer Chrome / Edge) it is also remembered, so later books find theirs alone
     dialog.querySelector('.ba-folder').onclick = () => { if (typeof bfSupported === 'function' && bfSupported()) bsPickAudioFolder(); else folder.click(); };
     dialog.querySelector('.ba-files').onclick = () => files.click();
+    // the files picked one by one are the reader's own choice; a folder may be a «Downloads» (rules §5.4)
     for (const input of [folder, files]) input.onchange = () => {
         const list = Array.from(input.files);
         input.value = '';
-        baImportOrAskDisc(list);
+        if (input === files) baImportOrAskDisc(list);
+        else baTakeFolder(list, ((list[0] && list[0].webkitRelativePath) || '').split('/')[0]);
     };
     dialog.querySelector('.ba-close').onclick = () => dialog.close();
     dialog.querySelector('.ba-remove').onclick = async () => {
@@ -986,6 +1093,8 @@ function labelBookAudioDialog() {
     dialog.querySelector('.ba-lead').textContent = t('baLead');
     dialog.querySelector('.ba-folder').textContent = t('baPickFolder');
     dialog.querySelector('.ba-files').textContent = t('baManual');
+    dialog.querySelector('.ba-take-yes').textContent = t('baTakeYes');
+    dialog.querySelector('.ba-take-no').textContent = t('baTakeNo');
     dialog.querySelector('.ba-remove').textContent = t('baRemoveShort');
     dialog.querySelector('.ba-remove').setAttribute('aria-label', t('baRemove'));
     dialog.querySelector('.ba-tap').textContent = t('baTapHint');

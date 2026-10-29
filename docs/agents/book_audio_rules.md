@@ -108,6 +108,26 @@ The learner may point to **any** of these, and the result must be the same:
 The app walks every sub-folder (§4.3 excluded), imports the narration it finds for this book, and the tracks. Drag and
 drop of a folder onto the dialog does exactly the same.
 
+### 5.4 A mixed folder («Downloads»): only this book's recordings, shown first (owner, 2026-10-28)
+
+People leave a book in «Downloads» instead of making a library folder, and «Downloads» may hold private things. Privacy: the
+browser gives the app a folder only when the reader picks it, read-only; the app sees file names and opens audio files only;
+nothing leaves the device. But taking every audio file of such a folder (voice messages, music) as the book's tracks, and
+remembering it as the books folder, is wrong. So:
+
+1. **Mixed** = the chosen folder (by the button, the phone's folder picker, or a dropped folder) holds three or more files that
+   are neither audio, books, small companions (`txt nfo cue m3u ini db url log`) nor up to two pictures per folder (covers).
+   A book's own folder (PDF, narration, audio sub-folders with a cover, hidden caches) is not mixed.
+2. From a mixed folder the app takes only: the folders of numbered tracks that the open book's marks point to (by disc and
+   number, through its track table; ≥ 60 % of a folder's tracks; a folder of one track only when its path names the disc) — or, for a book without marks, folders of three or
+   more numbered tracks — and the book's own narration lying beside the book. Sub-folders holding another book are skipped. The same track found twice (two copies of the set)
+   is taken once, the smaller file.
+3. Before anything is stored the dialog says what was found («У папці «Загрузки» є й інші файли. До цієї книги підходять:
+   записів 96 (папки: CD 1-1, …), озвучка книги. Підключити лише їх?») with two buttons, «Підключити» / «Скасувати».
+   Nothing fits: an amber line says so; nothing is stored.
+4. A mixed folder is **not remembered** as the books folder, even when it holds the open book.
+5. «Додати вручну» (files picked one by one) is the reader's own choice and is taken as it is.
+
 ## 6. Which track a mark in the book plays
 
 Marks are found in the PDF text: «CD2 - piste 35», «CD1 - Piste 3», «CD2 - Exercice 4», a bare «piste 37» / «plage 4» /
@@ -177,6 +197,7 @@ gives the expected result **both automatically (remembered folder) and by hand (
 | book folder with `.work/cache/*.mp3` (thousands of files) | ignored; the count of tracks equals the real tracks |
 | bilingual book: PDF + narration only, no marks | narration connected; no track count, no error |
 | a folder with no audio at all | «Нічого не знайдено» + «Додати вручну» lit; nothing stored |
+| «Downloads»: the book PDF, its narration, its CD folders, voice messages, music, documents, pictures, programs, another book's folder | only the CD folders and the narration offered, shown first; nothing stored before «Підключити»; the folder not remembered |
 
 Report the numbers: tracks stored per disc / set, marks found vs marks solid, narration sentences. A browser test for
 each row lives in `tests/book_audio_browser.py` / `tests/book_folder_browser.py`, with invented names (§2).

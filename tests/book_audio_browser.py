@@ -577,5 +577,27 @@ check('14l Without a table, numbers that restart per section do not play and the
     return restart && amber && through || JSON.stringify({ restart, amber, through, text: st.textContent });
 })()""")
 
+check('14m A phone\'s folder pick of a «Downloads»: only the folders the book\'s marks point to, shown first; a numbered music folder and a voice message stay out', """(async () => {
+    stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
+    Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0, busy: null });
+    const wav = await (await fetch('data:audio/wav;base64,' + window.__WAV)).blob();
+    const make = rel => { const f = new File([/\\.wav$/.test(rel) ? wav : new Uint8Array(4)], rel.split('/').pop()); Object.defineProperty(f, 'webkitRelativePath', { value: rel }); return f; };
+    const list = ['Downloads/report.docx', 'Downloads/photos.zip', 'Downloads/setup.exe', 'Downloads/Voice 3.wav',
+        'Downloads/Book audio/CD1/03 Track 03.wav', 'Downloads/Book audio/CD2/15 Track 15.wav', 'Downloads/Book audio/CD2/07 Track 07.wav',
+        'Downloads/Music/01 Song.wav', 'Downloads/Music/02 Song.wav', 'Downloads/Music/03 Song.wav'].map(make);
+    await baTakeFolder(list, 'Downloads');
+    const d = document.getElementById('book-audio-dialog'), box = d.querySelector('.ba-take'), text = box.querySelector('.ba-take-text').textContent;
+    const shown = !box.hidden && text.includes(t('baMixedTracks').replace('{n}', 3).replace('{folders}', 'CD1, CD2')) && bookAudio.tracks.length === 0;
+    box.querySelector('.ba-take-yes').click();
+    for (let i = 0; i < 50 && bookAudio.tracks.length < 3; i++) await new Promise(r => setTimeout(r, 100));
+    const stored = bookAudio.tracks.map(r => r.cd + '-' + r.track).sort().join(' ');
+    // nothing of the book in it: said, nothing stored
+    stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
+    await baTakeFolder(list.filter(f => !/Book audio/.test(f.webkitRelativePath)), 'Downloads');
+    const none = d.querySelector('.ba-message').textContent === t('baMixedNone').replace('{folder}', 'Downloads') && bookAudio.tracks.length === 0;
+    d.close();
+    return shown && stored === '1-3 2-15 2-7' && none || JSON.stringify({ shown, text, stored, none, msg: d.querySelector('.ba-message').textContent });
+})()""", timeout=30)
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')
