@@ -346,9 +346,11 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         // Мережа, що лише здається живою (Wi-Fi без інтернету), тримала б читача до тайм-ауту AI: через кілька секунд відповідає встановлений
         // офлайн-пакет (js/offline-translate.js), а пізня відповідь AI його замінює. Без пакета offlineTranslate одразу повертає null.
         const previewTimer = setTimeout(async () => {
-            const local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal);
-            if (!local || aiDone || myLookup !== state.lookupToken || !task.current()) return;
-            els.ttTranslation.innerHTML = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
+            // a word: its meaning in this sentence (js/offline-translate.js offlineTranslateWord), a phrase: as it is
+            const word = !isMultiWord ? await offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal) : null;
+            const local = word ? null : isMultiWord ? await offlineTranslate(cleanText, srcCode, targetLang, task.signal) : null;
+            if (!(word || local) || aiDone || myLookup !== state.lookupToken || !task.current()) return;
+            els.ttTranslation.innerHTML = word ? offlineTrWordHtml(word) : escapeHtml(local) + ' <span class="tt-note">⌂</span>';
             const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
         }, OFFLINE_TR_PREVIEW_MS);
         // Онлайн: спершу Groq (відповідає за секунду-дві, ⚡). OpenAI (🧠) питаємо ЛИШЕ тоді, коли Groq не дав придатної відповіді
@@ -420,10 +422,12 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 if (e && e.name === 'AbortError') return;
                 let local = null, mark = '⌂';
                 try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, contextSentence, task.signal); } catch (err) { if (err && err.name === 'AbortError') return; }
+                let word = null;
                 if (local) mark = t('dlMark');
-                else local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal);
+                else word = await offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal);   // the word as meant in its sentence
                 if (myLookup !== state.lookupToken || !task.current()) return;
-                if (local) { html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`; quality = 'device'; }
+                if (word) { html = offlineTrWordHtml(word); quality = 'device'; }
+                else if (local) { html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`; quality = 'device'; }
                 else { els.ttTranslation.textContent = e.message || t('error'); translated = false; offlineTrSuggest(srcCode, targetLang); }
             }
         }

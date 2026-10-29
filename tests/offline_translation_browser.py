@@ -214,6 +214,23 @@ try:
     check('3g the production CSP (no unsafe-eval) blocked nothing and nothing threw', "__csp.length === 0 && __errors.length === 0 ? true : JSON.stringify({csp: __csp, errors: __errors})")
     check('3h a direct model works too (en -> hi), the worker switches models',
           "offlineTranslate('The old man is reading a book in the garden.', 'en', 'hi').then(out => /\\p{Script=Devanagari}/u.test(out) && offlineTrReport().last.route === 'en>hi')")
+    check('3h2 a word is marked in its sentence as a whole word only, safely escaped; what the mark landed on is cleaned, and a lost mark, a scrap or most of the sentence is refused', """(() =>
+        offlineTrMarked('temps', 'Il fait beau temps, pas longtemps.') === 'Il fait beau <b>temps</b>, pas longtemps.'
+        && offlineTrMarked('temps', 'Depuis longtemps.') === null
+        && offlineTrMarked('a', 'x < y & a > b') === 'x &lt; y &amp; <b>a</b> &gt; b'
+        && offlineTrPicked('Сьогодні гарна <b>погода</b>.', 'temps') === 'погода'
+        && offlineTrPicked('Я встаю<b>, обідаю,</b> трохи', 'déjeune') === 'обідаю'
+        && offlineTrPicked('Слухайте <b>та</b> асоціюйте', 'associez') === null
+        && offlineTrPicked('Слухайте та асоціюйте', 'associez') === null
+        && offlineTrPicked('<b></b> я живу', 'habite') === null
+        && offlineTrPicked('<b>a b c d e f</b>', 'mot') === null
+        && offlineTrCase('Ключі', 'clés') === 'ключі' && offlineTrCase('Париж', 'Paris') === 'Париж')()""")
+    check('3h3 a WORD is translated in its sentence by the real engine (the markup survives the model) and gives its own translation besides when it differs', """(async () => {
+        const r = await offlineTranslateWord('bank', 'We sat on the bank of the river and watched the boats.', 'en', 'hi');
+        const ok = r && /\\p{Script=Devanagari}/u.test(r.text) && !/[<>]/.test(r.text) && (r.alone === null || /\\p{Script=Devanagari}/u.test(r.alone));
+        const html = r ? offlineTrWordHtml(r) : '';
+        return ok && html.includes('⌂') && (!r.alone || html.includes(t('offAlone'))) || JSON.stringify({ r, html });
+    })()""")
     check('3i a translation for a direction that is not installed is refused, not guessed', "offlineTranslate('Le chat dort.', 'fr', 'hi').then(out => out === null)")
     check('3j the Test button translates a sample and shows the time',
           """(async () => { openKeySettings(); await new Promise(r => setTimeout(r, 300)); document.querySelector('#offline-list li[data-direction] button[data-act=test]').click();
@@ -328,7 +345,7 @@ try:
     check('10a the diagnostics report says what is installed and how the last translation went, without any key',
           "(() => { const report = JSON.parse(buildDiagnosticsReport()).offline; return report.supported === true && report.engine === '3.0' && Object.keys(report.models).length >= 1 && report.last.ms > 0 && report.failure !== undefined && !/sk-|gsk_|AIza/.test(JSON.stringify(report)); })()")
     check('10b every string of the section exists in all 9 menu languages',
-          """(() => { const keys = ['offTitle','offHint','offBookLang','offTarget','offDownload','offHave','offProgress','offDone','offCancelled','offErrNetwork','offErrServer','offErrChecksum','offErrQuota','offUnsupported','offNoRoute','offInstalled','offRemove','offTest','offTestResult','offTestFail','offNeedsPack','offUnitMb'];
+          """(() => { const keys = ['offAlone','offTitle','offHint','offBookLang','offTarget','offDownload','offHave','offProgress','offDone','offCancelled','offErrNetwork','offErrServer','offErrChecksum','offErrQuota','offUnsupported','offNoRoute','offInstalled','offRemove','offTest','offTestResult','offTestFail','offNeedsPack','offUnitMb'];
               return keys.every(k => ['uk','en','fr','ru','zh','ko','hi','ga','es'].every(l => I18N[k] && typeof I18N[k][l] === 'string' && I18N[k][l].length > 1)); })()""")
     check('10c the placeholders survive translation in every language', """(() => { const need = {offTarget: '{lang}', offDownload: '{mb}', offProgress: '{done}', offDone: '{pair}', offTestResult: '{src}', offTestFail: '{why}'};
               return Object.entries(need).every(([k, p]) => ['uk','en','fr','ru','zh','ko','hi','ga','es'].every(l => I18N[k][l].includes(p))) && ['{total}'].every(p => ['uk','en','fr','ru','zh','ko','hi','ga','es'].every(l => I18N.offProgress[l].includes(p))); })()""")
