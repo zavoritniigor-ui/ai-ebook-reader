@@ -575,10 +575,12 @@ document.addEventListener('keydown', e => {
 // while a book is open, so the words under ✦, the page counter and the side tabs can be read; any of them brings them back.
 const READING_CALM_MS = 4000;
 let readingCalmTimer = 0;
+// On <html>: a change of <body>'s class restarts the menu's auto-close (MutationObserver above), every 4 s it would never close.
 function wakeReadingControls() {
-    if (document.body.classList.contains('reading-calm')) document.body.classList.remove('reading-calm');
+    const root = document.documentElement;
+    if (root.classList.contains('reading-calm')) root.classList.remove('reading-calm');
     clearTimeout(readingCalmTimer);
-    readingCalmTimer = setTimeout(() => { if (state.format) document.body.classList.add('reading-calm'); }, READING_CALM_MS);
+    readingCalmTimer = setTimeout(() => { if (state.format) root.classList.add('reading-calm'); }, READING_CALM_MS);
 }
 for (const type of ['pointerdown', 'pointermove', 'keydown', 'wheel']) document.addEventListener(type, wakeReadingControls, { capture: true, passive: true });
 document.addEventListener('scroll', wakeReadingControls, { capture: true, passive: true });

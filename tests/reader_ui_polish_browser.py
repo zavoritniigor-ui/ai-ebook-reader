@@ -19,10 +19,11 @@ addEventListener('unhandledrejection', e => __errors.push(String(e.reason && e.r
 ''')
 c.call('Page.navigate', url=URL)
 c.wait("document.readyState === 'complete' && !document.body.inert && typeof openBookFile === 'function'", timeout=60)
-c.js("localStorage.clear(); localStorage.setItem('reader_ui_lang', 'en'); showUpdateBanner = () => {}; document.getElementById('sw-update-banner')?.remove(); 1")
+# English menu; the onboarding cue (it animates the side tabs on the first pages) already seen -- both read when the page loads
+c.js("localStorage.clear(); localStorage.setItem('reader_ui_lang', 'en');"
+     " localStorage.setItem('reader_controls_onboarding_v1', JSON.stringify({ ask: true, grammar: true, toc: true })); 1")
 c.call('Page.reload'); c.wait("document.readyState === 'complete' && !document.body.inert && typeof openBookFile === 'function'", timeout=60)
-# the onboarding cue animates the side tabs on the first pages: already seen here
-c.js("localStorage.setItem('reader_controls_onboarding_v1', JSON.stringify({ ask: 1, grammar: 1, toc: 1, rules: 1 })); 1")
+c.js("showUpdateBanner = () => {}; document.getElementById('sw-update-banner')?.remove(); if (state.translateMode) els.translateBtn.click(); 1")
 para = ' '.join(['Le matin, Marcel ouvrait les volets de sa petite maison et regardait le jardin.'] * 14)
 book = (f'<html><body><p>{para}</p><h1>Le jardin</h1>' + f'<p>{para}</p>' * 3 + '<h1>La clé perdue</h1>' + f'<p>{para}</p>' * 3
         + '</body></html>')
@@ -53,27 +54,28 @@ WORD = """(() => { const w = document.createTreeWalker(document.getElementById('
 # ---- 1. reading calm
 time.sleep(4.6)
 check('1a four seconds after the last touch the controls over the text fade (✦, page counter, side tabs), still visible',
-      "document.body.classList.contains('reading-calm') && ['qm-launcher', 'ask-tab', 'grammar-tab'].every(id => { const o = +getComputedStyle(document.getElementById(id)).opacity; return o > 0 && o < 0.5; })"
+      "document.documentElement.classList.contains('reading-calm') && ['qm-launcher', 'ask-tab', 'grammar-tab'].every(id => { const o = +getComputedStyle(document.getElementById(id)).opacity; return o > 0 && o < 0.5; })"
       " && (!document.getElementById('pdf-scrubber').classList.contains('collapsed') || +getComputedStyle(document.getElementById('pdf-scrubber')).opacity < 0.5)")
 c.call('Input.dispatchMouseEvent', type='mouseMoved', x=200, y=300)
-time.sleep(0.2)
-check('1b the next touch, move, key or scroll brings them back', "!document.body.classList.contains('reading-calm') && +getComputedStyle(document.getElementById('qm-launcher')).opacity > 0.9")
+time.sleep(0.7)   # the 0.4 s fade back
+check('1b the next touch, move, key or scroll brings them back', "!document.documentElement.classList.contains('reading-calm') && +getComputedStyle(document.getElementById('qm-launcher')).opacity > 0.9")
 
 # ---- 2. a word tapped with Study mode off
 check('2a Study mode is off (the default)', "state.translateMode === false")
 c.js("studyHintShown = false; localStorage.removeItem('reader_study_hint_count'); document.getElementById('reader-toast')?.classList.remove('show'); 1")
 tap(195, 836)   # the bottom margin, beside the text
 check('2b a tap beside the text says nothing', "!document.querySelector('#reader-toast.show')")
+c.js("closeFooterMenu(); 1")   # that tap opened the page bar; the next tap would only close it
 w = c.js(WORD)
 assert w, 'no word in the middle of the page'
 tap(w['x'], w['y'])
 check('2c a tap on a word says how to translate words, with the switch in the hint',
       "(() => { const toast = document.querySelector('#reader-toast.show.actionable'); return !!toast && toast.textContent.includes(t('studyHint').slice(0, 20)) && toast.querySelector('.toast-action').textContent === t('studyHintOn'); })()")
 check('2d ... counted, so a reader is told three visits at most', "localStorage.getItem('reader_study_hint_count') === '1'")
-c.js("document.getElementById('reader-toast').classList.remove('show'); 1")
+c.js("document.getElementById('reader-toast').classList.remove('show'); closeFooterMenu(); 1")
 tap(w['x'], w['y'])
 check('2e ... and once per visit', "!document.querySelector('#reader-toast.show')")
-c.js("studyHintShown = false; 1")
+c.js("studyHintShown = false; closeFooterMenu(); 1")
 tap(w['x'], w['y'])
 c.js("document.querySelector('#reader-toast .toast-action').click(); 1")
 check('2f its button turns Study mode on', "state.translateMode === true && localStorage.getItem('reader_translate_mode') === '1'")
@@ -92,9 +94,10 @@ c.js("aiAvailable = () => false; handleWordOrSelection('le jardin et la maison',
 check('3c with no AI set up there is nothing to retry', "!!document.querySelector('#tt-translation .tt-error') && !document.querySelector('#tt-translation .tt-retry')", timeout=20)
 
 # ---- 4. the menu closes the popup
+time.sleep(1.5)   # the Back-button history (js/pwa-lifecycle.js) settles after the popups of step 3
 check('4a the popup is open', "getComputedStyle(document.getElementById('word-tooltip')).display !== 'none'")
-h = c.js("(() => { const r = document.getElementById('menu-handle').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()")
-tap(h['x'], h['y'])
+c.js("els.menuHandle.click(); 1")
+time.sleep(0.4)
 check('4b opening the menu closes it (it stood above the menu and its dialogs)', "isFullMenuOpen() && getComputedStyle(document.getElementById('word-tooltip')).display === 'none'")
 c.js("closeFullMenu(); 1")
 

@@ -1629,15 +1629,16 @@
             mask-composite: intersect; }
         /* Reading calm (phones): the controls that float over the text -- ✦, the page counter, the side tabs -- fade a few seconds
            after the last touch, so the words under them can be read; any touch, key or scroll brings them back (js/quick-wheel.js).
+           The class is on <html>, not <body>: the menu's auto-close restarts its timer on every change of <body>'s class.
            They stay visible (opacity > 0) and tappable. A tab that says its panel is busy or ready, an open wheel and an
            expanded page slider never fade. */
         @media (max-width: 640px), (max-height: 500px) {
             #qm-launcher { transition: opacity .4s ease; }
             .panel-tab { transition: background-color .5s ease, opacity .4s ease; }
-            body.reading-calm #qm-launcher:not([aria-expanded="true"]),
-            body.reading-calm #pdf-scrubber.collapsed,
-            body.reading-calm .side-panel:not(.loading):not(.ready) .panel-tab { opacity: .22; }
-            body.reading-calm #qm-launcher:not([aria-expanded="true"]) { backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
+            html.reading-calm #qm-launcher:not([aria-expanded="true"]),
+            html.reading-calm #pdf-scrubber.collapsed,
+            html.reading-calm .side-panel:not(.loading):not(.ready) .panel-tab { opacity: .22; }
+            html.reading-calm #qm-launcher:not([aria-expanded="true"]) { backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
         }
         /* The Contents panel starts below the ☰ button, which stays above it (it covered «Book language»); the left tabs (AI,
            rules) that stood over its list wait until it closes. */
@@ -2134,7 +2135,7 @@
     <script src="js/library.js?v=fbed3900f10b"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
-    <script src="js/quick-wheel.js?v=5656ec4795c9"></script>
+    <script src="js/quick-wheel.js?v=45a461b5341f"></script>
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=a55b6a10f6e6"></script>
     <script src="js/pwa-lifecycle.js?v=47b48192fa12"></script>
