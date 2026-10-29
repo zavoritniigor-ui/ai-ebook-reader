@@ -3,7 +3,7 @@
 // a long time (WELCOME_IDLE_MS), then the app shows through. Put aside for a while (a look at the files, a YouTube video) and
 // brought back sooner, it is not played: the owner's rule. «Used» is the last moment the app was on screen, kept on the device;
 // it counts both a new start of the page and an app brought back from the background without a reload.
-// The browser takes the WebM or the MP4, whichever it plays. Not with «reduce motion»; not offline (the video is not in the
+// The browser takes the WebM or the MP4, whichever it plays. It is shown at its own size at most, never stretched (index.html). Not with «reduce motion»; not offline (the video is not in the
 // offline cache: it fails to load and the app is there at once). A tap skips it. This file runs before the rest of the page is
 // parsed (index.html loads it right after #app-welcome) and refers to nothing in the other modules.
 (function () {
@@ -24,7 +24,14 @@
         welcome.classList.add('welcome-out');
         setTimeout(() => { if (!playingNow) { welcome.hidden = true; video.pause(); } }, 400);
     };
+    // its own pixels at most: as wide as the screen allows (and its height), never wider than 1280 device pixels
+    const fit = () => {
+        const native = 1280 / (window.devicePixelRatio || 1);
+        welcome.style.setProperty('--welcome-w', Math.floor(Math.min(native, innerWidth, innerHeight * 16 / 9)) + 'px');
+    };
+    window.addEventListener('resize', () => { if (playingNow) fit(); });
     const play = () => {
+        fit();
         playingNow = true;
         welcome.classList.remove('welcome-out');
         welcome.hidden = false;
