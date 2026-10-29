@@ -348,6 +348,11 @@ follows the menu: hidden until `footer-open` (a tap in the middle of the page or
 The app starts with the menu CLOSED (`<body class="immersive-mode">`): with no book the start screen `#home-screen`
 (inside `#reader-pages`) offers «Open file» (label for `#file-upload`), «My books» (`.my-books-btn`), «Free library»
 (`#home-library`) and `#recent-books`; an open drawer there covered it all and its backdrop swallowed every tap.
+Look (2026-10-29): Ukrainian-flag colours — a blue hero (logo, name, tagline) over a yellow page; the three actions sit in
+one white card that overlaps the hero; at the bottom a blue heart with a maple leaf (Canada) and a fleur-de-lis (Quebec)
+between two Petrykivka branches (`#home-petrykivka`/`#home-maple`/`#home-lys` in the sprite). The colours are the
+`--home-*` variables on `#reader-container:has(#home-screen)` (dimmer in the dark theme); that rule also makes the
+container full-width and vertically scrollable while no book is open.
 Tests: `tests/menu_labels_browser.py` (contract), `menu_phone_scroll_browser.py`, `menu_autohide_browser.py`,
 `page_arrows_browser.py`.
 
