@@ -450,7 +450,7 @@ def main():
             continue
         # The written list is the dictionary's order (the main meaning first); a meaning Wiktionary also gives keeps its source.
         known = set(wikt_found.get(key, []))
-        meanings[key] = [[m, 'w' if m in known else 'x'] for m in items[:4]]
+        meanings[key] = [[m, 'w' if any(a.strip() in known for a in m.split('|')) else 'x'] for m in items[:4]]
     if written_errors:
         raise SystemExit('dict/src/written-*.tsv:\n  ' + '\n  '.join(written_errors[:60]))
 
