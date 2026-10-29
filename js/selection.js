@@ -1104,6 +1104,71 @@ function selectRangeAndTranslate(range, clientX, clientY, sourceType = 'phrase_t
     return true;
 }
 
+// The characters of a PDF text item (the layer's span), in order, with their text nodes (earlier highlights split a span's text).
+function pdfSpanChars(span) {
+    const chars = [], walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) for (let i = 0; i < (node.nodeValue || '').length; i++) chars.push({ node, offset: i, ch: node.nodeValue[i] });
+    return chars;
+}
+// The whole word around a caret in a PDF text layer, across the text items it is cut into (an item that continues the word
+// starts where the previous one ends, on the same line: pdfSpansContinueWord, the rule the sentences use). Returns
+// { word, pieces: [{ node, start, end }] } or null.
+function pdfWordPieces(textNode, offset) {
+    const layer = textNode.parentElement && textNode.parentElement.closest('.pdf-text-layer');
+    if (!layer) return null;
+    const spans = pdfTextSpans(layer), own = spans.findIndex(sp => sp.contains(textNode));
+    if (own < 0) return null;
+    const isWordChar = ch => !!ch && /[\p{L}\p{N}'’-]/u.test(ch);
+    const ownChars = pdfSpanChars(spans[own]);
+    let at = ownChars.findIndex(c => c.node === textNode && c.offset === offset);
+    if (at < 0) at = ownChars.findIndex(c => c.node === textNode && c.offset === offset - 1);
+    if (at < 0) return null;
+    if (!isWordChar(ownChars[at] && ownChars[at].ch) && isWordChar(ownChars[at - 1] && ownChars[at - 1].ch)) at--;   // the caret just after the word
+    if (!isWordChar(ownChars[at].ch)) return null;
+    let chars = ownChars, from = at, to = at;
+    while (from > 0 && isWordChar(chars[from - 1].ch)) from--;
+    while (to < chars.length - 1 && isWordChar(chars[to + 1].ch)) to++;
+    let word = chars.slice(from, to + 1);
+    // to the left: the previous item continues into this one, and both sides of the joint are letters
+    for (let i = own, steps = 0; from === 0 && i > 0 && steps < 8; i--, steps++) {
+        const prev = pdfSpanChars(spans[i - 1]);
+        if (!prev.length || !isWordChar(prev[prev.length - 1].ch) || !pdfSpansContinueWord(spans[i - 1], spans[i])) break;
+        let k = prev.length - 1;
+        while (k > 0 && isWordChar(prev[k - 1].ch)) k--;
+        word = prev.slice(k).concat(word);
+        if (k > 0) break;
+    }
+    for (let i = own, steps = 0; to === chars.length - 1 && i < spans.length - 1 && steps < 8; i++, steps++) {
+        const next = pdfSpanChars(spans[i + 1]);
+        if (!next.length || !isWordChar(next[0].ch) || !pdfSpansContinueWord(spans[i], spans[i + 1])) break;
+        let k = 0;
+        while (k < next.length - 1 && isWordChar(next[k + 1].ch)) k++;
+        word = word.concat(next.slice(0, k + 1));
+        if (k < next.length - 1) break;
+    }
+    const pieces = [];
+    for (const c of word) {
+        const last = pieces[pieces.length - 1];
+        if (last && last.node === c.node && last.end === c.offset) last.end++;
+        else pieces.push({ node: c.node, start: c.offset, end: c.offset + 1 });
+    }
+    return { word: word.map(c => c.ch).join(''), pieces };
+}
+// Every piece of the word marked as visited; a piece already marked is left as it is.
+function pdfWrapWordPieces(pieces) {
+    const out = [];
+    for (const p of pieces.slice().reverse()) {
+        const parent = p.node.parentElement;
+        if (parent && parent.classList.contains('word-visited') && p.start === 0 && p.end === p.node.nodeValue.length) { out.unshift(parent); continue; }
+        try {
+            const r = document.createRange(); r.setStart(p.node, p.start); r.setEnd(p.node, p.end);
+            const span = document.createElement('span'); span.className = 'word-visited';
+            r.surroundContents(span); out.unshift(span);
+        } catch (e) { /* a piece that cannot be wrapped stays unmarked */ }
+    }
+    return out;
+}
 function selectWordAtPoint(clientX, clientY) {
     const range = caretRangeAt(clientX, clientY);
     if (!range || !range.startContainer || range.startContainer.nodeType !== Node.TEXT_NODE) return null;
@@ -1138,6 +1203,12 @@ function selectWordAtPoint(clientX, clientY) {
     // цю відмінність: підсвічене слово, як і будь-яке інше, вимагає реального
     // влучення (з тим самим допуском), а не просто "найближче знайшлось".
     const existingHighlight = range.startContainer.parentElement && range.startContainer.parentElement.closest('.word-visited');
+    // A PDF word cut into several text items is joined below (pdfWordPieces): a highlighted piece alone is not the word.
+    if (existingHighlight && state.format === 'pdf') {
+        if (!isPointInRects(clientX, clientY, existingHighlight.getClientRects(), 10)) return null;
+        const joined = pdfWordPieces(range.startContainer, range.startOffset);
+        if (joined) { state.lastWordNode = existingHighlight; pdfWrapWordPieces(joined.pieces); return joined.word; }
+    }
     if (existingHighlight) {
         if (!isPointInRects(clientX, clientY, existingHighlight.getClientRects(), state.format === 'pdf' ? 10 : 2)) return null;
         state.lastWordNode = existingHighlight;
@@ -1151,6 +1222,18 @@ function selectWordAtPoint(clientX, clientY) {
     const text = textNode.nodeValue || '';
     const offset = range.startOffset;
     const isWordChar = (ch) => ch && /[\p{L}\p{N}'’-]/u.test(ch);
+    // PDF: the word may run on into the next text item («é» + «tudier», «ga» + «gner»: a textbook prints a verb's stem in another
+    // font, so the file cuts the word there). The whole word is the answer, and every piece of it is marked.
+    if (state.format === 'pdf') {
+        const joined = pdfWordPieces(textNode, offset);
+        if (joined && joined.pieces.length > 1) {
+            const rects = joined.pieces.flatMap(p => { const r = document.createRange(); r.setStart(p.node, p.start); r.setEnd(p.node, p.end); return Array.from(r.getClientRects()); });
+            if (!isPointInRects(clientX, clientY, rects, 10)) return null;
+            const marked = pdfWrapWordPieces(joined.pieces);
+            state.lastWordNode = marked[0] || textNode.parentElement || null;
+            return joined.word;
+        }
+    }
 
     let start = offset, end = offset;
     while (start > 0 && isWordChar(text[start - 1])) start--;
