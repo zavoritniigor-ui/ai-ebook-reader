@@ -76,7 +76,8 @@ print('PASS fasses → faire, belles → beau, yeux → œil, allions → aller,
 # ---- expressions ----
 for line in fr['expr']:
     cols = line.split('\t')
-    assert len(cols) == 3 and cols[0].count(' ') >= 1 and cols[1].strip() and cols[2] in ('w', 'x'), line
+    assert len(cols) == 3 and len(re.findall(r"\w+", cols[0])) >= 2 and cols[1].strip() and cols[2] in ('w', 'x'), line
+assert len(fr['expr']) >= 500, 'the owner asked for 500+ set expressions'
 print(f'PASS {len(fr["expr"])} set expressions')
 
 # ---- Ukrainian forms ----

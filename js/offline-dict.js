@@ -66,7 +66,7 @@ function offlineDictParse(data, forms) {
     }
     for (const line of data.expr || []) {
         const [fr, uk, src] = line.split('\t');
-        const words = offlineDictTokens(fr).map(t => t.norm);
+        const words = offlineDictTokens(fr, d).map(t => t.norm);   // the same glued words as a sentence («aujourd'hui»)
         if (words.length >= 2) d.expr.push({ fr, uk, src, words });
     }
     // Longest first: «avoir besoin de» before «avoir besoin».
@@ -233,6 +233,9 @@ function offlineDictFindExpressions(d, tokens) {
             if (take[0] !== start) continue;
             const from = take[0], to = take[take.length - 1];
             for (let i = from; i <= to; i++) used.add(i);
+            // «ils ont pendu la crémaillère»: the auxiliary of a compound tense before the expression
+            for (let i = from - 1; i >= Math.max(0, from - 2) && !aux; i--)
+                if (offlineDictLookup(d, tokens[i].text).some(e => e.pos === 'V' && (e.lemma === 'avoir' || e.lemma === 'être'))) aux = true;
             found.push({ expr, from, to, aux });
         }
     }

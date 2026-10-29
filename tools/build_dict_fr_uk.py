@@ -339,7 +339,9 @@ def split_meanings(text):
 
 
 def uk_words(meaning):
-    return [w for w in re.split(r"[\s|/,()]+", meaning.replace('ʼ', "'").replace('’', "'")) if w and not w.startswith('(')]
+    """The words of a Ukrainian meaning, without punctuation («час — гроші», «кажуть, що»)."""
+    words = re.split(r"[\s|/,()!?.«»—:]+", meaning.replace('ʼ', "'").replace('’', "'"))
+    return [w.strip("'") for w in words if re.search(r'\w', w)]
 
 
 # ========== BUILD ==========
@@ -463,7 +465,7 @@ def main():
         return
 
     # --- set expressions ---
-    expressions, expr_errors = [], []
+    expressions, expr_errors, seen_expr = [], [], set()
     for fname, n, cols in read_tsv('expressions*.tsv'):
         if len(cols) < 3 or cols[2] not in ('wiktionary', 'written'):
             expr_errors.append(f'{fname}:{n}: expected french TAB ukrainian TAB wiktionary|written')
@@ -471,6 +473,9 @@ def main():
         if not uk_ok(cols[1]):
             expr_errors.append(f'{fname}:{n}: not in VESUM: {cols[1]}')
             continue
+        if cols[0] in seen_expr:
+            continue   # the first entry for an expression is its translation
+        seen_expr.add(cols[0])
         expressions.append([cols[0], cols[1], 'w' if cols[2] == 'wiktionary' else 'x'])
     if expr_errors:
         raise SystemExit('dict/src/expressions*.tsv:\n  ' + '\n  '.join(expr_errors[:60]))
