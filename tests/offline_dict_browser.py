@@ -41,7 +41,7 @@ LEMMAS = [   # lemma, pos, gender, meanings, sources, confusions, forms
     ('pour', 'PRE', '', 'для', 'x', '', []),
     ('la', 'DET', '', '', '', '', []), ('le', 'DET', '', '', '', '', ['l\'']), ('je', 'PRO', '', 'я', 'x', '', ["j'"]),
     ('il', 'PRO', '', 'він', 'x', '', []), ('se', 'PRO', '', 'себе', 'x', '', ["s'", 'me', "m'"]), ('elle', 'PRO', '', 'вона', 'x', '', []),
-    ('vite', 'ADV', '', 'швидко', 'x', '', []),
+    ('vite', 'ADV', '', 'швидко', 'x', '', []), ('la', 'N', 'm', 'ля', 'x', '', []),   # the note «la»: a rare noun of a grammatical word
     ('pendre', 'V', '', 'вішати|повісити', 'w', '', ['pendent']), ('crémaillère', 'N', 'f', '', '', '', []),
     ('rendez-vous', 'N', 'm', 'зустріч', 'w', '', []), ('nous', 'PRO', '', 'ми', 'x', '', []), ('ils', 'PRO', '', 'вони', 'x', '', []),
 ]

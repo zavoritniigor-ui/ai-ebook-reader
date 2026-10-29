@@ -203,7 +203,7 @@ function offlineDictWordMatches(d, token, pattern) {
     const content = own.filter(e => OFFLINE_DICT_CONTENT.includes(e.pos));
     return !!content.length && there.some(e => content.some(c => c.lemma === e.lemma && c.pos === e.pos));
 }
-const OFFLINE_DICT_CONTENT = ['N', 'V', 'A', 'ADV'];
+const OFFLINE_DICT_CONTENT = ['N', 'V', 'A', 'ADV'], OFFLINE_DICT_GRAMMAR = ['PRE', 'DET', 'PRO', 'CON'];
 // Set expressions found in the sentence: [{ expr, from, to, aux, content, verb }] (token indexes), longest first, never overlapping;
 // `content` counts its words with a meaning of their own (nouns, verbs…), `verb` is its French verb as written.
 function offlineDictFindExpressions(d, tokens) {
@@ -238,7 +238,9 @@ function offlineDictFindExpressions(d, tokens) {
             // «ils ont pendu la crémaillère»: the auxiliary of a compound tense before the expression
             for (let i = from - 1; i >= Math.max(0, from - 2) && !aux; i--)
                 if (offlineDictLookup(d, tokens[i].text).some(e => e.pos === 'V' && (e.lemma === 'avoir' || e.lemma === 'être'))) aux = true;
-            const content = take.filter(i => offlineDictLookup(d, tokens[i].text).some(e => OFFLINE_DICT_CONTENT.includes(e.pos)));
+            // a grammatical word never counts, though Lexique also lists rare nouns for some («un», «de», «la»)
+            const content = take.filter(i => { const es = offlineDictLookup(d, tokens[i].text);
+                return es.some(e => OFFLINE_DICT_CONTENT.includes(e.pos)) && !es.some(e => OFFLINE_DICT_GRAMMAR.includes(e.pos)); });
             const verb = take.map(i => tokens[i]).find(t => offlineDictLookup(d, t.text).some(e => e.pos === 'V'));
             found.push({ expr, from, to, aux, content: content.length, verb: verb ? verb.norm : '' });
         }
