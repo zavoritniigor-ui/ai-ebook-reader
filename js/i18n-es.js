@@ -36,7 +36,7 @@ const I18N_ES = {
     errKey400: 'comprueba que la clave está bien pegada.', errKey403: 'la clave no es válida o el acceso está denegado.', errKey404: 'modelo no encontrado.',
     errTooLarge: 'La zona es demasiado grande o se alcanzó el límite de peticiones. Selecciona una zona más pequeña e inténtalo de nuevo.',
     errKey429: 'se superó el límite de peticiones, inténtalo más tarde.',
-    errNoConnection: 'No se pudo contactar con el servidor de IA. Causas habituales: el archivo se abrió desde el disco (file://), no hay internet o una extensión del navegador bloquea la petición.',
+    errNoConnection: 'No hay conexión con la IA. Comprueba internet e inténtalo de nuevo; si funciona, quizá una extensión del navegador bloquea la petición.',
     needKey: '¡Introduce la clave de IA en los ajustes!', needKeySvo: 'El análisis de la frase necesita la clave de IA.', analysing: 'Analizando la frase…',
     approx: '(aproximado, sin conexión)', svoSubject: 'sujeto', svoVerb: 'verbo', svoObject: 'complemento directo', svoCoi: 'complemento indirecto',
     more: 'más', alreadyIn: 'el texto ya está en', synthUnavailable: 'Síntesis de voz no disponible',

@@ -1839,5 +1839,29 @@ els.mainArea.addEventListener('click', (e) => {
     if (x < rect.width * 0.20) goPrev(); 
     else if (x > rect.width * 0.80) goNext();
     // The middle of the page shows the «◀ page ▶» bar for a few seconds (as in other readers); the menu has its ☰ button.
-    else openFooterMenu();
+    else { openFooterMenu(); maybeShowStudyHint(e.clientX, e.clientY); }
 });
+
+// A reader who taps a WORD while Study mode is off expects a translation: say once per visit (three visits at most) how to get
+// it, with the switch in the hint. A tap beside the text says nothing.
+const STUDY_HINT_KEY = 'reader_study_hint_count', STUDY_HINT_MAX = 3;
+let studyHintShown = false;
+function tapIsOnText(clientX, clientY) {
+    const range = caretRangeAt(clientX, clientY);
+    const node = range && range.startContainer;
+    if (!node || node.nodeType !== Node.TEXT_NODE || !els.pages.contains(node)) return false;
+    for (const i of [range.startOffset, range.startOffset - 1]) {
+        if (i < 0 || i >= node.nodeValue.length || /\s/.test(node.nodeValue[i])) continue;
+        const one = document.createRange(); one.setStart(node, i); one.setEnd(node, i + 1);
+        if (isPointInRects(clientX, clientY, one.getClientRects(), 4)) return true;
+    }
+    return false;
+}
+function maybeShowStudyHint(clientX, clientY) {
+    if (state.translateMode || studyHintShown || !tapIsOnText(clientX, clientY)) return;
+    const count = Number(readStored(STUDY_HINT_KEY)) || 0;
+    if (count >= STUDY_HINT_MAX) return;
+    studyHintShown = true;
+    writeStored(STUDY_HINT_KEY, String(count + 1));
+    showToast(t('studyHint'), { label: t('studyHintOn'), run: () => { if (!state.translateMode) els.translateBtn.click(); } });
+}

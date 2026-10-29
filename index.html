@@ -1627,6 +1627,37 @@
             -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(transparent, #000 9%, #000 91%, transparent);
             -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(transparent, #000 9%, #000 91%, transparent);
             mask-composite: intersect; }
+        /* Reading calm (phones): the controls that float over the text -- ✦, the page counter, the side tabs -- fade a few seconds
+           after the last touch, so the words under them can be read; any touch, key or scroll brings them back (js/quick-wheel.js).
+           They stay visible (opacity > 0) and tappable. A tab that says its panel is busy or ready, an open wheel and an
+           expanded page slider never fade. */
+        @media (max-width: 640px), (max-height: 500px) {
+            #qm-launcher { transition: opacity .4s ease; }
+            .panel-tab { transition: background-color .5s ease, opacity .4s ease; }
+            body.reading-calm #qm-launcher:not([aria-expanded="true"]),
+            body.reading-calm #pdf-scrubber.collapsed,
+            body.reading-calm .side-panel:not(.loading):not(.ready) .panel-tab { opacity: .22; }
+            body.reading-calm #qm-launcher:not([aria-expanded="true"]) { backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
+        }
+        /* The Contents panel starts below the ☰ button, which stays above it (it covered «Book language»); the left tabs (AI,
+           rules) that stood over its list wait until it closes. */
+        nav#sidebar { padding-top: 58px; }
+        body:has(#sidebar:not(.collapsed)) #ask-tab, body:has(#sidebar:not(.collapsed)) .rules-tab { visibility: hidden; }
+        /* A failed lookup: a plain message, not the big bold line of a translation, and a way to try again. */
+        #word-tooltip .tt-translation .tt-error { display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+            font-size: 14px; font-weight: 500; line-height: 1.45; opacity: .92; }
+        #word-tooltip .tt-error .tt-retry { min-height: 40px; padding: 0 16px; border-radius: 20px; font-size: 14px; font-weight: 600;
+            color: #fff; background: var(--accent-color, #3b82f6); border: none; cursor: pointer; }
+        /* A hint with its action (showToast with an action): the toast takes taps for its button. */
+        #reader-toast.actionable { pointer-events: auto; display: flex; align-items: center; gap: 12px; text-align: left;
+            width: min(360px, 90vw); box-sizing: border-box; }
+        #reader-toast .toast-action { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border-radius: 20px; border: none;
+            font: inherit; font-weight: 600; color: #22242a; background: #fff; cursor: pointer; }
+        /* Fingers need bigger targets: the page bar's ◀ ▶ and «Show more» of the library. */
+        @media (pointer: coarse) {
+            .footer-nav-group button { height: 44px; min-width: 44px; }
+        }
+        #library-more { min-height: 44px; flex-shrink: 0; }
     </style>
 </head>
 <body data-theme="light" class="immersive-mode" inert>
@@ -2058,19 +2089,19 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=c07269bcd457"></script>
+    <script src="js/core.js?v=13f7cc3c7993"></script>
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
-    <script src="js/selection.js?v=7a78348055af"></script>
+    <script src="js/selection.js?v=714f997115da"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
-    <script src="js/navigation.js?v=92bb75bc6057"></script>
+    <script src="js/navigation.js?v=477b420a57a1"></script>
     <script src="js/pdf-zoom-pan.js?v=e43f726a17a1"></script>
     <script src="js/ui-tooltip.js?v=5474e83169d8"></script>
-    <script src="js/translation.js?v=c86599c93891"></script>
+    <script src="js/translation.js?v=5910d857a7e0"></script>
     <script src="js/dictionaries.js?v=a8f7f2bcfc69"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
     <script src="js/grammar-svo.js?v=14a16a48210a"></script>
@@ -2097,16 +2128,16 @@
     <script src="js/pdf-render.js?v=d25fa5b3077f"></script>
     <script src="js/book-audio.js?v=89bbf93c6ec1"></script>
     <script src="js/book-speech.js?v=19520aac33ff"></script>
-    <script src="js/formats.js?v=0adff3b5d013"></script>
-    <script src="js/comics.js?v=1eb2341da9af"></script>
+    <script src="js/formats.js?v=463bae8bc61b"></script>
+    <script src="js/comics.js?v=ceada768b200"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=fbed3900f10b"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
-    <script src="js/quick-wheel.js?v=c1f1802144fc"></script>
+    <script src="js/quick-wheel.js?v=5656ec4795c9"></script>
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=a55b6a10f6e6"></script>
-    <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
-    <script src="js/i18n-es.js?v=c934aa680491"></script>
+    <script src="js/pwa-lifecycle.js?v=47b48192fa12"></script>
+    <script src="js/i18n-es.js?v=710d2301ca3e"></script>
 </body>
 </html>

@@ -212,13 +212,20 @@ Object.assign(I18N, {
     updateDownloading: { uk: 'Знайдено нову версію — завантажую…', en: 'New version found — downloading…', fr: 'Nouvelle version trouvée — téléchargement…', ru: 'Найдена новая версия — загружаю…', zh: '发现新版本——正在下载…', ko: '새 버전 발견 — 다운로드 중…', hi: 'नया संस्करण मिला — डाउनलोड हो रहा है…', ga: 'Leagan nua aimsithe — á íoslódáil…' },
     updateFailed: { uk: 'Не вдалося перевірити чи завантажити оновлення. Спробуйте ще раз.', en: 'Could not check or download the update. Please try again.', fr: 'Impossible de vérifier ou de télécharger la mise à jour. Réessayez.', ru: 'Не удалось проверить или загрузить обновление. Попробуйте ещё раз.', zh: '无法检查或下载更新，请重试。', ko: '업데이트를 확인하거나 다운로드할 수 없습니다. 다시 시도하세요.', hi: 'अपडेट जाँचा या डाउनलोड नहीं हो सका। फिर प्रयास करें।', ga: 'Níorbh fhéidir an nuashonrú a sheiceáil ná a íoslódáil. Bain triail eile as.' },
 });
-function showToast(msg) {
+// action: { label, run } -- a button in the toast (a hint with its switch); the toast then stays a little longer.
+function showToast(msg, action = null) {
     let toast = document.getElementById('reader-toast');
     if (!toast) { toast = document.createElement('div'); toast.id = 'reader-toast'; document.body.appendChild(toast); }
     toast.textContent = msg;
+    toast.classList.toggle('actionable', !!action);
+    if (action) {
+        const button = Object.assign(document.createElement('button'), { type: 'button', className: 'toast-action', textContent: action.label });
+        button.addEventListener('click', (e) => { e.stopPropagation(); toast.classList.remove('show', 'actionable'); action.run(); });
+        toast.append(button);
+    }
     toast.classList.add('show');
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => toast.classList.remove('show'), 3500);
+    showToast._t = setTimeout(() => toast.classList.remove('show', 'actionable'), action ? 6500 : 3500);
 }
 // Кнопка потрібна лише в реально встановленому standalone-застосунку: у звичайній
 // вкладці браузера користувач і так закриває її звичним чином.

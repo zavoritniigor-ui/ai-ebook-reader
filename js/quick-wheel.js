@@ -37,6 +37,8 @@ function syncFullMenuControls() {
     if (backdrop) backdrop.hidden = !open;
 }
 function openFullMenu() {
+    // The translation popup stands above everything else (z-index 30500): opening the menu closes it, as opening the wheel does.
+    if (typeof dismissReaderPopup === 'function' && els.tooltip.style.display !== 'none') dismissReaderPopup();
     document.body.classList.remove('immersive-mode');
     syncFullMenuControls();
     // Focus moves into the menu (keyboard, screen readers) without drawing a focus ring after a tap.
@@ -568,3 +570,16 @@ document.addEventListener('keydown', e => {
         }
     }
 });
+
+// Reading calm (phones, CSS in index.html): the controls over the text fade READING_CALM_MS after the last touch, key or scroll
+// while a book is open, so the words under ✦, the page counter and the side tabs can be read; any of them brings them back.
+const READING_CALM_MS = 4000;
+let readingCalmTimer = 0;
+function wakeReadingControls() {
+    if (document.body.classList.contains('reading-calm')) document.body.classList.remove('reading-calm');
+    clearTimeout(readingCalmTimer);
+    readingCalmTimer = setTimeout(() => { if (state.format) document.body.classList.add('reading-calm'); }, READING_CALM_MS);
+}
+for (const type of ['pointerdown', 'pointermove', 'keydown', 'wheel']) document.addEventListener(type, wakeReadingControls, { capture: true, passive: true });
+document.addEventListener('scroll', wakeReadingControls, { capture: true, passive: true });
+wakeReadingControls();

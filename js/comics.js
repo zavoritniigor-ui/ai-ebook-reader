@@ -16,7 +16,7 @@ async function initCbz(file, epoch = readerEpoch.book) {
     if (!names.length) throw new Error(t('emptyDoc'));
     state.cbzZip = zip; state.cbzNames = names;
     state.totalPages = names.length; state.totalPagesInChapter = 1; state.pageInChapter = 0;
-    buildToc(names.length, 'Сторінка', i => renderCbzPage(i));
+    buildToc(names.length, t('page'), i => renderCbzPage(i));
     const bm = loadBookmark();
     const start = (bm && bm.format === 'cbz' && bm.currentIndex >= 0 && bm.currentIndex < names.length) ? bm.currentIndex : 0;
     await renderCbzPage(start);

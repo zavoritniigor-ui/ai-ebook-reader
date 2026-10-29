@@ -500,6 +500,17 @@ containerResizeObserver.observe(els.container);
 // Будує список змісту (розділ/сторінка/блок) для бічної панелі — спільний хелпер
 // для всіх трьох завантажувачів форматів (js/formats.js), не специфічний для
 // жодного з них, тому лишається тут разом з рештою навігації.
-function buildToc(count, prefix, callback) {
-    els.toc.innerHTML = ""; for (let i = 0; i < count; i++) { const li = document.createElement("li"); li.textContent = `${prefix} ${i + 1}`; li.onclick = () => callback(i); els.toc.appendChild(li); }
+// titles: the chapters' own headings where the format has them («Chapitre un»), else «Chapter 3» in the menu language.
+function buildToc(count, prefix, callback, titles = []) {
+    els.toc.innerHTML = ""; for (let i = 0; i < count; i++) { const li = document.createElement("li"); li.textContent = titles[i] || `${prefix} ${i + 1}`; li.onclick = () => callback(i); els.toc.appendChild(li); }
+}
+// The first heading of each chapter's (already sanitized) HTML, cut to one short line; '' where it has none.
+function chapterHeadings(chapters) {
+    const holder = document.createElement('template');
+    return chapters.map(html => {
+        holder.innerHTML = html;
+        const h = holder.content.querySelector('h1, h2, h3');
+        const text = h ? h.textContent.replace(/\s+/g, ' ').trim() : '';
+        return text.length > 80 ? text.slice(0, 79) + '…' : text;
+    });
 }

@@ -220,7 +220,7 @@ async function initEpub(file, epoch = readerEpoch.book) {
     state.totalPages = state.spine.length; 
     
     computeBookWeights(epoch);
-    buildToc(state.totalPages, "Розділ", (i) => { loadEpubChapter(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
+    buildToc(state.totalPages, t('chapter'), (i) => { loadEpubChapter(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'epub' && bm.currentIndex >= 0 && bm.currentIndex < state.spine.length) ? bm.currentIndex : 0;
     await loadEpubChapter(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
@@ -358,7 +358,7 @@ async function initRichDoc(file, ext, epoch = readerEpoch.book) {
     buildToc(state.totalPages, t('chapter'), i => {
         renderDocChapter(i);
         if (window.innerWidth <= 1180) els.sidebar.classList.add('collapsed');
-    });
+    }, chapterHeadings(state.docChapters));
     const bm = loadBookmark();
     const startIdx = (bm && bm.currentIndex >= 0 && bm.currentIndex < state.totalPages) ? bm.currentIndex : 0;
     await renderDocChapter(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
@@ -502,7 +502,7 @@ async function initTxt(file, epoch = readerEpoch.book) {
     if (!text.trim()) throw new Error(t('emptyDoc'));
     state.txtLines = text.split(/\r?\n/); state.totalPages = Math.ceil(state.txtLines.length / 50);
     computeBookWeights(epoch);
-    buildToc(state.totalPages, "Блок", i => { renderTxtPage(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
+    buildToc(state.totalPages, t('block'), i => { renderTxtPage(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'txt' && bm.currentIndex >= 0 && bm.currentIndex < state.totalPages) ? bm.currentIndex : 0;
     await renderTxtPage(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);

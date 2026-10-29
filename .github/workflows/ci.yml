@@ -427,6 +427,8 @@ jobs:
 
           echo "Running sidebar_hide_on_reading_browser.py..."
           python3 -u tests/sidebar_hide_on_reading_browser.py
+          echo "Running reader_ui_polish_browser.py (phone reading: calm controls, the Study-mode hint, Retry, the menu closes the popup, Contents)..."
+          python3 -u tests/reader_ui_polish_browser.py
 
           echo "All tests passed successfully!"
 

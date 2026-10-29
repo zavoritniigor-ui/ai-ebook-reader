@@ -133,7 +133,22 @@ document.addEventListener('click', e => {
 document.addEventListener('scroll', clearAlignmentFlash, true);
 window.addEventListener('resize', clearAlignmentFlash);
 
+// A lookup that failed: its message in the popup (smaller than a translation, index.html .tt-error) and, when trying again can
+// help (no network, the AI did not answer), a Retry button that repeats the same lookup.
+function showTooltipError(message, retry) {
+    const box = document.createElement('div');
+    box.className = 'tt-error';
+    box.append(Object.assign(document.createElement('span'), { textContent: message }));
+    if (retry) {
+        const again = Object.assign(document.createElement('button'), { type: 'button', className: 'tt-retry', textContent: t('retry') });
+        again.addEventListener('click', (e) => { e.stopPropagation(); retry(); });
+        box.append(again);
+    }
+    els.ttTranslation.replaceChildren(box);
+}
+
 async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpContext = null, helpSource = null) {
+    const retryLookup = () => handleWordOrSelection(text, clientX, clientY, anchorRect, null, helpSource);
     const cleanText = text.trim(); if (!cleanText) return;
     // A bilingual PDF drag's own study-language-only text (js/selection.js), if any — read and
     // cleared HERE so it is consumed exactly once, regardless of which tooltip button (if any)
@@ -408,7 +423,8 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             if (myLookup !== state.lookupToken || !task.current()) return;
             if (local) html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`;
             else {
-                els.ttTranslation.textContent = !aiAvailable() ? t('sentenceNeedsAi') : (!navigator.onLine ? t('sentenceNeedsOnline') : t('sentenceAiFailed'));
+                showTooltipError(!aiAvailable() ? t('sentenceNeedsAi') : (!navigator.onLine ? t('sentenceNeedsOnline') : t('sentenceAiFailed')),
+                    aiAvailable() ? retryLookup : null);
                 translated = false;
                 offlineTrSuggest(srcCode, targetLang);
             }
@@ -428,7 +444,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 if (myLookup !== state.lookupToken || !task.current()) return;
                 if (word) { html = offlineTrWordHtml(word); quality = 'device'; }
                 else if (local) { html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`; quality = 'device'; }
-                else { els.ttTranslation.textContent = e.message || t('error'); translated = false; offlineTrSuggest(srcCode, targetLang); }
+                else { showTooltipError(e.message || t('error'), retryLookup); translated = false; offlineTrSuggest(srcCode, targetLang); }
             }
         }
         if (!task.current()) return;
