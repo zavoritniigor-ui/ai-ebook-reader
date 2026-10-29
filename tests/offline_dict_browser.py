@@ -41,7 +41,7 @@ LEMMAS = [   # lemma, pos, gender, meanings, sources, confusions, forms
     ('pour', 'PRE', '', 'для', 'x', '', []),
     ('la', 'DET', '', '', '', '', []), ('le', 'DET', '', '', '', '', ['l\'']), ('je', 'PRO', '', 'я', 'x', '', ["j'"]),
     ('il', 'PRO', '', 'він', 'x', '', []), ('se', 'PRO', '', 'себе', 'x', '', ["s'", 'me', "m'"]), ('elle', 'PRO', '', 'вона', 'x', '', []),
-    ('vite', 'ADV', '', 'швидко', 'x', '', []), ('la', 'N', 'm', 'ля', 'x', '', []),   # the note «la»: a rare noun of a grammatical word
+    ('vite', 'ADV', '', 'швидко', 'x', '', []), ('aller', 'V', '', 'іти|піти', 'w', '', ['vais', 'va', 'allons']), ('la', 'N', 'm', 'ля', 'x', '', []),   # the note «la»: a rare noun of a grammatical word
     ('pendre', 'V', '', 'вішати|повісити', 'w', '', ['pendent']), ('crémaillère', 'N', 'f', '', '', '', []),
     ('rendez-vous', 'N', 'm', 'зустріч', 'w', '', []), ('nous', 'PRO', '', 'ми', 'x', '', []), ('ils', 'PRO', '', 'вони', 'x', '', []),
 ]
@@ -156,6 +156,7 @@ ANSWERS = {
     'Elle <b>se rend compte</b> de tout.': 'Вона <b>повертає рахунок</b> усього.',
     'Elle <b>fait le ménage</b>.': 'Вона <b>робить домогосподарство</b>.',
     'Elle file vite.': 'Вона швидко мчить.',
+    'Elle va <b>faire le ménage</b>.': 'Вона <b>прибере</b>.',
     'Elle ne <b>fait pas le ménage</b>.': 'Вона <b>не робить домогосподарство</b>.',
     'Ils <b>pendent la crémaillère</b>.': 'Вони <b>вішають стійку</b>.',
     'Nos voisins <b>pendent la crémaillère</b>.': 'Наші сусіди <b>вішають</b> стійку.',
@@ -266,6 +267,7 @@ try:
     ok('4l ... the engine\'s marked words covering only part of the expression: nothing is replaced', sentence('Nos voisins pendent la crémaillère.') == 'Наші сусіди вішають стійку.', sentence('Nos voisins pendent la crémaillère.'))
     ok('4m ... no verb in the engine\'s words for a French tense: no infinitive is put in', sentence('Nous avons rendez-vous.') == 'У нас зустріч.', sentence('Nous avons rendez-vous.'))
     ok('4n ... a replacement that would drop the engine\'s negation is not made', sentence('Elle ne fait pas le ménage.') == 'Вона не робить домогосподарство.', sentence('Elle ne fait pas le ménage.'))
+    ok('4o ... «aller» + an infinitive is the engine\'s future, never replaced by an infinitive', sentence('Elle va faire le ménage.') == 'Вона прибере.', sentence('Elle va faire le ménage.'))
     js("__asked = []; 1")
     ok('4h a reading the context does not settle (a verb «file» has no known mistakes) changes nothing: one plain engine call', sentence('Elle file vite.') == 'Вона швидко мчить.' and js("__asked.length === 1 && __asked[0] === 'Elle file vite.'"), js("__asked"))
     ok('4i a direction without dictionary is the engine as it is', js("offlineTranslateSentence('Le temps passe vite.', 'fr', 'en').then(out => out === null && __asked.at(-1) === 'Le temps passe vite.')") is True)

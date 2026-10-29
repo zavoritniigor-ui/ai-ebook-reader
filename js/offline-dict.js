@@ -250,8 +250,8 @@ function offlineDictFindExpressions(d, tokens) {
             // a grammatical word never counts, though Lexique also lists rare nouns for some («un», «de», «la»)
             const content = take.filter(i => { const es = offlineDictLookup(d, tokens[i].text);
                 return es.some(e => OFFLINE_DICT_CONTENT.includes(e.pos)) && !es.some(e => OFFLINE_DICT_GRAMMAR.includes(e.pos)); });
-            const verb = take.map(i => tokens[i]).find(t => offlineDictLookup(d, t.text).some(e => e.pos === 'V'));
-            found.push({ expr, from, to, aux, content: content.length, verb: verb ? verb.norm : '' });
+            const verbAt = take.find(i => offlineDictLookup(d, tokens[i].text).some(e => e.pos === 'V'));
+            found.push({ expr, from, to, aux, content: content.length, verb: verbAt === undefined ? '' : tokens[verbAt].norm, verbAt: verbAt === undefined ? -1 : verbAt });
         }
     }
     return found.sort((a, b) => a.from - b.from);
@@ -338,9 +338,11 @@ function offlineDictExpressionText(d, tokens, hit, picked) {
     const verbal = offlineDictUkForms(d, first[at]).some(e => offlineDictKind(e.pos) === 'V');
     if (!verbal) return alts[0];
     // the French verb as written: an infinitive («avant de faire le ménage»), an imperative («lève-toi», «ne tourne pas») or a tense
-    const before = hit.from > 0 ? tokens[hit.from - 1].norm : '';
+    const fv = hit.verbAt, before = fv > 0 ? tokens[fv - 1].norm : '';
     const infinitive = !hit.aux && offlineDictLookup(d, hit.verb).some(e => e.pos === 'V' && offlineDictNorm(e.lemma) === hit.verb);
-    const imperative = !infinitive && !hit.aux && (hit.from === 0 || ((before === 'ne' || before === "n'") && hit.from === 1));
+    const imperative = !infinitive && !hit.aux && (fv === 0 || ((before === 'ne' || before === "n'") && fv === 1));
+    // «nous allons prendre…»: the engine makes one future of «aller» + the infinitive («візьмемо»), not an infinitive
+    if (infinitive && fv > 0 && offlineDictLookup(d, tokens[fv - 1].text).some(e => e.pos === 'V' && e.lemma === 'aller')) return null;
     const finite = String(picked).split(/\s+/).some(w => { const g = w.length >= 4 && offlineDictUkGuess(d, w); return g && g !== 'inf'; });
     const verb = offlineDictEngineVerb(d, tokens, hit, picked);
     // no verb in the engine's words: the infinitive only where French has one and the engine's words have no finite verb
