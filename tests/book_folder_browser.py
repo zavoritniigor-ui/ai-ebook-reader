@@ -265,4 +265,40 @@ check('14 Choosing an audio folder somewhere else adds its tracks and keeps the 
         || JSON.stringify({ saved: window.__saved, tracks: bookAudio.tracks.map(r => [r.cd, r.track]) });
 })()""", timeout=30)
 
+# 15 a «Downloads» with the book in it (book_audio_rules §5.4): only the book's recordings, shown first; not remembered
+c.js("""(async () => {
+    await bsDelete(state.bookKey); await bsRefresh(); stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
+    window.__saved = [];
+    const f = (name, data) => [name, window.__file(name, data || new File([new Uint8Array(8)], name))];
+    const m4a = name => [name, window.__file(name, new File([window.__m4a], name, { type: 'audio/mp4' }))];
+    const downloads = window.__folder([
+        f('Speech_test.pdf', window.__pdf), f('Speech test - voice.mp3', window.__match),
+        f('report.docx'), f('tax 2025.xlsx'), f('setup.exe'), f('photo 1.jpg'), f('photo 2.jpg'), f('photo 3.jpg'),
+        m4a('Voice 12.m4a'),
+        ['Textbook audio', window.__folderEntry('Textbook audio', [['CD 1-1', window.__folderEntry('CD 1-1', [m4a('1 Audio Track.m4a'), m4a('2 Audio Track.m4a'), m4a('3 Audio Track.m4a')])]])],
+        ['Another book', window.__folderEntry('Another book', [f('Another.pdf'), ['CD1', window.__folderEntry('CD1', [m4a('01 Track 01.m4a'), m4a('02 Track 02.m4a'), m4a('03 Track 03.m4a')])]])],
+    ]);
+    downloads.name = 'Downloads';
+    window.showDirectoryPicker = async () => downloads;
+    await bsPickAudioFolder();
+})()""")
+check('15 A «Downloads» holding the book: the dialog shows only its CD folder and narration, nothing stored yet, the folder not remembered', """(async () => {
+    const d = document.getElementById('book-audio-dialog'), box = d && d.querySelector('.ba-take');
+    for (let i = 0; i < 100 && !(box && !box.hidden); i++) await new Promise(r => setTimeout(r, 100));
+    const text = box ? box.querySelector('.ba-take-text').textContent : '';
+    return !!box && !box.hidden && text.includes('Downloads') && text.includes('CD 1-1') && text.includes(t('baMixedTracks').replace('{n}', 3).replace('{folders}', 'CD 1-1'))
+        && text.includes(t('baMixedSpeech')) && !text.includes('CD1,') && bookAudio.tracks.length === 0 && bsSets.list.length === 0 && window.__saved.length === 0
+        || JSON.stringify({ shown: box && !box.hidden, text, tracks: bookAudio.tracks.length, saved: window.__saved });
+})()""", timeout=30)
+c.js("document.querySelector('#book-audio-dialog .ba-take-yes').click(); 1")
+check('15b «Підключити» stores the three CD tracks and the narration: no voice message, nothing of the other book', """(async () => {
+    for (let i = 0; i < 100 && !(bookAudio.tracks.length === 3 && bsSets.list.length === 1); i++) await new Promise(r => setTimeout(r, 100));
+    return bookAudio.tracks.length === 3 && bookAudio.tracks.every(r => r.cd === 1 && /Audio Track/.test(r.name)) && bsSets.list.length === 1 && window.__saved.length === 0
+        || JSON.stringify({ tracks: bookAudio.tracks.map(r => r.name), speech: bsSets.list.length, saved: window.__saved });
+})()""", timeout=30)
+check('16 A book folder (PDF, narration, CD folders with a cover, a hidden cache) is not mixed; «Downloads» is', """(() =>
+    !baMixedFolder(['Book/livre.pdf', 'Book/corriges.pdf', 'Book/livre.mp3', 'Book/audio/CD1/img.png', 'Book/audio/CD1/01 Track 01.m4a', 'Book/audio/CD2/img.png', 'Book/.work/a.json', 'Book/.work/b.json', 'Book/.work/c.json'])
+    && baMixedFolder(['Downloads/livre.pdf', 'Downloads/report.docx', 'Downloads/setup.exe', 'Downloads/archive.rar'])
+    && baMixedFolder(['Downloads/a.jpg', 'Downloads/b.jpg', 'Downloads/c.jpg', 'Downloads/d.jpg', 'Downloads/e.jpg']))()""")
+
 print('PASS: all book folder checks')

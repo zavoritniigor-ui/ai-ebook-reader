@@ -773,7 +773,13 @@ async function bsPickAudioFolder() {
     const key = state.bookKey;
     let pkg = null;
     try { pkg = state.bookFileName ? await bfFindFolderWith(handle, state.bookFileName) : null; } catch (e) { pkg = null; }
-    bsNote('pick-folder', { name: handle.name, holdsBook: !!pkg });
+    // every file below the folder, by name only (nothing but audio is opened): a «Downloads» with other things in it is mixed
+    let listing = { paths: [], audio: [], bookDir: null };
+    try { listing = await bfListFolder(handle); } catch (e) { bsNote('pick-folder', { error: String(e && (e.name || e.message) || e) }); }
+    if (state.bookKey !== key) return;
+    const mixed = typeof baMixedFolder === 'function' && baMixedFolder(listing.paths);
+    bsNote('pick-folder', { name: handle.name, holdsBook: !!pkg, mixed, files: listing.paths.length });
+    if (mixed) { await baTakeFolder(listing.audio, handle.name, true, listing.bookDir); return; }   // not remembered (rules §5.4)
     if (pkg) {
         try { await bfSet({ id: BF_ID, handle, name: handle.name, at: Date.now() }); } catch (e) { /* not remembered; connected now all the same */ }
         await bsAutoImportFromFolder(false);
@@ -784,20 +790,34 @@ async function bsPickAudioFolder() {
         else if (!bsActiveSet()) baAutoFailed();
         return;
     }
-    const files = [];
+    baImportOrAskDisc(listing.audio);
+}
+// A chosen folder, read as the folder picker of a phone would give it: the path of every file (names only) and the audio files
+// themselves; hidden and system folders are skipped, and so is a sub-folder that holds another book. bookDir: the path of the
+// folder that holds the open book, when it is inside.
+async function bfListFolder(handle) {
+    const out = { paths: [], audio: [], bookDir: null };
+    const books = async dir => { const found = []; for await (const [name, entry] of dir.entries()) if (entry.kind === 'file' && BF_BOOK_EXT.test(name)) found.push(name); return found; };
     const walk = async (dir, path, depth) => {
+        if ((await books(dir)).includes(state.bookFileName)) out.bookDir = path;
         for await (const [name, entry] of dir.entries()) {
-            if (entry.kind === 'file' && baIsAudio({ name })) {
-                const file = await entry.getFile();
-                Object.defineProperty(file, 'webkitRelativePath', { value: `${path}/${name}`, configurable: true });
-                files.push(file);
+            const at = `${path}/${name}`;
+            if (entry.kind === 'file') {
+                out.paths.push(at);
+                if (baIsAudio({ name })) {
+                    const file = await entry.getFile();
+                    Object.defineProperty(file, 'webkitRelativePath', { value: at, configurable: true });
+                    out.audio.push(file);
+                }
             } else if (entry.kind === 'directory' && depth < BF_DEPTH + 1 && !name.startsWith('.') && name !== '__MACOSX') {
-                await walk(entry, `${path}/${name}`, depth + 1);
+                const inside = await books(entry);
+                if (inside.length && !inside.includes(state.bookFileName)) continue;   // another book's folder: its audio is not this book's
+                await walk(entry, at, depth + 1);
             }
         }
     };
-    try { await walk(handle, handle.name, 0); } catch (e) { bsNote('pick-folder', { error: String(e && (e.name || e.message) || e) }); }
-    if (state.bookKey === key) baImportOrAskDisc(files);
+    await walk(handle, handle.name, 0);
+    return out;
 }
 
 // The package: the folder that holds the book's file, with its audio in any sub-folders, whatever they are called, and its
