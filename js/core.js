@@ -81,7 +81,8 @@ function safeHtml(value, ai = false) {
             // (успадковує https: поточної сторінки) і непомітний спосіб влаштувати
             // трекінг-піксель у книзі: підвантажиться з чужого домену щоразу,
             // як читач відкриє розділ, і видасть сам факт читання цієї книги.
-            if ((src && !/[:\\\u0000-\u0020]/.test(src) && !src.startsWith('//')) || /^https?:\/\//i.test(src) || /^data:image\/(?:png|jpeg|gif|webp|avif);base64,[a-z0-9+/=\s]+$/i.test(src)) {
+            // Зображення з чужого сайту (https://…) — теж трекінг-піксель, тож його немає (CSP img-src і так його не завантажив би).
+            if ((src && !/[:\\\u0000-\u0020]/.test(src) && !src.startsWith('//')) || /^data:image\/(?:png|jpeg|gif|webp|avif);base64,[a-z0-9+/=\s]+$/i.test(src)) {
                 el.setAttribute('src', src); el.referrerPolicy = 'no-referrer';
             }
         }

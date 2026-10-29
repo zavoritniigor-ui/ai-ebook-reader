@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# The workflow only reads the repository: its token gets no write rights.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -41,6 +45,7 @@ jobs:
           node tests/offline_model_proxy_test.mjs
           node tests/device_llm_proxy_test.mjs
           node tests/book_speech_test.mjs
+          node tests/library_proxy_test.mjs
           
           echo "Checking index.html has no inline JS (CSP forbids it)..."
           python3 -c '

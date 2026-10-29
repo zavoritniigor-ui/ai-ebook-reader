@@ -12,10 +12,11 @@ const URLS = { groq: 'https://api.groq.com/openai/v1/chat/completions', openai: 
 const SECRETS = { groq: 'GROQ_API_KEY', openai: 'OPENAI_API_KEY' };
 // Ті самі моделі, що в js/ai-client.js (GROQ_MODEL, GROQ_VISION_MODEL, OPENAI_MODEL) — змінюючи там, змініть і тут. Groq рахує ліміти
 // ОКРЕМО на кожну модель, тому до списку входять і запасні моделі Groq (js/ai-client.js, GROQ_LADDER); qwen3.6 з Groq прибрали (404).
-// gpt-5.4 / gpt-5.4-mini / gpt-5.4-nano — моделі з безкоштовних денних пулів OpenAI проєкту «Ebok rider» (250K і 2.5M токенів на добу; gpt-5.6-luna
-// у жоден пул не входить і завжди платна): дозволені, щоб їх можна було виміряти й перевести на них запити.
+// gpt-5.4 / gpt-5.4-mini / gpt-5.4-nano — моделі з безкоштовних денних пулів OpenAI проєкту «Ebok rider» (250K і 2.5M токенів на добу).
+// gpt-5.6-luna у жоден пул не входить і завжди платна, а застосунок її вже не просить: зі спільним ключем її не дозволено, бо
+// заголовок Origin підробляється і чужий скрипт міг би витрачати на неї гроші.
 const MODELS = { groq: new Set(['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3.8-27b']),
-    openai: new Set(['gpt-5.6-luna', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano']) };
+    openai: new Set(['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano']) };
 const MAX_BODY_BYTES = 6 * 1024 * 1024;   // запит із вирізаним фрагментом сторінки (data URL) буває кілька МБ
 const MAX_OUTPUT_TOKENS = 16000;
 const RATE_WINDOW_MS = 60000, RATE_MAX = 40;

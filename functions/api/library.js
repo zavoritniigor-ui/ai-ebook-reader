@@ -48,6 +48,16 @@ const IA_GENRES = {
 const WS_CAT = /^[^\u0000-\u001f#<>\[\]{}|"\\:]{1,80}$/;
 const iaQuote = s => s.replace(/[\\"():\[\]{}^~*?!+\-&|\/]/g, ' ').trim();
 
+// Лише запити зі сторінок самого застосунку (як /api/offline-model): обкладинки <img> приходять з Sec-Fetch-Site: same-origin або
+// з Referer цього сайту. Інакше будь-хто користувався б функцією як безкоштовним проксі й вичерпував спільну денну квоту функцій.
+function sameOrigin(request, url) {
+    if (request.headers.get('sec-fetch-site') === 'same-origin') return true;
+    const origin = request.headers.get('origin');
+    if (origin) return origin === url.origin;
+    const referer = request.headers.get('referer');
+    try { return !!referer && new URL(referer).origin === url.origin; } catch (e) { return false; }
+}
+
 function json(body, status = 200, maxAge = 0) {
     return new Response(JSON.stringify(body), { status, headers: {
         'content-type': 'application/json; charset=utf-8',
@@ -67,6 +77,7 @@ async function upstream(url, accept) {
 export async function onRequestGet({ request }) {
     const url = new URL(request.url);
     const op = url.searchParams.get('op');
+    if (!sameOrigin(request, url)) return json({ error: 'forbidden' }, 403);
     try {
         if (op === 'file' || op === 'cover') {
             const id = url.searchParams.get('id') || '';
