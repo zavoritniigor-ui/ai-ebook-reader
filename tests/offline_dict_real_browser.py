@@ -137,6 +137,9 @@ try:
     ok('5c ... the dictionary never doubles a word and never cuts a sentence to less than half its words',
        all((doubled(r['after']) is None or doubled(r['before']) is not None) and len(r['after'].split()) * 2 >= len(r['before'].split()) for r in hard),
        [r for r in hard if not ((doubled(r['after']) is None or doubled(r['before']) is not None) and len(r['after'].split()) * 2 >= len(r['before'].split()))])
+    neg = lambda t: len(re.findall(r'(?<!\w)(не|ні|ніколи|нічого|ніхто|немає)(?!\w)', t.lower()))
+    ok('5d ... and never drops a negation of the engine\'s translation', all(neg(r['after']) >= neg(r['before']) for r in rows + hard),
+       [r for r in rows + hard if neg(r['after']) < neg(r['before'])])
     check('6 nothing of the pack was cached as a translation', "Object.keys(state.translationCache).length === 0")
     check('7 no CSP violation, nothing threw', "__errors.length === 0 && __csp.length === 0 ? true : JSON.stringify({csp: __csp, errors: __errors})")
     print('ALL PASS offline_dict_real_browser', flush=True)

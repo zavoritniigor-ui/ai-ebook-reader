@@ -331,18 +331,32 @@ function offlineDictEngineVerb(d, tokens, hit, picked) {
     return null;
 }
 // The dictionary's translation of a set expression in the form of the engine's words for it; null when not sure.
+// The verb of a Ukrainian translation «не прийти на зустріч»: its place among the words (after a negation).
+const offlineDictVerbAt = (words) => words[0] === 'не' && words.length > 1 ? 1 : 0;
 function offlineDictExpressionText(d, tokens, hit, picked) {
-    const alts = offlineDictAlternatives(hit.expr.uk);
-    const verbal = offlineDictUkForms(d, offlineDictHead(alts[0])).some(e => offlineDictKind(e.pos) === 'V');
+    const alts = offlineDictAlternatives(hit.expr.uk), first = alts[0].split(/\s+/), at = offlineDictVerbAt(first);
+    const verbal = offlineDictUkForms(d, first[at]).some(e => offlineDictKind(e.pos) === 'V');
     if (!verbal) return alts[0];
+    // the French verb as written: an infinitive («avant de faire le ménage»), an imperative («lève-toi», «ne tourne pas») or a tense
+    const before = hit.from > 0 ? tokens[hit.from - 1].norm : '';
+    const infinitive = !hit.aux && offlineDictLookup(d, hit.verb).some(e => e.pos === 'V' && offlineDictNorm(e.lemma) === hit.verb);
+    const imperative = !infinitive && !hit.aux && (hit.from === 0 || ((before === 'ne' || before === "n'") && hit.from === 1));
+    const finite = String(picked).split(/\s+/).some(w => { const g = w.length >= 4 && offlineDictUkGuess(d, w); return g && g !== 'inf'; });
     const verb = offlineDictEngineVerb(d, tokens, hit, picked);
-    // no verb in the engine's words: the infinitive only where French has one («avant de faire le ménage»), never for a tense
-    if (!verb) return !hit.aux && offlineDictLookup(d, hit.verb).some(e => e.pos === 'V' && offlineDictNorm(e.lemma) === hit.verb) ? alts[0] : null;
+    // no verb in the engine's words: the infinitive only where French has one and the engine's words have no finite verb
+    if (!verb) return infinitive && !finite ? alts[0] : null;
+    // a slot that does not fit the French verb is another verb of the engine's words («вмирали, щоб сміятися»): not sure
+    if (verb.slot === 'inf' && !infinitive) return null;
+    if (verb.slot[0] === 'i' && !imperative) return null;
     let alt = offlineDictAspect(alts, verb.slot, hit.aux || verb.aspect === 'perf');
     if (!alt) return null;
-    const form = verb.slot === 'inf' ? offlineDictHead(alt) : offlineDictUkInflect(d, offlineDictHead(alt), verb.slot, 'V');
-    return form ? [form, ...alt.split(/\s+/).slice(1)].join(' ') : null;
+    const words = alt.split(/\s+/), v = offlineDictVerbAt(words);
+    const form = verb.slot === 'inf' ? words[v] : offlineDictUkInflect(d, words[v], verb.slot, 'V');
+    return form ? [...words.slice(0, v), form, ...words.slice(v + 1)].join(' ') : null;
 }
+// A negation of the engine's words that a replacement would drop: «ніколи не було часу» is not «встигнуло».
+const OFFLINE_DICT_UK_NEGATION = /(^|[\s,])(не|ні|ніколи|нічого|ніхто|ані|немає|нема)(?=$|[\s,.!?])/iu;
+const offlineDictDropsNegation = (picked, fixed) => OFFLINE_DICT_UK_NEGATION.test(picked) && !OFFLINE_DICT_UK_NEGATION.test(fixed);
 // Whether the engine translated the expression word by word: its words are meanings of the expression's own words.
 function offlineDictLiteral(d, tokens, hit, picked) {
     if (offlineDictMeaningOf(d, [{ meanings: [{ uk: hit.expr.uk }] }], picked)) return false;   // the engine got it
@@ -436,8 +450,10 @@ async function offlineTranslateSentence(text, src, tgt, signal) {
         if (x.kind === 'expr') {
             // the engine's words must cover the whole expression: «<b>вішаю</b> стійку» marks one word of two, and replacing it
             // would leave the rest of the literal translation behind
-            const covers = word.split(/\s+/).length >= x.hit.content;
+            // and an expression with one content word («il faut», «au fond») is grammar the engine already handles
+            const covers = x.hit.content >= 2 && word.split(/\s+/).length >= x.hit.content;
             if (covers && offlineDictLiteral(d, tokens, x.hit, word)) fixed = offlineDictExpressionText(d, tokens, x.hit, word);
+            if (fixed && offlineDictDropsNegation(word, fixed)) fixed = null;
         } else if (!offlineDictMeaningOf(d, x.entries, word)) {
             const wrong = offlineDictConfusionOf(d, x.entries, word);
             const alts = wrong && offlineDictAlternatives(x.entries[0].meanings[0].uk);   // a verb keeps the aspect of the engine's word
