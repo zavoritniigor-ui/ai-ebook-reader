@@ -60,12 +60,12 @@ for (const model of ['openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'qwen/qwen
 }
 sent = null; r = await onRequestPost({ request: req('?provider=groq', { model: 'qwen/qwen3.6-27b' }, { origin: O, 'cf-connecting-ip': '7.7.7.7' }), env });
 ok('the retired qwen3.6 is no longer allowed', r.status === 400 && !sent);
-for (const model of ['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.6-luna']) {
+for (const model of ['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano']) {
     sent = null; globalThis.fetch = async (url, opt) => { sent = { url, opt, body: JSON.parse(opt.body) }; return new Response('{}'); };
     r = await onRequestPost({ request: req('?provider=openai', { model, max_output_tokens: 300 }, { origin: O, 'cf-connecting-ip': '6.6.6.6' }), env: { OPENAI_API_KEY: 'sk-proj-abcdefghijklmnopqrstuvwxyz' } });
     ok(`OpenAI ${model} is allowed`, r.status === 200 && sent.url.includes('api.openai.com') && sent.body.model === model && sent.body.store === false);
 }
-for (const model of ['gpt-5.5', 'gpt-4o', 'o3']) {
+for (const model of ['gpt-5.5', 'gpt-4o', 'o3', 'gpt-5.6-luna']) {   // luna: billed, in no free pool
     sent = null; r = await onRequestPost({ request: req('?provider=openai', { model }, { origin: O, 'cf-connecting-ip': '6.6.6.6' }), env: { OPENAI_API_KEY: 'sk-proj-abcdefghijklmnopqrstuvwxyz' } });
     ok(`OpenAI ${model} is not allowed`, r.status === 400 && !sent);
 }
