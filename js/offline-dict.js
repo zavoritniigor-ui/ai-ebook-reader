@@ -144,6 +144,7 @@ const OFFLINE_DICT_DET = new Set([...OFFLINE_DICT_DET_M, ...OFFLINE_DICT_DET_F, 
 const OFFLINE_DICT_SUBJECT = new Set(['je', "j'", 'tu', 'il', 'elle', 'on', 'nous', 'vous', 'ils', 'elles']);
 const OFFLINE_DICT_OBJECT = new Set(['me', "m'", 'te', "t'", 'se', "s'", 'le', 'la', 'les', "l'", 'lui', 'leur', 'y', 'en', 'ne', "n'"]);
 const OFFLINE_DICT_REFLEXIVE = new Set(['me', "m'", 'te', "t'", 'se', "s'", 'nous', 'vous', 'toi', 'moi']);
+const OFFLINE_DICT_AFTER_VERB = new Set(['toi', 'moi', 'nous', 'vous']);
 // Words that may stand between the words of a set expression: negation, pronouns, adverbs, the auxiliaries of compound tenses.
 const OFFLINE_DICT_FILLER = new Set(['ne', "n'", 'pas', 'plus', 'jamais', 'rien', 'bien', 'déjà', 'toujours', 'vraiment', 'encore', 'aussi', 'très', 'trop', 'enfin',
     'me', "m'", 'te', "t'", 'se', "s'", 'nous', 'vous', 'lui', 'leur', 'le', 'la', 'les', "l'", 'y', 'en']);
@@ -158,7 +159,8 @@ function offlineDictTokens(text, d) {
         let tok = { text: m[0], start: m.index, end: m.index + m[0].length };
         // a word with an apostrophe or a hyphen inside that the dictionary knows as ONE word (aujourd'hui, peut-être, est-ce)
         const glue = d && s.slice(tok.start).match(/^[\p{L}\p{M}]+(?:['’-][\p{L}\p{M}]+)+/u);
-        if (glue && glue[0].length > tok.text.length && offlineDictLookup(d, glue[0]).length) {
+        // — never an elided clitic with its verb: Lexique lists «s'est», but the expression needs «se» + «être»
+        if (glue && glue[0].length > tok.text.length && !OFFLINE_DICT_ELIDED[offlineDictNorm(tok.text)] && offlineDictLookup(d, glue[0]).length) {
             tok = { text: glue[0], start: tok.start, end: tok.start + glue[0].length };
             re.lastIndex = tok.end;
         }
@@ -194,9 +196,14 @@ function offlineDictEntriesHere(d, tokens, at) {
 }
 
 // ========== SET EXPRESSIONS ==========
-function offlineDictWordMatches(d, token, pattern) {
+// The possessives of an expression stand for any person: «faire ses devoirs» is also «je fais mes devoirs».
+const OFFLINE_DICT_POSSESSIVE = [new Set(['mon', 'ton', 'son', 'notre', 'votre', 'leur']), new Set(['ma', 'ta', 'sa', 'notre', 'votre', 'leur']),
+    new Set(['mes', 'tes', 'ses', 'nos', 'vos', 'leurs'])];
+function offlineDictWordMatches(d, token, pattern, before) {
     const t = OFFLINE_DICT_ELIDED[token.norm] || token.norm, p = OFFLINE_DICT_ELIDED[pattern] || pattern;
     if (t === p) return true;
+    if (OFFLINE_DICT_POSSESSIVE.some(set => set.has(t) && set.has(p))) return true;
+    if (before && before.norm === 'y' && p === 'avoir') return false;   // «il y a un chat dans la gorge» is not «avoir un chat…»
     if (p === 'se') return OFFLINE_DICT_REFLEXIVE.has(token.norm);
     const own = offlineDictLookup(d, pattern), there = offlineDictLookup(d, token.text);
     // a word that has its own content (a noun, a verb…): any of its forms; a grammatical word only as written
@@ -220,17 +227,19 @@ function offlineDictFindExpressions(d, tokens) {
                     if (OFFLINE_DICT_REFLEXIVE.has(tokens[at].norm)) { reflexive = true; take.push(at); at++; k++; continue; }
                     k++; continue;
                 }
-                if (offlineDictWordMatches(d, tokens[at], expr.words[k])) { take.push(at); at++; k++; continue; }
+                if (offlineDictWordMatches(d, tokens[at], expr.words[k], tokens[at - 1])) { take.push(at); at++; k++; continue; }
                 if (!take.length) { ok = false; break; }
                 const norm = tokens[at].norm, lemmas = offlineDictLookup(d, norm);
                 const auxiliary = lemmas.some(e => e.pos === 'V' && (e.lemma === 'avoir' || e.lemma === 'être'));
-                if (gaps < 3 && (OFFLINE_DICT_FILLER.has(norm) || auxiliary)) {
+                if (gaps < 3 && (OFFLINE_DICT_FILLER.has(norm) || auxiliary || OFFLINE_DICT_REFLEXIVE.has(norm))) {
                     if (auxiliary) aux = true;
                     if (OFFLINE_DICT_REFLEXIVE.has(norm)) reflexive = true;
                     gaps++; at++; continue;
                 }
                 ok = false; break;
             }
+            // an imperative ends with its reflexive pronoun: «lève-toi»
+            if (ok && !reflexive && k >= expr.words.length && at < tokens.length && OFFLINE_DICT_AFTER_VERB.has(tokens[at].norm)) { reflexive = true; take.push(at); }
             if (!ok || k < expr.words.length || !reflexive || !take.length) continue;
             if (take[0] !== start) continue;
             const from = take[0], to = take[take.length - 1];

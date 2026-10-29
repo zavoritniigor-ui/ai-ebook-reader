@@ -7,7 +7,8 @@
   * 30 set expressions drawn at random (fixed seed);
   * 20 sentences (dict/review_sentences.tsv): the Bergamot translation before and after the dictionary, and the tapped word. They
     come from the REVIEW lines printed by tests/offline_dict_real_browser.py in CI: save the
-    job log and pass it as REVIEW-LOG (without it the table says the run is missing).
+    job log and pass it as REVIEW-LOG (without it the table says the run is missing);
+  * 100 unusual sentences (dict/test_sentences_hard.tsv) from the HARD lines of the same log.
 """
 import json, random, re, sys, unicodedata
 from pathlib import Path
@@ -101,6 +102,20 @@ def main():
             mark = ' ✎' if r.get('changed') else ''
             out.append(f"| {n} | {r['sentence']} | {r['before']} | {r['after']}{mark} | {word} |")
         out += ['', '✎ — речення, у якому словник щось замінив.']
+    hard = [json.loads(m.group(1)) for m in re.finditer(r'HARD (\{.*\})', log)]
+    out += ['', '## 5. 100 незвичних речень', '',
+            'Рідкісні часи, омографи, еліція, вирази в інших часах і з запереченням, пастки, вигадані слова, розмовна мова, довгі '
+            'речення (`dict/test_sentences_hard.tsv`). Лему й вираз кожного слова перевіряє `tests/offline_dict_hard_browser.py` '
+            '(без моделей); переклади — справжній рушій у CI.', '']
+    if not hard:
+        out.append('_Прогону з рушієм ще немає._')
+    else:
+        changed = sum(1 for r in hard if r.get('changed'))
+        out += [f'Словник змінив {changed} речень зі {len(hard)}.', '',
+                '| # | Речення | Bergamot до | Після словника | Слово: до → після |', '|---|---|---|---|---|']
+        for n, r in enumerate(hard, 1):
+            word = f"**{r['word']}**: {r['wordBefore']} → {r['wordAfter']}" + (f" ({r['note']})" if r.get('note') else '')
+            out.append(f"| {n} | {r['sentence']} | {r['before']} | {r['after']}{' ✎' if r.get('changed') else ''} | {word} |")
     (root / 'dict/REVIEW_SAMPLE.md').write_text('\n'.join(out) + '\n', encoding='utf-8')
     print(f'dict/REVIEW_SAMPLE.md written; textbook words without meaning: {missing or "none"}; sentences: {len(runs)}')
 

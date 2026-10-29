@@ -5,7 +5,9 @@ translated by the engine alone ("before") and with the dictionary ("after"), and
 as REVIEW lines (they fill the before/after table of dict/REVIEW_SAMPLE.md). Checked: the dictionary is installed with the pack and
 its files are the pinned ones, every result is plain text (no leaked markup), a sentence the dictionary changed reads differently and
 the dictionary changes at least one, the tapped word's popup lists the dictionary's meanings for most words, nothing is cached, no
-CSP violation. Needs the network once (Mozilla's model storage)."""
+CSP violation. Then the 100 unusual sentences of dict/test_sentences_hard.tsv likewise (HARD lines; a word marked #2 is tapped at its
+first occurrence, as the app finds it): all translated as plain text, and the dictionary never doubles a word or cuts a sentence to
+less than half. Needs the network once (Mozilla's model storage)."""
 import hashlib, http.server, json, os, re, socketserver, tempfile, threading, time, urllib.request
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -13,6 +15,7 @@ from browser_cdp import CDP
 
 ROOT = Path(__file__).resolve().parents[1]
 SENTENCES = [l.split('\t') for l in (ROOT / 'dict/review_sentences.tsv').read_text(encoding='utf-8').splitlines() if l.strip() and not l.startswith('#')]
+HARD = [l.split('\t')[:2] for l in (ROOT / 'dict/test_sentences_hard.tsv').read_text(encoding='utf-8').splitlines() if l.strip() and not l.startswith('#')]
 CDN = 'https://firefox-settings-attachments.cdn.mozilla.net/'
 CACHE = Path(os.environ.get('READER_OFFLINE_MODEL_CACHE') or Path(tempfile.gettempdir()) / 'ai-reader-offline-test-models')
 CACHE.mkdir(parents=True, exist_ok=True)
@@ -101,10 +104,10 @@ try:
     check('1 the fr -> uk pack installs with its dictionary (both files pinned by the catalog)',
           "window.__installed === true && offlineTrPack.dicts['fr>uk'] && OFFLINE_DICTS['fr>uk'].files.every(f => offlineTrPack.dicts['fr>uk'].versions[f.type] === f.version)")
     ok('2 the dictionary files came from the site, the model files through the model proxy', any(p.startswith('dict/') for p in LOG) and sum(1 for p in LOG if p.startswith('main-workspace/')) == 6, LOG)
-    rows = []
-    for sentence, word in SENTENCES:
-        r = js(f"""(async () => {{
-            const s = {json.dumps(sentence)}, w = {json.dumps(word)};
+    def run(sentence, word):
+        name, _, nth = word.partition('#')
+        return js(f"""(async () => {{
+            const s = {json.dumps(sentence)}, w = {json.dumps(name)};
             const before = await offlineTranslate(s, 'fr', 'uk');
             const after = await offlineTranslateSentence(s, 'fr', 'uk');
             const sentenceDid = offlineDictLast;
@@ -115,11 +118,25 @@ try:
             return {{ sentence: s, word: w, before, after, changed: sentenceDid && sentenceDid.changed, wordBefore: picked || alone,
                 wordAfter: word && word.text, note: word && word.note || '', senses: word && word.senses || [] }};
         }})()""")
+    rows = []
+    for sentence, word in SENTENCES:
+        r = run(sentence, word)
         print('REVIEW ' + json.dumps(r, ensure_ascii=False), flush=True)
         rows.append(r)
     ok('3 every sentence and word is translated, as plain text', all(r['before'] and r['after'] and r['wordAfter'] and not any(ch in r['after'] + r['wordAfter'] for ch in '<>') for r in rows), rows)
     ok('4 a sentence the dictionary changed reads differently from the engine\'s, and at least one sentence was changed', all(r['after'] != r['before'] for r in rows if r['changed']) and any(r['changed'] for r in rows), rows)
     ok('5 the tapped word lists the dictionary\'s meanings for most words', sum(1 for r in rows if r['senses'] or r['note']) >= len(rows) // 2, rows)
+    # the 100 unusual sentences of tests/offline_dict_hard_browser.py, with the engine
+    hard = []
+    for sentence, word in HARD:
+        r = run(sentence, word)
+        print('HARD ' + json.dumps(r, ensure_ascii=False), flush=True)
+        hard.append(r)
+    ok('5b the 100 unusual sentences: every sentence and word translated, as plain text', all(r['before'] and r['after'] and r['wordAfter'] and not any(ch in r['after'] + r['wordAfter'] for ch in '<>') for r in hard), hard)
+    doubled = lambda t: re.search(r'(?<!\w)(\w+) \1(?!\w)', t.lower())
+    ok('5c ... the dictionary never doubles a word and never cuts a sentence to less than half its words',
+       all((doubled(r['after']) is None or doubled(r['before']) is not None) and len(r['after'].split()) * 2 >= len(r['before'].split()) for r in hard),
+       [r for r in hard if not ((doubled(r['after']) is None or doubled(r['before']) is not None) and len(r['after'].split()) * 2 >= len(r['before'].split()))])
     check('6 nothing of the pack was cached as a translation', "Object.keys(state.translationCache).length === 0")
     check('7 no CSP violation, nothing threw', "__errors.length === 0 && __csp.length === 0 ? true : JSON.stringify({csp: __csp, errors: __errors})")
     print('ALL PASS offline_dict_real_browser', flush=True)

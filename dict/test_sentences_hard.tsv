@@ -1,0 +1,111 @@
+# 100 unusual French sentences, written for this project, to test the offline dictionary (tests/offline_dict_hard_browser.py without
+# the models; tests/offline_dict_real_browser.py with the real engine). Columns: sentence TAB the word to tap (word#2 = its 2nd
+# occurrence) TAB the lemma it must be read as here (lemma:POS; - = a word the dictionary does not know) TAB the set expression the
+# word must be found in (- = none; it must NOT be found in one).
+# --- rare tenses and moods: the form leads to its lemma
+Il fallut que nous partissions avant l'aube.	partissions	partir:V	-
+Nous eûmes peur du silence de la forêt.	eûmes	avoir:V	avoir peur
+Qu'il fût roi ou mendiant, il riait de la même façon.	fût	être:V	-
+Elle vint, vit et repartit sans un mot.	vint	venir:V	-
+Je voudrais que tu fasses un effort.	fasses	faire:V	faire un effort
+S'ils avaient su, ils seraient restés chez eux.	su	savoir:V	-
+Nous craignîmes le pire toute la nuit.	craignîmes	craindre:V	-
+Pourvu qu'il pleuve demain sur les vignes !	pleuve	pleuvoir:V	-
+Ils naquirent la même année dans deux villages voisins.	naquirent	naître:V	-
+Il eût fallu le dire plus tôt.	fallu	falloir:V	il faut
+Que je sache, personne n'a téléphoné.	sache	savoir:V	-
+Nous nous assîmes au bord du lac gelé.	assîmes	asseoir:V	s'asseoir
+Elles se turent dès que la porte s'ouvrit.	turent	taire:V	se taire
+Vous résolûtes l'énigme en trois minutes.	résolûtes	résoudre:V	-
+Ils moururent de faim pendant le long hiver.	moururent	mourir:V	mourir de faim
+# --- homographs: the neighbours decide the reading
+Les poules du couvent couvent leurs œufs.	couvent#2	couver:V	-
+Les poules du couvent couvent leurs œufs.	couvent	couvent:N	-
+Nous portions les portions jusqu'à la cantine.	portions#2	portion:N	-
+Nous portions les portions jusqu'à la cantine.	portions	porter:V	-
+Le président et ses conseillers président la séance.	président	président:N	-
+Le pêcheur pêche une pêche au bord de l'eau.	pêche	pêcher:V	-
+Le pêcheur pêche une pêche au bord de l'eau.	pêche#2	pêche:N	-
+Le car est parti car il était en retard.	car#2	car:CON	-
+Le car est parti car il était en retard.	car	car:N	-
+Elle a fait un tour de la tour du château.	tour#2	tour:N	-
+Il marche vite vers le marché du soir.	marche	marcher:V	-
+Ce livre pèse une livre.	livre	livre:N	-
+Il a mis un vers dans le verre vert.	vers	vers:N	-
+Elle va vers la mer.	vers	vers:PRE	-
+Les fils électriques pendent du plafond.	pendent	pendre:V	-
+# --- elision, hyphens, inversion, punctuation
+Qu'est-ce qu'il t'a dit hier soir ?	dit	dire:V	-
+Donne-le-moi tout de suite, s'il te plaît !	suite	suite:N	tout de suite
+Aujourd'hui, l'homme n'a qu'une idée en tête.	homme	homme:N	-
+Rends-toi compte : il a tout oublié !	compte	compte:N	se rendre compte
+Peut-être que le train arrivera à l'heure.	heure	heure:N	à l'heure
+« Où vas-tu ? » demanda-t-elle à voix basse.	voix	voix:N	à voix basse
+L'hôtel, l'hôpital et l'école sont fermés.	hôpital	hôpital:N	-
+Jusqu'à quand resteras-tu chez ta grand-mère ?	resteras	rester:V	-
+Lève-toi, il est déjà huit heures !	lève	lever:V	se lever
+As-tu vu l'arc-en-ciel au-dessus de la colline ?	arc-en-ciel	arc-en-ciel:N	-
+Quel temps fait-il chez vous ?	temps	temps:N	quel temps fait-il
+Elle s'est levée du pied gauche ce matin.	pied	pied:N	se lever du pied gauche
+J'm'en fiche, moi !	fiche	ficher:V	-
+Écoute-moi bien : n'oublie jamais ta clé.	clé	clé:N	-
+Ah ! Quelle surprise, mon vieux !	surprise	surprise:N	-
+# --- set expressions in other tenses, with negation, with other possessives
+Nous n'avons jamais eu le temps de visiter le musée.	temps	temps:N	avoir le temps de
+Ils ont fait la grasse matinée jusqu'à midi.	matinée	matinée:N	faire la grasse matinée
+Elle ne s'est pas rendu compte de son erreur.	compte	compte:N	se rendre compte de
+Tu me casses les pieds avec tes questions !	pieds	pied:N	casser les pieds
+Hier, mon voisin est tombé dans les pommes au marché.	pommes	pomme:N	tomber dans les pommes
+Il nous a posé un lapin pour la troisième fois.	lapin	lapin:N	poser un lapin
+Je donne ma langue au chat, dis-moi la réponse.	chat	chat:N	donner sa langue au chat
+Les enfants mouraient de rire devant le clown.	rire	rire:V	mourir de rire
+Nous avons du pain sur la planche cette semaine.	planche	planche:N	avoir du pain sur la planche
+Il pleuvait des cordes quand nous sommes sortis.	cordes	corde:N	il pleut des cordes
+Elle a jeté un coup d'œil par la fenêtre.	œil	œil:N	jeter un coup d'œil
+Ne tourne pas autour du pot, parle franchement.	pot	pot:N	tourner autour du pot
+Ils ont mis les voiles avant l'arrivée de la nuit.	voiles	voile:N	mettre les voiles
+Mon grand-père a vendu la mèche au dîner.	mèche	mèche:N	vendre la mèche
+Vous avez eu raison de partir tôt.	raison	raison:N	avoir raison
+Elle se brossait les dents en chantant.	dents	dent:N	se brosser les dents
+Ça coûte les yeux de la tête, ce manteau !	yeux	œil:N	coûter les yeux de la tête
+Il faisait un froid de canard ce matin-là.	canard	canard:N	il fait un froid de canard
+Nous allons prendre le taureau par les cornes.	taureau	taureau:N	prendre le taureau par les cornes
+Après l'école, je fais mes devoirs dans la cuisine.	devoirs	devoir:N	faire ses devoirs
+# --- traps: the words of an expression, but meant literally or apart
+Le chat a mangé la langue du poisson.	langue	langue:N	-
+Il a posé le lapin en peluche sur le lit.	lapin	lapin:N	-
+Les pommes sont tombées dans le panier.	pommes	pomme:N	-
+Il a donné un coup de pied dans le ballon.	pied	pied:N	coup de pied
+Le coup de vent a cassé la main de la statue.	main	main:N	-
+Le temps de cuisson est de dix minutes.	temps	temps:N	-
+Nous avons vu un loup près de la rivière.	loup	loup:N	-
+Elle porte un sac de pommes de terre.	terre	terre:N	pomme de terre
+Il y a un chat dans la gorge du canyon.	gorge	gorge:N	-
+Le train de huit heures est arrivé.	train	train:N	-
+Ses yeux sont plus gros que les miens.	yeux	œil:N	-
+La question du lapin reste ouverte.	lapin	lapin:N	-
+Le pied de la table est cassé.	pied	pied:N	-
+Le petit train passe devant la gare.	train	train:N	-
+Il fait ses bagages dans la chambre.	bagages	bagage:N	-
+# --- invented words, capitals, numbers, symbols, the spoken language
+Le zorglub a mangé 42 croissants au petit matin.	zorglub	-	-
+ALLONS AU MARCHÉ AVANT MIDI !	MARCHÉ	marché:N	-
+Elle a écrit « bonjour » avec trois émojis 🙂🙂🙂.	écrit	écrire:V	-
+Le prix est passé de 3,50 € à 4,20 € en un an.	prix	prix:N	-
+Le wifi de l'hôtel ne marche pas.	marche	marcher:V	-
+Mon courriel est arrivé à 23 h 15.	arrivé	arriver:V	-
+Le grumplon est parti sans nous.	grumplon	-	-
+Ouais, c'est trop stylé, ton blouson !	blouson	blouson:N	-
+T'as vu le mec avec le chapeau ?	mec	mec:N	-
+C'est ouf, j'ai kiffé ce concert !	concert	concert:N	-
+# --- long sentences, unusual word order
+Au fond du jardin, sous un vieux pommier, dormait un chat noir.	dormait	dormir:V	-
+Rarement ai-je vu une mer aussi calme.	mer	mer:N	-
+Partout ailleurs, la neige avait déjà fondu.	neige	neige:N	-
+Plus il parlait, moins on le comprenait.	parlait	parler:V	-
+Qu'elle était belle, la ville sous la pluie !	belle	beau:A	-
+Ni le froid ni la faim ne l'arrêtèrent.	faim	faim:N	-
+De temps en temps, un oiseau traversait le ciel gris.	temps	temps:N	de temps en temps
+Tout à coup, les lumières s'éteignirent.	coup	coup:N	tout à coup
+À vrai dire, je n'en sais rien du tout.	vrai	vrai:A	à vrai dire
+Petit à petit, l'oiseau fait son nid.	nid	nid:N	petit à petit l'oiseau fait son nid
