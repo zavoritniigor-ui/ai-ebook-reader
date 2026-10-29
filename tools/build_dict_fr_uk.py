@@ -453,7 +453,10 @@ def main():
         raise SystemExit('dict/src/written-*.tsv:\n  ' + '\n  '.join(written_errors[:60]))
 
     if args.todo is not None:
-        todo = sorted((k for k in lex if k not in meanings and lex[k]['src'] == 'lexique' and k[1] != 'INTJ'), key=lambda k: -lex[k]['f'])
+        written = {(cols[0], cols[1]) for _, _, cols in read_tsv('written-*.tsv')}
+        # Not yet written: lemmas without a meaning, and frequent ones whose only meanings come from Wiktionary (to complete them).
+        todo = sorted((k for k in lex if k not in written and lex[k]['src'] == 'lexique' and k[1] != 'INTJ'
+                       and (k not in meanings or lex[k]['f'] >= 20)), key=lambda k: -lex[k]['f'])
         for k in todo[args.todo_from:args.todo_from + args.todo]:
             eng = ' | '.join(s for s in english.get(k, [])[:4])[:160]
             print(f'{k[0]}\t{k[1]}\t{lex[k]["g"]}\t{lex[k]["f"]:.2f}\t{eng}\t{"; ".join(wikt_found.get(k, []))}')
