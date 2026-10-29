@@ -348,7 +348,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         const previewTimer = setTimeout(async () => {
             // a word: its meaning in this sentence (js/offline-translate.js offlineTranslateWord), a phrase: as it is
             const word = !isMultiWord ? await offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal) : null;
-            const local = word ? null : isMultiWord ? await offlineTranslate(cleanText, srcCode, targetLang, task.signal) : null;
+            const local = word ? null : isMultiWord ? await offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal) : null;   // with the pack's dictionary, if any
             if (!(word || local) || aiDone || myLookup !== state.lookupToken || !task.current()) return;
             els.ttTranslation.innerHTML = word ? offlineTrWordHtml(word) : escapeHtml(local) + ' <span class="tt-note">⌂</span>';
             const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
@@ -403,7 +403,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 // The AI on the device (js/device-llm.js) sees the context and translates better than the offline pack, which is the last resort.
                 try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, selectionContext, task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
                 if (local) { quality = 'device'; mark = t('dlMark'); }
-                else if ((local = await offlineTranslate(cleanText, srcCode, targetLang, task.signal))) quality = 'device';
+                else if ((local = await offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal))) quality = 'device';
             }
             if (myLookup !== state.lookupToken || !task.current()) return;
             if (local) html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`;

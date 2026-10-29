@@ -30,7 +30,7 @@ const OFFLINE_TR_SAMPLES = {
     ru: 'Старик читает книгу в саду.', zh: '老人在花园里读书。', ko: '노인이 정원에서 책을 읽고 있습니다.', hi: 'बूढ़ा आदमी बगीचे में किताब पढ़ रहा है।'
 };
 
-let offlineTrPack = null;            // запис стану з Cache Storage: { v, engine, models: { id: { version, gemm, types, at } }, directions: ['fr>uk'] }
+let offlineTrPack = null;            // запис стану з Cache Storage: { v, engine, models: { id: { version, gemm, types, at } }, directions: ['fr>uk'], dicts: { 'fr>uk': { version, types } } }
 let offlineTrWorker = null, offlineTrBoot = null, offlineTrIdleTimer = 0, offlineTrSeq = 0, offlineTrQueue = Promise.resolve();
 let offlineTrFailure = '', offlineTrLast = null, offlineTrLog = [];   // для діагностики: чому рушій не запрацював, останній переклад, останні рядки рушія
 const offlineTrWaiting = new Map();
@@ -62,24 +62,36 @@ function offlineTrReady(pack, route) {
     return !!route && pack.engine === OFFLINE_CATALOG.engine.version && route.every(id => pack.models[id]);
 }
 function offlineTrModelBytes(id) { return OFFLINE_CATALOG.models[id].files.reduce((sum, f) => sum + f.size, 0); }
-// Скільки ще треба завантажити для напрямку (з рушієм, якщо його ще нема).
-function offlineTrMissingBytes(pack, route) {
+// Скільки ще треба завантажити для напрямку (з рушієм, якщо його ще нема, і зі словником напрямку, js/offline-dict.js).
+function offlineTrMissingBytes(pack, route, direction) {
     let bytes = pack.engine === OFFLINE_CATALOG.engine.version ? 0 : OFFLINE_CATALOG.engine.wasm.size;
     for (const id of route) if (!pack.models[id]) bytes += offlineTrModelBytes(id);
+    if (direction && !offlineTrDictReady(pack, direction)) bytes += offlineTrDictBytes(direction);
     return bytes;
+}
+// The offline dictionary of a direction (js/offline-dict-catalog.js): installed with the pack, in the same cache and state record.
+// A dictionary is "installed" only in the version of the catalog: a newer one is downloaded by the same Download button.
+const offlineTrDictOf = (direction) => (typeof OFFLINE_DICTS === 'object' && OFFLINE_DICTS[direction]) || null;
+const offlineTrDictBytes = (direction) => (offlineTrDictOf(direction) || { files: [] }).files.reduce((sum, f) => sum + f.size, 0);
+function offlineTrDictReady(pack, direction) {
+    const dict = offlineTrDictOf(direction), have = pack.dicts && pack.dicts[direction];
+    return !dict || !!(have && dict.files.every(f => have.versions && have.versions[f.type] === f.version));
 }
 
 // ========== СХОВИЩЕ (Cache Storage) ==========
 const offlineTrKey = (...parts) => location.origin + '/__offline-translation/' + parts.map(encodeURIComponent).join('/');
 async function offlineTrLoad() {
     if (offlineTrPack) return offlineTrPack;
-    let pack = { v: 1, engine: '', models: {}, directions: [] };
+    let pack = { v: 1, engine: '', models: {}, directions: [], dicts: {} };
     try {
         // caches.has, не open: сам запуск застосунку не створює порожній кеш (і не стає першим у caches.keys() перед кешем оболонки).
         const res = await caches.has(OFFLINE_TR_CACHE) && await (await caches.open(OFFLINE_TR_CACHE)).match(offlineTrKey('state'));
         const saved = res && await res.json();
         if (saved && saved.v === 1 && saved.models && typeof saved.models === 'object' && Array.isArray(saved.directions)
             && Object.values(saved.models).every(m => m && m.gemm && Array.isArray(m.types))) pack = saved;
+        // A record written before the dictionaries (or a damaged dictionary part) simply has none: the rest of the pack stays.
+        if (!pack.dicts || typeof pack.dicts !== 'object' || Array.isArray(pack.dicts)
+            || !Object.values(pack.dicts).every(d => d && d.versions && typeof d.versions === 'object')) pack.dicts = {};
     } catch (e) { /* нема Cache Storage (приватне вікно, небезпечний контекст): нічого не встановлено */ }
     return offlineTrPack = pack;
 }
@@ -92,6 +104,7 @@ async function offlineTrCollectGarbage(pack) {
     const cache = await caches.open(OFFLINE_TR_CACHE), keep = new Set([offlineTrKey('state')]);
     if (pack.engine) keep.add(offlineTrKey('engine', pack.engine));
     for (const [id, model] of Object.entries(pack.models)) for (const type of model.types) keep.add(offlineTrKey('file', id, type));
+    for (const [direction, dict] of Object.entries(pack.dicts || {})) for (const type of Object.keys(dict.versions)) keep.add(offlineTrKey('dict', direction, type, dict.versions[type]));
     for (const request of await cache.keys()) if (!keep.has(request.url)) await cache.delete(request);
 }
 
@@ -130,6 +143,10 @@ async function offlineTrInstall(src, tgt, { onProgress, signal } = {}) {
         if (pack.models[id]) continue;
         model.files.forEach((file, i) => jobs.push({ key: offlineTrKey('file', id, file.type), url: '/api/offline-model?f=' + encodeURIComponent(file.path), file, id, last: i === model.files.length - 1 }));
     }
+    // The direction's dictionary: static files of the site, pinned like the models (size + SHA-256).
+    const direction = src + '>' + tgt, dict = offlineTrDictOf(direction);
+    if (dict && !offlineTrDictReady(pack, direction))
+        dict.files.forEach((file, i) => jobs.push({ key: offlineTrKey('dict', direction, file.type, file.version), url: new URL(file.path, location.href).href, file, dict: direction, last: i === dict.files.length - 1 }));
     const total = jobs.reduce((sum, job) => sum + job.file.size, 0);
     let done = 0;
     if (onProgress) onProgress(0, total);
@@ -143,7 +160,9 @@ async function offlineTrInstall(src, tgt, { onProgress, signal } = {}) {
                 catch (e) { throw offlineTrError(e && e.name === 'QuotaExceededError' ? 'quota' : 'storage'); }
             }
             if (job.engine) { pack.engine = engine.version; await offlineTrSave(pack); }
-            else if (job.last) {
+            else if (job.dict) {
+                if (job.last) { pack.dicts[job.dict] = { versions: Object.fromEntries(dict.files.map(f => [f.type, f.version])), at: Date.now() }; await offlineTrSave(pack); }
+            } else if (job.last) {
                 const model = OFFLINE_CATALOG.models[job.id];
                 pack.models[job.id] = { version: model.version, gemm: model.gemm, types: model.files.map(f => f.type), at: Date.now() };
                 await offlineTrSave(pack);
@@ -161,6 +180,8 @@ async function offlineTrInstall(src, tgt, { onProgress, signal } = {}) {
 async function offlineTrRemove(src, tgt) {
     const pack = await offlineTrLoad(), needed = new Set();
     pack.directions = pack.directions.filter(d => d !== src + '>' + tgt);
+    delete pack.dicts[src + '>' + tgt];   // the dictionary goes with its direction
+    if (typeof offlineDictForget === 'function') offlineDictForget(src + '>' + tgt);
     for (const d of pack.directions) for (const id of offlineTrRoute(...d.split('>')) || []) needed.add(id);
     for (const id of Object.keys(pack.models)) if (!needed.has(id)) delete pack.models[id];
     if (!Object.keys(pack.models).length) pack.engine = '';
@@ -173,7 +194,7 @@ async function offlineTrRemove(src, tgt) {
 // завантаження, а не показували «встановлено» пакет, що не перекладає.
 async function offlineTrForget() {
     const pack = await offlineTrLoad();
-    pack.engine = ''; pack.models = {}; pack.directions = [];
+    pack.engine = ''; pack.models = {}; pack.directions = []; pack.dicts = {};
     try { await offlineTrSave(pack); await offlineTrCollectGarbage(pack); } catch (e) { /* сховище недоступне: запис у пам'яті вже порожній */ }
 }
 
@@ -249,6 +270,7 @@ function offlineTrWorkerMain() {
 }
 function offlineTrStop() {
     clearTimeout(offlineTrIdleTimer);
+    if (typeof offlineDictRelease === 'function') offlineDictRelease();   // the parsed dictionary is memory too; reading it back takes a moment
     offlineTrBoot = null;
     if (offlineTrWorker) { offlineTrWorker.terminate(); offlineTrWorker = null; }
     for (const waiting of offlineTrWaiting.values()) waiting.reject(offlineTrError('stopped'));
@@ -342,13 +364,20 @@ async function offlineTranslateWord(word, sentence, src, tgt, signal) {
     let inContext = null;
     if (marked) inContext = offlineTrPicked(await offlineTranslate(marked, src, tgt, signal, true), word);
     if (signal && signal.aborted) return null;
-    if (!inContext) return { text: alone, alone: null };
-    inContext = offlineTrCase(inContext, word);
-    return { text: inContext, alone: inContext.toLocaleLowerCase() === alone.toLocaleLowerCase() ? null : alone };
+    let result;
+    if (!inContext) result = { text: alone, alone: null };
+    else {
+        inContext = offlineTrCase(inContext, word);
+        result = { text: inContext, alone: inContext.toLocaleLowerCase() === alone.toLocaleLowerCase() ? null : alone };
+    }
+    // The direction's dictionary (js/offline-dict.js), when installed, names the meaning and lists the others; an unknown word stays as it was.
+    return (await offlineDictWord(word, sentence, src, tgt, result, inContext)) || result;
 }
-// The popup's line for it: the meaning here, the word's own after it, the ⌂ mark.
+// The popup's line for it: the meaning here, the word's own after it, the ⌂ mark; with the dictionary, its other meanings below.
 function offlineTrWordHtml(result) {
-    return escapeHtml(result.text) + (result.alone ? ` <span class="tt-context">(${escapeHtml(t('offAlone'))}: ${escapeHtml(result.alone)})</span>` : '') + ' <span class="tt-note">⌂</span>';
+    return escapeHtml(result.text) + (result.note ? ` <span class="tt-context">(${escapeHtml(result.note)})</span>` : '')
+        + (result.alone ? ` <span class="tt-context">(${escapeHtml(t('offAlone'))}: ${escapeHtml(result.alone)})</span>` : '') + ' <span class="tt-note">⌂</span>'
+        + (result.senses && result.senses.length ? offlineDictSensesHtml(result) : '');
 }
 // js/translation.js кличе це, коли переклад не вдався: пакет для цього напрямку існує, але не встановлений — один раз за запуск на
 // напрямок показуємо підказку, куди йти. Не в самому тексті вікна: його повідомлення (потрібен AI / потрібен інтернет) лишаються як були.
@@ -365,7 +394,7 @@ async function offlineTrSuggest(src, tgt) {
 function offlineTrReport() {
     const pack = offlineTrPack;
     return { supported: offlineTrSupported(), engine: pack ? pack.engine : 'not read yet', catalogEngine: OFFLINE_CATALOG.engine.version, models: pack ? Object.fromEntries(Object.entries(pack.models).map(([id, m]) => [id, m.version])) : null,
-        directions: pack ? pack.directions : null, workerRunning: !!offlineTrWorker, failure: offlineTrFailure, last: offlineTrLast, engineLog: offlineTrLog };
+        directions: pack ? pack.directions : null, dicts: pack ? pack.dicts : null, dictLast: typeof offlineDictLast === 'object' ? offlineDictLast : null, workerRunning: !!offlineTrWorker, failure: offlineTrFailure, last: offlineTrLast, engineLog: offlineTrLog };
 }
 
 // ========== НАЛАШТУВАННЯ: секція в діалозі 🔑 ==========
@@ -436,8 +465,9 @@ async function offlineTrRefreshBox(clearStatus = false) {
     const supported = offlineTrSupported();
     box.querySelector('#offline-note').textContent = !supported ? t('offUnsupported') : (route ? '' : t('offNoRoute'));
     install.hidden = !supported || !route;
-    if (route && offlineTrReady(pack, route)) { install.disabled = true; install.textContent = t('offHave'); }
-    else if (route) { install.disabled = busy; install.textContent = t('offDownload').replace('{mb}', offlineTrMb(offlineTrMissingBytes(pack, route))); }
+    const direction = select.value + '>' + tgt;
+    if (route && offlineTrReady(pack, route) && offlineTrDictReady(pack, direction)) { install.disabled = true; install.textContent = t('offHave'); }
+    else if (route) { install.disabled = busy; install.textContent = t('offDownload').replace('{mb}', offlineTrMb(offlineTrMissingBytes(pack, route, direction))); }
     box.querySelector('#offline-cancel').hidden = !busy;
     box.querySelector('#offline-progress').hidden = !busy;
     const list = box.querySelector('#offline-list');
@@ -446,7 +476,9 @@ async function offlineTrRefreshBox(clearStatus = false) {
         const [src, dst] = direction.split('>'), ids = offlineTrRoute(src, dst) || [];
         const li = document.createElement('li'); li.dataset.direction = direction;
         const label = document.createElement('span');
-        label.textContent = `${offlineTrLangName(src)} → ${offlineTrLangName(dst)} · ${offlineTrMb(ids.reduce((sum, id) => sum + offlineTrModelBytes(id), 0))}${offlineTrUnitMb()}`;
+        const dictBytes = pack.dicts[direction] ? offlineTrDictBytes(direction) : 0;
+        label.textContent = `${offlineTrLangName(src)} → ${offlineTrLangName(dst)} · ${offlineTrMb(ids.reduce((sum, id) => sum + offlineTrModelBytes(id), dictBytes))}${offlineTrUnitMb()}`
+            + (dictBytes ? ' · ' + t('offWithDict') : '');
         const test = Object.assign(document.createElement('button'), { type: 'button', className: 'btn-ghost', textContent: t('offTest') }); test.dataset.act = 'test';
         const remove = Object.assign(document.createElement('button'), { type: 'button', className: 'btn-ghost', textContent: t('offRemove') }); remove.dataset.act = 'remove';
         li.append(label, test, remove);
