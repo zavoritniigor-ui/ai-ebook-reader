@@ -17,6 +17,9 @@ class CDP:
                 # UI, so every test browser reports a Ukrainian system language regardless of the Chrome flags/host.
                 ua = self.call('Runtime.evaluate', expression='navigator.userAgent', returnByValue=True)['result']['value']
                 self.call('Emulation.setUserAgentOverride', userAgent=ua, acceptLanguage='uk-UA,uk')
+                # The welcome video (js/welcome.js) covers the screen for 4.5 s: a suite's first tap would land on it.
+                # tests/welcome_browser.py removes this script to check the video itself.
+                self.no_welcome = self.call('Page.addScriptToEvaluateOnNewDocument', source='window.__readerNoWelcome = true')['identifier']
                 self._forget_stored_translations()
                 return
             except (ConnectionError, OSError) as e:

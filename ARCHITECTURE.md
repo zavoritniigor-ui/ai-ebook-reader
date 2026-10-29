@@ -62,11 +62,15 @@ it during the migration would have been an unplanned behavior change.
 ## Load order (index.html)
 
 ```
-core.js → lang-detect.js → tts.js → selection.js → learning-stats.js → navigation.js → pdf-zoom-pan.js →
+(welcome.js at the top of <body>) → core.js → lang-detect.js → tts.js → selection.js → learning-stats.js → navigation.js → pdf-zoom-pan.js →
 ui-tooltip.js → translation.js → grammar-svo.js → ai-client.js → dictation.js →
 pdf-ink.js → pdf-crop.js → pdf-render.js → formats.js → onboarding.js → library.js → quick-wheel.js → main.js →
 pwa-lifecycle.js
 ```
+
+`welcome.js` is the welcome video played when the app is opened (#app-welcome): it is loaded right after its markup at the top of `<body>`, before the
+rest of the page is parsed, and refers to nothing in the other modules. The browser suites start without it
+(`tests/browser_cdp.py` sets `window.__readerNoWelcome`); `tests/welcome_browser.py` checks it.
 
 Three positions in this order are load-bearing, not arbitrary:
 

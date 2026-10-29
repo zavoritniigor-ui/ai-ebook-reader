@@ -1617,9 +1617,26 @@
         #developer-dialog .dev-avoid, #developer-dialog .dev-write-note, #developer-dialog .dev-sign { color: var(--text-muted); font-size: 13.5px; }
         #developer-dialog .dev-write { display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 12px; font-weight: 700; text-decoration: none; }
         #developer-dialog .dev-mail { color: var(--accent-color); }
+        /* The welcome video played when the app is opened (js/welcome.js): the whole screen. On a tall screen the 16:9 picture is enlarged so the book and the
+           title fill most of the width (only the sparks at its sides are cut) and fades into the video's own dark blue above and below. */
+        #app-welcome { position: fixed; inset: 0; z-index: 2147483000; background: #01040a; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: opacity .35s ease; }
+        #app-welcome[hidden] { display: none; }
+        #app-welcome.welcome-out { opacity: 0; pointer-events: none; }
+        #app-welcome video { width: 100%; height: 100%; object-fit: cover; }
+        @media (orientation: portrait) {
+            #app-welcome video { flex: none; width: 165vw; height: auto; aspect-ratio: 16 / 9; object-fit: cover;
+                -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); }
+        }
     </style>
 </head>
 <body data-theme="light" class="immersive-mode" inert>
+    <div id="app-welcome" hidden aria-hidden="true">
+        <video muted playsinline preload="none" disablepictureinpicture>
+            <source src="media/welcome.webm" type="video/webm">
+            <source src="media/welcome.mp4" type="video/mp4">
+        </video>
+    </div>
+    <script src="js/welcome.js?v=85fc42ac07c7"></script>
 
     <!-- Top/full menu toggle — independent of the bottom Quick Menu. Its own control,
          its own state (body.immersive-mode), unchanged since before the Quick Menu
