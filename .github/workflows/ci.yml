@@ -34,6 +34,7 @@ jobs:
           python3 tests/browser_cdp_transport.py
           python3 tests/ci_suite_coverage.py
           python3 tests/book_tts_columns_test.py
+          python3 tests/dict_fr_uk_data.py
           node --check sw.js
           node --check archive-guard.worker.js
           node tests/shared_ai_proxy_test.mjs
@@ -373,6 +374,8 @@ jobs:
 
           echo "Running offline_translation_browser.py (downloads ~50 MB of Mozilla models once)..."
           python3 -u tests/offline_translation_browser.py
+          echo "Running offline_dict_browser.py (the offline French-Ukrainian dictionary on an invented fixture)..."
+          python3 -u tests/offline_dict_browser.py
           echo "Running device_llm_browser.py (on-device AI with a stand-in model and engine)..."
           python3 -u tests/device_llm_browser.py
 
