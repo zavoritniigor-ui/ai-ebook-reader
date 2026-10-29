@@ -278,4 +278,27 @@
 
 Речення написані для цього проєкту. «До» — переклад пакета Bergamot (fr → en → uk) як є; «після» — той самий переклад, виправлений словником там, де він упевнений. Переклади зроблені справжнім рушієм і справжніми моделями Mozilla в CI (`tests/offline_dict_real_browser.py`).
 
-_Прогону з рушієм ще немає: запустіть CI і передайте журнал задачі цьому інструменту._
+| # | Речення | Bergamot до | Після словника | Слово: до → після |
+|---|---|---|---|---|
+| 1 | Nous attendons dans la file pour la carte d'étudiant. | Ми чекаємо в черзі на студентський квиток. | Ми чекаємо в черзі на студентський квиток. | **file**: в черзі на → черга |
+| 2 | Le samedi, ma mère fait le ménage et mon père fait la cuisine. | У суботу мама прибирає, а батько готує. | У суботу мама прибирає, а батько готує. | **ménage**: прибирає → прибирати (faire le ménage) |
+| 3 | Il fait beau aujourd'hui, alors nous allons à la plage. | Погода сьогодні гарна, тому ми йдемо на пляж. | Погода сьогодні гарна, тому ми йдемо на пляж. | **beau**: сьогодні гарна → гарна погода (il fait beau) |
+| 4 | Je me suis rendu compte que j'avais oublié mon cahier. | Я зрозумів, що забув свій блокнот. | Я зрозумів, що забув свій блокнот. | **rendu**: зрозумів → усвідомлювати (se rendre compte) |
+| 5 | Les enfants ont besoin de dormir huit heures par nuit. | Діти повинні спати вісім годин на добу. | Діти повинні спати вісім годин на добу. | **besoin**: повинні → потребувати (avoir besoin de) |
+| 6 | Il y a une boulangerie en face de la gare. | Перед вокзалом є пекарня. | Перед вокзалом є пекарня. | **face**: Перед → навпроти (en face de) |
+| 7 | Nos voisins pendent la crémaillère samedi soir. | Наші сусіди вішаю стійку в суботу ввечері. | Наші сусіди вішаю стійку в суботу ввечері. | **crémaillère**: вішаю → справляти новосілля (pendre la crémaillère) |
+| 8 | Elle a pris le train de huit heures pour aller au travail. | Вона сіла на восьмигодинний поїзд на роботу. | Вона сіла на восьмигодинний поїзд на роботу. | **pris**: сіла → їхати поїздом (prendre le train) |
+| 9 | Après l'école, Paul fait ses devoirs dans sa chambre. | Після школи Пол робить домашнє завдання у своїй кімнаті. | Після школи Пол робить домашнє завдання у своїй кімнаті. | **devoirs**: домашнє завдання → робити домашнє завдання (faire ses devoirs) |
+| 10 | Mon frère cherche un emploi dans une grande entreprise. | Мій брат шукає роботу у великій компанії. | Мій брат шукає роботу у великій компанії. | **emploi**: роботу → шукати роботу (chercher un emploi) |
+| 11 | Tu peux me donner un coup de main avec ces valises ? | Можеш дати мені руку з цими валізами? | Можеш дати мені руку з цими валізами? | **coup**: мені руку → допомагати (donner un coup de main) |
+| 12 | Ma grand-mère se lève tôt et se promène dans le jardin. | Моя бабуся рано встає і ходить по саду. | Моя бабуся рано встає і ходить по саду. | **lève**: рано встає → вставати (se lever) |
+| 13 | Nous avons rendez-vous devant le musée à dix heures. | У нас зустріч перед музеєм о десятій годині. | У нас зустріч перед музеєм о десятій годині. | **rendez-vous**: зустріч → мати зустріч (avoir rendez-vous) |
+| 14 | Le professeur pose une question et les élèves lèvent la main. | Вчитеей задає питання, і учні піднімають руку. | Вчитеей задає питання, і учні піднімають руку. | **pose**: Вчитеей → ставити запитання (poser une question) |
+| 15 | Il pleut, mais j'ai oublié mon parapluie à la maison. | Їхає дощ, але я забув свою парасольку вдома. | Їхає дощ, але я забув свою парасольку вдома. | **oublié**: але я забув → забути (oublier) |
+| 16 | Cette robe coûte les yeux de la tête ! | Ця сукня коштує очі голови! | Ця сукня коштує очі голови! | **yeux**: очі → коштувати шалених грошей (coûter les yeux de la tête) |
+| 17 | Je n'ai pas le temps de prendre le petit-déjeuner. | У мене немає часу на сніданок. | У мене немає часу снідати. ✎ | **temps**: часу → час |
+| 18 | Ils se sont mariés l'été dernier dans un petit village. | Вони одружилися минулого літа в маленькому селі. | Вони одружилися минулого літа в маленькому селі. | **été**: літа → літо |
+| 19 | Pierre est tombé amoureux de sa voisine. | Петро закохався в ближнього. | Петро закохався в ближнього. | **tombé**: закохався → закохуватися (tomber amoureux de) |
+| 20 | À la fin du cours, nous rangeons nos livres dans le cartable. | Наприкінці курсу ми поклали наші книги в шкільний рюкзак. | Наприкінці курсу ми поклали наші книги в шкільний рюкзак. | **rangeons**: поклали → поклали (ranger) |
+
+✎ — речення, у якому словник щось замінив.
