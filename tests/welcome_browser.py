@@ -68,11 +68,14 @@ c.call('Network.setBlockedURLs', urls=['*media/welcome*'])
 open_app(None)
 check('9 without the video file (offline: it is not in the offline cache) the app is there within a second', GONE % 15)
 c.call('Network.setBlockedURLs', urls=[])
-c.call('Emulation.setDeviceMetricsOverride', width=400, height=860, deviceScaleFactor=1, mobile=True)
-open_app(None)
-check('10 on a tall phone screen the book and the title fill most of the width (the picture is enlarged, its middle 60 % shown), on the video’s own dark blue', """(() => {
-    const s = document.getElementById('app-welcome'), r = s.querySelector('video').getBoundingClientRect();
-    return !s.hidden && Math.abs(r.width - innerWidth * 1.65) < 2 && Math.abs(r.left + r.width / 2 - innerWidth / 2) < 2 && r.height < innerHeight
-        && getComputedStyle(s).backgroundColor === 'rgb(1, 4, 10)' || JSON.stringify({ w: r.width, left: r.left, h: r.height });
-})()""")
+WIDTH = "(() => { const w = document.getElementById('app-welcome'); return !w.hidden && Math.round(w.querySelector('video').getBoundingClientRect().width); })()"
+for (w, h, dpr, want, what) in [(1280, 800, 1, 1280, 'a 1280-pixel monitor: the whole width'), (1280, 800, 2, 640, 'a dense tablet screen (2 pixels a point): 1280 pixels = 640 points, never stretched'),
+                               (400, 860, 2.6, 400, 'a phone: the screen width, smaller than its pixels'), (1920, 1080, 1, 1280, 'a big monitor: its own 1280 pixels in the middle')]:
+    c.call('Emulation.setDeviceMetricsOverride', width=w, height=h, deviceScaleFactor=dpr, mobile=w < 800)
+    open_app(None)
+    got = c.js(WIDTH)
+    assert got == want, (what, got, want)
+    print(f'PASS 10 the video is never enlarged past its own pixels — {what}: {got} points wide', flush=True)
+check('11 on its own dark blue, its edges fading into it', """(() => { const s = document.getElementById('app-welcome'), v = s.querySelector('video'), cs = getComputedStyle(v);
+    return getComputedStyle(s).backgroundColor === 'rgb(1, 4, 10)' && /gradient/.test(cs.maskImage || cs.webkitMaskImage) && cs.objectFit === 'contain'; })()""")
 print('ALL WELCOME VIDEO CHECKS PASSED')
