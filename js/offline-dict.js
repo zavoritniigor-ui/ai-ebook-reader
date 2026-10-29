@@ -437,13 +437,13 @@ Object.assign(I18N, {
     offWithDict: { uk: 'зі словником', en: 'with dictionary', fr: 'avec dictionnaire', ru: 'со словарём', zh: '含词典', ko: '사전 포함', hi: 'शब्दकोश सहित', ga: 'le foclóir', es: 'con diccionario' },
     offDictTitle: { uk: 'Словник', en: 'Dictionary', fr: 'Dictionnaire', ru: 'Словарь', zh: '词典', ko: '사전', hi: 'शब्दकोश', ga: 'Foclóir', es: 'Diccionario' },
     offPosN: { uk: 'ім.', en: 'n.', fr: 'n.', ru: 'сущ.', zh: '名词', ko: '명사', hi: 'संज्ञा', ga: 'ainm.', es: 's.' },
-    offPosV: { uk: 'дієсл.', en: 'v.', fr: 'v.', ru: 'гл.', zh: '动词', ko: '동사', hi: 'क्रिया', ga: 'br.', es: 'v.' },
-    offPosA: { uk: 'прикм.', en: 'adj.', fr: 'adj.', ru: 'прил.', zh: '形容词', ko: '형용사', hi: 'विशेषण', ga: 'aid.', es: 'adj.' },
-    offPosAdv: { uk: 'присл.', en: 'adv.', fr: 'adv.', ru: 'нареч.', zh: '副词', ko: '부사', hi: 'क्रियाविशेषण', ga: 'dobh.', es: 'adv.' },
-    offPosPre: { uk: 'прийм.', en: 'prep.', fr: 'prép.', ru: 'предл.', zh: '介词', ko: '전치사', hi: 'संबंधसूचक', ga: 'réamhfh.', es: 'prep.' },
-    offPosCon: { uk: 'спол.', en: 'conj.', fr: 'conj.', ru: 'союз', zh: '连词', ko: '접속사', hi: 'समुच्चय', ga: 'cónasc', es: 'conj.' },
-    offPosPro: { uk: 'займ.', en: 'pron.', fr: 'pron.', ru: 'мест.', zh: '代词', ko: '대명사', hi: 'सर्वनाम', ga: 'forainm', es: 'pron.' },
-    offPosDet: { uk: 'означ.', en: 'det.', fr: 'dét.', ru: 'определ.', zh: '限定词', ko: '한정사', hi: 'निर्धारक', ga: 'cinnt.', es: 'det.' },
-    offPosNum: { uk: 'числ.', en: 'num.', fr: 'num.', ru: 'числ.', zh: '数词', ko: '수사', hi: 'संख्या', ga: 'uimh.', es: 'num.' },
-    offPosIntj: { uk: 'виг.', en: 'interj.', fr: 'interj.', ru: 'межд.', zh: '叹词', ko: '감탄사', hi: 'विस्मयादि', ga: 'intriacht', es: 'interj.' }
+    offPosV: { uk: 'дієсл.', en: 'v.', fr: 'v.', ru: 'гл.', zh: '动词', ko: '동사', hi: 'क्रिया', ga: 'br.', es: 'verbo' },
+    offPosA: { uk: 'прикм.', en: 'adj.', fr: 'adj.', ru: 'прил.', zh: '形容词', ko: '형용사', hi: 'विशेषण', ga: 'aid.', es: 'adjetivo' },
+    offPosAdv: { uk: 'присл.', en: 'adv.', fr: 'adv.', ru: 'нареч.', zh: '副词', ko: '부사', hi: 'क्रियाविशेषण', ga: 'dobh.', es: 'adverbio' },
+    offPosPre: { uk: 'прийм.', en: 'prep.', fr: 'prép.', ru: 'предл.', zh: '介词', ko: '전치사', hi: 'संबंधसूचक', ga: 'réamhfh.', es: 'preposición' },
+    offPosCon: { uk: 'спол.', en: 'conj.', fr: 'conj.', ru: 'союз', zh: '连词', ko: '접속사', hi: 'समुच्चय', ga: 'cónasc', es: 'conjunción' },
+    offPosPro: { uk: 'займ.', en: 'pron.', fr: 'pron.', ru: 'мест.', zh: '代词', ko: '대명사', hi: 'सर्वनाम', ga: 'forainm', es: 'pronombre' },
+    offPosDet: { uk: 'означ.', en: 'det.', fr: 'dét.', ru: 'определ.', zh: '限定词', ko: '한정사', hi: 'निर्धारक', ga: 'cinnt.', es: 'determinante' },
+    offPosNum: { uk: 'числ.', en: 'num.', fr: 'num.', ru: 'числ.', zh: '数词', ko: '수사', hi: 'संख्या', ga: 'uimh.', es: 'numeral' },
+    offPosIntj: { uk: 'виг.', en: 'interj.', fr: 'interj.', ru: 'межд.', zh: '叹词', ko: '감탄사', hi: 'विस्मयादि', ga: 'intriacht', es: 'interjección' }
 });
