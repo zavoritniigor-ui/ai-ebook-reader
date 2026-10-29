@@ -8,106 +8,106 @@
 
 | Слово | Лема | Частина мови | Значення | Джерело |
 |---|---|---|---|---|
-| mathématiques | mathématique | ім. f | математика | wiktionary |
-| immédiates | immédiat | прикм. | негайний | written |
-| crachassiez | cracher | дієсл. | плювати / плюнути | written |
-| pesantes | pesant | прикм. | важкий | written |
-| faussèrent | fausser | дієсл. | спотворювати / спотворити | written |
-| inquiétude | inquiétude | ім. f | тривога; занепокоєння | written |
-| défendrais | défendre | дієсл. | захищати / захистити; забороняти / заборонити | written |
-| cœurs | cœur | ім. m | серце | wiktionary |
-| rayées | rayé | прикм. | смугастий; подряпаний | written |
+| tombe | tombe | ім. f | могила | written |
+| ratissassions | ratisser | дієсл. | згрібати / згребти; прочісувати / прочесати | written |
+| foncerais | foncer | дієсл. | мчати; темніти / потемніти | written |
+| muscle | muscle | ім. m | м'яз | written |
+| ricane | ricaner | дієсл. | хихикати; посміхатися | written |
+| infâme | infâme | прикм. | ганебний | written |
+| dérivés | dériver | дієсл. | походити; дрейфувати | written |
+| retranchait | retrancher | дієсл. | віднімати / відняти; укріплюватися / укріпитися | written |
+| précaire | précaire | прикм. | ненадійний; хиткий | written |
+| carillons | carillon | ім. m | передзвін | written |
+| ignorants | ignorant | прикм. | неосвічений | written |
+| hautains | hautain | прикм. | зарозумілий | written |
+| cygne | cygne | ім. m | лебідь | wiktionary |
+| prudentes | prudent | прикм. | обережний | written |
+| framboise | framboise | ім. f | малина | wiktionary |
+| songe | songe | ім. m | сон | written |
+| corvées | corvée | ім. f | панщина; важка робота | written |
+| guérisons | guérison | ім. f | одужання | written |
+| nourritures | nourriture | ім. f | їжа | written |
+| épaisseur | épaisseur | ім. f | товщина | written |
+| chèques | chèque | ім. m | чек | written |
+| glacial | glacial | прикм. | крижаний | written |
+| capable | capable | прикм. | здатний | written |
+| loges | loge | ім. f | ложа | written |
+| indignation | indignation | ім. f | обурення | written |
+| engluèrent | engluer | дієсл. | загрузати / загрузнути | written |
+| raisonnements | raisonnement | ім. m | міркування | written |
+| pharmacie | pharmacie | ім. f | аптека | written |
+| escalier | escalier | ім. m | сходи | wiktionary |
+| entrain | entrain | ім. m | запал | written |
+| tandis que | tandis que | спол. | тоді як; поки | written |
+| soutanes | soutane | ім. f | сутана | written |
+| condoléance | condoléance | ім. f | співчуття | written |
+| cheval | cheval | ім. m | кінь | wiktionary |
+| déçues | déçu | прикм. | розчарований | written |
+| lettres | lettre | ім. f | лист; літера | wiktionary, written |
+| chiffon | chiffon | ім. m | ганчірка | written |
+| fanée | fané | прикм. | зів'ялий; вицвілий | written |
+| sculpté | sculpté | прикм. | різьблений | written |
+| intérieurs | intérieur | прикм. | внутрішній | written |
+| procédé | procédé | ім. m | спосіб; метод | written |
+| contradictoire | contradictoire | прикм. | суперечливий | written |
+| coulisses | coulisse | ім. f | куліси; паз | written |
+| transformation | transformation | ім. f | перетворення | written |
+| précautions | précaution | ім. f | обережність; запобіжний захід | written |
+| réhaussâmes | rehausser | дієсл. | піднімати / підняти; підкреслювати / підкреслити | written |
+| répétée | répété | прикм. | повторний | written |
+| planifias | planifier | дієсл. | планувати / запланувати | written |
+| protecteur | protecteur | прикм. | захисний; покровительський | written |
+| aise | aise | ім. f | задоволення; зручність | written |
+| seigneurs | seigneur | ім. m | пан; володар | written |
+| attributs | attribut | ім. m | ознака; атрибут | written |
+| supplias | supplier | дієсл. | благати | written |
+| inspecterait | inspecter | дієсл. | оглядати / оглянути | written |
 | protestations | protestation | ім. f | протест | written |
-| injustes | injuste | прикм. | несправедливий | written |
-| prévisions | prévision | ім. f | прогноз | written |
-| hauts-commissaires | haut-commissaire | ім. m | верховний комісар | written |
-| trinités | trinité | ім. f | трійця | wiktionary |
-| batailles | bataille | ім. f | битва | written |
-| sanglotiez | sangloter | дієсл. | ридати | written |
-| droguons | droguer | дієсл. | вживати наркотики | written |
-| puera | puer | дієсл. | смердіти | written |
-| divers | divers | означ. | різні | written |
-| cellule | cellule | ім. f | клітина; камера | written |
-| haussez | hausser | дієсл. | піднімати / підняти | written |
-| victorieuse | victorieux | прикм. | переможний | written |
-| toute | toute | займ. | все | written |
-| poisons | poison | ім. m | отрута | written |
-| crosses | crosse | ім. f | приклад; ключка | written |
-| tramways | tramway | ім. m | трамвай | wiktionary |
-| limite | limite | ім. f | межа | written |
-| canadiennes | canadien | прикм. | канадський; канадійський | wiktionary |
-| diplomatiques | diplomatique | прикм. | дипломатичний | written |
-| fleuriste | fleuriste | ім. | квітникар | written |
-| visions | vision | ім. f | зір; бачення | written |
-| écholes | école | ім. f | школа | wiktionary |
-| non | non | присл. | ні; не | wiktionary, written |
-| vives | vif | прикм. | жвавий; яскравий; гострий | written |
-| vacances | vacance | ім. f | вакансія; канікули; відпустка | written |
-| épingle | épingle | ім. f | шпилька | written |
-| bosses | boss | ім. m | бос | written |
-| réunissent | réunir | дієсл. | збирати / зібрати; об'єднувати / об'єднати | written |
-| demande | demande | ім. f | прохання; запит; попит; заява | written |
-| barques | barque | ім. f | човен | written |
-| enfilas | enfiler | дієсл. | вдягати / вдягти; нанизувати / нанизати | written |
-| pesanteur | pesanteur | ім. f | сила тяжіння; важкість | written |
-| décolle | décoller | дієсл. | злітати / злетіти; відклеювати / відклеїти | written |
-| compétente | compétent | прикм. | компетентний | written |
-| illuminé | illuminé | прикм. | освітлений | written |
-| giga | giga | прикм. | гіга | wiktionary |
-| conjugales | conjugal | прикм. | подружній | written |
-| conduisîtes | conduire | дієсл. | водити; вести / повести; керувати | written |
-| mammys | mamie | ім. f | бабуся | written |
-| lointains | lointain | ім. m | далечінь | written |
-| buffet | buffet | ім. m | буфет; фуршет | written |
-| taillerais | tailler | дієсл. | кроїти / скроїти; обрізати / обрізати; стругати | written |
-| blâme | blâmer | дієсл. | ганити; засуджувати / засудити | written |
-| comique | comique | прикм. | комічний | written |
-| employassions | employer | дієсл. | використовувати / використати; наймати / найняти | written |
-| bols | bol | ім. m | миска; удача | written |
-| copies | copie | ім. f | копія; письмова робота | written |
-| plate-forme | plate-forme | ім. f | платформа | written |
-| voix | voix | ім. f | голос | wiktionary |
-| kelvin | kelvin | ім. | кельвін | wiktionary |
-| déploie | déployer | дієсл. | розгортати / розгорнути | written |
-| gênants | gênant | прикм. | незручний; прикрий | written |
-| épouvante | épouvante | ім. f | жах | written |
-| cadets | cadet | ім. m | молодший; курсант | written |
-| canot | canot | ім. m | човен | written |
-| mets | mets | ім. m | страва | written |
-| tournées | tournée | ім. f | турне; обхід | written |
-| terriblement | terriblement | присл. | жахливо; страшенно | written |
-| énormément | énormément | присл. | надзвичайно; дуже багато | written |
-| option | option | ім. f | варіант; опція | written |
-| incarneraient | incarner | дієсл. | втілювати / втілити | written |
-| tremblions | trembler | дієсл. | тремтіти | written |
-| parfumait | parfumer | дієсл. | ароматизувати | written |
-| islam | islam | ім. m | мусульманство; іслам | wiktionary |
-| graine | graine | ім. f | насінина; зерно | written |
-| hanches | hanche | ім. f | стегно | written |
-| ronfle | ronfler | дієсл. | хропіти | written |
-| sacoche | sacoche | ім. f | сумка | written |
-| advient | advenir | дієсл. | траплятися / трапитися | written |
-| l' | l' | займ. | його; її | written |
-| stridentes | strident | прикм. | пронизливий | written |
-| tunnel | tunnel | ім. m | тунель | wiktionary |
-| œuf | œuf | ім. m | яйце | wiktionary |
-| écrivains | écrivain | ім. m | письменник | wiktionary |
-| rose | rose | прикм. | рожевий | written |
-| apparais | apparaître | дієсл. | з'являтися / з'явитися | written |
-| ypérites | ypérite | ім. f | іприт | wiktionary |
-| légendes | légende | ім. f | легенда; підпис | written |
-| obstination | obstination | ім. f | впертість | written |
-| perlerai | perler | дієсл. | виступати краплями | written |
-| trouilles | trouille | ім. f | страх | written |
-| paysage | paysage | ім. m | краєвид; пейзаж | written |
-| délai | délai | ім. m | строк; відстрочка | written |
-| sure | sur | прийм. | на; про; над | written |
-| perceptibles | perceptible | прикм. | помітний | written |
-| hangars | hangar | ім. m | ангар | wiktionary |
-| interposassions | interposer | дієсл. | ставати між | written |
-| est-ce que | est-ce que | присл. | чи | written |
-| bêtement | bêtement | присл. | безглуздо | written |
-| identité | identité | ім. f | особа; тотожність | written |
+| rugissement | rugissement | ім. m | рев | written |
+| massage | massage | ім. m | масаж | written |
+| constaté | constater | дієсл. | констатувати; помічати / помітити | written |
+| racontâtes | raconter | дієсл. | розповідати / розповісти | written |
+| rangée | rangée | ім. f | ряд | written |
+| lesquelles | lesquelles | займ. | які | written |
+| déboucheraient | déboucher | дієсл. | відкорковувати / відкоркувати; виходити / вийти | written |
+| officières | officier | дієсл. | правити службу | written |
+| tournoyées | tournoyer | дієсл. | кружляти | written |
+| cercle | cercle | ім. m | коло; гурток | written |
+| orignaux | orignal | ім. m | лось | wiktionary |
+| maestro | maestro | ім. m | маестро | written |
+| haleine | haleine | ім. f | подих; дихання | written |
+| recopiassiez | recopier | дієсл. | переписувати / переписати | written |
+| région | région | ім. f | регіон; область | written |
+| quattorze | quatorze | числ. | чотирнадцять | written |
+| éperons | éperon | ім. m | шпора | written |
+| hortensia | hortensia | ім. m | гортензія | wiktionary |
+| reçois | recevoir | дієсл. | отримувати / отримати; приймати / прийняти | written |
+| sportive | sportif | ім. m | спортсмен | written |
+| ivresse | ivresse | ім. f | сп'яніння | written |
+| décapitation | décapitation | ім. f | обезголовлювання | wiktionary |
+| affectassions | affecter | дієсл. | впливати / вплинути; удавати / удати; призначати / призначити | written |
+| pâtisserie | pâtisserie | ім. f | кондитерська; випічка | written |
+| fièvre | fièvre | ім. f | гарячка; температура | written |
+| scénarios | scénario | ім. m | сценарій | written |
+| horloger | horloger | ім. m | годинникар | written |
+| mœurs | mœurs | ім. f | звичаї; моралі | written |
+| millimètres | millimètre | ім. m | міліметр | written |
+| dehors | dehors | присл. | надворі; назовні | written |
+| hérétiques | hérétique | прикм. | єретичний | written |
+| spectaculaires | spectaculaire | прикм. | ефектний; видовищний | written |
+| saloon | saloon | ім. m | салун | wiktionary |
+| frêles | frêle | прикм. | тендітний; кволий | written |
+| telles | telles | означ. | такі | written |
+| pointe | pointe | ім. f | вістря; кінчик | written |
+| vert | vert | прикм. | зелений | written |
+| coquine | coquin | ім. m | пустун; шахрай | written |
+| gauche | gauche | ім. | ліва сторона; ліві | written |
+| siens | siens | займ. | його; свої | written |
+| marquais | marquer | дієсл. | позначати / позначити; забивати / забити | written |
+| assurée | assuré | прикм. | упевнений; застрахований | written |
+| voilés | voilé | прикм. | завуальований; закритий | written |
+| ouvrage | ouvrage | ім. m | праця; твір | written |
+| mythologies | mythologie | ім. f | міфологія | written |
 
 ## 2. 100 слів із підручників A1–B2
 
@@ -129,6 +129,7 @@
 | règle | règle | ім. f | правило; лінійка | written |
 | règle | régler | дієсл. | владнати; регулювати / відрегулювати; оплачувати / оплатити | written |
 | gomme | gomme | ім. f | гумка; камедь | written |
+| gomme | gommer | дієсл. | стирати / стерти | written |
 | trousse | trousse | ім. f | пенал; несесер; аптечка | written |
 | cartable | cartable | ім. m | шкільний ранець | written |
 | tableau | tableau | ім. m | картина; дошка; таблиця | written |
@@ -221,6 +222,7 @@
 | venir | venir | дієсл. | приходити / прийти; приїжджати / приїхати | written |
 | faire | faire | дієсл. | робити / зробити | wiktionary |
 | prendre | prendre | дієсл. | брати / взяти | written |
+| manger | manger | ім. m | їжа | written |
 | manger | manger | дієсл. | їсти / з'їсти | written |
 | boire | boire | дієсл. | пити / випити | written |
 | dormir | dormir | дієсл. | спати | wiktionary |
@@ -241,36 +243,36 @@
 
 | Вираз | Переклад | Джерело |
 |---|---|---|
-| faire la sourde oreille | пропускати повз вуха | written |
-| faire du ski | кататися на лижах | written |
-| pomme frite | картопля фрі | written |
-| se coiffer | зачісуватися / зачесатися | written |
-| jour après jour | день у день | written |
-| en revanche | натомість | written |
-| aussitôt que | щойно | written |
-| bonne soirée | гарного вечора | written |
-| avoir le cafard | нудьгувати | written |
-| marché aux puces | блошиний ринок | written |
-| s'en sortir | давати собі раду | written |
-| s'en faire | хвилюватися | written |
-| avoir un coup de foudre | закохатися з першого погляду | written |
-| merci bien | дуже дякую | written |
-| en ce qui concerne | щодо | written |
-| au revoir | до побачення | wiktionary |
-| il fait nuit | темно | written |
-| au plus | щонайбільше | written |
-| avoir la flemme | лінуватися | written |
-| être d'accord | погоджуватися / погодитися | written |
+| coup d'œil | погляд | written |
 | un tas de | купа | written |
-| avoir les yeux plus gros que le ventre | переоцінювати свої сили | written |
-| pomme de terre | картопля | wiktionary |
-| pas de problème | без проблем | written |
-| se faire couper les cheveux | підстригатися / підстригтися | written |
-| coup de pied | удар ногою | written |
-| petit déjeuner | сніданок | written |
-| prendre un café | випити кави | written |
-| entendre dire | чути | written |
+| hors de question | і мови бути не може | written |
+| il ne faut pas vendre la peau de l'ours avant de l'avoir tué | не кажи гоп, поки не перескочиш | written |
+| feu tricolore | світлофор | wiktionary |
+| marché aux puces | блошиний ринок | written |
+| avoir du pain sur la planche | мати багато роботи | written |
+| faire la grasse matinée | довго спати вранці | written |
+| bon appétit | смачного | written |
+| avoir du mal à | насилу | written |
+| au bout de | через | written |
+| il s'agit de | ідеться про | written |
+| passer l'aspirateur | пилососити | written |
+| pas du tout | зовсім ні | written |
+| en silence | мовчки | written |
+| sans aucun doute | безсумнівно | written |
+| c'est la goutte d'eau qui fait déborder le vase | це остання крапля | written |
+| heures supplémentaires | понаднормові години | written |
+| à condition que | за умови, що | written |
+| au moins | принаймні | written |
+| une foule de | безліч | written |
+| faire une faute | помилятися / помилитися | written |
+| c'est la vie | таке життя | written |
+| à peine | ледве | written |
+| c'est pas grave | нічого страшного | written |
+| avoir la main verte | мати легку руку до рослин | written |
+| se rendre compte de | усвідомлювати / усвідомити | written |
 | se marier avec | одружуватися / одружитися | written |
+| pas mal | непогано | written |
+| ça ne fait rien | нічого | written |
 
 ## 4. 20 речень: Bergamot до і після словника
 

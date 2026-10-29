@@ -3,7 +3,7 @@
 // are checked on download. "data": the dictionary (CC BY-SA 4.0); "forms": the Ukrainian word forms (VESUM, CC BY-NC-SA 4.0).
 const OFFLINE_DICTS = {
     "fr>uk": { files: [
-        { type: "data", path: "dict/fr-uk.json", version: "dd0786d4708f", size: 7313197, sha256: "5a0ed1bfd3828eda600ad995f740592fe01b87355ed0ba06d339b98428846582" },
-        { type: "forms", path: "dict/uk-forms.json", version: "6ed3cf8241dc", size: 430440, sha256: "590053558a81f3b191853ab5977eef8aa73b2a7432dfa6b36b5816783fab21d8" },
+        { type: "data", path: "dict/fr-uk.json", version: "2473aab449ba", size: 7437183, sha256: "9de455f2b5cc5e0150c46f17f14dbd93ce7412d43c852ea53b512a34f6d3e979" },
+        { type: "forms", path: "dict/uk-forms.json", version: "0d490a59fc08", size: 484542, sha256: "d2574eddc411732df5e1ed2aebfd2c0f78f1555d58c2f8ef1ad144edf47461c4" },
     ] },
 };
