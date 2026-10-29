@@ -1,0 +1,854 @@
+# Set expressions: french (lemmas: an infinitive for a verb, «se» for the reflexive pronoun) TAB ukrainian TAB wiktionary|written.
+# A verb's aspect pair: imperfective|perfective. The app matches the French words by their lemmas, so any tense or person matches.
+# --- from Wiktionary (the Ukrainian as Wiktionary gives it) ---
+au revoir	до побачення	wiktionary
+au secours	рятуйте	wiktionary
+bonne nuit	на добраніч	wiktionary
+de rien	будь ласка	wiktionary
+entre autres	між іншим	wiktionary
+bien que	хоча	wiktionary
+mettre l'accent sur	наголошувати|наголосити	wiktionary
+chemin de fer	залізниця	wiktionary
+pomme de terre	картопля	wiktionary
+joyeux anniversaire	з днем народження	wiktionary
+joyeux noël	з Різдвом	wiktionary
+nom de famille	прізвище	wiktionary
+petit fils	онук	wiktionary
+petite fille	внучка	wiktionary
+pour cent	відсоток	wiktionary
+billet de banque	банкнота	wiktionary
+carte de crédit	кредитна картка	wiktionary
+machine à laver	пральна машина	wiktionary
+gratte ciel	хмарочос	wiktionary
+chauve souris	кажан	wiktionary
+bande dessinée	комікс	wiktionary
+moyen âge	середньовіччя	wiktionary
+sapin de noël	ялинка	wiktionary
+belle mère	теща	wiktionary
+code de la route	правила дорожнього руху	wiktionary
+lieutenant colonel	підполковник	wiktionary
+feu tricolore	світлофор	wiktionary
+acheter chat en poche	купувати кота в мішку	wiktionary
+le temps c'est de l'argent	час — гроші	wiktionary
+je t'aime	я кохаю тебе	wiktionary
+mettre en œuvre	впроваджувати|впровадити	wiktionary
+# --- avoir ---
+avoir besoin de	потребувати	written
+avoir envie de	хотіти|захотіти	written
+avoir peur de	боятися	written
+avoir peur	боятися	written
+avoir faim	бути голодним	written
+avoir soif	хотіти пити	written
+avoir froid	мерзнути|змерзнути	written
+avoir chaud	бути жарко	written
+avoir sommeil	хотіти спати	written
+avoir raison	мати рацію	written
+avoir tort	помилятися|помилитися	written
+avoir lieu	відбуватися|відбутися	written
+avoir l'air	мати вигляд	written
+avoir mal à	боліти|заболіти	written
+avoir mal au cœur	нудити	written
+avoir de la chance	щастити|пощастити	written
+avoir honte	соромитися	written
+avoir hâte de	не могти дочекатися	written
+avoir l'habitude de	мати звичку	written
+avoir le temps de	встигати|встигнути	written
+avoir confiance en	довіряти|довіритися	written
+avoir affaire à	мати справу з	written
+avoir du mal à	насилу	written
+avoir beau	марно	written
+avoir le cafard	нудьгувати	written
+avoir le coup de foudre	закохатися з першого погляду	written
+avoir un coup de foudre	закохатися з першого погляду	written
+avoir la flemme	лінуватися	written
+avoir le trac	хвилюватися перед виступом	written
+avoir les yeux plus gros que le ventre	переоцінювати свої сили	written
+avoir un chat dans la gorge	хрипіти	written
+avoir la tête dans les nuages	витати в хмарах	written
+avoir le cœur sur la main	бути щедрим	written
+avoir du pain sur la planche	мати багато роботи	written
+avoir la pêche	бути в чудовому настрої	written
+avoir le moral	бути в доброму гуморі	written
+avoir les moyens	мати змогу	written
+avoir l'intention de	мати намір	written
+avoir l'occasion de	мати нагоду	written
+avoir le droit de	мати право	written
+avoir quelque chose à voir avec	мати стосунок до	written
+avoir rendez-vous	мати зустріч	written
+avoir ans	мати років	written
+il y a	є	written
+il y avait	був	written
+il n'y a pas de quoi	нема за що	written
+il n'y a pas	немає	written
+# --- être ---
+être en train de	саме	written
+être sur le point de	ось-ось	written
+être d'accord	погоджуватися|погодитися	written
+être en retard	запізнюватися|запізнитися	written
+être en avance	приходити раніше	written
+être à l'heure	бути вчасно	written
+être au courant	бути в курсі	written
+être de retour	повертатися|повернутися	written
+être en forme	бути у формі	written
+être enrhumé	мати нежить	written
+être à la mode	бути модним	written
+être à court de	не мати	written
+être pressé	поспішати	written
+être en colère	сердитися|розсердитися	written
+être obligé de	мусити	written
+être censé	мати	written
+être fier de	пишатися	written
+être en vacances	бути на канікулах	written
+être au chômage	бути безробітним	written
+être dans la lune	витати в хмарах	written
+être dans le pétrin	бути в халепі	written
+être aux anges	бути на сьомому небі	written
+être né	народитися	written
+c'est-à-dire	тобто	written
+c'est la vie	таке життя	written
+c'est dommage	шкода	written
+c'est pas grave	нічого страшного	written
+ce n'est pas grave	нічого страшного	written
+ça va	усе гаразд	written
+ça ne fait rien	нічого	written
+ça dépend	залежить	written
+ça suffit	досить	written
+ça vaut la peine	варто	written
+ça me plaît	мені подобається	written
+n'est-ce pas	чи не так	written
+qu'est-ce que c'est	що це	written
+qu'est-ce qui se passe	що відбувається	written
+# --- faire ---
+faire attention	бути уважним	written
+faire attention à	звертати увагу на	written
+faire la cuisine	готувати їжу	written
+faire le ménage	прибирати|прибрати	written
+faire la vaisselle	мити посуд	written
+faire les courses	робити покупки	written
+faire du shopping	ходити по крамницях	written
+faire la queue	стояти в черзі	written
+faire la grève	страйкувати	written
+faire du sport	займатися спортом	written
+faire du vélo	їздити на велосипеді	written
+faire du ski	кататися на лижах	written
+faire de la natation	займатися плаванням	written
+faire une promenade	гуляти|погуляти	written
+faire un tour	прогулятися	written
+faire la connaissance de	знайомитися|познайомитися	written
+faire connaissance	знайомитися|познайомитися	written
+faire peur	лякати|налякати	written
+faire plaisir	тішити|потішити	written
+faire mal	завдавати болю	written
+faire semblant de	удавати|удати	written
+faire exprès	робити навмисно	written
+faire confiance à	довіряти|довіритися	written
+faire partie de	входити до складу	written
+faire face à	стикатися|зіткнутися	written
+faire la fête	святкувати	written
+faire la tête	дутися	written
+faire la grasse matinée	довго спати вранці	written
+faire le pont	брати вихідний між святами	written
+faire la bise	цілуватися при зустрічі	written
+faire signe	подавати знак	written
+faire un effort	докладати зусиль	written
+faire des progrès	робити успіхи	written
+faire une erreur	помилятися|помилитися	written
+faire une faute	помилятися|помилитися	written
+faire la sieste	спати після обіду	written
+faire son lit	застеляти ліжко	written
+faire ses devoirs	робити домашнє завдання	written
+faire ses valises	пакувати валізи	written
+faire de son mieux	робити все можливе	written
+faire la paix	миритися|помиритися	written
+faire la guerre	воювати	written
+faire demi-tour	повертати назад	written
+faire du bruit	шуміти	written
+faire du mal à	шкодити|зашкодити	written
+faire du bien	іти на користь	written
+faire une pause	робити перерву	written
+faire un voyage	подорожувати	written
+faire le plein	заправлятися|заправитися	written
+faire la lessive	прати|випрати	written
+faire du stop	їхати автостопом	written
+faire un cadeau	дарувати|подарувати	written
+faire une photo	фотографувати|сфотографувати	written
+faire la différence	розрізняти|розрізнити	written
+faire un régime	сидіти на дієті	written
+faire mouche	влучати в ціль	written
+faire la sourde oreille	пропускати повз вуха	written
+faire d'une pierre deux coups	убити двох зайців	written
+faire la pluie et le beau temps	усім заправляти	written
+faire chaud	бути спекотно	written
+il fait beau	гарна погода	written
+il fait mauvais	погана погода	written
+il fait chaud	спекотно	written
+il fait froid	холодно	written
+il fait doux	тепло	written
+il fait frais	прохолодно	written
+il fait jour	світло	written
+il fait nuit	темно	written
+il fait du soleil	сонячно	written
+il fait du vent	вітряно	written
+il fait gris	похмуро	written
+il fait beau temps	гарна погода	written
+il fait un temps de chien	жахлива погода	written
+il pleut des cordes	ллє як з відра	written
+quel temps fait-il	яка погода	written
+# --- prendre ---
+prendre le petit-déjeuner	снідати|поснідати	written
+prendre un café	випити кави	written
+prendre une douche	приймати душ	written
+prendre un bain	приймати ванну	written
+prendre le train	їхати поїздом	written
+prendre le bus	їхати автобусом	written
+prendre l'avion	летіти літаком	written
+prendre rendez-vous	домовлятися про зустріч	written
+prendre une décision	ухвалювати рішення	written
+prendre soin de	дбати про	written
+prendre part à	брати участь у	written
+prendre place	займати місце	written
+prendre froid	застуджуватися|застудитися	written
+prendre peur	лякатися|злякатися	written
+prendre la parole	брати слово	written
+prendre le temps de	не поспішати	written
+prendre son temps	не поспішати	written
+prendre conscience de	усвідомлювати|усвідомити	written
+prendre en compte	враховувати|врахувати	written
+prendre au sérieux	сприймати серйозно	written
+prendre des photos	фотографувати|сфотографувати	written
+prendre des nouvelles	дізнаватися про новини	written
+prendre congé	прощатися|попрощатися	written
+prendre la fuite	тікати|втекти	written
+prendre le large	вирушати у відкрите море	written
+prendre la porte	іти геть	written
+prendre son pied	отримувати задоволення	written
+prendre l'air	дихати свіжим повітрям	written
+prendre feu	займатися|зайнятися	written
+prendre fin	закінчуватися|закінчитися	written
+prendre du poids	набирати вагу	written
+s'en prendre à	нападати на	written
+# --- mettre, donner, tenir, porter ---
+mettre la table	накривати на стіл	written
+mettre le couvert	накривати на стіл	written
+mettre en marche	вмикати|увімкнути	written
+mettre fin à	покласти край	written
+mettre au point	налагоджувати|налагодити	written
+mettre de côté	відкладати|відкласти	written
+mettre en colère	сердити|розсердити	written
+mettre les pieds dans le plat	бовкнути зайве	written
+mettre son grain de sel	устрявати|устряти	written
+se mettre à	починати|почати	written
+se mettre en colère	сердитися|розсердитися	written
+se mettre d'accord	домовлятися|домовитися	written
+se mettre en route	вирушати|вирушити	written
+se mettre à table	сідати за стіл	written
+donner rendez-vous	призначати зустріч	written
+donner un coup de main	допомагати|допомогти	written
+donner un coup de fil	дзвонити|подзвонити	written
+donner sa langue au chat	здаватися|здатися	written
+donner raison à	визнавати правоту	written
+donner naissance à	народжувати|народити	written
+donner envie de	викликати бажання	written
+donner sur	виходити на	written
+tenir compte de	враховувати|врахувати	written
+tenir à	дорожити	written
+tenir parole	дотримувати слова	written
+tenir bon	триматися|втриматися	written
+tenir le coup	витримувати|витримати	written
+porter plainte	подавати скаргу	written
+porter bonheur	приносити щастя	written
+porter malheur	приносити нещастя	written
+# --- aller, venir, passer, rester, revenir ---
+aller bien	почуватися добре	written
+aller mal	почуватися погано	written
+aller chercher	іти по	written
+aller voir	відвідувати|відвідати	written
+aller à pied	іти пішки	written
+aller de soi	розумітися само собою	written
+s'en aller	іти|піти	written
+venir de	щойно	written
+venir chercher	заходити по	written
+venir à l'esprit	спадати на думку	written
+en venir à	доходити до	written
+passer un examen	складати іспит	written
+passer du temps	проводити час	written
+passer une bonne nuit	добре виспатися	written
+se passer de	обходитися без	written
+se passer	відбуватися|відбутися	written
+rester à la maison	залишатися вдома	written
+revenir à soi	приходити до тями	written
+# --- reflexive verbs with a fixed meaning ---
+se rendre compte	усвідомлювати|усвідомити	written
+se rendre compte de	усвідомлювати|усвідомити	written
+se rendre	вирушати|вирушити	written
+se faire du souci	хвилюватися	written
+se faire des amis	заводити друзів	written
+se faire mal	забиватися|забитися	written
+se faire couper les cheveux	підстригатися|підстригтися	written
+s'en faire	хвилюватися	written
+se moquer de	глузувати з	written
+se tromper	помилятися|помилитися	written
+se tromper de	помилятися|помилитися	written
+se souvenir de	пам'ятати	written
+se rappeler	пригадувати|пригадати	written
+se douter de	здогадуватися|здогадатися	written
+se passer de	обходитися без	written
+se fâcher	сердитися|розсердитися	written
+se dépêcher	поспішати|поспішити	written
+se débrouiller	давати собі раду	written
+se coucher	лягати спати	written
+se lever	вставати|встати	written
+se réveiller	прокидатися|прокинутися	written
+s'endormir	засинати|заснути	written
+s'habiller	одягатися|одягнутися	written
+se déshabiller	роздягатися|роздягнутися	written
+se laver	митися|помитися	written
+se brosser les dents	чистити зуби	written
+se coiffer	зачісуватися|зачесатися	written
+se maquiller	фарбуватися|нафарбуватися	written
+se raser	голитися|поголитися	written
+se promener	гуляти|погуляти	written
+se reposer	відпочивати|відпочити	written
+s'asseoir	сідати|сісти	written
+s'amuser	розважатися|розважитися	written
+s'ennuyer	нудьгувати	written
+s'intéresser à	цікавитися	written
+s'occuper de	займатися	written
+s'inquiéter	хвилюватися	written
+s'habituer à	звикати|звикнути	written
+s'entendre bien	ладнати	written
+s'entendre avec	ладнати з	written
+se marier	одружуватися|одружитися	written
+se marier avec	одружуватися|одружитися	written
+se fiancer	заручатися|заручитися	written
+se disputer	сваритися|посваритися	written
+se réconcilier	миритися|помиритися	written
+se sentir	почуватися	written
+se sentir bien	почуватися добре	written
+se sentir mal	почуватися погано	written
+se trouver	перебувати	written
+se perdre	губитися|загубитися	written
+se taire	мовчати|замовкнути	written
+se plaindre	скаржитися|поскаржитися	written
+se servir de	користуватися|скористатися	written
+se mettre en colère	сердитися|розсердитися	written
+se casser la jambe	зламати ногу	written
+se casser la tête	ламати голову	written
+se serrer la main	потискати руки	written
+se tenir	поводитися	written
+se tenir au courant	стежити за новинами	written
+s'en sortir	давати собі раду	written
+s'en tirer	викручуватися|викрутитися	written
+se méfier de	остерігатися	written
+se rendre utile	бути корисним	written
+se faire avoir	попадатися|попастися	written
+se faire à	звикати|звикнути	written
+se jeter à l'eau	наважуватися|наважитися	written
+se serrer la ceinture	затягувати паски	written
+se creuser la tête	ламати голову	written
+se mettre sur son trente et un	вбиратися|вбратися	written
+s'agir de	ідеться про	written
+il s'agit de	ідеться про	written
+# --- other verbal idioms ---
+pendre la crémaillère	справляти новосілля	written
+poser un lapin	не прийти на зустріч	written
+poser une question	ставити запитання	written
+coûter les yeux de la tête	коштувати шалених грошей	written
+coûter cher	дорого коштувати	written
+tomber dans les pommes	непритомніти|знепритомніти	written
+tomber amoureux	закохуватися|закохатися	written
+tomber amoureux de	закохуватися|закохатися	written
+tomber malade	захворіти	written
+tomber en panne	ламатися|зламатися	written
+tomber bien	бути доречним	written
+tomber sur	натрапляти|натрапити	written
+laisser tomber	кидати|кинути	written
+casser les pieds	набридати|набриднути	written
+casser la croûte	перекусити	written
+coûte que coûte	будь-що	written
+jeter un coup d'œil	кидати погляд	written
+jeter l'éponge	здаватися|здатися	written
+mettre la main à la pâte	братися до роботи	written
+mettre les voiles	накивати п'ятами	written
+mener par le bout du nez	водити за ніс	written
+monter sur ses grands chevaux	заводитися|завестися	written
+appeler un chat un chat	називати речі своїми іменами	written
+boire comme un trou	пити як бочка	written
+dormir comme un loir	спати як убитий	written
+dormir sur ses deux oreilles	спати спокійно	written
+mourir de faim	помирати з голоду	written
+mourir de rire	помирати зі сміху	written
+rire jaune	сміятися крізь сльози	written
+tirer les vers du nez	витягати секрет	written
+tourner autour du pot	ходити манівцями	written
+tourner la page	перегортати сторінку	written
+tourner mal	закінчуватися погано	written
+vendre la mèche	розбовкати таємницю	written
+voir la vie en rose	бачити все в рожевому світлі	written
+couper la parole	перебивати|перебити	written
+couper les cheveux en quatre	прискіпуватися	written
+chercher la petite bête	прискіпуватися	written
+garder la ligne	стежити за фігурою	written
+garder le lit	лежати в ліжку	written
+gagner sa vie	заробляти на життя	written
+perdre la tête	втрачати голову	written
+perdre patience	втрачати терпіння	written
+perdre du temps	гаяти час	written
+perdre de vue	втрачати з поля зору	written
+reprendre ses esprits	отямитися	written
+rendre visite à	відвідувати|відвідати	written
+rendre service	робити послугу	written
+rendre heureux	робити щасливим	written
+rendre la monnaie	давати решту	written
+valoir la peine	бути вартим	written
+vouloir dire	означати	written
+savoir faire	уміти	written
+entendre parler de	чути про	written
+entendre dire	чути	written
+faire entendre	давати зрозуміти	written
+laisser faire	дозволяти|дозволити	written
+laisser passer	пропускати|пропустити	written
+laisser entendre	натякати|натякнути	written
+envoyer promener	послати під три чорти	written
+passer un savon	дати прочухана	written
+passer à table	сідати за стіл	written
+passer l'aspirateur	пилососити	written
+passer un coup de fil	подзвонити	written
+remettre à plus tard	відкладати на потім	written
+remettre en question	ставити під сумнів	written
+mettre en question	ставити під сумнів	written
+battre son plein	бути в розпалі	written
+avaler des couleuvres	ковтати образи	written
+broyer du noir	впадати в тугу	written
+ne pas être dans son assiette	почуватися не у своїй тарілці	written
+n'en faire qu'à sa tête	робити по-своєму	written
+ne rien faire	нічого не робити	written
+en avoir marre	набриднути	written
+en avoir assez	набриднути	written
+en vouloir à	ображатися на	written
+en faire trop	перегравати	written
+il faut	треба	written
+il vaut mieux	краще	written
+il paraît que	кажуть, що	written
+il est temps de	час	written
+il était une fois	жили-були	written
+il se trouve que	виявляється	written
+il reste	залишається	written
+il manque	бракує	written
+il s'en faut de peu	мало не	written
+# --- time ---
+tout de suite	одразу	written
+tout à l'heure	незабаром	written
+à tout à l'heure	до зустрічі	written
+à bientôt	до скорого	written
+à demain	до завтра	written
+à plus tard	до зустрічі	written
+à la prochaine	до наступної зустрічі	written
+de temps en temps	час від часу	written
+de temps à autre	час від часу	written
+tout le temps	весь час	written
+en même temps	водночас	written
+à temps	вчасно	written
+à l'heure	вчасно	written
+à l'avance	заздалегідь	written
+en avance	завчасно	written
+en retard	із запізненням	written
+tout à coup	раптом	written
+tout d'un coup	раптом	written
+peu à peu	поступово	written
+petit à petit	потроху	written
+au début	спочатку	written
+au début de	на початку	written
+à la fin	наприкінці	written
+à la fin de	наприкінці	written
+au bout de	через	written
+au bout du compte	зрештою	written
+au fur et à mesure	поступово	written
+au moment où	у той момент, коли	written
+à ce moment-là	у той момент	written
+en ce moment	зараз	written
+pour le moment	поки що	written
+pour l'instant	поки що	written
+dans un instant	за мить	written
+à l'instant	щойно	written
+de nos jours	у наш час	written
+à l'époque	у ті часи	written
+il y a longtemps	давно	written
+depuis longtemps	давно	written
+de bonne heure	рано	written
+tard dans la nuit	пізно вночі	written
+tous les jours	щодня	written
+tous les ans	щороку	written
+toutes les semaines	щотижня	written
+une fois par semaine	раз на тиждень	written
+une fois pour toutes	раз і назавжди	written
+pour toujours	назавжди	written
+à jamais	назавжди	written
+le lendemain	наступного дня	written
+la veille	напередодні	written
+d'abord	спочатку	written
+tout d'abord	насамперед	written
+en premier	першим	written
+en dernier	останнім	written
+à partir de	починаючи з	written
+jusqu'à	до	written
+jusqu'à ce que	доки не	written
+dès que	щойно	written
+aussitôt que	щойно	written
+pendant que	поки	written
+tandis que	тоді як	written
+avant que	перш ніж	written
+après que	після того як	written
+depuis que	відтоді як	written
+chaque fois que	щоразу, коли	written
+une fois que	коли	written
+au même moment	водночас	written
+le week-end	на вихідних	written
+en semaine	у будні	written
+du matin au soir	з ранку до вечора	written
+# --- place ---
+à côté de	поруч із	written
+en face de	навпроти	written
+au bord de	на краю	written
+au milieu de	посеред	written
+au fond de	у глибині	written
+au-dessus de	над	written
+au-dessous de	під	written
+autour de	навколо	written
+près de	біля	written
+loin de	далеко від	written
+le long de	уздовж	written
+à travers	крізь	written
+au coin de la rue	на розі вулиці	written
+à droite	праворуч	written
+à gauche	ліворуч	written
+tout droit	прямо	written
+à l'étranger	за кордоном	written
+à la maison	вдома	written
+à la campagne	на селі	written
+en ville	у місті	written
+au centre-ville	у центрі міста	written
+au bout de la rue	в кінці вулиці	written
+de l'autre côté	з іншого боку	written
+quelque part	десь	written
+nulle part	ніде	written
+partout ailleurs	деінде	written
+par ici	сюди	written
+par là	туди	written
+# --- cause, purpose, opposition, manner ---
+à cause de	через	written
+grâce à	завдяки	written
+au lieu de	замість	written
+afin de	щоб	written
+afin que	щоб	written
+pour que	щоб	written
+parce que	тому що	written
+à condition que	за умови, що	written
+au cas où	на випадок, якщо	written
+même si	навіть якщо	written
+alors que	тоді як	written
+sauf que	тільки	written
+par contre	натомість	written
+en revanche	натомість	written
+au contraire	навпаки	written
+malgré tout	попри все	written
+quand même	все ж	written
+tout de même	все ж	written
+par conséquent	отже	written
+c'est pourquoi	ось чому	written
+en effet	справді	written
+en fait	насправді	written
+en réalité	насправді	written
+au fond	по суті	written
+à vrai dire	правду кажучи	written
+en tout cas	у будь-якому разі	written
+dans tous les cas	у будь-якому разі	written
+de toute façon	так чи інакше	written
+en général	загалом	written
+en particulier	зокрема	written
+par exemple	наприклад	written
+c'est-à-dire que	тобто	written
+autrement dit	інакше кажучи	written
+en bref	коротко	written
+d'ailleurs	до речі	written
+au fait	до речі	written
+à propos	до речі	written
+à propos de	щодо	written
+quant à	щодо	written
+en ce qui concerne	щодо	written
+par rapport à	порівняно з	written
+selon moi	на мою думку	written
+à mon avis	на мою думку	written
+d'après moi	на мою думку	written
+sans doute	мабуть	written
+sans aucun doute	безсумнівно	written
+bien sûr	звісно	written
+bien entendu	звичайно	written
+peut-être que	можливо	written
+à peu près	приблизно	written
+plus ou moins	більш-менш	written
+au moins	принаймні	written
+du moins	принаймні	written
+au plus	щонайбільше	written
+de plus	крім того	written
+en plus	до того ж	written
+de plus en plus	дедалі більше	written
+de moins en moins	дедалі менше	written
+plus tard	пізніше	written
+tout à fait	цілком	written
+pas du tout	зовсім ні	written
+pas encore	ще ні	written
+pas mal	непогано	written
+pas mal de	чимало	written
+pas question	і мови бути не може	written
+à peine	ледве	written
+à la fois	водночас	written
+à part	окрім	written
+en dehors de	поза	written
+à l'aide de	за допомогою	written
+à la place de	замість	written
+à la main	вручну	written
+à pied	пішки	written
+à cheval	верхи	written
+en voiture	автомобілем	written
+en train	поїздом	written
+en avion	літаком	written
+en bus	автобусом	written
+à vélo	на велосипеді	written
+par cœur	напам'ять	written
+à haute voix	уголос	written
+à voix basse	пошепки	written
+en silence	мовчки	written
+de bon cœur	від щирого серця	written
+de bonne humeur	у доброму гуморі	written
+de mauvaise humeur	у поганому настрої	written
+à l'envers	навиворіт	written
+sens dessus dessous	догори дриґом	written
+en vain	марно	written
+à tort	помилково	written
+par hasard	випадково	written
+par erreur	помилково	written
+à la mode	модний	written
+à la légère	легковажно	written
+à tout prix	за будь-яку ціну	written
+en tout	загалом	written
+en même temps que	водночас із	written
+le plus possible	якомога більше	written
+le moins possible	якомога менше	written
+au maximum	максимально	written
+au minimum	щонайменше	written
+de préférence	бажано	written
+à volonté	досхочу	written
+en solde	зі знижкою	written
+à moitié	наполовину	written
+à la une	на першій шпальті	written
+à l'ombre	у затінку	written
+au soleil	на сонці	written
+en plein air	просто неба	written
+au secours	на допомогу	written
+en panne	несправний	written
+en vente	у продажу	written
+en cours	у процесі	written
+en bonne santé	здоровий	written
+hors de question	і мови бути не може	written
+# --- people, greetings, politeness ---
+s'il vous plaît	будь ласка	written
+s'il te plaît	будь ласка	written
+je vous en prie	будь ласка	written
+je t'en prie	будь ласка	written
+merci beaucoup	щиро дякую	written
+merci bien	дуже дякую	written
+bonne journée	гарного дня	written
+bonne soirée	гарного вечора	written
+bon appétit	смачного	written
+bon voyage	щасливої дороги	written
+bonne chance	щасти	written
+bon courage	тримайся	written
+bonne année	з Новим роком	written
+bon anniversaire	з днем народження	written
+à votre santé	будьмо	written
+à la vôtre	будьмо	written
+comment ça va	як справи	written
+comment allez-vous	як ви почуваєтеся	written
+ça va bien	усе добре	written
+pas de problème	без проблем	written
+avec plaisir	із задоволенням	written
+d'accord	гаразд	written
+tant pis	нічого не вдієш	written
+tant mieux	тим краще	written
+ça alors	оце так	written
+mon dieu	Боже мій	written
+au secours	рятуйте	written
+quel dommage	яка шкода	written
+# --- family, home, school, work, travel ---
+petit ami	хлопець	written
+petite amie	дівчина	written
+salle de bain	ванна кімната	written
+salle de bains	ванна кімната	written
+salle à manger	їдальня	written
+salle de classe	класна кімната	written
+salle d'attente	зала очікування	written
+chambre à coucher	спальня	written
+boîte aux lettres	поштова скринька	written
+boîte de nuit	нічний клуб	written
+tableau noir	класна дошка	written
+cour de récréation	шкільне подвір'я	written
+emploi du temps	розклад	written
+devoir sur table	контрольна робота	written
+école maternelle	дитячий садок	written
+école primaire	початкова школа	written
+année scolaire	навчальний рік	written
+rentrée scolaire	початок навчального року	written
+heures supplémentaires	понаднормові години	written
+chef d'entreprise	керівник підприємства	written
+demande d'emploi	заява на роботу	written
+chercher du travail	шукати роботу	written
+chercher un emploi	шукати роботу	written
+perdre son travail	втратити роботу	written
+congé de maladie	лікарняний	written
+fin de semaine	вихідні	written
+gare routière	автовокзал	written
+billet aller-retour	квиток туди й назад	written
+aller simple	квиток в один бік	written
+salle des fêtes	актова зала	written
+agence de voyages	туристична агенція	written
+office de tourisme	туристичний офіс	written
+carte d'identité	посвідчення особи	written
+permis de conduire	посвідчення водія	written
+pièce d'identité	документ, що посвідчує особу	written
+arrêt de bus	зупинка автобуса	written
+feu rouge	червоне світло	written
+heure de pointe	година пік	written
+pause déjeuner	обідня перерва	written
+petit déjeuner	сніданок	written
+plat principal	основна страва	written
+fruits de mer	морепродукти	written
+pomme de pin	соснова шишка	written
+eau minérale	мінеральна вода	written
+eau gazeuse	газована вода	written
+vin rouge	червоне вино	written
+vin blanc	біле вино	written
+pain grillé	тост	written
+pomme frite	картопля фрі	written
+haricot vert	зелена квасоля	written
+grande surface	гіпермаркет	written
+centre commercial	торговий центр	written
+grand magasin	універмаг	written
+marché aux puces	блошиний ринок	written
+coup de fil	телефонний дзвінок	written
+coup de soleil	сонячний опік	written
+coup de main	допомога	written
+coup d'œil	погляд	written
+coup de pied	удар ногою	written
+coup de poing	удар кулаком	written
+coup de feu	постріл	written
+coup de tête	необдуманий вчинок	written
+coup de foudre	кохання з першого погляду	written
+coup de chance	везіння	written
+mal de tête	головний біль	written
+mal de mer	морська хвороба	written
+mal du pays	туга за батьківщиною	written
+fait divers	хроніка подій	written
+pomme d'Adam	борлак	written
+tout le monde	усі	written
+tout le reste	усе інше	written
+n'importe quoi	будь-що	written
+n'importe qui	будь-хто	written
+n'importe où	будь-де	written
+n'importe quand	будь-коли	written
+n'importe comment	абияк	written
+quelque chose	щось	written
+quelqu'un d'autre	хтось інший	written
+chacun son tour	кожен у свою чергу	written
+les uns les autres	одне одного	written
+l'un l'autre	один одного	written
+ni l'un ni l'autre	ні той, ні інший	written
+la plupart	більшість	written
+la plupart des	більшість	written
+beaucoup de	багато	written
+peu de	мало	written
+un peu de	трохи	written
+assez de	досить	written
+trop de	забагато	written
+tant de	стільки	written
+plein de	повно	written
+un tas de	купа	written
+une foule de	безліч	written
+la moitié de	половина	written
+un quart d'heure	чверть години	written
+une demi-heure	півгодини	written
+# --- proverbs and images (taught at B1–B2) ---
+petit à petit l'oiseau fait son nid	крапля по краплі й камінь точить	written
+qui se ressemble s'assemble	рибак рибака бачить здалека	written
+mieux vaut tard que jamais	краще пізно, ніж ніколи	written
+loin des yeux loin du cœur	що з очей, те й із серця	written
+l'habit ne fait pas le moine	не по одягу судять	written
+après la pluie le beau temps	після дощу буде сонце	written
+il ne faut pas vendre la peau de l'ours avant de l'avoir tué	не кажи гоп, поки не перескочиш	written
+quand on parle du loup on en voit la queue	про вовка промовка	written
+pierre qui roule n'amasse pas mousse	під лежачий камінь вода не тече	written
+tout est bien qui finit bien	усе добре, що добре закінчується	written
+c'est en forgeant qu'on devient forgeron	діло майстра величає	written
+chat échaudé craint l'eau froide	хто на молоці обпікся, той і на воду дує	written
+les murs ont des oreilles	і стіни мають вуха	written
+avoir un poil dans la main	бути ледачим	written
+avoir la main verte	мати легку руку до рослин	written
+avoir le bras long	мати впливових друзів	written
+être né avec une cuillère d'argent dans la bouche	народитися в сорочці	written
+mettre la charrue avant les bœufs	робити все навпаки	written
+il n'y a pas le feu	нікуди не горить	written
+il y a anguille sous roche	тут щось не так	written
+c'est la goutte d'eau qui fait déborder le vase	це остання крапля	written
+c'est du gâteau	це дуже легко	written
+c'est le bouquet	це вже занадто	written
+ce n'est pas la mer à boire	це не так уже й важко	written
+en faire tout un fromage	робити з мухи слона	written
+faire une montagne de	робити з мухи слона	written
+il pleut à verse	ллє як з відра	written
+il fait un froid de canard	страшенно холодно	written
+avoir une faim de loup	бути голодним як вовк	written
+avoir une mémoire d'éléphant	мати чудову пам'ять	written
+être têtu comme une mule	бути впертим як осел	written
+être muet comme une carpe	мовчати як риба	written
+être malin comme un singe	бути хитрим як лис	written
+être rouge comme une tomate	почервоніти як рак	written
+être frais comme un gardon	бути бадьорим	written
+poser les pieds	ступати|ступити	written
+prendre la mouche	ображатися|образитися	written
+prendre le taureau par les cornes	брати бика за роги	written
+prendre ses jambes à son cou	накивати п'ятами	written
+raconter des salades	розповідати казки	written
+se lever du pied gauche	встати не з тієї ноги	written
+tomber des nues	бути приголомшеним	written
+traîner les pieds	тягнути час	written
+tenir la jambe à	набридати розмовами	written
+tirer son épingle du jeu	вийти сухим із води	written
+travailler comme un forçat	працювати як віл	written
+un de ces jours	днями	written
+une bonne fois pour toutes	раз і назавжди	written
+du jour au lendemain	раптово	written
+au jour le jour	одним днем	written
+de jour en jour	з дня на день	written
+jour après jour	день у день	written
+d'un jour à l'autre	з дня на день	written
+au pied de la lettre	буквально	written
+à bras ouverts	з розпростертими обіймами	written
+à cœur ouvert	відверто	written
+à bout de souffle	задиханий	written
+à bout de forces	знесилений	written
+sur le champ	негайно	written
+sur place	на місці	written
+sur le coup	одразу	written
+sous la main	під рукою	written
+en tête à tête	віч-на-віч	written
+face à face	віч-на-віч	written
+corps et âme	душею й тілом	written
+mot à mot	дослівно	written
+nez à nez	ніс у ніс	written
+main dans la main	рука в руку	written
+de bouche à oreille	з вуст в уста	written
+sain et sauf	цілий і неушкоджений	written
+tôt ou tard	рано чи пізно	written
+ni plus ni moins	ні більше ні менше	written
+tant bien que mal	сяк-так	written
+bon gré mal gré	хоч-не-хоч	written

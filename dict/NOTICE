@@ -1,0 +1,34 @@
+Offline French → Ukrainian dictionary of AI Ebook Reader
+=========================================================
+
+Built by tools/build_dict_fr_uk.py. Two files, each with its own licence (the two licences cannot be merged into one work,
+so they are kept as separate files and the app reads them side by side):
+
+dict/fr-uk.json — CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
+    French lemmas, forms, parts of speech, gender, frequency, Ukrainian meanings, set expressions. Adapted from:
+
+    * Lexique 3.83 — New, B., Pallier, C., Brysbaert, M. & Ferrand, L. (2004). Lexique 2: A New French Lexical Database.
+      Behavior Research Methods, Instruments, & Computers, 36(3), 516–524; New, B., Pallier, C., Ferrand, L. & Matos, R. (2001).
+      Une base de données lexicales du français contemporain sur internet: LEXIQUE. L'Année Psychologique, 101, 447–462.
+      http://www.lexique.org — CC BY-SA 4.0. (Read from the copy shipped in the pylexique 1.5.1 package on PyPI, same file.)
+    * Wiktionary (https://en.wiktionary.org, https://fr.wiktionary.org), by its contributors — CC BY-SA 3.0 / 4.0 (and GFDL):
+      - French headwords, their inflected forms and English senses, from the wiktextract extraction (Ylonen, T. (2022).
+        Wiktextract: Wiktionary as Machine-Readable Structured Data. LREC 2022; https://kaikki.org) as published by the
+        Wiktionary-Dictionaries project (https://github.com/Vuizur/Wiktionary-Dictionaries, commit be0cfb8d);
+      - French → Ukrainian translations, through the Wiktionary-derived edges of ConceptNet 5.7 (Speer, R., Chin, J. & Havasi, C.
+        (2017). ConceptNet 5.5: An Open Multilingual Graph of General Knowledge. AAAI 2017; https://conceptnet.io) — CC BY-SA 4.0.
+      Meanings taken from Wiktionary are marked "w" (source "wiktionary").
+    * Meanings and set expressions written for this project (dict/src/*.tsv), marked "x" (source "written"); every Ukrainian word
+      in them was checked against VESUM (below) and refused when VESUM marks it as non-standard.
+    Changes: entries filtered, merged and re-encoded (front-coded form index), Ukrainian translations checked against VESUM.
+
+dict/uk-forms.json — CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/) — NON-COMMERCIAL use only
+    The forms (cases, numbers, genders, persons, tenses) of the Ukrainian words used by fr-uk.json, as endings, and the verb
+    endings VESUM reads one way. Adapted from:
+
+    * VESUM — Великий електронний словник української мови, dict_uk 6.8.6 (https://github.com/brown-uk/dict_uk),
+      © Андрій Рисін, Василь Старко, команда БрУК — data under CC BY-NC-SA 4.0 (the project's software is GPL 3.0; none of it
+      is included here).
+    Changes: only the words fr-uk.json needs, only the standard form of each slot, re-encoded as stem + endings.
+
+The app works without dict/uk-forms.json (no agreement of a substituted word), so a commercial build can leave it out.
