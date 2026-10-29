@@ -290,7 +290,7 @@
 | 8 | Elle a pris le train de huit heures pour aller au travail. | Вона сіла на восьмигодинний поїзд на роботу. | Вона сіла на восьмигодинний поїзд на роботу. | **pris**: сіла → їхати поїздом (prendre le train) |
 | 9 | Après l'école, Paul fait ses devoirs dans sa chambre. | Після школи Пол робить домашнє завдання у своїй кімнаті. | Після школи Пол робить домашнє завдання у своїй кімнаті. | **devoirs**: домашнє завдання → робити домашнє завдання (faire ses devoirs) |
 | 10 | Mon frère cherche un emploi dans une grande entreprise. | Мій брат шукає роботу у великій компанії. | Мій брат шукає роботу у великій компанії. | **emploi**: роботу → шукати роботу (chercher un emploi) |
-| 11 | Tu peux me donner un coup de main avec ces valises ? | Можеш дати мені руку з цими валізами? | Можеш дати мені руку з цими валізами? | **coup**: мені руку → допомагати (donner un coup de main) |
+| 11 | Tu peux me donner un coup de main avec ces valises ? | Можеш дати мені руку з цими валізами? | Можеш допомогти з цими валізами? ✎ | **coup**: мені руку → допомагати (donner un coup de main) |
 | 12 | Ma grand-mère se lève tôt et se promène dans le jardin. | Моя бабуся рано встає і ходить по саду. | Моя бабуся рано встає і ходить по саду. | **lève**: рано встає → вставати (se lever) |
 | 13 | Nous avons rendez-vous devant le musée à dix heures. | У нас зустріч перед музеєм о десятій годині. | У нас зустріч перед музеєм о десятій годині. | **rendez-vous**: зустріч → мати зустріч (avoir rendez-vous) |
 | 14 | Le professeur pose une question et les élèves lèvent la main. | Вчитеей задає питання, і учні піднімають руку. | Вчитеей задає питання, і учні піднімають руку. | **pose**: Вчитеей → ставити запитання (poser une question) |
