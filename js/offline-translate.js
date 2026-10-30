@@ -307,12 +307,22 @@ function offlineTrStart() {
     boot.then(() => URL.revokeObjectURL(url), () => URL.revokeObjectURL(url));
     return boot;
 }
+// The text the engine is given: at most OFFLINE_TR_MAX_CHARS, ending after the last whole sentence that fits (js/core.js sentenceSpans,
+// the app's one sentence splitter); a first sentence longer than that ends at the last space before the limit, never inside a word.
+function offlineTrClip(text) {
+    const s = String(text || '').trim();
+    if (s.length <= OFFLINE_TR_MAX_CHARS) return s;
+    let end = 0;
+    try { for (const [, b] of sentenceSpans(s)) { if (b > OFFLINE_TR_MAX_CHARS) break; end = b; } } catch (e) { end = 0; }
+    if (!end) { const space = s.lastIndexOf(' ', OFFLINE_TR_MAX_CHARS); end = space > 0 ? space : OFFLINE_TR_MAX_CHARS; }
+    return s.slice(0, end).trim();
+}
 // Переклад встановленим пакетом: рядок або null (нема пакета для напрямку, пристрій не потягне, рушій збоїть). Одна задача за раз;
 // скасований signal знімає задачу з черги, але вже запущений переклад не переривається.
 async function offlineTranslate(text, src, tgt, signal, html = false) {
     let key = null;
     try {   // only a pack that can translate now is asked from memory: a removed or damaged one answers null, as before
-        const route = offlineTrRoute(src, tgt), clean = String(text || '').trim().slice(0, OFFLINE_TR_MAX_CHARS);
+        const route = offlineTrRoute(src, tgt), clean = offlineTrClip(text);
         if (route && clean && offlineTrSupported() && offlineTrReady(await offlineTrLoad(), route)) key = route.join(' ; ') + (html ? '\nhtml\n' : '\ntext\n') + clean;
     } catch (e) { /* the job below answers null */ }
     const known = key && offlineTrResults.get(key);
@@ -335,7 +345,7 @@ function offlineTrJob(text, src, tgt, signal, html) {
         clearTimeout(offlineTrIdleTimer);   // a minute of silence ends the engine -- never one that is about to translate
         if (signal && signal.aborted) return null;
         try {   // запасний шлях ніколи не ламає основний: що б не сталося, відповідь — null
-            const route = offlineTrRoute(src, tgt), clean = String(text || '').trim().slice(0, OFFLINE_TR_MAX_CHARS);
+            const route = offlineTrRoute(src, tgt), clean = offlineTrClip(text);
             if (!clean || !offlineTrSupported() || !offlineTrReady(await offlineTrLoad(), route)) return null;
             await offlineTrStart();
             if (signal && signal.aborted) return null;
