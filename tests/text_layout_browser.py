@@ -70,6 +70,38 @@ def open_file(data, name, mime, ready):
     c.wait(ready, timeout=40); c.js('new Promise(r => setTimeout(r, 500))')
 
 
+# A word of the LIVE page (real pagination, real variables), by its first occurrence that is fully inside the viewport
+# and sits on one line: its centre is where a reader's finger lands.
+TAPPABLE = """((word) => { const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT); let n;
+  while ((n = walker.nextNode())) { let i = -1; while ((i = n.nodeValue.indexOf(word, i + 1)) !== -1) {
+    const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + word.length);
+    const rects = [...r.getClientRects()].filter(b => b.width && b.height && b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight);
+    if (rects.length === 1) { const b = rects[0]; return {x: b.left + b.width / 2, y: b.top + b.height / 2, h: Math.round(b.height), left: Math.round(b.left)}; } } }
+  return null; })"""
+
+
+def study_mode():
+    """Word taps answer only in study mode; the answer itself needs no network for this suite."""
+    c.js("state.translateMode = true; speakText = () => {}; speakInLang = () => {}; aiAvailable = () => true; "
+         "callAI = async () => '{\"direct\":\"x\",\"context\":null}'; machineTranslate = async () => ({html: '', extras: ''}); "
+         "translateLocally = async () => null; 1")
+
+
+def tap_word(word):
+    c.js("document.getElementById('tt-close-btn')?.click(); els.tooltip.style.display = 'none'; state.tooltipJustClosed = false; state.touchJustCommitted = 0; 1")
+    c.js('new Promise(r => setTimeout(r, 150))')
+    point = c.js(TAPPABLE + "(%r)" % word)
+    assert point, ('word not found on the visible page', word)
+    for kind in ('mousePressed', 'mouseReleased'):
+        c.call('Input.dispatchMouseEvent', type=kind, x=point['x'], y=point['y'], button='left', clickCount=1)
+    c.js('new Promise(r => setTimeout(r, 250))')
+    return point
+
+
+# What the application itself thinks was tapped: the popup's headword and the node it marked as the tapped word
+# (class «word-visited», js/selection.js selectWordAtPoint).
+TAPPED = "JSON.stringify({shown: document.getElementById('tt-original').textContent.trim(), marked: state.lastWordNode ? state.lastWordNode.textContent.trim() : '', open: els.tooltip.style.display !== 'none'})"
+
 TXT = ('Chapter one. ' + 'An extraordinarily complicated interdisciplinary sentence for pagination. ' * 24 + '\n') * 40
 
 # ---------------------------------------------------------------- the look nobody chose
@@ -151,8 +183,38 @@ c.js("closeFullMenu(); 1")
 open_file(TXT.encode(), 'layout.txt', 'text/plain', "state.format === 'txt'")
 check('11d back in a text book the reader\'s own choices are applied again', "__tl.pad() === 25 && __tl.ratio() === 2.1 && !__tl.font().includes('Georgia')")
 
-check('12 nothing threw', "__errors.length === 0 || JSON.stringify(__errors)")
+# ---------------------------------------------------------------- the word tap survives every look
+# The tap finds a word by geometry (caretRangeAt / wordBoundsAt and the isPointInRects distance check in js/selection.js),
+# so a shorter line box, a narrower column, another typeface and a ragged right edge are exactly what could break it.
+for name, profile in (
+        ('the default look', {}),
+        ('tight lines, narrow margins, sans, ragged right, no hyphens',
+         {'reader_text_font': 'sans', 'reader_line_height': 'tight', 'reader_margin': 'narrow', 'reader_align': 'left', 'reader_hyphens': 'manual'}),
+        ('roomy lines, wide margins, book serif, justified, hyphens on',
+         {'reader_text_font': 'book', 'reader_line_height': 'loose', 'reader_margin': 'wide', 'reader_align': 'justify', 'reader_hyphens': 'auto'})):
+    load(profile)
+    open_file(TXT.encode(), 'layout.txt', 'text/plain', "state.format === 'txt'")
+    study_mode()
+    for word in ('interdisciplinary', 'for', 'Chapter'):
+        tap_word(word)
+        check(f'13 {name}: a tap on «{word}» opens the popup on that exact word',
+              "(() => { const r = JSON.parse(%s); return r.open && r.shown === %r && r.marked === %r; })() || %s" % (TAPPED, word, word, TAPPED))
+
+load({})
+open_file(TXT.encode(), 'layout.txt', 'text/plain', "state.format === 'txt'")
+study_mode()
+# The same tap, before and after a change of look: the word must not shift under the finger.
+tap_word('interdisciplinary')
+check('14 a word tapped at the default look is the word the popup shows', "JSON.parse(%s).shown === 'interdisciplinary'" % TAPPED)
+choose('text-line', 'tight'); choose('text-margin', 'narrow'); choose('text-font', 'sans')
+tap_word('interdisciplinary')
+check('14b ... and after three changes of look the same tap still lands on it, with the page repaginated under it',
+      "JSON.parse(%s).shown === 'interdisciplinary'" % TAPPED)
+check('14c the tapped words are still counted for the page they are on (reading statistics follow the tap)',
+      "calculateCurrentPageStats().helped >= 1 && calculateCurrentPageStats().total > calculateCurrentPageStats().helped", timeout=3)
+
+check('15 nothing threw', "__errors.length === 0 || JSON.stringify(__errors)")
 # CI runs every suite in ONE browser profile: leave the default look, later suites measure real geometry.
 load({})
-check('13 cleanup: the next suite finds the default look', "__tl.pad() === 56 && __tl.ratio() === 1.7 && __tl.align() === 'justify' && %s.every(k => localStorage.getItem(k) === null)" % list(KEYS))
+check('16 cleanup: the next suite finds the default look', "__tl.pad() === 56 && __tl.ratio() === 1.7 && __tl.align() === 'justify' && %s.every(k => localStorage.getItem(k) === null)" % list(KEYS))
 print('ALL TEXT LAYOUT CHECKS PASSED')
