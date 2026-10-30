@@ -34,10 +34,19 @@
   - **Drive problem (2026-10-24 23:08):** rclone (`scope = drive.file`, shared client_id being retired) refreshed its token and now sees ONLY a NEW root folder «Workbook» (created 23:08:37) holding the narration MP3 (2 132 515 352 bytes, size verified). The older folders (a French textbook, «a conjugation reference», the first «Workbook» with the PDF, «AI Ebook Reader») are invisible to it (Drive usage unchanged, 13 GiB). Owner: move the MP3 into the old folder in the Drive UI; make an own rclone client_id (https://rclone.org/drive/#making-your-own-client-id).
   - **Next:** merge #283 after green CI + production check; owner re-imports narrations on the tablet; fix glued headings / letter-spaced text; a conjugation reference not redone yet.
 
-- **Claude Code — offline French → Ukrainian dictionary** (2026-10-29, branch `ccr-16be4dd2-envhqj`, PR to `main`, NOT to be merged before the owner reviews `dict/REVIEW_SAMPLE.md`):
-  - Built: `tools/build_dict_fr_uk.py` → `dict/fr-uk.json` + `dict/uk-forms.json` (+ `js/offline-dict-catalog.js`), meanings in `dict/src/written-*.tsv`, set expressions in `dict/src/expressions.tsv`; engine `js/offline-dict.js` (installed with the fr→uk pack; offline path only).
-  - The cloud container could not reach kaikki.org / wiktionary.org / lexique.org / Mozilla's CDN: Wiktionary fr→uk came only through ConceptNet 5.7 (≈1 100 lemmas), so most meanings are written (checked against VESUM). Re-run the tool with `--kaikki FILE` when kaikki.org is reachable.
-  - Next: owner reviews the sample; more written meanings for rarer lemmas (`--todo`); the CI log of `tests/offline_dict_real_browser.py` fills the sentence table (`python3 tools/dict_review_sample.py LOG`).
+- **Claude Code — offline translation improvements** (2026-10-30, task file «prompt-offline-translation-1»):
+  - Item 2 merged: #333 (engine answers kept in memory for the session; 📋 `offline.memory {calls, saved, kept}`).
+  - Item 1: PR #334 `feat/offline-dict-meanings` (worktree `.claude/worktrees/offline-dict`): Wiktionary fr→uk via kaikki.org extracts,
+    pairs committed in `dict/src/wiktionary-fr-uk.tsv`; 9 744 → 18 833 lemmas with a meaning. Next: after its CI, regenerate
+    `dict/REVIEW_SAMPLE.md` from the CI log (`gh run view --log` → `python3 tools/dict_review_sample.py LOG`), push, merge.
+    Extracts cached locally in `~/.cache/ai-reader-dict/kaikki/` (SHA-256 at the head of the TSV).
+  - Item 5: PR `fix/offline-tr-cut-at-sentence` (`offlineTrClip`, test 3h4).
+  - Item 3 measured, NOT done: beam 3 / 4 on the 116 stand sentences (local, real engine): median engine time 83 → 141 / 170 ms,
+    ~91 sentences change, with clear regressions («Їх голодувала на довгу зиму», wrong gender) next to gains; Mozilla's
+    student models are tuned for greedy decoding. Keep `beam-size: 1`.
+  - Item 6 measured, NOT done (High-Risk path): a word tap after the engine stopped ≈ 950 ms vs ≈ 190 ms warm (desktop Chrome).
+    Owner to decide whether a longer idle while visible is worth ~300 MB held.
+  - Not started: item 4 (quality scores), 7 (en→uk dictionary), 8 (catalog freshness check in CI).
 
 ## Open Product Tasks Pending Device Verification
 1. **On-Device LLM (Gemma 4 E2B via MediaPipe, PR #278 merged)**:
