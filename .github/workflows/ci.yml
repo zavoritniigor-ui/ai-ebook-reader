@@ -202,6 +202,9 @@ jobs:
           python3 -u tests/reader_resize_sync_browser.py
           python3 -u tests/reader_font_size_browser.py
 
+          echo "Running text_layout_browser.py (font, line spacing, margins, alignment, hyphens)..."
+          python3 -u tests/text_layout_browser.py
+
           echo "Running pwa_start_url_browser.py..."
           python3 -u tests/pwa_start_url_browser.py
 

@@ -186,6 +186,43 @@ function aiText(value) {
 // Reader font size for text formats, in px: ONE range for A-/A+ (js/main.js) and for restoring the saved
 // preference. An out-of-range saved value (older builds let A+ grow without limit) is clamped to the nearest
 // limit, not thrown away for the default.
+// ========== ВИГЛЯД ТЕКСТУ КНИГИ (owner: як у Moon+ / KOReader) ==========
+// Розмір тексту (A− / A+) був єдиним налаштуванням верстки; шрифт, інтервал, поля, вирівнювання й переноси були жорстко
+// вписані в CSS. Тепер кожне з них — ЗНАЧЕННЯ-ТОКЕН у localStorage, а не готовий CSS: у сторінку потрапляє лише те, що
+// є в таблиці нижче (нічого з пам'яті не вставляється в стилі як текст), і стара збережена назва, якої вже немає,
+// просто читається як типова. Застосовує їх applyTextLayout() — виставляє змінні --reader-* на <body>, звідки їх беруть
+// #reader-container і #reader-pages (index.html). PDF має власну фіксовану верстку: ці змінні на його шар не впливають.
+const TEXT_LAYOUT = {
+    font: {
+        key: 'reader_text_font', prop: '--reader-font', def: 'serif',
+        values: {
+            serif: "Georgia, 'Noto Serif', 'Times New Roman', 'Liberation Serif', serif",
+            book: "'Iowan Old Style', Palatino, 'Palatino Linotype', 'Book Antiqua', 'URW Palladio L', Georgia, serif",
+            sans: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'DejaVu Sans', sans-serif"
+        }
+    },
+    line: { key: 'reader_line_height', prop: '--reader-line', def: 'normal', values: { tight: '1.35', normal: '1.7', loose: '2.1' } },
+    margin: { key: 'reader_margin', prop: '--reader-margin', def: 'normal', values: { narrow: '0.45', normal: '1', wide: '1.6' } },
+    align: { key: 'reader_align', prop: '--reader-align', def: 'justify', values: { justify: 'justify', left: 'start' } },
+    hyphens: { key: 'reader_hyphens', prop: '--reader-hyphens', def: 'auto', values: { auto: 'auto', manual: 'manual' } }
+};
+// Назва варіанта, збережена на цьому пристрої; невідома (стара версія, зіпсований запис) читається як типова.
+function textLayoutChoice(name) {
+    const spec = TEXT_LAYOUT[name], saved = readStored(spec.key);
+    return Object.prototype.hasOwnProperty.call(spec.values, saved) ? saved : spec.def;
+}
+// Виставляє всі змінні разом: на старті, після кожної зміни в меню й після синхронізації з іншого пристрою. Повертає true,
+// якщо хоч одна змінна справді змінилася: саме це вирішує, чи потрібне переразбиття (синхронізація приходить і тоді, коли
+// вигляд той самий, а зайве переразбиття посеред читання — видимий стрибок сторінки).
+function applyTextLayout() {
+    let changed = false;
+    for (const [name, spec] of Object.entries(TEXT_LAYOUT)) {
+        const value = spec.values[textLayoutChoice(name)];
+        if (document.body.style.getPropertyValue(spec.prop) !== value) { document.body.style.setProperty(spec.prop, value); changed = true; }
+    }
+    return changed;
+}
+
 const READER_FONT_MIN = 12, READER_FONT_MAX = 40, READER_FONT_STEP = 2, READER_FONT_DEFAULT = 18;
 function clampReaderFontSize(n) {
     return Number.isFinite(n) ? Math.min(READER_FONT_MAX, Math.max(READER_FONT_MIN, n)) : READER_FONT_DEFAULT;
@@ -808,6 +845,7 @@ const els = {
     altVoicesBtn: document.getElementById('btn-alt-voices')
 };
 els.pages.style.fontSize = `${state.fontSize}px`;
+applyTextLayout();   // шрифт, інтервал, поля, вирівнювання й переноси книжкового тексту — до першої книги
 
 const toggleTocDesktopBtn = document.getElementById('toggle-toc-desktop');
 const openToc = () => { els.sidebar.classList.toggle('collapsed'); };
@@ -1952,6 +1990,27 @@ Object.assign(I18N, {
     mTwoVoicesDesc: { uk: "Різні голоси для реплік під час читання вголос", en: "Different voices for dialogue when reading aloud", fr: "Des voix différentes pour les répliques en lecture", ru: "Разные голоса для реплик при чтении вслух", zh: "朗读时对话使用不同语音", ko: "소리 내어 읽을 때 대사마다 다른 목소리", hi: "ज़ोर से पढ़ते समय संवादों के लिए अलग आवाज़ें", ga: "Guthanna éagsúla don chomhrá agus é á léamh os ard" },
     mFontSize: { uk: "Розмір тексту", en: "Text size", fr: "Taille du texte", ru: "Размер текста", zh: "文字大小", ko: "글자 크기", hi: "पाठ का आकार", ga: "Méid an téacs" },
     mFontSizeDesc: { uk: "Менше чи більше — текст і сторінки PDF", en: "Smaller or larger — text and PDF pages", fr: "Plus petit ou plus grand — texte et pages PDF", ru: "Меньше или больше — текст и страницы PDF", zh: "缩小或放大——文本和 PDF 页面", ko: "작게 또는 크게 — 텍스트와 PDF 페이지", hi: "छोटा या बड़ा — पाठ और PDF पृष्ठ", ga: "Níos lú nó níos mó — téacs agus leathanaigh PDF" },
+    mTextFont: { uk: "Шрифт тексту", en: "Text font", fr: "Police du texte", ru: "Шрифт текста", zh: "正文字体", ko: "본문 글꼴", hi: "पाठ का फ़ॉन्ट", ga: "Cló an téacs" },
+    mTextFontDesc: { uk: "Гарнітура книжкового тексту", en: "The typeface of the book text", fr: "La police du texte du livre", ru: "Гарнитура книжного текста", zh: "书籍正文的字体", ko: "책 본문의 서체", hi: "पुस्तक के पाठ का टाइपफ़ेस", ga: "Cló théacs an leabhair" },
+    mFontSerif: { uk: "Із засічками", en: "Serif", fr: "Avec empattements", ru: "С засечками", zh: "衬线体", ko: "세리프", hi: "सेरिफ़", ga: "Le serifeanna" },
+    mFontBook: { uk: "Книжковий", en: "Book serif", fr: "Police de livre", ru: "Книжный", zh: "书版衬线", ko: "책 세리프", hi: "पुस्तक सेरिफ़", ga: "Serif leabhair" },
+    mFontSans: { uk: "Без засічок", en: "Sans serif", fr: "Sans empattements", ru: "Без засечек", zh: "无衬线体", ko: "산세리프", hi: "सैन्स-सेरिफ़", ga: "Gan serifeanna" },
+    mLineHeight: { uk: "Міжрядковий інтервал", en: "Line spacing", fr: "Interligne", ru: "Межстрочный интервал", zh: "行距", ko: "줄 간격", hi: "पंक्ति अंतराल", ga: "Spásáil línte" },
+    mLineHeightDesc: { uk: "Відстань між рядками тексту", en: "The distance between lines of text", fr: "L’espace entre les lignes du texte", ru: "Расстояние между строками текста", zh: "文本行之间的距离", ko: "글줄 사이의 거리", hi: "पाठ की पंक्तियों के बीच की दूरी", ga: "An fad idir línte téacs" },
+    mLineTight: { uk: "Щільний", en: "Tight", fr: "Serré", ru: "Плотный", zh: "紧凑", ko: "좁게", hi: "संकुचित", ga: "Teann" },
+    mLineNormal: { uk: "Звичайний", en: "Normal", fr: "Moyen", ru: "Обычный", zh: "正常", ko: "보통", hi: "सामान्य", ga: "Gnách" },
+    mLineLoose: { uk: "Просторий", en: "Roomy", fr: "Aéré", ru: "Просторный", zh: "宽松", ko: "넓게", hi: "विस्तृत", ga: "Fairsing" },
+    mMargins: { uk: "Поля сторінки", en: "Page margins", fr: "Marges de la page", ru: "Поля страницы", zh: "页面边距", ko: "페이지 여백", hi: "पृष्ठ के हाशिये", ga: "Imill an leathanaigh" },
+    mMarginsDesc: { uk: "Відступи тексту від краю сторінки", en: "The space between the text and the page edge", fr: "L’espace entre le texte et le bord de la page", ru: "Отступы текста от края страницы", zh: "正文与页边之间的留白", ko: "본문과 페이지 가장자리 사이의 여백", hi: "पाठ और पृष्ठ के किनारे के बीच की जगह", ga: "An spás idir an téacs agus ciumhais an leathanaigh" },
+    mMarginNarrow: { uk: "Вузькі", en: "Narrow", fr: "Étroites", ru: "Узкие", zh: "窄", ko: "좁게", hi: "संकरे", ga: "Caol" },
+    mMarginNormal: { uk: "Звичайні", en: "Normal", fr: "Normales", ru: "Обычные", zh: "正常", ko: "보통", hi: "सामान्य", ga: "Gnách" },
+    mMarginWide: { uk: "Широкі", en: "Wide", fr: "Larges", ru: "Широкие", zh: "宽", ko: "넓게", hi: "चौड़े", ga: "Leathan" },
+    mAlign: { uk: "Вирівнювання", en: "Alignment", fr: "Alignement", ru: "Выравнивание", zh: "对齐方式", ko: "정렬", hi: "संरेखण", ga: "Ailíniú" },
+    mAlignDesc: { uk: "Рівний правий край або природний", en: "An even right edge or a natural one", fr: "Un bord droit régulier ou naturel", ru: "Ровный правый край или естественный", zh: "右边缘整齐或自然", ko: "오른쪽 끝을 가지런히 또는 자연스럽게", hi: "दायाँ किनारा समान या स्वाभाविक", ga: "Ciumhais dheas chothrom nó ceann nádúrtha" },
+    mAlignJustify: { uk: "По краях", en: "Justified", fr: "Justifié", ru: "По краям", zh: "两端对齐", ko: "양쪽 맞춤", hi: "दोनों ओर समान", ga: "Comhfhadaithe" },
+    mAlignLeft: { uk: "По лівому краю", en: "Ragged right", fr: "À gauche", ru: "По левому краю", zh: "左对齐", ko: "왼쪽 맞춤", hi: "बाईं ओर", ga: "Ar chlé" },
+    mHyphens: { uk: "Переноси слів", en: "Hyphenation", fr: "Césures", ru: "Переносы слов", zh: "自动断词", ko: "하이픈 넣기", hi: "शब्द-विभाजन", ga: "Fleiscíniú" },
+    mHyphensDesc: { uk: "Розриває довгі слова, щоб у рядках не було прогалин", en: "Breaks long words so lines have no gaps", fr: "Coupe les mots longs pour éviter les blancs", ru: "Разрывает длинные слова, чтобы в строках не было пробелов", zh: "拆分长词，避免行内出现空隙", ko: "긴 단어를 나눠 줄의 빈틈을 줄입니다", hi: "लंबे शब्द तोड़ता है ताकि पंक्तियों में अंतराल न रहे", ga: "Briseann focail fhada ionas nach mbeidh bearnaí sna línte" },
     mPdfFit: { uk: "Масштаб сторінки PDF", en: "PDF page fit", fr: "Ajustement de la page PDF", ru: "Масштаб страницы PDF", zh: "PDF 页面缩放", ko: "PDF 페이지 맞춤", hi: "PDF पृष्ठ का माप", ga: "Oiriúnú leathanach PDF" },
     mPdfFitDesc: { uk: "Як сторінка вписується в екран", en: "How the page fits the screen", fr: "Comment la page s’adapte à l’écran", ru: "Как страница помещается на экран", zh: "页面如何适应屏幕", ko: "페이지를 화면에 맞추는 방식", hi: "पृष्ठ स्क्रीन में कैसे समाए", ga: "Conas a oireann an leathanach don scáileán" },
     mFitWidth: { uk: "По ширині", en: "Fit width", fr: "Pleine largeur", ru: "По ширине", zh: "适合宽度", ko: "너비에 맞춤", hi: "चौड़ाई में फ़िट", ga: "Leithead iomlán" },

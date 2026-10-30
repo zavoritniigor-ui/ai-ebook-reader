@@ -14,7 +14,9 @@
  */
 const SYNC_CODE_KEY = 'reader_sync_code', SYNC_META_KEY = 'reader_sync_meta', SYNC_PENDING_KEY = 'reader_sync_pending', SYNC_LAST_KEY = 'reader_sync_last';
 // Розмір шрифту НЕ переноситься: на телефоні й планшеті зручний розмір різний.
-const SYNC_SETTINGS = ['reader_theme', 'reader_ui_lang', 'reader_target_lang'];
+const SYNC_SETTINGS = ['reader_theme', 'reader_ui_lang', 'reader_target_lang',
+    // Вигляд книжкового тексту (js/core.js TEXT_LAYOUT): як і тема, застосовується одразу — читач налаштував його раз.
+    'reader_text_font', 'reader_line_height', 'reader_margin', 'reader_align', 'reader_hyphens'];
 // Ключі книги: префікс локального ключа → коротка назва типу в синхронізації. Ключ закладки — сам bookKey.
 const SYNC_BOOK_TYPES = [['reader_marks_v1:', 'mk'], ['reader_readpos_v1:', 'rp'], ['reader_book_lang:', 'bl'], ['', 'bm']];
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
@@ -221,6 +223,10 @@ function applyStoredSyncSettings() {
         if (theme && theme !== document.body.getAttribute('data-theme')) {
             document.body.setAttribute('data-theme', theme);
             const select = document.getElementById('theme-select'); if (select) select.value = theme;
+        }
+        if (applyTextLayout()) {
+            if (typeof syncTextLayoutControls === 'function') syncTextLayoutControls();
+            if (state.format && state.format !== 'pdf') repaginateBook();
         }
     } catch (e) {}
 }
