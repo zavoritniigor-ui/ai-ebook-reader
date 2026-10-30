@@ -15,7 +15,7 @@ def pdf_document(pages, outline=None, page_labels=None):
     building a real /Outlines bookmark tree with explicit page destinations.
     page_labels: list of {'style': 'D'|'r'|'R'|None, 'start': int (1-based
     physical page this range begins at), 'prefix': str} building /PageLabels.
-    Each page spec may include 'links': [{'rect': [x1,y1,x2,y2], 'page': N}]
+    Each page spec may include 'lines': [(text, x, y, size)] (lines of text placed anywhere) and 'links': [{'rect': [x1,y1,x2,y2], 'page': N}]
     for real Link annotations (destination = top of target page N)."""
     objects = [None, b'',
                b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
@@ -85,6 +85,10 @@ def pdf_document(pages, outline=None, page_labels=None):
             ops.append(f"BT /F1 18 Tf {'3 Tr' if spec.get('ocr') else '0 Tr'} 20 {height-35} Td ({text}) Tj ET")
             if spec.get('text'):
                 ops.append(f'BT /F1 13 Tf 20 {height-65} Td (Second paragraph: image and text document page {number}.) Tj ET')
+        for line in spec.get('lines', []):   # (text, x, y, size): a line of text anywhere, in any size
+            t, x, y, size = line
+            t = t.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+            ops.append(f'BT /F1 {size} Tf {x} {y} Td ({t}) Tj ET')
         contents = stream('\n'.join(ops).encode())
         page_id = page_ids[number - 1]
         annots = ''
