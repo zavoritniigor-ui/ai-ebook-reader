@@ -1410,6 +1410,19 @@ function wordBoundsAt(clientX, clientY, anchor = null) {
 }
 
 let lastDragClientX = 0, lastDragClientY = 0;
+// A finger drag holds on to the LINE its end is on: on a phone a PDF line is ~7 px tall with the next one 8 px below, and a
+// fingertip lands a few pixels lower than the reader aims, so the end used to jump to the line below («une cuisinière»
+// dragged right-to-left came out «cuisinière o une»). The end moves to another line only once the finger is more than a
+// line height away from the middle of the line it is on. { y: the line's middle, h: its height } of the current end word.
+let dragLine = null;
+function dragLineOf(w) {
+    try {
+        const r = document.createRange();
+        r.setStart(w.node, w.start); r.setEnd(w.endNode || w.node, w.end);
+        const b = Array.from(r.getClientRects()).find(x => x.width && x.height) || r.getBoundingClientRect();
+        return b && b.height ? { y: b.top + b.height / 2, h: b.height } : null;
+    } catch (e) { return null; }
+}
 let pdfSelectionTouch = null;
 // A stylus selects on the mouse path (immediately, no long-press), but browsers give pen drags the same
 // touch-action panning as fingers (and on Android also dispatch them as touch events): without a guard the
@@ -1419,7 +1432,7 @@ let penSelectionActive = false;
 function cancelDragSelection() {
     const hadDragHighlight = !!state.dragRange;
     clearTimeout(touchSelTimer); touchSelTimer = null;
-    dragSel = null; dragMoved = false; state.dragRange = null;
+    dragSel = null; dragMoved = false; state.dragRange = null; dragLine = null;
     state.touchSelecting = false;
     pdfSelectionTouch = null;
     penSelectionActive = false;
@@ -1530,6 +1543,7 @@ els.mainArea.addEventListener('pointerdown', (e) => {
             }
             if (!w) return;
             dragSel = w;
+            dragLine = dragLineOf(w);
             dragMoved = true;                 // підсвітка з першого ж слова
             state.touchSelecting = true;      // свайпи гортання на час виділення вимкнені
             document.body.classList.add('touch-selecting');
@@ -1599,12 +1613,14 @@ function updateDragSelection(e) {
         if (Math.abs(e.clientX - dragStartX) < 6 && Math.abs(e.clientY - dragStartY) < 6) return;
         dragMoved = true;
     }
-    let w = wordBoundsAt(e.clientX, e.clientY, dragSel);
+    // A finger near the line the end is on stays on that line (see dragLine).
+    const y = state.touchSelecting && dragLine && Math.abs(e.clientY - dragLine.y) < dragLine.h ? dragLine.y : e.clientY;
+    let w = wordBoundsAt(e.clientX, y, dragSel);
     if (w === false) return;   // the finger is in the space before the next word: the selection stays as it is
     if (!w && state.format === 'pdf' && dragSel) {
         // between two lines: the nearest line above or below, but never a word the finger has not reached on it
         for (const dy of [-8, 8, -16, 16, -24, 24]) {
-            w = wordBoundsAt(e.clientX, e.clientY + dy, dragSel);
+            w = wordBoundsAt(e.clientX, y + dy, dragSel);
             if (w !== null) break;
         }
     }
@@ -1612,6 +1628,7 @@ function updateDragSelection(e) {
     const r = rangeBetweenWords(dragSel, w);
     if (!r) return;
     state.dragRange = r;
+    if (state.touchSelecting) dragLine = dragLineOf(w) || dragLine;
     // ПІД ЧАС протягування підсвічуємо лише накладним шаром: обгортання в span
     // змінює DOM, розрізає текстові вузли — і вузол, з якого почалось виділення,
     // ставав недійсним. Саме через це виділення мишею й перестало працювати.
@@ -1649,7 +1666,7 @@ function commitDragSelection(clientX, clientY) {
     }
     window.getSelection()?.removeAllRanges();
     if (!dragSel) return;
-    const start = dragSel; dragSel = null;
+    const start = dragSel; dragSel = null; dragLine = null;
     const r = state.dragRange;
     state.dragRange = null;
     // Протягування не відбулось (кінець там само, де початок) — лишаємо звичайному

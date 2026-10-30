@@ -176,6 +176,7 @@ jobs:
           python3 -u tests/pdf_print_browser.py
           python3 -u tests/pdf_crop_ai_share_browser.py
           python3 -u tests/pdf_ink_ownership_browser.py
+          python3 -u tests/pdf_drag_line_hold_browser.py
           python3 -u tests/pdf_ink_storage_browser.py
           python3 -u tests/pdf_ink_pen_browser.py
           python3 -u tests/pdf_ink_tools_browser.py
