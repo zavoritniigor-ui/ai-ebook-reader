@@ -203,6 +203,12 @@ try:
     js(f"handleWordOrSelection({json.dumps(WORD)}, 200, 200); 1")
     text = wait_tooltip(f"{DEVANAGARI}.test(els.ttTranslation.textContent)", timeout=60)
     ok('3b a WORD is translated by the pack (Ukrainian -> Hindi through English), marked ⌂', '⌂' in text, text)
+    calls, saved = js("offlineTrReport().memory.calls"), js("offlineTrReport().memory.saved")
+    js(f"els.ttTranslation.textContent = ''; handleWordOrSelection({json.dumps(WORD)}, 200, 200); 1")
+    again = wait_tooltip(f"{DEVANAGARI}.test(els.ttTranslation.textContent)", timeout=30)
+    ok('3b2 a second tap on the same word asks the worker NOTHING: the engine\'s answers of this session are kept in memory',
+       again == text and js("offlineTrReport().memory.calls") == calls and js("offlineTrReport().memory.saved") > saved,
+       (again, text, calls, js("offlineTrReport().memory")))
     js(f"state.translationCache = {{}}; handleWordOrSelection({json.dumps(SENTENCE)}, 200, 200); 1")
     c.wait("els.ttTranslation.textContent.length > 12 && els.ttTranslation.textContent.includes('⌂') && !els.ttTranslation.textContent.includes(t('translating'))", timeout=60)
     text = tooltip()
@@ -247,6 +253,15 @@ try:
     ok('4a after a few seconds without an AI answer the installed pack shows its translation (⌂)', '⌂' in text, text)
     js("window.__aiResolve('Відповідь ШІ'); 1"); time.sleep(.5)
     check('4b a late AI answer replaces the preview', "els.ttTranslation.textContent.includes('Відповідь ШІ') && !els.ttTranslation.textContent.includes('⌂')")
+    js("""(() => { machineTranslate = async () => { throw new Error('no network'); }; state.translationCache = {}; els.ttTranslation.textContent = '';
+        handleWordOrSelection('чоловік', 200, 200); return 1; })()""")
+    text = wait_tooltip(f"{DEVANAGARI}.test(els.ttTranslation.textContent)", timeout=30)
+    calls = js("offlineTrReport().memory.calls")
+    js("window.__aiResolve(null); 1")
+    c.wait("!els.ttTranslation.textContent.includes(t('translating'))", timeout=30); time.sleep(1)
+    ok('4c a WORD previewed by the pack whose AI then fails: the main path takes the preview\'s answer, the worker translates nothing again',
+       js("offlineTrReport().memory.calls") == calls and tooltip() == text, (calls, js("offlineTrReport().memory"), tooltip(), text))
+    check('4d the device\'s answer is kept only in memory: neither the session cache nor the store of translations has it', "Object.keys(state.translationCache).length === 0")
     reload_page()
 
     # ---- 5. remove, and a model that two directions share -------------------------------------------------------------------------
@@ -343,7 +358,7 @@ try:
 
     # ---- 10. diagnostics, languages ------------------------------------------------------------------------------------------------
     check('10a the diagnostics report says what is installed and how the last translation went, without any key',
-          "(() => { const report = JSON.parse(buildDiagnosticsReport()).offline; return report.supported === true && report.engine === '3.0' && Object.keys(report.models).length >= 1 && report.last.ms > 0 && report.failure !== undefined && !/sk-|gsk_|AIza/.test(JSON.stringify(report)); })()")
+          "(() => { const report = JSON.parse(buildDiagnosticsReport()).offline; return report.supported === true && report.engine === '3.0' && Object.keys(report.models).length >= 1 && report.last.ms > 0 && report.failure !== undefined && report.memory.calls > 0 && report.memory.saved >= 0 && !/sk-|gsk_|AIza/.test(JSON.stringify(report)); })()")
     check('10b every string of the section exists in all 9 menu languages',
           """(() => { const keys = ['offAlone','offTitle','offHint','offBookLang','offTarget','offDownload','offHave','offProgress','offDone','offCancelled','offErrNetwork','offErrServer','offErrChecksum','offErrQuota','offUnsupported','offNoRoute','offInstalled','offRemove','offTest','offTestResult','offTestFail','offNeedsPack','offUnitMb'];
               return keys.every(k => ['uk','en','fr','ru','zh','ko','hi','ga','es'].every(l => I18N[k] && typeof I18N[k][l] === 'string' && I18N[k][l].length > 1)); })()""")

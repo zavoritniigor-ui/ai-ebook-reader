@@ -345,10 +345,12 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         }
         // Мережа, що лише здається живою (Wi-Fi без інтернету), тримала б читача до тайм-ауту AI: через кілька секунд відповідає встановлений
         // офлайн-пакет (js/offline-translate.js), а пізня відповідь AI його замінює. Без пакета offlineTranslate одразу повертає null.
+        // The preview's job is kept: when the AI then fails, the main path below takes its answer instead of translating again.
+        let previewWord = null, previewSentence = null;
         const previewTimer = setTimeout(async () => {
             // a word: its meaning in this sentence (js/offline-translate.js offlineTranslateWord), a phrase: as it is
-            const word = !isMultiWord ? await offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal) : null;
-            const local = word ? null : isMultiWord ? await offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal) : null;   // with the pack's dictionary, if any
+            const word = !isMultiWord ? await (previewWord = offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal)) : null;
+            const local = word ? null : isMultiWord ? await (previewSentence = offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal)) : null;   // with the pack's dictionary, if any
             if (!(word || local) || aiDone || myLookup !== state.lookupToken || !task.current()) return;
             els.ttTranslation.innerHTML = word ? offlineTrWordHtml(word) : escapeHtml(local) + ' <span class="tt-note">⌂</span>';
             const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
@@ -403,7 +405,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 // The AI on the device (js/device-llm.js) sees the context and translates better than the offline pack, which is the last resort.
                 try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, selectionContext, task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
                 if (local) { quality = 'device'; mark = t('dlMark'); }
-                else if ((local = await offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal))) quality = 'device';
+                else if ((local = await (previewSentence || offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal)))) quality = 'device';
             }
             if (myLookup !== state.lookupToken || !task.current()) return;
             if (local) html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`;
@@ -424,7 +426,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
                 try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, contextSentence, task.signal); } catch (err) { if (err && err.name === 'AbortError') return; }
                 let word = null;
                 if (local) mark = t('dlMark');
-                else word = await offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal);   // the word as meant in its sentence
+                else word = await (previewWord || offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal));   // the word as meant in its sentence
                 if (myLookup !== state.lookupToken || !task.current()) return;
                 if (word) { html = offlineTrWordHtml(word); quality = 'device'; }
                 else if (local) { html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`; quality = 'device'; }
