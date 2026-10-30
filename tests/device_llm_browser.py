@@ -232,6 +232,13 @@ check('Abort stops the generation', "(async () => { const ac = new AbortControll
 # ---- diagnostics ----------------------------------------------------------------------------------------------------------
 check('📋 report: deviceAi with the GPU, the installed model, the last request', """(() => { const r = JSON.parse(buildDiagnosticsReport()).deviceAi;
   return r.installed === true && r.gpu.ok === true && r.state.model === DEVICE_LLM_CATALOG.model.id && r.last && r.last.outTokens > 0 && typeof r.loadMs === 'number'; })()""")
+check('📋 report: whether Chrome offers its built-in AI here (Gemini Nano, Translator), asked without downloading anything', """(async () => {
+  const saved = [self.LanguageModel, self.Translator];
+  try {
+    self.LanguageModel = { availability: async () => 'downloadable', create: () => { throw new Error('must not download'); } }; delete self.Translator;
+    await probeChromeBuiltinAi(); const r = JSON.parse(buildDiagnosticsReport()).chromeAi;
+    return r.promptApi === 'downloadable' && r.translatorFrUk === 'absent' && !!r.checked || JSON.stringify(r);
+  } finally { self.LanguageModel = saved[0]; if (saved[1]) self.Translator = saved[1]; } })()""")
 
 # ---- a lost part: the install is forgotten, Settings offer the download again ----------------------------------------------------
 c.js("deviceLlmStop(); caches.open('reader-device-llm').then(c => c.delete(deviceLlmPartKey(1))).then(() => 1)")

@@ -259,6 +259,22 @@ new MutationObserver(() => {
 // (silence, doubled dictated words) can only be seen through these traces. The reader reproduces the problem, presses
 // «Скопіювати діагностику» and pastes the text to the developer. Holds no AI keys and no prompts -- only what the
 // recognizer heard, the engine events, voices and settings.
+// Chrome's built-in AI on THIS device (Gemini Nano through the Prompt API, Chrome's own Translator): whether the browser offers it at
+// all and in what state. availability() never downloads a model (only create() would), so asking costs nothing. Filled at start.
+let chromeBuiltinAi = null;
+async function probeChromeBuiltinAi() {
+    const ask = async (api, options) => {
+        if (typeof self[api] === 'undefined') return 'absent';
+        try { return await self[api].availability(options); } catch (e) { return 'error: ' + String(e && e.message || e).slice(0, 120); }
+    };
+    chromeBuiltinAi = {
+        promptApi: await ask('LanguageModel', { expectedInputs: [{ type: 'text', languages: ['fr'] }], expectedOutputs: [{ type: 'text', languages: ['en'] }] }),
+        translatorFrUk: await ask('Translator', { sourceLanguage: 'fr', targetLanguage: 'uk' }),
+        checked: new Date().toISOString()
+    };
+    return chromeBuiltinAi;
+}
+setTimeout(() => { probeChromeBuiltinAi().catch(() => {}); }, 3000);
 function buildDiagnosticsReport() {
     const synth = typeof ttsSynth !== 'undefined' && ttsSynth ? ttsSynth : null;
     const shell = document.querySelector('script[src*="js/core.js"]')?.getAttribute('src')?.split('v=')[1] || '';
@@ -277,6 +293,7 @@ function buildDiagnosticsReport() {
             recent: typeof readerAiRequests === 'function' ? readerAiRequests().slice(-30) : []
         },
         offline: typeof offlineTrReport === 'function' ? offlineTrReport() : null,   // js/offline-translate.js: installed packs, why the engine failed, last speed
+        chromeAi: chromeBuiltinAi,   // Gemini Nano (Prompt API) and Chrome's Translator: 'absent' = this browser has no such API; else unavailable / downloadable / downloading / available
         deviceAi: typeof deviceLlmReport === 'function' ? deviceLlmReport() : null,   // js/device-llm.js: WebGPU, installed model, load time, speed, why it failed
         bookSpeech: typeof bsReport === 'function' ? bsReport() : null,   // js/book-speech.js: the book's narration and piste marks, what each tap decided
         speech: {
