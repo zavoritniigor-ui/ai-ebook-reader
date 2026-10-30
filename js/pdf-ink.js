@@ -22,8 +22,12 @@
 // можна масштабувати й перевідкривати — написане лишається на своєму місці й
 // не розмивається, бо перемальовується заново у поточній роздільності.
 let inkActivePage = 0; // last page a stroke was drawn/erased on — toolbar (undo/clear/done) targets this
-function activeInkPage() { return inkActivePage || state.currentIndex; }
+// Text books (js/text-ink.js) have ONE writing layer over the shown page, page key TEXT_INK_PAGE.
+const TEXT_INK_PAGE = 'text';
+const inkOnText = () => !!state.format && state.format !== 'pdf';
+function activeInkPage() { return inkOnText() ? TEXT_INK_PAGE : (inkActivePage || state.currentIndex); }
 function activeInkCanvas() {
+    if (inkOnText()) return typeof textInkCanvas === 'function' ? textInkCanvas() : null;
     const w = typeof pdfPageWrappers !== 'undefined' ? pdfPageWrappers[activeInkPage()] : null;
     return w ? w.querySelector('.ink-layer') : null;
 }
@@ -148,6 +152,7 @@ let inkSaveChain = Promise.resolve();
 // saveInk(page): persists that page of the CURRENT book. saveInk() with no page: the whole in-memory ink of this book
 // (pages that are no longer there are deleted). Saves run one after another, so an older write never lands last.
 function saveInk(pageNum) {
+    if (inkOnText()) { if (typeof saveTextInk === 'function') saveTextInk(); return inkSaveChain; }   // js/text-ink.js
     if (!state.bookKey || inkOwner !== state.bookKey) return inkSaveChain; // in-memory ink is not this book's
     const bookKey = state.bookKey;
     const whole = pageNum === undefined;
@@ -180,6 +185,7 @@ function loadInk() {
     inkHistory = {}; inkRedoStack = {}; inkActivePage = 0; inkGestureSnapshot = null;
     inkDrawing = false; inkCurrent = null; inkPointerId = null; inkTouchPan = null; inkEraseBefore = null;
     updateInkTools();
+    if (typeof loadTextInk === 'function') loadTextInk();   // the same book's handwriting in text books (js/text-ink.js)
     if (!state.bookKey) { inkLoadPromise = Promise.resolve(); return; }
     const bookKey = state.bookKey, oldKey = state.oldBookKey;
     inkLoadPromise = (async () => {
@@ -390,7 +396,7 @@ function bindInkCanvas(cv, pageNum) {
             // A finger scrolls the page (the layer is touch-action:none, so the browser does not); a palm while the
             // stylus writes does nothing at all.
             e.preventDefault();
-            if (!inkFingerWrites && !inkPenBusy() && !inkTouchPan) inkTouchPan = { id: e.pointerId, x: e.clientX, y: e.clientY };
+            if (!inkFingerWrites && !inkPenBusy() && !inkTouchPan) inkTouchPan = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY };
             return;
         }
         if (inkDrawing || (!pen && pdfPointers.size > 1)) return;
@@ -426,6 +432,7 @@ function bindInkCanvas(cv, pageNum) {
         if (inkTouchPan && inkTouchPan.id === e.pointerId) {
             const dx = e.clientX - inkTouchPan.x, dy = e.clientY - inkTouchPan.y;
             inkTouchPan.x = e.clientX; inkTouchPan.y = e.clientY;
+            if (inkOnText()) return;   // a text page does not scroll: the swipe turns it when the finger lifts
             if (inkPenBusy() || pdfPointers.size > 1 || pdfGesture?.multi) return;   // two fingers: js/pdf-zoom-pan.js zooms
             els.container.scrollLeft -= dx; els.container.scrollTop -= dy;
             return;
@@ -445,7 +452,11 @@ function bindInkCanvas(cv, pageNum) {
     });
     const finishStroke = (e) => {
         if (owner !== inkOwner) return;
-        if (inkTouchPan && inkTouchPan.id === e.pointerId) { inkTouchPan = null; return; }
+        if (inkTouchPan && inkTouchPan.id === e.pointerId) {
+            const pan = inkTouchPan; inkTouchPan = null;
+            if (inkOnText() && e.type === 'pointerup' && !inkPenBusy() && typeof textInkSwipe === 'function') textInkSwipe(e.clientX - pan.x0, e.clientY - pan.y0);
+            return;
+        }
         if (e.pointerId !== inkPointerId || !inkDrawing) return;
         if (inkCurrent && inkCurrent.p.length > 0) {
             getInkHistory(pageNum).push({ type: 'draw', stroke: inkCurrent, owner });
@@ -560,11 +571,12 @@ function inkEraseAt(pt, cv, pageNum) {
 }
 
 document.getElementById('btn-ink').onclick = () => {
-    if (state.format !== 'pdf') { showToast(t('regionPdfOnly')); return; }
+    if (!state.format || state.format === 'cbz') { showToast(t('inkNeedsBook')); return; }
     exitRegionMode();
     state.inkMode = true;
     document.body.classList.add('ink-mode', 'immersive-mode');
-    document.querySelectorAll('.ink-layer').forEach(cv => { ensureInkCanvas(cv); bindInkCanvas(cv, Number(cv.dataset.page)); });
+    if (inkOnText()) { if (typeof enterTextInk === 'function') enterTextInk(); }
+    else document.querySelectorAll('.pdf-page-wrapper .ink-layer').forEach(cv => { ensureInkCanvas(cv); bindInkCanvas(cv, Number(cv.dataset.page)); });
     updateInkTools();
 };
 function updateInkTools() {
@@ -578,6 +590,7 @@ function updateInkTools() {
     finger.hidden = !inkPenSeen;
     finger.classList.toggle('active', inkFingerWrites);
     finger.setAttribute('aria-pressed', String(inkFingerWrites));
+    document.getElementById('ink-prev').hidden = document.getElementById('ink-next').hidden = !inkOnText();
     const colour = state.inkMarker && !state.inkErase ? state.inkMarkerColor : state.inkColor;
     document.querySelectorAll('.ink-color').forEach(b => b.classList.toggle('active', b.dataset.c === colour));
     document.getElementById('ink-undo').disabled = !getInkHistory(activeInkPage()).length;
