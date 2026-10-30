@@ -307,7 +307,8 @@ function cancelPdfRender() {
 function cancelPdfInteraction(keepTrackingSuppressed = false) {
     clearTimeout(wheelZoomTimer); cancelAnimationFrame(pdfFrame); pdfFrame = 0;
     pdfPointers.clear(); pdfGesture = null;
-    if (inkDrawing) { inkDrawing = false; inkCurrent = null; redrawInk(activeInkCanvas(), activeInkPage()); saveInk(activeInkPage()); }
+    // A stylus stroke ends with its own pointerup; a finger (a palm put down before the stylus) lifting must not cut it.
+    if (inkDrawing && inkPointerType !== 'pen') { inkDrawing = false; inkCurrent = null; redrawInk(activeInkCanvas(), activeInkPage()); saveInk(activeInkPage()); }
     inkGestureSnapshot = null;
     els.pages.style.removeProperty('will-change');
     // Safety net: every gesture-end path reaches here, including the "zoom
@@ -335,6 +336,7 @@ document.addEventListener('pointerdown', e => {
         !(els.container.contains(e.target) || e.target.closest('#region-overlay')) || e.target.closest('#region-cancel')) return;
     if (e.pointerType !== 'touch') { pdfBlockClick = false; return; }
     if (!pdfContinuousReady) return;
+    if (inkPenBusy()) return;   // a palm while the stylus writes: no pinch, no rollback of the stroke (js/pdf-ink.js)
     if (!pdfPointers.size) {
         clearTimeout(wheelZoomTimer);
         pdfBlockClick = false; state.suppressNextClick = false;

@@ -1075,6 +1075,7 @@ const I18N = {
     pickVerb:       { uk: 'Спершу оберіть дієслово у розборі.', en: 'First pick a verb in the analysis.', fr: "Choisissez d'abord un verbe dans l'analyse.", ru: 'Сначала выберите глагол в разборе.' },
     btnInk:         { uk: '✏️ Писати',   en: '✏️ Write',       fr: '✏️ Écrire',     ru: '✏️ Писать' },
     done:           { uk: 'Готово',       en: 'Done',           fr: 'Terminé',        ru: 'Готово' },
+    inkPenFound:    { uk: 'Стилус: тепер пише лише він, пальцем гортайте сторінку. ☝️ — писати й пальцем.', en: 'Stylus found: only the stylus writes now, a finger scrolls the page. ☝️ lets a finger write too.', fr: 'Stylet détecté : seul le stylet écrit, le doigt fait défiler la page. ☝️ pour écrire aussi au doigt.', ru: 'Стилус: теперь пишет только он, пальцем листайте страницу. ☝️ — писать и пальцем.' },
     clearPageAsk:   { uk: 'Стерти все написане на цій сторінці?', en: 'Erase everything written on this page?', fr: 'Effacer tout ce qui est écrit sur cette page ?', ru: 'Стереть всё написанное на этой странице?' },
     btnRegion:      { uk: '✂️ Фрагмент',  en: '✂️ Region',      fr: '✂️ Zone',        ru: '✂️ Фрагмент' },
     regionHint:     { uk: 'Обведіть фрагмент PDF', en: 'Select a PDF region', fr: 'Sélectionnez une zone PDF', ru: 'Выделите фрагмент PDF' },
