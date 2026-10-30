@@ -776,7 +776,7 @@ const state = {
     selectionContext: '',   // the sentence around a dragged part of it (js/selection.js), read once by the translation
     refinedKeys: new Set(),
     sourceLang: 'en-US', ctxSentence: '',
-    ink: {}, inkMode: false, inkErase: false, inkColor: '#1a56db',
+    ink: {}, inkMode: false, inkErase: false, inkEraseWhole: false, inkMarker: false, inkColor: '#1a56db', inkMarkerColor: '#f2c200',
     // Continuous PDF viewer (js/pdf-continuous.js et al.): pdfDoc set by initPdf,
     // pdfPageMeta[n] caches {width,height} natural size once page n is measured,
     // pdfOutline/pdfPageLabels cached from getOutline()/getPageLabels().
@@ -1076,6 +1076,8 @@ const I18N = {
     btnInk:         { uk: '✏️ Писати',   en: '✏️ Write',       fr: '✏️ Écrire',     ru: '✏️ Писать' },
     done:           { uk: 'Готово',       en: 'Done',           fr: 'Terminé',        ru: 'Готово' },
     inkPenFound:    { uk: 'Стилус: тепер пише лише він, пальцем гортайте сторінку. ☝️ — писати й пальцем.', en: 'Stylus found: only the stylus writes now, a finger scrolls the page. ☝️ lets a finger write too.', fr: 'Stylet détecté : seul le stylet écrit, le doigt fait défiler la page. ☝️ pour écrire aussi au doigt.', ru: 'Стилус: теперь пишет только он, пальцем листайте страницу. ☝️ — писать и пальцем.' },
+    inkErasePart:   { uk: 'Гумка: стирає лише те, що під нею. Ще раз 🧽 — увесь штрих.', en: 'Eraser: removes only what is under it. Tap 🧽 again for whole strokes.', fr: 'Gomme : efface seulement ce qui est dessous. 🧽 encore : trait entier.', ru: 'Ластик: стирает только то, что под ним. Ещё раз 🧽 — весь штрих.' },
+    inkEraseWhole:  { uk: 'Гумка: стирає увесь штрих. Ще раз 🧽 — лише те, що під нею.', en: 'Eraser: removes whole strokes. Tap 🧽 again to erase only what is under it.', fr: 'Gomme : efface le trait entier. 🧽 encore : seulement ce qui est dessous.', ru: 'Ластик: стирает весь штрих. Ещё раз 🧽 — только то, что под ним.' },
     clearPageAsk:   { uk: 'Стерти все написане на цій сторінці?', en: 'Erase everything written on this page?', fr: 'Effacer tout ce qui est écrit sur cette page ?', ru: 'Стереть всё написанное на этой странице?' },
     btnRegion:      { uk: '✂️ Фрагмент',  en: '✂️ Region',      fr: '✂️ Zone',        ru: '✂️ Фрагмент' },
     regionHint:     { uk: 'Обведіть фрагмент PDF', en: 'Select a PDF region', fr: 'Sélectionnez une zone PDF', ru: 'Выделите фрагмент PDF' },

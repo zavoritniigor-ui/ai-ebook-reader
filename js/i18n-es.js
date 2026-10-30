@@ -29,6 +29,8 @@ const I18N_ES = {
     tStop: 'Detener la lectura', unsupportedFormat: 'Formato no compatible.', fileTooLarge: 'El archivo es demasiado grande (máximo 300 MB). Prueba con otro archivo.',
     emptyDoc: 'No se encontró texto en el archivo.', imageUnavailable: 'No se pudo cargar la imagen de este documento y no contiene otro texto.',
     pickVerb: 'Primero elige un verbo en el análisis.', btnInk: '✏️ Escribir', done: 'Hecho', clearPageAsk: '¿Borrar todo lo escrito en esta página?',
+    inkErasePart: 'Borrador: borra solo lo que está debajo. Otra vez 🧽: el trazo entero.',
+    inkEraseWhole: 'Borrador: borra el trazo entero. Otra vez 🧽: solo lo que está debajo.',
     inkPenFound: 'Lápiz detectado: ahora solo escribe el lápiz, el dedo desplaza la página. ☝️ para escribir también con el dedo.',
     btnRegion: '✂️ Zona', regionHint: 'Selecciona una zona del PDF', regionPdfOnly: 'La captura de zona funciona en PDF.', regionFail: 'No se pudo capturar esa zona.',
     checking: 'Comprobando el ejercicio…', btnExplain: '📖 Explicar', btnTranslatePanel: '🌐 Traducir', btnLangLevel: '📘 Análisis lingüístico',

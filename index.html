@@ -713,6 +713,8 @@
         #ink-done { width: auto; padding: 0 16px; border-radius: 20px; background: #10a37f; font-size: 14px; }
         #ink-done:hover { background: #12b78e; }
         .ink-btn.active { background: #10a37f; }
+        .ink-btn:disabled { opacity: .4; cursor: default; }
+        #ink-erase.whole { box-shadow: inset 0 0 0 2px #fff; }
         .ink-colors { display: flex; gap: 5px; }
         .ink-color { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: transform .1s; }
         .ink-color:hover { transform: scale(1.12); }
@@ -1981,6 +1983,7 @@
     <dialog id="book-audio-dialog"></dialog>
     <div id="ink-tools">
         <button class="ink-btn" id="ink-pen" title="Ручка">✏️</button>
+        <button class="ink-btn" id="ink-marker" title="Маркер">🖍️</button>
         <button class="ink-btn" id="ink-erase" title="Гумка">🧽</button>
         <button class="ink-btn" id="ink-finger" title="Писати й пальцем" aria-pressed="false" hidden>☝️</button>
         <label title="Товщина нового штриха в екранних пікселях">✏ <input id="ink-width" aria-label="Товщина пера" type="range" min="0.5" max="6" step="0.5" value="1.5"><output id="ink-width-value">1.5</output></label>
@@ -1989,8 +1992,12 @@
             <button class="ink-color" data-c="#d1242f" style="background:#d1242f"></button>
             <button class="ink-color" data-c="#1a7f37" style="background:#1a7f37"></button>
             <button class="ink-color" data-c="#111111" style="background:#111111"></button>
+            <button class="ink-color" data-c="#f2c200" style="background:#f2c200"></button>
+            <button class="ink-color" data-c="#f57c00" style="background:#f57c00"></button>
+            <button class="ink-color" data-c="#8e24aa" style="background:#8e24aa"></button>
         </span>
         <button class="ink-btn" id="ink-undo" title="Скасувати">↶</button>
+        <button class="ink-btn" id="ink-redo" title="Повернути">↷</button>
         <button class="ink-btn" id="ink-clear" title="Очистити сторінку">🗑</button>
         <button class="ink-btn" id="ink-done" data-i18n="done">Готово</button>
     </div>
@@ -2059,7 +2066,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=8e07b45535dd"></script>
+    <script src="js/core.js?v=2aa6ddf496db"></script>
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
@@ -2090,7 +2097,7 @@
     <script src="js/offline-dict.js?v=a87eb6e3bf0c"></script>
     <script src="js/device-llm-catalog.js?v=c63f891a1ce2"></script>
     <script src="js/device-llm.js?v=9b6f20f6d2d6"></script>
-    <script src="js/pdf-ink.js?v=a603486bb1a5"></script>
+    <script src="js/pdf-ink.js?v=2730b7bcff9c"></script>
     <script src="js/pdf-crop.js?v=d075e66bd44c"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
@@ -2108,6 +2115,6 @@
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=a55b6a10f6e6"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
-    <script src="js/i18n-es.js?v=ab5d1e86d147"></script>
+    <script src="js/i18n-es.js?v=ce23f2d8ea3b"></script>
 </body>
 </html>
