@@ -231,6 +231,13 @@ try:
         const html = r ? offlineTrWordHtml(r) : '';
         return ok && html.includes('⌂') && (!r.alone || html.includes(t('offAlone'))) || JSON.stringify({ r, html });
     })()""")
+    check('3h4 a text longer than the engine takes is cut after its last whole sentence that fits (the app\'s own splitter), never inside a word', """(() => {
+        const sentence = 'Le vieil homme lit un livre dans le jardin. ', long = sentence.repeat(Math.ceil(OFFLINE_TR_MAX_CHARS / sentence.length) + 3);
+        const cut = offlineTrClip(long), words = 'mot '.repeat(OFFLINE_TR_MAX_CHARS), cutWords = offlineTrClip(words), solid = 'x'.repeat(OFFLINE_TR_MAX_CHARS + 50);
+        return cut.length <= OFFLINE_TR_MAX_CHARS && cut.endsWith('jardin.') && long.startsWith(cut) && cut.length > OFFLINE_TR_MAX_CHARS - sentence.length
+            && cutWords.length <= OFFLINE_TR_MAX_CHARS && cutWords.endsWith('mot') && offlineTrClip(solid).length === OFFLINE_TR_MAX_CHARS
+            && offlineTrClip('  Court.  ') === 'Court.' || JSON.stringify({ cut: cut.slice(-40), n: cut.length, words: cutWords.slice(-10) });
+    })()""")
     check('3i a translation for a direction that is not installed is refused, not guessed', "offlineTranslate('Le chat dort.', 'fr', 'hi').then(out => out === null)")
     check('3j the Test button translates a sample and shows the time',
           """(async () => { openKeySettings(); await new Promise(r => setTimeout(r, 300)); document.querySelector('#offline-list li[data-direction] button[data-act=test]').click();
