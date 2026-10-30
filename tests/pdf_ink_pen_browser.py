@@ -185,7 +185,7 @@ check("7 ☝️ on: a finger stroke is written again (no pressure: two numbers p
 c.js("document.getElementById('ink-finger').click(); 1")
 c.call('Emulation.setTouchEmulationEnabled', enabled=False)
 
-# ---- 8 the stylus side button erases the stroke it crosses (CDP cannot send the eraser end, buttons 32; same path)
+# ---- 8 the stylus side button erases what it crosses (CDP cannot send the eraser end, buttons 32; same path)
 time.sleep(0.5)
 r = rect(3)
 x = r['l'] + r['w'] * 0.4
@@ -193,8 +193,8 @@ c.call('Input.dispatchMouseEvent', type='mousePressed', x=x, y=r['t'] + r['h'] *
 for i in range(1, 6):
     c.call('Input.dispatchMouseEvent', type='mouseMoved', x=x, y=r['t'] + r['h'] * (0.25 + 0.02 * i), button='none', buttons=2, pointerType='pen', force=0.5)
 c.call('Input.dispatchMouseEvent', type='mouseReleased', x=x, y=r['t'] + r['h'] * 0.35, button='right', buttons=0, clickCount=1, pointerType='pen', force=0.5)
-check("8 the stylus side button erases the stroke it crosses (and draws nothing)",
-      "inkStrokes(3).length===1 && inkStrokes(3)[0].p.every(pt => pt.length===2) || JSON.stringify(inkStrokes(3).map(s => s.p.length))", timeout=2)
+check("8 the stylus side button erases what it crosses (the stylus line is cut at x 0.4, the finger line is untouched, nothing drawn)",
+      "inkStrokes(3).length===3 && inkStrokes(3).filter(s => s.p.every(pt => pt.length===3)).length===2 && inkStrokes(3).every(s => s.p.every(pt => Math.abs(pt[1]-0.3) > 0.001 || Math.abs(pt[0]-0.4) > 0.005)) && inkStrokes(3).filter(s => s.p.every(pt => pt.length===2)).length===1 || JSON.stringify(inkStrokes(3).map(s => s.p.length))", timeout=2)
 
 # ---- 9 the pressure is stored and comes back identical after closing the app
 c.js("inkSaved().then(() => 1)")

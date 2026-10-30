@@ -87,6 +87,7 @@ function encodeInkPage(strokes) {
         const flat = new Uint16Array(st.p.length * 2);
         st.p.forEach((pt, i) => { flat[2 * i] = Math.round(inkQ(pt[0]) * INK_Q); flat[2 * i + 1] = Math.round(inkQ(pt[1]) * INK_Q); });
         const rec = { c: st.c, w: st.w, p: flat };
+        if (st.m) rec.m = 1;   // a marker (highlighter) stroke
         if (inkHasPressure(st)) rec.q = Uint8Array.from(st.p, pt => Math.round(inkPressureQ(pt[2]) * 255));
         return rec;
     });
@@ -100,7 +101,7 @@ function decodeInkPage(records) {
             for (let i = 0; i + 1 < flat.length; i += 2) p.push(q ? [flat[i] / INK_Q, flat[i + 1] / INK_Q, q[i / 2] / 255] : [flat[i] / INK_Q, flat[i + 1] / INK_Q]);
         }
         else if (Array.isArray(flat)) flat.forEach(pt => p.push(typeof pt[2] === 'number' ? [inkQ(pt[0]), inkQ(pt[1]), inkPressureQ(pt[2])] : [inkQ(pt[0]), inkQ(pt[1])]));   // plain arrays (legacy / fallback)
-        return { c: r.c, w: r.w, p };
+        return r.m ? { c: r.c, w: r.w, m: 1, p } : { c: r.c, w: r.w, p };
     }).filter(st => st.p.length);
 }
 const inkBookRange = bookKey => IDBKeyRange.bound([bookKey, ''], [bookKey, '￿']);
@@ -140,7 +141,7 @@ async function writeInkPages(bookKey, pages, replaceAll = false) {
 // No IndexedDB at all (very old / locked-down browsers): the old localStorage key, at least quantised.
 function saveInkFallback() {
     const compact = {};
-    for (const [page, strokes] of Object.entries(state.ink)) if (strokes && strokes.length) compact[page] = strokes.map(st => ({ c: st.c, w: st.w, p: st.p.map(pt => typeof pt[2] === 'number' ? [inkQ(pt[0]), inkQ(pt[1]), inkPressureQ(pt[2])] : [inkQ(pt[0]), inkQ(pt[1])]) }));
+    for (const [page, strokes] of Object.entries(state.ink)) if (strokes && strokes.length) compact[page] = strokes.map(st => ({ c: st.c, w: st.w, ...(st.m ? { m: 1 } : {}), p: st.p.map(pt => typeof pt[2] === 'number' ? [inkQ(pt[0]), inkQ(pt[1]), inkPressureQ(pt[2])] : [inkQ(pt[0]), inkQ(pt[1])]) }));
     writeStored('ink_' + state.bookKey, JSON.stringify(compact));
 }
 let inkSaveChain = Promise.resolve();
@@ -177,7 +178,8 @@ function loadInk() {
     state.ink = {};
     inkOwner = state.bookKey || null;
     inkHistory = {}; inkRedoStack = {}; inkActivePage = 0; inkGestureSnapshot = null;
-    inkDrawing = false; inkCurrent = null; inkPointerId = null; inkTouchPan = null;
+    inkDrawing = false; inkCurrent = null; inkPointerId = null; inkTouchPan = null; inkEraseBefore = null;
+    updateInkTools();
     if (!state.bookKey) { inkLoadPromise = Promise.resolve(); return; }
     const bookKey = state.bookKey, oldKey = state.oldBookKey;
     inkLoadPromise = (async () => {
@@ -220,7 +222,10 @@ function redrawInk(cv, pageNum) {
     ensureInkCanvas(cv);
     const ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, cv.width, cv.height);
-    (state.ink[inkPageKey(pageNum)] || []).forEach(st => inkDrawStroke(ctx, st, cv.width, cv.height));
+    const list = state.ink[inkPageKey(pageNum)] || [];
+    // Marker strokes first: the pen's writing stays on top of the highlighting.
+    for (const st of list) if (st.m) inkDrawStroke(ctx, st, cv.width, cv.height);
+    for (const st of list) if (!st.m) inkDrawStroke(ctx, st, cv.width, cv.height);
 }
 // ---- One stroke on the canvas: smooth curves, width from the stylus pressure ----------------------------------------
 // The line runs through the MIDPOINTS of consecutive points with the points themselves as control points (quadratic
@@ -254,12 +259,25 @@ function inkDrawDot(ctx, st, W, H) {
     ctx.fillStyle = st.c;
     ctx.beginPath(); ctx.arc(st.p[0][0] * W, st.p[0][1] * H, inkSegmentWidth(st, 0, W) / 2, 0, Math.PI * 2); ctx.fill();
 }
+// A marker stroke: see-through, one path (overlaps inside the stroke do not darken), one width, no pressure.
+const INK_MARKER_ALPHA = 0.35, INK_MARKER_SCALE = 6;
 function inkDrawStroke(ctx, st, W, H) {
     const p = st.p, n = p ? p.length : 0;
     if (!n) return;
+    if (st.m) {
+        ctx.save(); ctx.globalAlpha = INK_MARKER_ALPHA;
+        const flat = { c: st.c, w: st.w, p: p.map(pt => [pt[0], pt[1]]) };
+        if (n === 1) inkDrawDot(ctx, flat, W, H); else inkDrawPath(ctx, flat, W, H);
+        ctx.restore();
+        return;
+    }
     if (n === 1) { inkDrawDot(ctx, st, W, H); return; }
     if (inkHasPressure(st)) { inkDrawSegments(ctx, st, 0, n, W, H); return; }
-    // No pressure: one path, one width.
+    inkDrawPath(ctx, st, W, H);
+}
+// No pressure: one path, one width.
+function inkDrawPath(ctx, st, W, H) {
+    const p = st.p, n = p.length;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = st.c; ctx.lineWidth = st.w * W;
     ctx.beginPath();
     ctx.moveTo(p[0][0] * W, p[0][1] * H);
@@ -327,9 +345,12 @@ function inkNotePen() {
 // The newest finished segments of the stroke being written, once per frame (not the whole page on every move).
 function paintInkStroke() {
     inkPaintFrame = 0;
-    if (!inkDrawing || !inkCurrent || inkErasing) return;
+    if (!inkDrawing) return;
     const cv = activeInkCanvas();
     if (!cv || !cv.width) return;
+    // The partial eraser and the see-through marker (its own overlaps must not darken) redraw the page.
+    if (inkErasing || (inkCurrent && inkCurrent.m)) { redrawInk(cv, activeInkPage()); return; }
+    if (!inkCurrent) return;
     const upTo = inkCurrent.p.length - 1;
     if (upTo > inkDrawnSegments) {
         inkDrawSegments(cv.getContext('2d'), inkCurrent, inkDrawnSegments, upTo, cv.width, cv.height);
@@ -385,11 +406,19 @@ function bindInkCanvas(cv, pageNum) {
         cv.setPointerCapture(e.pointerId);
         inkDrawing = true;
         inkErasing = state.inkErase || (pen && (e.buttons & 34) !== 0);   // 32 = eraser end, 2 = the stylus side button
-        if (inkErasing) { inkEraseAt(inkPoint(e, cv, inkStrokeRect), cv, pageNum); return; }
-        inkCurrent = { c: state.inkColor, w: Number(inkWidth.value) / inkStrokeRect.width, p: [inkPoint(e, cv, inkStrokeRect)] };
+        if (inkErasing) {
+            inkEraseBefore = state.inkEraseWhole ? null : inkStrokes(pageNum).slice(); inkEraseChanged = false;
+            inkEraseLast = null;
+            inkEraseAlong(inkPoint(e, cv, inkStrokeRect), cv, pageNum);
+            return;
+        }
+        const marker = !!state.inkMarker;
+        const pt = inkPoint(e, cv, inkStrokeRect);
+        const w = Number(inkWidth.value) * (marker ? INK_MARKER_SCALE : 1) / inkStrokeRect.width;
+        inkCurrent = marker ? { c: state.inkMarkerColor, w, m: 1, p: [pt.slice(0, 2)] } : { c: state.inkColor, w, p: [pt] };   // field order = decodeInkPage
         inkStrokes(pageNum).push(inkCurrent);
         inkDrawnSegments = 0;
-        inkDrawDot(cv.getContext('2d'), inkCurrent, cv.width, cv.height);
+        if (marker) redrawInk(cv, pageNum); else inkDrawDot(cv.getContext('2d'), inkCurrent, cv.width, cv.height);
         getInkRedoStack(pageNum).length = 0;
     });
     cv.addEventListener('pointermove', (e) => {
@@ -407,12 +436,12 @@ function bindInkCanvas(cv, pageNum) {
         const all = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
         for (const ev of all.length ? all : [e]) {
             const pt = inkPoint(ev, cv, r);
-            if (inkErasing) { inkEraseAt(pt, cv, pageNum); continue; }
+            if (inkErasing) { inkEraseAlong(pt, cv, pageNum); continue; }
             const last = inkCurrent.p[inkCurrent.p.length - 1];
             if (Math.hypot((pt[0] - last[0]) * r.width, (pt[1] - last[1]) * r.height) < 0.5) continue;   // < half a pixel apart
-            inkCurrent.p.push(pt);
+            inkCurrent.p.push(inkCurrent.m ? pt.slice(0, 2) : pt);
         }
-        if (!inkErasing && !inkPaintFrame) inkPaintFrame = requestAnimationFrame(paintInkStroke);
+        if (!inkPaintFrame) inkPaintFrame = requestAnimationFrame(paintInkStroke);
     });
     const finishStroke = (e) => {
         if (owner !== inkOwner) return;
@@ -423,15 +452,87 @@ function bindInkCanvas(cv, pageNum) {
             const hist = getInkHistory(pageNum);
             if (hist.length > 50) hist.shift();
         }
+        if (inkErasing && inkEraseBefore && inkEraseChanged) {
+            // The whole partial-eraser gesture is one step for Undo / Redo.
+            inkPushHistory(pageNum, { type: 'replace', before: inkEraseBefore, after: inkStrokes(pageNum).slice(), owner });
+            getInkRedoStack(pageNum).length = 0;
+        }
+        inkEraseBefore = null; inkEraseChanged = false;
         if (inkPointerType === 'pen') inkPenUpAt = performance.now();
         if (inkPaintFrame) { cancelAnimationFrame(inkPaintFrame); inkPaintFrame = 0; }
         inkDrawing = false; inkCurrent = null; inkErasing = false; inkStrokeRect = null;
-        redrawInk(cv, pageNum); saveInk(pageNum);
+        redrawInk(cv, pageNum); saveInk(pageNum); updateInkTools();
     };
     cv.addEventListener('contextmenu', e => { if (state.inkMode) e.preventDefault(); });   // the side button erases, no menu
     cv.addEventListener('pointerup', finishStroke);
     cv.addEventListener('pointercancel', finishStroke);
     cv.addEventListener('lostpointercapture', finishStroke);
+}
+function inkPushHistory(pageNum, op) {
+    const hist = getInkHistory(pageNum);
+    hist.push(op);
+    if (hist.length > 50) hist.shift();
+}
+// ---- Partial eraser: removes only the part of a line under it ------------------------------------------------------
+// The eraser is a circle (INK_ERASER_PX CSS pixels, plus half the line's width). Segments that pass under it are first
+// filled in with points (a stroke drawn fast has points far apart), then the points under the circle are dropped and
+// what is left falls apart into separate strokes of the same colour, width and pressure. A gesture is one Undo step
+// ('replace': the page's strokes before and after). The whole-stroke eraser (inkEraseAt) is the second eraser mode.
+const INK_ERASER_PX = 10;
+let inkEraseBefore = null, inkEraseChanged = false, inkEraseLast = null;
+// The eraser works along its whole path: a fast rub reports points far apart and would jump over a line between them.
+function inkEraseAlong(pt, cv, pageNum) {
+    const r = inkStrokeRect || cv.getBoundingClientRect(), from = inkEraseLast || pt;
+    const n = Math.ceil(Math.hypot((pt[0] - from[0]) * r.width, (pt[1] - from[1]) * r.height) / (INK_ERASER_PX / 2));
+    if (inkEraseLast && !n) return;   // the eraser has not moved
+    if (!inkEraseLast) inkEraseHit(pt, cv, pageNum);
+    else for (let i = 1; i <= n; i++) inkEraseHit([from[0] + (pt[0] - from[0]) * i / n, from[1] + (pt[1] - from[1]) * i / n], cv, pageNum);
+    inkEraseLast = pt;
+}
+function inkEraseHit(pt, cv, pageNum) {
+    if (state.inkEraseWhole || !inkEraseBefore) { inkEraseAt(pt, cv, pageNum); return; }
+    const r = inkStrokeRect || cv.getBoundingClientRect(), W = r.width, H = r.height;
+    const px = q => [(q[0] - pt[0]) * W, (q[1] - pt[1]) * H];
+    const dist = q => Math.hypot(...px(q));
+    const segDist = (a, b) => {
+        const [ax, ay] = px(a), [bx, by] = px(b), dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+        const t = len2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
+        return Math.hypot(ax + t * dx, ay + t * dy);
+    };
+    const list = inkStrokes(pageNum), out = [];
+    let changed = false;
+    for (const st of list) {
+        const R = INK_ERASER_PX + st.w * W / 2;
+        const p = st.p;
+        if (!p.some((q, i) => dist(q) < R || (i && segDist(p[i - 1], q) < R))) { out.push(st); continue; }
+        const dense = [p[0]];
+        for (let i = 1; i < p.length; i++) {
+            const a = p[i - 1], b = p[i];
+            const len = Math.hypot((b[0] - a[0]) * W, (b[1] - a[1]) * H);
+            if (len > R / 3 && segDist(a, b) < R) {
+                const n = Math.ceil(len / (R / 3));
+                for (let j = 1; j < n; j++) {
+                    const f = j / n, q = [inkQ(a[0] + (b[0] - a[0]) * f), inkQ(a[1] + (b[1] - a[1]) * f)];
+                    if (typeof a[2] === 'number' && typeof b[2] === 'number') q.push(inkPressureQ(a[2] + (b[2] - a[2]) * f));
+                    dense.push(q);
+                }
+            }
+            dense.push(b);
+        }
+        const pieces = [];
+        let run = [];
+        for (const q of dense) {
+            if (dist(q) < R) { if (run.length) pieces.push(run); run = []; }
+            else run.push(q);
+        }
+        if (run.length) pieces.push(run);
+        changed = true;
+        for (const piece of pieces) if (piece.length > 1) out.push({ ...st, p: piece });   // a lone leftover point is dropped
+    }
+    if (!changed) return;
+    state.ink[inkPageKey(pageNum)] = out;
+    inkEraseChanged = true;
+    if (!inkPaintFrame) inkPaintFrame = requestAnimationFrame(paintInkStroke);
 }
 // Гумка стирає штрих цілком — перевіряє відстань як до точок, так і до сегментів лінії
 function inkEraseAt(pt, cv, pageNum) {
@@ -467,23 +568,47 @@ document.getElementById('btn-ink').onclick = () => {
     updateInkTools();
 };
 function updateInkTools() {
-    document.getElementById('ink-pen').classList.toggle('active', !state.inkErase);
-    document.getElementById('ink-erase').classList.toggle('active', state.inkErase);
+    document.getElementById('ink-pen').classList.toggle('active', !state.inkErase && !state.inkMarker);
+    document.getElementById('ink-marker').classList.toggle('active', !state.inkErase && !!state.inkMarker);
+    const eraser = document.getElementById('ink-erase');
+    eraser.classList.toggle('active', !!state.inkErase);
+    eraser.classList.toggle('whole', !!state.inkEraseWhole);
+    eraser.title = t(state.inkEraseWhole ? 'inkEraseWhole' : 'inkErasePart');
     const finger = document.getElementById('ink-finger');
     finger.hidden = !inkPenSeen;
     finger.classList.toggle('active', inkFingerWrites);
     finger.setAttribute('aria-pressed', String(inkFingerWrites));
-    document.querySelectorAll('.ink-color').forEach(b => b.classList.toggle('active', b.dataset.c === state.inkColor));
+    const colour = state.inkMarker && !state.inkErase ? state.inkMarkerColor : state.inkColor;
+    document.querySelectorAll('.ink-color').forEach(b => b.classList.toggle('active', b.dataset.c === colour));
+    document.getElementById('ink-undo').disabled = !getInkHistory(activeInkPage()).length;
+    document.getElementById('ink-redo').disabled = !getInkRedoStack(activeInkPage()).length;
 }
-document.getElementById('ink-pen').onclick = () => { state.inkErase = false; updateInkTools(); };
-document.getElementById('ink-erase').onclick = () => { state.inkErase = true; updateInkTools(); };
+// Pen and marker each remember their own colour on this device.
+state.inkColor = readStored('reader_ink_color') || state.inkColor;
+state.inkMarkerColor = readStored('reader_ink_marker_color') || state.inkMarkerColor;
+document.getElementById('ink-pen').onclick = () => { state.inkErase = false; state.inkMarker = false; updateInkTools(); };
+document.getElementById('ink-marker').onclick = () => { state.inkErase = false; state.inkMarker = true; updateInkTools(); };
+// The eraser removes the part under it; tapping it again while it is on switches to removing whole strokes (and back).
+document.getElementById('ink-erase').onclick = () => {
+    if (state.inkErase) {
+        state.inkEraseWhole = !state.inkEraseWhole;
+        writeStored('reader_ink_erase_whole', state.inkEraseWhole ? '1' : '0');
+        showToast(t(state.inkEraseWhole ? 'inkEraseWhole' : 'inkErasePart'));
+    }
+    state.inkErase = true; updateInkTools();
+};
+state.inkEraseWhole = readStored('reader_ink_erase_whole') === '1';
 document.getElementById('ink-finger').onclick = () => {
     inkFingerWrites = !inkFingerWrites; inkTouchPan = null;
     writeStored('reader_ink_finger', inkFingerWrites ? '1' : '0');
     updateInkTools();
 };
 document.querySelectorAll('.ink-color').forEach(b => {
-    b.onclick = () => { state.inkColor = b.dataset.c; state.inkErase = false; updateInkTools(); };
+    b.onclick = () => {
+        if (state.inkMarker) { state.inkMarkerColor = b.dataset.c; writeStored('reader_ink_marker_color', b.dataset.c); }
+        else { state.inkColor = b.dataset.c; writeStored('reader_ink_color', b.dataset.c); }
+        state.inkErase = false; updateInkTools();
+    };
 });
 document.getElementById('ink-undo').onclick = () => {
     const pageNum = activeInkPage();
@@ -500,18 +625,46 @@ document.getElementById('ink-undo').onclick = () => {
         if (at < 0) { const sig = JSON.stringify(op.stroke); at = list.findIndex(st => JSON.stringify(st) === sig); }
         if (at < 0) return;
         list.splice(at, 1);
-        getInkRedoStack(pageNum).push({ type: 'draw', stroke: op.stroke });
+        getInkRedoStack(pageNum).push({ type: 'draw', stroke: op.stroke, index: at, owner: inkOwner });
     } else if (op.type === 'erase') {
         list.splice(op.index, 0, op.stroke);
-        getInkRedoStack(pageNum).push({ type: 'erase', stroke: op.stroke, index: op.index });
+        getInkRedoStack(pageNum).push({ type: 'erase', stroke: op.stroke, index: op.index, owner: inkOwner });
     } else if (op.type === 'clear') {
         state.ink[inkPageKey(pageNum)] = op.strokes || [];
-        getInkRedoStack(pageNum).push({ type: 'clear', strokes: op.strokes });
+        getInkRedoStack(pageNum).push({ type: 'clear', strokes: op.strokes, owner: inkOwner });
+    } else if (op.type === 'replace') {
+        state.ink[inkPageKey(pageNum)] = op.before.slice();
+        getInkRedoStack(pageNum).push({ type: 'replace', before: op.before, after: op.after, owner: inkOwner });
     }
     const redo = getInkRedoStack(pageNum);
     if (redo.length > 50) redo.shift();
 
-    redrawInk(activeInkCanvas(), pageNum); saveInk(pageNum);
+    redrawInk(activeInkCanvas(), pageNum); saveInk(pageNum); updateInkTools();
+};
+// Redo (↷): the step Undo took back, done again; a new stroke or erase empties it.
+document.getElementById('ink-redo').onclick = () => {
+    const pageNum = activeInkPage();
+    const redo = getInkRedoStack(pageNum);
+    if (!redo.length) return;
+    const op = redo.pop();
+    if (op.owner !== inkOwner || inkOwner !== state.bookKey) return; // never replay another book's op
+    const list = inkStrokes(pageNum), key = inkPageKey(pageNum);
+    if (op.type === 'draw') {
+        list.splice(Math.min(op.index ?? list.length, list.length), 0, op.stroke);
+        inkPushHistory(pageNum, { type: 'draw', stroke: op.stroke, owner: inkOwner });
+    } else if (op.type === 'erase') {
+        const at = list.indexOf(op.stroke);
+        if (at < 0) return;
+        list.splice(at, 1);
+        inkPushHistory(pageNum, { type: 'erase', stroke: op.stroke, index: at, owner: inkOwner });
+    } else if (op.type === 'clear') {
+        state.ink[key] = [];
+        inkPushHistory(pageNum, { type: 'clear', strokes: op.strokes, owner: inkOwner });
+    } else if (op.type === 'replace') {
+        state.ink[key] = op.after.slice();
+        inkPushHistory(pageNum, { type: 'replace', before: op.before, after: op.after, owner: inkOwner });
+    }
+    redrawInk(activeInkCanvas(), pageNum); saveInk(pageNum); updateInkTools();
 };
 document.getElementById('ink-clear').onclick = () => {
     if (!confirm(t('clearPageAsk'))) return;
@@ -522,7 +675,7 @@ document.getElementById('ink-clear').onclick = () => {
     if (hist.length > 50) hist.shift();
     state.ink[inkPageKey(pageNum)] = [];
     getInkRedoStack(pageNum).length = 0;
-    redrawInk(activeInkCanvas(), pageNum); saveInk(pageNum);
+    redrawInk(activeInkCanvas(), pageNum); saveInk(pageNum); updateInkTools();
 };
 document.getElementById('ink-done').onclick = () => {
     state.inkMode = false;

@@ -67,12 +67,12 @@ def draw(fx, fy, dx=.15, dy=.04, page=1):
     c.call('Input.dispatchMouseEvent', type='mouseReleased', x=pts[-1][0], y=pts[-1][1], button='left', buttons=0, clickCount=1)
 
 def erase_at(fx, fy, page=1):
-    c.js("state.inkErase=true")
+    c.js("state.inkErase=true; state.inkEraseWhole=true")   # the whole-stroke eraser records an 'erase' op
     r = c.js(f"(()=>{{const r=pdfPageWrappers[{page}].querySelector('.ink-layer').getBoundingClientRect();return {{l:r.left,t:r.top,w:r.width,h:r.height}}}})()")
     x, y = r['l'] + r['w'] * fx, r['t'] + r['h'] * fy
     c.call('Input.dispatchMouseEvent', type='mousePressed', x=x, y=y, button='left', buttons=1, clickCount=1)
     c.call('Input.dispatchMouseEvent', type='mouseReleased', x=x, y=y, button='left', buttons=0, clickCount=1)
-    c.js("state.inkErase=false")
+    c.js("state.inkErase=false; state.inkEraseWhole=false")
 
 undo = lambda: c.js("document.getElementById('ink-undo').click()")
 clear = lambda: c.js("document.getElementById('ink-clear').click()")
