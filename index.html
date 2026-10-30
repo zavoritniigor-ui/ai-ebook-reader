@@ -751,7 +751,8 @@
            ☰ накривав перше слово кожної сторінки, а стрілки — останній рядок. PDF має власне прокручування і поля. */
         /* Не залежить від меню й смуги «◀ сторінка ▶»: інакше кожне їх відкриття перекомпоновувало б сторінку (текст «стрибав»). */
         body:not(.pdf-mode) #reader-container { padding-top: max(20px, calc(max(8px, env(safe-area-inset-top, 0px)) + 52px)); }
-        body:not(.ink-mode):not(.region-mode):not(.pdf-mode):has(#page-arrows:not([hidden])) #reader-container {
+        /* The pen keeps this space (js/text-ink.js): the text must not flow again when writing starts or ends. */
+        body:not(.region-mode):not(.pdf-mode):has(#page-arrows:not([hidden])) #reader-container {
             padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 
         /* Вікно перекладу слова. Навмисно темне на будь-якій темі сторінки — окрема "картка" поверх тексту, а не продовження фону:
@@ -1999,6 +2000,8 @@
         <button class="ink-btn" id="ink-undo" title="Скасувати">↶</button>
         <button class="ink-btn" id="ink-redo" title="Повернути">↷</button>
         <button class="ink-btn" id="ink-clear" title="Очистити сторінку">🗑</button>
+        <button class="ink-btn" id="ink-prev" title="◀ Назад" data-i18n-title="prev" hidden>‹</button>
+        <button class="ink-btn" id="ink-next" title="Вперед ▶" data-i18n-title="next" hidden>›</button>
         <button class="ink-btn" id="ink-done" data-i18n="done">Готово</button>
     </div>
 
@@ -2066,7 +2069,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=2aa6ddf496db"></script>
+    <script src="js/core.js?v=562009b48ff8"></script>
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
@@ -2075,7 +2078,7 @@
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
-    <script src="js/navigation.js?v=92bb75bc6057"></script>
+    <script src="js/navigation.js?v=35362ac6dd0c"></script>
     <script src="js/pdf-zoom-pan.js?v=c2233b957e5a"></script>
     <script src="js/ui-tooltip.js?v=5474e83169d8"></script>
     <script src="js/translation.js?v=cf27366b8131"></script>
@@ -2097,7 +2100,8 @@
     <script src="js/offline-dict.js?v=a87eb6e3bf0c"></script>
     <script src="js/device-llm-catalog.js?v=c63f891a1ce2"></script>
     <script src="js/device-llm.js?v=9b6f20f6d2d6"></script>
-    <script src="js/pdf-ink.js?v=2730b7bcff9c"></script>
+    <script src="js/pdf-ink.js?v=0b9c9e47c2e9"></script>
+    <script src="js/text-ink.js?v=4ba7df76e282"></script>
     <script src="js/pdf-crop.js?v=d075e66bd44c"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
