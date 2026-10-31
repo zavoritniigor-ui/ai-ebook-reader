@@ -1788,11 +1788,12 @@ els.mainArea.addEventListener('click', (e) => {
     if (state.inkMode) return;   // у режимі письма тап малює, а не перекладає
     if (onStartScreen(e.target)) return;   // стартовий екран: кнопки, назви, список книг — не текст для перекладу
     if (state.suppressNextClick) { state.suppressNextClick = false; return; } // клік після свайпу — ігноруємо
-    if(e.target.closest('#word-tooltip') || e.target.closest('.side-panel') || e.target.closest('nav') || e.target.closest('#menu-handle') || e.target.closest('#footer-handle') || e.target.closest('#tts-controls') || e.target.closest('.pdf-audio-marker') || e.target.closest('#audio-player') || e.target.closest('#book-audio-dialog')) return;
-    // Зона язичка меню (лівий верхній кут) — тут ніколи не спрацьовує переклад слова.
+    if(e.target.closest('#word-tooltip') || e.target.closest('.side-panel') || e.target.closest('nav') || e.target.closest('#menu-handle') || e.target.closest('#footer-handle') || e.target.closest('#tts-controls') || e.target.closest('.pdf-audio-marker') || e.target.closest('#audio-player') || e.target.closest('#book-audio-dialog') || e.target.closest('.pdf-link-annotation')) return;   // посилання PDF веде на свою сторінку, це не дотик по слову
+    // Зона язичка меню (лівий верхній кут) — тут ніколи не спрацьовує переклад слова. У нижньому ряду читання ☰ стоїть унизу,
+    // і тоді кут не потрібен (інакше ігнорувалася б уся ліва частина сторінки).
     if (els.menuHandle) {
         const h = els.menuHandle.getBoundingClientRect();
-        if (e.clientX <= h.right && e.clientY <= h.bottom) return;
+        if (h.top < innerHeight / 2 && e.clientX <= h.right && e.clientY <= h.bottom) return;
     }
     const sel = window.getSelection();
     if (sel.rangeCount > 0) {

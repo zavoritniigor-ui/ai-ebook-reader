@@ -161,7 +161,7 @@ def press_grammar():
     c.wait("(els.grammarPanel.classList.contains('ready') || !!els.grammarContent.querySelector('.ai-error-text')) && !els.grammarContent.querySelector('.spinner-large')", timeout=20)
     time.sleep(0.4)
     if not c.js("els.grammarPanel.classList.contains('expanded')"):
-        t = c.js("(()=>{const b=document.getElementById('grammar-tab'); const r=b.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
+        t = c.js("(()=>{const b=[...document.querySelectorAll('#grammar-tab, #row-grammar')].find(e => e.getBoundingClientRect().width > 0); const r=b.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
         mouse('mousePressed', t['x'], t['y'], 1); mouse('mouseReleased', t['x'], t['y'])
         time.sleep(0.4)
 

@@ -118,7 +118,7 @@ check('Grammar analysis runs with the drawer still closed', "!els.grammarPanel.c
 check('Popup and green highlight survive pressing Grammar',
       "getComputedStyle(els.tooltip).display !== 'none' && document.querySelectorAll('.sel-word').length >= 3")
 # ... then the learner opens the drawer with a real click on its tab.
-tab = c.js("(() => { const r = document.getElementById('grammar-tab').getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2}; })()")
+tab = c.js("(() => { const r = [...document.querySelectorAll('#grammar-tab, #row-grammar')].find(e => e.getBoundingClientRect().width > 0).getBoundingClientRect();   /* ✨: the side tab, or its place in the bottom reading row */ return {x: r.left + r.width / 2, y: r.top + r.height / 2}; })()")
 c.call('Input.dispatchMouseEvent', type='mouseMoved', x=tab['x'], y=tab['y'])
 c.call('Input.dispatchMouseEvent', type='mousePressed', x=tab['x'], y=tab['y'], button='left', clickCount=1)
 c.call('Input.dispatchMouseEvent', type='mouseReleased', x=tab['x'], y=tab['y'], button='left', clickCount=1)

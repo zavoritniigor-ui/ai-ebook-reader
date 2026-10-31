@@ -273,19 +273,27 @@ vert_geom = c.js("""(() => {
     const bookmark = document.getElementById('practice-restore').getBoundingClientRect().toJSON();
     const scrubber = document.getElementById('pdf-scrubber').getBoundingClientRect().toJSON();
     const gTab = document.getElementById('grammar-tab').getBoundingClientRect().toJSON();
+    const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
     return {
         bookmarkBottom: bookmark.bottom,
         scrubberTop: scrubber.top,
         scrubberBottom: scrubber.bottom,
-        gTabTop: gTab.top
+        gTabTop: gTab.top,
+        // Since 2026-10-30 the page number lies in the bottom reading row while the ‹ › arrows show: then it must just not
+        // overlap the bookmark or the Grammar tab.
+        inRow: !document.getElementById('page-arrows').hidden && document.body.classList.contains('immersive-mode'),
+        clear: !hit(scrubber, bookmark) && !hit(scrubber, gTab)
     };
 })()""")
 
 # Assert NO vertical overlap between bookmark (top), scrubber (middle), and grammar-tab (bottom)
-assert vert_geom['bookmarkBottom'] <= vert_geom['scrubberTop'], (
+if vert_geom['inRow']:
+    assert vert_geom['clear'], f"Overlap detected in the bottom row: {vert_geom}"
+else:
+  assert vert_geom['bookmarkBottom'] <= vert_geom['scrubberTop'], (
     f"Overlap detected: bookmark bottom {vert_geom['bookmarkBottom']} > scrubber top {vert_geom['scrubberTop']}"
 )
-assert vert_geom['scrubberBottom'] <= vert_geom['gTabTop'], (
+  assert vert_geom['scrubberBottom'] <= vert_geom['gTabTop'], (
     f"Overlap detected: scrubber bottom {vert_geom['scrubberBottom']} > grammar tab top {vert_geom['gTabTop']}"
 )
 print('PASS P1-6: Practice bookmark (top), scrubber (middle), and grammar tab (bottom) have ZERO vertical overlap')

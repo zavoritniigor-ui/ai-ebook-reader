@@ -1,6 +1,7 @@
 /* Lower-right Quick Menu: a curved scrollable wheel with 13 real actions,
  * inertia, detent snapping, and synchronized roulette ticking sound.
  * Thumb-reachable on tablets, expands inward/leftward from launcher.
+ * While a book is read, ✦ stands in the bottom reading row (index.html) and the wheel opens as a «sun» above it.
  *
  * Loaded before main.js (i18n bootstrap) and pwa-lifecycle.js (overlay history). */
 
@@ -119,6 +120,10 @@ const quickMenu = (() => {
     let frame = 0, frameTime = 0, reveal = 0, revealTarget = 0;
     let pointer = null, lastY = 0, lastMove = 0, startY = 0, dragged = false;
     let suppressClickUntil = 0, radius = 220, arcOffset = -100, slots = 5;
+    // «Сонечко» (✦ у нижньому ряду читання): дії віялом над кнопкою, активна — прямо над нею. sunRx — горизонтальний радіус
+    // (крайні дії не виходять за екран), sunRy — вертикальний (сусідні дії не налягають).
+    let sun = false, sunRx = 200, sunRy = 210, startX = 0, lastX = 0;
+    const sunStep = .5;
     let wheelSelectionText = '';
     const step = .30, pixelsPerAction = 66;
     const dock = document.getElementById('quick-menu-dock');
@@ -188,13 +193,32 @@ const quickMenu = (() => {
         return b;
     });
 
-    function place() {
+    // Колесо закрилося: якщо його опора стояла над ✦ у нижньому ряду, вона повертається на своє місце з CSS, інакше ✦ без ряду
+    // (відкрита смуга «◀ сторінка ▶») опинився б унизу посередині.
+    let dockMoved = false;
+    function restoreDock() { if (dockMoved) { dock.style.top = ''; dock.style.right = ''; dockMoved = false; } }
+    function place(opening) {
         const v = window.visualViewport;
         const height = v?.height || innerHeight;
         dock.style.top = ((v?.offsetTop || 0) + Math.max(100, Math.min(height * .76, height - 100))) + 'px';
         slots = height < 540 ? 3 : 5;
         radius = 220;
         arcOffset = slots === 3 ? -Math.min(100, height * .22) : -100;
+        // ✦ у нижньому ряду читання (index.html, position: fixed): колесо розкривається над ним. Центр дуги — над кнопкою, найнижча
+        // дія — над рядом; по горизонталі дуга лягає ліворуч від ✦, але не виходить за лівий край вузького екрана.
+        sun = (opening === true || !panel.hidden) && getComputedStyle(launcher).position === 'fixed';
+        if (sun) {
+            const lb = launcher.getBoundingClientRect(), cx = lb.left + lb.width / 2, cy = lb.top + lb.height / 2;
+            const w = innerWidth < 400 ? 72 : 80, edge = Math.min(cx, innerWidth - cx) - 4 - w / 2;
+            slots = 5;
+            sunRx = Math.max(90, Math.min(200, edge / Math.sin(2 * sunStep)));
+            sunRy = Math.min(Math.max(sunRx, 210), cy - 8 - 32);
+            dock.style.top = cy + 'px';
+            dock.style.right = (innerWidth - cx) + 'px';
+            panel.style.setProperty('--sun-w', w + 'px');
+            dockMoved = true;
+        } else { dock.style.right = ''; dockMoved = false; }
+        panel.classList.toggle('qm-sun', sun);
         panel.dataset.radius = radius;
         panel.dataset.arcRange = (slots * step * 180 / Math.PI).toFixed(1);
         render();
@@ -202,6 +226,7 @@ const quickMenu = (() => {
     function setPosition(value) {
         const oldDetent = Math.round(wheelPosition), nextDetent = Math.round(value);
         for (let i = 0; i < Math.abs(nextDetent - oldDetent); i++) playTick(720, 18);
+        if (nextDetent !== oldDetent) haptic(5);
         wheelPosition = value;
     }
     function render() {
@@ -213,10 +238,12 @@ const quickMenu = (() => {
             const itemEase = 1 - Math.pow(1 - progress, 3);
             const angle = d * step;
             const scale = 1 - .10 * Math.min(distance, 2.5);
-            const opacity = Math.min(1, (slots / 2 - distance) * 3) * (1 - distance * .16);
+            const opacity = Math.min(1, (slots / 2 - distance) * 3) * (sun ? 1 : 1 - distance * .16);
             b.hidden = !visible;
             b.tabIndex = visible && revealTarget ? 0 : -1;
-            b.style.transform = `translate(${(65 - radius * Math.cos(angle)) * itemEase}px, ${(arcOffset + radius * Math.sin(angle)) * itemEase}px) translate(-50%, -50%) scale(${scale * (.5 + .5 * itemEase)})`;
+            const x = sun ? sunRx * Math.sin(d * sunStep) : 65 - radius * Math.cos(angle);
+            const y = sun ? -sunRy * Math.cos(d * sunStep) : arcOffset + radius * Math.sin(angle);
+            b.style.transform = `translate(${x * itemEase}px, ${y * itemEase}px) translate(-50%, -50%) scale(${scale * (.5 + .5 * itemEase)})`;
             b.style.opacity = Math.max(0, opacity * itemEase);
             b.style.zIndex = Math.round(20 - distance * 4);
             b.classList.toggle('qm-active', distance < .5);
@@ -238,7 +265,7 @@ const quickMenu = (() => {
             }
         }
         render();
-        if (!reveal && !revealTarget) { panel.hidden = true; backdrop.hidden = true; return; }
+        if (!reveal && !revealTarget) { panel.hidden = true; backdrop.hidden = true; restoreDock(); return; }
         if (isDragging || reveal !== revealTarget || velocity || wheelPosition !== Math.round(wheelPosition)) schedule();
     }
     function schedule() { if (!frame) frame = requestAnimationFrame(animate); }
@@ -252,7 +279,7 @@ const quickMenu = (() => {
         launcher.setAttribute('aria-expanded', 'false');
         isDragging = false; pointer = null; velocity = 0;
         frameTime = performance.now();
-        if (reducedMotion() || !reveal) { reveal = 0; render(); panel.hidden = true; backdrop.hidden = true; }
+        if (reducedMotion() || !reveal) { reveal = 0; render(); panel.hidden = true; backdrop.hidden = true; restoreDock(); }
         else schedule();
         if (restore && panel.contains(document.activeElement)) {
             (previousFocus?.isConnected && previousFocus !== document.body ? previousFocus : launcher).focus({ preventScroll: true });
@@ -296,7 +323,7 @@ const quickMenu = (() => {
         });
 
         panel.setAttribute('aria-label', t('wheelTitle'));
-        place();
+        place(true);
         panel.hidden = false;
         panel.inert = false; revealTarget = 1;
         panel.classList.add('qm-open'); frameTime = performance.now(); schedule();
@@ -319,20 +346,21 @@ const quickMenu = (() => {
     panel.addEventListener('pointerdown', e => {
         if (pointer !== null || !revealTarget || (e.pointerType === 'mouse' && e.button !== 0)) return;
         pointer = e.pointerId; isDragging = true; dragged = false;
-        startY = lastY = e.clientY; lastMove = performance.now(); velocity = 0;
+        startY = lastY = e.clientY; startX = lastX = e.clientX; lastMove = performance.now(); velocity = 0;
         frameTime = lastMove; schedule();
     });
     window.addEventListener('pointermove', e => {
         if (e.pointerId !== pointer || !isDragging) return;
         const now = performance.now(), dt = Math.max(8, now - lastMove);
-        if (Math.abs(e.clientY - startY) > 6) dragged = true;
+        if (Math.abs(sun ? e.clientX - startX : e.clientY - startY) > 6) dragged = true;
         if (dragged) {
             panel.setPointerCapture(pointer); e.preventDefault();
-            const delta = -(e.clientY - lastY) / pixelsPerAction;
+            // «Сонечко» крутиться пальцем уздовж: рух праворуч несе дії праворуч (до активної підходить ліва сусідка).
+            const delta = sun ? -(e.clientX - lastX) / (sunRx * sunStep * .9) : -(e.clientY - lastY) / pixelsPerAction;
             velocity = Math.max(-.025, Math.min(.025, delta / dt));
             setPosition(wheelPosition + delta); schedule();
         }
-        lastY = e.clientY; lastMove = now;
+        lastY = e.clientY; lastX = e.clientX; lastMove = now;
     }, true);
     function release(e) {
         if (e.pointerId !== pointer) return;
@@ -396,6 +424,11 @@ const quickMenu = (() => {
             }
         }
     });
+
+    // Легкий відгук пальцю (власник, 2026-10-31: «легку вібрацію при натисканні на кнопки»): кнопки нижнього ряду й дії колеса.
+    document.addEventListener('pointerdown', e => {
+        if (e.isPrimary && e.target.closest?.('.page-arrow, .row-tab, #menu-handle, #qm-launcher, .qm-item:not(:disabled), #pdf-scrubber.collapsed')) haptic();
+    }, { capture: true, passive: true });
 
     document.addEventListener('pointerdown', e => {
         if (!panel.hidden && !panel.contains(e.target) && !launcher.contains(e.target) && e.target !== backdrop) close(false);
