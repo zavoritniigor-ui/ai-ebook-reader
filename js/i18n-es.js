@@ -132,7 +132,7 @@ const I18N_ES = {
     libSource: 'Libros de Project Gutenberg: dominio público.',
     libSourceArchive: 'Internet Archive (PDF, EPUB)', libIaHint: 'Escribe un título o un autor, o elige un género, para buscar en Internet Archive (escaneos de ediciones antiguas y libros libres).',
     mScan: 'Escáner de documentos', mScanDesc: 'Fotos de páginas → PDF para imprimir, JPG o PNG', wheelScan: 'Escáner',
-    scanTitle: '📷 Escáner de documentos', scanCamera: '📷 Hacer foto', scanGallery: '🖼 Desde la galería',
+    scanTitle: '📷 Escáner de documentos', scanCamera: '📷 Hacer foto', scanCameraNext: '📷 Página siguiente', scanAllFilter: 'Para todas las páginas:', scanJpgOne: 'JPG · todas las páginas en una imagen', scanGallery: '🖼 Desde la galería',
     scanEmpty: 'Haz una foto de una página o elige fotos de la galería. Los bordes de la hoja se encuentran solos y se pueden ajustar.',
     scanPrivacy: 'Las fotos se procesan en este dispositivo y no se envían a ningún sitio.', scanProcessing: 'Procesando {n} de {total}…',
     scanPage: 'Página {n}', scanPages: 'Páginas: {n}', scanEdit: 'Recortar y mejorar', scanDelete: 'Eliminar página', scanMoveLeft: 'Mover antes',

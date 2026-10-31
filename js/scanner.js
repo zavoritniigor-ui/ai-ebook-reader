@@ -14,7 +14,6 @@ Object.assign(I18N, {
     scanCamera: { uk: '📷 Зняти', en: '📷 Take photo', fr: '📷 Photographier', ru: '📷 Снять' },
     scanCameraNext: { uk: '📷 Наступна сторінка', en: '📷 Next page', fr: '📷 Page suivante', ru: '📷 Следующая страница' },
     scanAllFilter: { uk: 'Для всіх сторінок:', en: 'For all pages:', fr: 'Pour toutes les pages :', ru: 'Для всех страниц:' },
-    scanDrop: { uk: 'Відпустіть фото — вони додадуться сторінками', en: 'Drop the photos to add them as pages', fr: 'Déposez les photos pour les ajouter comme pages', ru: 'Отпустите фото — они добавятся страницами' },
     scanJpgOne: { uk: 'JPG · усі сторінки одним зображенням', en: 'JPG · all pages as one image', fr: 'JPG · toutes les pages en une image', ru: 'JPG · все страницы одним изображением' },
     scanGallery: { uk: '🖼 З галереї', en: '🖼 From gallery', fr: '🖼 Depuis la galerie', ru: '🖼 Из галереи' },
     scanEmpty: { uk: 'Зніміть сторінку або виберіть фото з галереї. Краї аркуша знайдуться самі — їх можна підправити.',
