@@ -183,8 +183,9 @@ async function epubImage(zip, chapterDir, src) {
 // Стилі самої книги до сторінки не потрапляють (safeHtml відкидає класи, <style> і <link>), тож курсив, жирний і вирівнювання
 // через класи губилися: у книгах Bibliothèque numérique romande курсив — це <span class="T6"> (сотні місць на книгу), а
 // присвяти й підписи — <p class="Centre">. Тому з CSS книги беремо лише ці три властивості з фіксованими значеннями й
-// переносимо їх у style елементів; safeHtml пропускає їх як звичайні дозволені стилі. Розмір, шрифт, колір і відступи
-// книги не беремо: ними керують налаштування читача (A+/A−, тема).
+// переносимо їх у style елементів; safeHtml пропускає їх як звичайні дозволені стилі. Згодом додано червоний рядок,
+// капітель і регістр (2026-10-31). Розмір, шрифт, колір, інтервал і поля книги не беремо: ними керують налаштування
+// читача (A+/A−, тема, «Вигляд тексту»).
 const epubSheetCache = new WeakMap();
 const EPUB_STYLE_MAX_RULES = 3000;
 function epubStyleDeclarations(style) {
@@ -195,7 +196,22 @@ function epubStyleDeclarations(style) {
     if (fw === 'bold' || fw === 'bolder' || +fw >= 600) out.push(['font-weight', 'bold']); else if (fw === 'normal' || (fw && +fw <= 400)) out.push(['font-weight', 'normal']);
     const ta = style.getPropertyValue('text-align');
     if (ta === 'center') out.push(['text-align', 'center']); else if (ta === 'right' || ta === 'end') out.push(['text-align', 'right']);
+    // Червоний рядок абзацу (p { text-indent: 1.5em }): без нього абзаци художньої книги зливаються. Беремо лише
+    // додатний відступ у em/rem/px, обмежений 3em; від'ємний (висячий) без полів книги виліз би за край, тож його немає.
+    const indent = epubIndentEm(style.getPropertyValue('text-indent'));
+    if (indent !== null) out.push(['text-indent', indent ? `${indent}em` : '0']);
+    // Капітель і регістр: імена в п'єсах, перші слова розділів, заголовки (font-variant: small-caps, text-transform).
+    const fv = style.getPropertyValue('font-variant-caps') || style.getPropertyValue('font-variant');
+    if (fv === 'small-caps' || fv === 'all-small-caps') out.push(['font-variant-caps', 'small-caps']); else if (fv === 'normal') out.push(['font-variant-caps', 'normal']);
+    const tt = style.getPropertyValue('text-transform');
+    if (['uppercase', 'lowercase', 'capitalize', 'none'].includes(tt)) out.push(['text-transform', tt]);
     return out;
+}
+function epubIndentEm(value) {
+    const m = /^(\d*\.?\d+)(em|rem|px)$/.exec(String(value || '').trim()) || (String(value || '').trim() === '0' ? ['0', '0', 'em'] : null);
+    if (!m) return null;
+    const em = m[2] === 'px' ? +m[1] / 16 : +m[1];
+    return Number.isFinite(em) ? Math.round(Math.min(em, 3) * 100) / 100 : null;
 }
 async function epubBookSheets(zip, chapterDir, doc) {
     let cache = epubSheetCache.get(zip);

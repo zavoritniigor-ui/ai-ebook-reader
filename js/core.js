@@ -47,7 +47,7 @@ function safeHtml(value, ai = false) {
     // fields via createElement/textContent, never from innerHTML of AI text (see
     // js/grammar-svo.js), so those classes are no longer needed here.
     const classes = new Set('lvl lvl-block tt-note'.split(' '));
-    const styles = new Set('color background-color font-size font-weight font-style font-family text-align text-decoration line-height white-space border border-color border-width border-style border-collapse padding padding-left padding-right padding-top padding-bottom margin margin-left margin-right margin-top margin-bottom'.split(' '));
+    const styles = new Set('color background-color font-size font-weight font-style font-family text-align text-decoration text-indent text-transform font-variant-caps line-height white-space border border-color border-width border-style border-collapse padding padding-left padding-right padding-top padding-bottom margin margin-left margin-right margin-top margin-bottom'.split(' '));
     function copy(node, parent) {
         if (node.nodeType === Node.TEXT_NODE) { parent.appendChild(document.createTextNode(node.nodeValue)); return; }
         if (node.nodeType !== Node.ELEMENT_NODE) return;
