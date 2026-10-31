@@ -134,6 +134,7 @@ check('10 the PDF has a PDF header, %%EOF and two pages', "!!__pdf && __pdf.head
 c.js("(f => { f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11 «Open in the reader»: the scanner closes and the reader opens the A4 PDF with both pages', "!scanIsOpen() && state.format === 'pdf' && state.totalPages === 2", timeout=30)
 check('11b ... its pages are A4', "state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] - 595.28) < 0.5 && Math.abs(p.view[3] - 841.89) < 0.5)", timeout=10)
+c.wait("!scanState.busy", timeout=20)   # «Open» stays busy until the reader has opened the A4 PDF
 c.js("openScanner(); (f => { f.value = 'pdf-fit'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11c «PDF · photo size»: pages in the page\'s own proportions', "state.format === 'pdf' && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] / p.view[3] - scanState.pages[0].w / scanState.pages[0].h) < 0.01)", timeout=30)
 c.js("openScanner(); (f => { f.value = 'jpg'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-save').click(); 1")

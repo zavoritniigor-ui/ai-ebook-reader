@@ -54,6 +54,5 @@ def tap(selector, label):
 
 check('0 No book is open: the start screen is shown', c.js("!state.format && !!document.getElementById('home-screen')"))
 tap('.home-title', 'the app name')
-tap('.home-tagline', 'the description')
 tap('#home-library', 'the library button')
 print('PASS: all start screen checks')

@@ -10,7 +10,9 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | `js/ai-client.js`, `js/grammar-svo.js` (Groq streaming for Ask AI) | PR open | 2026-10-31 |
-| Claude Code on the owner's computer (INFERRED from its branch; please confirm) | `feat/photo-scanner` | `js/scanner.js`, `js/quick-wheel.js`, `js/selection.js`, `js/pwa-lifecycle.js`, `index.html` | #346 merged into main on 2026-10-31 — its owner removes this row | 2026-10-30 |
+| Claude Code on the owner's computer | `feat/start-screen-covers` | start screen: `js/book-shelf.js`, `index.html` (home CSS), start-screen tests | PR #352 | 2026-10-31 |
+| Claude Code on the owner's computer | `feat/sun-rotate` | `js/quick-wheel.js` (✦ turns like a wheel), `tests/reading_bottom_row_browser.py` | PR #353 | 2026-10-31 |
+| Claude Code on the owner's computer | — | scanned-PDF highlight offset («The Analects» p. 896–897): `js/pdf-render.js`; waits for the owner's PDF file | not started | 2026-10-31 |
 
 ## Active Agent Worktrees & Tasks
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):

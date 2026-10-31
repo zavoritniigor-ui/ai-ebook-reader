@@ -1623,25 +1623,40 @@
         #scan-preview:not([src]) { display: none; }
         .scan-done button { flex: 1 1 120px; min-height: 46px; }
         /* Стартовий екран: як головна сторінка застосунку — логотип, назва, три головні дії, останні книги. */
-        .home { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 520px; margin: 4vh auto 0; padding: 0 4px; break-inside: avoid; }
-        body:not(.pdf-mode) #reader-pages img.home-logo { width: 64px; height: 64px; max-height: none; border-radius: 16px; box-shadow: 0 6px 18px -8px rgba(var(--shadow-color),.45); }
-        .home-title { margin: 14px 0 4px; font-size: 26px; font-weight: 750; letter-spacing: -.02em; line-height: 1.15; }
-        .home-tagline { margin: 0 0 22px; font-size: 15px; color: var(--text-muted); line-height: 1.4; }
-        .home-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        /* Стартовий екран: назва, дві головні дії й останні книги з обкладинками (js/book-shelf.js). */
+        .home { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 560px; margin: 3vh auto 0; padding: 0 4px; break-inside: avoid; }
+        .home-brand { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; }
+        body:not(.pdf-mode) #reader-pages img.home-logo { width: 40px; height: 40px; max-height: none; border-radius: 10px; box-shadow: 0 4px 12px -6px rgba(var(--shadow-color),.45); }
+        .home-title { margin: 0; font-size: 22px; font-weight: 750; letter-spacing: -.02em; line-height: 1.15; }
+        .home-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
         .home-actions .mi { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 22px; }
-        label.home-cta, button.home-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; height: auto;
-            border-radius: var(--radius-md); font-size: 16px; font-weight: 600; cursor: pointer; padding: 0 16px; }
+        label.home-cta, button.home-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; height: auto;
+            border-radius: var(--radius-md); font-size: 15px; font-weight: 600; cursor: pointer; padding: 6px 12px; line-height: 1.2; }
         label.home-cta { background: var(--accent-color); color: var(--accent-contrast); border: 1px solid var(--accent-color); }
         button.home-btn { background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); }
         button.home-btn .mi { color: var(--accent-color); }
-        .home-formats { margin: 14px 0 0; font-size: 12.5px; color: var(--text-muted); }
-        /* Нещодавні книги на стартовому екрані (js/book-shelf.js). */
-        #recent-books { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 520px; margin-top: 22px; text-align: left; }
-        #recent-books h3 { font-size: 15px; margin: 0 0 2px; color: var(--text-muted); font-weight: 600; }
-        .recent-book { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 12px; min-height: 48px;
-            border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); color: inherit; cursor: pointer; font: inherit; }
-        .recent-book b { font-size: 15px; overflow-wrap: anywhere; }
-        .recent-book small { font-size: 12px; color: var(--text-muted); }
+        .home-actions > label.home-cta { grid-column: 1 / -1; }
+        @media (max-width: 340px) { .home-actions { grid-template-columns: 1fr; } }
+        #recent-books { width: 100%; margin-top: 26px; text-align: left; }
+        .recent-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
+        #recent-books h3 { font-size: 15px; margin: 0; color: var(--text-muted); font-weight: 600; }
+        .recent-all { background: none; border: 0; color: var(--accent-color); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 44px; padding: 0 4px; }
+        .recent-list { display: flex; flex-direction: column; gap: 8px; }
+        .recent-book { display: grid; grid-template-columns: 52px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 14px; row-gap: 3px; align-items: center;
+            text-align: left; padding: 8px 12px 8px 8px; min-height: 92px; border: 1px solid var(--border-color); border-radius: 12px;
+            background: var(--panel-bg); color: inherit; cursor: pointer; font: inherit; transition: transform .12s ease; }
+        .recent-book:active { transform: scale(.985); }
+        .recent-cover { grid-row: 1 / 3; position: relative; display: block; width: 52px; aspect-ratio: 2 / 3; border-radius: 4px; overflow: hidden;
+            background: var(--bg-color); box-shadow: 0 1px 2px rgba(0,0,0,.2), 0 4px 10px -6px rgba(0,0,0,.5); }
+        .recent-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .recent-cover.plain { display: flex; flex-direction: column; justify-content: space-between; padding: 5px 4px; color: #fff;
+            background: linear-gradient(160deg, hsl(var(--cover-hue) 45% 42%), hsl(calc(var(--cover-hue) + 30) 50% 28%)); }
+        .recent-cover.plain span { font-size: 7.5px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; }
+        .recent-cover.plain i { font-size: 7px; letter-spacing: .06em; opacity: .85; }
+        .recent-book b { align-self: end; font-size: 15px; font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+        .recent-book small { align-self: start; font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* На стартовому екрані книги ще немає: бічні язички й кнопка ✦ нічого не дають, лишається тільки ☰. */
+        body:has(#home-screen) :is(#rules-tab, #quick-menu-dock, .panel-tab) { display: none !important; }
         .modal-content {
             position: relative; background: var(--panel-bg); padding: 28px; border-radius: var(--radius-lg);
             width: 90%; max-width: 460px; max-height: 86vh; overflow-y: auto;
@@ -2072,16 +2087,12 @@
             <div id="reader-container"><div id="reader-pages">
                 <!-- Стартовий екран (книгу ще не відкрито): головні дії великими кнопками й останні книги. Меню на старті закрите. -->
                 <section class="home" id="home-screen">
-                    <img class="home-logo" src="icons/icon-192.png" alt="" width="64" height="64">
-                    <h1 class="home-title">AI E-book Reader</h1>
-                    <p class="home-tagline" data-i18n="mTagline">Читання з перекладом, граматикою й озвученням</p>
+                    <div class="home-brand"><img class="home-logo" src="icons/icon-192.png" alt="" width="40" height="40"><h1 class="home-title">AI E-book Reader</h1></div>
                     <div class="home-actions">
                         <label class="home-cta" for="file-upload"><svg class="mi" aria-hidden="true"><use href="#i-open"/></svg><span data-i18n="mOpen">Відкрити файл</span></label>
-                        <button type="button" class="home-btn my-books-btn" id="home-my-books"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span data-i18n="mShelf">Мої книги</span></button>
                         <button type="button" class="home-btn" id="home-library"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span data-i18n="mLibrary">Безкоштовна бібліотека</span></button>
                         <button type="button" class="home-btn" id="home-scanner"><svg class="mi" aria-hidden="true"><use href="#i-scan"/></svg><span data-i18n="mScan">Сканер документів</span></button>
                     </div>
-                    <p class="home-formats" data-i18n="mHomeFormats">Підтримуються EPUB, PDF, DOCX, FB2, TXT, MD, HTML і RTF.</p>
                     <div id="recent-books"></div>
                 </section>
             </div></div>
@@ -2348,7 +2359,7 @@
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=865f186bd2ef"></script>
-    <script src="js/book-shelf.js?v=57ce4e25631c"></script>
+    <script src="js/book-shelf.js?v=518f17e07dc3"></script>
     <script src="js/scanner.js?v=f1c124d69501"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=4e62f6f40912"></script>

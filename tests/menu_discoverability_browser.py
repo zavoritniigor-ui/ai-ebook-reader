@@ -12,6 +12,9 @@ c.call('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
 c.call('Page.navigate', url=URL)
 c.wait("document.readyState==='complete' && !document.body.inert && typeof handleWordOrSelection==='function'", timeout=30)
 c.js("localStorage.clear(); state.uiLang = 'uk'; applyI18n(); 1")
+# The start screen hides the side handles (nothing to open there yet), and with a book the reading row replaces them on a
+# phone; the handles themselves are checked with the start screen taken away.
+c.js("document.getElementById('home-screen').remove(); 1")
 
 
 def check(name, expression):
