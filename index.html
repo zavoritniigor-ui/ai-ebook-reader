@@ -845,6 +845,10 @@
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher:active { transform: scale(.92); }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher[aria-expanded="true"] {
             box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 30%, transparent); }
+        /* У ряду ☰ і ✦ — частина капсули, а не «над усім», як колись ☰ у кутку: відкрита бічна панель (AI, Граматика, Вправи)
+           лежить над рядом, інакше вони закривали б її кнопки внизу (поле вводу, «Згенерувати ще»). */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle { z-index: 95; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])):has(.side-panel.expanded) #quick-menu-dock { visibility: hidden; }
         /* Розгорнутий повзунок лягає в капсулу від ‹ до › (стрілки на цей час ховаються), без власного тла. */
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available:not(.collapsed) {
             left: calc(var(--row-l) + var(--row-edge)); width: calc(var(--row-w) - 2 * var(--row-edge)); padding: 0 12px; }
@@ -2238,7 +2242,7 @@
     <script src="js/book-marks.js?v=6447147d7e80"></script>
     <script src="js/navigation.js?v=c9d54288e58a"></script>
     <script src="js/pdf-zoom-pan.js?v=c2233b957e5a"></script>
-    <script src="js/ui-tooltip.js?v=5474e83169d8"></script>
+    <script src="js/ui-tooltip.js?v=456649d2a3d0"></script>
     <script src="js/translation.js?v=cf27366b8131"></script>
     <script src="js/dictionaries.js?v=a8f7f2bcfc69"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>

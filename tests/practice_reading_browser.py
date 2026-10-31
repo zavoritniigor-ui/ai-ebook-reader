@@ -94,6 +94,11 @@ def center(selector, index=0):
     return c.js("""(()=>{const e=document.querySelectorAll(%s)[%d]; if(!e) return null; const b=e.getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2,w:b.width,h:b.height}})()""" % (json.dumps(selector), index))
 
 
+def GRAMMAR_SIGNAL():
+    """✨ opens Grammar: the side tab, or (while the bottom reading row shows) its place at the row's right end."""
+    return '#grammar-tab' if c.js("document.getElementById('grammar-tab').getBoundingClientRect().width > 0") else '#row-grammar'
+
+
 def click(selector, index=0):
     """A real mouse click -- after scrolling the element into view, as a user would (the Retry/Regenerate row is at the bottom of a long reading)."""
     c.js("document.querySelectorAll(%s)[%d]?.scrollIntoView({block:'center'})" % (json.dumps(selector), index)); time.sleep(0.15)
@@ -117,7 +122,7 @@ def open_practice(mode='verbs', touch=False):
     click('#tt-ai-btn')
     c.wait("els.grammarPanel.classList.contains('ready')", timeout=8)
     if not c.js("els.grammarPanel.classList.contains('expanded')"):
-        click('#grammar-tab'); time.sleep(0.5)
+        click(GRAMMAR_SIGNAL()); time.sleep(0.5)
     if mode == 'adjectives':
         click('#grammar-mode-adjectives'); time.sleep(0.3)
     n = c.js("__calls.length")
@@ -504,7 +509,7 @@ c.touch_tap(pos['x'], pos['y'])
 c.wait("els.tooltip.style.display==='flex'", timeout=8)
 p_ai = center('#tt-ai-btn'); c.touch_tap(p_ai['x'], p_ai['y'])
 c.wait("els.grammarPanel.classList.contains('ready')", timeout=8)
-p_tab = center('#grammar-tab'); c.touch_tap(p_tab['x'], p_tab['y']); time.sleep(0.5)
+p_tab = center(GRAMMAR_SIGNAL()); c.touch_tap(p_tab['x'], p_tab['y']); time.sleep(0.5)
 c.js("document.querySelector('.grammar-practice-btn').scrollIntoView({block:'center'})"); time.sleep(0.3)
 p_pr = center('.grammar-practice-btn'); c.touch_tap(p_pr['x'], p_pr['y'])
 c.wait("document.querySelectorAll('#practice-panel .practice-target').length>0", timeout=12); time.sleep(0.6)
