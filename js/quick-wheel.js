@@ -123,7 +123,7 @@ const quickMenu = (() => {
     let suppressClickUntil = 0, radius = 220, arcOffset = -100, slots = 5;
     // «Сонечко» (✦ у нижньому ряду читання): дії віялом над кнопкою, активна — прямо над нею. sunRx — горизонтальний радіус
     // (крайні дії не виходять за екран), sunRy — вертикальний (сусідні дії не налягають).
-    let sun = false, sunRx = 200, sunRy = 210, startX = 0, lastX = 0;
+    let sun = false, sunRx = 200, sunRy = 210, sunCx = 0, sunCy = 0, startX = 0, lastX = 0;
     const sunStep = .5;
     let wheelSelectionText = '';
     const step = .30, pixelsPerAction = 66;
@@ -214,6 +214,7 @@ const quickMenu = (() => {
             slots = 5;
             sunRx = Math.max(90, Math.min(200, edge / Math.sin(2 * sunStep)));
             sunRy = Math.min(Math.max(sunRx, 210), cy - 8 - 32);
+            sunCx = cx; sunCy = cy;
             dock.style.top = cy + 'px';
             dock.style.right = (innerWidth - cx) + 'px';
             panel.style.setProperty('--sun-w', w + 'px');
@@ -353,16 +354,24 @@ const quickMenu = (() => {
     window.addEventListener('pointermove', e => {
         if (e.pointerId !== pointer || !isDragging) return;
         const now = performance.now(), dt = Math.max(8, now - lastMove);
-        if (Math.abs(sun ? e.clientX - startX : e.clientY - startY) > 6) dragged = true;
+        if (sun ? Math.hypot(e.clientX - startX, e.clientY - startY) > 6 : Math.abs(e.clientY - startY) > 6) dragged = true;
         if (dragged) {
             panel.setPointerCapture(pointer); e.preventDefault();
-            // «Сонечко» крутиться пальцем уздовж: рух праворуч несе дії праворуч (до активної підходить ліва сусідка).
-            const delta = sun ? -(e.clientX - lastX) / (sunRx * sunStep * .9) : -(e.clientY - lastY) / pixelsPerAction;
+            // «Сонечко» крутиться як колесо навколо ✦: рахується кут пальця на дузі (x = Rx·sin φ, y = −Ry·cos φ), тож дуга
+            // повертається і рухом уздовж неї вгорі (праворуч несе дії праворуч), і вертикальним рухом на будь-якому боці:
+            // ліворуч угору / праворуч униз — туди ж, що й праворуч угорі.
+            const delta = sun ? -sunAngleDelta(lastX, lastY, e.clientX, e.clientY) / (sunStep * .9) : -(e.clientY - lastY) / pixelsPerAction;
             velocity = Math.max(-.025, Math.min(.025, delta / dt));
             setPosition(wheelPosition + delta); schedule();
         }
         lastY = e.clientY; lastX = e.clientX; lastMove = now;
     }, true);
+    function sunAngleDelta(x0, y0, x1, y1) {
+        const a = (x, y) => Math.atan2((x - sunCx) / sunRx, -(y - sunCy) / sunRy);
+        let d = a(x1, y1) - a(x0, y0);
+        if (d > Math.PI) d -= 2 * Math.PI; else if (d < -Math.PI) d += 2 * Math.PI;
+        return d;
+    }
     function release(e) {
         if (e.pointerId !== pointer) return;
         if (dragged) suppressClickUntil = performance.now() + 350;

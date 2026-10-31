@@ -109,6 +109,19 @@ for i in range(1, 9):
     c.call('Input.dispatchMouseEvent', type='mouseMoved', x=p[0] - 12 * i, y=p[1], button='left', buttons=1); time.sleep(0.02)
 c.call('Input.dispatchMouseEvent', type='mouseReleased', x=p[0] - 96, y=p[1], button='left', buttons=0, clickCount=1); time.sleep(1.2)
 check('4b a sideways swipe turns the sun (another action comes to the top) and opens nothing', "document.querySelector('.qm-item.qm-active').dataset.action !== %s && document.getElementById('qm-launcher').getAttribute('aria-expanded') === 'true'" % json.dumps(first))
+def vswipe(side, dy):
+    p = c.js("(r => [r[%d].left + r[%d].width / 2, r[%d].top + r[%d].height / 2])([...document.querySelectorAll('.qm-item:not([hidden])')].map(b => b.getBoundingClientRect()).sort((a, b) => a.left - b.left))" % ((side,) * 4))
+    c.call('Input.dispatchMouseEvent', type='mousePressed', x=p[0], y=p[1], button='left', buttons=1, clickCount=1)
+    for i in range(1, 9):
+        c.call('Input.dispatchMouseEvent', type='mouseMoved', x=p[0], y=p[1] + dy * i, button='left', buttons=1); time.sleep(0.02)
+    time.sleep(0.15)
+    c.call('Input.dispatchMouseEvent', type='mouseReleased', x=p[0], y=p[1] + dy * 8, button='left', buttons=0, clickCount=1); time.sleep(1.2)
+    return c.js("document.querySelector('.qm-item.qm-active').dataset.action")
+a0 = c.js("document.querySelector('.qm-item.qm-active').dataset.action")
+a1 = vswipe(0, -12)
+check('4b2 an upward swipe on the left side of the arc turns the sun too and opens nothing', "%s !== %s && document.getElementById('qm-launcher').getAttribute('aria-expanded') === 'true'" % (json.dumps(a1), json.dumps(a0)))
+a2 = vswipe(4, -12)
+check('4b3 an upward swipe on the right side turns it back the other way', "%s === %s" % (json.dumps(a2), json.dumps(a0)))
 c.js("document.getElementById('qm-launcher').click(); 1"); time.sleep(0.7)
 
 # ---- ☰ in the row opens the side menu; it does not jump to the top-left corner meanwhile
