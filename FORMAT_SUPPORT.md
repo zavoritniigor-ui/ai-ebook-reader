@@ -7,7 +7,7 @@ there is no server conversion or OCR in this release.
 | Format | Supported here | Remaining limitations |
 | --- | --- | --- |
 | PDF | Existing PDF.js pages, images, text-layer selection, zoom, ink | Scans need an existing text layer; OCR and the reported file-specific scanned-PDF offset remain open |
-| EPUB | Spine chapters, the real contents from the EPUB 3 navigation document or EPUB 2 toc.ncx (titles, nesting, file#anchor entries; falls back to the list of files), archive-relative raster images, SVG-wrapped covers, a safe rasterized SVG shape/text subset | Publisher stylesheets/fonts, full SVG, cross-chapter footnotes and fixed-layout presentation remain follow-up work |
+| EPUB | Spine chapters, the real contents from the EPUB 3 navigation document or EPUB 2 toc.ncx (titles, nesting, file#anchor entries; falls back to the list of files), archive-relative raster images, SVG-wrapped covers, a safe rasterized SVG shape/text subset | Publisher stylesheets/fonts, full SVG and fixed-layout presentation remain follow-up work; footnotes open in a card and internal links work, but in-chapter footnote blocks stay visible in the text |
 | FB2 / FB2.ZIP | Text, inline emphasis, raster binary illustrations, all bodies including notes, XML-declared encodings | ZIP must contain exactly one FB2; full FictionBook layout and cross-chapter note navigation remain follow-up work |
 | DOCX | Existing Mammoth semantic HTML and inline images | Not an exact reproduction of Word pages |
 | TXT | Plain text and existing block navigation | UTF-8 text; no attached assets |
@@ -62,7 +62,7 @@ sanitized before insertion, as required by https://github.com/markedjs/marked.
 
 ## Next increments
 
-1. EPUB footnote routing, isolated publisher styles/fonts,
+1. Hiding in-chapter footnote blocks (needs a reading-place migration), isolated publisher styles/fonts,
    shared book/resource metadata and local HTML/Markdown bundles.
 2. Real-book corpus and broader multilingual word segmentation/large-book tuning.
 3. RTF/ODT and verified MOBI/AZW3 conversion adapters, with explicit consent for any

@@ -382,6 +382,140 @@ function markEpubTocCurrent() {
     }
 }
 
+// ========== ВИНОСКИ Й ВНУТРІШНІ ПОСИЛАННЯ EPUB (власник, 2026-10-31: «починай виноски») ==========
+// Раніше посилання «#id» усередині розділу лишались, але тап по них ніхто не обробляв (тап ішов у переклад цифри), а
+// посилання в інший файл книги (notes.xhtml#n1 — так влаштовано більшість приміток) safeHtml відкидав. І ознаку
+// «це виноска» (epub:type="noteref") safeHtml теж не пропускає, тому все розпізнаємо ДО нього: кожне внутрішнє
+// посилання стає якорем «#epubref-<n|l>-<закодовані [файл, якір]>», який safeHtml зберігає як «#book-epubref-…».
+// Виноска (n) — ознаки стандарту (epub:type noteref, role doc-noteref), звичні класи (Gutenberg: fnanchor) або
+// коротка позначка «1», «[2]», «*», «†» у верхньому індексі. Тап по ній показує текст примітки у вікні поряд, не
+// гортаючи книгу; решта внутрішніх посилань (l) переходить до свого місця. Текст сторінки не змінюється — лише адреси
+// посилань, тож збережені місця читання (символьні відступи) лишаються дійсними.
+const EPUB_NOTE_MAX_CHARS = 4000;   // довше — це вже не примітка, а розділ: тоді перехід, а не вікно
+const EPUB_REF = 'epubref-';
+const epubNoteDocs = new Map();     // шлях файлу → розібраний документ (у межах книги)
+function epubLooksLikeNoteref(a) {
+    const marks = `${a.getAttribute('epub:type') || ''} ${a.getAttribute('role') || ''} ${a.getAttribute('class') || ''}`;
+    if (/(^|\s)(noteref|doc-noteref)(\s|$)|fnanchor|footnote|noteref|endnote/i.test(marks)) return true;
+    const text = a.textContent.trim();
+    const short = /^[\[(]?(\d{1,3}[a-z]?|[*†‡§¶]{1,3}|[ivxlc]{1,5})[\])]?$/i.test(text);
+    return short && !!(a.closest('sup') || a.querySelector('sup') || /vertical-align\s*:\s*super/i.test(a.getAttribute('style') || ''));
+}
+function rewriteEpubLinks(doc, chapterDir, chapterPath) {
+    for (const a of doc.querySelectorAll('a[href]')) {
+        const href = (a.getAttribute('href') || '').trim();
+        if (!href || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//')) continue;   // зовнішні посилання — як і було
+        const hash = href.indexOf('#');
+        const pathPart = hash >= 0 ? href.slice(0, hash) : href;
+        let fragment = hash >= 0 ? href.slice(hash + 1) : '';
+        try { fragment = decodeURIComponent(fragment); } catch (e) { /* як є */ }
+        const path = pathPart ? resolveEpubPath(chapterDir, pathPart) : chapterPath;
+        if (!path) continue;
+        const kind = fragment && epubLooksLikeNoteref(a) ? 'n' : 'l';
+        // Звичайне посилання всередині ЦЬОГО ж розділу лишається звичним «#id» (safeHtml дасть «#book-id»):
+        // його й так видно на сторінці, перехід робить той самий перехоплювач нижче.
+        if (kind === 'l' && path === chapterPath) { if (fragment) a.setAttribute('href', '#' + fragment); else a.removeAttribute('href'); continue; }
+        a.setAttribute('href', '#' + EPUB_REF + kind + '-' + encodeURIComponent(JSON.stringify([path, fragment])));
+    }
+}
+function epubDecodeRef(href) {
+    const m = /^#book-epubref-([nl])-(.+)$/.exec(href || '');
+    if (!m) return null;
+    try {
+        const [path, fragment] = JSON.parse(decodeURIComponent(m[2]));
+        return typeof path === 'string' && typeof fragment === 'string' ? { note: m[1] === 'n', path, fragment } : null;
+    } catch (e) { return null; }
+}
+async function epubDocAt(path) {
+    if (epubNoteDocs.has(path)) return epubNoteDocs.get(path);
+    const entry = state.epubZip && state.epubZip.file(path);
+    if (!entry) return null;
+    const doc = new DOMParser().parseFromString(expandSelfClosingTags(await entry.async('text')), 'text/html');
+    epubNoteDocs.set(path, doc);
+    if (epubNoteDocs.size > 8) epubNoteDocs.delete(epubNoteDocs.keys().next().value);
+    return doc;
+}
+// Текст примітки: сам елемент з якорем, а якщо якір — порожня мітка в рядку (так у Gutenberg: <a id="Footnote_1_1"/>),
+// то найближчий блок навколо. Посилання всередині розгортаються в текст, зображення відкидаються, далі — safeHtml.
+async function epubNoteHtml(path, fragment) {
+    const doc = await epubDocAt(path);
+    const target = doc && fragment ? doc.getElementById(fragment) : null;
+    if (!target) return null;
+    let box = target;
+    const blockTags = /^(p|li|aside|div|section|dd|dt|td|blockquote|footer)$/i;
+    if (!blockTags.test(box.localName) || box.textContent.trim().length < 3) {
+        const up = target.closest('p, li, aside, div, section, dd, dt, td, blockquote, footer');
+        if (up && up !== doc.body) box = up;
+    }
+    if (box.textContent.trim().length > EPUB_NOTE_MAX_CHARS) return null;
+    const clone = box.cloneNode(true);
+    clone.querySelectorAll('img, svg, script, style').forEach(n => n.remove());
+    clone.querySelectorAll('a').forEach(n => n.replaceWith(...n.childNodes));
+    const html = safeHtml(clone.outerHTML);
+    return html.replace(/<[^>]+>/g, '').trim() ? html : null;
+}
+async function openEpubRef(ref, anchorEl) {
+    const index = state.spine.indexOf(ref.path);
+    if (ref.note) {
+        const html = await epubNoteHtml(ref.path, ref.fragment);
+        if (html) { showEpubNote(html, anchorEl, index >= 0 ? { index, fragment: ref.fragment } : null); return; }
+    }
+    hideEpubNote();
+    if (index >= 0) await openEpubTocEntry({ index, fragment: ref.fragment });
+}
+// Вікно примітки — у <body>, поза областю книги: тап у ньому не перекладає й не гортає.
+function hideEpubNote() { const box = document.getElementById('epub-note'); if (box) box.hidden = true; }
+function showEpubNote(html, anchorEl, goTo) {
+    let box = document.getElementById('epub-note');
+    if (!box) {
+        box = document.createElement('section');
+        box.id = 'epub-note'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-labelledby', 'epub-note-title');
+        box.innerHTML = '<header><strong id="epub-note-title"></strong><button type="button" class="epub-note-close"></button></header><div class="epub-note-body"></div><footer><button type="button" class="epub-note-go"></button></footer>';
+        document.body.appendChild(box);
+        box.querySelector('.epub-note-close').onclick = hideEpubNote;
+    }
+    box.querySelector('#epub-note-title').textContent = t('noteTitle');
+    const close = box.querySelector('.epub-note-close');
+    close.textContent = '✕'; close.setAttribute('aria-label', t('tClose')); close.title = t('tClose');
+    box.querySelector('.epub-note-body').innerHTML = html;   // уже пройшло safeHtml
+    const go = box.querySelector('.epub-note-go');
+    go.textContent = t('noteGo'); go.hidden = !goTo;
+    go.onclick = goTo ? () => { hideEpubNote(); openEpubTocEntry(goTo); } : null;
+    box.hidden = false;
+    // Під позначкою, а якщо внизу мало місця — над нею; по ширині — в межах екрана.
+    const r = anchorEl.getBoundingClientRect(), w = Math.min(420, innerWidth - 24);
+    box.style.width = w + 'px';
+    box.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left + r.width / 2 - w / 2)) + 'px';
+    const h = box.offsetHeight, below = r.bottom + 10;
+    box.style.top = (below + h < innerHeight - 12 ? below : Math.max(12, r.top - h - 10)) + 'px';
+    close.focus({ preventScroll: true });
+}
+// Перехоплення раніше за обробник тапу (selection.js): фаза перехоплення на mainArea спрацьовує до його звичайного click.
+els.mainArea.addEventListener('click', (e) => {
+    if (state.format !== 'epub') return;
+    const a = e.target.closest && e.target.closest('#reader-pages a[href^="#book-"]');
+    if (!a) return;
+    e.preventDefault(); e.stopImmediatePropagation();   // звичайний перехід за «#» прокрутив би колонки й зламав сторінки
+    const href = a.getAttribute('href');
+    const ref = epubDecodeRef(href);
+    if (ref) { openEpubRef(ref, a); return; }
+    const target = document.getElementById(href.slice(1));
+    if (target && els.pages.contains(target)) {
+        hideEpubNote();
+        const range = document.createRange(); range.selectNodeContents(target);
+        goToPageInChapter(pageIndexForRange(range), false);
+    }
+}, true);
+document.addEventListener('click', (e) => {
+    const box = document.getElementById('epub-note');
+    if (box && !box.hidden && !box.contains(e.target) && !(e.target.closest && e.target.closest('a[href^="#book-epubref-"]'))) hideEpubNote();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideEpubNote(); });
+Object.assign(I18N, {
+    noteTitle: { uk: 'Примітка', en: 'Note', fr: 'Note', ru: 'Примечание', zh: '注释', ko: '주석', hi: 'टिप्पणी', ga: 'Nóta', es: 'Nota' },
+    noteGo: { uk: 'Перейти до примітки', en: 'Go to the note', fr: 'Aller à la note', ru: 'Перейти к примечанию', zh: '转到注释', ko: '주석으로 이동', hi: 'टिप्पणी पर जाएँ', ga: 'Téigh chuig an nóta', es: 'Ir a la nota' }
+});
+
 async function initEpub(file, epoch = readerEpoch.book) {
     if (typeof JSZip === 'undefined') throw new Error('Не завантажено бібліотеку EPUB. Перевірте з’єднання та оновіть сторінку.');
     const verified = await runArchiveGuard(file, epoch);
@@ -403,7 +537,7 @@ async function initEpub(file, epoch = readerEpoch.book) {
     const doc = parser.parseFromString(await zip.file(opfPath).async("text"), "text/xml");
     if (epoch !== readerEpoch.book) return;
     if (doc.querySelector('parsererror')) throw new Error('Некоректний опис книги EPUB.');
-    state.epubZip = zip; 
+    state.epubZip = zip; epubNoteDocs.clear(); hideEpubNote();
     // Мова книги з метаданих (dc:language): книжки бібліотеки (Gutenberg) її мають завжди.
     state.bookLangMeta = normalizeBookLang(doc.getElementsByTagNameNS('*', 'language')[0]?.textContent);
     const man = Object.create(null); const items = doc.getElementsByTagNameNS('*', 'item');
@@ -474,6 +608,7 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null, textOffset 
                 if (!current()) return;
             }
             await applyEpubBookStyles(zip, chapterDir, tempDoc);
+            rewriteEpubLinks(tempDoc, chapterDir, fileObj.name);
             if (!current()) return;
             data = tempDoc.body.innerHTML;
             if (!current()) return;
