@@ -56,7 +56,7 @@ c.call('Page.navigate', url=URL)
 c.wait("document.readyState==='complete' && !document.body.inert && typeof openFullMenu==='function'", timeout=30)
 check('0 the app starts with the menu closed: the start screen offers Open file (full width), Free library and Document scanner as big buttons (recent books list below)',
       """(() => { const ids = [...document.querySelectorAll('.home-actions > *')].map(e => e.getBoundingClientRect()); const hit = r => document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-         return !!(!isFullMenuOpen() && ids.length === 3 && ids.every(r => r.height >= 48 && r.top > 0 && r.bottom < innerHeight) && hit(ids[0]).closest('label[for="file-upload"]') && hit(ids[1]).closest('#home-library') && hit(ids[2]).closest('#home-scanner')) || 'start'; })()""")
+         return !!(!isFullMenuOpen() && ids.length === 3 && ids.every(r => r.height >= 48 && r.top > 0 && r.bottom < innerHeight) && hit(ids[0])?.closest('label[for="file-upload"]') && hit(ids[1])?.closest('#home-library') && hit(ids[2])?.closest('#home-scanner')) || JSON.stringify({w: innerWidth, ids}); })()""")
 check('0b ... Free library opens from there', "(() => { document.getElementById('home-library').click(); const ok = document.getElementById('library-modal').classList.contains('open'); closeLibrary(); return ok; })()")
 
 # ---------------------------------------------------------------- phone
