@@ -1,4 +1,4 @@
-/* Lower-right Quick Menu: a curved scrollable wheel with 13 real actions,
+/* Lower-right Quick Menu: a curved scrollable wheel with 14 real actions,
  * inertia, detent snapping, and synchronized roulette ticking sound.
  * Thumb-reachable on tablets, expands inward/leftward from launcher.
  * While a book is read, ✦ stands in the bottom reading row (index.html) and the wheel opens as a «sun» above it.
@@ -97,7 +97,7 @@ const quickMenu = (() => {
     const panel = document.getElementById('quick-menu');
     const backdrop = document.getElementById('qm-backdrop');
 
-    // 13 real actions, no empty slots
+    // 14 real actions, no empty slots
     // 'btn-print', 'btn-library' and 'wheelFull' are virtual actions (no source element, handled specially in click handler)
     const allActions = [
         ['wheelOpen', 'file-upload', '📂'],
@@ -112,6 +112,7 @@ const quickMenu = (() => {
         // «Голоси» (two alternating voices) was removed from the wheel (owner, 2026-10-26): the voices list is gone
         ['wheelLevel', 'btn-lang-level', '📊'],
         ['wheelLibrary', 'btn-library', '🏛️'],
+        ['wheelScan', 'btn-scanner', '📷'],
         ['wheelRules', 'btn-rules', '📚'],
         ['wheelFull', 'wheelFull', '⚙️']
     ];

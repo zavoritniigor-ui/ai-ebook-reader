@@ -102,8 +102,8 @@ print('PASS Print appears after two detents from initial opening',flush=True)
 seen = set(boxes())
 for _ in range(14):
     detent(); seen.update(boxes())
-assert len(seen) == 13, seen
-print('PASS all 13 actions visibly reachable:', sorted(seen), flush=True)
+assert len(seen) == 14, seen
+print('PASS all 14 actions visibly reachable:', sorted(seen), flush=True)
 
 # A drag starts ON an action, moves multiple boxes, and continues after release.
 xy = point('.qm-item.qm-active'); before = boxes()
@@ -225,6 +225,6 @@ c.js("closeFullMenu(); 1"); time.sleep(0.35)   # «Full menu» opened the side d
 c.call('Emulation.setEmulatedMedia',features=[{'name':'prefers-reduced-motion','value':'reduce'}])
 open_wheel();close_wheel()
 c.call('Emulation.setEmulatedMedia',features=[])
-check('12 stable DOM actions (no «Голоси» since 2026-10-26)', "document.querySelectorAll('.qm-item').length===13 && !document.querySelector('.qm-item[data-action=\"btn-alt-voices\"]')")
+check('12 stable DOM actions (no «Голоси» since 2026-10-26)', "document.querySelectorAll('.qm-item').length===14 && !document.querySelector('.qm-item[data-action=\"btn-alt-voices\"]')")
 check('no runtime errors','__wheelErrors.length===0')
 print('PASS Quick Wheel behavioral suite',flush=True)
