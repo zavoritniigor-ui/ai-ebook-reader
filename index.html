@@ -1670,6 +1670,7 @@
         <symbol id="i-margins" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="1.5"/><path d="M8 4v16M16 4v16"/></symbol>
         <symbol id="i-align" viewBox="0 0 24 24"><path d="M4 6.5h16M4 11h16M4 15.5h16M4 20h10"/></symbol>
         <symbol id="i-hyphen" viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h9.5M16.5 12H20M4 17.5h16"/></symbol>
+        <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/><path d="M12 3.5v17"/></symbol>
         <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
         <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol>
         <symbol id="i-study" viewBox="0 0 24 24"><path d="M2.5 9 12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v4.5c0 1.6 2.5 3 5.5 3s5.5-1.4 5.5-3V11M21.5 9v5"/></symbol>
@@ -1750,6 +1751,10 @@
                     <select id="text-align" class="mr-select" aria-describedby="mr-align-d"><option value="justify" data-i18n="mAlignJustify">По краях</option><option value="left" data-i18n="mAlignLeft">По лівому краю</option></select>
                 </div>
                 <button type="button" class="menu-row" id="btn-hyphens" role="switch" aria-checked="true" data-only="text" aria-labelledby="mr-hyph-t" aria-describedby="mr-hyph-d"><svg class="mi" aria-hidden="true"><use href="#i-hyphen"/></svg><span class="mr-text"><span class="mr-title" id="mr-hyph-t" data-i18n="mHyphens">Переноси слів</span><span class="mr-desc" id="mr-hyph-d" data-i18n="mHyphensDesc">Розриває довгі слова, щоб у рядках не було прогалин</span></span><span class="mr-switch" aria-hidden="true"></span></button>
+                <div class="menu-row menu-row-select" data-only="pdf">
+                    <svg class="mi" aria-hidden="true"><use href="#i-contrast"/></svg><span class="mr-text"><label class="mr-title" for="pdf-contrast" data-i18n="mPdfContrast">Контраст сторінки</label><span class="mr-desc" id="mr-contrast-d" data-i18n="mPdfContrastDesc">Бліді скани старих книг читаються темніше</span></span>
+                    <select id="pdf-contrast" class="mr-select" aria-describedby="mr-contrast-d"><option value="auto" data-i18n="mContrastAuto">Автоматично</option><option value="off" data-i18n="mContrastOff">Як у файлі</option><option value="strong" data-i18n="mContrastStrong">Сильніше</option><option value="dark" data-i18n="mContrastDark">Темна сторінка</option></select>
+                </div>
                 <div class="menu-row menu-row-select" data-only="pdf">
                     <svg class="mi" aria-hidden="true"><use href="#i-fit"/></svg><span class="mr-text"><label class="mr-title" for="pdf-fit" data-i18n="mPdfFit">Масштаб сторінки PDF</label><span class="mr-desc" id="mr-fit-d" data-i18n="mPdfFitDesc">Як сторінка вписується в екран</span></span>
                     <select id="pdf-fit" class="mr-select" aria-describedby="mr-fit-d"><option value="width" data-i18n="mFitWidth">По ширині</option><option value="page" data-i18n="mFitPage">Сторінка цілком</option><option value="free" data-i18n="mFitFree">Вільний</option></select>
@@ -1999,7 +2004,7 @@
         <img id="crop-preview" alt="Виділений фрагмент PDF">
         <div id="crop-actions">
             <button id="crop-save">Save PNG</button><button id="crop-share">Share</button>
-            <button id="crop-copy">Copy image</button><button id="crop-ai">Send to AI</button>
+            <button id="crop-copy">Copy image</button><button id="crop-gemini" data-i18n="cropGemini">Запитати Gemini</button><button id="crop-ai">Send to AI</button>
             <button id="crop-cancel" data-i18n="cancel">Cancel</button>
         </div>
         <p id="crop-status" role="status"></p>
@@ -2092,7 +2097,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=e632f2bbda7e"></script>
+    <script src="js/core.js?v=d6339343161b"></script>
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
@@ -2116,7 +2121,7 @@
     <script src="js/ai-client.js?v=b9694da45bbe"></script>
     <script src="js/practice-session.js?v=276c4226546f"></script>
     <script src="js/practice-worksheet.js?v=cca1a85581f5"></script>
-    <script src="js/dictation.js?v=f56e4d5f3c06"></script>
+    <script src="js/dictation.js?v=f8b1e587d988"></script>
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-dict-catalog.js?v=16288e0c6804"></script>
     <script src="js/offline-translate.js?v=4f34beb902dc"></script>
@@ -2125,11 +2130,12 @@
     <script src="js/device-llm.js?v=9b6f20f6d2d6"></script>
     <script src="js/pdf-ink.js?v=0b9c9e47c2e9"></script>
     <script src="js/text-ink.js?v=4ba7df76e282"></script>
-    <script src="js/pdf-crop.js?v=d075e66bd44c"></script>
+    <script src="js/pdf-crop.js?v=478d28ec89bb"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
-    <script src="js/pdf-render.js?v=d25fa5b3077f"></script>
+    <script src="js/pdf-contrast.js?v=7c13e4ff3a75"></script>
+    <script src="js/pdf-render.js?v=7c8e2e23d18d"></script>
     <script src="js/book-audio.js?v=89bbf93c6ec1"></script>
     <script src="js/book-speech.js?v=19520aac33ff"></script>
     <script src="js/formats.js?v=8cda3233d237"></script>
@@ -2137,11 +2143,11 @@
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=d1681ee120b3"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
-    <script src="js/sync.js?v=2ca8dd87dfb2"></script>
+    <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=c1f1802144fc"></script>
     <script src="js/developer.js?v=67c700255062"></script>
-    <script src="js/main.js?v=b76bd89ad359"></script>
+    <script src="js/main.js?v=3ba11d76fc7e"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
-    <script src="js/i18n-es.js?v=38dad0686397"></script>
+    <script src="js/i18n-es.js?v=333c258b776e"></script>
 </body>
 </html>

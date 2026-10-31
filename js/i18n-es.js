@@ -169,6 +169,8 @@ const I18N_ES = {
     mTwoVoices: "Dos voces",
     mTwoVoicesDesc: "Voces distintas para los diálogos al leer en voz alta",
     mFontSize: "Tamaño del texto",
+    mPdfContrast: "Contraste de la página", mPdfContrastDesc: "Los escaneos pálidos de libros antiguos se leen más oscuros",
+    mContrastAuto: "Automático", mContrastOff: "Como en el archivo", mContrastStrong: "Más fuerte", mContrastDark: "Página oscura",
     mTextFont: "Fuente del texto", mTextFontDesc: "La tipografía del texto del libro",
     mFontSerif: "Con serifa", mFontBook: "Serifa de libro", mFontSans: "Sin serifa",
     mLineHeight: "Interlineado", mLineHeightDesc: "La distancia entre las líneas del texto",
