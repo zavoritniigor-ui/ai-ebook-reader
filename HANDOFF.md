@@ -10,7 +10,8 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | this docs PR (`AGENTS.md`, `HANDOFF.md`, `docs/agents/coordination.md`); next possibly `js/ai-client.js` (Groq streaming), not started | PR open | 2026-10-31 |
-| Claude Code on the owner's computer (INFERRED from its branch; please confirm) | `feat/photo-scanner` | `js/scanner.js`, `js/quick-wheel.js`, `js/selection.js`, `js/pwa-lifecycle.js`, `index.html` | PR #346 — CI red (`pdf_continuous_browser.py`: a tap on a native PDF link does not navigate), 23+ commits behind `main` | 2026-10-30 |
+| Claude Code on the owner's computer (confirmed) | `feat/photo-scanner` | `js/scanner.js`, `js/quick-wheel.js`, `js/selection.js`, `js/pwa-lifecycle.js`, `index.html` | PR #346 — merged with main, CI running | 2026-10-30 |
+| Claude Code on the owner's computer | `feat/start-screen-covers` | start screen: `js/book-shelf.js`, `index.html` (home CSS), `tests/book_shelf_browser.py`, `tests/menu_labels_browser.py`, `tests/start_screen_browser.py` | PR open | 2026-10-31 |
 
 ## Active Agent Worktrees & Tasks
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):

@@ -15,6 +15,7 @@ Object.assign(I18N, {
     shelfNote: { uk: 'Книги збережено на цьому пристрої (найбільше {n}); найдавніші видаляються самі.', en: 'Books are kept on this device (up to {n}); the oldest are removed automatically.',
                  fr: 'Les livres sont conservés sur cet appareil (jusqu’à {n}) ; les plus anciens sont supprimés automatiquement.', ru: 'Книги хранятся на этом устройстве (до {n}); самые старые удаляются сами.',
                  es: 'Los libros se guardan en este dispositivo (hasta {n}); los más antiguos se eliminan solos.' },
+    shelfAll: { uk: 'Усі', en: 'All', fr: 'Tous', ru: 'Все', es: 'Todos' },
     shelfRemove: { uk: 'Видалити з пристрою', en: 'Remove from device', fr: 'Supprimer de l’appareil', ru: 'Удалить с устройства', es: 'Quitar del dispositivo' },
     shelfMissing: { uk: 'Цієї книги вже немає на пристрої.', en: 'This book is no longer on the device.', fr: 'Ce livre n’est plus sur l’appareil.', ru: 'Этой книги уже нет на устройстве.', es: 'Este libro ya no está en el dispositivo.' }
 });
@@ -46,15 +47,62 @@ async function listShelfBooks() {
     return (all || []).map(({ blob, ...meta }) => meta).sort((a, b) => b.openedAt - a.openedAt);
 }
 function shelfTitle(name) { return String(name || '').replace(/\.(epub|pdf|fb2(\.zip)?|txt|md|markdown|html?|docx|rtf)$/i, ''); }
+// Обкладинка — маленький JPEG у тому самому записі: з EPUB (зображення з маніфесту, позначене як обкладинка) або перша
+// сторінка PDF. Береться з уже відкритої й перевіреної книги (state.epubZip / state.pdfDoc), а не з файлу заново.
+const SHELF_COVER_W = 240, SHELF_COVER_MAX_BYTES = 12 * 1024 * 1024;
+async function epubCoverBlob(zip) {
+    const parser = new DOMParser(), container = zip.file('META-INF/container.xml');
+    if (!container) return null;
+    const opfPath = parser.parseFromString(await container.async('text'), 'text/xml').getElementsByTagNameNS('*', 'rootfile')[0]?.getAttribute('full-path');
+    if (!opfPath || !zip.file(opfPath)) return null;
+    const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : '';
+    const opf = parser.parseFromString(await zip.file(opfPath).async('text'), 'text/xml');
+    const items = [...opf.getElementsByTagNameNS('*', 'item')].filter(i => /^image\//i.test(i.getAttribute('media-type') || ''));
+    const metaId = [...opf.getElementsByTagNameNS('*', 'meta')].find(m => m.getAttribute('name') === 'cover')?.getAttribute('content');
+    const item = items.find(i => /(^|\s)cover-image(\s|$)/.test(i.getAttribute('properties') || ''))
+        || items.find(i => metaId && i.getAttribute('id') === metaId)
+        || items.find(i => /cover/i.test((i.getAttribute('id') || '') + ' ' + (i.getAttribute('href') || '')));
+    if (!item) return null;
+    const entry = zip.file(resolveEpubPath(opfDir, item.getAttribute('href').split('#')[0]));
+    if (!entry || (entry._data && entry._data.uncompressedSize > SHELF_COVER_MAX_BYTES)) return null;
+    const blob = await entry.async('blob');
+    return blob.size <= SHELF_COVER_MAX_BYTES ? blob : null;
+}
+async function shrinkCover(source, w, h) {
+    const scale = Math.min(1, SHELF_COVER_W / w), canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(w * scale)); canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+}
+async function makeShelfCover() {
+    try {
+        if (state.format === 'epub' && state.epubZip) {
+            const raw = await epubCoverBlob(state.epubZip);
+            if (!raw) return null;
+            const bmp = await createImageBitmap(raw);
+            try { return await shrinkCover(bmp, bmp.width, bmp.height); } finally { bmp.close && bmp.close(); }
+        }
+        if (state.format === 'pdf' && state.pdfDoc) {
+            const page = await state.pdfDoc.getPage(1), base = page.getViewport({ scale: 1 });
+            const vp = page.getViewport({ scale: SHELF_COVER_W / base.width }), canvas = document.createElement('canvas');
+            canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+            return await shrinkCover(canvas, canvas.width, canvas.height);
+        }
+    } catch (e) { /* без обкладинки картка покаже назву на кольоровому тлі */ }
+    return null;
+}
 // Зберігає щойно відкриту книгу (або оновлює час відкриття) і витісняє найдавніші, коли їх забагато.
 async function shelveBook(file, key = state.bookKey) {
     if (!file || !key || file.size > SHELF_MAX_BOOK_BYTES) return;
     try {
         if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-        await shelfTx('readwrite', async store => {
-            const old = await shelfReq(store.get(key));
+        const old = await shelfTx('readonly', async (store, done) => done(await shelfReq(store.get(key))));
+        const cover = old && old.cover ? old.cover : (key === state.bookKey ? await makeShelfCover() : null);
+        await shelfTx('readwrite', store => {
             store.put({ key, name: file.name, type: file.type || '', size: file.size, lastModified: file.lastModified || 0,
-                title: shelfTitle(file.name), openedAt: Date.now(), blob: old && old.blob && old.size === file.size ? old.blob : file });
+                title: shelfTitle(file.name), openedAt: Date.now(), cover: cover || null, blob: old && old.blob && old.size === file.size ? old.blob : file });
         });
         const books = await listShelfBooks();
         let total = 0;
@@ -87,24 +135,53 @@ function shelfCardMeta(b) {
     const mb = b.size / 1048576;
     return [b.name.split('.').pop().toUpperCase(), (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + ' MB', new Date(b.openedAt).toLocaleDateString(state.uiLang)].join(' · ');
 }
-// Стартовий екран (книгу ще не відкрито): кілька останніх книг одним натисканням.
+// Обкладинка картки: збережене зображення або назва на кольоровому тлі (колір сталий для книги).
+const shelfCoverUrls = new Map();
+function shelfCoverEl(b) {
+    const box = document.createElement('span'); box.className = 'recent-cover'; box.setAttribute('aria-hidden', 'true');
+    if (b.cover) {
+        let url = shelfCoverUrls.get(b.key);
+        if (!url) { url = URL.createObjectURL(b.cover); shelfCoverUrls.set(b.key, url); }
+        const img = document.createElement('img'); img.src = url; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+        box.append(img);
+    } else {
+        let h = 0; for (const ch of String(b.key)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        box.style.setProperty('--cover-hue', h % 360);
+        box.classList.add('plain');
+        const title = document.createElement('span'); title.textContent = b.title || b.name;
+        const fmt = document.createElement('i'); fmt.textContent = b.name.split('.').pop().toUpperCase();
+        box.append(title, fmt);
+    }
+    return box;
+}
+// Стартовий екран (книгу ще не відкрито): останні книги з обкладинками, одним натисканням.
 async function renderRecentBooks() {
     const host = document.getElementById('recent-books');
     if (!host) return;
     let books = [];
     try { books = await listShelfBooks(); } catch (e) {}
     host.replaceChildren();
+    for (const [key, url] of shelfCoverUrls) if (!books.some(b => b.key === key && b.cover)) { URL.revokeObjectURL(url); shelfCoverUrls.delete(key); }
     if (!books.length) return;
-    const head = document.createElement('h3'); head.dataset.i18n = 'shelfRecent'; head.textContent = t('shelfRecent');
-    host.append(head);
-    for (const b of books.slice(0, 5)) {
+    const head = document.createElement('div'); head.className = 'recent-head';
+    const h = document.createElement('h3'); h.dataset.i18n = 'shelfRecent'; h.textContent = t('shelfRecent');
+    head.append(h);
+    {
+        const all = document.createElement('button'); all.type = 'button'; all.className = 'recent-all'; all.id = 'home-my-books';
+        all.textContent = t('shelfAll') + ' (' + books.length + ') ›';
+        all.addEventListener('click', () => openLibrary('shelf'));
+        head.append(all);
+    }
+    const grid = document.createElement('div'); grid.className = 'recent-list';
+    for (const b of books.slice(0, 6)) {
         const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'recent-book';
         const name = document.createElement('b'); name.textContent = b.title || b.name;
         const meta = document.createElement('small'); meta.textContent = shelfCardMeta(b);
-        btn.append(name, meta);
+        btn.append(shelfCoverEl(b), name, meta);
         btn.addEventListener('click', () => openShelfBook(b.key));
-        host.append(btn);
+        grid.append(btn);
     }
+    host.append(head, grid);
 }
 // Джерело «Мої книги» у вікні бібліотеки (js/library.js викликає, коли вибрано це джерело).
 async function runShelfList() {
