@@ -5,7 +5,7 @@ Owner (2026-10-30): «кнопки потрібно переносити в ни
 pill sat on the right edge in the middle of the page, ✦ at 76% of the height (both over the ends of lines) and ☰ top left.
 
 Checks (phones portrait/landscape, a small phone, a tablet, a desktop; text and PDF): ‹, ☰, ✦, the page number and › stand in
-one row at the bottom, in that order, with gaps, ✦ in the middle, at most 480px wide, clear of the Ask AI / Grammar tabs and the screen edges, and the text ends above the
+one row at the bottom, in that order, with gaps, ✦ in the middle, at most 480px wide, 🤖 and ✨ (Ask AI / Grammar with their status colour) at its two ends instead of the side tabs, and the text ends above the
 row; the invisible footer handle is not under them; a tap on the number expands a horizontal slider across the row (✦ hidden
 meanwhile) that still turns pages and collapses again; ✦ opens the wheel ABOVE the row as a «sun» — a fan
 centred on ✦, the active action straight above it, the others symmetric — inside the screen, and every action stays reachable
@@ -38,7 +38,10 @@ ROW = f"""(() => {{ const ids = ['page-arrow-prev', 'menu-handle', 'qm-launcher'
   if (r[4].bottom > innerHeight || r[0].left < 0 || r[4].right > innerWidth) bad.push('off-screen');
   if (Math.abs(r[2].left + r[2].width / 2 - innerWidth / 2) > 1) bad.push('✦ not in the middle');
   if (r[4].right - r[0].left > 482) bad.push('row wider than 480px');
-  for (const t of ['ask-tab', 'grammar-tab']) {{ const b = {RECT}(t); if (r.some(x => x.left < b.right && x.right > b.left && x.top < b.bottom && x.bottom > b.top)) bad.push('over ' + t); }}
+  const ra = {RECT}('row-ask'), rg = {RECT}('row-grammar');
+  if (!ra.width || !rg.width || r[0].left - ra.right < 4 || rg.left - r[4].right < 4 || ra.left < 0 || rg.right > innerWidth) bad.push('🤖/✨ not at the ends of the row');
+  if (Math.abs(ra.top + ra.height / 2 - r[0].top - 22) > 1 || Math.abs(rg.top + rg.height / 2 - r[0].top - 22) > 1) bad.push('🤖/✨ off the row line');
+  for (const t of ['ask-tab', 'grammar-tab']) if (getComputedStyle(document.getElementById(t)).display !== 'none') bad.push(t + ' still on the side');
   if (getComputedStyle(document.getElementById('footer-handle')).display !== 'none') bad.push('footer handle under the row');
   return bad.length === 0 || JSON.stringify({{bad, r}}); }})()"""
 TEXT_ABOVE = f"""(() => {{ const top = {RECT}('page-arrow-prev').top, col = els.pages.getBoundingClientRect(); let low = 0;
@@ -59,13 +62,13 @@ for (w, h, mobile) in ((412, 915, True), (360, 640, True), (844, 390, True), (82
     tag = '%dx%d' % (w, h)
     boot(w, h, mobile)
     c.js("openBookFile(new File([%s], 'row.md', {lastModified: %d})); 1" % (json.dumps(MD), w)); c.wait("state.bookKey && state.totalPagesInChapter > 2", timeout=30); time.sleep(1.2)
-    check(tag + ' 1 ‹ · page number · ✦ · › in one bottom row, in order, with gaps, clear of the side tabs; no footer handle under it', ROW)
+    check(tag + ' 1 🤖 · ‹ · ☰ · ✦ · page number · › · ✨ in one bottom row, in order, with gaps; side tabs hidden; no footer handle under it', ROW)
     check(tag + ' 1b the text ends above the row', TEXT_ABOVE)
-    check(tag + ' 1c the number shows the page', "document.getElementById('pdf-page-preview').value === (bookPageModel().page + 1) + '\\n/' + bookPageModel().total")
+    check(tag + ' 1c the number shows the page', "document.getElementById('pdf-page-preview').value === (bookPageModel().page + 1) + '\\n/ ' + bookPageModel().total")
     # ---- the number expands a horizontal slider
     c.js("document.getElementById('pdf-scrubber').dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); 1"); time.sleep(0.4)
     check(tag + ' 2 a tap on the number expands a horizontal slider across the row between the side tabs; ✦ is hidden meanwhile',
-          f"""(() => {{ const s = {RECT}('pdf-scrubber'), r = {RECT}('pdf-page-range'), a = {RECT}('ask-tab'), g = {RECT}('grammar-tab');
+          f"""(() => {{ const s = {RECT}('pdf-scrubber'), r = {RECT}('pdf-page-range'), a = {RECT}('row-ask'), g = {RECT}('row-grammar');
              return !document.getElementById('pdf-scrubber').classList.contains('collapsed') && r.width > r.height * 4 && s.left >= a.right - 1 && s.right <= g.left + 1
                  && Math.abs(s.top - {RECT}('page-arrow-prev').top) <= 1 && getComputedStyle(document.getElementById('qm-launcher')).visibility === 'hidden' || JSON.stringify({{s, r}}); }})()""")
     before = c.js("bookPageModel().page")
@@ -114,6 +117,15 @@ check('4c ☰ in the row opens the side menu and hides meanwhile (the menu has i
       "isFullMenuOpen() && getComputedStyle(document.getElementById('menu-handle')).visibility === 'hidden'")
 c.js("closeFullMenu(); 1"); time.sleep(0.6)
 check('4d after the menu closes ☰ is back in the row', ROW)
+
+# ---- 🤖 and ✨ in the row carry the panels' status colour and open the panels
+c.js("els.grammarPanel.classList.add('loading'); els.askPanel.classList.add('ready'); 1"); time.sleep(0.2)
+check('4e ✨ turns red while grammar is loading, 🤖 green when the AI answer is ready',
+      "document.getElementById('row-grammar').classList.contains('loading') && document.getElementById('row-ask').classList.contains('ready') && getComputedStyle(document.getElementById('row-grammar')).backgroundColor !== 'rgba(0, 0, 0, 0)'")
+c.js("document.getElementById('row-ask').click(); 1"); time.sleep(0.6)
+check('4f 🤖 opens the Ask AI panel (and clears its signal)', "els.askPanel.classList.contains('expanded') && !document.getElementById('row-ask').classList.contains('ready')")
+c.js("els.askTab.click(); els.grammarPanel.classList.remove('loading'); 1"); time.sleep(0.6)
+check('4g after closing, the row is intact', ROW)
 
 # ---- the «◀ page ▶» footer takes the whole row while it shows
 c.js("openFooterMenu(); 1"); time.sleep(0.5)

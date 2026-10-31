@@ -50,8 +50,11 @@ ok('Standard Ebooks search: genre → its subject, title, author, cover',
    j.more === false && j.results[0].id === 'agatha-christie/the-secret-adversary' && j.results[0].title === 'The Secret Adversary' && j.results[0].author === 'Agatha Christie' && j.results[0].cover.endsWith('/cover.jpg'));
 r = await call('op=se-file&id=agatha-christie/the-secret-adversary');
 ok('Standard Ebooks file: the download address is built from the id', r.status === 200 && asked.at(-1) === 'https://standardebooks.org/ebooks/agatha-christie/the-secret-adversary/downloads/agatha-christie_the-secret-adversary.epub?source=download');
+await call('op=ia-search&coll=loc&lang=fre');
+ok('Library of Congress: the archive search is limited to its collection, browsable without a query',
+   (q => q.includes('collection:(library_of_congress)') && q.includes('language:(fre OR French)'))(new URL(asked.at(-1)).searchParams.get('q')));
 const before = asked.length;
 for (const q of ['op=bnr-file&id=../x', 'op=bnr-file&id=a/b', 'op=se-file&id=a', 'op=se-file&id=a/../../b', 'op=se-file&id=A/B%3Fx', 'op=bnr-cover&path=../../wp-config.php',
-                 'op=se-cover&path=x/y/cover.jpg', 'op=se-search&q=x&genre=love', 'op=bnr-search&q=x&genre=history'])
+                 'op=se-cover&path=x/y/cover.jpg', 'op=se-search&q=x&genre=love', 'op=ia-search&coll=nasa', 'op=ia-search&coll=__proto__', 'op=bnr-search&q=x&genre=history'])
     ok('rejected without fetching: ' + q, (await call(q)).status === 400 && asked.length === before);
 console.log('ALL PASS library_proxy_test');

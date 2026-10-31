@@ -80,10 +80,45 @@ check('12 Wikisource: source switch shows its languages (Ukrainian first) and li
          && [...document.querySelectorAll('#library-list .library-name')].map(e => e.textContent).join('|') === 'Твір|Інший'
          && __wsReqs.some(r => r.includes('op=ws-search&lang=uk&q=твір'))""")
 c.js("[...document.querySelectorAll('#library-list .library-card')][0].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
-check('13 Read builds ONE HTML book from the chapters in order, without Wikisource navigation, page numbers, links or images',
-      """(async () => { const f = libraryFiles.get('ws:uk:Твір'); if (!f || !__opened) return 'not opened'; const html = await f.text();
-         const i1 = html.indexOf('Перший розділ'), i2 = html.indexOf('Другий розділ');
-         return __opened.name === 'Твір.html' && __opened.type === 'text/html' && i1 > 0 && i2 > i1 && !/НАВІГАЦІЯ|шапка|\\[12\\]|<a |<img/.test(html) && /<h1>I<\\/h1>/.test(html) || html.slice(0, 400); })()""")
+check('13 Read builds a real EPUB 3 from the chapters in order, without Wikisource navigation, page numbers, links or images',
+      """(async () => { const f = libraryFiles.get('ws:uk:Твір'); if (!f || !__opened) return 'not opened';
+         const zip = await new JSZip().loadAsync(f); const names = Object.keys(zip.files);
+         const first = (await f.slice(30, 38).text()) + (await f.slice(38, 58).text());
+         const opf = await zip.file('OEBPS/content.opf').async('text'), nav = await zip.file('OEBPS/nav.xhtml').async('text');
+         const c1 = await zip.file('OEBPS/c001.xhtml').async('text'), c2 = await zip.file('OEBPS/c002.xhtml').async('text');
+         const ok = __opened.name === 'Твір.epub' && __opened.type === 'application/epub+zip'
+           && names[0] === 'mimetype' && first === 'mimetypeapplication/epub+zip'
+           && /<dc:language>uk<\\/dc:language>/.test(opf) && /<dc:title>Твір<\\/dc:title>/.test(opf) && /properties="nav"/.test(opf) && /<spine toc="ncx"><itemref idref="c1"\\/><itemref idref="c2"\\/><\\/spine>/.test(opf)
+           && /wikisource\\.org\\/wiki\\//.test(opf) && /<meta property="dcterms:modified">\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ<\\/meta>/.test(opf)
+           && /epub:type="toc"/.test(nav) && /<a href="c001\\.xhtml">I<\\/a>/.test(nav) && /<a href="c002\\.xhtml">II<\\/a>/.test(nav)
+           && /Перший розділ/.test(c1) && /Другий розділ/.test(c2) && /<h1>I<\\/h1>/.test(c1)
+           && !/НАВІГАЦІЯ|шапка|\\[12\\]|<a |<img/.test(c1 + c2)
+           && !new DOMParser().parseFromString(c1, 'application/xhtml+xml').querySelector('parsererror');
+         return ok || JSON.stringify({ name: __opened.name, type: __opened.type, names, first, opf: opf.slice(0, 300), nav: nav.slice(0, 300) }); })()""")
+# openBookFile is stubbed in this suite (it only records what Read hands over): open the built file with the real EPUB loader.
+check('13b the EPUB opens in the real EPUB loader with its contents from nav.xhtml, not «Розділ N»',
+      """(async () => { state.format = 'epub'; await initEpub(libraryFiles.get('ws:uk:Твір'));
+         const toc = [...els.toc.children].map(li => li.textContent);
+         return (JSON.stringify(toc) === JSON.stringify(['I', 'II']) && state.spine.length === 2 && /Перший розділ/.test(els.pages.textContent)) || JSON.stringify(toc); })()""")
+check('13c building the same work twice gives the same size, so the book key and the reading place survive a re-download',
+      """(async () => { const a = libraryFiles.get('ws:uk:Твір'); libraryFiles.delete('ws:uk:Твір');
+         const b = await fetchLibraryFile({ ws: true, lang: 'uk', title: 'Твір' }); libraryFiles.set('ws:uk:Твір', a);
+         return (a.size === b.size && a.name === b.name && a.lastModified === b.lastModified) || [a.size, b.size]; })()""")
+check('13d a volume without text of its own becomes a heading over its chapters; nav.xhtml and toc.ncx stay well-formed and nested',
+      """(async () => { const parts = [{ title: 'Том 1', html: null, depth: 0 }, { title: 'Глава 1', html: '<p>' + 'а '.repeat(40) + '</p>', depth: 1 },
+           { title: 'Глава 2', html: '<p>б</p>', depth: 1 }, { title: 'Порожній том', html: null, depth: 0 }, { title: 'Післямова & <інше>', html: '<p onclick="x()">в <a href="javascript:x()">г</a></p>', depth: 0 }];
+         const f = await wsEpubFile({ lang: 'uk', title: 'Тест' }, parts, { author: 'Автор' }); const zip = await new JSZip().loadAsync(f);
+         const nav = await zip.file('OEBPS/nav.xhtml').async('text'), ncx = await zip.file('OEBPS/toc.ncx').async('text'), c3 = await zip.file('OEBPS/c003.xhtml').async('text');
+         const navDoc = new DOMParser().parseFromString(nav, 'application/xhtml+xml'), ncxDoc = new DOMParser().parseFromString(ncx, 'text/xml');
+         const vol = navDoc.querySelector('nav > ol > li > span');
+         const ok = !navDoc.querySelector('parsererror') && !ncxDoc.querySelector('parsererror')
+           && vol && vol.textContent === 'Том 1' && vol.parentNode.querySelectorAll(':scope > ol > li > a').length === 2
+           && !/Порожній том/.test(nav) && /Післямова &amp; &lt;інше&gt;/.test(nav)
+           && ncxDoc.querySelectorAll('navMap > navPoint').length === 2 && ncxDoc.querySelectorAll('navMap > navPoint > navPoint').length === 2
+           && ncxDoc.querySelector('navMap > navPoint > content').getAttribute('src') === 'c001.xhtml'
+           && /<dc:creator>Автор<\\/dc:creator>/.test(await zip.file('OEBPS/content.opf').async('text'))
+           && !/onclick|javascript:/.test(c3);
+         return ok || JSON.stringify({ nav: nav.slice(0, 600), ncx: ncx.slice(0, 600), c3: c3.slice(0, 300) }); })()""")
 check('14 the choice of source is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).source === 'wikisource'")
 check('14a Wikisource genres: only those the language section has categories for (Ukrainian: poetry yes, detective no; French: detective yes)',
       """(() => { openLibrary(); const g = document.getElementById('library-genre'), l = document.getElementById('library-lang');
@@ -138,9 +173,27 @@ c.js("window.__opened = null; openLibrary(); document.querySelectorAll('#library
 check('19 a file over 300 MB is not downloaded; the reader is told why', "__opened === null && !__iaReqs.some(r => r.includes('name=huge.pdf')) && document.getElementById('library-status').textContent.includes('400')")
 check('20 the Internet Archive choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'archive' && f.iaLang === 'ukr'; })()")
 
+# ---- Library of Congress: its digitised books, i.e. the library_of_congress collection of Internet Archive (loc.gov itself
+# answers apps only with a Cloudflare «Just a moment…» check) ----
+c.js("(() => { __iaReqs.length = 0; window.__opened = null; document.getElementById('library-q').value = ''; const g = document.getElementById('library-genre'); g.value = ''; g.dispatchEvent(new Event('change')); const s = document.getElementById('library-source'); s.value = 'loc'; s.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.5)
+check('20a Library of Congress: listed as a source, all languages by default, books listed at once from its collection only',
+      """!!document.querySelector('#library-source option[value="loc"]') && document.getElementById('library-lang').value === ''
+         && __iaReqs.some(r => r.includes('op=ia-search') && r.includes('&coll=loc') && r.includes('q=&'))
+         && document.querySelectorAll('#library-list .library-card').length === 3 && document.querySelector('#library-modal .library-source').textContent === t('libLocSource')""")
+c.js("(() => { const l = document.getElementById('library-lang'); l.value = 'fre'; l.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.5)
+check('20b its language filter goes to the same search', "__iaReqs.some(r => r.includes('op=ia-search&lang=fre') && r.includes('&coll=loc'))")
+c.js("window.__opened = null; document.querySelectorAll('#library-list .library-card')[1].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
+check('20c a book opens through the Internet Archive path (the same file as above, kept for the session)', "!!__opened && __opened.name === 'Modern.epub' && __opened.type === 'application/epub+zip'")
+check('20d the choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'loc' && f.locLang === 'fre'; })()")
+
 # ---- Bibliothèque numérique romande and Standard Ebooks (French and English classics, EPUB) ----
 c.js("""(() => { window.__catReqs = []; window.__opened = null; const prev = window.fetch;
   window.fetch = async (url, opts) => { url = String(url);
+    if (url.startsWith('https://standardebooks.org/')) { __catReqs.push(decodeURIComponent(url));
+      if (url.includes('/ebooks?')) return new Response('<ol><li typeof="schema:Book" about="/ebooks/leo-tolstoy/resurrection/louise-maude"><a><img src="/images/covers/leo-tolstoy_resurrection_louise-maude/0123456789abcdef0123456789abcdef01234567/cover.jpg"/></a>'
+        + '<p><a property="schema:name">Resurrection</a></p><p><a><span property="schema:name">Leo Tolstoy</span></a></p></li><li typeof="schema:Book" about="/ebooks/../evil"><span property="schema:name">Bad</span></li></ol>', {status: 200});
+      if (url.includes('/downloads/')) return new Response(new Blob(['PK fake epub']), {status: 200});
+    }
     if (/op=(bnr|se)-/.test(url)) { __catReqs.push(decodeURIComponent(url));
       if (url.includes('-search')) { const se = url.includes('op=se-'), p2 = url.includes('page=2');
         return new Response(JSON.stringify({more: !p2, results: [{id: se ? 'leo-tolstoy/resurrection/louise-maude' : 'balzac-honore-de-le-pere-goriot' + (p2 ? '-2' : ''),
@@ -165,9 +218,11 @@ check('22a Read opens the EPUB', "!!__opened && __opened.name === 'Le Père Gori
 c.js("""(() => { window.__opened = null; openLibrary(); const q = document.getElementById('library-q'); q.value = ''; const s = document.getElementById('library-source'); s.value = 'se'; s.dispatchEvent(new Event('change')); return 1; })()"""); time.sleep(1)
 check('23 Standard Ebooks: English only, no genre without a subject there (romance), books listed at once',
       """document.getElementById('library-lang').value === 'en' && document.getElementById('library-lang').options.length === 1 && !document.querySelector('#library-genre option[value="love"]')
-         && document.getElementById('library-genre').value === 'detective' && __catReqs.some(r => r.includes('op=se-search&q=&page=1&genre=detective'))
-         && document.querySelector('#library-list .library-name').textContent === 'Resurrection'""")
+         && document.getElementById('library-genre').value === 'detective' && __catReqs.some(r => r === 'https://standardebooks.org/ebooks?query=&sort=popularity&page=1&tags[]=mystery')
+         && !__catReqs.some(r => r.includes('op=se-')) && document.querySelectorAll('#library-list .library-card').length === 1
+         && document.querySelector('#library-list .library-name').textContent === 'Resurrection' && document.querySelector('#library-list .library-author').textContent === 'Leo Tolstoy'
+         && document.querySelector('#library-list img').src === 'https://standardebooks.org/images/covers/leo-tolstoy_resurrection_louise-maude/0123456789abcdef0123456789abcdef01234567/cover.jpg'""")
 c.js("document.querySelector('#library-list .library-card .btn-primary').click(); 1"); time.sleep(1.5)
-check('23a Read opens its EPUB', "!!__opened && __opened.name === 'Resurrection.epub' && __catReqs.some(r => r.includes('op=se-file&id=leo-tolstoy/resurrection/louise-maude'))")
+check('23a Read opens its EPUB straight from Standard Ebooks (it blocks the Cloudflare proxy)', "!!__opened && __opened.name === 'Resurrection.epub' && __catReqs.some(r => r === 'https://standardebooks.org/ebooks/leo-tolstoy/resurrection/louise-maude/downloads/leo-tolstoy_resurrection_louise-maude.epub?source=download')")
 check('24 the choice is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).source === 'se'")
 print('ALL PASS')

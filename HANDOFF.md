@@ -4,6 +4,14 @@
 > **NEVER append history dumps** to this file. Historical logs through 2026-10-23 are archived
 > verbatim in `docs/archive/HANDOFF-history-2026-10-23.md`.
 
+## Claims
+Read before your first edit; add your row; remove it after your merge ([how](docs/agents/coordination.md)).
+
+| Agent | Branch | Files / area | State | Since |
+| --- | --- | --- | --- | --- |
+| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | this docs PR (`AGENTS.md`, `HANDOFF.md`, `docs/agents/coordination.md`); next possibly `js/ai-client.js` (Groq streaming), not started | PR open | 2026-10-31 |
+| Claude Code on the owner's computer (INFERRED from its branch; please confirm) | `feat/photo-scanner` | `js/scanner.js`, `js/quick-wheel.js`, `js/selection.js`, `js/pwa-lifecycle.js`, `index.html` | PR #346 — CI red (`pdf_continuous_browser.py`: a tap on a native PDF link does not navigate), 23+ commits behind `main` | 2026-10-30 |
+
 ## Active Agent Worktrees & Tasks
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
   - Task: Token optimization (compact rules, docs archiving, .vscode search exclusions) and Antigravity workflow definitions.
@@ -34,15 +42,18 @@
   - **Drive problem (2026-10-24 23:08):** rclone (`scope = drive.file`, shared client_id being retired) refreshed its token and now sees ONLY a NEW root folder «Workbook» (created 23:08:37) holding the narration MP3 (2 132 515 352 bytes, size verified). The older folders (a French textbook, «a conjugation reference», the first «Workbook» with the PDF, «AI Ebook Reader») are invisible to it (Drive usage unchanged, 13 GiB). Owner: move the MP3 into the old folder in the Drive UI; make an own rclone client_id (https://rclone.org/drive/#making-your-own-client-id).
   - **Next:** merge #283 after green CI + production check; owner re-imports narrations on the tablet; fix glued headings / letter-spaced text; a conjugation reference not redone yet.
 
-- **Claude Code — text look settings** (2026-10-31, branch `ccr-a7aab2dd-fip6w9`, PR open, merging):
-  - Built: five rows in the menu's «Reading» section — font (serif / book serif / sans), line spacing, page margins,
-    alignment, hyphenation switch. Stored as variant NAMES (`js/core.js` `TEXT_LAYOUT`), applied as `--reader-*`
-    variables on `<body>`; defaults equal the values that were hardcoded in `index.html`, so no page changes by itself.
-    Hidden for PDFs; the PDF text layer keeps its own font/alignment/hyphens. Synced between devices like the theme.
-  - Tests: new `tests/text_layout_browser.py` (passes); regressions green locally — menu labels, reader font size, sync,
-    menu phone scroll, menu discoverability, resize sync, bookmark restore, quick wheel, Spanish UI, strict CSP, ribbon.
-  - Next: green CI → merge → main CI → production check. Related backlog from the competitor comparison: word
-    repetition (SRS) and in-book search are the two biggest remaining gaps.
+- **Claude Code — cloud session «Порівняння функцій конкурентів»** (2026-10-31, branch `ccr-a7aab2dd-fip6w9`; main CI green after each merge):
+  - Merged: #341 text look settings; #344 automatic contrast for faded scans + «Запитати Gemini» in the crop dialog;
+    #348 the real EPUB contents (nav.xhtml / toc.ncx) and Wikisource books built as EPUB 3; #349 EPUB footnotes in a card
+    and working internal links (`js/formats.js` `rewriteEpubLinks`; in-chapter footnote blocks stay visible on purpose,
+    hiding them would shift saved reading offsets).
+  - This PR: agent coordination (`docs/agents/coordination.md`, AGENTS.md §9, the Claims table above).
+  - Open: highlight offset on an OCR scan («The Analects», p. 896–897) needs the PDF; the app's text-layer geometry measures
+    correct. AI speed: proposed Groq streaming for Ask AI and a shorter hedge before the OpenAI backup — waiting for the owner.
+    Wikisource illustrations need `upload.wikimedia.org` in the library proxy — the owner's decision. Bottom bar from this
+    session's design was cancelled by the owner (the computer agent's bottom reading row #345 is a separate, merged change).
+  - CI flakes seen on shared runners: `language_context_browser.py` (voice trace), `sync_browser.py`; a rerun of the failed
+    job passed. `format_reader_audit_browser.py` fails its PDF «next page» check in the cloud container on clean main too.
 
 - **Claude Code — offline translation improvements** (2026-10-30, task file «prompt-offline-translation-1»):
   - Item 2 merged: #333 (engine answers kept in memory for the session; 📋 `offline.memory {calls, saved, kept}`).

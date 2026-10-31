@@ -157,7 +157,7 @@ async function openBookFile(file) {
     setPanelSubtitle('ask-subtitle', ''); setPanelSubtitle('grammar-subtitle', '');
     document.getElementById('grammar-controls-bar').replaceChildren();
     if (typeof resetGrammarState === 'function') resetGrammarState(); // no stale analysis/cache across books (section 18)
-    els.toc.replaceChildren();
+    els.toc.replaceChildren(); state.epubToc = null;   // зміст попередньої книги (js/formats.js readEpubToc)
     els.pages.innerHTML = `<div style="text-align:center;">${t('loading')}</div>`;
     document.body.classList.add('immersive-mode');   // the menu (a drawer over the page) gives way to the book on every screen
     state.bookKey = bookKeyFor(file);
@@ -199,6 +199,14 @@ async function openBookFile(file) {
 function setPageArrows(on) { document.getElementById('page-arrows').hidden = !on; }
 document.getElementById('page-arrow-prev').onclick = (e) => { e.stopPropagation(); goPrev(); };
 document.getElementById('page-arrow-next').onclick = (e) => { e.stopPropagation(); goNext(); };
+// 🤖 і ✨ у нижньому ряду: та сама дія й той самий колір стану (loading/ready), що в бічних язичків панелей.
+for (const [id, panel, tab] of [['row-ask', els.askPanel, els.askTab], ['row-grammar', els.grammarPanel, els.grammarTab]]) {
+    const button = document.getElementById(id);
+    button.onclick = (e) => { e.stopPropagation(); tab.click(); };
+    const sync = () => { button.classList.toggle('loading', panel.classList.contains('loading')); button.classList.toggle('ready', panel.classList.contains('ready')); };
+    new MutationObserver(sync).observe(panel, { attributes: true, attributeFilter: ['class'] });
+    sync();
+}
 els.upload.addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return;
     e.target.value = ''; // Permit retrying the same file after an error.
@@ -257,6 +265,18 @@ function setTextLayout(name, value) {
 for (const [name, id] of Object.entries(TEXT_LAYOUT_CONTROLS)) {
     const select = document.getElementById(id);
     if (select) select.onchange = (e) => setTextLayout(name, e.target.value);
+}
+// Контраст сторінки PDF (js/pdf-contrast.js). Зміна не перемальовує сторінки: фільтр перераховується
+// на вже готових полотнах, тому вибір видно одразу навіть на великій книзі.
+const pdfContrastSelect = document.getElementById('pdf-contrast');
+if (pdfContrastSelect) {
+    pdfContrastSelect.value = pdfContrastChoice();
+    pdfContrastSelect.onchange = (e) => {
+        const value = PDF_CONTRAST_MODES.includes(e.target.value) ? e.target.value : 'auto';
+        writeStored(PDF_CONTRAST_KEY, value);
+        pdfContrastSelect.value = value;
+        pdfContrastRefreshRendered();
+    };
 }
 const hyphensBtn = document.getElementById('btn-hyphens');
 if (hyphensBtn) hyphensBtn.onclick = () => setTextLayout('hyphens', textLayoutChoice('hyphens') === 'auto' ? 'manual' : 'auto');

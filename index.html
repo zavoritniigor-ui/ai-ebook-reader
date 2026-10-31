@@ -319,6 +319,32 @@
         }
         #toc-list li:hover { background: var(--hover-color); }
         #toc-list li:active { background: var(--border-color); }
+        /* Зміст EPUB (js/formats.js renderEpubToc): вкладені пункти зсунуті праворуч і дрібніші, поточний розділ позначений
+           смугою акценту зліва, пункт, що веде поза порядок читання книги, неактивний. */
+        #toc-list li.epub-toc-item[data-depth="1"] { padding-left: 26px; font-size: 13.5px; }
+        #toc-list li.epub-toc-item[data-depth="2"] { padding-left: 40px; font-size: 13px; color: var(--text-muted); }
+        #toc-list li.epub-toc-item[data-depth="3"], #toc-list li.epub-toc-item[data-depth="4"], #toc-list li.epub-toc-item[data-depth="5"] { padding-left: 54px; font-size: 13px; color: var(--text-muted); }
+        #toc-list li.epub-toc-item.current { box-shadow: inset 3px 0 0 var(--accent-color); background: var(--hl-soft); font-weight: 600; color: var(--text-color); }
+        #toc-list li.epub-toc-item.disabled { cursor: default; color: var(--text-muted); opacity: .7; }
+        #toc-list li.epub-toc-item.disabled:hover { background: none; }
+        /* Виноски й внутрішні посилання EPUB (js/formats.js rewriteEpubLinks). Позначка виноски — колір акценту без підкреслення,
+           зі збільшеною областю дотику (сама цифра у верхньому індексі менша за палець). Вікно примітки — картка поверх книги. */
+        #reader-pages a[href^="#book-epubref-"] { color: var(--accent-color); text-decoration: none; cursor: pointer; }
+        #reader-pages a[href^="#book-epubref-n-"] { padding: 0 3px; margin: 0 -1px; border-radius: 4px; }
+        #reader-pages a[href^="#book-epubref-n-"]:hover { background: var(--hl-soft); }
+        #epub-note { position: fixed; z-index: 26020; max-height: 46vh; display: flex; flex-direction: column;
+            background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 16px;
+            box-shadow: 0 20px 48px -22px rgba(var(--shadow-color), .6); }
+        #epub-note[hidden] { display: none; }
+        #epub-note header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 10px 6px 16px; }
+        #epub-note header strong { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+        #epub-note .epub-note-close { width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--text-muted); font-size: 16px; cursor: pointer; }
+        #epub-note .epub-note-close:hover { background: var(--hover-color); }
+        #epub-note .epub-note-body { padding: 0 16px 4px; overflow-y: auto; font-family: Georgia, 'Noto Serif', serif; font-size: 16px; line-height: 1.6; }
+        #epub-note .epub-note-body p { margin: 0 0 .6em; }
+        #epub-note footer { padding: 6px 12px 12px; display: flex; justify-content: flex-end; }
+        #epub-note .epub-note-go { height: 36px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--surface-2); color: var(--text-color); font-size: 13px; cursor: pointer; }
+        #epub-note .epub-note-go[hidden] { display: none; }
 
         /* PDF left sidebar: Thumbnails / Contents (outline) dual mode. #toc-list
            (book chapter TOC for epub/txt/doc) and #pdf-sidebar are mutually
@@ -758,9 +784,9 @@
         /* Ряд стоїть посередині області читання (--row-l, --row-w): у PDF відкрита «Граматика» чи «Запитай AI» звужує її
            (--ws-left/--ws-width з js/pdf-continuous.js), і ряд не ховається під панеллю. На широкому екрані ряд не розтягується:
            щонайбільше 480px посередині. */
-        :root { --row-l: 0px; --row-w: 100vw; --row-edge: max(52px, calc(var(--row-w) / 2 - 240px)); }
-        body.pdf-mode { --row-l: var(--ws-left, 0px); --row-w: var(--ws-width, 100vw); --row-edge: max(52px, calc(var(--row-w) / 2 - 240px)); }
-        @media (max-width: 380px) { :root, body.pdf-mode { --row-edge: 46px; } }
+        :root { --row-l: 0px; --row-w: 100vw; --row-out: max(14px, calc(var(--row-w) / 2 - 290px)); --row-edge: calc(var(--row-out) + 50px); }
+        body.pdf-mode { --row-l: var(--ws-left, 0px); --row-w: var(--ws-width, 100vw); --row-out: max(14px, calc(var(--row-w) / 2 - 290px)); --row-edge: calc(var(--row-out) + 50px); }
+        @media (max-width: 380px) { :root, body.pdf-mode { --row-out: 8px; --row-edge: 54px; } }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #page-arrow-prev { left: calc(var(--row-l) + var(--row-edge)); }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #page-arrow-next { right: auto; left: calc(var(--row-l) + var(--row-w) - var(--row-edge) - 44px); }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher {
@@ -774,7 +800,7 @@
             border: 1px solid var(--border-color); border-radius: 22px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed {
             left: calc(var(--row-l) + var(--row-w) * .75 - var(--row-edge) / 2 - 11px); right: auto; transform: translateX(-50%); width: auto;
-            min-width: min(64px, calc(var(--row-w) / 2 - var(--row-edge) - 78px)); max-width: calc(var(--row-w) / 2 - var(--row-edge) - 78px); padding: 0 8px; overflow: hidden; opacity: .6; }
+            min-width: min(64px, calc(var(--row-w) / 2 - var(--row-edge) - 82px)); max-width: calc(var(--row-w) / 2 - var(--row-edge) - 82px); padding: 0 3px; overflow: hidden; opacity: .6; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available:not(.collapsed) {
             left: calc(var(--row-l) + 52px); right: auto; width: calc(var(--row-w) - 104px); padding: 0 16px; opacity: 1; z-index: 10002; }
         /* Розгорнутий повзунок займає весь ряд: ✦ на цей час ховається (його опора лежить вище за повзунок). */
@@ -800,7 +826,85 @@
         #quick-menu.qm-sun .qm-label { font-size: 10.5px; overflow-wrap: normal; word-break: normal; hyphens: auto; }
         /* Під «сонечком» текст сторінки приглушений сильніше: дії читаються, а не зливаються з рядками книги. */
         body:has(#quick-menu.qm-sun:not([hidden])) #qm-backdrop {
-            background: radial-gradient(circle at 50% 100%, rgba(0,0,0,.34), rgba(0,0,0,.2)); }
+            background: rgba(0,0,0,.42); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+        /* Плитки «сонечка» непрозорі (текст книги не просвічує між літерами), активна — кольору акценту. */
+        #quick-menu.qm-sun .qm-item { background: var(--panel-bg); backdrop-filter: none; -webkit-backdrop-filter: none;
+            border-color: color-mix(in srgb, var(--text-color) 8%, transparent); box-shadow: 0 10px 26px -10px rgba(0,0,0,.5); }
+        #quick-menu.qm-sun .qm-item.qm-active { background: var(--accent-color); color: var(--accent-contrast); border-color: transparent;
+            box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--accent-color) 70%, transparent); }
+        #quick-menu.qm-sun .qm-item:active { filter: brightness(.94); }
+        /* Вигляд ряду (власник, 2026-10-31: «потрібно щоб це виглядало дуже професійно»), як нижня панель Apple Books / Google Play
+           Книг: одна «скляна» капсула під усім рядом, кнопки в ній пласкі (без власних рамок і тіней), ✦ — кругла кнопка кольору
+           акценту посередині. Капсула — ::before у #page-arrows; вона не ловить дотиків, як і проміжки між кнопками раніше. */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden])::before {
+            content: ''; position: fixed; z-index: 94; pointer-events: none; box-sizing: border-box;
+            left: calc(var(--row-l) + var(--row-out) - 6px); width: calc(var(--row-w) - 2 * var(--row-out) + 12px);
+            bottom: calc(6px + env(safe-area-inset-bottom, 0px)); height: 56px; border-radius: 28px;
+            background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+            backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+            border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+            box-shadow: 0 12px 32px -12px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.08); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available {
+            background: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+            color: var(--text-color); opacity: 1; transition: background-color .15s, transform .12s; -webkit-tap-highlight-color: transparent; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow:active,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle:active,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed:active {
+            background: color-mix(in srgb, var(--text-color) 10%, transparent); transform: scale(.92); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed:active { transform: translateX(-50%) scale(.92); }
+        @media (hover: hover) {
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow:hover,
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle:hover,
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed:hover {
+                background: color-mix(in srgb, var(--text-color) 6%, transparent); }
+        }
+        @media (min-width: 381px) { body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-size: 14px; } }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-weight: 500; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed { opacity: 1; }
+        /* Повзунок міняє місце й ширину при згортанні — зсув (translateX) не анімується, інакше номер «пливе» повз стрілку. */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available { transition: opacity .3s, background-color .15s; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher {
+            background: var(--accent-color); color: var(--accent-contrast); border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
+            box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent-color) 80%, transparent); transition: transform .12s; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher:active { transform: scale(.92); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher[aria-expanded="true"] {
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 30%, transparent); }
+        /* У ряду ☰ і ✦ — частина капсули, а не «над усім», як колись ☰ у кутку: відкрита бічна панель (AI, Граматика, Вправи)
+           лежить над рядом, інакше вони закривали б її кнопки внизу (поле вводу, «Згенерувати ще»). */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle { z-index: 95; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])):has(.side-panel.expanded) #quick-menu-dock { visibility: hidden; }
+        /* Розгорнутий повзунок лягає в капсулу від ‹ до › (стрілки на цей час ховаються), без власного тла. */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available:not(.collapsed) {
+            left: calc(var(--row-l) + var(--row-edge)); width: calc(var(--row-w) - 2 * var(--row-edge)); padding: 0 12px; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#pdf-scrubber.available:not(.collapsed)) #page-arrows .page-arrow { visibility: hidden; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-page-range { accent-color: var(--accent-color); }
+        /* Сигнали «Запитай AI» 🤖 і «Граматика» ✨ (власник, 2026-10-31: «потрібно в нижню панель спустити сигналізатори запиту до
+           аі та граматики») — кінці капсули: «🤖 · ‹ · ☰ · ✦ · номер · › · ✨». Та сама дія й той самий колір стану, що в бічних язичків
+           (червоний — запит іде, зелений — відповідь готова, js/main.js); язички на цей час ховаються й не лежать на тексті. */
+        .row-tab { display: none; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab {
+            display: flex; position: fixed; z-index: 95; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 44px; height: 44px;
+            padding: 0; border: 0; border-radius: 50%; align-items: center; justify-content: center; font-size: 20px; line-height: 1;
+            background: transparent; color: var(--text-color); cursor: pointer; -webkit-tap-highlight-color: transparent;
+            transition: background-color .2s, box-shadow .2s, transform .12s; }
+        #row-ask { left: calc(var(--row-l) + var(--row-out)); }
+        #row-grammar { left: calc(var(--row-l) + var(--row-w) - var(--row-out) - 44px); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab:active {
+            background: color-mix(in srgb, var(--text-color) 10%, transparent); transform: scale(.92); }
+        @media (hover: hover) { body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab:hover {
+            background: color-mix(in srgb, var(--text-color) 6%, transparent); } }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab.loading {
+            background: rgba(220, 53, 69, .16); box-shadow: inset 0 0 0 1.5px rgba(220, 53, 69, .6); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab.ready {
+            background: rgba(25, 135, 84, .16); box-shadow: inset 0 0 0 1.5px rgba(25, 135, 84, .6); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) .panel-tab { display: none; }
+        @media (max-width: 380px) {
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab {
+                width: 40px; height: 40px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); font-size: 18px; }
+            #row-grammar { left: calc(var(--row-l) + var(--row-w) - var(--row-out) - 40px); }
+        }
         /* Режим без меню: текст книги не ховається під плаваючими кнопками — перший рядок починається нижче ☰ (8px + 44px
            у лівому верхньому куті), а поки видно стрілки ‹ ›, останній рядок стоїть над ними (12px + 44px від низу). Раніше
            ☰ накривав перше слово кожної сторінки, а стрілки — останній рядок. PDF має власне прокручування і поля. */
@@ -1767,6 +1871,7 @@
         <symbol id="i-margins" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="1.5"/><path d="M8 4v16M16 4v16"/></symbol>
         <symbol id="i-align" viewBox="0 0 24 24"><path d="M4 6.5h16M4 11h16M4 15.5h16M4 20h10"/></symbol>
         <symbol id="i-hyphen" viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h9.5M16.5 12H20M4 17.5h16"/></symbol>
+        <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/><path d="M12 3.5v17"/></symbol>
         <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
         <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol>
         <symbol id="i-study" viewBox="0 0 24 24"><path d="M2.5 9 12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v4.5c0 1.6 2.5 3 5.5 3s5.5-1.4 5.5-3V11M21.5 9v5"/></symbol>
@@ -1848,6 +1953,10 @@
                     <select id="text-align" class="mr-select" aria-describedby="mr-align-d"><option value="justify" data-i18n="mAlignJustify">По краях</option><option value="left" data-i18n="mAlignLeft">По лівому краю</option></select>
                 </div>
                 <button type="button" class="menu-row" id="btn-hyphens" role="switch" aria-checked="true" data-only="text" aria-labelledby="mr-hyph-t" aria-describedby="mr-hyph-d"><svg class="mi" aria-hidden="true"><use href="#i-hyphen"/></svg><span class="mr-text"><span class="mr-title" id="mr-hyph-t" data-i18n="mHyphens">Переноси слів</span><span class="mr-desc" id="mr-hyph-d" data-i18n="mHyphensDesc">Розриває довгі слова, щоб у рядках не було прогалин</span></span><span class="mr-switch" aria-hidden="true"></span></button>
+                <div class="menu-row menu-row-select" data-only="pdf">
+                    <svg class="mi" aria-hidden="true"><use href="#i-contrast"/></svg><span class="mr-text"><label class="mr-title" for="pdf-contrast" data-i18n="mPdfContrast">Контраст сторінки</label><span class="mr-desc" id="mr-contrast-d" data-i18n="mPdfContrastDesc">Бліді скани старих книг читаються темніше</span></span>
+                    <select id="pdf-contrast" class="mr-select" aria-describedby="mr-contrast-d"><option value="auto" data-i18n="mContrastAuto">Автоматично</option><option value="off" data-i18n="mContrastOff">Як у файлі</option><option value="strong" data-i18n="mContrastStrong">Сильніше</option><option value="dark" data-i18n="mContrastDark">Темна сторінка</option></select>
+                </div>
                 <div class="menu-row menu-row-select" data-only="pdf">
                     <svg class="mi" aria-hidden="true"><use href="#i-fit"/></svg><span class="mr-text"><label class="mr-title" for="pdf-fit" data-i18n="mPdfFit">Масштаб сторінки PDF</label><span class="mr-desc" id="mr-fit-d" data-i18n="mPdfFitDesc">Як сторінка вписується в екран</span></span>
                     <select id="pdf-fit" class="mr-select" aria-describedby="mr-fit-d"><option value="width" data-i18n="mFitWidth">По ширині</option><option value="page" data-i18n="mFitPage">Сторінка цілком</option><option value="free" data-i18n="mFitFree">Вільний</option></select>
@@ -2099,7 +2208,7 @@
         <img id="crop-preview" alt="Виділений фрагмент PDF">
         <div id="crop-actions">
             <button id="crop-save">Save PNG</button><button id="crop-share">Share</button>
-            <button id="crop-copy">Copy image</button><button id="crop-ai">Send to AI</button>
+            <button id="crop-copy">Copy image</button><button id="crop-gemini" data-i18n="cropGemini">Запитати Gemini</button><button id="crop-ai">Send to AI</button>
             <button id="crop-cancel" data-i18n="cancel">Cancel</button>
         </div>
         <p id="crop-status" role="status"></p>
@@ -2149,6 +2258,8 @@
         </div>
     </footer>
     <div id="page-arrows" hidden>
+        <button type="button" id="row-ask" class="row-tab" data-i18n-aria="tAskPanel" data-i18n-title="tAskPanel" aria-label="AI Помічник" title="AI Помічник">🤖</button>
+        <button type="button" id="row-grammar" class="row-tab" data-i18n-aria="tGrammarPanel" data-i18n-title="tGrammarPanel" aria-label="Граматика" title="Граматика">✨</button>
         <button type="button" id="page-arrow-prev" class="page-arrow" data-i18n-aria="prev" data-i18n-title="prev" aria-label="◀ Назад" title="◀ Назад">‹</button>
         <button type="button" id="page-arrow-next" class="page-arrow" data-i18n-aria="next" data-i18n-title="next" aria-label="Вперед ▶" title="Вперед ▶">›</button>
     </div>
@@ -2192,18 +2303,18 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=e632f2bbda7e"></script>
+    <script src="js/core.js?v=fc113643d258"></script>
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
-    <script src="js/selection.js?v=0e33693c56da"></script>
+    <script src="js/selection.js?v=c87116993cf1"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
-    <script src="js/navigation.js?v=35362ac6dd0c"></script>
+    <script src="js/navigation.js?v=c9d54288e58a"></script>
     <script src="js/pdf-zoom-pan.js?v=c2233b957e5a"></script>
-    <script src="js/ui-tooltip.js?v=5474e83169d8"></script>
+    <script src="js/ui-tooltip.js?v=456649d2a3d0"></script>
     <script src="js/translation.js?v=cf27366b8131"></script>
     <script src="js/dictionaries.js?v=a8f7f2bcfc69"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
@@ -2212,11 +2323,11 @@
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=bec9bdfe1332"></script>
+    <script src="js/grammar-rules.js?v=cdddc9a470fc"></script>
     <script src="js/ai-client.js?v=b9694da45bbe"></script>
     <script src="js/practice-session.js?v=276c4226546f"></script>
     <script src="js/practice-worksheet.js?v=cca1a85581f5"></script>
-    <script src="js/dictation.js?v=f56e4d5f3c06"></script>
+    <script src="js/dictation.js?v=f8b1e587d988"></script>
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-dict-catalog.js?v=16288e0c6804"></script>
     <script src="js/offline-translate.js?v=4f34beb902dc"></script>
@@ -2225,24 +2336,25 @@
     <script src="js/device-llm.js?v=9b6f20f6d2d6"></script>
     <script src="js/pdf-ink.js?v=0b9c9e47c2e9"></script>
     <script src="js/text-ink.js?v=4ba7df76e282"></script>
-    <script src="js/pdf-crop.js?v=d075e66bd44c"></script>
+    <script src="js/pdf-crop.js?v=478d28ec89bb"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
-    <script src="js/pdf-render.js?v=d25fa5b3077f"></script>
+    <script src="js/pdf-contrast.js?v=7c13e4ff3a75"></script>
+    <script src="js/pdf-render.js?v=7c8e2e23d18d"></script>
     <script src="js/book-audio.js?v=89bbf93c6ec1"></script>
     <script src="js/book-speech.js?v=19520aac33ff"></script>
-    <script src="js/formats.js?v=8cda3233d237"></script>
+    <script src="js/formats.js?v=6cd6b4519407"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=d1681ee120b3"></script>
+    <script src="js/library.js?v=865f186bd2ef"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/scanner.js?v=f1c124d69501"></script>
-    <script src="js/sync.js?v=2ca8dd87dfb2"></script>
-    <script src="js/quick-wheel.js?v=66a8c50d1d79"></script>
+    <script src="js/sync.js?v=95d40bd128da"></script>
+    <script src="js/quick-wheel.js?v=4e62f6f40912"></script>
     <script src="js/developer.js?v=67c700255062"></script>
-    <script src="js/main.js?v=b76bd89ad359"></script>
+    <script src="js/main.js?v=c306090ed69f"></script>
     <script src="js/pwa-lifecycle.js?v=d2987066ddd8"></script>
-    <script src="js/i18n-es.js?v=2fb05fe12dd1"></script>
+    <script src="js/i18n-es.js?v=fa512e3aa3d9"></script>
 </body>
 </html>

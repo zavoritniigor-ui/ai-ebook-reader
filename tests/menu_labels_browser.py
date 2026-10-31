@@ -123,7 +123,8 @@ KEYS = ['mTagline','mSecBook','mOpen','mOpenDesc','mShelf','mShelfDesc','mLibrar
         'mTwoVoices','mTwoVoicesDesc','mFontSize','mFontSizeDesc',
         'mTextFont','mTextFontDesc','mFontSerif','mFontBook','mFontSans','mLineHeight','mLineHeightDesc','mLineTight','mLineNormal','mLineLoose',
         'mMargins','mMarginsDesc','mMarginNarrow','mMarginNormal','mMarginWide','mAlign','mAlignDesc','mAlignJustify','mAlignLeft','mHyphens','mHyphensDesc',
-        'mPdfFit','mPdfFitDesc','mFitWidth','mFitPage','mFitFree','mTheme','mThemeDesc','mSecLearning','mStudy',
+        'mPdfFit','mPdfFitDesc','mFitWidth','mFitPage','mFitFree',
+        'mPdfContrast','mPdfContrastDesc','mContrastAuto','mContrastOff','mContrastStrong','mContrastDark','mTheme','mThemeDesc','mSecLearning','mStudy',
         'mStudyDesc','mTargetLang','mTargetLangDesc','mRules','mRulesDesc','mStats','mStatsDesc','mSecTools','mScan','mScanDesc','mInk','mInkDesc','mRegion','mRegionDesc','mPrint','mPrintDesc',
         'mSecSettings','mUiLang','mUiLangDesc','mAi','mAiDesc','mDev','mDevDesc','mUpdate','mUpdateDesc','mExit','mHomeFormats']
 check('20 every menu text exists in all 9 languages with its own wording (no raw key, no English fallback)',
