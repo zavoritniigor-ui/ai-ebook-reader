@@ -15,6 +15,13 @@
 //   ?op=ia-file&id=<identifier>&name=<file.pdf|file.epub>             -> сам файл
 //   ?op=ia-cover&id=<identifier>                                      -> обкладинка
 // Internet Archive: лише archive.org, ідентифікатор і назва файлу перевіряються тут; позичальні книги (access-restricted) відкинуто.
+//   ?op=bnr-search&q=<text>&page=<n>[&genre=<key>]                    -> пошук у Bibliothèque numérique romande (французька класика, EPUB)
+//   ?op=bnr-file&id=<slug>                                            -> EPUB книги (адреса файла береться зі сторінки книги)
+//   ?op=bnr-cover&path=<yyyy/mm/name.jpg>                             -> обкладинка
+//   ?op=se-search&q=<text>&page=<n>[&genre=<key>]                     -> пошук у Standard Ebooks (англійська класика, EPUB)
+//   ?op=se-file&id=<author/title[/translator]>                        -> EPUB книги
+//   ?op=se-cover&path=<name/hash/cover.jpg>                           -> обкладинка
+// Обидві бібліотеки не мають API: результати розбираються з HTML їхнього пошуку тут, клієнт отримує лише JSON.
 const UA = 'AI-Ebook-Reader/1.0 (+https://ai-ebook-reader.pages.dev)';
 const WS_LANGS = new Set(['uk', 'fr', 'en', 'de', 'es', 'it']);
 // Мови Internet Archive: поле language містить то код MARC (fre), то назву (French).
@@ -45,6 +52,20 @@ const IA_GENRES = {
     myth: 'mythology OR folklore OR legends OR mythes OR légendes OR sagen OR leyendas OR leggende OR міфи OR легенди OR фольклор OR мифы',
     travel: 'travel OR voyages OR "description and travel" OR reisen OR viajes OR viaggi OR podróże OR подорожі OR путешествия'
 };
+// Жанри бібліотеки → рубрики Bibliothèque numérique romande і теми Standard Ebooks (жанру, якого там немає, у списку немає й у клієнті).
+const BNR_GENRES = { fiction: 'roman', adventure: 'aventures', detective: 'policier-mystere', historical: 'historique', love: 'amour',
+    scifi: 'fantastique-science-fiction-anticipation', stories: 'nouvelles', poetry: 'poesie', drama: 'theatre', children: 'litterature-pour-la-jeunesse',
+    humor: 'humour', biography: 'biographie-autobiographie', philosophy: 'philosophie', travel: 'recit-de-voyage' };
+const SE_GENRES = { fiction: 'fiction', adventure: 'adventure', detective: 'mystery', scifi: 'science-fiction', stories: 'shorts', poetry: 'poetry',
+    drama: 'drama', children: 'childrens', humor: 'comedy', biography: 'biography', philosophy: 'philosophy', travel: 'travel' };
+const BNR = 'https://ebooks-bnr.com', SE = 'https://standardebooks.org';
+const BNR_SLUG = /^[a-z0-9][a-z0-9-]{0,199}$/;
+const BNR_COVER = /^\d{4}\/\d{2}\/[A-Za-z0-9_.-]{1,150}\.(jpe?g|png|webp)$/;
+const SE_ID = /^[a-z0-9_-]{1,120}(\/[a-z0-9_-]{1,120}){1,4}$/;
+const SE_COVER = /^[a-z0-9_-]{1,300}\/[0-9a-f]{40}\/cover\.jpg$/;
+const htmlText = s => String(s || '').replace(/<[^>]*>/g, '').replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&(rsquo|lsquo);/g, '’').replace(/&(rdquo|ldquo|quot);/g, '"')
+    .replace(/&hellip;/g, '…').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const WS_CAT = /^[^\u0000-\u001f#<>\[\]{}|"\\:]{1,80}$/;
 const iaQuote = s => s.replace(/[\\"():\[\]{}^~*?!+\-&|\/]/g, ' ').trim();
 
@@ -194,6 +215,76 @@ export async function onRequestGet({ request }) {
             const res = await upstream(`https://archive.org/download/${id}/${name.split('/').map(encodeURIComponent).join('/')}`, isPdf ? 'application/pdf' : 'application/epub+zip');
             if (!res.ok) return json({ error: 'upstream', status: res.status }, res.status === 404 ? 404 : 502);
             const headers = { 'content-type': isPdf ? 'application/pdf' : 'application/epub+zip', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' };
+            const length = res.headers.get('content-length');
+            if (length) headers['content-length'] = length;
+            return new Response(res.body, { status: 200, headers });
+        }
+        if (op === 'bnr-search' || op === 'se-search') {
+            const q = (url.searchParams.get('q') || '').trim();
+            const genre = url.searchParams.get('genre') || '';
+            const page = Math.min(200, Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1));
+            const genres = op === 'bnr-search' ? BNR_GENRES : SE_GENRES;
+            if (q.length > 200) return json({ error: 'bad query' }, 400);
+            if (genre && !Object.prototype.hasOwnProperty.call(genres, genre)) return json({ error: 'bad genre' }, 400);
+            const results = [];
+            let html;
+            if (op === 'bnr-search') {
+                // Порожній запит теж працює: тоді це найновіші книги (усі або рубрики).
+                const res = await upstream(`${BNR}/page/${page}/?s=${encodeURIComponent(q)}` + (genre ? '&category_name=' + BNR_GENRES[genre] : ''), 'text/html');
+                if (res.status === 404) return json({ results, more: false }, 200, 3600);   // сторінка за останньою
+                if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
+                html = await res.text();
+                for (const part of html.split('<article').slice(1)) {
+                    const m = part.match(/href="https:\/\/(?:www\.)?ebooks-bnr\.com\/([a-z0-9-]+)\/" rel="bookmark">([\s\S]*?)<\/a>/);
+                    if (!m || !BNR_SLUG.test(m[1])) continue;
+                    // Назва на сайті — «Автор – Твір».
+                    const full = htmlText(m[2]), at = full.indexOf(' – ');
+                    const cover = part.match(/wp-content\/uploads\/(\d{4}\/\d{2}\/[A-Za-z0-9_.-]{1,150}\.(?:jpe?g|png|webp))"/);
+                    results.push({ id: m[1], title: (at > 0 ? full.slice(at + 3) : full).slice(0, 300), author: at > 0 ? full.slice(0, at).slice(0, 200) : '',
+                        cover: cover && BNR_COVER.test(cover[1]) ? cover[1] : '' });
+                }
+                return json({ results, more: /class="next page-numbers"/.test(html) }, 200, 3600);
+            }
+            // tags[] — саме з дужками: закодовані %5B%5D сайт переадресовує на сторінку теми й губить запит.
+            const res = await upstream(`${SE}/ebooks?query=${encodeURIComponent(q)}&sort=${q ? 'relevance' : 'popularity'}&page=${page}` + (genre ? '&tags[]=' + SE_GENRES[genre] : ''), 'text/html');
+            if (res.status === 404) return json({ results, more: false }, 200, 3600);
+            if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
+            html = await res.text();
+            for (const part of html.split('<li typeof="schema:Book"').slice(1)) {
+                const m = part.match(/^\s*about="\/ebooks\/([^"]+)"/);
+                if (!m || !SE_ID.test(m[1])) continue;
+                const names = [...part.matchAll(/property="schema:name">([^<]*)</g)].map(x => htmlText(x[1]));
+                const cover = part.match(/\/images\/covers\/([a-z0-9_-]{1,300}\/[0-9a-f]{40}\/cover\.jpg)/);
+                results.push({ id: m[1], title: (names[0] || m[1]).slice(0, 300), author: names.slice(1, 4).join(', ').slice(0, 200), cover: cover ? cover[1] : '' });
+            }
+            return json({ results, more: /rel="next"/.test(html) }, 200, 3600);
+        }
+        if (op === 'bnr-cover' || op === 'se-cover') {
+            const path = url.searchParams.get('path') || '';
+            if (!(op === 'bnr-cover' ? BNR_COVER : SE_COVER).test(path)) return json({ error: 'bad path' }, 400);
+            const res = await upstream(op === 'bnr-cover' ? `${BNR}/wp-content/uploads/${path}` : `${SE}/images/covers/${path}`, 'image/*');
+            if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);
+            const type = res.headers.get('content-type') || '';
+            return new Response(res.body, { status: 200, headers: { 'content-type': /^image\/(jpeg|png|webp)$/.test(type) ? type : 'image/jpeg',
+                'cache-control': 'public, max-age=604800', 'x-content-type-options': 'nosniff' } });
+        }
+        if (op === 'bnr-file' || op === 'se-file') {
+            const id = url.searchParams.get('id') || '';
+            let target;
+            if (op === 'bnr-file') {
+                if (!BNR_SLUG.test(id)) return json({ error: 'bad id' }, 400);
+                const page = await upstream(`${BNR}/${id}/`, 'text/html');
+                if (!page.ok) return json({ error: 'upstream', status: page.status }, page.status === 404 ? 404 : 502);
+                const m = (await page.text()).match(/fdsb_dl=ebooks\/epub\/([A-Za-z0-9_.-]{1,200}\.epub)/);
+                if (!m || m[1].includes('..')) return json({ error: 'no epub' }, 404);
+                target = `${BNR}/?fdsb_dl=ebooks/epub/${m[1]}`;
+            } else {
+                if (!SE_ID.test(id)) return json({ error: 'bad id' }, 400);
+                target = `${SE}/ebooks/${id}/downloads/${id.replace(/\//g, '_')}.epub?source=download`;
+            }
+            const res = await upstream(target, 'application/epub+zip');
+            if (!res.ok) return json({ error: 'upstream', status: res.status }, res.status === 404 ? 404 : 502);
+            const headers = { 'content-type': 'application/epub+zip', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' };
             const length = res.headers.get('content-length');
             if (length) headers['content-length'] = length;
             return new Response(res.body, { status: 200, headers });
