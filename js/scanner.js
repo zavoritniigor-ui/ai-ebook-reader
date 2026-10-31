@@ -1,6 +1,6 @@
 /* Сканер документів (власник, 2026-10-30: «застосунок сканер, який з фото робить зручні формати для друку»).
  * Фото з камери чи галереї → краї аркуша (знаходяться самі, кути можна підправити пальцем) → вирівнювання перспективи →
- * покращення («Документ» — білий фон без тіней, «Ч/Б», «Сірий», «Оригінал») → PDF (A4, Letter або за розміром фото),
+ * покращення («Кольоровий» — білий папір без тіней, кольори тексту, печаток і маркера лишаються; «Ч/Б», «Сірий»; «Оригінал» — фото як є) → PDF (A4, Letter або за розміром фото),
  * JPG чи PNG; друк, «Поділитися», зберегти на пристрій, відкрити в читалці.
  * Усе на цьому пристрої: фото нікуди не надсилаються, нічого не зберігається між сеансами. Без бібліотек: PDF складає
  * scanBuildPdf, кілька JPG/PNG пакуються в ZIP (JSZip, уже є в застосунку). */
@@ -34,7 +34,7 @@ Object.assign(I18N, {
     scanDone: { uk: 'Готово', en: 'Done', fr: 'Terminé', ru: 'Готово' },
     scanCancel: { uk: 'Скасувати', en: 'Cancel', fr: 'Annuler', ru: 'Отмена' },
     scanFilterOrig: { uk: 'Оригінал', en: 'Original', fr: 'Original', ru: 'Оригинал' },
-    scanFilterDoc: { uk: 'Документ', en: 'Document', fr: 'Document', ru: 'Документ' },
+    scanFilterDoc: { uk: 'Кольоровий', en: 'Colour', fr: 'Couleur', ru: 'Цветной' },
     scanFilterBw: { uk: 'Ч/Б', en: 'B/W', fr: 'N/B', ru: 'Ч/Б' },
     scanFilterGray: { uk: 'Сірий', en: 'Grey', fr: 'Gris', ru: 'Серый' },
     scanFormat: { uk: 'Формат файлу', en: 'File format', fr: 'Format du fichier', ru: 'Формат файла' },
@@ -186,6 +186,15 @@ function scanBackground(lum, w, h) {
     const cell = Math.max(8, Math.round(Math.min(w, h) / 40)), gw = Math.ceil(w / cell), gh = Math.ceil(h / cell);
     let grid = new Float32Array(gw * gh);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const g = ((y / cell) | 0) * gw + ((x / cell) | 0), v = lum[y * w + x]; if (v > grid[g]) grid[g] = v; }
+    // Максимум ще й серед сусідів (±3 клітинки, ≈⅙ сторінки): печатка, маркер чи фото на сторінці більші за клітинку, і без
+    // цього їх самих було б узято за «папір» — кольори вибілювалися б (червона печатка ставала рожевою).
+    const R = 3, wide = new Float32Array(gw * gh);
+    for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+        let m = 0;
+        for (let yy = Math.max(0, gy - R); yy <= Math.min(gh - 1, gy + R); yy++) for (let xx = Math.max(0, gx - R); xx <= Math.min(gw - 1, gx + R); xx++) if (grid[yy * gw + xx] > m) m = grid[yy * gw + xx];
+        wide[gy * gw + gx] = m;
+    }
+    grid = wide;
     for (let pass = 0; pass < 2; pass++) {
         const next = new Float32Array(gw * gh);
         for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
@@ -203,7 +212,7 @@ function scanBgAt(bg, x, y) {
     const top = g[y0 * bg.gw + x0] * (1 - fx) + g[y0 * bg.gw + x1] * fx, bot = g[y1 * bg.gw + x0] * (1 - fx) + g[y1 * bg.gw + x1] * fx;
     return top * (1 - fy) + bot * fy;
 }
-// «Документ»: колір кожної точки ділиться на яскравість паперу навколо неї — тіні й жовтизна зникають, фон стає білим,
+// «Кольоровий» (filter 'doc'): колір кожної точки ділиться на яскравість паперу навколо неї — тіні й жовтизна зникають, фон стає білим,
 // текст і кольорові позначки лишаються. «Ч/Б» — те саме, потім поріг. «Сірий» — лише яскравість.
 function scanFilter(img, mode) {
     if (mode === 'orig') return img;

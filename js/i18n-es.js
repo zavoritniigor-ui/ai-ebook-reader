@@ -138,7 +138,7 @@ const I18N_ES = {
     scanPage: 'Página {n}', scanPages: 'Páginas: {n}', scanEdit: 'Recortar y mejorar', scanDelete: 'Eliminar página', scanMoveLeft: 'Mover antes',
     scanMoveRight: 'Mover después', scanCorners: 'Arrastra las esquinas a los bordes de la hoja', scanAuto: 'Buscar bordes', scanFull: 'Foto entera',
     scanRotL: 'Girar a la izquierda', scanRotR: 'Girar a la derecha', scanDone: 'Listo', scanCancel: 'Cancelar', scanFilterOrig: 'Original',
-    scanFilterDoc: 'Documento', scanFilterBw: 'B/N', scanFilterGray: 'Gris', scanFormat: 'Formato del archivo', scanPdfA4: 'PDF · A4',
+    scanFilterDoc: 'Color', scanFilterBw: 'B/N', scanFilterGray: 'Gris', scanFormat: 'Formato del archivo', scanPdfA4: 'PDF · A4',
     scanPdfLetter: 'PDF · Carta (EE. UU.)', scanPdfFit: 'PDF · tamaño de la foto', scanJpg: 'JPG (imágenes)', scanPng: 'PNG (imágenes)',
     scanPrint: '🖨 Imprimir', scanShare: '📤 Compartir', scanSave: '⬇ Guardar', scanOpen: '📖 Abrir en el lector', scanClear: 'Borrar',
     scanClearSure: 'Otra vez para borrarlo todo', scanSaved: 'Guardado.', scanSavedDownloads: 'Guardado en Descargas.',

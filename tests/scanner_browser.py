@@ -51,6 +51,7 @@ c.js("""window.__photo = async (quad, name) => { const W = 2000, H = 1500, cv = 
   const page = document.createElement('canvas'); page.width = 600; page.height = 800; const p = page.getContext('2d');
   p.fillStyle = '#fbfaf6'; p.fillRect(0, 0, 600, 800); p.fillStyle = '#111';
   for (let i = 0; i < 22; i++) p.fillRect(60, 80 + i * 30, 480 - (i % 4) * 40, 10);
+  p.fillStyle = '#c62828'; p.fillRect(380, 690, 150, 70); p.fillStyle = '#1565c0'; p.fillRect(70, 700, 120, 40);   // a red stamp and a blue marker
   const src = p.getImageData(0, 0, 600, 800).data, img = x.getImageData(0, 0, W, H), d = img.data;
   for (let v = 0; v < 800; v += 0.5) for (let u = 0; u < 600; u += 0.5) { const s = u / 600, t = v / 800;
     const X = (1 - t) * ((1 - s) * P[0][0] + s * P[1][0]) + t * ((1 - s) * P[3][0] + s * P[2][0]), Y = (1 - t) * ((1 - s) * P[0][1] + s * P[1][1]) + t * ((1 - s) * P[3][1] + s * P[2][1]);
@@ -76,7 +77,14 @@ STATS = """(async (blob) => { const b = await createImageBitmap(blob), cv = docu
   return JSON.stringify({paper: paper.reduce((a, b) => a + b, 0) / paper.length, cast: cast / cn, ink: ink / n, mid: mid / n}); })"""
 doc = json.loads(c.js(STATS + "(scanState.pages[0].out)"))
 assert doc['paper'] > 235 and doc['cast'] < 8 and doc['ink'] > 0.03, doc
-print('PASS 4 «Document» (default): the shadowed, cream margin is white (%.0f, colour cast %.1f), the text stays dark (%.1f%% ink)' % (doc['paper'], doc['cast'], doc['ink'] * 100), flush=True)
+print('PASS 4 «Colour» (default): the shadowed, cream margin is white (%.0f, colour cast %.1f), the text stays dark (%.1f%% ink)' % (doc['paper'], doc['cast'], doc['ink'] * 100), flush=True)
+COLOR = """(async (blob) => { const b = await createImageBitmap(blob), cv = document.createElement('canvas'); cv.width = b.width; cv.height = b.height; const x = cv.getContext('2d'); x.drawImage(b, 0, 0);
+  const px = (fx, fy) => [...x.getImageData(Math.round(cv.width * fx), Math.round(cv.height * fy), 1, 1).data.slice(0, 3)];
+  return JSON.stringify({red: px(455 / 600, 725 / 800), blue: px(130 / 600, 720 / 800)}); })"""
+col = json.loads(c.js(COLOR + "(scanState.pages[0].out)"))
+# drawn: red (198, 40, 40), blue (21, 101, 192); the shadow darkens the photo, «Colour» must bring them back, not wash them out
+assert col['red'][0] > 150 and col['red'][1] < 90 and col['red'][2] < 90 and col['blue'][2] > 150 and col['blue'][0] < 90 and col['blue'][1] < 160, col
+print('PASS 4a «Colour» keeps colours: the red stamp stays red %s, the blue marker blue %s' % (col['red'], col['blue']), flush=True)
 check('4b no network request while processing', "__net.length === 0 || JSON.stringify(__net)")
 
 # ---- editor: drag a corner, filters, rotation, Done
