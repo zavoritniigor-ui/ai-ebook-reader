@@ -120,7 +120,10 @@ for w, h, mobile in ((800, 1280, True), (1280, 800, True), (1440, 900, False)):
 # ---------------------------------------------------------------- languages
 load(390, 844, keep=True)
 KEYS = ['mTagline','mSecBook','mOpen','mOpenDesc','mShelf','mShelfDesc','mLibrary','mLibraryDesc','mToc','mTocDesc','mAudio','mAudioDesc','mSecReading','mRead','mPause','mResume','mReadDesc',
-        'mTwoVoices','mTwoVoicesDesc','mFontSize','mFontSizeDesc','mPdfFit','mPdfFitDesc','mFitWidth','mFitPage','mFitFree','mTheme','mThemeDesc','mSecLearning','mStudy',
+        'mTwoVoices','mTwoVoicesDesc','mFontSize','mFontSizeDesc',
+        'mTextFont','mTextFontDesc','mFontSerif','mFontBook','mFontSans','mLineHeight','mLineHeightDesc','mLineTight','mLineNormal','mLineLoose',
+        'mMargins','mMarginsDesc','mMarginNarrow','mMarginNormal','mMarginWide','mAlign','mAlignDesc','mAlignJustify','mAlignLeft','mHyphens','mHyphensDesc',
+        'mPdfFit','mPdfFitDesc','mFitWidth','mFitPage','mFitFree','mTheme','mThemeDesc','mSecLearning','mStudy',
         'mStudyDesc','mTargetLang','mTargetLangDesc','mRules','mRulesDesc','mStats','mStatsDesc','mSecTools','mInk','mInkDesc','mRegion','mRegionDesc','mPrint','mPrintDesc',
         'mSecSettings','mUiLang','mUiLangDesc','mAi','mAiDesc','mDev','mDevDesc','mUpdate','mUpdateDesc','mExit','mHomeFormats']
 check('20 every menu text exists in all 9 languages with its own wording (no raw key, no English fallback)',
