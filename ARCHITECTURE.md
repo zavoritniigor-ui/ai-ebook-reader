@@ -64,7 +64,7 @@ it during the migration would have been an unplanned behavior change.
 ```
 (welcome.js at the top of <body>) → core.js → lang-detect.js → tts.js → selection.js → learning-stats.js → navigation.js → pdf-zoom-pan.js →
 ui-tooltip.js → translation.js → grammar-svo.js → ai-client.js → dictation.js →
-pdf-ink.js → text-ink.js → pdf-crop.js → pdf-render.js → formats.js → onboarding.js → library.js → quick-wheel.js → main.js →
+pdf-ink.js → text-ink.js → pdf-crop.js → pdf-contrast.js → pdf-render.js → formats.js → onboarding.js → library.js → quick-wheel.js → main.js →
 pwa-lifecycle.js
 ```
 
