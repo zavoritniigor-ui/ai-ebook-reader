@@ -241,6 +241,7 @@ if (document.getElementById('btn-exit-app')) {
 // PWA — саме та "неправильна" поведінка, яку тут і виправляємо. Черга пріоритету —
 // від найвищого шару (модалка) до найглибшого (бічна панель зі змістом книги).
 const OVERLAY_LAYERS = [
+    { name: 'scanner', test: () => typeof scanIsOpen === 'function' && scanIsOpen() },
     { name: 'library', test: () => !!document.getElementById('library-modal')?.classList.contains('open') },
     { name: 'quickMenu', test: () => !document.getElementById('quick-menu').hidden },
     { name: 'bookAudio', test: () => !!document.getElementById('book-audio-dialog')?.open },
@@ -260,6 +261,7 @@ function topOpenOverlay() { for (const l of OVERLAY_LAYERS) if (l.test()) return
 function countOpenOverlays() { return OVERLAY_LAYERS.reduce((n, l) => n + (l.test() ? 1 : 0), 0); }
 function closeTopOverlay(name) {
     switch (name) {
+        case 'scanner': if (scanState.edit) scanCloseEditor(false); else closeScanner(); break;
         case 'library': closeLibrary(); break;
         case 'quickMenu': quickMenu.close(); break;
         case 'bookAudio': document.getElementById('book-audio-dialog')?.close(); break;

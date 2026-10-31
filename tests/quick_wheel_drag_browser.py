@@ -13,7 +13,7 @@ c.call('Emulation.setTouchEmulationEnabled', enabled=False)
 c.call('Emulation.setEmulatedMedia', features=[])
 c.call('Page.navigate', url='http://127.0.0.1:8765/index.html')
 c.wait("document.readyState==='complete' && !document.body.inert && typeof quickMenu==='object'")
-c.js("showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove();window.__dragErrors=[];addEventListener('error',e=>__dragErrors.push(e.message));quickMenu.open()")
+c.js("showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove();window.__dragErrors=[];addEventListener('error',e=>__dragErrors.push(e.message));document.getElementById('home-screen')?.remove();quickMenu.open()")
 c.wait("(()=>{const b=document.querySelector('.qm-active');return !!b && Math.abs(new DOMMatrix(getComputedStyle(b).transform).a-1)<.00001})()")
 
 def check(name, expression):
@@ -25,7 +25,7 @@ def positions():
     c.js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
     return json.loads(c.js("JSON.stringify([...document.querySelectorAll('.qm-item:not([hidden])')].map(el=>({action:el.dataset.action,y:el.getBoundingClientRect().y})))"))
 
-check('all thirteen current actions persist in DOM (no «Голоси» since 2026-10-26)', "document.querySelectorAll('.qm-item').length===13")
+check('all fourteen current actions (📷 Scanner since 2026-10-30) persist in DOM (no «Голоси» since 2026-10-26)', "document.querySelectorAll('.qm-item').length===14")
 c.js("window.__dragActions=[];document.addEventListener('click',e=>{if(e.target.closest('.qm-item'))__dragActions.push(e.target.closest('.qm-item').dataset.action)},true)")
 x, y = c.js("(()=>{const r=document.querySelector('.qm-active').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()")
 before = positions()
