@@ -1603,6 +1603,11 @@
         .scan-num { position: absolute; top: 6px; left: 6px; min-width: 22px; padding: 1px 6px; border-radius: 11px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; text-align: center; pointer-events: none; }
         .scan-card-bar { display: flex; justify-content: space-between; gap: 2px; }
         .scan-card-bar button { flex: 1; min-width: 0; height: 36px; padding: 0; font-size: 15px; }
+        .scan-all { justify-content: flex-start; align-items: center; gap: 6px; }
+        .scan-all > span { font-size: 13px; color: var(--text-muted); margin-right: 2px; }
+        .scan-all-filter.active { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 18%, transparent); font-weight: 650; }
+        .scan-all button { min-height: 36px; padding: 0 10px; font-size: 13px; }
+        #scanner.scan-dropping .scan-box { outline: 3px dashed var(--accent-color); outline-offset: -6px; }
         .scan-out { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 10px; }
         #scan-format { min-height: 40px; padding: 6px 8px; font-size: 14px; }
         .scan-actions button { flex: 1 1 130px; min-height: 44px; }
@@ -2360,7 +2365,7 @@
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=865f186bd2ef"></script>
     <script src="js/book-shelf.js?v=518f17e07dc3"></script>
-    <script src="js/scanner.js?v=f1c124d69501"></script>
+    <script src="js/scanner.js?v=9f9b67e799b5"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
     <script src="js/developer.js?v=67c700255062"></script>
