@@ -1,6 +1,7 @@
 /* Lower-right Quick Menu: a curved scrollable wheel with 13 real actions,
  * inertia, detent snapping, and synchronized roulette ticking sound.
  * Thumb-reachable on tablets, expands inward/leftward from launcher.
+ * While a book is read, ✦ stands in the bottom reading row (index.html) and the wheel opens as a «sun» above it.
  *
  * Loaded before main.js (i18n bootstrap) and pwa-lifecycle.js (overlay history). */
 

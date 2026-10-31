@@ -359,8 +359,15 @@ follows the menu: hidden until `footer-open` (a tap in the middle of the page or
 The app starts with the menu CLOSED (`<body class="immersive-mode">`): with no book the start screen `#home-screen`
 (inside `#reader-pages`) offers «Open file» (label for `#file-upload`), «My books» (`.my-books-btn`), «Free library»
 (`#home-library`) and `#recent-books`; an open drawer there covered it all and its backdrop swallowed every tap.
+Bottom reading row (2026-10-30, owner: «кнопки потрібно переносити в низ екрану»): while the ‹ › arrows show (immersive, no
+footer, no pen/region), ☰, ✦ and the page number (the collapsed `#pdf-scrubber`) stand with them in ONE bottom row
+«‹ · ☰ · ✦ · 3/553 · ›», pure CSS in index.html: ✦ in the middle of the reading area (`--row-l`/`--row-w`, the PDF workspace
+when a side panel narrows it), at most 480px wide; a tap on the number expands a horizontal slider across the row (☰ and ✦
+hidden meanwhile); the footer handle is not shown there (the arrows and the number do its job; a tap in the middle of the page
+still opens the footer, which then takes the whole row). With the side menu open ☰ hides (the menu has ✕). The selection.js
+«top-left corner ignores taps» rule applies only while ☰ is at the top.
 Tests: `tests/menu_labels_browser.py` (contract), `menu_phone_scroll_browser.py`, `menu_autohide_browser.py`,
-`page_arrows_browser.py`.
+`page_arrows_browser.py`, `reading_bottom_row_browser.py`.
 
 ## Word popup, Ask AI and Grammar windows (design system, 2026-10-19)
 
@@ -401,7 +408,10 @@ renderer, requestAnimationFrame gesture/inertia/snap and entrance/exit animation
 printing, keyboard/pointer interactions and UI cleanup. It loads before `main.js`
 so its translated labels exist before `applyI18n()`, and before the PWA overlay
 stack. Existing controls own every action. See `QUICK_WHEEL.md` for the complete
-menu action map, interaction details and regression coverage.
+menu action map, interaction details and regression coverage. When ✦ stands in the bottom reading row (`position: fixed`),
+`place()` switches to the «sun» (`qm-sun`, owner: «як сонечко»): the actions fan out in a half-ellipse centred on ✦, the active
+one straight above it, compact (icon over label); `sunRx` keeps the outer ones on screen, `sunRy` keeps neighbours apart; a
+sideways swipe turns it; the dock moves to ✦ while open and returns (`restoreDock`) when it closes.
 
 ## Bilingual PDF selections: keeping Grammar to the study language
 
