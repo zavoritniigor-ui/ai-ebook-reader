@@ -57,6 +57,11 @@ Object.assign(I18N, {
     libSourceBnr: { uk: 'Bibliothèque numérique romande (французькою)', en: 'Bibliothèque numérique romande (French)', fr: 'Bibliothèque numérique romande (français)', ru: 'Bibliothèque numérique romande (по-французски)' },
     libBnrSource: { uk: 'Книги з Bibliothèque numérique romande — французька класика, вільне надбання, вичитана волонтерами.', en: 'Books from Bibliothèque numérique romande — French classics, public domain, proofread by volunteers.',
                     fr: 'Livres de la Bibliothèque numérique romande — classiques français du domaine public, relus par des bénévoles.', ru: 'Книги из Bibliothèque numérique romande — французская классика, общественное достояние, вычитана волонтёрами.' },
+    libSourceLoc: { uk: 'Бібліотека Конгресу США (PDF, EPUB)', en: 'Library of Congress (PDF, EPUB)', fr: 'Bibliothèque du Congrès (PDF, EPUB)', ru: 'Библиотека Конгресса США (PDF, EPUB)' },
+    libLocSource: { uk: 'Книги, оцифровані Бібліотекою Конгресу США (їхня колекція в Internet Archive): старі видання, вільне надбання. Скановані книги відкриваються як PDF.',
+                    en: 'Books digitised by the Library of Congress (its collection on Internet Archive): old editions in the public domain. Scanned books open as PDF.',
+                    fr: 'Livres numérisés par la Bibliothèque du Congrès (sa collection sur Internet Archive) : éditions anciennes du domaine public. Les livres scannés s’ouvrent en PDF.',
+                    ru: 'Книги, оцифрованные Библиотекой Конгресса США (их коллекция в Internet Archive): старые издания, общественное достояние. Сканы открываются как PDF.' },
     libSourceSe: { uk: 'Standard Ebooks (англійською)', en: 'Standard Ebooks (English)', fr: 'Standard Ebooks (anglais)', ru: 'Standard Ebooks (по-английски)' },
     libSeSource: { uk: 'Книги з Standard Ebooks — англійська класика, вільне надбання, ретельно вичитані видання.', en: 'Books from Standard Ebooks — English classics, public domain, carefully proofread editions.',
                    fr: 'Livres de Standard Ebooks — classiques anglais du domaine public, éditions soigneusement relues.', ru: 'Книги из Standard Ebooks — английская классика, общественное достояние, тщательно вычитанные издания.' },
@@ -107,7 +112,14 @@ const LIBRARY_CATALOGS = {
     bnr: { langs: [['fr', '🇫🇷 Français']], genres: ['fiction', 'adventure', 'detective', 'historical', 'love', 'scifi', 'stories', 'poetry', 'drama', 'children', 'humor', 'biography', 'philosophy', 'travel'], note: 'libBnrSource' },
     se: { langs: [['en', '🇬🇧 English']], genres: ['fiction', 'adventure', 'detective', 'scifi', 'stories', 'poetry', 'drama', 'children', 'humor', 'biography', 'philosophy', 'travel'], note: 'libSeSource' }
 };
-const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'bnr', 'se', 'shelf'];
+const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'loc', 'bnr', 'se', 'shelf'];
+// Standard Ebooks відповідає серверам Cloudflare кодом 403, але дозволяє браузерам (Access-Control-Allow-Origin: *): пошук, обкладинки
+// й EPUB беруться прямо з пристрою (CSP у _headers дозволяє лише https://standardebooks.org — для даних і картинок, не для коду).
+// Теми — ті самі, що SE_GENRES у functions/api/library.js; id і шлях обкладинки перевіряються тими самими виразами.
+const SE_SITE = 'https://standardebooks.org';
+const SE_TAGS = { fiction: 'fiction', adventure: 'adventure', detective: 'mystery', scifi: 'science-fiction', stories: 'shorts', poetry: 'poetry',
+    drama: 'drama', children: 'childrens', humor: 'comedy', biography: 'biography', philosophy: 'philosophy', travel: 'travel' };
+const SE_BOOK_ID = /^[a-z0-9_-]{1,120}(\/[a-z0-9_-]{1,120}){1,4}$/, SE_COVER_PATH = /^[a-z0-9_-]{1,300}\/[0-9a-f]{40}\/cover\.jpg$/;
 
 const libraryState = { source: 'gutenberg', topic: '', wsSeen: null, wsToken: 0, page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
 function libraryEl(id) { return document.getElementById(id); }
@@ -125,7 +137,7 @@ function buildLibrary() {
     head.append(title, close);
     const tools = document.createElement('div'); tools.className = 'library-tools';
     const src = document.createElement('select'); src.id = 'library-source'; src.dataset.i18nTitle = 'libSourceLabel';
-    for (const [value, key] of [['shelf', 'shelfSource'], ['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive'], ['bnr', 'libSourceBnr'], ['se', 'libSourceSe']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
+    for (const [value, key] of [['shelf', 'shelfSource'], ['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive'], ['loc', 'libSourceLoc'], ['bnr', 'libSourceBnr'], ['se', 'libSourceSe']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
     const q = document.createElement('input'); q.type = 'search'; q.id = 'library-q'; q.autocomplete = 'off'; q.spellcheck = false;
     const lang = document.createElement('select'); lang.id = 'library-lang';
     for (const [code, label] of LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else o.dataset.i18n = 'libAllLangs'; lang.append(o); }
@@ -139,12 +151,12 @@ function buildLibrary() {
     box.append(head, tools, status, list, more, source); modal.append(box); document.body.append(modal);
     const saved = (() => { try { return JSON.parse(localStorage.getItem('reader_library_filters') || '{}'); } catch (e) { return {}; } })();
     libraryState.source = LIBRARY_SOURCES.includes(saved.source) ? saved.source : 'gutenberg';
-    libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr' };
+    libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr', loc: saved.locLang || '' };
     src.value = libraryState.source;
     libraryState.topic = LIBRARY_GENRES.some(([topic]) => topic && topic === saved.topic) ? saved.topic : '';
     fillLibraryLangs();
     // Жанр зберігається один на всі джерела: якщо в цьому джерелі/мові його немає, список показує «Усі жанри», але вибір не губиться.
-    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, iaLang: libraryState.langBySource.archive, topic: libraryState.topic })); } catch (e) {} };
+    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, iaLang: libraryState.langBySource.archive, locLang: libraryState.langBySource.loc, topic: libraryState.topic })); } catch (e) {} };
     const restart = (e) => {
         libraryState.langBySource[libraryState.source] = lang.value;
         if (e && e.target === genre) libraryState.topic = genre.value;
@@ -176,14 +188,14 @@ function fillLibraryGenres() {
 function fillLibraryLangs() {
     const lang = libraryEl('library-lang'), src = libraryState.source;
     lang.replaceChildren();
-    for (const [code, label] of src === 'wikisource' ? LIBRARY_WS_LANGS : src === 'archive' ? LIBRARY_IA_LANGS : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].langs : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
+    for (const [code, label] of src === 'wikisource' ? LIBRARY_WS_LANGS : src === 'archive' || src === 'loc' ? LIBRARY_IA_LANGS : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].langs : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
     const want = libraryState.langBySource[libraryState.source];
     lang.value = [...lang.options].some(o => o.value === want) ? want : lang.options[0].value;
     fillLibraryGenres();
     // «Мої книги» — збережені на пристрої книги: без пошуку, мов і підпису джерела.
     lang.hidden = src === 'shelf'; libraryEl('library-q').hidden = src === 'shelf';
     const source = document.querySelector('#library-modal .library-source');
-    if (source) { source.hidden = src === 'shelf'; source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].note : 'libSource'; source.textContent = t(source.dataset.i18n); }
+    if (source) { source.hidden = src === 'shelf'; source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : src === 'loc' ? 'libLocSource' : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].note : 'libSource'; source.textContent = t(source.dataset.i18n); }
 }
 
 // source — одразу відкрити це джерело (кнопка «📖 Мої книги» в меню відкриває збережені на пристрої книги).
@@ -217,7 +229,7 @@ async function runLibrarySearch(page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
     more.hidden = true;
     if (libraryState.source === 'wikisource') { await runWikisourceSearch(page); return; }
-    if (libraryState.source === 'archive') { await runArchiveSearch(page); return; }
+    if (libraryState.source === 'archive' || libraryState.source === 'loc') { await runArchiveSearch(page); return; }
     if (LIBRARY_CATALOGS[libraryState.source]) { await runCatalogSearch(libraryState.source, page); return; }
     if (libraryState.source === 'shelf') { await runShelfList(); return; }
     let catalog;
@@ -241,6 +253,7 @@ function libraryCard(book) {
     const card = document.createElement('div'); card.className = 'library-card';
     const cover = document.createElement('img'); cover.loading = 'lazy'; cover.alt = '';
     if (book.ia) cover.src = '/api/library?op=ia-cover&id=' + encodeURIComponent(book.id);
+    else if (book.cat === 'se') { if (SE_COVER_PATH.test(book.cover || '')) { cover.referrerPolicy = 'no-referrer'; cover.src = `${SE_SITE}/images/covers/${book.cover}`; } else cover.style.visibility = 'hidden'; }
     else if (book.cat) { if (book.cover) cover.src = `/api/library?op=${book.cat}-cover&path=` + encodeURIComponent(book.cover); else cover.style.visibility = 'hidden'; }
     else if (book.ws) { cover.className = 'library-ws-cover'; cover.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="64"><rect width="44" height="64" rx="4" fill="#6b7a8f"/><text x="22" y="40" font-size="22" text-anchor="middle" fill="#fff">W</text></svg>'); }
     else cover.src = '/api/library?op=cover&id=' + book.id;
@@ -269,7 +282,9 @@ async function fetchLibraryFile(book, onProgress = () => {}) {
     const cacheKey = book.ws ? 'ws:' + book.lang + ':' + book.title : book.ia ? 'ia:' + book.id : book.cat ? book.cat + ':' + book.id : book.id;
     if (libraryFiles.has(cacheKey)) return libraryFiles.get(cacheKey);
     if (book.cat) {
-        const res = await fetch(`/api/library?op=${book.cat}-file&id=` + encodeURIComponent(book.id));
+        if (book.cat === 'se' && !SE_BOOK_ID.test(book.id)) throw new Error('bad id');
+        const res = await fetch(book.cat === 'se' ? `${SE_SITE}/ebooks/${book.id}/downloads/${book.id.replace(/\//g, '_')}.epub?source=download`
+            : `/api/library?op=${book.cat}-file&id=` + encodeURIComponent(book.id), { credentials: 'omit', referrerPolicy: 'no-referrer' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const blob = await res.blob();
         let h = 0; for (const ch of cacheKey) h = (h * 31 + ch.codePointAt(0)) >>> 0;
@@ -542,17 +557,18 @@ async function wsEpubFile(book, parts, meta) {
 async function runArchiveSearch(page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
     const q = libraryEl('library-q').value.trim(), lang = libraryEl('library-lang').value, topic = libraryEl('library-genre').value;
+    const src = libraryState.source;   // 'archive' — увесь архів; 'loc' — лише книги Бібліотеки Конгресу (їх можна гортати й без запиту)
     const token = ++libraryState.wsToken;
     if (page === 1) list.replaceChildren();
-    if (!q && !topic) { status.textContent = t('libIaHint'); return; }
+    if (!q && !topic && src !== 'loc') { status.textContent = t('libIaHint'); return; }
     status.textContent = t('libLoading');
     let data;
     try {
-        const res = await fetch(`/api/library?op=ia-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}&page=${page}` + (topic ? '&genre=' + topic : ''));
+        const res = await fetch(`/api/library?op=ia-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}&page=${page}` + (topic ? '&genre=' + topic : '') + (src === 'loc' ? '&coll=loc' : ''));
         if (!res.ok) throw new Error('HTTP ' + res.status);
         data = await res.json();
     } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
-    if (token !== libraryState.wsToken || libraryState.source !== 'archive') return;
+    if (token !== libraryState.wsToken || libraryState.source !== src) return;
     libraryState.page = page;
     for (const r of data.results || []) list.append(libraryCard({ ia: true, id: r.id, title: r.title, authors: r.creator, year: r.year, pdf: r.pdf, epub: r.epub }));
     status.textContent = list.children.length ? '' : t('libEmpty');
@@ -568,15 +584,36 @@ async function runCatalogSearch(kind, page) {
     status.textContent = t('libLoading');
     let data;
     try {
-        const res = await fetch(`/api/library?op=${kind}-search&q=${encodeURIComponent(q)}&page=${page}` + (topic ? '&genre=' + topic : ''));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        data = await res.json();
+        if (kind === 'se') data = await searchStandardEbooks(q, topic, page);
+        else {
+            const res = await fetch(`/api/library?op=${kind}-search&q=${encodeURIComponent(q)}&page=${page}` + (topic ? '&genre=' + topic : ''));
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            data = await res.json();
+        }
     } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
     if (token !== libraryState.wsToken || libraryState.source !== kind) return;
     libraryState.page = page;
     for (const r of data.results || []) list.append(libraryCard({ cat: kind, id: r.id, title: r.title, authors: r.author ? [r.author] : [], cover: r.cover }));
     status.textContent = list.children.length ? '' : t('libEmpty');
     more.hidden = !data.more;
+}
+// Сторінка пошуку Standard Ebooks (у них немає API) розбирається як ТЕКСТ тими самими виразами, що й у проксі: нічого з неї не
+// вставляється в сторінку як HTML, назви проходять через DOMParser лише для розкодування сутностей (&amp; тощо).
+async function searchStandardEbooks(q, topic, page) {
+    const res = await fetch(`${SE_SITE}/ebooks?query=${encodeURIComponent(q)}&sort=${q ? 'relevance' : 'popularity'}&page=${page}`
+        + (SE_TAGS[topic] ? '&tags[]=' + SE_TAGS[topic] : ''), { credentials: 'omit', referrerPolicy: 'no-referrer' });   // tags[] — саме з дужками
+    if (res.status === 404) return { results: [], more: false };
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const html = await res.text(), results = [];
+    const text = s => new DOMParser().parseFromString(String(s), 'text/html').documentElement.textContent.replace(/\s+/g, ' ').trim();
+    for (const part of html.split('<li typeof="schema:Book"').slice(1)) {
+        const m = part.match(/^\s*about="\/ebooks\/([^"]+)"/);
+        if (!m || !SE_BOOK_ID.test(m[1])) continue;
+        const names = [...part.matchAll(/property="schema:name">([^<]*)</g)].map(x => text(x[1]));
+        const cover = part.match(/\/images\/covers\/([a-z0-9_-]{1,300}\/[0-9a-f]{40}\/cover\.jpg)/);
+        results.push({ id: m[1], title: (names[0] || m[1]).slice(0, 300), author: names.slice(1, 4).join(', ').slice(0, 200), cover: cover ? cover[1] : '' });
+    }
+    return { results, more: /rel="next"/.test(html) };
 }
 // Скановані книги — «Text PDF» (сторінки як в оригіналі + текстовий шар, тож слова можна торкати), бо EPUB архіву для них —
 // автоматичний OCR зі зламаною версткою. Книги, що від початку електронні, — EPUB.

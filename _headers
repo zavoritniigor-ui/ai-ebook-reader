@@ -3,4 +3,4 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), geolocation=(), payment=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' blob: http://127.0.0.1:8880 https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://translate.googleapis.com https://en.wiktionary.org https://*.wikipedia.org; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://standardebooks.org; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' blob: http://127.0.0.1:8880 https://generativelanguage.googleapis.com https://api.groq.com https://api.openai.com https://translate.googleapis.com https://en.wiktionary.org https://*.wikipedia.org https://standardebooks.org; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
