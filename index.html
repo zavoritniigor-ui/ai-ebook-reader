@@ -774,7 +774,7 @@
             border: 1px solid var(--border-color); border-radius: 22px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed {
             left: calc(var(--row-l) + var(--row-w) * .75 - var(--row-edge) / 2 - 11px); right: auto; transform: translateX(-50%); width: auto;
-            min-width: min(64px, calc(var(--row-w) / 2 - var(--row-edge) - 78px)); max-width: calc(var(--row-w) / 2 - var(--row-edge) - 78px); padding: 0 8px; overflow: hidden; opacity: .6; }
+            min-width: min(64px, calc(var(--row-w) / 2 - var(--row-edge) - 82px)); max-width: calc(var(--row-w) / 2 - var(--row-edge) - 82px); padding: 0 3px; overflow: hidden; opacity: .6; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available:not(.collapsed) {
             left: calc(var(--row-l) + 52px); right: auto; width: calc(var(--row-w) - 104px); padding: 0 16px; opacity: 1; z-index: 10002; }
         /* Розгорнутий повзунок займає весь ряд: ✦ на цей час ховається (його опора лежить вище за повзунок). */
@@ -834,7 +834,8 @@
             body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed:hover {
                 background: color-mix(in srgb, var(--text-color) 6%, transparent); }
         }
-        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-size: 14px; font-weight: 500; }
+        @media (min-width: 381px) { body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-size: 14px; } }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-weight: 500; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed { opacity: 1; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher {
             background: var(--accent-color); color: var(--accent-contrast); border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
