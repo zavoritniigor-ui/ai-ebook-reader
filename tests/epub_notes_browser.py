@@ -123,8 +123,10 @@ check('4b Escape closes the card', "document.getElementById('epub-note').hidden"
 
 tap('3')
 check('5 a bare superscript number pointing at a paragraph is a note too', "%s && /Third note as a plain paragraph/.test(%s)" % (NOTE_OPEN, NOTE_TEXT), timeout=3)
-c.call('Input.dispatchMouseEvent', type='mousePressed', x=640, y=850, button='left', clickCount=1)
-c.call('Input.dispatchMouseEvent', type='mouseReleased', x=640, y=850, button='left', clickCount=1)
+# The empty margin left of the page: since the bottom reading row (#345) the bottom centre holds the ✦ launcher, which
+# opens a modal wheel — a tap there is not «elsewhere».
+c.call('Input.dispatchMouseEvent', type='mousePressed', x=60, y=300, button='left', clickCount=1)
+c.call('Input.dispatchMouseEvent', type='mouseReleased', x=60, y=300, button='left', clickCount=1)
 c.js('new Promise(r => setTimeout(r, 300))')
 check('5b a tap elsewhere closes the card', "document.getElementById('epub-note').hidden")
 c.js("document.getElementById('tt-close-btn')?.click(); els.tooltip.style.display = 'none'; if (state.pageInChapter !== 0) goToPageInChapter(0, false); 1")
