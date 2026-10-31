@@ -319,6 +319,14 @@
         }
         #toc-list li:hover { background: var(--hover-color); }
         #toc-list li:active { background: var(--border-color); }
+        /* Зміст EPUB (js/formats.js renderEpubToc): вкладені пункти зсунуті праворуч і дрібніші, поточний розділ позначений
+           смугою акценту зліва, пункт, що веде поза порядок читання книги, неактивний. */
+        #toc-list li.epub-toc-item[data-depth="1"] { padding-left: 26px; font-size: 13.5px; }
+        #toc-list li.epub-toc-item[data-depth="2"] { padding-left: 40px; font-size: 13px; color: var(--text-muted); }
+        #toc-list li.epub-toc-item[data-depth="3"], #toc-list li.epub-toc-item[data-depth="4"], #toc-list li.epub-toc-item[data-depth="5"] { padding-left: 54px; font-size: 13px; color: var(--text-muted); }
+        #toc-list li.epub-toc-item.current { box-shadow: inset 3px 0 0 var(--accent-color); background: var(--hl-soft); font-weight: 600; color: var(--text-color); }
+        #toc-list li.epub-toc-item.disabled { cursor: default; color: var(--text-muted); opacity: .7; }
+        #toc-list li.epub-toc-item.disabled:hover { background: none; }
 
         /* PDF left sidebar: Thumbnails / Contents (outline) dual mode. #toc-list
            (book chapter TOC for epub/txt/doc) and #pdf-sidebar are mutually
@@ -2272,15 +2280,15 @@
     <script src="js/pdf-render.js?v=7c8e2e23d18d"></script>
     <script src="js/book-audio.js?v=89bbf93c6ec1"></script>
     <script src="js/book-speech.js?v=19520aac33ff"></script>
-    <script src="js/formats.js?v=8cda3233d237"></script>
+    <script src="js/formats.js?v=21eae63473c0"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=d1681ee120b3"></script>
+    <script src="js/library.js?v=3b8fc3cd9ba8"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=eedcba028066"></script>
     <script src="js/developer.js?v=67c700255062"></script>
-    <script src="js/main.js?v=2b3e7c1ce46e"></script>
+    <script src="js/main.js?v=c306090ed69f"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
     <script src="js/i18n-es.js?v=333c258b776e"></script>
 </body>
