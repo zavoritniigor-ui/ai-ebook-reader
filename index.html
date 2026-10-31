@@ -758,9 +758,9 @@
         /* Ряд стоїть посередині області читання (--row-l, --row-w): у PDF відкрита «Граматика» чи «Запитай AI» звужує її
            (--ws-left/--ws-width з js/pdf-continuous.js), і ряд не ховається під панеллю. На широкому екрані ряд не розтягується:
            щонайбільше 480px посередині. */
-        :root { --row-l: 0px; --row-w: 100vw; --row-edge: max(52px, calc(var(--row-w) / 2 - 240px)); }
-        body.pdf-mode { --row-l: var(--ws-left, 0px); --row-w: var(--ws-width, 100vw); --row-edge: max(52px, calc(var(--row-w) / 2 - 240px)); }
-        @media (max-width: 380px) { :root, body.pdf-mode { --row-edge: 46px; } }
+        :root { --row-l: 0px; --row-w: 100vw; --row-out: max(14px, calc(var(--row-w) / 2 - 290px)); --row-edge: calc(var(--row-out) + 50px); }
+        body.pdf-mode { --row-l: var(--ws-left, 0px); --row-w: var(--ws-width, 100vw); --row-out: max(14px, calc(var(--row-w) / 2 - 290px)); --row-edge: calc(var(--row-out) + 50px); }
+        @media (max-width: 380px) { :root, body.pdf-mode { --row-out: 8px; --row-edge: 54px; } }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #page-arrow-prev { left: calc(var(--row-l) + var(--row-edge)); }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #page-arrow-next { right: auto; left: calc(var(--row-l) + var(--row-w) - var(--row-edge) - 44px); }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher {
@@ -812,7 +812,7 @@
            акценту посередині. Капсула — ::before у #page-arrows; вона не ловить дотиків, як і проміжки між кнопками раніше. */
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden])::before {
             content: ''; position: fixed; z-index: 94; pointer-events: none; box-sizing: border-box;
-            left: calc(var(--row-l) + var(--row-edge) - 6px); width: calc(var(--row-w) - 2 * var(--row-edge) + 12px);
+            left: calc(var(--row-l) + var(--row-out) - 6px); width: calc(var(--row-w) - 2 * var(--row-out) + 12px);
             bottom: calc(6px + env(safe-area-inset-bottom, 0px)); height: 56px; border-radius: 28px;
             background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
             backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
@@ -837,6 +837,8 @@
         @media (min-width: 381px) { body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-size: 14px; } }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-weight: 500; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed { opacity: 1; }
+        /* Повзунок міняє місце й ширину при згортанні — зсув (translateX) не анімується, інакше номер «пливе» повз стрілку. */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available { transition: opacity .3s, background-color .15s; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher {
             background: var(--accent-color); color: var(--accent-contrast); border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
             box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent-color) 80%, transparent); transition: transform .12s; }
@@ -848,12 +850,30 @@
             left: calc(var(--row-l) + var(--row-edge)); width: calc(var(--row-w) - 2 * var(--row-edge)); padding: 0 12px; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#pdf-scrubber.available:not(.collapsed)) #page-arrows .page-arrow { visibility: hidden; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-page-range { accent-color: var(--accent-color); }
-        /* Телефон: язички 🤖🎤 і ✨ стають кінцями ряду, а не лежать на останніх рядках тексту. */
-        @media (max-width: 640px) {
-            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) .panel-tab {
-                bottom: calc(6px + env(safe-area-inset-bottom, 0px)); width: 38px; height: 56px; font-size: 14px; line-height: 1.45; }
-            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #grammar-tab { left: -38px; }
-            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #ask-tab { right: -38px; }
+        /* Сигнали «Запитай AI» 🤖 і «Граматика» ✨ (власник, 2026-10-31: «потрібно в нижню панель спустити сигналізатори запиту до
+           аі та граматики») — кінці капсули: «🤖 · ‹ · ☰ · ✦ · номер · › · ✨». Та сама дія й той самий колір стану, що в бічних язичків
+           (червоний — запит іде, зелений — відповідь готова, js/main.js); язички на цей час ховаються й не лежать на тексті. */
+        .row-tab { display: none; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab {
+            display: flex; position: fixed; z-index: 95; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 44px; height: 44px;
+            padding: 0; border: 0; border-radius: 50%; align-items: center; justify-content: center; font-size: 20px; line-height: 1;
+            background: transparent; color: var(--text-color); cursor: pointer; -webkit-tap-highlight-color: transparent;
+            transition: background-color .2s, box-shadow .2s, transform .12s; }
+        #row-ask { left: calc(var(--row-l) + var(--row-out)); }
+        #row-grammar { left: calc(var(--row-l) + var(--row-w) - var(--row-out) - 44px); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab:active {
+            background: color-mix(in srgb, var(--text-color) 10%, transparent); transform: scale(.92); }
+        @media (hover: hover) { body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab:hover {
+            background: color-mix(in srgb, var(--text-color) 6%, transparent); } }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab.loading {
+            background: rgba(220, 53, 69, .16); box-shadow: inset 0 0 0 1.5px rgba(220, 53, 69, .6); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab.ready {
+            background: rgba(25, 135, 84, .16); box-shadow: inset 0 0 0 1.5px rgba(25, 135, 84, .6); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) .panel-tab { display: none; }
+        @media (max-width: 380px) {
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .row-tab {
+                width: 40px; height: 40px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); font-size: 18px; }
+            #row-grammar { left: calc(var(--row-l) + var(--row-w) - var(--row-out) - 40px); }
         }
         /* Режим без меню: текст книги не ховається під плаваючими кнопками — перший рядок починається нижче ☰ (8px + 44px
            у лівому верхньому куті), а поки видно стрілки ‹ ›, останній рядок стоїть над ними (12px + 44px від низу). Раніше
@@ -2162,6 +2182,8 @@
         </div>
     </footer>
     <div id="page-arrows" hidden>
+        <button type="button" id="row-ask" class="row-tab" data-i18n-aria="tAskPanel" data-i18n-title="tAskPanel" aria-label="AI Помічник" title="AI Помічник">🤖</button>
+        <button type="button" id="row-grammar" class="row-tab" data-i18n-aria="tGrammarPanel" data-i18n-title="tGrammarPanel" aria-label="Граматика" title="Граматика">✨</button>
         <button type="button" id="page-arrow-prev" class="page-arrow" data-i18n-aria="prev" data-i18n-title="prev" aria-label="◀ Назад" title="◀ Назад">‹</button>
         <button type="button" id="page-arrow-next" class="page-arrow" data-i18n-aria="next" data-i18n-title="next" aria-label="Вперед ▶" title="Вперед ▶">›</button>
     </div>
@@ -2225,7 +2247,7 @@
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
-    <script src="js/grammar-rules.js?v=bec9bdfe1332"></script>
+    <script src="js/grammar-rules.js?v=cdddc9a470fc"></script>
     <script src="js/ai-client.js?v=b9694da45bbe"></script>
     <script src="js/practice-session.js?v=276c4226546f"></script>
     <script src="js/practice-worksheet.js?v=cca1a85581f5"></script>
@@ -2252,9 +2274,9 @@
     <script src="js/library.js?v=d1681ee120b3"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
-    <script src="js/quick-wheel.js?v=e2de3289218c"></script>
+    <script src="js/quick-wheel.js?v=eedcba028066"></script>
     <script src="js/developer.js?v=67c700255062"></script>
-    <script src="js/main.js?v=3ba11d76fc7e"></script>
+    <script src="js/main.js?v=2b3e7c1ce46e"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
     <script src="js/i18n-es.js?v=333c258b776e"></script>
 </body>

@@ -427,7 +427,7 @@ const quickMenu = (() => {
 
     // Легкий відгук пальцю (власник, 2026-10-31: «легку вібрацію при натисканні на кнопки»): кнопки нижнього ряду й дії колеса.
     document.addEventListener('pointerdown', e => {
-        if (e.isPrimary && e.target.closest?.('.page-arrow, #menu-handle, #qm-launcher, .qm-item:not(:disabled), #pdf-scrubber.collapsed')) haptic();
+        if (e.isPrimary && e.target.closest?.('.page-arrow, .row-tab, #menu-handle, #qm-launcher, .qm-item:not(:disabled), #pdf-scrubber.collapsed')) haptic();
     }, { capture: true, passive: true });
 
     document.addEventListener('pointerdown', e => {

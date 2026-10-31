@@ -402,13 +402,13 @@ function layoutRulesPanel() {
     const inset = sheet && panel.classList.contains('expanded') ? Math.round(panel.getBoundingClientRect().height) : 0;
     document.documentElement.style.setProperty('--rules-inset', inset + 'px');
     document.body.classList.toggle('rules-inset', inset > 0);
-    // Закладка — вертикальна, довгою стороною вздовж ЛІВОГО краю, на рівні колеса ✦. Якщо там зайнято (кнопка ☰, язичок
-    // «Запитай AI», шторка Правил) — зсувається до найближчого вільного проміжку; нема жодного — ховається.
+    // Закладка — вертикальна, довгою стороною вздовж ЛІВОГО краю, на рівні колеса ✦. Якщо там зайнято (кнопка ☰, язичок або кнопка 🤖 нижнього ряду
+    // «Запитай AI» чи кнопка 🤖 нижнього ряду, шторка Правил) — зсувається до найближчого вільного проміжку; нема жодного — ховається.
     const open = panel.classList.contains('expanded'), r = panel.getBoundingClientRect();
     const tab = document.getElementById('rules-tab');
     const TAB_H = 112, PAD = 8, ih = window.innerHeight;
     const blocks = [];
-    for (const id of ['menu-handle', 'ask-tab']) {
+    for (const id of ['menu-handle', 'ask-tab', 'row-ask']) {
         const el = document.getElementById(id), b = el && el.getBoundingClientRect();
         if (b && b.width > 0 && b.height > 0 && b.left < 110 && b.right > 0) blocks.push([b.top, b.bottom]);
     }
