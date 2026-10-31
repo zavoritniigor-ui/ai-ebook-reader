@@ -14,6 +14,7 @@
 //   ?op=ia-files&id=<identifier>                                      -> PDF/EPUB файли книги (JSON)
 //   ?op=ia-file&id=<identifier>&name=<file.pdf|file.epub>             -> сам файл
 //   ?op=ia-cover&id=<identifier>                                      -> обкладинка
+//   ?op=ia-search&coll=loc[&q=…]                                      -> пошук лише в одній колекції архіву (loc — книги, оцифровані Бібліотекою Конгресу США)
 // Internet Archive: лише archive.org, ідентифікатор і назва файлу перевіряються тут; позичальні книги (access-restricted) відкинуто.
 //   ?op=bnr-search&q=<text>&page=<n>[&genre=<key>]                    -> пошук у Bibliothèque numérique romande (французька класика, EPUB)
 //   ?op=bnr-file&id=<slug>                                            -> EPUB книги (адреса файла береться зі сторінки книги)
@@ -27,6 +28,9 @@ const WS_LANGS = new Set(['uk', 'fr', 'en', 'de', 'es', 'it']);
 // Мови Internet Archive: поле language містить то код MARC (fre), то назву (French).
 const IA_LANGS = { ukr: 'Ukrainian', eng: 'English', fre: 'French', ger: 'German', spa: 'Spanish', ita: 'Italian', rus: 'Russian', pol: 'Polish' };
 const IA_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+// Сам loc.gov закритий перевіркою Cloudflare «Just a moment…» (і для серверів, і для fetch із браузера), тож Бібліотека Конгресу —
+// це її оцифровані книги в Internet Archive (колекція library_of_congress, ~166 тис.): ті самі скани, той самий шлях файлів.
+const IA_COLLECTIONS = { loc: 'library_of_congress' };
 // Вільне надбання (видання до 1930 р.) або явна вільна ліцензія; лише тексти, що мають PDF з текстовим шаром чи EPUB.
 const IA_FREE = 'mediatype:texts AND NOT access-restricted-item:true AND format:("Text PDF" OR "Additional Text PDF" OR EPUB)'
     + ' AND (year:[1 TO 1929] OR licenseurl:*creativecommons* OR licenseurl:*publicdomain*)';
@@ -162,8 +166,10 @@ export async function onRequestGet({ request }) {
             const lang = url.searchParams.get('lang') || '';
             const genre = url.searchParams.get('genre') || '';
             const page = Math.min(50, Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1));
+            const coll = url.searchParams.get('coll') || '';
             if (genre && !Object.prototype.hasOwnProperty.call(IA_GENRES, genre)) return json({ error: 'bad genre' }, 400);
-            if (!q && !genre) return json({ error: 'bad query' }, 400);
+            if (coll && !Object.prototype.hasOwnProperty.call(IA_COLLECTIONS, coll)) return json({ error: 'bad collection' }, 400);
+            if (!q && !genre && !coll) return json({ error: 'bad query' }, 400);
             if (lang && !IA_LANGS[lang]) return json({ error: 'bad lang' }, 400);
             // Кожне слово — або в назві, або в автора: «voltaire candide» знаходить «Candide» Вольтера (раніше обидва слова мали бути
             // в одному полі, і таких книг майже не було).
@@ -171,6 +177,7 @@ export async function onRequestGet({ request }) {
             let query = IA_FREE + words.map(w => ` AND (title:(${w}) OR creator:(${w}))`).join('');
             if (genre) query += ` AND subject:(${IA_GENRES[genre]})`;
             if (lang) query += ` AND language:(${lang} OR ${IA_LANGS[lang]})`;
+            if (coll) query += ` AND collection:(${IA_COLLECTIONS[coll]})`;
             const api = new URL('https://archive.org/advancedsearch.php');
             api.searchParams.set('q', query);
             for (const f of ['identifier', 'title', 'creator', 'year', 'language', 'format']) api.searchParams.append('fl[]', f);

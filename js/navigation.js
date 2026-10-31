@@ -237,7 +237,7 @@ function textScrubTarget(value) {
 }
 function textScrubLabel(value) {
     const { block, frac, page, total } = textScrubTarget(value);
-    if (total) return `${page + 1}\n/${total}`;
+    if (total) return `${page + 1}\n/ ${total}`;
     if (block === state.currentIndex) {
         const pages = Math.max(1, state.totalPagesInChapter || 1);
         const page = Math.min(pages - 1, Math.floor(frac * pages));
@@ -256,7 +256,7 @@ function updateTextScrubber() {
     range.value = value;
     const model = bookPageModel();
     const preview = document.getElementById('pdf-page-preview');
-    if (preview) preview.value = model ? `${model.page + 1}\n/${model.total}` : `${Math.round(value / TEXT_SCRUB_MAX * 100)}%`;
+    if (preview) preview.value = model ? `${model.page + 1}\n/ ${model.total}` : `${Math.round(value / TEXT_SCRUB_MAX * 100)}%`;
     range.setAttribute('aria-valuetext', model ? `${model.page + 1} / ${model.total}` : textScrubLabel(value));
 }
 function previewTextScrub(value) {

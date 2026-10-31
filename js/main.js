@@ -199,6 +199,14 @@ async function openBookFile(file) {
 function setPageArrows(on) { document.getElementById('page-arrows').hidden = !on; }
 document.getElementById('page-arrow-prev').onclick = (e) => { e.stopPropagation(); goPrev(); };
 document.getElementById('page-arrow-next').onclick = (e) => { e.stopPropagation(); goNext(); };
+// 🤖 і ✨ у нижньому ряду: та сама дія й той самий колір стану (loading/ready), що в бічних язичків панелей.
+for (const [id, panel, tab] of [['row-ask', els.askPanel, els.askTab], ['row-grammar', els.grammarPanel, els.grammarTab]]) {
+    const button = document.getElementById(id);
+    button.onclick = (e) => { e.stopPropagation(); tab.click(); };
+    const sync = () => { button.classList.toggle('loading', panel.classList.contains('loading')); button.classList.toggle('ready', panel.classList.contains('ready')); };
+    new MutationObserver(sync).observe(panel, { attributes: true, attributeFilter: ['class'] });
+    sync();
+}
 els.upload.addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return;
     e.target.value = ''; // Permit retrying the same file after an error.

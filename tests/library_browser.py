@@ -173,9 +173,27 @@ c.js("window.__opened = null; openLibrary(); document.querySelectorAll('#library
 check('19 a file over 300 MB is not downloaded; the reader is told why', "__opened === null && !__iaReqs.some(r => r.includes('name=huge.pdf')) && document.getElementById('library-status').textContent.includes('400')")
 check('20 the Internet Archive choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'archive' && f.iaLang === 'ukr'; })()")
 
+# ---- Library of Congress: its digitised books, i.e. the library_of_congress collection of Internet Archive (loc.gov itself
+# answers apps only with a Cloudflare «Just a moment…» check) ----
+c.js("(() => { __iaReqs.length = 0; window.__opened = null; document.getElementById('library-q').value = ''; const g = document.getElementById('library-genre'); g.value = ''; g.dispatchEvent(new Event('change')); const s = document.getElementById('library-source'); s.value = 'loc'; s.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.5)
+check('20a Library of Congress: listed as a source, all languages by default, books listed at once from its collection only',
+      """!!document.querySelector('#library-source option[value="loc"]') && document.getElementById('library-lang').value === ''
+         && __iaReqs.some(r => r.includes('op=ia-search') && r.includes('&coll=loc') && r.includes('q=&'))
+         && document.querySelectorAll('#library-list .library-card').length === 3 && document.querySelector('#library-modal .library-source').textContent === t('libLocSource')""")
+c.js("(() => { const l = document.getElementById('library-lang'); l.value = 'fre'; l.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.5)
+check('20b its language filter goes to the same search', "__iaReqs.some(r => r.includes('op=ia-search&lang=fre') && r.includes('&coll=loc'))")
+c.js("window.__opened = null; document.querySelectorAll('#library-list .library-card')[1].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
+check('20c a book opens through the Internet Archive path (the same file as above, kept for the session)', "!!__opened && __opened.name === 'Modern.epub' && __opened.type === 'application/epub+zip'")
+check('20d the choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'loc' && f.locLang === 'fre'; })()")
+
 # ---- Bibliothèque numérique romande and Standard Ebooks (French and English classics, EPUB) ----
 c.js("""(() => { window.__catReqs = []; window.__opened = null; const prev = window.fetch;
   window.fetch = async (url, opts) => { url = String(url);
+    if (url.startsWith('https://standardebooks.org/')) { __catReqs.push(decodeURIComponent(url));
+      if (url.includes('/ebooks?')) return new Response('<ol><li typeof="schema:Book" about="/ebooks/leo-tolstoy/resurrection/louise-maude"><a><img src="/images/covers/leo-tolstoy_resurrection_louise-maude/0123456789abcdef0123456789abcdef01234567/cover.jpg"/></a>'
+        + '<p><a property="schema:name">Resurrection</a></p><p><a><span property="schema:name">Leo Tolstoy</span></a></p></li><li typeof="schema:Book" about="/ebooks/../evil"><span property="schema:name">Bad</span></li></ol>', {status: 200});
+      if (url.includes('/downloads/')) return new Response(new Blob(['PK fake epub']), {status: 200});
+    }
     if (/op=(bnr|se)-/.test(url)) { __catReqs.push(decodeURIComponent(url));
       if (url.includes('-search')) { const se = url.includes('op=se-'), p2 = url.includes('page=2');
         return new Response(JSON.stringify({more: !p2, results: [{id: se ? 'leo-tolstoy/resurrection/louise-maude' : 'balzac-honore-de-le-pere-goriot' + (p2 ? '-2' : ''),
@@ -200,9 +218,11 @@ check('22a Read opens the EPUB', "!!__opened && __opened.name === 'Le Père Gori
 c.js("""(() => { window.__opened = null; openLibrary(); const q = document.getElementById('library-q'); q.value = ''; const s = document.getElementById('library-source'); s.value = 'se'; s.dispatchEvent(new Event('change')); return 1; })()"""); time.sleep(1)
 check('23 Standard Ebooks: English only, no genre without a subject there (romance), books listed at once',
       """document.getElementById('library-lang').value === 'en' && document.getElementById('library-lang').options.length === 1 && !document.querySelector('#library-genre option[value="love"]')
-         && document.getElementById('library-genre').value === 'detective' && __catReqs.some(r => r.includes('op=se-search&q=&page=1&genre=detective'))
-         && document.querySelector('#library-list .library-name').textContent === 'Resurrection'""")
+         && document.getElementById('library-genre').value === 'detective' && __catReqs.some(r => r === 'https://standardebooks.org/ebooks?query=&sort=popularity&page=1&tags[]=mystery')
+         && !__catReqs.some(r => r.includes('op=se-')) && document.querySelectorAll('#library-list .library-card').length === 1
+         && document.querySelector('#library-list .library-name').textContent === 'Resurrection' && document.querySelector('#library-list .library-author').textContent === 'Leo Tolstoy'
+         && document.querySelector('#library-list img').src === 'https://standardebooks.org/images/covers/leo-tolstoy_resurrection_louise-maude/0123456789abcdef0123456789abcdef01234567/cover.jpg'""")
 c.js("document.querySelector('#library-list .library-card .btn-primary').click(); 1"); time.sleep(1.5)
-check('23a Read opens its EPUB', "!!__opened && __opened.name === 'Resurrection.epub' && __catReqs.some(r => r.includes('op=se-file&id=leo-tolstoy/resurrection/louise-maude'))")
+check('23a Read opens its EPUB straight from Standard Ebooks (it blocks the Cloudflare proxy)', "!!__opened && __opened.name === 'Resurrection.epub' && __catReqs.some(r => r === 'https://standardebooks.org/ebooks/leo-tolstoy/resurrection/louise-maude/downloads/leo-tolstoy_resurrection_louise-maude.epub?source=download')")
 check('24 the choice is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).source === 'se'")
 print('ALL PASS')

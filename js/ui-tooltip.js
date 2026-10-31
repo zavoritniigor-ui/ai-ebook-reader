@@ -63,7 +63,8 @@ document.addEventListener('pointerdown', (e) => {
     if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.target.closest('#menu-handle, #quick-menu-dock, #rules-tab')) return;
     let closedPopup = false;
-    if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
+    // 🤖/✨ у нижньому ряду (.row-tab) — ті самі язички панелей: дотик по них не знімає виділення й не закриває вікно слова.
+    if (!e.target.closest('#word-tooltip') && !e.target.closest('.side-panel') && !e.target.closest('.row-tab') && !e.target.closest('header') && alignmentSourceAt(e.clientX, e.clientY) === null) {
         if (els.tooltip.style.display !== 'none') closedPopup = true;
         cancelTooltipHide();
         els.tooltip.style.display = 'none';
