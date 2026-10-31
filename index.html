@@ -1636,12 +1636,22 @@
         button.home-btn { background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); }
         button.home-btn .mi { color: var(--accent-color); }
         .home-actions > label.home-cta { grid-column: 1 / -1; }
+        .home-actions > * { min-width: 0; }
+        .home-actions > * > span { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
         @media (max-width: 340px) { .home-actions { grid-template-columns: 1fr; } }
         #recent-books { width: 100%; margin-top: 26px; text-align: left; }
         .recent-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
         #recent-books h3 { font-size: 15px; margin: 0; color: var(--text-muted); font-weight: 600; }
         .recent-all { background: none; border: 0; color: var(--accent-color); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 44px; padding: 0 4px; }
-        .recent-list { display: flex; flex-direction: column; gap: 8px; }
+        /* Барабан: список прокручується у своїй висоті (кнопки вгорі не зсуваються), верх і низ зникають прозоро. */
+        .recent-list { display: flex; flex-direction: column; gap: 8px; max-height: max(220px, calc(100dvh - 360px)); overflow-y: auto; overscroll-behavior: contain;
+            scrollbar-width: none; padding: 2px 2px; margin: 0 -2px; --fade-top: 0px; --fade-bottom: 0px;
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%); }
+        .recent-list::-webkit-scrollbar { display: none; }
+        .recent-list.drum-top { --fade-top: 56px; }
+        .recent-list.drum-bottom { --fade-bottom: 72px; }
+        .recent-list > .recent-book { flex: none; transform-origin: 50% 50%; will-change: transform; }
         .recent-book { display: grid; grid-template-columns: 52px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 14px; row-gap: 3px; align-items: center;
             text-align: left; padding: 8px 12px 8px 8px; min-height: 92px; border: 1px solid var(--border-color); border-radius: 12px;
             background: var(--panel-bg); color: inherit; cursor: pointer; font: inherit; transition: transform .12s ease; }
@@ -2359,7 +2369,7 @@
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=865f186bd2ef"></script>
-    <script src="js/book-shelf.js?v=518f17e07dc3"></script>
+    <script src="js/book-shelf.js?v=67f7d9715d05"></script>
     <script src="js/scanner.js?v=f1c124d69501"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>

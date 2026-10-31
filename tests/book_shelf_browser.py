@@ -70,10 +70,18 @@ c.call('Page.reload'); c.wait(READY, timeout=30)
 c.wait("document.querySelectorAll('#recent-books .recent-book').length === 2", timeout=10); time.sleep(0.5)
 check('6d the start screen shows both books with their cover images; the side tabs and ✦ are hidden there',
       "(() => { const imgs = [...document.querySelectorAll('#recent-books .recent-cover img')]; const hidden = id => { const e = document.getElementById(id); return !e || getComputedStyle(e).display === 'none'; }; return imgs.length === 2 && imgs.every(i => i.complete && i.naturalWidth > 0) && hidden('quick-menu-dock') && hidden('ask-tab') && hidden('grammar-tab') && hidden('rules-tab'); })()")
-if os.environ.get('SHELF_SHOT'):
-    import base64; open(os.environ['SHELF_SHOT'], 'wb').write(base64.b64decode(c.call('Page.captureScreenshot')['data']))
 for k in c.js("listShelfBooks().then(b => JSON.stringify(b.map(x => x.key)))") and json.loads(c.js("listShelfBooks().then(b => JSON.stringify(b.map(x => x.key)))")):
     c.js("removeShelfBook(%s).then(() => 1)" % json.dumps(k))
 c.js("""(async () => { for (let i = 0; i < 14; i++) { await shelveBook(new File(['book ' + i], 'b' + i + '.txt', {lastModified: i + 1}), 'k' + i); await new Promise(r => setTimeout(r, 5)); } return 1; })()""")
 check('7 at most 12 books are kept; the oldest opened go first', "listShelfBooks().then(b => b.length === 12 && b[0].key === 'k13' && !b.some(x => x.key === 'k0' || x.key === 'k1'))")
+c.call('Emulation.setDeviceMetricsOverride', width=412, height=860, deviceScaleFactor=1, mobile=True)
+c.call('Page.reload'); c.wait(READY, timeout=30)
+c.wait("document.querySelectorAll('#recent-books .recent-book').length === 12", timeout=10); time.sleep(0.6)
+check('8 many books: the list scrolls in its own height like a drum, the buttons above stay on screen, the bottom fades',
+      "(() => { const l = document.querySelector('#recent-books .recent-list'), b = document.getElementById('home-scanner').getBoundingClientRect(); return l.scrollHeight > l.clientHeight && l.getBoundingClientRect().bottom <= innerHeight + 1 && b.bottom < innerHeight && l.classList.contains('drum-bottom') && !l.classList.contains('drum-top') && getComputedStyle(l).maskImage.includes('gradient') || JSON.stringify({sh: l.scrollHeight, ch: l.clientHeight, lb: l.getBoundingClientRect().bottom, ih: innerHeight, bb: b.bottom, cls: l.className, st: l.scrollTop}); })()")
+c.js("document.querySelector('#recent-books .recent-list').scrollTop = 120; 1"); time.sleep(0.5)
+check('8b scrolled: the top fades too, and the cards near the edges tilt while the middle one stays flat',
+      "(() => { const l = document.querySelector('#recent-books .recent-list'); const box = l.getBoundingClientRect(), mid = box.top + box.height / 2; const cards = [...l.children]; const near = cards.reduce((a, c) => Math.abs(c.getBoundingClientRect().top + c.offsetHeight / 2 - mid) < Math.abs(a.getBoundingClientRect().top + a.offsetHeight / 2 - mid) ? c : a); return l.classList.contains('drum-top') && /rotateX/.test(cards[0].style.transform) && cards[0].style.transform !== near.style.transform; })()")
+if os.environ.get('SHELF_SHOT'):
+    import base64; open(os.environ['SHELF_SHOT'], 'wb').write(base64.b64decode(c.call('Page.captureScreenshot')['data']))
 print('ALL PASS')
