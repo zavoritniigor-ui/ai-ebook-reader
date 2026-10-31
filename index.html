@@ -746,6 +746,60 @@
         #page-arrow-prev { left: 56px; }
         #page-arrow-next { right: 56px; }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow { display: flex; }
+        /* Нижній ряд читання (власник, 2026-10-30: «кнопки потрібно переносити в низ екрану»): поки видно стрілки ‹ ›, номер
+           сторінки (згорнутий повзунок), кнопка ✦ і ☰ стоять з ними в одному ряду внизу — «‹ · ☰ · ✦ · 3/553 · ›», — а не над текстом
+           (✦ на 76% висоти й пігулка номера біля правого краю закривали кінці рядків, ☰ — лівий верхній кут). Висоту ряду текст і так залишає вільною
+           (padding-bottom нижче). Дотик по номеру розгортає повзунок на ряд між язичками, горизонтально; колесо ✦ розкривається над
+           рядом (js/quick-wheel.js place()). Невидима ручка нижньої смуги тут не потрібна: стрілки й номер роблять те саме,
+           а дотик посередині сторінки й далі відкриває смугу «◀ сторінка ▶». */
+        /* Ряд: ‹ · ☰ · ✦ · номер · ›. ✦ — рівно посередині (над ним розкривається «сонечко» дій), стрілки — біля язичків
+           (--row-edge від країв), ☰ — посередині між ‹ і ✦, номер — посередині між ✦ і ›. */
+        /* Ряд стоїть посередині області читання (--row-l, --row-w): у PDF відкрита «Граматика» чи «Запитай AI» звужує її
+           (--ws-left/--ws-width з js/pdf-continuous.js), і ряд не ховається під панеллю. На широкому екрані ряд не розтягується:
+           щонайбільше 480px посередині. */
+        :root { --row-l: 0px; --row-w: 100vw; --row-edge: max(52px, calc(var(--row-w) / 2 - 240px)); }
+        body.pdf-mode { --row-l: var(--ws-left, 0px); --row-w: var(--ws-width, 100vw); --row-edge: max(52px, calc(var(--row-w) / 2 - 240px)); }
+        @media (max-width: 380px) { :root, body.pdf-mode { --row-edge: 46px; } }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #page-arrow-prev { left: calc(var(--row-l) + var(--row-edge)); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #page-arrow-next { right: auto; left: calc(var(--row-l) + var(--row-w) - var(--row-edge) - 44px); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher {
+            position: fixed; top: auto; left: calc(var(--row-l) + var(--row-w) / 2 - 22px); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+            width: 44px; height: 44px; font-size: 20px; transform: none; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle {
+            top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: calc(var(--row-l) + var(--row-edge) / 2 + var(--row-w) / 4 - 11px); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available {
+            position: fixed; top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: none; z-index: 96; transition: opacity .3s;
+            display: flex; align-items: center; justify-content: center; gap: 10px; box-sizing: border-box; height: 44px;
+            border: 1px solid var(--border-color); border-radius: 22px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed {
+            left: calc(var(--row-l) + var(--row-w) * .75 - var(--row-edge) / 2 - 11px); right: auto; transform: translateX(-50%); width: auto;
+            min-width: min(64px, calc(var(--row-w) / 2 - var(--row-edge) - 78px)); max-width: calc(var(--row-w) / 2 - var(--row-edge) - 78px); padding: 0 8px; overflow: hidden; opacity: .6; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available:not(.collapsed) {
+            left: calc(var(--row-l) + 52px); right: auto; width: calc(var(--row-w) - 104px); padding: 0 16px; opacity: 1; z-index: 10002; }
+        /* Розгорнутий повзунок займає весь ряд: ✦ на цей час ховається (його опора лежить вище за повзунок). */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])):has(#pdf-scrubber.available:not(.collapsed)) #qm-launcher,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])):has(#pdf-scrubber.available:not(.collapsed)) #menu-handle { visibility: hidden; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output {
+            white-space: nowrap; font-size: 13px; padding: 0; letter-spacing: 0; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+        @media (max-width: 380px) { body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-size: 11.5px; } }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-page-range {
+            writing-mode: horizontal-tb; flex: 1; width: auto; min-width: 0; height: 32px; margin: 0; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #footer-handle { display: none; }
+        /* Смуга «◀ сторінка ▶» (дотик посередині сторінки) на кілька секунд займає місце всього ряду, а не лише стрілок:
+           інакше номер і ✦ стрибали б на старі місця над текстом. */
+        body.immersive-mode.footer-open:not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher,
+        body.immersive-mode.footer-open:not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber,
+        body.immersive-mode.footer-open:not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle { visibility: hidden; }
+        /* Відкрите бічне меню має свій ✕: ☰ не стрибає на час меню в лівий верхній кут, а ховається. */
+        body:not(.immersive-mode):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle { visibility: hidden; }
+        /* «Сонечко»: дії колеса ✦ віялом над кнопкою (js/quick-wheel.js render), компактні — значок над підписом. */
+        #quick-menu.qm-sun .qm-item { width: var(--sun-w, 76px); height: 64px; padding: 4px 4px 5px; flex-direction: column; gap: 2px;
+            border-radius: 20px; font-size: 11px; line-height: 1.1; text-align: center; }
+        #quick-menu.qm-sun .qm-icon { font-size: 20px; }
+        #quick-menu.qm-sun .qm-label { font-size: 10.5px; overflow-wrap: normal; word-break: normal; hyphens: auto; }
+        /* Під «сонечком» текст сторінки приглушений сильніше: дії читаються, а не зливаються з рядками книги. */
+        body:has(#quick-menu.qm-sun:not([hidden])) #qm-backdrop {
+            background: radial-gradient(circle at 50% 100%, rgba(0,0,0,.34), rgba(0,0,0,.2)); }
         /* Режим без меню: текст книги не ховається під плаваючими кнопками — перший рядок починається нижче ☰ (8px + 44px
            у лівому верхньому куті), а поки видно стрілки ‹ ›, останній рядок стоїть над ними (12px + 44px від низу). Раніше
            ☰ накривав перше слово кожної сторінки, а стрілки — останній рядок. PDF має власне прокручування і поля. */
@@ -2073,7 +2127,7 @@
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
-    <script src="js/selection.js?v=188a52becf92"></script>
+    <script src="js/selection.js?v=0e33693c56da"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
@@ -2115,7 +2169,7 @@
     <script src="js/library.js?v=fbed3900f10b"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
-    <script src="js/quick-wheel.js?v=c1f1802144fc"></script>
+    <script src="js/quick-wheel.js?v=cd363a6e9a74"></script>
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=a55b6a10f6e6"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
