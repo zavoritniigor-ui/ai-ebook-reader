@@ -180,6 +180,67 @@ async function epubImage(zip, chapterDir, src) {
     return mime ? `data:image/${mime};base64,${await entry.async('base64')}` : '';
 }
 
+// Стилі самої книги до сторінки не потрапляють (safeHtml відкидає класи, <style> і <link>), тож курсив, жирний і вирівнювання
+// через класи губилися: у книгах Bibliothèque numérique romande курсив — це <span class="T6"> (сотні місць на книгу), а
+// присвяти й підписи — <p class="Centre">. Тому з CSS книги беремо лише ці три властивості з фіксованими значеннями й
+// переносимо їх у style елементів; safeHtml пропускає їх як звичайні дозволені стилі. Розмір, шрифт, колір і відступи
+// книги не беремо: ними керують налаштування читача (A+/A−, тема).
+const epubSheetCache = new WeakMap();
+const EPUB_STYLE_MAX_RULES = 3000;
+function epubStyleDeclarations(style) {
+    const out = [];
+    const fs = style.getPropertyValue('font-style');
+    if (fs === 'italic' || fs === 'oblique') out.push(['font-style', 'italic']); else if (fs === 'normal') out.push(['font-style', 'normal']);
+    const fw = style.getPropertyValue('font-weight');
+    if (fw === 'bold' || fw === 'bolder' || +fw >= 600) out.push(['font-weight', 'bold']); else if (fw === 'normal' || (fw && +fw <= 400)) out.push(['font-weight', 'normal']);
+    const ta = style.getPropertyValue('text-align');
+    if (ta === 'center') out.push(['text-align', 'center']); else if (ta === 'right' || ta === 'end') out.push(['text-align', 'right']);
+    return out;
+}
+async function epubBookSheets(zip, chapterDir, doc) {
+    let cache = epubSheetCache.get(zip);
+    if (!cache) epubSheetCache.set(zip, cache = new Map());
+    const texts = [];
+    for (const link of doc.querySelectorAll('link[href]')) {
+        if (!/stylesheet/i.test(link.getAttribute('rel') || '')) continue;
+        const path = resolveEpubPath(chapterDir, link.getAttribute('href'));
+        if (!path) continue;
+        if (!cache.has(path)) { const entry = zip.file(path); cache.set(path, entry ? await entry.async('text') : ''); }
+        texts.push(cache.get(path));
+    }
+    for (const style of doc.querySelectorAll('style')) texts.push(style.textContent || '');
+    const rules = [];
+    for (const text of texts) {
+        if (!text) continue;
+        try {
+            // Розібраний, але НЕ застосований до сторінки аркуш: лише щоб прочитати селектори й властивості.
+            const sheet = new CSSStyleSheet(); sheet.replaceSync(text);
+            for (const rule of sheet.cssRules) if (rule.selectorText && rule.style) rules.push(rule);
+        } catch (e) {}
+    }
+    return rules.slice(0, EPUB_STYLE_MAX_RULES);
+}
+async function applyEpubBookStyles(zip, chapterDir, doc) {
+    const rules = await epubBookSheets(zip, chapterDir, doc);
+    const own = new Map();   // властивості, які елемент мав у власному style: вони важливіші за аркуш
+    for (const rule of rules) {
+        const decls = epubStyleDeclarations(rule.style);
+        if (!decls.length) continue;
+        let matched;
+        try { matched = doc.body.querySelectorAll(rule.selectorText); } catch (e) { continue; }
+        for (const el of matched) {
+            if (!own.has(el)) own.set(el, new Set(Array.from(el.style)));
+            for (const [prop, value] of decls) if (!own.get(el).has(prop)) el.style.setProperty(prop, value);
+        }
+    }
+    // Абзаци застосунок вирівнює за шириною власним правилом для p, тож вирівнювання блока-обгортки («div.center» з
+    // абзацами всередині) переносимо на його абзаци й заголовки, які свого не мають.
+    for (const el of doc.body.querySelectorAll('[style*="text-align"]')) {
+        if (/^(p|h[1-6])$/i.test(el.localName)) continue;
+        for (const inner of el.querySelectorAll('p, h1, h2, h3, h4, h5, h6')) if (!inner.style.getPropertyValue('text-align')) inner.style.setProperty('text-align', el.style.getPropertyValue('text-align'));
+    }
+}
+
 // ОНОВЛЕНИЙ НАДІЙНИЙ ПАРСЕР EPUB
 async function initEpub(file, epoch = readerEpoch.book) {
     if (typeof JSZip === 'undefined') throw new Error('Не завантажено бібліотеку EPUB. Перевірте з’єднання та оновіть сторінку.');
@@ -268,6 +329,8 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null, textOffset 
                 if (src) img.setAttribute('src', src);
                 if (!current()) return;
             }
+            await applyEpubBookStyles(zip, chapterDir, tempDoc);
+            if (!current()) return;
             data = tempDoc.body.innerHTML;
             if (!current()) return;
             
