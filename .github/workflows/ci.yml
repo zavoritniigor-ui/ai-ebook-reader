@@ -212,6 +212,9 @@ jobs:
           echo "Running pdf_contrast_browser.py (automatic contrast for faded scans)..."
           python3 -u tests/pdf_contrast_browser.py
 
+          echo "Running crop_gemini_browser.py (sending a page crop to Gemini in the browser)..."
+          python3 -u tests/crop_gemini_browser.py
+
           echo "Running pwa_start_url_browser.py..."
           python3 -u tests/pwa_start_url_browser.py
 
