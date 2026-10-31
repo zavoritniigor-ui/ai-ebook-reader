@@ -412,6 +412,9 @@ function rewriteEpubLinks(doc, chapterDir, chapterPath) {
         const path = pathPart ? resolveEpubPath(chapterDir, pathPart) : chapterPath;
         if (!path) continue;
         const kind = fragment && epubLooksLikeNoteref(a) ? 'n' : 'l';
+        // Звичайне посилання всередині ЦЬОГО ж розділу лишається звичним «#id» (safeHtml дасть «#book-id»):
+        // його й так видно на сторінці, перехід робить той самий перехоплювач нижче.
+        if (kind === 'l' && path === chapterPath) { if (fragment) a.setAttribute('href', '#' + fragment); else a.removeAttribute('href'); continue; }
         a.setAttribute('href', '#' + EPUB_REF + kind + '-' + encodeURIComponent(JSON.stringify([path, fragment])));
     }
 }
@@ -490,11 +493,18 @@ function showEpubNote(html, anchorEl, goTo) {
 // Перехоплення раніше за обробник тапу (selection.js): фаза перехоплення на mainArea спрацьовує до його звичайного click.
 els.mainArea.addEventListener('click', (e) => {
     if (state.format !== 'epub') return;
-    const a = e.target.closest && e.target.closest('#reader-pages a[href^="#book-epubref-"]');
+    const a = e.target.closest && e.target.closest('#reader-pages a[href^="#book-"]');
     if (!a) return;
-    const ref = epubDecodeRef(a.getAttribute('href'));
-    e.preventDefault(); e.stopImmediatePropagation();
-    if (ref) openEpubRef(ref, a);
+    e.preventDefault(); e.stopImmediatePropagation();   // звичайний перехід за «#» прокрутив би колонки й зламав сторінки
+    const href = a.getAttribute('href');
+    const ref = epubDecodeRef(href);
+    if (ref) { openEpubRef(ref, a); return; }
+    const target = document.getElementById(href.slice(1));
+    if (target && els.pages.contains(target)) {
+        hideEpubNote();
+        const range = document.createRange(); range.selectNodeContents(target);
+        goToPageInChapter(pageIndexForRange(range), false);
+    }
 }, true);
 document.addEventListener('click', (e) => {
     const box = document.getElementById('epub-note');

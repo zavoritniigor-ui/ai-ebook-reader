@@ -95,10 +95,10 @@ NOTE_OPEN = "(() => { const b = document.getElementById('epub-note'); return !!b
 NOTE_TEXT = "(document.querySelector('#epub-note .epub-note-body') || {}).textContent || ''"
 NO_TRANSLATION = "els.tooltip.style.display === 'none' || getComputedStyle(els.tooltip).display === 'none'"
 
-check('1 every internal link is rewritten to an anchor safeHtml keeps; note references are told apart from ordinary links',
+check('1 notes and links into other files become in-book references; a plain link inside the chapter stays «#book-id»',
       """(() => { const hrefs = [...els.pages.querySelectorAll('a')].map(a => a.getAttribute('href'));
          const n = hrefs.filter(h => /^#book-epubref-n-/.test(h)).length, l = hrefs.filter(h => /^#book-epubref-l-/.test(h)).length;
-         return (n === 5 && l === 2) || JSON.stringify({n, l, hrefs}); })()""")
+         return (n === 5 && l === 1 && hrefs.includes('#book-FNanchor_2')) || JSON.stringify({n, l, hrefs}); })()""")
 check('1b the chapter TEXT is unchanged by the rewrite, so saved reading places keep pointing at the same characters',
       """(() => { const raw = new DOMParser().parseFromString(%s, 'text/html').body.textContent.replace(/\\s+/g, ' ').trim();
          const shown = els.pages.textContent.replace(/\\s+/g, ' ').trim(); return raw === shown || [raw.length, shown.length]; })()""" % json.dumps(CH1_BODY))
@@ -145,5 +145,18 @@ check('8 an ordinary link into another chapter lands on the page holding its anc
       """state.currentIndex === 1 && state.pageInChapter > 0 && document.getElementById('epub-note').hidden && (() => {
          const t = document.getElementById('book-sec'); const r = document.createRange(); r.selectNodeContents(t); return pageIndexForRange(r) === state.pageInChapter; })()""", timeout=10)
 
+c.js("loadEpubChapter(0); 1"); c.wait("state.currentIndex === 0 && /Chapter one/.test(els.pages.textContent)", timeout=10); c.js('new Promise(r => setTimeout(r, 400))')
+# The footnote's own way back («[2]» linking to #FNanchor_2) sits on a later page: go there and tap THAT link.
+c.js("""(() => { const a = els.pages.querySelector('a[href="#book-FNanchor_2"]'); const r = document.createRange(); r.selectNodeContents(a);
+  goToPageInChapter(pageIndexForRange(r), false); return 1; })()"""); c.js('new Promise(r => setTimeout(r, 500))')
+assert c.js('state.pageInChapter') > 0, 'the backlink should be on a later page than its note mark'
+c.js("document.getElementById('tt-close-btn')?.click(); els.tooltip.style.display = 'none'; 1")
+p = c.js("""(() => { const r = els.pages.querySelector('a[href="#book-FNanchor_2"]').getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2}; })()""")
+for kind in ('mousePressed', 'mouseReleased'):
+    c.call('Input.dispatchMouseEvent', type=kind, x=p['x'], y=p['y'], button='left', clickCount=1)
+c.js('new Promise(r => setTimeout(r, 500))')
+check('8b a plain link inside the chapter (the footnote\'s way back) returns to the page of its mark, with no card and no translation',
+      """state.currentIndex === 0 && document.getElementById('epub-note').hidden && (%s) && (() => {
+         const t = document.getElementById('book-FNanchor_2'); const r = document.createRange(); r.selectNodeContents(t); return pageIndexForRange(r) === state.pageInChapter; })()""" % NO_TRANSLATION, timeout=10)
 check('9 nothing threw', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL EPUB NOTES CHECKS PASSED')

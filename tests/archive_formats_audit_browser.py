@@ -170,11 +170,12 @@ check('EPUB decode error never becomes unexplained blank reader', "els.pages.tex
 upload('missing chapter.epub', archive({'META-INF/container.xml':'<container><rootfiles><rootfile full-path="book.opf"/></rootfiles></container>','book.opf':'<package><manifest><item id="a" href="missing.xhtml"/></manifest><spine><itemref idref="a"/></spine></package>'}))
 check('EPUB missing chapter explains failure', "els.pages.textContent.includes(t('chapterMissing'))")
 
-# Cross-chapter links are a documented limitation. Verify safe external links and
+# Cross-chapter links are rewritten to in-book references (epub_notes_browser.py checks they navigate). Verify safe external links and
 # internal anchor preservation, then report stripped cross-chapter destinations.
 upload('links.epub', epub(['<p><a href="#note">Within chapter</a> <a href="chapter-1.xhtml#note">Other chapter</a> <a href="https://example.com/">External</a></p><p id="note">Note target</p>', '<p id="note">Other note</p>']))
 check('EPUB safe same-chapter and external link metadata', "els.pages.querySelectorAll('a')[0].getAttribute('href')==='#book-note' && !!els.pages.querySelector('#book-note') && els.pages.querySelectorAll('a')[2].rel.includes('noopener')")
-check('EPUB unsupported cross-chapter link stays inert', "!els.pages.querySelectorAll('a')[1].hasAttribute('href')")
+check('EPUB cross-chapter link becomes a navigable in-book reference (js/formats.js rewriteEpubLinks)', "/^#book-epubref-l-/.test(els.pages.querySelectorAll('a')[1].getAttribute('href'))")
+check('EPUB cross-chapter link never leaves the app: an in-page reference, no target, nothing external', "(a => a.getAttribute('href').startsWith('#book-') && !a.hasAttribute('target') && !/https?:|javascript:/i.test(decodeURIComponent(a.getAttribute('href'))))(els.pages.querySelectorAll('a')[1])")
 
 for label, data in [('zero-byte', b''), ('truncated', many[:100]), ('not-archive', b'ordinary text'), ('no-container', archive({'readme.txt':'No EPUB'})), ('broken-container', archive({'META-INF/container.xml':'<container>'})), ('traversal', archive({'../escape':'blocked'}))]:
     upload(label+'.epub', data)
