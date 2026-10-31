@@ -17,6 +17,10 @@
  */
 
 let storageWarningShown = false;
+// Коротка вібрація під пальцем там, де телефон її вміє (Android Chrome); інакше — нічого.
+function haptic(ms = 10) {
+    try { if (navigator.vibrate && !document.hidden) navigator.vibrate(ms); } catch (e) {}
+}
 function readStored(key) {
     try { return localStorage.getItem(key); } catch (err) { return null; }
 }

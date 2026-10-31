@@ -226,6 +226,7 @@ const quickMenu = (() => {
     function setPosition(value) {
         const oldDetent = Math.round(wheelPosition), nextDetent = Math.round(value);
         for (let i = 0; i < Math.abs(nextDetent - oldDetent); i++) playTick(720, 18);
+        if (nextDetent !== oldDetent) haptic(5);
         wheelPosition = value;
     }
     function render() {
@@ -423,6 +424,11 @@ const quickMenu = (() => {
             }
         }
     });
+
+    // Легкий відгук пальцю (власник, 2026-10-31: «легку вібрацію при натисканні на кнопки»): кнопки нижнього ряду й дії колеса.
+    document.addEventListener('pointerdown', e => {
+        if (e.isPrimary && e.target.closest?.('.page-arrow, #menu-handle, #qm-launcher, .qm-item:not(:disabled), #pdf-scrubber.collapsed')) haptic();
+    }, { capture: true, passive: true });
 
     document.addEventListener('pointerdown', e => {
         if (!panel.hidden && !panel.contains(e.target) && !launcher.contains(e.target) && e.target !== backdrop) close(false);

@@ -61,7 +61,7 @@ for (w, h, mobile) in ((412, 915, True), (360, 640, True), (844, 390, True), (82
     c.js("openBookFile(new File([%s], 'row.md', {lastModified: %d})); 1" % (json.dumps(MD), w)); c.wait("state.bookKey && state.totalPagesInChapter > 2", timeout=30); time.sleep(1.2)
     check(tag + ' 1 ‹ · page number · ✦ · › in one bottom row, in order, with gaps, clear of the side tabs; no footer handle under it', ROW)
     check(tag + ' 1b the text ends above the row', TEXT_ABOVE)
-    check(tag + ' 1c the number shows the page', "document.getElementById('pdf-page-preview').value === (bookPageModel().page + 1) + '\\n/' + bookPageModel().total")
+    check(tag + ' 1c the number shows the page', "document.getElementById('pdf-page-preview').value === (bookPageModel().page + 1) + '\\n/ ' + bookPageModel().total")
     # ---- the number expands a horizontal slider
     c.js("document.getElementById('pdf-scrubber').dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); 1"); time.sleep(0.4)
     check(tag + ' 2 a tap on the number expands a horizontal slider across the row between the side tabs; ✦ is hidden meanwhile',

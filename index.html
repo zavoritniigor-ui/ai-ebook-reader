@@ -136,6 +136,7 @@
         select.mr-select:focus-visible { outline: 2px solid var(--focus-color); outline-offset: -2px; }
         .menu-row[data-only="pdf"] { display: none; }
         body.pdf-mode .menu-row[data-only="pdf"] { display: flex; }
+        body.pdf-mode .menu-row[data-only="text"] { display: none; }
         .mr-stepper { display: inline-flex; flex: 0 0 auto; margin-left: auto; border: 1px solid var(--border-color); border-radius: 999px; overflow: hidden; }
         button.mr-step { width: 48px; height: 40px; padding: 0; border: 0; border-radius: 0; font-size: 15px; font-weight: 700; color: var(--text-color); }
         button.mr-step + button.mr-step { border-left: 1px solid var(--border-color); }
@@ -562,14 +563,14 @@
         #reader-container {
             width: 100%; max-width: 900px; height: 100%; background: var(--panel-bg);
             box-shadow: 0 1px 0 rgba(var(--shadow-color),0.04), 0 12px 34px -18px rgba(var(--shadow-color),0.4);
-            padding: 48px 56px; line-height: 1.7; position: relative; overflow: hidden; contain: paint;
+            padding: 48px calc(56px * var(--reader-margin, 1)); line-height: var(--reader-line, 1.7); position: relative; overflow: hidden; contain: paint;
             touch-action: pan-y; overscroll-behavior: contain;
         }
         /* Книжковий текст — окремий, більш "друкований" шрифт, відмінний від інтерфейсного
            sans-serif: це і зчитується легше в довгих текстах, і візуально відділяє сам текст
            книги від елементів керування. PDF власний шар шрифтів не чіпаємо (нижче). */
         body:not(.pdf-mode) #reader-pages {
-            font-family: Georgia, 'Noto Serif', 'Times New Roman', 'Liberation Serif', serif;
+            font-family: var(--reader-font, Georgia, 'Noto Serif', 'Times New Roman', 'Liberation Serif', serif);
         }
         /* PDF — сторінка з фіксованою версткою, тож обмеження 900px і великі поля лише
            з'їдають екран. Для нього віддаємо всю ширину вікна. */
@@ -585,9 +586,9 @@
            автоматичні переноси — вони працюють лише за наявності атрибута lang, який
            проставляється за визначеною мовою книги. */
         #reader-pages {
-            text-align: justify;
+            text-align: var(--reader-align, justify);
             text-justify: inter-word;
-            hyphens: auto; -webkit-hyphens: auto; -ms-hyphens: auto;
+            hyphens: var(--reader-hyphens, auto); -webkit-hyphens: var(--reader-hyphens, auto); -ms-hyphens: var(--reader-hyphens, auto);
             overflow-wrap: break-word;
         }
         /* Заголовки в книжках не розганяють по ширині — лишаємо як є */
@@ -799,7 +800,60 @@
         #quick-menu.qm-sun .qm-label { font-size: 10.5px; overflow-wrap: normal; word-break: normal; hyphens: auto; }
         /* Під «сонечком» текст сторінки приглушений сильніше: дії читаються, а не зливаються з рядками книги. */
         body:has(#quick-menu.qm-sun:not([hidden])) #qm-backdrop {
-            background: radial-gradient(circle at 50% 100%, rgba(0,0,0,.34), rgba(0,0,0,.2)); }
+            background: rgba(0,0,0,.42); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+        /* Плитки «сонечка» непрозорі (текст книги не просвічує між літерами), активна — кольору акценту. */
+        #quick-menu.qm-sun .qm-item { background: var(--panel-bg); backdrop-filter: none; -webkit-backdrop-filter: none;
+            border-color: color-mix(in srgb, var(--text-color) 8%, transparent); box-shadow: 0 10px 26px -10px rgba(0,0,0,.5); }
+        #quick-menu.qm-sun .qm-item.qm-active { background: var(--accent-color); color: var(--accent-contrast); border-color: transparent;
+            box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--accent-color) 70%, transparent); }
+        #quick-menu.qm-sun .qm-item:active { filter: brightness(.94); }
+        /* Вигляд ряду (власник, 2026-10-31: «потрібно щоб це виглядало дуже професійно»), як нижня панель Apple Books / Google Play
+           Книг: одна «скляна» капсула під усім рядом, кнопки в ній пласкі (без власних рамок і тіней), ✦ — кругла кнопка кольору
+           акценту посередині. Капсула — ::before у #page-arrows; вона не ловить дотиків, як і проміжки між кнопками раніше. */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden])::before {
+            content: ''; position: fixed; z-index: 94; pointer-events: none; box-sizing: border-box;
+            left: calc(var(--row-l) + var(--row-edge) - 6px); width: calc(var(--row-w) - 2 * var(--row-edge) + 12px);
+            bottom: calc(6px + env(safe-area-inset-bottom, 0px)); height: 56px; border-radius: 28px;
+            background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+            backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+            border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+            box-shadow: 0 12px 32px -12px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.08); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available {
+            background: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+            color: var(--text-color); opacity: 1; transition: background-color .15s, transform .12s; -webkit-tap-highlight-color: transparent; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow:active,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle:active,
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed:active {
+            background: color-mix(in srgb, var(--text-color) 10%, transparent); transform: scale(.92); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed:active { transform: translateX(-50%) scale(.92); }
+        @media (hover: hover) {
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow:hover,
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle:hover,
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed:hover {
+                background: color-mix(in srgb, var(--text-color) 6%, transparent); }
+        }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber output { font-size: 14px; font-weight: 500; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available.collapsed { opacity: 1; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher {
+            background: var(--accent-color); color: var(--accent-contrast); border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
+            box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent-color) 80%, transparent); transition: transform .12s; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher:active { transform: scale(.92); }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #qm-launcher[aria-expanded="true"] {
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 30%, transparent); }
+        /* Розгорнутий повзунок лягає в капсулу від ‹ до › (стрілки на цей час ховаються), без власного тла. */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available:not(.collapsed) {
+            left: calc(var(--row-l) + var(--row-edge)); width: calc(var(--row-w) - 2 * var(--row-edge)); padding: 0 12px; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#pdf-scrubber.available:not(.collapsed)) #page-arrows .page-arrow { visibility: hidden; }
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-page-range { accent-color: var(--accent-color); }
+        /* Телефон: язички 🤖🎤 і ✨ стають кінцями ряду, а не лежать на останніх рядках тексту. */
+        @media (max-width: 640px) {
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) .panel-tab {
+                bottom: calc(6px + env(safe-area-inset-bottom, 0px)); width: 38px; height: 56px; font-size: 14px; line-height: 1.45; }
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #grammar-tab { left: -38px; }
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #ask-tab { right: -38px; }
+        }
         /* Режим без меню: текст книги не ховається під плаваючими кнопками — перший рядок починається нижче ☰ (8px + 44px
            у лівому верхньому куті), а поки видно стрілки ‹ ›, останній рядок стоїть над ними (12px + 44px від низу). Раніше
            ☰ накривав перше слово кожної сторінки, а стрілки — останній рядок. PDF має власне прокручування і поля. */
@@ -1416,7 +1470,7 @@
         @media (min-width: 641px) and (max-width: 1180px) {
             nav { width: min(320px, 42vw); }
             #toc-list li { padding: 13px 14px; font-size: 15.5px; }
-            #reader-container { padding: 40px 44px; }
+            #reader-container { padding: 40px calc(44px * var(--reader-margin, 1)); }
 
             /* Бічні панелі — акуратний "лист" замість повного екрана: книгу й далі
                трохи видно позаду, це відчувається як застосунок, а не інший екран. */
@@ -1435,7 +1489,7 @@
             .header-controls { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
 
             main { padding: 0; }
-            #reader-container { padding: 20px 15px; border-radius: 0; max-width: 100%; box-shadow: none; }
+            #reader-container { padding: 20px calc(15px * var(--reader-margin, 1)); border-radius: 0; max-width: 100%; box-shadow: none; }
 
 
             /* На мобільному панелі відкриваються на весь екран; ховання — тим самим
@@ -1718,6 +1772,12 @@
         <symbol id="i-speak" viewBox="0 0 24 24"><path d="M4 9h3l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
         <symbol id="i-voices" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 13.3A6 6 0 0 1 21 19"/></symbol>
         <symbol id="i-textsize" viewBox="0 0 24 24"><path d="M3.5 7V5h10v2M8.5 5v14M6.5 19h4"/><path d="M14 13v-1.5h7V13M17.5 11.5V19M16 19h3"/></symbol>
+        <symbol id="i-font" viewBox="0 0 24 24"><path d="M4.5 6.5V4.5h15v2M12 4.5v15M9 19.5h6"/></symbol>
+        <symbol id="i-linespace" viewBox="0 0 24 24"><path d="M9 5.5h11.5M9 12h11.5M9 18.5h11.5"/><path d="M4 7v10M2.4 8.8 4 7l1.6 1.8M2.4 15.2 4 17l1.6-1.8"/></symbol>
+        <symbol id="i-margins" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="1.5"/><path d="M8 4v16M16 4v16"/></symbol>
+        <symbol id="i-align" viewBox="0 0 24 24"><path d="M4 6.5h16M4 11h16M4 15.5h16M4 20h10"/></symbol>
+        <symbol id="i-hyphen" viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h9.5M16.5 12H20M4 17.5h16"/></symbol>
+        <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/><path d="M12 3.5v17"/></symbol>
         <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
         <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol>
         <symbol id="i-study" viewBox="0 0 24 24"><path d="M2.5 9 12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v4.5c0 1.6 2.5 3 5.5 3s5.5-1.4 5.5-3V11M21.5 9v5"/></symbol>
@@ -1780,6 +1840,27 @@
                 <div class="menu-row">
                     <svg class="mi" aria-hidden="true"><use href="#i-textsize"/></svg><span class="mr-text"><span class="mr-title" data-i18n="mFontSize">Розмір тексту</span><span class="mr-desc" data-i18n="mFontSizeDesc">Менше чи більше — текст і сторінки PDF</span></span>
                     <span class="mr-stepper"><button type="button" class="mr-step" id="zoom-out" data-i18n-title="tZoomOut" data-i18n-aria="tZoomOut">A−</button><button type="button" class="mr-step" id="zoom-in" data-i18n-title="tZoomIn" data-i18n-aria="tZoomIn">A+</button></span>
+                </div>
+                <div class="menu-row menu-row-select" data-only="text">
+                    <svg class="mi" aria-hidden="true"><use href="#i-font"/></svg><span class="mr-text"><label class="mr-title" for="text-font" data-i18n="mTextFont">Шрифт тексту</label><span class="mr-desc" id="mr-font-d" data-i18n="mTextFontDesc">Гарнітура книжкового тексту</span></span>
+                    <select id="text-font" class="mr-select" aria-describedby="mr-font-d"><option value="serif" data-i18n="mFontSerif">Із засічками</option><option value="book" data-i18n="mFontBook">Книжковий</option><option value="sans" data-i18n="mFontSans">Без засічок</option></select>
+                </div>
+                <div class="menu-row menu-row-select" data-only="text">
+                    <svg class="mi" aria-hidden="true"><use href="#i-linespace"/></svg><span class="mr-text"><label class="mr-title" for="text-line" data-i18n="mLineHeight">Міжрядковий інтервал</label><span class="mr-desc" id="mr-line-d" data-i18n="mLineHeightDesc">Відстань між рядками тексту</span></span>
+                    <select id="text-line" class="mr-select" aria-describedby="mr-line-d"><option value="tight" data-i18n="mLineTight">Щільний</option><option value="normal" data-i18n="mLineNormal">Звичайний</option><option value="loose" data-i18n="mLineLoose">Просторий</option></select>
+                </div>
+                <div class="menu-row menu-row-select" data-only="text">
+                    <svg class="mi" aria-hidden="true"><use href="#i-margins"/></svg><span class="mr-text"><label class="mr-title" for="text-margin" data-i18n="mMargins">Поля сторінки</label><span class="mr-desc" id="mr-margin-d" data-i18n="mMarginsDesc">Відступи тексту від краю сторінки</span></span>
+                    <select id="text-margin" class="mr-select" aria-describedby="mr-margin-d"><option value="narrow" data-i18n="mMarginNarrow">Вузькі</option><option value="normal" data-i18n="mMarginNormal">Звичайні</option><option value="wide" data-i18n="mMarginWide">Широкі</option></select>
+                </div>
+                <div class="menu-row menu-row-select" data-only="text">
+                    <svg class="mi" aria-hidden="true"><use href="#i-align"/></svg><span class="mr-text"><label class="mr-title" for="text-align" data-i18n="mAlign">Вирівнювання</label><span class="mr-desc" id="mr-align-d" data-i18n="mAlignDesc">Рівний правий край або природний</span></span>
+                    <select id="text-align" class="mr-select" aria-describedby="mr-align-d"><option value="justify" data-i18n="mAlignJustify">По краях</option><option value="left" data-i18n="mAlignLeft">По лівому краю</option></select>
+                </div>
+                <button type="button" class="menu-row" id="btn-hyphens" role="switch" aria-checked="true" data-only="text" aria-labelledby="mr-hyph-t" aria-describedby="mr-hyph-d"><svg class="mi" aria-hidden="true"><use href="#i-hyphen"/></svg><span class="mr-text"><span class="mr-title" id="mr-hyph-t" data-i18n="mHyphens">Переноси слів</span><span class="mr-desc" id="mr-hyph-d" data-i18n="mHyphensDesc">Розриває довгі слова, щоб у рядках не було прогалин</span></span><span class="mr-switch" aria-hidden="true"></span></button>
+                <div class="menu-row menu-row-select" data-only="pdf">
+                    <svg class="mi" aria-hidden="true"><use href="#i-contrast"/></svg><span class="mr-text"><label class="mr-title" for="pdf-contrast" data-i18n="mPdfContrast">Контраст сторінки</label><span class="mr-desc" id="mr-contrast-d" data-i18n="mPdfContrastDesc">Бліді скани старих книг читаються темніше</span></span>
+                    <select id="pdf-contrast" class="mr-select" aria-describedby="mr-contrast-d"><option value="auto" data-i18n="mContrastAuto">Автоматично</option><option value="off" data-i18n="mContrastOff">Як у файлі</option><option value="strong" data-i18n="mContrastStrong">Сильніше</option><option value="dark" data-i18n="mContrastDark">Темна сторінка</option></select>
                 </div>
                 <div class="menu-row menu-row-select" data-only="pdf">
                     <svg class="mi" aria-hidden="true"><use href="#i-fit"/></svg><span class="mr-text"><label class="mr-title" for="pdf-fit" data-i18n="mPdfFit">Масштаб сторінки PDF</label><span class="mr-desc" id="mr-fit-d" data-i18n="mPdfFitDesc">Як сторінка вписується в екран</span></span>
@@ -2030,7 +2111,7 @@
         <img id="crop-preview" alt="Виділений фрагмент PDF">
         <div id="crop-actions">
             <button id="crop-save">Save PNG</button><button id="crop-share">Share</button>
-            <button id="crop-copy">Copy image</button><button id="crop-ai">Send to AI</button>
+            <button id="crop-copy">Copy image</button><button id="crop-gemini" data-i18n="cropGemini">Запитати Gemini</button><button id="crop-ai">Send to AI</button>
             <button id="crop-cancel" data-i18n="cancel">Cancel</button>
         </div>
         <p id="crop-status" role="status"></p>
@@ -2123,7 +2204,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=d6339343161b"></script>
+    <script src="js/core.js?v=fc113643d258"></script>
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
@@ -2132,7 +2213,7 @@
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
-    <script src="js/navigation.js?v=35362ac6dd0c"></script>
+    <script src="js/navigation.js?v=c9d54288e58a"></script>
     <script src="js/pdf-zoom-pan.js?v=c2233b957e5a"></script>
     <script src="js/ui-tooltip.js?v=5474e83169d8"></script>
     <script src="js/translation.js?v=cf27366b8131"></script>
@@ -2160,6 +2241,7 @@
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
+    <script src="js/pdf-contrast.js?v=7c13e4ff3a75"></script>
     <script src="js/pdf-render.js?v=7c8e2e23d18d"></script>
     <script src="js/book-audio.js?v=89bbf93c6ec1"></script>
     <script src="js/book-speech.js?v=19520aac33ff"></script>
@@ -2169,7 +2251,7 @@
     <script src="js/library.js?v=d1681ee120b3"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
-    <script src="js/quick-wheel.js?v=8a34eeaae252"></script>
+    <script src="js/quick-wheel.js?v=e2de3289218c"></script>
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=3ba11d76fc7e"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>

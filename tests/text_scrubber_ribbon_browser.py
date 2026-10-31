@@ -32,7 +32,7 @@ para = lambda i: f'Paragraph {i}. ' + 'A readable sentence with several words in
 MD = '\n\n'.join(f'# Chapter {k}\n\n' + '\n\n'.join(para(i) for i in range(25)) for k in range(4))
 upload('scrub.md', MD)
 check('1 a text book shows the page slider (collapsed pill: page / pages of the WHOLE book)',
-      "(s => s.classList.contains('available') && getComputedStyle(s).display !== 'none' && document.getElementById('pdf-page-preview').value === '1\\n/' + bookPageModel().total)(document.getElementById('pdf-scrubber'))", timeout=5)
+      "(s => s.classList.contains('available') && getComputedStyle(s).display !== 'none' && document.getElementById('pdf-page-preview').value === '1\\n/ ' + bookPageModel().total)(document.getElementById('pdf-scrubber'))", timeout=5)
 check('1b the whole-book estimate is close to 4 chapters x the real pages of one (equal chapters)',
       "(m => m.total >= 4 * state.totalPagesInChapter - 2 && m.total <= 4 * state.totalPagesInChapter + 2 && m.total > 4)(bookPageModel())")
 check('1c the footer shows the book page too', "/≈1\\/\\d+$/.test(els.progress.textContent)")
