@@ -218,6 +218,9 @@ jobs:
           echo "Running epub_toc_browser.py (the real EPUB contents from nav.xhtml / toc.ncx)..."
           python3 -u tests/epub_toc_browser.py
 
+          echo "Running epub_notes_browser.py (EPUB footnotes and internal links)..."
+          python3 -u tests/epub_notes_browser.py
+
           echo "Running pwa_start_url_browser.py..."
           python3 -u tests/pwa_start_url_browser.py
 

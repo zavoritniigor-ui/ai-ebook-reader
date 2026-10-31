@@ -327,6 +327,24 @@
         #toc-list li.epub-toc-item.current { box-shadow: inset 3px 0 0 var(--accent-color); background: var(--hl-soft); font-weight: 600; color: var(--text-color); }
         #toc-list li.epub-toc-item.disabled { cursor: default; color: var(--text-muted); opacity: .7; }
         #toc-list li.epub-toc-item.disabled:hover { background: none; }
+        /* Виноски й внутрішні посилання EPUB (js/formats.js rewriteEpubLinks). Позначка виноски — колір акценту без підкреслення,
+           зі збільшеною областю дотику (сама цифра у верхньому індексі менша за палець). Вікно примітки — картка поверх книги. */
+        #reader-pages a[href^="#book-epubref-"] { color: var(--accent-color); text-decoration: none; cursor: pointer; }
+        #reader-pages a[href^="#book-epubref-n-"] { padding: 0 3px; margin: 0 -1px; border-radius: 4px; }
+        #reader-pages a[href^="#book-epubref-n-"]:hover { background: var(--hl-soft); }
+        #epub-note { position: fixed; z-index: 26020; max-height: 46vh; display: flex; flex-direction: column;
+            background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 16px;
+            box-shadow: 0 20px 48px -22px rgba(var(--shadow-color), .6); }
+        #epub-note[hidden] { display: none; }
+        #epub-note header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 10px 6px 16px; }
+        #epub-note header strong { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+        #epub-note .epub-note-close { width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--text-muted); font-size: 16px; cursor: pointer; }
+        #epub-note .epub-note-close:hover { background: var(--hover-color); }
+        #epub-note .epub-note-body { padding: 0 16px 4px; overflow-y: auto; font-family: Georgia, 'Noto Serif', serif; font-size: 16px; line-height: 1.6; }
+        #epub-note .epub-note-body p { margin: 0 0 .6em; }
+        #epub-note footer { padding: 6px 12px 12px; display: flex; justify-content: flex-end; }
+        #epub-note .epub-note-go { height: 36px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--surface-2); color: var(--text-color); font-size: 13px; cursor: pointer; }
+        #epub-note .epub-note-go[hidden] { display: none; }
 
         /* PDF left sidebar: Thumbnails / Contents (outline) dual mode. #toc-list
            (book chapter TOC for epub/txt/doc) and #pdf-sidebar are mutually
@@ -2146,7 +2164,7 @@
     <script src="js/pdf-render.js?v=7c8e2e23d18d"></script>
     <script src="js/book-audio.js?v=89bbf93c6ec1"></script>
     <script src="js/book-speech.js?v=19520aac33ff"></script>
-    <script src="js/formats.js?v=21eae63473c0"></script>
+    <script src="js/formats.js?v=726a0df7c551"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=3b8fc3cd9ba8"></script>
