@@ -22,6 +22,8 @@ c.wait("document.readyState==='complete' && !document.body.inert && typeof quick
 c.js("showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove()")
 time.sleep(.3)
 c.js("document.getElementById('sw-update-banner')?.remove()")
+# The start screen hides ✦ (no book yet); the wheel is checked with it taken away.
+c.js("document.getElementById('home-screen')?.remove(); 1")
 
 
 def check(name, expression):

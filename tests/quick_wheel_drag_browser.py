@@ -13,7 +13,7 @@ c.call('Emulation.setTouchEmulationEnabled', enabled=False)
 c.call('Emulation.setEmulatedMedia', features=[])
 c.call('Page.navigate', url='http://127.0.0.1:8765/index.html')
 c.wait("document.readyState==='complete' && !document.body.inert && typeof quickMenu==='object'")
-c.js("showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove();window.__dragErrors=[];addEventListener('error',e=>__dragErrors.push(e.message));quickMenu.open()")
+c.js("showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove();window.__dragErrors=[];addEventListener('error',e=>__dragErrors.push(e.message));document.getElementById('home-screen')?.remove();quickMenu.open()")
 c.wait("(()=>{const b=document.querySelector('.qm-active');return !!b && Math.abs(new DOMMatrix(getComputedStyle(b).transform).a-1)<.00001})()")
 
 def check(name, expression):
