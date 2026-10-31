@@ -1474,6 +1474,49 @@
         .library-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
         .library-save { min-height: 34px; font-size: 13px; }
         .library-source { font-size: 11px; color: var(--text-muted); text-align: center; }
+        /* Сканер документів (js/scanner.js): повноекранне вікно на телефоні, панель до 760px на ширших екранах. */
+        #scanner { display: none; position: fixed; inset: 0; z-index: 30001; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); justify-content: center; align-items: center; padding: 12px; }
+        #scanner.open { display: flex; }
+        .scan-box { position: relative; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 14px; width: min(760px, 100%);
+            height: min(94dvh, 100%); display: flex; flex-direction: column; padding: 14px; gap: 10px; box-sizing: border-box; }
+        @media (max-width: 640px) { #scanner { padding: 0; } .scan-box { width: 100%; height: 100dvh; border-radius: 0; border: 0;
+            padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)); } }
+        .scan-head { display: flex; align-items: center; justify-content: space-between; }
+        .scan-head h3 { margin: 0; font-size: 17px; }
+        .scan-head .close-panel-btn { position: static; }
+        .scan-view { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+        .scan-view[hidden] { display: none; }
+        .scan-add, .scan-actions, .scan-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .scan-add button { flex: 1 1 140px; min-height: 48px; font-size: 15px; }
+        #scan-status { font-size: 13px; color: var(--text-muted); min-height: 1em; }
+        #scan-empty { margin: 8px 4px; color: var(--text-muted); font-size: 14px; line-height: 1.45; }
+        #scan-empty[hidden], #scan-out[hidden] { display: none; }
+        #scan-pages { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; align-content: start; padding: 2px; }
+        .scan-card { position: relative; display: flex; flex-direction: column; gap: 4px; }
+        .scan-thumb { padding: 0; height: auto; aspect-ratio: 3 / 4; border-radius: 8px; overflow: hidden; background: rgba(128,128,128,.15); }
+        .scan-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .scan-num { position: absolute; top: 6px; left: 6px; min-width: 22px; padding: 1px 6px; border-radius: 11px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; text-align: center; pointer-events: none; }
+        .scan-card-bar { display: flex; justify-content: space-between; gap: 2px; }
+        .scan-card-bar button { flex: 1; min-width: 0; height: 36px; padding: 0; font-size: 15px; }
+        .scan-out { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 10px; }
+        #scan-format { min-height: 40px; padding: 6px 8px; font-size: 14px; }
+        .scan-actions button { flex: 1 1 130px; min-height: 44px; }
+        .scan-clear { flex: 0 1 auto !important; color: var(--text-muted); }
+        .scan-privacy { margin: 0; font-size: 11px; color: var(--text-muted); text-align: center; }
+        .scan-hint { font-size: 13px; color: var(--text-muted); text-align: center; }
+        #scan-stage { position: relative; flex: 1; min-height: 200px; touch-action: none; overflow: hidden; border-radius: 8px; background: #111; }
+        #scan-photo, #scan-outline { position: absolute; }
+        .scan-handle { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; border: 3px solid #4c8dff; background: rgba(255,255,255,.85);
+            box-shadow: 0 1px 6px rgba(0,0,0,.5); touch-action: none; cursor: grab; }
+        .scan-handle.dragging { transform: scale(1.35); cursor: grabbing; }
+        .scan-handle:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+        .scan-tools { display: flex; flex-direction: column; gap: 8px; }
+        .scan-row { justify-content: center; }
+        .scan-row button { min-height: 40px; }
+        .scan-filter.active { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 18%, transparent); font-weight: 650; }
+        #scan-preview { align-self: center; max-height: 18vh; max-width: 60%; border-radius: 6px; box-shadow: 0 1px 6px rgba(0,0,0,.25); }
+        #scan-preview:not([src]) { display: none; }
+        .scan-done button { flex: 1 1 120px; min-height: 46px; }
         /* Стартовий екран: як головна сторінка застосунку — логотип, назва, три головні дії, останні книги. */
         .home { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 520px; margin: 4vh auto 0; padding: 0 4px; break-inside: avoid; }
         body:not(.pdf-mode) #reader-pages img.home-logo { width: 64px; height: 64px; max-height: none; border-radius: 16px; box-shadow: 0 6px 18px -8px rgba(var(--shadow-color),.45); }
@@ -1726,6 +1769,7 @@
         <symbol id="i-stats" viewBox="0 0 24 24"><path d="M11 4.1A8 8 0 1 0 19.9 13H11z"/><path d="M14 3.6A7 7 0 0 1 20.4 10H14z"/></symbol>
         <symbol id="i-pen" viewBox="0 0 24 24"><path d="M15.5 4.5a2.1 2.1 0 0 1 3 3L8 18l-4 1.5L5.5 15.5z"/><path d="m13.5 6.5 3 3"/></symbol>
         <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2.5V16a2 2 0 0 0 2 2h13.5"/><path d="M2.5 6H16a2 2 0 0 1 2 2v13.5"/></symbol>
+        <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M4 12h16"/></symbol>
         <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="1.5"/><path d="M7 14h10v6.5H7z"/></symbol>
         <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.3 2.3 3.5 5.2 3.5 8.5s-1.2 6.2-3.5 8.5c-2.3-2.3-3.5-5.2-3.5-8.5S9.7 5.8 12 3.5z"/></symbol>
         <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="3.8"/><path d="m10.3 12.8 9.2-9.3M15.5 7.5 18 10M18 5l2 2"/></symbol>
@@ -1841,6 +1885,7 @@
                 <h3 class="menu-section-title" id="ms-tools" data-i18n="mSecTools">Інструменти</h3>
                 <button type="button" class="menu-row" id="btn-ink" aria-labelledby="mr-ink-t" aria-describedby="mr-ink-d"><svg class="mi" aria-hidden="true"><use href="#i-pen"/></svg><span class="mr-text"><span class="mr-title" id="mr-ink-t" data-i18n="mInk">Писати від руки</span><span class="mr-desc" id="mr-ink-d" data-i18n="mInkDesc">Нотатки пальцем або стилусом поверх сторінки</span></span></button>
                 <button type="button" class="menu-row" id="btn-region" aria-labelledby="mr-region-t" aria-describedby="mr-region-d"><svg class="mi" aria-hidden="true"><use href="#i-crop"/></svg><span class="mr-text"><span class="mr-title" id="mr-region-t" data-i18n="mRegion">Фрагмент сторінки</span><span class="mr-desc" id="mr-region-d" data-i18n="mRegionDesc">Обведіть частину сторінки — AI її пояснить</span></span></button>
+                <button type="button" class="menu-row" id="btn-scanner" aria-labelledby="mr-scan-t" aria-describedby="mr-scan-d"><svg class="mi" aria-hidden="true"><use href="#i-scan"/></svg><span class="mr-text"><span class="mr-title" id="mr-scan-t" data-i18n="mScan">Сканер документів</span><span class="mr-desc" id="mr-scan-d" data-i18n="mScanDesc">Фото сторінок → PDF для друку, JPG чи PNG</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-print-page" aria-labelledby="mr-print-t" aria-describedby="mr-print-d"><svg class="mi" aria-hidden="true"><use href="#i-print"/></svg><span class="mr-text"><span class="mr-title" id="mr-print-t" data-i18n="mPrint">Друк сторінки</span><span class="mr-desc" id="mr-print-d" data-i18n="mPrintDesc">Надрукувати або зберегти як PDF</span></span></button>
             </section>
             <!-- НАЛАШТУВАННЯ -->
@@ -1902,6 +1947,7 @@
                         <label class="home-cta" for="file-upload"><svg class="mi" aria-hidden="true"><use href="#i-open"/></svg><span data-i18n="mOpen">Відкрити файл</span></label>
                         <button type="button" class="home-btn my-books-btn" id="home-my-books"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span data-i18n="mShelf">Мої книги</span></button>
                         <button type="button" class="home-btn" id="home-library"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span data-i18n="mLibrary">Безкоштовна бібліотека</span></button>
+                        <button type="button" class="home-btn" id="home-scanner"><svg class="mi" aria-hidden="true"><use href="#i-scan"/></svg><span data-i18n="mScan">Сканер документів</span></button>
                     </div>
                     <p class="home-formats" data-i18n="mHomeFormats">Підтримуються EPUB, PDF, DOCX, FB2, TXT, MD, HTML і RTF.</p>
                     <div id="recent-books"></div>
@@ -2168,11 +2214,12 @@
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=fbed3900f10b"></script>
     <script src="js/book-shelf.js?v=57ce4e25631c"></script>
+    <script src="js/scanner.js?v=19a0bf00f69f"></script>
     <script src="js/sync.js?v=1684d2d3ee1e"></script>
-    <script src="js/quick-wheel.js?v=8a34eeaae252"></script>
+    <script src="js/quick-wheel.js?v=66a8c50d1d79"></script>
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=a55b6a10f6e6"></script>
-    <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
-    <script src="js/i18n-es.js?v=05c0d1127c08"></script>
+    <script src="js/pwa-lifecycle.js?v=d2987066ddd8"></script>
+    <script src="js/i18n-es.js?v=3196f781b55a"></script>
 </body>
 </html>
