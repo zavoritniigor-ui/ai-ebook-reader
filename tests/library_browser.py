@@ -137,4 +137,37 @@ check('18 a born-digital book opens as EPUB', "!!__opened && __opened.name === '
 c.js("window.__opened = null; openLibrary(); document.querySelectorAll('#library-list .library-card')[2].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
 check('19 a file over 300 MB is not downloaded; the reader is told why', "__opened === null && !__iaReqs.some(r => r.includes('name=huge.pdf')) && document.getElementById('library-status').textContent.includes('400')")
 check('20 the Internet Archive choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'archive' && f.iaLang === 'ukr'; })()")
+
+# ---- Bibliothèque numérique romande and Standard Ebooks (French and English classics, EPUB) ----
+c.js("""(() => { window.__catReqs = []; window.__opened = null; const prev = window.fetch;
+  window.fetch = async (url, opts) => { url = String(url);
+    if (/op=(bnr|se)-/.test(url)) { __catReqs.push(decodeURIComponent(url));
+      if (url.includes('-search')) { const se = url.includes('op=se-'), p2 = url.includes('page=2');
+        return new Response(JSON.stringify({more: !p2, results: [{id: se ? 'leo-tolstoy/resurrection/louise-maude' : 'balzac-honore-de-le-pere-goriot' + (p2 ? '-2' : ''),
+          title: se ? 'Resurrection' : 'Le Père Goriot', author: se ? 'Leo Tolstoy' : 'Balzac Honoré de', cover: se ? '' : '2022/07/goriot.jpg'}]}), {status: 200}); }
+      if (url.includes('-file')) return new Response(new Blob(['PK fake epub']), {status: 200});
+      if (url.includes('-cover')) return new Response('', {status: 404});
+    }
+    return prev(url, opts); };
+  openLibrary(); document.getElementById('library-q').value = ''; const s = document.getElementById('library-source'); s.value = 'bnr'; s.dispatchEvent(new Event('change')); return 1; })()"""); time.sleep(1)
+check('21 Bibliothèque numérique romande: French only, its own genres, and without a query it lists books at once',
+      """document.getElementById('library-lang').options.length === 1 && document.getElementById('library-lang').value === 'fr'
+         && document.getElementById('library-genre').options.length === 15 && !document.querySelector('#library-genre option[value="history"]')
+         && __catReqs.some(r => r.includes('op=bnr-search&q=&page=1')) && document.querySelector('#library-list .library-name').textContent === 'Le Père Goriot'
+         && document.querySelector('#library-list .library-author').textContent === 'Balzac Honoré de' && document.querySelector('#library-list img').src.includes('op=bnr-cover&path=2022%2F07%2Fgoriot.jpg')
+         && document.querySelector('#library-modal .library-source').textContent === t('libBnrSource') && !document.getElementById('library-more').hidden""")
+c.js("document.getElementById('library-more').click(); 1"); time.sleep(1)
+check('21a Show more appends the next page', "__catReqs.some(r => r.includes('op=bnr-search&q=&page=2')) && document.querySelectorAll('#library-list .library-card').length === 2 && document.getElementById('library-more').hidden")
+c.js("(() => { const g = document.getElementById('library-genre'); g.value = 'detective'; g.dispatchEvent(new Event('change')); const q = document.getElementById('library-q'); q.value = 'goriot'; q.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(1.5)
+check('22 query and genre go to the proxy', "__catReqs.some(r => r.includes('op=bnr-search&q=goriot&page=1&genre=detective'))")
+c.js("document.querySelector('#library-list .library-card .btn-primary').click(); 1"); time.sleep(1.5)
+check('22a Read opens the EPUB', "!!__opened && __opened.name === 'Le Père Goriot.epub' && __opened.type === 'application/epub+zip' && __catReqs.some(r => r.includes('op=bnr-file&id=balzac-honore-de-le-pere-goriot'))")
+c.js("""(() => { window.__opened = null; openLibrary(); const q = document.getElementById('library-q'); q.value = ''; const s = document.getElementById('library-source'); s.value = 'se'; s.dispatchEvent(new Event('change')); return 1; })()"""); time.sleep(1)
+check('23 Standard Ebooks: English only, no genre without a subject there (romance), books listed at once',
+      """document.getElementById('library-lang').value === 'en' && document.getElementById('library-lang').options.length === 1 && !document.querySelector('#library-genre option[value="love"]')
+         && document.getElementById('library-genre').value === 'detective' && __catReqs.some(r => r.includes('op=se-search&q=&page=1&genre=detective'))
+         && document.querySelector('#library-list .library-name').textContent === 'Resurrection'""")
+c.js("document.querySelector('#library-list .library-card .btn-primary').click(); 1"); time.sleep(1.5)
+check('23a Read opens its EPUB', "!!__opened && __opened.name === 'Resurrection.epub' && __catReqs.some(r => r.includes('op=se-file&id=leo-tolstoy/resurrection/louise-maude'))")
+check('24 the choice is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).source === 'se'")
 print('ALL PASS')

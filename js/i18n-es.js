@@ -132,6 +132,8 @@ const I18N_ES = {
     libSource: 'Libros de Project Gutenberg: dominio público.',
     libSourceArchive: 'Internet Archive (PDF, EPUB)', libIaHint: 'Escribe un título o un autor, o elige un género, para buscar en Internet Archive (escaneos de ediciones antiguas y libros libres).',
     libIaSource: 'Libros de Internet Archive: ediciones anteriores a 1930 (dominio público) y libros con licencias libres. Los libros escaneados se abren en PDF.',
+    libSourceBnr: 'Bibliothèque numérique romande (francés)', libBnrSource: 'Libros de la Bibliothèque numérique romande: clásicos franceses de dominio público, revisados por voluntarios.',
+    libSourceSe: 'Standard Ebooks (inglés)', libSeSource: 'Libros de Standard Ebooks: clásicos ingleses de dominio público, ediciones revisadas con esmero.',
     libDownloading: 'Descargando el libro: {n} de {total} MB…', libTooBig: 'El libro es demasiado grande para la aplicación ({n} MB, máximo 300 MB).',
     genAll: 'Todos los géneros', genFiction: 'Ficción', genAdventure: 'Aventuras', genDetective: 'Policíaca', genScifi: 'Ciencia ficción', genLove: 'Romántica',
     genPoetry: 'Poesía', genDrama: 'Teatro', genChildren: 'Infantil', genPhilosophy: 'Filosofía', genHistory: 'Historia', genHistorical: 'Novela histórica',
