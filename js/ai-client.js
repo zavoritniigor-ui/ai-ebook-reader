@@ -294,6 +294,17 @@ function aiRateDetails(bodyText, retryAfterHeader) {
     if (header >= 0 && header < 86400) rate.retryAfterSec = header;
     return Object.keys(rate).length ? rate : null;
 }
+// A refused HTTP reply → AiRequestError. The provider's own explanation (e.g. "max_output_tokens too small") is kept for the
+// developer diagnostics only; a 429 also carries which limit was hit and when to come back.
+async function aiResponseError(provider, res) {
+    let providerMessage = '', rate = null;
+    try {
+        const text = await res.text();
+        providerMessage = providerErrorText(text);
+        if (res.status === 429) rate = aiRateDetails(text, res.headers.get('retry-after'));
+    } catch (e) { /* body unreadable */ }
+    return aiHttpError(provider, res.status, providerMessage, rate);
+}
 async function aiJsonRequest(provider, key, url, body, signal, timeoutMs) {
     const headers = Object.assign({ 'Content-Type': 'application/json' }, aiAuthHeaders(provider, key));
     url = aiEndpoint(provider, key, url);
@@ -304,16 +315,7 @@ async function aiJsonRequest(provider, key, url, body, signal, timeoutMs) {
         // Never relay error.message to the learner: a provider/browser may echo credentials.
         throw new AiRequestError(t('aiNetworkError'), err && err.reason === 'timeout' ? 'timeout' : 'network');
     }
-    if (!res.ok) {
-        // The provider's own explanation (e.g. "max_output_tokens too small") is kept for the developer diagnostics only.
-        let providerMessage = '', rate = null;
-        try {
-            const text = await res.text();
-            providerMessage = providerErrorText(text);
-            if (res.status === 429) rate = aiRateDetails(text, res.headers.get('retry-after'));
-        } catch (e) { /* body unreadable */ }
-        throw aiHttpError(provider, res.status, providerMessage, rate);
-    }
+    if (!res.ok) throw await aiResponseError(provider, res);
     try {
         const data = await res.json();
         if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error();
@@ -575,7 +577,51 @@ const groqLimitedRecently = () => Date.now() - groqLimitedAt < 60000;   // for t
 const GROQ_FIRST_TIMEOUT_MS = { practice_reading: 60000, rules_search: 30000, grammar_analysis: 30000, sentence_structure: 30000 };
 function groqFirstTimeout(task) { return GROQ_FIRST_TIMEOUT_MS[task] || 20000; }
 
-async function callGroq(prompt, dataUrl, key, signal, task = 'default', options = {}) {
+// Groq streams like OpenAI for the reading tasks that show their answer as it is written (Ask AI, language level: the task's
+// OpenAI profile has stream:true). Before 2026-10-31 only OpenAI streamed, and since every request starts on Groq the reader
+// stared at a spinner until the whole answer (up to 1200 tokens) was ready. Chat Completions SSE:
+// data: {"choices":[{"delta":{"content":"…"},"finish_reason":null}]} … data: [DONE]. Accumulated text goes to onDelta.
+async function parseGroqStream(reader, signal, onDelta, idleMs = AI_STREAM_IDLE_MS) {
+    const decoder = new TextDecoder();
+    const started = performance.now();
+    let buffer = '', result = '', finish = null, usage = null, firstTokenMs = null, sawEvent = false, done = false;
+    const take = (line) => {
+        if (!line.startsWith('data:')) return;
+        const payload = line.slice(5).trim();
+        if (!payload) return;
+        if (payload === '[DONE]') { done = true; sawEvent = true; return; }
+        let data;
+        try { data = JSON.parse(payload); } catch (_) { return; }
+        sawEvent = true;
+        if (data.error) throw new AiRequestError(t('aiInvalidResponse'), 'provider_error', { providerMessage: providerErrorText(JSON.stringify({ error: data.error })), partial: result });
+        const choice = Array.isArray(data.choices) ? data.choices[0] : null;
+        const piece = choice && choice.delta && typeof choice.delta.content === 'string' ? choice.delta.content : '';
+        if (piece) {
+            if (firstTokenMs === null) firstTokenMs = Math.round(performance.now() - started);
+            result += piece;
+            if (onDelta) onDelta(piece, result);
+        }
+        if (choice && choice.finish_reason) finish = choice.finish_reason;
+        const u = data.usage || (data.x_groq && data.x_groq.usage);
+        if (u && typeof u === 'object') usage = u;
+    };
+    while (!done) {
+        if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
+        const { done: ended, value } = await readWithIdleTimeout(reader, idleMs);
+        if (ended) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) { take(line.trim()); if (done) break; }
+    }
+    if (buffer.trim()) take(buffer.trim());
+    if (done) { try { reader.cancel().catch(() => {}); } catch (e) {} }
+    if (!sawEvent) throw new AiRequestError(t('aiInvalidResponse'), 'envelope_invalid', { providerMessage: 'no SSE events' });
+    // A stream that ended without [DONE] and without a finish reason was cut by the connection, not completed.
+    if (!done && !finish) throw new AiRequestError(t('aiNetworkError'), 'network', { partial: result, providerMessage: 'stream ended early' });
+    return { result, finish, usage, firstTokenMs };
+}
+async function callGroq(prompt, dataUrl, key, signal, task = 'default', options = {}, onDelta) {
     const profile = GROQ_TASK_PROFILES[task] || GROQ_TASK_PROFILES.default;
     const body = dataUrl ? {
         model: GROQ_VISION_MODEL, reasoning_format: 'hidden', max_completion_tokens: profile.max_completion_tokens,
@@ -586,15 +632,57 @@ async function callGroq(prompt, dataUrl, key, signal, task = 'default', options 
         model: GROQ_MODEL, reasoning_format: 'hidden', reasoning_effort: 'low', max_completion_tokens: groqMaxTokens(task, options),
         messages: [{ role: 'user', content: prompt }]
     };
-    const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal, options.timeoutMs || aiTaskTimeout(task));
     const meta = options.meta || {};
+    if (!dataUrl && onDelta && (OPENAI_TASK_PROFILES[task] || {}).stream) return callGroqStreaming(body, key, signal, task, options, onDelta, meta);
+    const data = await aiJsonRequest('groq', key, 'https://api.groq.com/openai/v1/chat/completions', body, signal, options.timeoutMs || aiTaskTimeout(task));
+    return groqResultFromJson(data, meta, dataUrl ? GROQ_VISION_MODEL : GROQ_MODEL);
+}
+function groqResultFromJson(data, meta, model) {
     const choice = Array.isArray(data.choices) ? data.choices[0] : null;
-    meta.model = typeof data.model === 'string' ? data.model : (dataUrl ? GROQ_VISION_MODEL : GROQ_MODEL);
+    meta.model = typeof data.model === 'string' ? data.model : model;
     meta.finish = (choice && choice.finish_reason) || null;
     if (data.usage && typeof data.usage === 'object') meta.usage = { in: data.usage.prompt_tokens, out: data.usage.completion_tokens, reasoning: data.usage.completion_tokens_details?.reasoning_tokens };
     const content = choice && choice.message ? choice.message.content : undefined;
     if (meta.finish === 'length') throw new AiRequestError(t('aiInvalidResponse'), 'truncated', { partial: typeof content === 'string' ? content : '', providerMessage: 'length', meta });
     return content;
+}
+// The request-level timeout covers only the wait for the reply to start (groqFirstTimeout while a backup is ready); once text
+// flows, each read has its own idle limit (AI_STREAM_IDLE_MS). A reply that is not an event stream (a proxy or provider that
+// ignored stream:true, a test stub) is read as an ordinary completion.
+async function callGroqStreaming(body, key, signal, task, options, onDelta, meta) {
+    const url = aiEndpoint('groq', key, 'https://api.groq.com/openai/v1/chat/completions');
+    const headers = Object.assign({ 'Content-Type': 'application/json' }, aiAuthHeaders('groq', key));
+    let res;
+    try {
+        res = await fetchStreamingWithTimeout(url, { method: 'POST', headers, body: JSON.stringify(Object.assign({}, body, { stream: true })), signal }, options.timeoutMs || aiTaskTimeout(task));
+    } catch (err) {
+        if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
+        // fetchStreamingWithTimeout aborts its own controller on the timeout: an AbortError the caller did not ask for is a timeout.
+        throw new AiRequestError(t('aiNetworkError'), err && err.name === 'AbortError' ? 'timeout' : 'network');
+    }
+    if (!res.ok) throw await aiResponseError('groq', res);
+    if (!/text\/event-stream/i.test(res.headers.get('content-type') || '')) {
+        let data;
+        try { data = await res.json(); if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error(); }
+        catch (_) { throw new AiRequestError(t('aiInvalidResponse'), 'envelope_invalid'); }
+        const text = groqResultFromJson(data, meta, GROQ_MODEL);
+        if (typeof text === 'string' && text && onDelta) onDelta(text, text);
+        return text;
+    }
+    const reader = res.body && res.body.getReader();
+    if (!reader) throw new AiRequestError(t('aiInvalidResponse'), 'envelope_invalid');
+    let streamed;
+    try { streamed = await parseGroqStream(reader, signal, onDelta); }
+    catch (err) {
+        if (signal?.aborted || (err && err.name === 'AbortError')) throw new DOMException('Cancelled', 'AbortError');
+        throw err;
+    }
+    meta.model = GROQ_MODEL;
+    meta.finish = streamed.finish;
+    meta.firstTokenMs = streamed.firstTokenMs;
+    if (streamed.usage) meta.usage = { in: streamed.usage.prompt_tokens, out: streamed.usage.completion_tokens, reasoning: streamed.usage.completion_tokens_details?.reasoning_tokens };
+    if (streamed.finish === 'length') throw new AiRequestError(t('aiInvalidResponse'), 'truncated', { partial: streamed.result, providerMessage: 'length', meta });
+    return streamed.result;
 }
 // options (all optional): { maxOutputTokens, timeoutMs, meta } — meta is filled with { provider, model, finish, usage, elapsedMs, rawChars }.
 function callAI(prompt, signal, task = 'default', onDelta, options) { return requestAI(prompt, null, signal, task, onDelta, options); }
@@ -689,7 +777,7 @@ async function requestAIOnce(prompt, dataUrl, signal, task = 'default', onDelta,
         let out;
         switch (provider) {
             case 'openai': out = await callOpenAI(prompt, dataUrl, key, controller.signal, task, onDelta, options); break;
-            case 'groq': out = await callGroq(prompt, dataUrl, key, controller.signal, task, options); break;
+            case 'groq': out = await callGroq(prompt, dataUrl, key, controller.signal, task, options, onDelta); break;
             case 'gemini': out = await callGemini(prompt, dataUrl, key, controller.signal, task, options); break;
         }
         if (!current()) throw new DOMException('Cancelled', 'AbortError');
@@ -698,7 +786,7 @@ async function requestAIOnce(prompt, dataUrl, signal, task = 'default', onDelta,
         if (!text) throw new AiRequestError(t('aiEmptyResponse'), 'empty_reply');
         meta.elapsedMs = Math.round(performance.now() - started);
         meta.rawChars = text.length;
-        recordAiRequest({ task, provider, model: meta.model, shared: key === SHARED_AI_KEY, ok: true, ms: meta.elapsedMs });
+        recordAiRequest(Object.assign({ task, provider, model: meta.model, shared: key === SHARED_AI_KEY, ok: true, ms: meta.elapsedMs }, meta.firstTokenMs != null ? { firstMs: meta.firstTokenMs } : {}));
         return text;
     } catch (err) {
         if (!current()) throw new DOMException('Cancelled', 'AbortError');
