@@ -221,6 +221,9 @@ jobs:
           echo "Running epub_notes_browser.py (EPUB footnotes and internal links)..."
           python3 -u tests/epub_notes_browser.py
 
+          echo "Running groq_stream_browser.py (Groq streams Ask AI and Language level)..."
+          python3 -u tests/groq_stream_browser.py
+
           echo "Running pwa_start_url_browser.py..."
           python3 -u tests/pwa_start_url_browser.py
 
