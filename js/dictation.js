@@ -295,6 +295,7 @@ function buildDiagnosticsReport() {
         offline: typeof offlineTrReport === 'function' ? offlineTrReport() : null,   // js/offline-translate.js: installed packs, why the engine failed, last speed
         chromeAi: chromeBuiltinAi,   // Gemini Nano (Prompt API) and Chrome's Translator: 'absent' = this browser has no such API; else unavailable / downloadable / downloading / available
         deviceAi: typeof deviceLlmReport === 'function' ? deviceLlmReport() : null,   // js/device-llm.js: WebGPU, installed model, load time, speed, why it failed
+        pdfContrast: typeof pdfContrastReport === 'function' ? pdfContrastReport() : null,   // js/pdf-contrast.js: виміряні рівні сканованої сторінки й застосований фільтр
         bookSpeech: typeof bsReport === 'function' ? bsReport() : null,   // js/book-speech.js: the book's narration and piste marks, what each tap decided
         speech: {
             engine: synth ? { speaking: synth.speaking, pending: synth.pending, paused: synth.paused } : 'none',

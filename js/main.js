@@ -258,6 +258,18 @@ for (const [name, id] of Object.entries(TEXT_LAYOUT_CONTROLS)) {
     const select = document.getElementById(id);
     if (select) select.onchange = (e) => setTextLayout(name, e.target.value);
 }
+// Контраст сторінки PDF (js/pdf-contrast.js). Зміна не перемальовує сторінки: фільтр перераховується
+// на вже готових полотнах, тому вибір видно одразу навіть на великій книзі.
+const pdfContrastSelect = document.getElementById('pdf-contrast');
+if (pdfContrastSelect) {
+    pdfContrastSelect.value = pdfContrastChoice();
+    pdfContrastSelect.onchange = (e) => {
+        const value = PDF_CONTRAST_MODES.includes(e.target.value) ? e.target.value : 'auto';
+        writeStored(PDF_CONTRAST_KEY, value);
+        pdfContrastSelect.value = value;
+        pdfContrastRefreshRendered();
+    };
+}
 const hyphensBtn = document.getElementById('btn-hyphens');
 if (hyphensBtn) hyphensBtn.onclick = () => setTextLayout('hyphens', textLayoutChoice('hyphens') === 'auto' ? 'manual' : 'auto');
 syncTextLayoutControls();
