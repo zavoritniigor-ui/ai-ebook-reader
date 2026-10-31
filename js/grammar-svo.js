@@ -177,8 +177,10 @@ async function startAiTask(contextText, mode, userPrompt = "") {
         : buildAskPrompt(contextText, state.lastGrammarSentence, userPrompt, langName);
     const taskType = mode === 'level' ? 'language_level' : 'ask';
 
-    // For streaming tasks (ask, language_level on OpenAI), provide incremental callback
-    const isStreaming = (aiProviderForTask(taskType) === 'openai' || deviceFirst) && (mode === 'ask' || mode === 'level');
+    // Ask and Language level show their answer as it is written: OpenAI, Groq (since 2026-10-31) and the on-device model stream;
+    // a provider that does not stream simply never calls back. A Groq answer cut mid-stream that falls back to OpenAI restarts
+    // the text from the beginning, since every update renders the accumulated reply, not a delta.
+    const isStreaming = mode === 'ask' || mode === 'level';
     const onDelta = isStreaming ? createStreamingUpdater(content, task, panel, mode, requestId) : undefined;
 
     try {
