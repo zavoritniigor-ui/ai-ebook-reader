@@ -44,7 +44,7 @@
   - Production not verified from the cloud container (policy blocks ai-ebook-reader.pages.dev): owner to check on the tablet.
   - Open: highlight offset on an OCR scan («The Analects», p. 896–897) — the app's text-layer geometry measures correct (≤1px
     on a vector PDF), so the OCR layer in the file is offset; needs the PDF to measure and correct per page. Bottom reading bar
-    design is on a canvas artifact, waiting for the owner's decision (5 vs 6 slots) before implementation.
+    (design on a canvas artifact): CANCELLED for now by the owner (2026-10-31) — do not implement unless asked again.
 
 - **Claude Code — offline translation improvements** (2026-10-30, task file «prompt-offline-translation-1»):
   - Item 2 merged: #333 (engine answers kept in memory for the session; 📋 `offline.memory {calls, saved, kept}`).
