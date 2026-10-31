@@ -2,7 +2,8 @@
 
     python3 tools/build_dict_fr_uk.py                 # download the sources once (cached), build, print statistics
     python3 tools/build_dict_fr_uk.py --cache DIR     # where the downloaded sources are kept (default ~/.cache/ai-reader-dict)
-    python3 tools/build_dict_fr_uk.py --kaikki FILE   # also read Wiktionary translations from a wiktextract (kaikki.org) JSONL file
+    python3 tools/build_dict_fr_uk.py --kaikki FILE [--kaikki FILE]   # refresh dict/src/wiktionary-fr-uk.tsv from wiktextract
+                                                      # (kaikki.org) extracts, then build; see WIKTIONARY below for the two files
     python3 tools/build_dict_fr_uk.py --todo          # list frequent lemmas that still have no Ukrainian meaning (for dict/src/written-*.tsv)
 
 Sources (every download pinned by SHA-256; see dict/NOTICE for the licences):
@@ -11,6 +12,8 @@ Sources (every download pinned by SHA-256; see dict/NOTICE for the licences):
     Wiktionary (en)         French headwords with their inflected forms and English senses (kaikki.org/wiktextract extract,
                             published as a TSV by the Wiktionary-Dictionaries project)
     Wiktionary (fr, en)     French → Ukrainian translations, through ConceptNet 5.7 (its Wiktionary-derived edges only)
+    dict/src/wiktionary-fr-uk.tsv  French → Ukrainian translations of today's Wiktionary, extracted by --kaikki (committed, so a build
+                            needs no access to kaikki.org)
     VESUM 6.8.6             Ukrainian word forms (brown-uk/dict_uk release): checks every Ukrainian meaning and gives the forms
                             the app needs to fit a substituted word into its sentence
     dict/src/*.tsv          meanings and set expressions written for this project (source "written")
@@ -42,10 +45,10 @@ FORMAT = 1
 INDEX_BLOCK = 32
 
 SOURCES = {
-    'lexique': [
-        {'url': 'http://www.lexique.org/databases/Lexique383/Lexique383.tsv', 'md5': 'a742a88cb00759c1ebed34995aed9904'},
+    'lexique': [   # the wheel first: the committed dictionary was built from it, and lexique.org's own TSV differs by a few rows
         {'url': 'https://files.pythonhosted.org/packages/dc/03/77f94be96bac73e7e95a1751fa7b26fc288c313e9d9ce559e252e49ee227/pylexique-1.5.1-py3-none-any.whl',
          'sha256': '41ae25154858101b376106d2bf24c21ff33df98623fe69e7d09256e7d4d8eebc', 'member': 'pylexique/Lexique383/Lexique383.txt'},
+        {'url': 'http://www.lexique.org/databases/Lexique383/Lexique383.tsv', 'md5': 'a742a88cb00759c1ebed34995aed9904'},
     ],
     'wiktionary_fr_en': [
         {'url': 'https://raw.githubusercontent.com/Vuizur/Wiktionary-Dictionaries/be0cfb8d614470bc8b9d9006ddff8b921cd5c2e3/French-English%20Wiktionary%20dictionary.tsv',
@@ -188,6 +191,11 @@ def load_wiktionary_fr_en(path):
 
 
 # ========== WIKTIONARY TRANSLATIONS ==========
+def uk_plain(word):
+    """A Ukrainian word as VESUM writes it: without the stress marks Wiktionary puts on it («будо́к» → «будок»)."""
+    return unicodedata.normalize('NFC', unicodedata.normalize('NFD', word).replace('\u0301', '')).strip()
+
+
 def load_conceptnet_fr_uk(path):
     """French → Ukrainian translations from the Wiktionary-derived edges of ConceptNet 5.7: {french: [(uk, pos, sense)]}."""
     out = collections.defaultdict(list)
@@ -209,20 +217,77 @@ def load_conceptnet_fr_uk(path):
     return out
 
 
-def load_kaikki(path):
-    """Optional: French entries of a wiktextract JSONL (e.g. kaikki.org's French Wiktionary extract) with Ukrainian translations."""
-    out = collections.defaultdict(list)
-    opener = gzip.open if str(path).endswith('.gz') else open
-    with opener(path, 'rt', encoding='utf-8') as f:
-        for line in f:
-            e = json.loads(line)
-            if e.get('lang_code') != 'fr':
-                continue
-            pos = WIKT_POS.get(e.get('pos', ''), '')
-            for t in e.get('translations', []):
-                if t.get('lang_code') == 'uk' and t.get('word'):
-                    out[e['word']].append((t['word'], pos, t.get('sense', '')))
+# WIKTIONARY: the two wiktextract extracts of kaikki.org that --kaikki reads (both CC BY-SA 4.0 / GFDL, like Wiktionary itself):
+#   https://kaikki.org/frwiktionary/raw-wiktextract-data.jsonl.gz  the French Wiktionary: French entries, their «Traductions» into Ukrainian
+#   https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz    the English Wiktionary: an English entry's translation table lists French
+#        and Ukrainian words for ONE sense; a pair counts only when the French word's own English entry glosses it with that English word
+#        (both ways: «interdire» → "to forbid", and "forbid" lists «interdire» and «забороняти»), so a word is never paired across senses.
+WIKTIONARY_TSV = SRC / 'wiktionary-fr-uk.tsv'
+WIKTIONARY_PER_WORD = 4   # meanings kept per French word and part of speech, the best supported first
+
+
+def gloss_heads(gloss):
+    """The English words a gloss names: "(figuratively) to forbid, ban" → {'forbid', 'ban'}."""
+    out = set()
+    for part in re.split(r'[,;]', re.sub(r'\([^)]*\)', '', gloss)):
+        part = re.sub(r'^(to|a|an|the)\s+', '', part.strip().lower()).strip(' .')
+        if part and len(part.split()) <= 3:
+            out.add(part)
     return out
+
+
+def load_kaikki(paths):
+    """French → Ukrainian pairs from wiktextract JSONL files: {(french, pos): Counter(uk → support)}, the pairs the French Wiktionary
+    gives itself {(french, pos, uk)}, and the files read (name, SHA-256 of the file as downloaded)."""
+    direct, tables, glosses, read = collections.defaultdict(collections.Counter), [], collections.defaultdict(set), []
+    for path in paths:
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1 << 20), b''):
+                h.update(chunk)
+        opener = gzip.open if str(path).endswith('.gz') else open
+        with opener(path, 'rt', encoding='utf-8') as f:
+            for line in f:
+                if '"lang_code": "fr"' not in line and '"lang_code": "en"' not in line:
+                    continue
+                e = json.loads(line)
+                pos = WIKT_POS.get(e.get('pos'))   # proper names, affixes, symbols: never a lemma's meaning
+                if not pos or not e.get('word'):
+                    continue
+                if e.get('lang_code') == 'fr':
+                    for i, t in enumerate(t for t in e.get('translations') or [] if t.get('lang_code') == 'uk' and t.get('word')):
+                        direct[(e['word'], pos)][uk_plain(t['word']).lower()] += 2.0 / (1 + i * 0.3)   # the editors' own choice: weighs double
+                    for sense in e.get('senses') or []:
+                        for g in (sense.get('glosses') or [])[:1]:
+                            glosses[(e['word'], pos)] |= gloss_heads(g)
+                elif e.get('lang_code') == 'en':
+                    by_sense = collections.defaultdict(lambda: ([], []))
+                    for t in e.get('translations') or []:
+                        if t.get('lang_code') in ('fr', 'uk') and t.get('word'):
+                            by_sense[t.get('sense', '')][t['lang_code'] == 'uk'].append(t['word'])
+                    tables += [(e['word'].lower(), pos, fr, uk) for fr, uk in by_sense.values() if fr and uk]
+        read.append((Path(path).name, h.hexdigest()))
+    own = {(w, pos, u) for (w, pos), c in direct.items() for u in c}
+    pairs = collections.defaultdict(collections.Counter, direct)
+    for english, pos, fr, uk in tables:
+        for word in set(fr):
+            if english in glosses.get((word, pos), ()):
+                for i, u in enumerate(dict.fromkeys(uk_plain(u).lower() for u in uk)):
+                    pairs[(word, pos)][u] += 1.0 / (1 + i * 0.3)
+    return pairs, own, read
+
+
+def write_wiktionary_tsv(pairs, own, read):
+    lines = ['# French → Ukrainian translations of Wiktionary (CC BY-SA 4.0 / GFDL), written by tools/build_dict_fr_uk.py --kaikki from:']
+    lines += [f'#   {name}  sha256 {sha}' for name, sha in read]
+    lines += ['# french TAB part of speech TAB ukrainian meanings (the best supported first; checked against VESUM at build time) TAB one letter',
+              '# per meaning: f = the French Wiktionary gives it, e = only through an English translation table']
+    for (word, pos) in sorted(pairs):
+        best = [u for u, _ in sorted(pairs[(word, pos)].items(), key=lambda x: (-x[1], x[0]))[:WIKTIONARY_PER_WORD]]
+        if best and '\t' not in word and not any('\t' in u or ';' in u for u in best):
+            lines.append(f'{word}\t{pos}\t{";".join(best)}\t{"".join("f" if (word, pos, u) in own else "e" for u in best)}')
+    WIKTIONARY_TSV.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    log(f'wrote {WIKTIONARY_TSV.relative_to(root)}: {sum(not line.startswith("#") for line in lines)} French words')
 
 
 # ========== UKRAINIAN (VESUM) ==========
@@ -387,9 +452,16 @@ def main():
         log('reading Wiktionary translations (ConceptNet) …')
         trans = load_conceptnet_fr_uk(fetch('conceptnet', cache))
         parsed.write_bytes(pickle.dumps((lexique, wikt, vesum, uk_good, trans), protocol=pickle.HIGHEST_PROTOCOL))
-    for k in args.kaikki:
-        for w, items in load_kaikki(k).items():
-            trans[w].extend(items)
+    if args.kaikki:
+        log('reading wiktextract extracts …')
+        write_wiktionary_tsv(*load_kaikki(args.kaikki))
+    through_english = set()   # (french, pos, uk) that only an English translation table gives (not ConceptNet, not the French Wiktionary)
+    conceptnet = {(w, uk_plain(u).lower()) for w, items in trans.items() for u, _, _ in items}
+    for fname, n, cols in read_tsv(WIKTIONARY_TSV.name):   # after ConceptNet: its pairs keep their place, today's Wiktionary adds the rest
+        for uk, how in zip(split_meanings(cols[2]), cols[3]):
+            trans[cols[0]].append((uk, cols[1], ''))
+            if how == 'e' and (cols[0], uk_plain(uk).lower()) not in conceptnet:
+                through_english.add((cols[0], cols[1], uk_plain(uk).lower()))
 
     # --- the French lexicon: Lexique, then Wiktionary's forms and the single-word headwords Lexique lacks ---
     oe = {}   # 'oeil' → 'œil': Lexique writes œ out, Wiktionary does not
@@ -426,12 +498,12 @@ def main():
         if not keys:
             continue
         for uk, pos, sense in items:
-            uk = uk.strip().lower()
+            uk = uk_plain(uk).lower()
             if not uk_ok(uk):
                 rejected['wiktionary: not in VESUM'] += 1
                 continue
             key = next((k for k in keys if k[1] == pos), None) or (keys[0] if len(keys) == 1 or not pos else None)
-            if key and uk not in (m[0] for m in meanings[key]):
+            if key and uk not in (m[0] for m in meanings[key]) and len(meanings[key]) < WIKTIONARY_PER_WORD + 2:
                 meanings[key].append([uk, 'w'])
     wikt_found = {k: [m[0] for m in v] for k, v in meanings.items()}
     written_errors = []
@@ -498,11 +570,14 @@ def main():
             for g in heads(senses):
                 by_english[g].add(key)
     confusions = {}
+    written_keys = {(cols[0], cols[1]) for _, _, cols in read_tsv('written-*.tsv')}
     for key in meanings:
+        if key not in written_keys and (*key, meanings[key][0][0]) in through_english:
+            continue   # a main meaning found only through English is not sure enough to correct the engine with
         own = {m[0] for m in meanings[key]}
         bad = []
         for g in heads(english.get(key, [])):
-            for other in by_english[g]:
+            for other in sorted(by_english[g], key=lambda k: (-lex[k]['f'], k)):   # the most frequent first; sorted, so every build is the same
                 if other == key or other[1] != key[1]:   # the pivot keeps the part of speech: «file» (noun) is not «filer»
                     continue
                 for m in meanings[other][:2]:

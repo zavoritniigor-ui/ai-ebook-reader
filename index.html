@@ -714,6 +714,8 @@
         #ink-done { width: auto; padding: 0 16px; border-radius: 20px; background: #10a37f; font-size: 14px; }
         #ink-done:hover { background: #12b78e; }
         .ink-btn.active { background: #10a37f; }
+        .ink-btn:disabled { opacity: .4; cursor: default; }
+        #ink-erase.whole { box-shadow: inset 0 0 0 2px #fff; }
         .ink-colors { display: flex; gap: 5px; }
         .ink-color { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: transform .1s; }
         .ink-color:hover { transform: scale(1.12); }
@@ -750,7 +752,8 @@
            ☰ накривав перше слово кожної сторінки, а стрілки — останній рядок. PDF має власне прокручування і поля. */
         /* Не залежить від меню й смуги «◀ сторінка ▶»: інакше кожне їх відкриття перекомпоновувало б сторінку (текст «стрибав»). */
         body:not(.pdf-mode) #reader-container { padding-top: max(20px, calc(max(8px, env(safe-area-inset-top, 0px)) + 52px)); }
-        body:not(.ink-mode):not(.region-mode):not(.pdf-mode):has(#page-arrows:not([hidden])) #reader-container {
+        /* The pen keeps this space (js/text-ink.js): the text must not flow again when writing starts or ends. */
+        body:not(.region-mode):not(.pdf-mode):has(#page-arrows:not([hidden])) #reader-container {
             padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 
         /* Вікно перекладу слова. Навмисно темне на будь-якій темі сторінки — окрема "картка" поверх тексту, а не продовження фону:
@@ -2004,16 +2007,24 @@
     <dialog id="book-audio-dialog"></dialog>
     <div id="ink-tools">
         <button class="ink-btn" id="ink-pen" title="Ручка">✏️</button>
+        <button class="ink-btn" id="ink-marker" title="Маркер">🖍️</button>
         <button class="ink-btn" id="ink-erase" title="Гумка">🧽</button>
+        <button class="ink-btn" id="ink-finger" title="Писати й пальцем" aria-pressed="false" hidden>☝️</button>
         <label title="Товщина нового штриха в екранних пікселях">✏ <input id="ink-width" aria-label="Товщина пера" type="range" min="0.5" max="6" step="0.5" value="1.5"><output id="ink-width-value">1.5</output></label>
         <span class="ink-colors">
             <button class="ink-color" data-c="#1a56db" style="background:#1a56db"></button>
             <button class="ink-color" data-c="#d1242f" style="background:#d1242f"></button>
             <button class="ink-color" data-c="#1a7f37" style="background:#1a7f37"></button>
             <button class="ink-color" data-c="#111111" style="background:#111111"></button>
+            <button class="ink-color" data-c="#f2c200" style="background:#f2c200"></button>
+            <button class="ink-color" data-c="#f57c00" style="background:#f57c00"></button>
+            <button class="ink-color" data-c="#8e24aa" style="background:#8e24aa"></button>
         </span>
         <button class="ink-btn" id="ink-undo" title="Скасувати">↶</button>
+        <button class="ink-btn" id="ink-redo" title="Повернути">↷</button>
         <button class="ink-btn" id="ink-clear" title="Очистити сторінку">🗑</button>
+        <button class="ink-btn" id="ink-prev" title="◀ Назад" data-i18n-title="prev" hidden>‹</button>
+        <button class="ink-btn" id="ink-next" title="Вперед ▶" data-i18n-title="next" hidden>›</button>
         <button class="ink-btn" id="ink-done" data-i18n="done">Готово</button>
     </div>
 
@@ -2081,19 +2092,19 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=c8bc5d23049a"></script>
+    <script src="js/core.js?v=e632f2bbda7e"></script>
     <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
     <script src="js/local-speech.js?v=c3244d9e7daf"></script>
     <script src="js/tts.js?v=c8a69d8615fd"></script>
-    <script src="js/selection.js?v=7a78348055af"></script>
+    <script src="js/selection.js?v=188a52becf92"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
-    <script src="js/navigation.js?v=92bb75bc6057"></script>
-    <script src="js/pdf-zoom-pan.js?v=e43f726a17a1"></script>
+    <script src="js/navigation.js?v=35362ac6dd0c"></script>
+    <script src="js/pdf-zoom-pan.js?v=c2233b957e5a"></script>
     <script src="js/ui-tooltip.js?v=5474e83169d8"></script>
-    <script src="js/translation.js?v=c86599c93891"></script>
+    <script src="js/translation.js?v=cf27366b8131"></script>
     <script src="js/dictionaries.js?v=a8f7f2bcfc69"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
     <script src="js/grammar-svo.js?v=14a16a48210a"></script>
@@ -2105,14 +2116,15 @@
     <script src="js/ai-client.js?v=b9694da45bbe"></script>
     <script src="js/practice-session.js?v=276c4226546f"></script>
     <script src="js/practice-worksheet.js?v=cca1a85581f5"></script>
-    <script src="js/dictation.js?v=3a73ca97a740"></script>
+    <script src="js/dictation.js?v=f56e4d5f3c06"></script>
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
-    <script src="js/offline-dict-catalog.js?v=4416712db83d"></script>
-    <script src="js/offline-translate.js?v=c779ec5bacde"></script>
+    <script src="js/offline-dict-catalog.js?v=16288e0c6804"></script>
+    <script src="js/offline-translate.js?v=4f34beb902dc"></script>
     <script src="js/offline-dict.js?v=a87eb6e3bf0c"></script>
     <script src="js/device-llm-catalog.js?v=c63f891a1ce2"></script>
     <script src="js/device-llm.js?v=9b6f20f6d2d6"></script>
-    <script src="js/pdf-ink.js?v=defbefcd482f"></script>
+    <script src="js/pdf-ink.js?v=0b9c9e47c2e9"></script>
+    <script src="js/text-ink.js?v=4ba7df76e282"></script>
     <script src="js/pdf-crop.js?v=d075e66bd44c"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
@@ -2130,6 +2142,6 @@
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=b76bd89ad359"></script>
     <script src="js/pwa-lifecycle.js?v=34e3759e3e21"></script>
-    <script src="js/i18n-es.js?v=8867d2e4b012"></script>
+    <script src="js/i18n-es.js?v=d9b40c13ccbf"></script>
 </body>
 </html>

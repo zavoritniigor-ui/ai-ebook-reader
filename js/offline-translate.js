@@ -34,6 +34,13 @@ let offlineTrPack = null;            // запис стану з Cache Storage: 
 let offlineTrWorker = null, offlineTrBoot = null, offlineTrIdleTimer = 0, offlineTrSeq = 0, offlineTrQueue = Promise.resolve();
 let offlineTrFailure = '', offlineTrLast = null, offlineTrLog = [];   // для діагностики: чому рушій не запрацював, останній переклад, останні рядки рушія
 const offlineTrWaiting = new Map();
+// The engine's answers of this session, in memory only (never on disk, never in the store of translations, never above an AI answer):
+// a second tap on the same word, or the main path of js/translation.js after its 5-second preview, asks the worker nothing. Key: route +
+// text or html + the text sent; the value is the job's promise, so a request already running is joined, not started again. A null answer
+// (refused, aborted, failed) is never kept. Emptied whenever the pack's record changes (offlineTrSave).
+const OFFLINE_TR_RESULTS_MAX = 300;
+const offlineTrResults = new Map();
+let offlineTrCalls = 0, offlineTrSaved = 0;   // for 📋 diagnostics: translations the worker ran, and the ones this memory answered instead
 
 function offlineTrSupported() {
     try {
@@ -97,6 +104,7 @@ async function offlineTrLoad() {
 }
 async function offlineTrSave(pack) {
     offlineTrPack = pack;
+    offlineTrResults.clear();   // another engine or model may answer differently
     await (await caches.open(OFFLINE_TR_CACHE)).put(offlineTrKey('state'), new Response(JSON.stringify(pack), { headers: { 'content-type': 'application/json' } }));
 }
 // Файли, яких не знає запис стану (обірване завантаження, видалений напрямок, старіша версія рушія/моделі), зайвих місця не займають.
@@ -299,19 +307,51 @@ function offlineTrStart() {
     boot.then(() => URL.revokeObjectURL(url), () => URL.revokeObjectURL(url));
     return boot;
 }
+// The text the engine is given: at most OFFLINE_TR_MAX_CHARS, ending after the last whole sentence that fits (js/core.js sentenceSpans,
+// the app's one sentence splitter); a first sentence longer than that ends at the last space before the limit, never inside a word.
+function offlineTrClip(text) {
+    const s = String(text || '').trim();
+    if (s.length <= OFFLINE_TR_MAX_CHARS) return s;
+    let end = 0;
+    try { for (const [, b] of sentenceSpans(s)) { if (b > OFFLINE_TR_MAX_CHARS) break; end = b; } } catch (e) { end = 0; }
+    if (!end) { const space = s.lastIndexOf(' ', OFFLINE_TR_MAX_CHARS); end = space > 0 ? space : OFFLINE_TR_MAX_CHARS; }
+    return s.slice(0, end).trim();
+}
 // Переклад встановленим пакетом: рядок або null (нема пакета для напрямку, пристрій не потягне, рушій збоїть). Одна задача за раз;
 // скасований signal знімає задачу з черги, але вже запущений переклад не переривається.
-function offlineTranslate(text, src, tgt, signal, html = false) {
+async function offlineTranslate(text, src, tgt, signal, html = false) {
+    let key = null;
+    try {   // only a pack that can translate now is asked from memory: a removed or damaged one answers null, as before
+        const route = offlineTrRoute(src, tgt), clean = offlineTrClip(text);
+        if (route && clean && offlineTrSupported() && offlineTrReady(await offlineTrLoad(), route)) key = route.join(' ; ') + (html ? '\nhtml\n' : '\ntext\n') + clean;
+    } catch (e) { /* the job below answers null */ }
+    const known = key && offlineTrResults.get(key);
+    if (known) {
+        offlineTrResults.delete(key); offlineTrResults.set(key, known);   // the most recent last: the oldest goes first
+        const out = await known;
+        if (out !== null) { offlineTrSaved++; return out; }
+        if (signal && signal.aborted) return null;   // the shared job was cancelled by its own caller: this one runs it again below
+    }
+    const job = offlineTrJob(text, src, tgt, signal, html);
+    if (key) {
+        offlineTrResults.set(key, job);
+        if (offlineTrResults.size > OFFLINE_TR_RESULTS_MAX) offlineTrResults.delete(offlineTrResults.keys().next().value);
+        job.then(out => { if (out === null && offlineTrResults.get(key) === job) offlineTrResults.delete(key); });
+    }
+    return job;
+}
+function offlineTrJob(text, src, tgt, signal, html) {
     const run = async () => {
         clearTimeout(offlineTrIdleTimer);   // a minute of silence ends the engine -- never one that is about to translate
         if (signal && signal.aborted) return null;
         try {   // запасний шлях ніколи не ламає основний: що б не сталося, відповідь — null
-            const route = offlineTrRoute(src, tgt), clean = String(text || '').trim().slice(0, OFFLINE_TR_MAX_CHARS);
+            const route = offlineTrRoute(src, tgt), clean = offlineTrClip(text);
             if (!clean || !offlineTrSupported() || !offlineTrReady(await offlineTrLoad(), route)) return null;
             await offlineTrStart();
             if (signal && signal.aborted) return null;
             const pack = await offlineTrLoad();
             const steps = route.map(id => ({ id, gemm: pack.models[id].gemm, keys: Object.fromEntries(pack.models[id].types.map(type => [type, offlineTrKey('file', id, type)])) }));
+            offlineTrCalls++;
             const res = await offlineTrCall({ cmd: 'translate', cache: OFFLINE_TR_CACHE, steps, text: clean, html });
             offlineTrFailure = ''; offlineTrLast = { route: route.join(' ; '), chars: clean.length, ms: res.ms, at: Date.now() }; offlineTrLog = res.log || [];
             return String(res.text || '').trim() || null;
@@ -394,7 +434,8 @@ async function offlineTrSuggest(src, tgt) {
 function offlineTrReport() {
     const pack = offlineTrPack;
     return { supported: offlineTrSupported(), engine: pack ? pack.engine : 'not read yet', catalogEngine: OFFLINE_CATALOG.engine.version, models: pack ? Object.fromEntries(Object.entries(pack.models).map(([id, m]) => [id, m.version])) : null,
-        directions: pack ? pack.directions : null, dicts: pack ? pack.dicts : null, dictLast: typeof offlineDictLast === 'object' ? offlineDictLast : null, workerRunning: !!offlineTrWorker, failure: offlineTrFailure, last: offlineTrLast, engineLog: offlineTrLog };
+        directions: pack ? pack.directions : null, dicts: pack ? pack.dicts : null, dictLast: typeof offlineDictLast === 'object' ? offlineDictLast : null, workerRunning: !!offlineTrWorker, failure: offlineTrFailure, last: offlineTrLast, engineLog: offlineTrLog,
+        memory: { calls: offlineTrCalls, saved: offlineTrSaved, kept: offlineTrResults.size } };
 }
 
 // ========== НАЛАШТУВАННЯ: секція в діалозі 🔑 ==========

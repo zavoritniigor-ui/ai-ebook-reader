@@ -17,6 +17,12 @@ dict/fr-uk.json — CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0
         Wiktionary-Dictionaries project (https://github.com/Vuizur/Wiktionary-Dictionaries, commit be0cfb8d);
       - French → Ukrainian translations, through the Wiktionary-derived edges of ConceptNet 5.7 (Speer, R., Chin, J. & Havasi, C.
         (2017). ConceptNet 5.5: An Open Multilingual Graph of General Knowledge. AAAI 2017; https://conceptnet.io) — CC BY-SA 4.0.
+      - French → Ukrainian translations of today's Wiktionary, from the wiktextract extracts of kaikki.org (the French Wiktionary,
+        https://kaikki.org/frwiktionary/raw-wiktextract-data.jsonl.gz: its own «Traductions» into Ukrainian; the English Wiktionary,
+        https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz: French and Ukrainian words of the same translation table, kept
+        only when the French word's own entry is glossed with that English word), downloaded 2026-10-30 (the SHA-256 of both files
+        heads dict/src/wiktionary-fr-uk.tsv, where the pairs are kept so a build needs no access to kaikki.org) — CC BY-SA 4.0 / GFDL.
+        Changes: stress marks removed, at most 4 meanings per word, every Ukrainian word checked against VESUM.
       Meanings taken from Wiktionary are marked "w" (source "wiktionary").
     * Meanings and set expressions written for this project (dict/src/*.tsv), marked "x" (source "written"); every Ukrainian word
       in them was checked against VESUM (below) and refused when VESUM marks it as non-standard.

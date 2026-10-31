@@ -145,6 +145,7 @@ function goToPageInChapter(p, animate = true, anchor = null) {
     saveBookmark();
     if (typeof renderReadingRibbon === 'function') renderReadingRibbon();
     if (typeof paintBookMarks === 'function') paintBookMarks();   // виділення й нотатки (js/book-marks.js)
+    if (typeof layoutTextInk === 'function') layoutTextInk();     // письмо від руки на цій сторінці (js/text-ink.js)
 }
 // ========== СТОРІНКИ ВСІЄЇ КНИГИ (оцінка) ==========
 // Розкладено лише поточний розділ, тож сторінки інших оцінюємо: літери розділу / літери на сторінку + ілюстрації (≈ пів
