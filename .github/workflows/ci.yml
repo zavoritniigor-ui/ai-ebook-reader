@@ -383,6 +383,7 @@ jobs:
           echo "Running page_arrows_browser.py..."
           python3 -u tests/page_arrows_browser.py
           python3 -u tests/reading_bottom_row_browser.py
+          python3 -u tests/scanner_browser.py
           echo "Running update_button_browser.py..."
           python3 -u tests/update_button_browser.py
 
