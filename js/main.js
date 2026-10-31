@@ -233,6 +233,47 @@ document.getElementById('theme-select').onchange = (e) => {
     writeStored('reader_theme', e.target.value);
 };
 
+// ВИГЛЯД ТЕКСТУ КНИГИ: шрифт, міжрядковий інтервал, поля, вирівнювання (списки) і переноси слів (перемикач). Значення —
+// назви варіантів із TEXT_LAYOUT (js/core.js), а не готовий CSS. Кожна зміна переразбиває книгу тим самим шляхом, що й
+// A−/A+: repaginateBook() тримає читача на тому ж місці тексту за символьним відступом, бо нова верстка дає інші сторінки.
+// Рядки меню приховані в режимі PDF (у нього власна фіксована верстка), але синхронізація з іншого пристрою може прийти
+// при відкритому PDF — тому переразбиття лише для тексту, що переливається.
+const TEXT_LAYOUT_CONTROLS = { font: 'text-font', line: 'text-line', margin: 'text-margin', align: 'text-align' };
+function syncTextLayoutControls() {
+    for (const [name, id] of Object.entries(TEXT_LAYOUT_CONTROLS)) {
+        const select = document.getElementById(id);
+        if (select) select.value = textLayoutChoice(name);
+    }
+    const hyph = document.getElementById('btn-hyphens');
+    if (hyph) hyph.setAttribute('aria-checked', String(textLayoutChoice('hyphens') === 'auto'));
+}
+function setTextLayout(name, value) {
+    if (!Object.prototype.hasOwnProperty.call(TEXT_LAYOUT[name].values, value) || value === textLayoutChoice(name)) { syncTextLayoutControls(); return; }
+    writeStored(TEXT_LAYOUT[name].key, value);
+    applyTextLayout();
+    syncTextLayoutControls();
+    if (state.format && state.format !== 'pdf') repaginateBook();
+}
+for (const [name, id] of Object.entries(TEXT_LAYOUT_CONTROLS)) {
+    const select = document.getElementById(id);
+    if (select) select.onchange = (e) => setTextLayout(name, e.target.value);
+}
+// Контраст сторінки PDF (js/pdf-contrast.js). Зміна не перемальовує сторінки: фільтр перераховується
+// на вже готових полотнах, тому вибір видно одразу навіть на великій книзі.
+const pdfContrastSelect = document.getElementById('pdf-contrast');
+if (pdfContrastSelect) {
+    pdfContrastSelect.value = pdfContrastChoice();
+    pdfContrastSelect.onchange = (e) => {
+        const value = PDF_CONTRAST_MODES.includes(e.target.value) ? e.target.value : 'auto';
+        writeStored(PDF_CONTRAST_KEY, value);
+        pdfContrastSelect.value = value;
+        pdfContrastRefreshRendered();
+    };
+}
+const hyphensBtn = document.getElementById('btn-hyphens');
+if (hyphensBtn) hyphensBtn.onclick = () => setTextLayout('hyphens', textLayoutChoice('hyphens') === 'auto' ? 'manual' : 'auto');
+syncTextLayoutControls();
+
 
 document.getElementById('prev-btn').onclick = goPrev; document.getElementById('next-btn').onclick = goNext;
 

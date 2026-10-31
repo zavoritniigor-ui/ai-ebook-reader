@@ -34,6 +34,16 @@
   - **Drive problem (2026-10-24 23:08):** rclone (`scope = drive.file`, shared client_id being retired) refreshed its token and now sees ONLY a NEW root folder «Workbook» (created 23:08:37) holding the narration MP3 (2 132 515 352 bytes, size verified). The older folders (a French textbook, «a conjugation reference», the first «Workbook» with the PDF, «AI Ebook Reader») are invisible to it (Drive usage unchanged, 13 GiB). Owner: move the MP3 into the old folder in the Drive UI; make an own rclone client_id (https://rclone.org/drive/#making-your-own-client-id).
   - **Next:** merge #283 after green CI + production check; owner re-imports narrations on the tablet; fix glued headings / letter-spaced text; a conjugation reference not redone yet.
 
+- **Claude Code — text look settings** (2026-10-31, branch `ccr-a7aab2dd-fip6w9`, PR open, merging):
+  - Built: five rows in the menu's «Reading» section — font (serif / book serif / sans), line spacing, page margins,
+    alignment, hyphenation switch. Stored as variant NAMES (`js/core.js` `TEXT_LAYOUT`), applied as `--reader-*`
+    variables on `<body>`; defaults equal the values that were hardcoded in `index.html`, so no page changes by itself.
+    Hidden for PDFs; the PDF text layer keeps its own font/alignment/hyphens. Synced between devices like the theme.
+  - Tests: new `tests/text_layout_browser.py` (passes); regressions green locally — menu labels, reader font size, sync,
+    menu phone scroll, menu discoverability, resize sync, bookmark restore, quick wheel, Spanish UI, strict CSP, ribbon.
+  - Next: green CI → merge → main CI → production check. Related backlog from the competitor comparison: word
+    repetition (SRS) and in-book search are the two biggest remaining gaps.
+
 - **Claude Code — offline translation improvements** (2026-10-30, task file «prompt-offline-translation-1»):
   - Item 2 merged: #333 (engine answers kept in memory for the session; 📋 `offline.memory {calls, saved, kept}`).
   - Item 1: PR #334 `feat/offline-dict-meanings` (worktree `.claude/worktrees/offline-dict`): Wiktionary fr→uk via kaikki.org extracts,

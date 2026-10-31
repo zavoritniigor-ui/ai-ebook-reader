@@ -24,6 +24,7 @@ async function initPdf(file, epoch = readerEpoch.book) {
     finally { if (pdfTasks.loading === reading) pdfTasks.loading = null; }
     if (cancelled || epoch !== readerEpoch.book) return;
     if (typeof resetPdfPageLabels === 'function') resetPdfPageLabels();
+    if (typeof pdfContrastReset === 'function') pdfContrastReset();   // рівні попередньої книги до цієї не стосуються
     // isEvalSupported прибрано разом з переходом на PDF.js 6.x: єдиний код, що колись
     // використовував eval (PostScriptCompiler для PDF-функцій), сама бібліотека видалила
     // як мертвий — тепер eval у PDF.js не використовується взагалі, і цей прапорець
@@ -186,6 +187,11 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
             throw err;
         } finally { if (activeTask.current === renderTask) activeTask.current = null; }
         if (!isWanted()) return false;
+
+        // Бліді скани (js/pdf-contrast.js): рівні рахуються по зменшеній копії щойно намальованого
+        // полотна й лягають CSS-фільтром. Пікселі полотна не змінюються, тому текстовий шар,
+        // виділення слів і рукописний шар бачать ту саму картинку, що й до цього.
+        try { if (typeof pdfContrastFor === 'function') c.style.filter = pdfContrastFor(c); } catch (e) { /* контраст ніколи не ламає показ сторінки */ }
 
         // Native PDF link annotations — clickable overlay from real annotation
         // rects, never a visually-detected link (see js/pdf-outline.js).
