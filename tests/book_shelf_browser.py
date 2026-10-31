@@ -47,6 +47,33 @@ check('5b the menu button «📖 My books» opens the library straight on the ke
 c.js("document.querySelector('#library-list .library-card .library-save').click(); 1"); time.sleep(0.8)
 check('6 remove deletes it from the device', "listShelfBooks().then(b => b.length === 0 && document.querySelectorAll('#library-list .library-card').length === 0)")
 c.js("closeLibrary(); 1")
+c.js("""(async () => { const r = await fetch('tests/fixtures/pdf/reportlab-multilingual-illustrated.pdf'); const b = await r.blob();
+  window.__ok = 0; await openBookFile(new File([b], 'Illustrated.pdf', {type: 'application/pdf', lastModified: 77})); window.__ok = 1; return 1; })()""")
+c.wait("window.__ok === 1 && state.format === 'pdf'", timeout=40); time.sleep(1)
+c.js("""(async () => { const r = await fetch('tests/fixtures/pdf/reportlab-multilingual-illustrated.pdf'); const b = await r.blob();
+  await shelveBook(new File([b], 'Illustrated.pdf', {type: 'application/pdf', lastModified: 77}), state.bookKey); return 1; })()""")
+check('6b a PDF gets its first page as a small JPEG cover', "listShelfBooks().then(b => { const x = b.find(k => k.name === 'Illustrated.pdf'); return !!x && x.cover instanceof Blob && x.cover.type === 'image/jpeg' && x.cover.size > 500; })")
+c.js("""(async () => { const cv = document.createElement('canvas'); cv.width = 300; cv.height = 450; const g = cv.getContext('2d'); g.fillStyle = '#c03'; g.fillRect(0, 0, 300, 450);
+  const png = await new Promise(r => cv.toBlob(r, 'image/png')); const z = new JSZip();
+  z.file('mimetype', 'application/epub+zip', {compression: 'STORE'});
+  z.file('META-INF/container.xml', '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>');
+  z.file('OEBPS/content.opf', '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">x</dc:identifier><dc:title>Cover test</dc:title><dc:language>en</dc:language></metadata><manifest><item id="c" href="c1.xhtml" media-type="application/xhtml+xml"/><item id="img" href="images/front.png" media-type="image/png" properties="cover-image"/></manifest><spine><itemref idref="c"/></spine></package>');
+  z.file('OEBPS/c1.xhtml', '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>c</title></head><body><p>Hello cover world. This is the first chapter.</p></body></html>');
+  z.file('OEBPS/images/front.png', png);
+  const blob = await z.generateAsync({type: 'blob', mimeType: 'application/epub+zip'});
+  window.__ok = 0; await openBookFile(new File([blob], 'Cover test.epub', {type: 'application/epub+zip', lastModified: 88})); window.__ok = 1;
+  await shelveBook(new File([blob], 'Cover test.epub', {type: 'application/epub+zip', lastModified: 88}), state.bookKey); return 1; })()""")
+c.wait("window.__ok === 1 && state.format === 'epub'", timeout=40)
+check('6c an EPUB gets the image its manifest marks as cover-image (red), shrunk to 240 px wide',
+      "listShelfBooks().then(async b => { const x = b.find(k => k.name === 'Cover test.epub'); if (!x || !(x.cover instanceof Blob)) return 'no cover'; const bm = await createImageBitmap(x.cover); const cv = document.createElement('canvas'); cv.width = 4; cv.height = 4; const g = cv.getContext('2d'); g.drawImage(bm, 0, 0, 4, 4); const d = g.getImageData(1, 1, 1, 1).data; return bm.width === 240 && d[0] > 150 && d[1] < 60 || [bm.width, ...d].join(); })")
+c.call('Page.reload'); c.wait(READY, timeout=30)
+c.wait("document.querySelectorAll('#recent-books .recent-book').length === 2", timeout=10); time.sleep(0.5)
+check('6d the start screen shows both books with their cover images; the side tabs and ✦ are hidden there',
+      "(() => { const imgs = [...document.querySelectorAll('#recent-books .recent-cover img')]; const hidden = id => { const e = document.getElementById(id); return !e || getComputedStyle(e).display === 'none'; }; return imgs.length === 2 && imgs.every(i => i.complete && i.naturalWidth > 0) && hidden('quick-menu-dock') && hidden('ask-tab') && hidden('grammar-tab') && hidden('rules-tab'); })()")
+if os.environ.get('SHELF_SHOT'):
+    import base64; open(os.environ['SHELF_SHOT'], 'wb').write(base64.b64decode(c.call('Page.captureScreenshot')['data']))
+for k in c.js("listShelfBooks().then(b => JSON.stringify(b.map(x => x.key)))") and json.loads(c.js("listShelfBooks().then(b => JSON.stringify(b.map(x => x.key)))")):
+    c.js("removeShelfBook(%s).then(() => 1)" % json.dumps(k))
 c.js("""(async () => { for (let i = 0; i < 14; i++) { await shelveBook(new File(['book ' + i], 'b' + i + '.txt', {lastModified: i + 1}), 'k' + i); await new Promise(r => setTimeout(r, 5)); } return 1; })()""")
 check('7 at most 12 books are kept; the oldest opened go first', "listShelfBooks().then(b => b.length === 12 && b[0].key === 'k13' && !b.some(x => x.key === 'k0' || x.key === 'k1'))")
 print('ALL PASS')
