@@ -238,6 +238,7 @@ jobs:
 
           echo "Running rich_text_formats_browser.py..."
           python3 -u tests/rich_text_formats_browser.py
+          python3 -u tests/epub_book_styles_browser.py
 
           python3 -u tests/pdf_rendering_audit_browser.py
           python3 -u tests/archive_formats_audit_browser.py
