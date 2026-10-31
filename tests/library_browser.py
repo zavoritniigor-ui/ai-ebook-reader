@@ -80,10 +80,45 @@ check('12 Wikisource: source switch shows its languages (Ukrainian first) and li
          && [...document.querySelectorAll('#library-list .library-name')].map(e => e.textContent).join('|') === 'Твір|Інший'
          && __wsReqs.some(r => r.includes('op=ws-search&lang=uk&q=твір'))""")
 c.js("[...document.querySelectorAll('#library-list .library-card')][0].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
-check('13 Read builds ONE HTML book from the chapters in order, without Wikisource navigation, page numbers, links or images',
-      """(async () => { const f = libraryFiles.get('ws:uk:Твір'); if (!f || !__opened) return 'not opened'; const html = await f.text();
-         const i1 = html.indexOf('Перший розділ'), i2 = html.indexOf('Другий розділ');
-         return __opened.name === 'Твір.html' && __opened.type === 'text/html' && i1 > 0 && i2 > i1 && !/НАВІГАЦІЯ|шапка|\\[12\\]|<a |<img/.test(html) && /<h1>I<\\/h1>/.test(html) || html.slice(0, 400); })()""")
+check('13 Read builds a real EPUB 3 from the chapters in order, without Wikisource navigation, page numbers, links or images',
+      """(async () => { const f = libraryFiles.get('ws:uk:Твір'); if (!f || !__opened) return 'not opened';
+         const zip = await new JSZip().loadAsync(f); const names = Object.keys(zip.files);
+         const first = (await f.slice(30, 38).text()) + (await f.slice(38, 58).text());
+         const opf = await zip.file('OEBPS/content.opf').async('text'), nav = await zip.file('OEBPS/nav.xhtml').async('text');
+         const c1 = await zip.file('OEBPS/c001.xhtml').async('text'), c2 = await zip.file('OEBPS/c002.xhtml').async('text');
+         const ok = __opened.name === 'Твір.epub' && __opened.type === 'application/epub+zip'
+           && names[0] === 'mimetype' && first === 'mimetypeapplication/epub+zip'
+           && /<dc:language>uk<\\/dc:language>/.test(opf) && /<dc:title>Твір<\\/dc:title>/.test(opf) && /properties="nav"/.test(opf) && /<spine toc="ncx"><itemref idref="c1"\\/><itemref idref="c2"\\/><\\/spine>/.test(opf)
+           && /wikisource\\.org\\/wiki\\//.test(opf) && /<meta property="dcterms:modified">\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ<\\/meta>/.test(opf)
+           && /epub:type="toc"/.test(nav) && /<a href="c001\\.xhtml">I<\\/a>/.test(nav) && /<a href="c002\\.xhtml">II<\\/a>/.test(nav)
+           && /Перший розділ/.test(c1) && /Другий розділ/.test(c2) && /<h1>I<\\/h1>/.test(c1)
+           && !/НАВІГАЦІЯ|шапка|\\[12\\]|<a |<img/.test(c1 + c2)
+           && !new DOMParser().parseFromString(c1, 'application/xhtml+xml').querySelector('parsererror');
+         return ok || JSON.stringify({ name: __opened.name, type: __opened.type, names, first, opf: opf.slice(0, 300), nav: nav.slice(0, 300) }); })()""")
+# openBookFile is stubbed in this suite (it only records what Read hands over): open the built file with the real EPUB loader.
+check('13b the EPUB opens in the real EPUB loader with its contents from nav.xhtml, not «Розділ N»',
+      """(async () => { state.format = 'epub'; await initEpub(libraryFiles.get('ws:uk:Твір'));
+         const toc = [...els.toc.children].map(li => li.textContent);
+         return (JSON.stringify(toc) === JSON.stringify(['I', 'II']) && state.spine.length === 2 && /Перший розділ/.test(els.pages.textContent)) || JSON.stringify(toc); })()""")
+check('13c building the same work twice gives the same size, so the book key and the reading place survive a re-download',
+      """(async () => { const a = libraryFiles.get('ws:uk:Твір'); libraryFiles.delete('ws:uk:Твір');
+         const b = await fetchLibraryFile({ ws: true, lang: 'uk', title: 'Твір' }); libraryFiles.set('ws:uk:Твір', a);
+         return (a.size === b.size && a.name === b.name && a.lastModified === b.lastModified) || [a.size, b.size]; })()""")
+check('13d a volume without text of its own becomes a heading over its chapters; nav.xhtml and toc.ncx stay well-formed and nested',
+      """(async () => { const parts = [{ title: 'Том 1', html: null, depth: 0 }, { title: 'Глава 1', html: '<p>' + 'а '.repeat(40) + '</p>', depth: 1 },
+           { title: 'Глава 2', html: '<p>б</p>', depth: 1 }, { title: 'Порожній том', html: null, depth: 0 }, { title: 'Післямова & <інше>', html: '<p onclick="x()">в <a href="javascript:x()">г</a></p>', depth: 0 }];
+         const f = await wsEpubFile({ lang: 'uk', title: 'Тест' }, parts, { author: 'Автор' }); const zip = await new JSZip().loadAsync(f);
+         const nav = await zip.file('OEBPS/nav.xhtml').async('text'), ncx = await zip.file('OEBPS/toc.ncx').async('text'), c3 = await zip.file('OEBPS/c003.xhtml').async('text');
+         const navDoc = new DOMParser().parseFromString(nav, 'application/xhtml+xml'), ncxDoc = new DOMParser().parseFromString(ncx, 'text/xml');
+         const vol = navDoc.querySelector('nav > ol > li > span');
+         const ok = !navDoc.querySelector('parsererror') && !ncxDoc.querySelector('parsererror')
+           && vol && vol.textContent === 'Том 1' && vol.parentNode.querySelectorAll(':scope > ol > li > a').length === 2
+           && !/Порожній том/.test(nav) && /Післямова &amp; &lt;інше&gt;/.test(nav)
+           && ncxDoc.querySelectorAll('navMap > navPoint').length === 2 && ncxDoc.querySelectorAll('navMap > navPoint > navPoint').length === 2
+           && ncxDoc.querySelector('navMap > navPoint > content').getAttribute('src') === 'c001.xhtml'
+           && /<dc:creator>Автор<\\/dc:creator>/.test(await zip.file('OEBPS/content.opf').async('text'))
+           && !/onclick|javascript:/.test(c3);
+         return ok || JSON.stringify({ nav: nav.slice(0, 600), ncx: ncx.slice(0, 600), c3: c3.slice(0, 300) }); })()""")
 check('14 the choice of source is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).source === 'wikisource'")
 check('14a Wikisource genres: only those the language section has categories for (Ukrainian: poetry yes, detective no; French: detective yes)',
       """(() => { openLibrary(); const g = document.getElementById('library-genre'), l = document.getElementById('library-lang');

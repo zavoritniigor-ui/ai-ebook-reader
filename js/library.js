@@ -310,8 +310,7 @@ async function saveLibraryBook(book, btn) {
         const file = await fetchLibraryFile(book, wsProgress(book));
         if (typeof window.showSaveFilePicker === 'function') {
             let handle;
-            const types = book.ws ? [{ description: 'HTML', accept: { 'text/html': ['.html'] } }]
-                : /\.pdf$/i.test(file.name) ? [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] : [{ description: 'EPUB', accept: { 'application/epub+zip': ['.epub'] } }];
+            const types = /\.pdf$/i.test(file.name) ? [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] : [{ description: 'EPUB', accept: { 'application/epub+zip': ['.epub'] } }];
             try { handle = await window.showSaveFilePicker({ suggestedName: file.name, types }); }
             catch (e) { if (e && e.name === 'AbortError') return; handle = null; }
             if (handle) {
@@ -431,6 +430,7 @@ async function buildWikisourceBook(book, onProgress) {
                     if ((subs.length >= 3 || (subs.length && doc.body.textContent.trim().length < 3000)) && queue.length < WS_MAX_CHAPTERS) {
                         const at = queue.indexOf(item);
                         queue.splice(at + 1, 0, ...subs.slice(0, WS_MAX_CHAPTERS - queue.length).map(title => ({ title, depth: item.depth + 1 })));
+                        item.container = true;
                         results.set(item, null);
                     } else results.set(item, wsCleanBody(doc));
                 } catch (e) { results.set(item, null); }
@@ -440,14 +440,102 @@ async function buildWikisourceBook(book, onProgress) {
         await Promise.all(Array.from({ length: WS_CONCURRENCY }, worker));
         for (const item of queue) {
             const html = results.get(item);
-            if (html) parts.push({ title: item.title.split('/').pop(), html });
+            if (html) parts.push({ title: item.title.split('/').pop(), html, depth: item.depth - 1 });
+            else if (item.container) parts.push({ title: item.title.split('/').pop(), html: null, depth: item.depth - 1 });
         }
     }
-    if (!parts.some(p => p.html.replace(/<[^>]+>/g, '').trim().length > 40)) throw new Error('empty');
-    const body = parts.map(p => (p.title ? `<h1>${wsEscape(p.title)}</h1>\n` : '') + p.html).join('\n');
-    const html = `<!DOCTYPE html><html lang="${wsEscape(book.lang)}"><head><meta charset="utf-8"><title>${wsEscape(book.title)}</title></head><body>${body}</body></html>`;
+    if (!parts.some(p => p.html && p.html.replace(/<[^>]+>/g, '').trim().length > 40)) throw new Error('empty');
+    const author = (root.querySelector('#ws-author') || {}).textContent;
+    return wsEpubFile(book, parts, { author: author ? author.replace(/\s+/g, ' ').trim().slice(0, 200) : '' });
+}
+
+// ---------- Вікіджерела → справжній EPUB 3 (власник, 2026-10-31: «бібліотека стандарт ебук не відповідає») ----------
+// Раніше розділи склеювались в один HTML-файл: без змісту за стандартом, без автора й джерела, і збережена книга не
+// відкривалась у інших читалках як книга. Тепер збирається EPUB 3 в браузері (JSZip уже в застосунку): кожен розділ —
+// окремий XHTML у порядку читання, nav.xhtml і toc.ncx (для старих читалок) з назв розділів зі збереженою вкладеністю
+// (том без власного тексту — заголовок-<span> над своїми розділами), опис з назвою, мовою, автором, адресою джерела.
+// Файл ДЕТЕРМІНОВАНИЙ: однаковий текст дає однаковий розмір (дата в описі фіксованої довжини, опис і mimetype без
+// стиснення, сталі дати записів архіву) — «ключ книги» (назва + розмір + lastModified) не змінюється від повторного
+// завантаження, і місце читання переживає його, як і раніше.
+const WS_EPUB_ENTRY_DATE = new Date(Date.UTC(2000, 0, 1));
+const wsXml = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[ch]));
+// HTML розділу → коректний XHTML: розбір як HTML, серіалізація як XML. Обробники подій і javascript:-посилання
+// прибираються ще й тут: файл можуть відкрити інші читалки, де нашого safeHtml немає.
+function wsChapterXhtml(title, html, lang) {
+    const doc = new DOMParser().parseFromString('<!DOCTYPE html><html><head><title></title></head><body></body></html>', 'text/html');
+    doc.documentElement.setAttribute('lang', lang);
+    doc.title = title;
+    doc.body.innerHTML = (title ? `<h1>${wsEscape(title)}</h1>\n` : '') + html;
+    for (const el of doc.body.querySelectorAll('*')) {
+        for (const attr of Array.from(el.attributes)) {
+            if (/^on/i.test(attr.name) || /^\s*javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+        }
+    }
+    const xml = new XMLSerializer().serializeToString(doc.documentElement).replace('<html ', `<html xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${wsXml(lang)}" `);
+    return '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE html>\n' + xml;
+}
+// Плаский список {title, href|null, depth} → вкладені <ol> навігаційного документа. Заголовок без файлу — <span>,
+// і стандарт вимагає, щоб у нього був вкладений список: заголовок без жодного розділу під ним відкидається.
+function wsNavEntries(entries) {
+    return entries.filter((e, i) => e.href || (entries[i + 1] && entries[i + 1].depth > e.depth));
+}
+function wsNavOl(entries) {
+    let html = '', depth = -1;
+    for (const e of entries) {
+        const d = Math.min(e.depth, depth + 1);
+        if (d > depth) html += '<ol>';
+        else { html += '</li>'; for (let k = depth; k > d; k--) html += '</ol></li>'; }
+        html += '<li>' + (e.href ? `<a href="${e.href}">${wsXml(e.title)}</a>` : `<span>${wsXml(e.title)}</span>`);
+        depth = d;
+    }
+    if (depth >= 0) { html += '</li>'; for (let k = depth; k > 0; k--) html += '</ol></li>'; html += '</ol>'; }
+    return html;
+}
+function wsNcxPoints(entries) {
+    let xml = '', depth = -1, order = 0;
+    entries.forEach((e, i) => {
+        const d = Math.min(e.depth, depth + 1);
+        if (d <= depth) { xml += '</navPoint>'; for (let k = depth; k > d; k--) xml += '</navPoint>'; }
+        // Заголовок тому веде на свій перший розділ: у NCX кожен пункт мусить мати адресу.
+        const src = e.href || (entries.slice(i + 1).find(x => x.href) || {}).href;
+        order++;
+        xml += `<navPoint id="np${order}" playOrder="${order}"><navLabel><text>${wsXml(e.title)}</text></navLabel><content src="${src}"/>`;
+        depth = d;
+    });
+    for (let k = depth; k >= 0; k--) xml += '</navPoint>';
+    return xml;
+}
+async function wsEpubFile(book, parts, meta) {
+    const lang = book.lang, source = `https://${lang}.wikisource.org/wiki/${encodeURIComponent(book.title.replace(/ /g, '_'))}`;
+    const zip = new JSZip();
+    const opts = { date: WS_EPUB_ENTRY_DATE };
+    zip.file('mimetype', 'application/epub+zip', { compression: 'STORE', date: WS_EPUB_ENTRY_DATE });
+    zip.file('META-INF/container.xml', '<?xml version="1.0" encoding="utf-8"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>', opts);
+    const chapters = [], entries = [];
+    for (const part of parts) {
+        if (!part.html) { entries.push({ title: part.title, href: null, depth: part.depth || 0 }); continue; }
+        const name = `c${String(chapters.length + 1).padStart(3, '0')}.xhtml`;
+        const title = part.title || book.title;
+        chapters.push(name);
+        zip.file('OEBPS/' + name, wsChapterXhtml(part.title ? title : '', part.html, lang), opts);
+        entries.push({ title, href: name, depth: part.depth || 0 });
+    }
+    const nav = wsNavEntries(entries);
+    zip.file('OEBPS/nav.xhtml', `<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${wsXml(lang)}" xml:lang="${wsXml(lang)}"><head><title>${wsXml(book.title)}</title></head><body><nav epub:type="toc" id="toc"><h1>${wsXml(book.title)}</h1>${wsNavOl(nav)}</nav></body></html>`, opts);
+    zip.file('OEBPS/toc.ncx', `<?xml version="1.0" encoding="utf-8"?>\n<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="${wsXml(lang)}"><head><meta name="dtb:uid" content="${wsXml(source)}"/></head><docTitle><text>${wsXml(book.title)}</text></docTitle><navMap>${wsNcxPoints(nav)}</navMap></ncx>`, opts);
+    const modified = new Date().toISOString().replace(/\.\d+Z$/, 'Z');   // завжди 20 знаків: розмір опису від дати не залежить
+    const manifest = chapters.map((c, i) => `<item id="c${i + 1}" href="${c}" media-type="application/xhtml+xml"/>`).join('');
+    const spine = chapters.map((c, i) => `<itemref idref="c${i + 1}"/>`).join('');
+    const opf = `<?xml version="1.0" encoding="utf-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="${wsXml(lang)}">`
+        + `<metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="bookid">${wsXml(source)}</dc:identifier><dc:title>${wsXml(book.title)}</dc:title>`
+        + `<dc:language>${wsXml(lang)}</dc:language>${meta.author ? `<dc:creator>${wsXml(meta.author)}</dc:creator>` : ''}<dc:source>${wsXml(source)}</dc:source>`
+        + `<dc:publisher>Wikisource</dc:publisher><meta property="dcterms:modified">${modified}</meta></metadata>`
+        + `<manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>${manifest}</manifest>`
+        + `<spine toc="ncx">${spine}</spine></package>`;
+    zip.file('OEBPS/content.opf', opf, { compression: 'STORE', date: WS_EPUB_ENTRY_DATE });
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip', compression: 'DEFLATE', compressionOptions: { level: 6 } });
     let h = 0; for (const ch of book.lang + ':' + book.title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-    return new File([html], libraryFileName(book).replace(/\.epub$/, '.html'), { type: 'text/html', lastModified: h });
+    return new File([blob], libraryFileName(book), { type: 'application/epub+zip', lastModified: h });
 }
 
 // ---------- Internet Archive ----------
