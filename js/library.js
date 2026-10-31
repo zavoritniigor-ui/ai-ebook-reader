@@ -54,6 +54,12 @@ Object.assign(I18N, {
                    en: 'Books from Internet Archive: editions before 1930 (public domain) and books under free licences. Scanned books open as PDF.',
                    fr: 'Livres d’Internet Archive : éditions antérieures à 1930 (domaine public) et livres sous licence libre. Les livres numérisés s’ouvrent en PDF.',
                    ru: 'Книги из Internet Archive: издания до 1930 года (общественное достояние) и книги со свободными лицензиями. Сканы открываются как PDF.' },
+    libSourceBnr: { uk: 'Bibliothèque numérique romande (французькою)', en: 'Bibliothèque numérique romande (French)', fr: 'Bibliothèque numérique romande (français)', ru: 'Bibliothèque numérique romande (по-французски)' },
+    libBnrSource: { uk: 'Книги з Bibliothèque numérique romande — французька класика, вільне надбання, вичитана волонтерами.', en: 'Books from Bibliothèque numérique romande — French classics, public domain, proofread by volunteers.',
+                    fr: 'Livres de la Bibliothèque numérique romande — classiques français du domaine public, relus par des bénévoles.', ru: 'Книги из Bibliothèque numérique romande — французская классика, общественное достояние, вычитана волонтёрами.' },
+    libSourceSe: { uk: 'Standard Ebooks (англійською)', en: 'Standard Ebooks (English)', fr: 'Standard Ebooks (anglais)', ru: 'Standard Ebooks (по-английски)' },
+    libSeSource: { uk: 'Книги з Standard Ebooks — англійська класика, вільне надбання, ретельно вичитані видання.', en: 'Books from Standard Ebooks — English classics, public domain, carefully proofread editions.',
+                   fr: 'Livres de Standard Ebooks — classiques anglais du domaine public, éditions soigneusement relues.', ru: 'Книги из Standard Ebooks — английская классика, общественное достояние, тщательно вычитанные издания.' },
     libDownloading: { uk: 'Завантаження книги: {n} з {total} МБ…', en: 'Downloading the book: {n} of {total} MB…', fr: 'Téléchargement du livre : {n} sur {total} Mo…', ru: 'Загрузка книги: {n} из {total} МБ…' },
     libTooBig: { uk: 'Книга завелика для застосунку ({n} МБ, найбільше 300 МБ).', en: 'The book is too large for the app ({n} MB, 300 MB maximum).',
                  fr: 'Le livre est trop volumineux pour l’application ({n} Mo, 300 Mo maximum).', ru: 'Книга слишком большая для приложения ({n} МБ, максимум 300 МБ).' }
@@ -95,7 +101,13 @@ const LIBRARY_WS_GENRES = {
 // Internet Archive: живий пошук через свій проксі; коди мов — як у самому архіві (MARC).
 const LIBRARY_IA_LANGS = [['ukr', '🇺🇦 Українська'], ['eng', '🇬🇧 English'], ['fre', '🇫🇷 Français'], ['ger', '🇩🇪 Deutsch'], ['spa', '🇪🇸 Español'], ['ita', '🇮🇹 Italiano'], ['pol', '🇵🇱 Polski'], ['rus', '🇷🇺 Русский'], ['', null]];
 const LIBRARY_MAX_BYTES = 300 * 1024 * 1024;
-const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'shelf'];
+// Bibliothèque numérique romande і Standard Ebooks: живий пошук через свій проксі (він розбирає HTML їхнього пошуку); кожна — однією
+// мовою, жанри — лише ті, що мають свої рубрики/теми там (той самий перелік, що BNR_GENRES і SE_GENRES у functions/api/library.js).
+const LIBRARY_CATALOGS = {
+    bnr: { langs: [['fr', '🇫🇷 Français']], genres: ['fiction', 'adventure', 'detective', 'historical', 'love', 'scifi', 'stories', 'poetry', 'drama', 'children', 'humor', 'biography', 'philosophy', 'travel'], note: 'libBnrSource' },
+    se: { langs: [['en', '🇬🇧 English']], genres: ['fiction', 'adventure', 'detective', 'scifi', 'stories', 'poetry', 'drama', 'children', 'humor', 'biography', 'philosophy', 'travel'], note: 'libSeSource' }
+};
+const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'bnr', 'se', 'shelf'];
 
 const libraryState = { source: 'gutenberg', topic: '', wsSeen: null, wsToken: 0, page: 1, hasMore: false, timer: 0, busy: false, catalog: null, loading: null, matches: [] };
 function libraryEl(id) { return document.getElementById(id); }
@@ -113,7 +125,7 @@ function buildLibrary() {
     head.append(title, close);
     const tools = document.createElement('div'); tools.className = 'library-tools';
     const src = document.createElement('select'); src.id = 'library-source'; src.dataset.i18nTitle = 'libSourceLabel';
-    for (const [value, key] of [['shelf', 'shelfSource'], ['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
+    for (const [value, key] of [['shelf', 'shelfSource'], ['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive'], ['bnr', 'libSourceBnr'], ['se', 'libSourceSe']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
     const q = document.createElement('input'); q.type = 'search'; q.id = 'library-q'; q.autocomplete = 'off'; q.spellcheck = false;
     const lang = document.createElement('select'); lang.id = 'library-lang';
     for (const [code, label] of LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else o.dataset.i18n = 'libAllLangs'; lang.append(o); }
@@ -150,9 +162,11 @@ function buildLibrary() {
 function fillLibraryGenres() {
     const genre = libraryEl('library-genre'), src = libraryState.source;
     const ws = src === 'wikisource' ? LIBRARY_WS_GENRES[libraryEl('library-lang').value] || {} : null;
+    const cat = LIBRARY_CATALOGS[src];
     genre.replaceChildren();
     for (const [topic, key] of LIBRARY_GENRES) {
         if (ws && topic && !ws[topic]) continue;
+        if (cat && topic && !cat.genres.includes(topic)) continue;
         const o = document.createElement('option'); o.value = topic; o.dataset.i18n = key; o.textContent = t(key); genre.append(o);
     }
     genre.value = [...genre.options].some(o => o.value === libraryState.topic) ? libraryState.topic : '';
@@ -162,14 +176,14 @@ function fillLibraryGenres() {
 function fillLibraryLangs() {
     const lang = libraryEl('library-lang'), src = libraryState.source;
     lang.replaceChildren();
-    for (const [code, label] of src === 'wikisource' ? LIBRARY_WS_LANGS : src === 'archive' ? LIBRARY_IA_LANGS : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
+    for (const [code, label] of src === 'wikisource' ? LIBRARY_WS_LANGS : src === 'archive' ? LIBRARY_IA_LANGS : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].langs : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
     const want = libraryState.langBySource[libraryState.source];
     lang.value = [...lang.options].some(o => o.value === want) ? want : lang.options[0].value;
     fillLibraryGenres();
     // «Мої книги» — збережені на пристрої книги: без пошуку, мов і підпису джерела.
     lang.hidden = src === 'shelf'; libraryEl('library-q').hidden = src === 'shelf';
     const source = document.querySelector('#library-modal .library-source');
-    if (source) { source.hidden = src === 'shelf'; source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : 'libSource'; source.textContent = t(source.dataset.i18n); }
+    if (source) { source.hidden = src === 'shelf'; source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].note : 'libSource'; source.textContent = t(source.dataset.i18n); }
 }
 
 // source — одразу відкрити це джерело (кнопка «📖 Мої книги» в меню відкриває збережені на пристрої книги).
@@ -204,6 +218,7 @@ async function runLibrarySearch(page) {
     more.hidden = true;
     if (libraryState.source === 'wikisource') { await runWikisourceSearch(page); return; }
     if (libraryState.source === 'archive') { await runArchiveSearch(page); return; }
+    if (LIBRARY_CATALOGS[libraryState.source]) { await runCatalogSearch(libraryState.source, page); return; }
     if (libraryState.source === 'shelf') { await runShelfList(); return; }
     let catalog;
     try { status.textContent = libraryState.catalog ? '' : t('libLoading'); catalog = await loadLibraryCatalog(); }
@@ -226,6 +241,7 @@ function libraryCard(book) {
     const card = document.createElement('div'); card.className = 'library-card';
     const cover = document.createElement('img'); cover.loading = 'lazy'; cover.alt = '';
     if (book.ia) cover.src = '/api/library?op=ia-cover&id=' + encodeURIComponent(book.id);
+    else if (book.cat) { if (book.cover) cover.src = `/api/library?op=${book.cat}-cover&path=` + encodeURIComponent(book.cover); else cover.style.visibility = 'hidden'; }
     else if (book.ws) { cover.className = 'library-ws-cover'; cover.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="64"><rect width="44" height="64" rx="4" fill="#6b7a8f"/><text x="22" y="40" font-size="22" text-anchor="middle" fill="#fff">W</text></svg>'); }
     else cover.src = '/api/library?op=cover&id=' + book.id;
     cover.addEventListener('error', () => cover.style.visibility = 'hidden');
@@ -250,8 +266,19 @@ const libraryFiles = new Map();
 const wsProgress = book => (n, total) => { libraryEl('library-status').textContent = t('libWsChapters').replace('{n}', n).replace('{total}', total); };
 function libraryFileName(book, ext = 'epub') { return book.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.' + ext; }
 async function fetchLibraryFile(book, onProgress = () => {}) {
-    const cacheKey = book.ws ? 'ws:' + book.lang + ':' + book.title : book.ia ? 'ia:' + book.id : book.id;
+    const cacheKey = book.ws ? 'ws:' + book.lang + ':' + book.title : book.ia ? 'ia:' + book.id : book.cat ? book.cat + ':' + book.id : book.id;
     if (libraryFiles.has(cacheKey)) return libraryFiles.get(cacheKey);
+    if (book.cat) {
+        const res = await fetch(`/api/library?op=${book.cat}-file&id=` + encodeURIComponent(book.id));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+        let h = 0; for (const ch of cacheKey) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+        // Той самий id → той самий «ключ книги»: позиція читання переживає повторне завантаження.
+        const file = new File([blob], libraryFileName(book), { type: 'application/epub+zip', lastModified: h });
+        libraryFiles.set(cacheKey, file);
+        if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+        return file;
+    }
     if (book.ia) {
         const file = await fetchArchiveBook(book);
         libraryFiles.set(cacheKey, file);
@@ -442,6 +469,26 @@ async function runArchiveSearch(page) {
     for (const r of data.results || []) list.append(libraryCard({ ia: true, id: r.id, title: r.title, authors: r.creator, year: r.year, pdf: r.pdf, epub: r.epub }));
     status.textContent = list.children.length ? '' : t('libEmpty');
     more.hidden = page * 30 >= (data.total || 0);
+}
+// ---------- Bibliothèque numérique romande, Standard Ebooks ----------
+// Без запиту й жанру — найновіші (BNR) чи найпопулярніші (Standard Ebooks) книги, тож бібліотеку можна просто гортати.
+async function runCatalogSearch(kind, page) {
+    const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
+    const q = libraryEl('library-q').value.trim(), topic = libraryEl('library-genre').value;
+    const token = ++libraryState.wsToken;
+    if (page === 1) list.replaceChildren();
+    status.textContent = t('libLoading');
+    let data;
+    try {
+        const res = await fetch(`/api/library?op=${kind}-search&q=${encodeURIComponent(q)}&page=${page}` + (topic ? '&genre=' + topic : ''));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        data = await res.json();
+    } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
+    if (token !== libraryState.wsToken || libraryState.source !== kind) return;
+    libraryState.page = page;
+    for (const r of data.results || []) list.append(libraryCard({ cat: kind, id: r.id, title: r.title, authors: r.author ? [r.author] : [], cover: r.cover }));
+    status.textContent = list.children.length ? '' : t('libEmpty');
+    more.hidden = !data.more;
 }
 // Скановані книги — «Text PDF» (сторінки як в оригіналі + текстовий шар, тож слова можна торкати), бо EPUB архіву для них —
 // автоматичний OCR зі зламаною версткою. Книги, що від початку електронні, — EPUB.
