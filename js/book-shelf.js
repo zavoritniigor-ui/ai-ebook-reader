@@ -173,7 +173,7 @@ async function renderRecentBooks() {
         head.append(all);
     }
     const grid = document.createElement('div'); grid.className = 'recent-list';
-    for (const b of books.slice(0, 6)) {
+    for (const b of books) {
         const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'recent-book';
         const name = document.createElement('b'); name.textContent = b.title || b.name;
         const meta = document.createElement('small'); meta.textContent = shelfCardMeta(b);
@@ -182,7 +182,31 @@ async function renderRecentBooks() {
         grid.append(btn);
     }
     host.append(head, grid);
+    grid.addEventListener('scroll', () => drumFrame(grid), { passive: true });
+    drumFrame(grid);
 }
+// Список як барабан: прокручується у своїй висоті, верх і низ зникають прозоро (маска в index.html), а картки
+// ближче до країв трохи нахиляються й меншають. Кнопки над списком лишаються на місці.
+let drumRaf = 0;
+function drumFrame(list) {
+    if (drumRaf) return;
+    drumRaf = requestAnimationFrame(() => {
+        drumRaf = 0;
+        // висота — до низу екрана (з полем), щоб барабан не виходив за край і сторінка не прокручувалась
+                list.style.maxHeight = Math.max(220, Math.floor(innerHeight - list.getBoundingClientRect().top - 16)) + 'px';
+        const scrollable = list.scrollHeight > list.clientHeight + 2;
+        list.classList.toggle('drum', scrollable);
+        list.classList.toggle('drum-top', scrollable && list.scrollTop > 8);
+        list.classList.toggle('drum-bottom', scrollable && list.scrollTop + list.clientHeight < list.scrollHeight - 8);
+        const box = list.getBoundingClientRect(), mid = box.top + box.height / 2, half = box.height / 2 || 1;
+        for (const card of list.children) {
+            if (!scrollable || matchMedia('(prefers-reduced-motion: reduce)').matches) { card.style.transform = ''; continue; }
+            const r = card.getBoundingClientRect(), d = Math.max(-1, Math.min(1, (r.top + r.height / 2 - mid) / half));
+            card.style.transform = `perspective(700px) rotateX(${(-d * 22).toFixed(1)}deg) scale(${(1 - Math.abs(d) * .1).toFixed(3)})`;
+        }
+    });
+}
+addEventListener('resize', () => { const l = document.querySelector('#recent-books .recent-list'); if (l) drumFrame(l); });
 // Джерело «Мої книги» у вікні бібліотеки (js/library.js викликає, коли вибрано це джерело).
 async function runShelfList() {
     const status = libraryEl('library-status'), list = libraryEl('library-list');
