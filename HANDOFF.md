@@ -10,6 +10,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | `js/ai-client.js`, `js/grammar-svo.js` (Groq streaming for Ask AI) | PR open | 2026-10-31 |
+| Claude Code on the owner's computer | `feat/ws-images` | Wikisource illustrations: `functions/api/library.js` (op `ws-image`), `js/library.js` (wsCleanBody / wsEmbedImages / wsEpubFile), library tests | PR open | 2026-10-31 |
 | Claude Code on the owner's computer | `feat/start-screen-covers` | start screen: `js/book-shelf.js`, `index.html` (home CSS), start-screen tests | PR #352 | 2026-10-31 |
 | Claude Code on the owner's computer | `feat/sun-rotate` | `js/quick-wheel.js` (✦ turns like a wheel), `tests/reading_bottom_row_browser.py` | PR #353 | 2026-10-31 |
 | Claude Code on the owner's computer | — | scanned-PDF highlight offset («The Analects» p. 896–897): `js/pdf-render.js`; waits for the owner's PDF file | not started | 2026-10-31 |
