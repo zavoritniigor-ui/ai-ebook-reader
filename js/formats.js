@@ -242,6 +242,146 @@ async function applyEpubBookStyles(zip, chapterDir, doc) {
 }
 
 // ОНОВЛЕНИЙ НАДІЙНИЙ ПАРСЕР EPUB
+// ========== ЗМІСТ EPUB (власник, 2026-10-31: «стандарт ебук не відповідає») ==========
+// Раніше зміст був порядком файлів книги: «Розділ 1, 2, 3…» — без назв, а один файл часто не дорівнює одному розділу.
+// Стандарт дає справжній зміст двома способами: EPUB 3 — навігаційний документ (елемент маніфесту з properties="nav",
+// усередині <nav epub:type="toc">), EPUB 2 — toc.ncx (на нього вказує <spine toc="…">). Беремо перший, за його
+// відсутності — другий, а якщо немає жодного або він зіпсований — повертаємось до старого списку файлів.
+// Пункт змісту — посилання «файл#якір»: файл зводимо до номера в порядку читання (spine), якір шукаємо після
+// завантаження розділу (safeHtml зберігає id як «book-<id>»). Назви ставимо лише як текст: зміст — дані книги, не розмітка.
+const EPUB_TOC_MAX_ITEMS = 2000;   // більше пунктів — це вже не зміст, а сміття або атака на сторінку
+const EPUB_TOC_MAX_DEPTH = 6;
+const EPUB_TOC_TITLE_MAX = 200;
+const epubTocTitle = (text) => String(text || '').replace(/\s+/g, ' ').trim().slice(0, EPUB_TOC_TITLE_MAX);
+
+// «файл#якір» відносно теки документа змісту → { index, fragment } або null, коли файл не входить у порядок читання.
+function epubTocTarget(baseDir, href) {
+    const raw = String(href || '');
+    if (!raw) return null;
+    const hash = raw.indexOf('#');
+    const pathPart = hash >= 0 ? raw.slice(0, hash) : raw;
+    let fragment = hash >= 0 ? raw.slice(hash + 1) : '';
+    try { fragment = decodeURIComponent(fragment); } catch (e) { /* лишаємо як є */ }
+    const path = pathPart ? resolveEpubPath(baseDir, pathPart) : '';
+    if (!path) return null;
+    const index = state.spine.indexOf(path);
+    return index >= 0 ? { index, fragment } : null;
+}
+
+// EPUB 3: <nav epub:type="toc"><ol><li><a href>…</a><ol>…</ol></li></ol></nav>. Заголовок без посилання — <span>.
+function parseEpubNav(text, baseDir) {
+    let doc = new DOMParser().parseFromString(text, 'application/xhtml+xml');
+    if (doc.querySelector('parsererror')) doc = new DOMParser().parseFromString(expandSelfClosingTags(text), 'text/html');
+    const navs = Array.from(doc.getElementsByTagNameNS('*', 'nav'));
+    const isToc = (n) => /(^|\s)toc(\s|$)/.test(n.getAttributeNS('http://www.idpf.org/2007/ops', 'type') || n.getAttribute('epub:type') || '');
+    const nav = navs.find(isToc) || navs[0];
+    if (!nav) return [];
+    const out = [];
+    const walk = (list, depth) => {
+        if (!list || depth >= EPUB_TOC_MAX_DEPTH) return;
+        for (const li of Array.from(list.children)) {
+            if (out.length >= EPUB_TOC_MAX_ITEMS) return;
+            if (li.localName !== 'li') continue;
+            const head = Array.from(li.children).find(c => c.localName === 'a' || c.localName === 'span');
+            const title = epubTocTitle(head && head.textContent);
+            const target = head && head.localName === 'a' ? epubTocTarget(baseDir, head.getAttribute('href')) : null;
+            if (title) out.push({ title, depth, index: target ? target.index : -1, fragment: target ? target.fragment : '' });
+            walk(Array.from(li.children).find(c => c.localName === 'ol' || c.localName === 'ul'), depth + 1);
+        }
+    };
+    walk(Array.from(nav.children).find(c => c.localName === 'ol' || c.localName === 'ul'), 0);
+    return out;
+}
+
+// EPUB 2: <navMap><navPoint><navLabel><text>…</text></navLabel><content src="…"/><navPoint>…</navPoint></navPoint></navMap>.
+function parseEpubNcx(text, baseDir) {
+    const doc = new DOMParser().parseFromString(text, 'text/xml');
+    if (doc.querySelector('parsererror')) return [];
+    const navMap = doc.getElementsByTagNameNS('*', 'navMap')[0];
+    if (!navMap) return [];
+    const out = [];
+    const walk = (parent, depth) => {
+        if (depth >= EPUB_TOC_MAX_DEPTH) return;
+        for (const point of Array.from(parent.children)) {
+            if (out.length >= EPUB_TOC_MAX_ITEMS) return;
+            if (point.localName !== 'navPoint') continue;
+            const label = Array.from(point.children).find(c => c.localName === 'navLabel');
+            const content = Array.from(point.children).find(c => c.localName === 'content');
+            const title = epubTocTitle(label && label.textContent);
+            const target = content ? epubTocTarget(baseDir, content.getAttribute('src')) : null;
+            if (title) out.push({ title, depth, index: target ? target.index : -1, fragment: target ? target.fragment : '' });
+            walk(point, depth + 1);
+        }
+    };
+    walk(navMap, 0);
+    return out;
+}
+
+// Зміст книги з її опису (OPF): спершу навігаційний документ EPUB 3, тоді NCX з EPUB 2. Порожній масив = нема змісту.
+async function readEpubToc(zip, opfDoc, opfDir) {
+    const items = Array.from(opfDoc.getElementsByTagNameNS('*', 'item'));
+    const sources = [];
+    const nav = items.find(i => /(^|\s)nav(\s|$)/.test(i.getAttribute('properties') || ''));
+    if (nav) sources.push({ href: nav.getAttribute('href'), parse: parseEpubNav });
+    const spineEl = opfDoc.getElementsByTagNameNS('*', 'spine')[0];
+    const ncxId = spineEl && spineEl.getAttribute('toc');
+    const ncx = items.find(i => ncxId && i.getAttribute('id') === ncxId) || items.find(i => (i.getAttribute('media-type') || '') === 'application/x-dtbncx+xml');
+    if (ncx) sources.push({ href: ncx.getAttribute('href'), parse: parseEpubNcx });
+    for (const source of sources) {
+        try {
+            const path = resolveEpubPath(opfDir, source.href || '');
+            const entry = path && zip.file(path);
+            if (!entry) continue;
+            const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : '';
+            const entries = source.parse(await entry.async('text'), dir);
+            if (entries.some(e => e.index >= 0)) return entries;
+        } catch (e) { /* зіпсований зміст — пробуємо наступне джерело, а тоді старий список */ }
+    }
+    return [];
+}
+
+// Перехід на пункт змісту: розділ, а тоді — сторінка з якорем, якщо він є в розділі.
+async function openEpubTocEntry(entry) {
+    if (entry.index < 0) return;
+    if (entry.index !== state.currentIndex || !els.pages.childNodes.length) await loadEpubChapter(entry.index);
+    if (entry.fragment) {
+        const target = document.getElementById('book-' + entry.fragment);
+        if (target && els.pages.contains(target)) {
+            const range = document.createRange();
+            range.selectNodeContents(target);
+            goToPageInChapter(pageIndexForRange(range), false);
+        }
+    } else if (state.pageInChapter !== 0) goToPageInChapter(0, false);
+    if (window.innerWidth <= 1180) els.sidebar.classList.add('collapsed');
+}
+
+// Бічна панель: пункт = текст назви з відступом за вкладеністю; пункт без файлу в порядку читання — неактивний.
+function renderEpubToc(entries) {
+    els.toc.replaceChildren();
+    for (const entry of entries) {
+        const li = document.createElement('li');
+        li.className = 'epub-toc-item';
+        li.dataset.depth = String(Math.min(entry.depth, 5));
+        li.dataset.index = String(entry.index);
+        li.textContent = entry.title;
+        if (entry.index < 0) li.classList.add('disabled');
+        else li.onclick = () => openEpubTocEntry(entry);
+        els.toc.appendChild(li);
+    }
+    markEpubTocCurrent();
+}
+
+// Поточний розділ підсвічений у змісті: перший пункт, що веде в цей файл.
+function markEpubTocCurrent() {
+    if (state.format !== 'epub' || !els.toc) return;
+    let marked = false;
+    for (const li of els.toc.querySelectorAll('.epub-toc-item')) {
+        const here = !marked && li.dataset.index === String(state.currentIndex);
+        li.classList.toggle('current', here);
+        if (here) { li.setAttribute('aria-current', 'true'); marked = true; } else li.removeAttribute('aria-current');
+    }
+}
+
 async function initEpub(file, epoch = readerEpoch.book) {
     if (typeof JSZip === 'undefined') throw new Error('Не завантажено бібліотеку EPUB. Перевірте з’єднання та оновіть сторінку.');
     const verified = await runArchiveGuard(file, epoch);
@@ -281,7 +421,11 @@ async function initEpub(file, epoch = readerEpoch.book) {
     state.totalPages = state.spine.length; 
     
     computeBookWeights(epoch);
-    buildToc(state.totalPages, "Розділ", (i) => { loadEpubChapter(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
+    const tocEntries = await readEpubToc(zip, doc, opfDir);
+    if (epoch !== readerEpoch.book) return;
+    state.epubToc = tocEntries;
+    if (tocEntries.length) renderEpubToc(tocEntries);
+    else buildToc(state.totalPages, "Розділ", (i) => { loadEpubChapter(i); if(window.innerWidth <= 1180) els.sidebar.classList.add('collapsed'); });
     const bm = loadBookmark();
     const startIdx = (bm && bm.format === 'epub' && bm.currentIndex >= 0 && bm.currentIndex < state.spine.length) ? bm.currentIndex : 0;
     await loadEpubChapter(startIdx, false, bm ? bm.pageInChapter : null, bm?.textOffset);
@@ -338,6 +482,7 @@ async function loadEpubChapter(idx, toEnd = false, startPage = null, textOffset 
             if (!bookContentPresent(els.pages)) throw new Error(t('emptyDoc'));
         }
         state.extractedTextForTTS = els.pages.innerText;
+        if (state.epubToc && state.epubToc.length) markEpubTocCurrent();
         updateSourceLang();   // мова книги — перевизначається на кожному розділі
         await settleBookLayout(current, toEnd ? -1 : (startPage ?? 0), textOffset);
     } catch (err) {

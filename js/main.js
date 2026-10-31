@@ -157,7 +157,7 @@ async function openBookFile(file) {
     setPanelSubtitle('ask-subtitle', ''); setPanelSubtitle('grammar-subtitle', '');
     document.getElementById('grammar-controls-bar').replaceChildren();
     if (typeof resetGrammarState === 'function') resetGrammarState(); // no stale analysis/cache across books (section 18)
-    els.toc.replaceChildren();
+    els.toc.replaceChildren(); state.epubToc = null;   // зміст попередньої книги (js/formats.js readEpubToc)
     els.pages.innerHTML = `<div style="text-align:center;">${t('loading')}</div>`;
     document.body.classList.add('immersive-mode');   // the menu (a drawer over the page) gives way to the book on every screen
     state.bookKey = bookKeyFor(file);
