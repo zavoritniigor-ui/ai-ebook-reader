@@ -21,7 +21,7 @@ def check(name, expression):
 
 check('1 a Spanish system starts with the Spanish menu', "state.uiLang === 'es' && document.getElementById('ui-lang').value === 'es'")
 # Same as the English text on purpose: brand names, icons and words spelled the same in both languages.
-SAME = "['close', 'tocIcon', 'page', 'error', 'themeSepia', 'voicesHi', 'libSourceGutenberg', 'libSourceWikisource', 'libSourceArchive', 'genHumor', 'offUnitMb', 'scanPdfA4', 'scanFilterOrig']"
+SAME = "['close', 'tocIcon', 'page', 'error', 'themeSepia', 'voicesHi', 'libSourceGutenberg', 'libSourceWikisource', 'libChipWikisource', 'libSourceArchive', 'genHumor', 'offUnitMb', 'scanPdfA4', 'scanFilterOrig']"
 check('2 every interface string has its own Spanish text', "Object.keys(I18N).every(k => I18N[k].es && (I18N[k].es !== I18N[k].en || %s.includes(k)))" % SAME)
 check('3 the menu is shown in Spanish', "t('open') === '📂 Abrir libro' && [...document.querySelectorAll('[data-i18n=\"wheelOpen\"]')].every(e => e.textContent.includes('Abrir libro'))")
 c.js("els.uiLang.value = 'fr'; els.uiLang.dispatchEvent(new Event('change')); 1"); time.sleep(0.3)

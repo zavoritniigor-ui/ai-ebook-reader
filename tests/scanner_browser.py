@@ -4,12 +4,14 @@ Owner (2026-10-30): «застосунок сканер, який з фото р
 
 The «photo» is drawn in the page: a white sheet (3:4, with lines of «text») photographed at an angle — a perspective-distorted
 quadrilateral on a dark table, with a shadow across it — saved as JPEG.
-Checks: the menu row, the start-screen button and the ✦ wheel open the scanner; the sheet's corners are found (each within 3% of
-the drawn ones); the straightened page has the sheet's proportions; «Document» makes the shadowed paper white and keeps the text
+Checks: the menu row, the start-screen button and the ✦ wheel open the scanner; a new page's frame is the whole photo (automatic
+edge finding was removed, owner 2026-11-01; the frame is then set by hand as in the editor); the straightened page has the sheet's proportions; «Document» makes the shadowed paper white and keeps the text
 dark; «B/W» gives black and white only; corners can be dragged in the editor and Done re-renders the page; rotation swaps the
 sides; pages can be reordered and deleted; a photo that is not an image is reported and skipped; a photo that fails is retried smaller, and the message says why (not an image / HEIC / out of memory); the PDF (A4 and «photo size»)
 is a real PDF that the reader opens with the right page count and page size; several JPGs come as a ZIP, one PNG as a PNG file;
 nothing is sent over the network; Escape / Android Back close the editor first, then the scanner.
+Selection (2026-11-01): tick boxes on the cards; filter / rotate / delete / export act on the ticked pages (all when none);
+several pages per A4 / Letter sheet (1, 2, 4, 6, 9) in the PDF and in print.
 Memory (2026-11-01, «сканер лягає, коли додати багато фото»): the straightening reads only the sheet's box and frees the
 photo at once; the recogniser is shut down after a PDF's pages are read; the PDF takes each page's JPEG Blob as is.
 """
@@ -67,28 +69,11 @@ t0 = time.time()
 c.js("__photo(%s, 'one.jpg').then(f => scanAddFiles([f], false)).then(() => window.__added = 1); window.__added = 0; 1" % json.dumps(QUAD))
 c.wait("window.__added === 1", timeout=60)
 print('   one photo processed in %.1f s' % (time.time() - t0), flush=True)
-check('2 one page; its corners are found within 3% of the sheet',
-      "scanState.pages.length === 1 && scanState.pages[0].corners.every((p, i) => Math.abs(p[0] - %s[i][0]) < .03 && Math.abs(p[1] - %s[i][1]) < .03) || JSON.stringify(scanState.pages[0]?.corners)" % (json.dumps(QUAD), json.dumps(QUAD)))
-# ---- harder photos for the edge finder: a sheet turned by 40° on a light, speckled table; a finger over one corner
-c.js("""window.__hard = async (angle, bg, finger) => { const W = 1600, H = 1200, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
-  x.fillStyle = bg; x.fillRect(0, 0, W, H);
-  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (let i = 0; i < 2500; i++) { x.fillStyle = `rgba(${90 + rnd() * 60 | 0},${80 + rnd() * 50 | 0},${70 + rnd() * 40 | 0},0.18)`; x.fillRect(rnd() * W, rnd() * H, 4 + rnd() * 14, 2 + rnd() * 6); }
-  const cxp = W / 2, cyp = H / 2, pw = 520, ph = 700, a = angle * Math.PI / 180;
-  x.save(); x.translate(cxp, cyp); x.rotate(a); x.fillStyle = '#fbfaf6'; x.fillRect(-pw / 2, -ph / 2, pw, ph);
-  x.fillStyle = '#222'; for (let i = 0; i < 20; i++) x.fillRect(-pw / 2 + 50, -ph / 2 + 70 + i * 28, pw - 100 - (i % 3) * 50, 9); x.restore();
-  const corner = (u, v) => [(cxp + u * Math.cos(a) - v * Math.sin(a)) / W, (cyp + u * Math.sin(a) + v * Math.cos(a)) / H];
-  const quad = [corner(-pw / 2, -ph / 2), corner(pw / 2, -ph / 2), corner(pw / 2, ph / 2), corner(-pw / 2, ph / 2)];
-  if (finger) { const [fx, fy] = quad[2]; x.fillStyle = '#c58f6e'; x.beginPath(); x.ellipse(fx * W + 10, fy * H + 30, 34, 70, -0.5, 0, 2 * Math.PI); x.fill(); }
-  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9)); return { file: new File([blob], 'hard.jpg', {type: 'image/jpeg'}), quad }; }; 1""")
-for label, args in [('a sheet turned by 40° on a light speckled table', "40, '#d9d4cb', false"), ('a sheet with a finger over its bottom-right corner', "-12, '#8a7a66', true")]:
-    res = c.js("__hard(%s).then(async h => { const src = await scanLoad(h.file, SCAN_WORK_SIDE); const got = scanDetectCorners(src); src.width = 0; return JSON.stringify({got, quad: h.quad}); })" % args)
-    res = json.loads(res)
-    sort_key = lambda p: p
-    # the app returns TL, TR, BR, BL; compare each expected corner with the nearest found one
-    err = max(min(abs(g[0] - q[0]) + abs(g[1] - q[1]) for g in res['got']) for q in res['quad'])
-    assert err < 0.035, (label, res)
-    print('PASS 2b the edge finder handles ' + label + ' (max corner error %.3f)' % err, flush=True)
+check('2 one page; its frame is the whole photo (no automatic edge finding, owner 2026-11-01), and the editor has no «Find edges»',
+      "scanState.pages.length === 1 && JSON.stringify(scanState.pages[0].corners) === JSON.stringify(SCAN_FULL) && typeof scanDetectCorners === 'undefined' && !document.querySelector('#scanner [data-i18n=scanAuto]') || JSON.stringify(scanState.pages[0]?.corners)")
+# the reader sets the frame to the sheet by hand (as in the editor); the checks below need the straightened sheet
+c.js("window.__framed = 0; scanState.pages[0].corners = %s; scanRender(scanState.pages[0]).then(() => { scanRenderList(); window.__framed = 1; }); 1" % json.dumps(QUAD))
+c.wait("window.__framed === 1", timeout=60)
 check('3 the straightened page has the sheet\'s 3:4 proportions', "(p => Math.abs(p.w / p.h - 0.75) < 0.06 || JSON.stringify([p.w, p.h]))(scanState.pages[0])")
 STATS = """(async (blob) => { const b = await createImageBitmap(blob), cv = document.createElement('canvas'); cv.width = b.width; cv.height = b.height; const x = cv.getContext('2d'); x.drawImage(b, 0, 0);
   const d = x.getImageData(0, 0, cv.width, cv.height).data; let paper = [], ink = 0, mid = 0, n = 0;
@@ -123,7 +108,7 @@ check('5b dragging a handle moves that corner (and only in the editor copy)', "s
 c.js("scanEl('scan-edit-cancel').click(); 1"); time.sleep(0.5)
 check('5c Cancel keeps the page as it was', "!scanState.edit && Math.abs(scanState.pages[0].corners[0][0] - %s) < 1e-9" % before)
 c.js("scanOpenEditor(scanState.pages[0]); 1"); time.sleep(1.0)
-c.js("document.querySelector('#scanner .scan-filter[data-filter=\"bw\"]').click(); document.querySelector('#scanner [data-i18n-title=\"scanRotR\"]').click(); 1"); time.sleep(0.5)
+c.js("document.querySelector('#scanner .scan-filter[data-filter=\"bw\"]').click(); document.querySelector('#scan-edit-view [data-i18n-title=\"scanRotR\"]').click(); 1"); time.sleep(0.5)
 check('6 B/W chip is the active one; a small preview is shown', "document.querySelector('#scanner .scan-filter.active').dataset.filter === 'bw' && !!document.getElementById('scan-preview').src", timeout=5)
 w0, h0 = c.js("[scanState.pages[0].w, scanState.pages[0].h]")
 c.js("scanEl('scan-edit-done').click(); 1")
@@ -155,7 +140,7 @@ c.js("window.__pdf = null; scanBuildPdf(scanState.pages, 'a4').then(async b => {
 check('10 the PDF has a PDF header, %%EOF and two pages', "!!__pdf && __pdf.head === '%PDF-1.4' && __pdf.tail.startsWith('%%EOF') && __pdf.pages === 2 || JSON.stringify(__pdf)", timeout=20)
 c.js("(f => { f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11 «Open in the reader»: the scanner closes and the reader opens the A4 PDF with both pages', "!scanIsOpen() && state.format === 'pdf' && state.totalPages === 2", timeout=30)
-check('11b ... its pages are A4', "!!state.pdfDoc && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] - 595.28) < 0.5 && Math.abs(p.view[3] - 841.89) < 0.5 || JSON.stringify([p.view, scanState.pages.map(q => [q.w, q.h, q.corners])]))", timeout=10)
+check('11b ... its pages are A4, turned to the page (a wide whole photo goes on a landscape A4)', "!!state.pdfDoc && state.pdfDoc.getPage(1).then(p => Math.abs(Math.min(p.view[2], p.view[3]) - 595.28) < 0.5 && Math.abs(Math.max(p.view[2], p.view[3]) - 841.89) < 0.5 && (p.view[2] > p.view[3]) === (scanState.pages[0].w > scanState.pages[0].h * 1.1) || JSON.stringify([p.view, scanState.pages.map(q => [q.w, q.h, q.corners])]))", timeout=10)
 c.wait("!scanState.busy", timeout=20)   # «Open» stays busy until the reader has opened the A4 PDF
 c.js("openScanner(); (f => { f.value = 'pdf-fit'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11c «PDF · photo size»: pages in the page\'s own proportions', "state.format === 'pdf' && !!state.pdfDoc && !scanState.busy && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] / p.view[3] - scanState.pages[0].w / scanState.pages[0].h) < 0.01)", timeout=30)
@@ -169,7 +154,7 @@ check('12c still no network request', "__net.filter(u => !/\\/(vendor|js)\\//.te
 check('15 with pages the camera button says «Next page» (a series is shot without the editor in between)', "document.getElementById('scan-shoot').textContent === t('scanCameraNext')")
 c.js("window.__added = 0; __photo(%s, 'cam.jpg').then(f => scanAddFiles([f], true)).then(() => window.__added = 1); 1" % json.dumps(QUAD))
 c.wait("window.__added === 1", timeout=60); time.sleep(0.3)
-check('15b a camera shot with a found sheet goes straight to the list, no editor', "!scanState.edit && scanState.pages.length === 3")
+check('15b a camera shot goes straight to the list (whole photo), no editor', "!scanState.edit && scanState.pages.length === 3")
 c.js("document.querySelector('#scan-all .scan-all-filter[data-filter=\"gray\"]').click(); 1")
 check('16 «For all pages: Grey» re-renders every page in grey', "!scanState.busy && scanState.pages.every(p => p.filter === 'gray') && document.querySelector('#scan-all .scan-all-filter.active')?.dataset.filter === 'gray'", timeout=60)
 c.js("window.__one = null; scanMakeFile('jpg-one').then(async f => { const b = await createImageBitmap(f); window.__one = {type: f.type, name: f.name, w: b.width, h: b.height}; }); 1")
@@ -219,6 +204,42 @@ c.js("openScanner(); 1"); time.sleep(0.3)
 check('19c the «Recognise text» switch is on by default and shown for PDF formats only',
       "(() => { const f = document.getElementById('scan-format'), row = document.getElementById('scan-ocr-row'); f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); const a = !row.hidden && document.getElementById('scan-ocr').checked; f.value = 'png'; f.dispatchEvent(new Event('change')); const b = row.hidden; f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); return a && b; })()")
 
+# ---- selection, batch, several pages per sheet (owner 2026-11-01)
+c.js("scanSelectAll(false); 1")
+check('21 every card has a tick box; with none ticked the batch row says «For all pages» and «Select all» is offered',
+      "document.querySelectorAll('#scan-pages .scan-check').length === scanState.pages.length && document.getElementById('scan-all-label').textContent === t('scanAllFilter') && document.getElementById('scan-select-all').textContent === t('scanSelectAll') && document.getElementById('scan-delete-selected').hidden")
+c.js("[...document.querySelectorAll('#scan-pages .scan-check')].slice(0, 2).forEach(b => b.click()); 1")
+check('21b ticking two pages: «Selected: 2 of 7», the batch row says «For selected», delete-selected appears, export takes only those two',
+      "document.getElementById('scan-selected').textContent === t('scanSelected').replace('{n}', 2).replace('{total}', 7) && document.getElementById('scan-all-label').textContent === t('scanForSelected') && !document.getElementById('scan-delete-selected').hidden && scanTargets().length === 2 && scanTargets()[0] === scanState.pages[0]")
+c.js("document.querySelector('#scan-all .scan-all-filter[data-filter=\"bw\"]').click(); 1")
+check('21c «For selected: B/W» changes only the two ticked pages', "!scanState.busy && scanState.pages.slice(0, 2).every(p => p.filter === 'bw') && scanState.pages.slice(2).every(p => p.filter !== 'bw')", timeout=60)
+c.js("window.__rot = scanState.pages.map(p => [p.rotation, p.w, p.h]); document.getElementById('scan-all-rotr').click(); 1")
+check('21d «⟳» turns only the ticked pages (sides swap), the others stay', "!scanState.busy && scanState.pages[0].rotation === (__rot[0][0] + 90) % 360 && scanState.pages[0].w === __rot[0][2] && scanState.pages[2].rotation === __rot[2][0]", timeout=60)
+c.js("document.getElementById('scan-select-all').click(); 1")
+check('21e «Select all» ticks every page, then reads «Clear selection»', "scanState.pages.every(p => p.selected) && document.getElementById('scan-select-all').textContent === t('scanSelectNone')")
+c.js("document.getElementById('scan-select-all').click(); scanState.pages[6].selected = true; scanRenderList(); document.getElementById('scan-delete-selected').click(); 1")
+check('21f «🗑 Selected» deletes only the ticked page', "scanState.pages.length === 6 && !scanState.pages.some(p => p.selected)")
+c.js("(f => { f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); 1")
+check('22 «Pages per sheet» (1, 2, 4, 6, 9) is offered for PDF A4 / Letter only', """(() => { const f = document.getElementById('scan-format'), n = document.getElementById('scan-nup'); const a = !n.hidden && [...n.options].map(o => o.value).join() === '1,2,4,6,9' && n.options[1].textContent === t('scanNupN').replace('{n}', 2);
+  f.value = 'pdf-fit'; f.dispatchEvent(new Event('change')); const b = n.hidden; f.value = 'jpg'; f.dispatchEvent(new Event('change')); const c2 = n.hidden; f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); return a && b && c2; })()""")
+c.js("""window.__nup = null; (async () => { const pages = scanState.pages.slice(0, 4).map(p => ({ ...p, ocr: null })), out = {};
+  for (const n of [1, 2, 4]) { const b = await scanBuildPdf(pages, 'a4', n); const doc = await pdfjsLib.getDocument({ data: new Uint8Array(await b.arrayBuffer()) }).promise;
+    const pg = await doc.getPage(1), ops = await pg.getOperatorList(); out[n] = { sheets: doc.numPages, w: pg.view[2], h: pg.view[3], images: ops.fnArray.filter(f => f === pdfjsLib.OPS.paintImageXObject).length }; }
+  window.__nup = out; })().catch(e => { window.__nup = { error: String(e) }; }); 1""")
+check('22b 4 portrait pages: 1 per sheet → 4 portrait A4; 2 per sheet → 2 landscape A4 sheets with 2 images each; 4 per sheet → 1 portrait sheet with 4',
+      "!!__nup && !__nup.error && __nup[1].sheets === 4 && __nup[1].w < __nup[1].h && __nup[2].sheets === 2 && __nup[2].w > __nup[2].h && __nup[2].images === 2 && __nup[4].sheets === 1 && __nup[4].w < __nup[4].h && __nup[4].images === 4 || JSON.stringify(__nup)", timeout=60)
+check('22c the cells do not overlap and stay inside the sheet margins', """(() => { const pages = scanState.pages.slice(0, 4), { W, H, cells } = scanSheetCells(pages, 'a4', 4);
+  const inside = cells.every(c => c.x >= 17.9 && c.y >= 17.9 && c.x + c.dw <= W - 17.9 && c.y + c.dh <= H - 17.9);
+  const apart = cells.every((a, i) => cells.every((b, j) => i === j || a.x + a.dw <= b.x + 0.01 || b.x + b.dw <= a.x + 0.01 || a.y + a.dh <= b.y + 0.01 || b.y + b.dh <= a.y + 0.01));
+  return inside && apart || JSON.stringify(cells.map(c => [c.x, c.y, c.dw, c.dh])); })()""")
+c.js("""window.__printed = null; (() => { const real = HTMLIFrameElement.prototype; const n = document.getElementById('scan-nup'); n.value = '2'; n.dispatchEvent(new Event('change'));
+  const obs = new MutationObserver(() => { const fr = document.querySelector('iframe[title="' + t('scanPrint') + '"]'); if (!fr || window.__printed) return;
+    fr.contentWindow.print = () => { const d = fr.contentDocument; window.__printed = { sheets: d.querySelectorAll('.s').length, land: d.querySelectorAll('.s.land').length, imgs: d.querySelectorAll('.s img').length }; }; obs.disconnect(); });
+  obs.observe(document.body, { childList: true }); document.getElementById('scan-print').click(); })(); 1""")
+check('22d printing with 2 per sheet lays out 3 sheets for the 6 pages (2 images each), each turned as in the PDF',
+      "!!__printed && __printed.sheets === 3 && __printed.imgs === 6 && __printed.land === [0, 2, 4].filter(i => (l => l.W > l.H)(scanSheetCells(scanState.pages.slice(i, i + 2), 'a4', 2))).length || JSON.stringify(__printed)", timeout=30)
+c.js("(n => { n.value = '1'; n.dispatchEvent(new Event('change')); })(document.getElementById('scan-nup')); 1")
+
 # ---- memory (owner 2026-11-01: «сканер лягає, коли додати багато фото»)
 check('20 the straightening reads only the sheet\'s box: the right half of a red|blue photo comes out all blue, and with release the photo\'s canvas is freed at once',
       """(() => { const cv = document.createElement('canvas'); cv.width = 400; cv.height = 300; const x = cv.getContext('2d');
@@ -241,10 +262,10 @@ check('20c the PDF carries each page\'s JPEG as the Blob itself (no copy in JS m
 c.js("scanOpenEditor(scanState.pages[0]); 1"); time.sleep(1.0)
 check('13 Back (overlay stack) closes the editor first', "topOpenOverlay() === 'scanner' && (closeTopOverlay('scanner'), !scanState.edit && scanIsOpen())", timeout=2)
 c.js("document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); 1"); time.sleep(0.3)
-check('13b ... then Escape closes the scanner; the pages stay for this session', "!scanIsOpen() && scanState.pages.length === 7")
+check('13b ... then Escape closes the scanner; the pages stay for this session', "!scanIsOpen() && scanState.pages.length === 6")
 c.js("openScanner(); 1"); time.sleep(0.3)
 c.js("document.getElementById('scan-clear').click(); 1")
-check('14 Clear asks for a second tap', "scanState.pages.length === 7 && document.getElementById('scan-clear').textContent === t('scanClearSure')")
+check('14 Clear asks for a second tap', "scanState.pages.length === 6 && document.getElementById('scan-clear').textContent === t('scanClearSure')")
 c.js("document.getElementById('scan-clear').click(); 1")
 check('14b ... and then clears everything', "scanState.pages.length === 0 && !document.getElementById('scan-empty').hidden")
 print('ALL SCANNER CHECKS PASSED')

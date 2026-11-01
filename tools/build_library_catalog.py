@@ -3,8 +3,10 @@
 
     curl -L -o pg_catalog.csv https://gutenberg.pglaf.org/cache/epub/feeds/pg_catalog.csv
     python3 tools/build_library_catalog.py pg_catalog.csv library-catalog.json
+    python3 tools/build_library_catalog.py --enrich pg_catalog.csv library-catalog.json   # only add author years, same books
 
-Output: {"v":1,"themes":[keys],"books":[[id,"title","author","lang",themeBitmask], ...]}. Themes come from the catalog's own
+Output: {"v":2,"themes":[keys],"books":[[id,"title","author","lang",themeBitmask,born,died], ...]} — born/died are the first
+author's years from the catalog (negative = BCE, 0 = unknown); the reader's «years» filter matches books whose author lived then. Themes come from the catalog's own
 "Bookshelves" field. French and the small languages are kept whole (capped); English is capped by a classics-first score.
 """
 import csv, json, re, sys
@@ -48,6 +50,31 @@ def clean_author(raw):
     return name[:60]
 
 
+def author_years(raw):
+    """«Hugo, Victor, 1802-1885» -> (1802, 1885); «Homer, 751? BCE-651? BCE» -> (-751, -651); unknown parts -> 0."""
+    first = raw.split(';')[0]
+    m = re.search(r'(\d{1,4})\??\s*(BCE)?\s*-\s*(?:(\d{1,4})\??\s*(BCE)?)?', first) or re.search(r'-\s*(\d{1,4})\??\s*(BCE)?', first)
+    if not m: return 0, 0
+    g = m.groups()
+    if len(g) == 2: return 0, -int(g[0]) if g[1] else int(g[0])
+    born = -int(g[0]) if g[1] else int(g[0])
+    died = (-int(g[2]) if g[3] else int(g[2])) if g[2] else 0
+    return born, died
+
+
+def enrich(src, dst):
+    years = {}
+    for row in csv.DictReader(open(src, encoding='utf-8')):
+        try: years[int(row['Text#'])] = author_years(row['Authors'])
+        except ValueError: pass
+    data = json.load(open(dst, encoding='utf-8'))
+    data['v'] = 2
+    data['books'] = [b[:5] + list(years.get(b[0], (0, 0))) for b in data['books']]
+    with open(dst, 'w', encoding='utf-8') as f: json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+    known = sum(1 for b in data['books'] if b[5] or b[6])
+    print(len(data['books']), 'books,', known, 'with author years')
+
+
 def main(src, dst):
     best = {}
     for row in csv.DictReader(open(src, encoding='utf-8')):
@@ -58,7 +85,7 @@ def main(src, dst):
         if lang != 'fr' and not mask: continue
         score = sum(v for k, v in BOOST.items() if k in shelves)
         title = re.sub(r'\s+', ' ', row['Title']).strip()[:120]
-        entry = (int(row['Text#']), title, clean_author(row['Authors']), lang, mask, score)
+        entry = (int(row['Text#']), title, clean_author(row['Authors']), lang, mask, score, *author_years(row['Authors']))
         key = (lang, title.lower(), entry[2].lower())
         if key not in best or entry[0] < best[key][0]: best[key] = entry   # one edition per work: the oldest id
     books, by_lang = [], {}
@@ -67,10 +94,11 @@ def main(src, dst):
         items.sort(key=lambda e: (-e[5], e[0]))
         books += items[:CAPS[lang]]
     books.sort(key=lambda e: (e[3], -e[5], e[0]))
-    out = {'v': 1, 'themes': [k for k, _ in THEMES], 'books': [[e[0], e[1], e[2], e[3], e[4]] for e in books]}
+    out = {'v': 2, 'themes': [k for k, _ in THEMES], 'books': [[e[0], e[1], e[2], e[3], e[4], e[6], e[7]] for e in books]}
     with open(dst, 'w', encoding='utf-8') as f: json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     print(len(books), 'books', {l: min(len(v), CAPS[l]) for l, v in by_lang.items()})
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    if sys.argv[1] == '--enrich': enrich(sys.argv[2], sys.argv[3])
+    else: main(sys.argv[1], sys.argv[2])

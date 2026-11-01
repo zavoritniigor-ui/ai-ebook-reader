@@ -20,10 +20,18 @@ Object.assign(I18N, {
     scanOcrFailed: { uk: 'Текст не розпізнано — PDF буде без нього.', en: 'Text was not recognised — the PDF will be without it.', fr: 'Texte non reconnu — le PDF sera sans texte.', ru: 'Текст не распознан — PDF будет без него.' },
     scanJpgOne: { uk: 'JPG · усі сторінки одним зображенням', en: 'JPG · all pages as one image', fr: 'JPG · toutes les pages en une image', ru: 'JPG · все страницы одним изображением' },
     scanGallery: { uk: '🖼 З галереї', en: '🖼 From gallery', fr: '🖼 Depuis la galerie', ru: '🖼 Из галереи' },
-    scanEmpty: { uk: 'Зніміть сторінку або виберіть фото з галереї. Краї аркуша знайдуться самі — їх можна підправити.',
-                 en: 'Take a photo of a page or pick photos from the gallery. The edges of the sheet are found automatically and can be adjusted.',
-                 fr: 'Photographiez une page ou choisissez des photos dans la galerie. Les bords de la feuille sont trouvés automatiquement et peuvent être ajustés.',
-                 ru: 'Снимите страницу или выберите фото из галереи. Края листа найдутся сами — их можно подправить.' },
+    scanEmpty: { uk: 'Зніміть сторінку або виберіть фото з галереї. Береться усе фото; рамку можна змінити, відкривши сторінку (✎).',
+                 en: 'Take a photo of a page or pick photos from the gallery. The whole photo is used; open a page (✎) to change its frame.',
+                 fr: 'Photographiez une page ou choisissez des photos dans la galerie. La photo entière est utilisée ; ouvrez une page (✎) pour changer son cadre.',
+                 ru: 'Снимите страницу или выберите фото из галереи. Берётся всё фото; рамку можно изменить, открыв страницу (✎).' },
+    scanSelectAll: { uk: '☑ Вибрати всі', en: '☑ Select all', fr: '☑ Tout sélectionner', ru: '☑ Выбрать все' },
+    scanSelectNone: { uk: '☐ Зняти вибір', en: '☐ Clear selection', fr: '☐ Tout désélectionner', ru: '☐ Снять выбор' },
+    scanSelected: { uk: 'Вибрано: {n} з {total}', en: 'Selected: {n} of {total}', fr: 'Sélection : {n} sur {total}', ru: 'Выбрано: {n} из {total}' },
+    scanSelect: { uk: 'Вибрати сторінку', en: 'Select page', fr: 'Sélectionner la page', ru: 'Выбрать страницу' },
+    scanForSelected: { uk: 'Для вибраних:', en: 'For selected:', fr: 'Pour la sélection :', ru: 'Для выбранных:' },
+    scanDeleteSelected: { uk: '🗑 Вибрані', en: '🗑 Selected', fr: '🗑 Sélection', ru: '🗑 Выбранные' },
+    scanNup: { uk: 'Сторінок на аркуш', en: 'Pages per sheet', fr: 'Pages par feuille', ru: 'Страниц на лист' },
+    scanNupN: { uk: '{n} на аркуш', en: '{n} per sheet', fr: '{n} par feuille', ru: '{n} на лист' },
     scanPrivacy: { uk: 'Фото обробляються на цьому пристрої й нікуди не надсилаються.', en: 'Photos are processed on this device and are not sent anywhere.',
                    fr: 'Les photos sont traitées sur cet appareil et ne sont envoyées nulle part.', ru: 'Фото обрабатываются на этом устройстве и никуда не отправляются.' },
     scanProcessing: { uk: 'Обробка {n} з {total}…', en: 'Processing {n} of {total}…', fr: 'Traitement {n} sur {total}…', ru: 'Обработка {n} из {total}…' },
@@ -34,7 +42,6 @@ Object.assign(I18N, {
     scanMoveLeft: { uk: 'Перемістити раніше', en: 'Move earlier', fr: 'Déplacer avant', ru: 'Переместить раньше' },
     scanMoveRight: { uk: 'Перемістити пізніше', en: 'Move later', fr: 'Déplacer après', ru: 'Переместить позже' },
     scanCorners: { uk: 'Перетягніть кути до країв аркуша', en: 'Drag the corners to the edges of the sheet', fr: 'Faites glisser les coins vers les bords de la feuille', ru: 'Перетащите углы к краям листа' },
-    scanAuto: { uk: 'Знайти краї', en: 'Find edges', fr: 'Trouver les bords', ru: 'Найти края' },
     scanFull: { uk: 'Усе фото', en: 'Whole photo', fr: 'Photo entière', ru: 'Всё фото' },
     scanRotL: { uk: 'Повернути ліворуч', en: 'Rotate left', fr: 'Pivoter à gauche', ru: 'Повернуть влево' },
     scanRotR: { uk: 'Повернути праворуч', en: 'Rotate right', fr: 'Pivoter à droite', ru: 'Повернуть вправо' },
@@ -87,6 +94,10 @@ const SCAN_FORMATS = [['pdf-a4', 'scanPdfA4'], ['pdf-letter', 'scanPdfLetter'], 
 // Сторінка: { file, corners: [[x,y]×4] частки фото (ЛВ, ПВ, ПН, ЛН), rotation (0/90/180/270), filter, out: JPEG Blob, w, h, thumb: blob-URL }.
 const scanState = { pages: [], busy: false, edit: null, nextId: 1 };
 function scanEl(id) { return document.getElementById(id); }
+// З чим працюють «Для всіх», друк і збереження: позначені галочкою сторінки, а коли жодної не позначено — усі
+// (власник, 2026-11-01: «обробити усі фото, лише відмітивши їх після завантаження»).
+function scanTargets() { const chosen = scanState.pages.filter(p => p.selected); return chosen.length ? chosen : scanState.pages; }
+function scanNup() { const v = +(scanEl('scan-nup')?.value || 1); return SCAN_NUP.includes(v) ? v : 1; }
 function scanStored(key, fallback, allowed) { try { const v = localStorage.getItem(key); return allowed.some(([k]) => k === v) ? v : fallback; } catch (e) { return fallback; } }
 function scanStore(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
 
@@ -110,165 +121,9 @@ function scanLuma(data, n) {
     return out;
 }
 const SCAN_FULL = [[0, 0], [1, 0], [1, 1], [0, 1]];
-// Краї аркуша. На зменшеній копії (до 320 px) будуються дві маски: «світліше за поріг Оцу» (білий аркуш на темному) і
-// «колір не як у тла» (тло — медіана рамки кадру; аркуш на світлому, сірому чи візерунчастому столі). Для кожної маски
-// найбільша пляма → її опукла оболонка → чотирикутник найбільшої площі на ній (так кути правильні й для аркуша, повернутого
-// на 45°) → кожна сторона уточнюється прямою за точками краю плями між кутами, кути — перетини цих прямих (кут, перекритий
-// пальцем чи загнутий, відновлюється продовженням сторін). Перемагає маска, чия пляма найкраще заповнює свій чотирикутник.
-// Нічого схожого на аркуш (менше 15% кадру, майже весь кадр, неправильна форма) — усе фото, кути читач підправить сам.
-function scanDetectCorners(canvas) {
-    const k = Math.min(1, 320 / Math.max(canvas.width, canvas.height));
-    const w = Math.max(8, Math.round(canvas.width * k)), h = Math.max(8, Math.round(canvas.height * k)), n = w * h;
-    const small = document.createElement('canvas'); small.width = w; small.height = h;
-    const sctx = small.getContext('2d', { willReadFrequently: true });
-    sctx.filter = 'blur(1.5px)'; sctx.drawImage(canvas, 0, 0, w, h);
-    const rgb = sctx.getImageData(0, 0, w, h).data; small.width = 0;
-    const lum = scanLuma(rgb, n);
-    // тло: медіана кожного каналу в рамці шириною 3% кадру
-    const ring = Math.max(2, Math.round(Math.min(w, h) * .03)), chans = [[], [], []];
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        if (x >= ring && x < w - ring && y >= ring && y < h - ring) continue;
-        const j = (y * w + x) * 4; chans[0].push(rgb[j]); chans[1].push(rgb[j + 1]); chans[2].push(rgb[j + 2]);
-    }
-    const bgc = chans.map(c => c.sort((a, b) => a - b)[c.length >> 1]);
-    const dist = new Uint8ClampedArray(n);
-    for (let i = 0, j = 0; i < n; i++, j += 4) dist[i] = (Math.abs(rgb[j] - bgc[0]) + Math.abs(rgb[j + 1] - bgc[1]) + Math.abs(rgb[j + 2] - bgc[2])) / 2;
-    // третя маска: світліше за тло (білий аркуш на світлому столі, де темні візерунки столу заважають масці кольору)
-    const bgl = (bgc[0] * 77 + bgc[1] * 150 + bgc[2] * 29) >> 8, brighter = new Uint8ClampedArray(n);
-    for (let i = 0; i < n; i++) brighter[i] = Math.max(0, lum[i] - bgl) * 3;
-    let best = null;
-    for (const values of [lum, dist, brighter]) {
-        const thr = scanOtsu(values);
-        const mask = new Uint8Array(n); for (let i = 0; i < n; i++) mask[i] = values[i] > thr ? 1 : 0;
-        const quad = scanQuadFromMask(scanOpen(mask, w, h, 2), w, h);
-        if (quad && (!best || quad.fill > best.fill)) best = quad;
-    }
-    if (!best || best.fill < .8) return SCAN_FULL.map(c => c.slice());
-    const corners = best.corners.map(([x, y]) => [Math.min(1, Math.max(0, (x + .5) / w)), Math.min(1, Math.max(0, (y + .5) / h))]);
-    return scanQuadArea(corners) < 0.15 || scanQuadArea(corners) > 0.97 ? SCAN_FULL.map(c => c.slice()) : corners;
-}
-function scanOtsu(values) {
-    const hist = new Array(256).fill(0); for (const v of values) hist[v]++;
-    const total = values.length;
-    let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
-    let sumB = 0, wB = 0, best = 0, thr = 128;
-    for (let i = 0; i < 256; i++) {
-        wB += hist[i]; if (!wB) continue;
-        const wF = total - wB; if (!wF) break;
-        sumB += i * hist[i];
-        const between = wB * wF * (sumB / wB - (sum - sumB) / wF) ** 2;
-        if (between > best) { best = between; thr = i; }
-    }
-    return thr;
-}
-// Морфологічне «відкриття» (стиснути на r пікселів, потім розширити назад): тонкі ланцюжки плям столу, що зливаються з
-// аркушем, і дрібні цятки зникають, а великий аркуш лишається того самого розміру.
-function scanOpen(mask, w, h, r) {
-    let cur = mask;
-    // спершу «закриття» (розширити, стиснути): рядки тексту, що на зменшеній копії тонші за проміжки, не розрізають аркуш на смуги
-    for (const keep of [0, 1, 1, 0]) for (let pass = 0; pass < r; pass++) {
-        const next = new Uint8Array(w * h);
-        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-            const p = y * w + x;
-            const nb = [cur[p], x > 0 ? cur[p - 1] : keep, x < w - 1 ? cur[p + 1] : keep, y > 0 ? cur[p - w] : keep, y < h - 1 ? cur[p + w] : keep];
-            next[p] = keep ? (nb.every(v => v) ? 1 : 0) : (nb.some(v => v) ? 1 : 0);
-        }
-        cur = next;
-    }
-    return cur;
-}
-// Найбільша пляма маски → {corners у пікселях зменшеної копії, fill = площа плями / площа чотирикутника}.
-function scanQuadFromMask(mask, w, h) {
-    const thr = 0, values = mask;
-    const n = w * h, label = new Int32Array(n), stack = [];
-    let bestId = 0, bestSize = 0, id = 0;
-    for (let p = 0; p < n; p++) {
-        if (label[p] || values[p] <= thr) continue;
-        id++; let size = 0; label[p] = id; stack.push(p);
-        while (stack.length) {
-            const q = stack.pop(); size++;
-            const x = q % w, y = (q - x) / w;
-            if (x > 0 && !label[q - 1] && values[q - 1] > thr) { label[q - 1] = id; stack.push(q - 1); }
-            if (x < w - 1 && !label[q + 1] && values[q + 1] > thr) { label[q + 1] = id; stack.push(q + 1); }
-            if (y > 0 && !label[q - w] && values[q - w] > thr) { label[q - w] = id; stack.push(q - w); }
-            if (y < h - 1 && !label[q + w] && values[q + w] > thr) { label[q + w] = id; stack.push(q + w); }
-        }
-        if (size > bestSize) { bestSize = size; bestId = id; }
-    }
-    if (!bestId || bestSize < n * 0.12 || bestSize > n * 0.985) return null;
-    // Край плями: крайні ліва й права точки кожного рядка та верхня й нижня кожного стовпця (дірки від тексту всередині не заважають).
-    const edge = [], top = new Int32Array(w).fill(-1), bot = new Int32Array(w).fill(-1);
-    for (let y = 0; y < h; y++) {
-        let l = -1, r = -1;
-        for (let x = 0; x < w; x++) if (label[y * w + x] === bestId) { if (l < 0) l = x; r = x; if (top[x] < 0) top[x] = y; bot[x] = y; }
-        if (l >= 0) { edge.push([l, y]); if (r !== l) edge.push([r, y]); }
-    }
-    for (let x = 0; x < w; x++) if (top[x] >= 0) { edge.push([x, top[x]]); if (bot[x] !== top[x]) edge.push([x, bot[x]]); }
-    const hull = scanHull(edge);
-    if (hull.length < 4) return null;
-    const pts = hull.length > 90 ? hull.filter((_, i) => i % Math.ceil(hull.length / 90) === 0) : hull;
-    const m = pts.length, area = (a, b, c) => Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2;
-    let bestQ = null, bestA = -1;
-    for (let i = 0; i < m; i++) for (let kk = i + 2; kk < m; kk++) {
-        let a1 = -1, j1 = -1, a2 = -1, l2 = -1;
-        for (let j = i + 1; j < kk; j++) { const a = area(pts[i], pts[j], pts[kk]); if (a > a1) { a1 = a; j1 = j; } }
-        for (let l = kk + 1; l < m + i; l++) { const a = area(pts[kk], pts[l % m], pts[i]); if (a > a2) { a2 = a; l2 = l % m; } }
-        if (j1 >= 0 && l2 >= 0 && a1 + a2 > bestA) { bestA = a1 + a2; bestQ = [pts[i], pts[j1], pts[kk], pts[l2]]; }
-    }
-    if (!bestQ || bestA <= 0) return null;
-    // Порядок ЛВ, ПВ, ПН, ЛН: за кутом навколо центру, починаючи з найближчого до лівого верхнього кута кадру.
-    const cx = bestQ.reduce((s, p) => s + p[0], 0) / 4, cy = bestQ.reduce((s, p) => s + p[1], 0) / 4;
-    let quad = bestQ.slice().sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
-    const start = quad.reduce((bi, p, i, q) => (p[0] + p[1] < q[bi][0] + q[bi][1] ? i : bi), 0);
-    quad = [0, 1, 2, 3].map(i => quad[(start + i) % 4]);
-    quad = scanRefineQuad(quad, edge) || quad;
-    // Пляма на весь кадр — це світлий стіл, а не аркуш: хай вирішує інша маска.
-    if (scanQuadArea(quad) > n * 0.9) return null;
-    return { corners: quad, fill: bestSize / Math.max(1, scanQuadArea(quad)) };
-}
-function scanHull(points) {
-    const p = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    if (p.length < 3) return p;
-    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-    const lower = [], upper = [];
-    for (const q of p) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop(); lower.push(q); }
-    for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop(); upper.push(q); }
-    return lower.slice(0, -1).concat(upper.slice(0, -1));
-}
-// Кожна сторона — пряма найменших квадратів через точки краю поблизу відрізка між кутами (середні 80% довжини, щоб
-// заокруглений чи перекритий кут її не тягнув); кути — перетини сусідніх прямих. Невдалий перетин — null (лишаються кути оболонки).
-function scanRefineQuad(quad, edge) {
-    const lines = [];
-    for (let s = 0; s < 4; s++) {
-        const a = quad[s], b = quad[(s + 1) % 4], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
-        if (len < 4) return null;
-        const ux = dx / len, uy = dy / len, tol = Math.max(2, len * .03);
-        let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, cnt = 0;
-        for (const [x, y] of edge) {
-            const tpos = ((x - a[0]) * ux + (y - a[1]) * uy) / len, d = Math.abs((x - a[0]) * uy - (y - a[1]) * ux);
-            if (tpos < .1 || tpos > .9 || d > tol) continue;
-            sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; cnt++;
-        }
-        if (cnt < 6) return null;
-        const mx = sx / cnt, my = sy / cnt, cxx = sxx / cnt - mx * mx, cyy = syy / cnt - my * my, cxy = sxy / cnt - mx * my;
-        const ang = .5 * Math.atan2(2 * cxy, cxx - cyy);   // напрям прямої (головна вісь)
-        lines.push([mx, my, Math.cos(ang), Math.sin(ang)]);
-    }
-    const out = [];
-    for (let s = 0; s < 4; s++) {
-        const [x1, y1, dx1, dy1] = lines[(s + 3) % 4], [x2, y2, dx2, dy2] = lines[s];
-        const den = dx1 * dy2 - dy1 * dx2;
-        if (Math.abs(den) < 1e-3) return null;
-        const tt = ((x2 - x1) * dy2 - (y2 - y1) * dx2) / den, p = [x1 + tt * dx1, y1 + tt * dy1];
-        if (scanDist(p, quad[s]) > 25) return null;   // перетин далеко від кута оболонки — сторону знайдено погано
-        out.push(p);
-    }
-    return out;
-}
-function scanQuadArea(c) {
-    let a = 0; for (let i = 0; i < 4; i++) { const [x1, y1] = c[i], [x2, y2] = c[(i + 1) % 4]; a += x1 * y2 - x2 * y1; }
-    return Math.abs(a) / 2;
-}
+// Рамка нової сторінки — усе фото (власник, 2026-11-01: «прибрати автоматичне розпізнавання країв, це не працює; має
+// виділятися усе фото, а рамку я зміню, якщо захочу»). Пошук країв (маски, опукла оболонка, найбільший чотирикутник)
+// прибрано разом з кнопкою «Знайти краї»: рамку тепер ставить лише сам читач у редакторі.
 // Гомографія, що переводить точки прямокутника 0..w×0..h (результат) у чотирикутник на фото: розв'язок 8 рівнянь.
 function scanHomography(w, h, quad) {
     const src = [[0, 0], [w, 0], [w, h], [0, h]], A = [];
@@ -402,7 +257,36 @@ async function scanRender(page, source = null, release = false) {
 // ---------- PDF ----------
 // Мінімальний PDF: кожна сторінка — одне JPEG-зображення (DCTDecode), уписане з полями й по центру.
 // paper: 'a4' | 'letter' — орієнтація аркуша за сторінкою; 'fit' — аркуш у пропорціях фото, довша сторона як у A4.
-async function scanBuildPdf(pages, paper) {
+// Кілька сторінок на аркуш (власник, 2026-11-01: «компонування щодо листка для друку — на один А4 кілька»). Для кожного
+// аркуша (його nup сторінок) пробуються книжкова й альбомна орієнтація та кожна сітка стовпці×рядки = nup; береться та,
+// де сторінки виходять найбільшими. nup = 1 — як раніше: майже квадратна сторінка лишається на книжковому аркуші.
+const SCAN_NUP = [1, 2, 4, 6, 9];
+function scanSheetLayout(pages, paper, nup) {
+    const [a, b] = paper === 'letter' ? [612, 792] : [595.28, 841.89], margin = 18, gap = nup > 1 ? 12 : 0;
+    let best = null;
+    for (const [W, H] of [[a, b], [b, a]]) for (let cols = 1; cols <= nup; cols++) {
+        if (nup % cols) continue;
+        const rows = nup / cols, cw = (W - 2 * margin - gap * (cols - 1)) / cols, ch = (H - 2 * margin - gap * (rows - 1)) / rows;
+        const area = pages.reduce((sum, p) => { const k = Math.min(cw / p.w, ch / p.h); return sum + p.w * k * p.h * k; }, 0);
+        // Альбомний аркуш — лише коли він помітно (на 10%) краще: майже квадратна сторінка лишається на книжковому.
+        if (!best || area > best.area * (W > H && best.W < best.H ? 1.1 : 1.0001)) best = { W, H, cols, rows, cw, ch, margin, gap, area };
+    }
+    return best;
+}
+// Місце кожної сторінки аркуша (у пунктах PDF, початок — лівий нижній кут): клітинки зліва направо, згори вниз, сторінка — по центру клітинки.
+function scanSheetCells(sheet, paper, nup) {
+    if (paper === 'fit') { const p = sheet[0], k = 841.89 / Math.max(p.w, p.h); return { W: p.w * k, H: p.h * k, cells: [{ p, k, x: 0, y: 0, dw: p.w * k, dh: p.h * k }] }; }
+    const L = scanSheetLayout(sheet, paper, nup);
+    return { W: L.W, H: L.H, cells: sheet.map((p, i) => {
+        const col = i % L.cols, row = Math.floor(i / L.cols), k = Math.min(L.cw / p.w, L.ch / p.h), dw = p.w * k, dh = p.h * k;
+        const cx = L.margin + col * (L.cw + L.gap), cyTop = L.H - L.margin - row * (L.ch + L.gap);
+        return { p, k, dw, dh, x: cx + (L.cw - dw) / 2, y: cyTop - L.ch + (L.ch - dh) / 2 };
+    }) };
+}
+async function scanBuildPdf(pages, paper, nup = 1) {
+    nup = paper === 'fit' ? 1 : Math.max(1, nup | 0);
+    const sheets = [];
+    for (let i = 0; i < pages.length; i += nup) sheets.push(pages.slice(i, i + nup));
     const enc = new TextEncoder(), parts = [], offsets = [];
     let length = 0;
     const push = chunk => { const bytes = typeof chunk === 'string' ? enc.encode(chunk) : chunk; parts.push(bytes); length += bytes instanceof Blob ? bytes.size : bytes.length; };
@@ -411,9 +295,12 @@ async function scanBuildPdf(pages, paper) {
     push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
     // 3–6: невидимий шрифт текстового шару (якщо текст розпізнано): Type0 / Identity-H, код символу = його UTF-16, ToUnicode
     // повертає ті самі коди — PDF.js і будь-яка читалка дістають з нього текст, тож слова клікабельні й шукаються.
-    const FIRST = 7, kids = pages.map((_, i) => `${FIRST + i * 3} 0 R`).join(' ');
+    // Номери об'єктів: на кожен аркуш — сторінка, її вміст і по зображенню на кожну сторінку скану.
+    const FIRST = 7, nums = [];
+    let next = FIRST;
+    for (const sheet of sheets) { nums.push({ page: next, content: next + 1, images: sheet.map((_, j) => next + 2 + j) }); next += 2 + sheet.length; }
     obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
-    obj(2, `<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`);
+    obj(2, `<< /Type /Pages /Kids [${nums.map(n => `${n.page} 0 R`).join(' ')}] /Count ${sheets.length} >>`);
     obj(3, '<< /Type /Font /Subtype /Type0 /BaseFont /GlyphLessFont /Encoding /Identity-H /DescendantFonts [4 0 R] /ToUnicode 6 0 R >>');
     obj(4, '<< /Type /Font /Subtype /CIDFontType2 /BaseFont /GlyphLessFont /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 5 0 R /DW 500 /CIDToGIDMap /Identity >>');
     obj(5, '<< /Type /FontDescriptor /FontName /GlyphLessFont /Flags 5 /FontBBox [0 -200 500 800] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>');
@@ -426,16 +313,15 @@ async function scanBuildPdf(pages, paper) {
         + 'endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend';
     obj(6, [`<< /Length ${cmap.length} >>\nstream\n`, cmap, '\nendstream']);
     const hex = text => { let h = ''; for (const ch of text) { const c = ch.codePointAt(0); if (c <= 0xffff && (c < 0xd800 || c > 0xdfff)) h += c.toString(16).padStart(4, '0'); } return h; };
-    for (let i = 0; i < pages.length; i++) {
-        const p = pages[i], num = FIRST + i * 3, landscape = p.w > p.h * 1.05;   // майже квадратна сторінка — книжкова
-        let W, H, margin;
-        if (paper === 'fit') { const k = 841.89 / Math.max(p.w, p.h); W = p.w * k; H = p.h * k; margin = 0; }
-        else { const [a, b] = paper === 'letter' ? [612, 792] : [595.28, 841.89]; [W, H] = landscape ? [b, a] : [a, b]; margin = 18; }
-        const k = Math.min((W - 2 * margin) / p.w, (H - 2 * margin) / p.h), dw = p.w * k, dh = p.h * k, ox = (W - dw) / 2, oy = (H - dh) / 2;
-        let content = `q ${f(dw)} 0 0 ${f(dh)} ${f(ox)} ${f(oy)} cm /Im0 Do Q`;
-        // Невидимий текст (режим 3) точно над словами картинки: висота шрифту — висота рядка, ширина — розтягом Tz.
-        const words = p.ocr && p.ocr.out === p.out ? p.ocr.words : [];
-        if (words.length) {
+    for (let si = 0; si < sheets.length; si++) {
+        const { W, H, cells } = scanSheetCells(sheets[si], paper, nup), n = nums[si];
+        let content = '', hasText = false;
+        cells.forEach(({ p, k, x: ox, y: oy, dw, dh }, j) => {
+            content += `${content ? '\n' : ''}q ${f(dw)} 0 0 ${f(dh)} ${f(ox)} ${f(oy)} cm /Im${j} Do Q`;
+            // Невидимий текст (режим 3) точно над словами картинки: висота шрифту — висота рядка, ширина — розтягом Tz.
+            const words = p.ocr && p.ocr.out === p.out ? p.ocr.words : [];
+            if (!words.length) return;
+            hasText = true;
             content += '\nBT 3 Tr';
             for (const wd of words) {
                 const code = hex(wd.t); if (!code) continue;
@@ -444,15 +330,14 @@ async function scanBuildPdf(pages, paper) {
                 content += `\n/F1 ${f(fs)} Tf ${f(Math.max(1, 100 * width / natural))} Tz 1 0 0 1 ${f(x)} ${f(y)} Tm <${code}> Tj`;
             }
             content += '\nET';
-        }
+        });
+        const fonts = hasText ? ' /Font << /F1 3 0 R >>' : '', xobjects = n.images.map((num, j) => `/Im${j} ${num} 0 R`).join(' ');
+        obj(n.page, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(W)} ${f(H)}] /Resources << /XObject << ${xobjects} >>${fonts} >> /Contents ${n.content} 0 R >>`);
+        obj(n.content, [`<< /Length ${content.length} >>\nstream\n`, content, '\nendstream']);
         // Сам Blob сторінки, а не його копія в пам'яті JS: на 30 сторінках це десятки МБ, і разом з готовим PDF — вдвічі більше.
-        const jpeg = p.out;
-        const fonts = words.length ? ' /Font << /F1 3 0 R >>' : '';
-        obj(num, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(W)} ${f(H)}] /Resources << /XObject << /Im0 ${num + 2} 0 R >>${fonts} >> /Contents ${num + 1} 0 R >>`);
-        obj(num + 1, [`<< /Length ${content.length} >>\nstream\n`, content, '\nendstream']);
-        obj(num + 2, [`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.size} >>\nstream\n`, jpeg, '\nendstream']);
+        cells.forEach(({ p }, j) => obj(n.images[j], [`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.out.size} >>\nstream\n`, p.out, '\nendstream']));
     }
-    const info = FIRST + pages.length * 3;
+    const info = next;
     obj(info, '<< /Producer (AI E-book Reader scanner) >>');
     const xref = length;
     push(`xref\n0 ${info + 1}\n0000000000 65535 f \n`);
@@ -529,8 +414,7 @@ async function scanOcrStop() {
     const worker = scanOcrWorker; scanOcrWorker = null; scanOcrWorkerLang = '';
     if (worker) { try { await worker.terminate(); } catch (e) {} }
 }
-async function scanOcrAll(lang) {
-    const pages = scanState.pages;
+async function scanOcrAll(lang, pages = scanState.pages) {
     try {
         for (let i = 0, done = 0; i < pages.length; i++) {
             scanStatus(t('scanOcrBusy').replace('{n}', i + 1).replace('{total}', pages.length));
@@ -572,9 +456,9 @@ async function scanStitch(pages) {
     try { return await scanBlob(canvas, 'image/jpeg', 0.88); } finally { canvas.width = 0; }
 }
 // Файл у вибраному форматі: PDF — один файл; JPG/PNG — одна сторінка як є, кілька — ZIP; «одним зображенням» — склеєні.
-async function scanMakeFile(format) {
-    const pages = scanState.pages, base = scanBaseName();
-    if (format.startsWith('pdf')) return new File([await scanBuildPdf(pages, format.slice(4))], base + '.pdf', { type: 'application/pdf' });
+async function scanMakeFile(format, pages = scanState.pages, nup = 1) {
+    const base = scanBaseName();
+    if (format.startsWith('pdf')) return new File([await scanBuildPdf(pages, format.slice(4), nup)], base + '.pdf', { type: 'application/pdf' });
     if (format === 'jpg-one') return new File([pages.length === 1 ? pages[0].out : await scanStitch(pages)], base + '.jpg', { type: 'image/jpeg' });
     const [type, ext] = format === 'png' ? ['image/png', 'png'] : ['image/jpeg', 'jpg'];
     if (pages.length === 1) return new File([await scanPageImage(pages[0], type)], `${base}.${ext}`, { type });
@@ -621,11 +505,23 @@ function buildScanner() {
     });
     // Один фільтр на всі сторінки серії одним натиском.
     const allRow = document.createElement('div'); allRow.className = 'scan-row scan-all'; allRow.id = 'scan-all';
-    const allLabel = document.createElement('span'); allLabel.dataset.i18n = 'scanAllFilter';
+    const allLabel = document.createElement('span'); allLabel.id = 'scan-all-label'; allLabel.dataset.i18n = 'scanAllFilter';
     allRow.append(allLabel);
     for (const [value, key] of SCAN_FILTERS) {
         const b = scanButton(key, () => scanFilterAll(value), 'scan-all-filter'); b.dataset.filter = value; allRow.append(b);
     }
+    for (const [text, key, step, id] of [['⟲', 'scanRotL', -90, 'scan-all-rotl'], ['⟳', 'scanRotR', 90, 'scan-all-rotr']]) {
+        const b = document.createElement('button'); b.type = 'button'; b.id = id; b.textContent = text; b.dataset.i18nTitle = key; b.dataset.i18nAria = key;
+        b.addEventListener('click', () => scanRotateAll(step)); allRow.append(b);
+    }
+    // Вибір сторінок: галочка на кожній картці, «Вибрати всі / Зняти вибір», видалити вибрані.
+    const selRow = document.createElement('div'); selRow.className = 'scan-row scan-select'; selRow.id = 'scan-select-row';
+    const selAll = document.createElement('button'); selAll.type = 'button'; selAll.id = 'scan-select-all';
+    selAll.addEventListener('click', () => scanSelectAll(!scanState.pages.every(p => p.selected)));
+    const selCount = document.createElement('span'); selCount.id = 'scan-selected';
+    const selDel = document.createElement('button'); selDel.type = 'button'; selDel.id = 'scan-delete-selected'; selDel.dataset.i18n = 'scanDeleteSelected';
+    selDel.addEventListener('click', scanDeleteSelected);
+    selRow.append(selAll, selCount, selDel);
     const status = document.createElement('div'); status.id = 'scan-status'; status.setAttribute('aria-live', 'polite');
     const list = document.createElement('div'); list.id = 'scan-pages';
     const empty = document.createElement('p'); empty.id = 'scan-empty'; empty.dataset.i18n = 'scanEmpty';
@@ -634,6 +530,10 @@ function buildScanner() {
     for (const [value, key] of SCAN_FORMATS) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; format.append(o); }
     format.value = scanStored('reader_scan_format', 'pdf-a4', SCAN_FORMATS);
     format.addEventListener('change', () => scanStore('reader_scan_format', format.value));
+    const nupSel = document.createElement('select'); nupSel.id = 'scan-nup'; nupSel.dataset.i18nTitle = 'scanNup'; nupSel.dataset.i18nAria = 'scanNup';
+    for (const n of SCAN_NUP) { const o = document.createElement('option'); o.value = String(n); o.dataset.n = n; nupSel.append(o); }
+    nupSel.value = String(scanStored('reader_scan_nup', '1', SCAN_NUP.map(n => [String(n)])));
+    nupSel.addEventListener('change', () => scanStore('reader_scan_nup', nupSel.value));
     const actions = document.createElement('div'); actions.className = 'scan-actions';
     const clear = scanButton('scanClear', () => {
         if (clear.dataset.sure !== '1') { clear.dataset.sure = '1'; clear.textContent = t('scanClearSure'); setTimeout(() => { clear.dataset.sure = ''; clear.textContent = t('scanClear'); }, 3000); return; }
@@ -653,12 +553,13 @@ function buildScanner() {
     ocrLang.value = scanStored('reader_scan_ocr_lang', scanOcrLangDefault(), SCAN_OCR_LANGS);
     ocrLang.addEventListener('change', () => scanStore('reader_scan_ocr_lang', ocrLang.value));
     ocrRow.append(ocr, ocrText, ocrLang);
-    const syncOcr = () => { ocrRow.hidden = !format.value.startsWith('pdf'); };
+    const syncOcr = () => { ocrRow.hidden = !format.value.startsWith('pdf'); nupSel.hidden = format.value !== 'pdf-a4' && format.value !== 'pdf-letter'; };
     format.addEventListener('change', syncOcr); syncOcr();
-    out.append(allRow, format, ocrRow, actions);
+    const fmtRow = document.createElement('div'); fmtRow.className = 'scan-format-row'; fmtRow.append(format, nupSel);
+    out.append(allRow, fmtRow, ocrRow, actions);
     const privacy = document.createElement('p'); privacy.className = 'scan-privacy'; privacy.dataset.i18n = 'scanPrivacy';
     const listView = document.createElement('div'); listView.id = 'scan-list-view'; listView.className = 'scan-view';
-    listView.append(add, status, empty, list, out, privacy);
+    listView.append(add, status, empty, selRow, list, out, privacy);
     // Редактор однієї сторінки
     const editView = document.createElement('div'); editView.id = 'scan-edit-view'; editView.className = 'scan-view'; editView.hidden = true;
     const hint = document.createElement('div'); hint.className = 'scan-hint'; hint.dataset.i18n = 'scanCorners';
@@ -669,8 +570,7 @@ function buildScanner() {
     for (let i = 0; i < 4; i++) { const h = document.createElement('div'); h.className = 'scan-handle'; h.dataset.i = i; h.setAttribute('role', 'slider'); h.setAttribute('aria-label', '↖↗↘↙'[i]); h.tabIndex = 0; stage.append(h); }
     const tools = document.createElement('div'); tools.className = 'scan-tools';
     const edges = document.createElement('div'); edges.className = 'scan-row';
-    edges.append(scanButton('scanAuto', () => { const e = scanState.edit; if (e) { e.corners = scanDetectCorners(e.source); scanDrawEditor(); } }),
-        scanButton('scanFull', () => { const e = scanState.edit; if (e) { e.corners = SCAN_FULL.map(c => c.slice()); scanDrawEditor(); } }));
+    edges.append(scanButton('scanFull', () => { const e = scanState.edit; if (e) { e.corners = SCAN_FULL.map(c => c.slice()); scanDrawEditor(); } }));
     const rot = document.createElement('div'); rot.className = 'scan-row';
     const rl = document.createElement('button'); rl.type = 'button'; rl.textContent = '⟲'; rl.dataset.i18nTitle = 'scanRotL'; rl.dataset.i18nAria = 'scanRotL';
     const rr = document.createElement('button'); rr.type = 'button'; rr.textContent = '⟳'; rr.dataset.i18nTitle = 'scanRotR'; rr.dataset.i18nAria = 'scanRotR';
@@ -740,7 +640,7 @@ async function scanAddFiles(files, fromCamera) {
                 let source;
                 try { source = await scanLoad(files[i], side); loaded = true; } catch (e) { source = null; }
                 if (source) {
-                    try { page.corners = scanDetectCorners(source); await scanRender(page, source, true); ok = true; }
+                    try { page.corners = SCAN_FULL.map(c => c.slice()); await scanRender(page, source, true); ok = true; }
                     catch (e) { ok = false; }
                     finally { source.width = source.height = 0; }
                 }
@@ -758,9 +658,7 @@ async function scanAddFiles(files, fromCamera) {
     scanStatus(Object.entries(why).map(([kind, key]) => { const names = failed.filter(f => f.why === kind).map(f => f.name); return names.length ? t(key).replace('{name}', names.join(', ')) : ''; })
         .filter(Boolean).join(' '));
     scanRenderList();
-    // Серія: після знімка — одразу «📷 Наступна сторінка», без редактора (краї знаходяться самі, кожну сторінку можна
-    // відкрити з її картки). Редактор відкривається лише тоді, коли аркуша на фото не знайдено.
-    if (fromCamera && added.length === 1 && added[0].corners.every((c, i) => c[0] === SCAN_FULL[i][0] && c[1] === SCAN_FULL[i][1])) scanOpenEditor(added[0]);
+    // Серія: після знімка — одразу «📷 Наступна сторінка», без редактора; рамку кожної сторінки можна змінити з її картки.
 }
 function scanRenderList() {
     const list = scanEl('scan-pages'); if (!list) return;
@@ -771,25 +669,41 @@ function scanRenderList() {
         const open = document.createElement('button'); open.type = 'button'; open.className = 'scan-thumb'; open.title = t('scanEdit'); open.append(img);
         open.addEventListener('click', () => scanOpenEditor(page));
         const num = document.createElement('span'); num.className = 'scan-num'; num.textContent = i + 1;
+        const pick = document.createElement('input'); pick.type = 'checkbox'; pick.className = 'scan-check'; pick.checked = !!page.selected;
+        pick.title = t('scanSelect'); pick.setAttribute('aria-label', t('scanSelect') + ' ' + (i + 1));
+        pick.addEventListener('change', () => { page.selected = pick.checked; card.classList.toggle('selected', pick.checked); scanSyncSelection(); });
+        card.classList.toggle('selected', !!page.selected);
         const bar = document.createElement('div'); bar.className = 'scan-card-bar';
         const mk = (text, key, fn, disabled) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.title = t(key); b.setAttribute('aria-label', t(key)); b.disabled = disabled; b.addEventListener('click', fn); return b; };
         bar.append(mk('◀', 'scanMoveLeft', () => scanMove(i, -1), i === 0), mk('✎', 'scanEdit', () => scanOpenEditor(page), false),
             mk('🗑', 'scanDelete', () => scanDelete(page), false), mk('▶', 'scanMoveRight', () => scanMove(i, 1), i === scanState.pages.length - 1));
-        card.append(open, num, bar); list.append(card);
+        card.append(open, num, pick, bar); list.append(card);
     });
     const has = scanState.pages.length > 0;
     const shoot = scanEl('scan-shoot'); if (shoot) { shoot.dataset.i18n = has ? 'scanCameraNext' : 'scanCamera'; shoot.textContent = t(shoot.dataset.i18n); }
-    const common = has && scanState.pages.every(p => p.filter === scanState.pages[0].filter) ? scanState.pages[0].filter : '';
-    for (const b of document.querySelectorAll('#scan-all .scan-all-filter')) b.classList.toggle('active', b.dataset.filter === common);
+    scanSyncSelection();
     scanEl('scan-empty').hidden = has;
     scanEl('scan-out').hidden = !has;
     if (has && !scanState.busy && !scanEl('scan-status').textContent) scanStatus(t('scanPages').replace('{n}', scanState.pages.length));
+}
+function scanSyncSelection() {
+    const pages = scanState.pages, chosen = pages.filter(p => p.selected).length, targets = scanTargets();
+    const row = scanEl('scan-select-row'); if (!row) return;
+    row.hidden = !pages.length;
+    const all = scanEl('scan-select-all'), allOn = pages.length > 0 && chosen === pages.length;
+    all.dataset.i18n = allOn ? 'scanSelectNone' : 'scanSelectAll'; all.textContent = t(all.dataset.i18n);
+    scanEl('scan-selected').textContent = chosen ? t('scanSelected').replace('{n}', chosen).replace('{total}', pages.length) : '';
+    scanEl('scan-delete-selected').hidden = !chosen;
+    const label = scanEl('scan-all-label'); label.dataset.i18n = chosen ? 'scanForSelected' : 'scanAllFilter'; label.textContent = t(label.dataset.i18n);
+    const common = targets.length && targets.every(p => p.filter === targets[0].filter) ? targets[0].filter : '';
+    for (const b of document.querySelectorAll('#scan-all .scan-all-filter')) b.classList.toggle('active', b.dataset.filter === common);
+    for (const o of scanEl('scan-nup')?.options || []) o.textContent = t('scanNupN').replace('{n}', o.dataset.n);
 }
 async function scanFilterAll(filter) {
     if (!scanState.pages.length || scanState.edit) return;
     while (scanState.busy) await new Promise(r => setTimeout(r, 100));
     scanState.busy = true; scanStore('reader_scan_filter', filter);
-    const todo = scanState.pages.filter(p => p.filter !== filter);
+    const todo = scanTargets().filter(p => p.filter !== filter);
     try {
         for (let i = 0; i < todo.length; i++) {
             scanStatus(t('scanProcessing').replace('{n}', i + 1).replace('{total}', todo.length));
@@ -799,6 +713,28 @@ async function scanFilterAll(filter) {
             scanRenderList();
         }
     } finally { scanState.busy = false; scanStatus(''); scanRenderList(); }
+}
+// Поворот позначених (або всіх) сторінок одним натиском — фото, зняті боком, частіше бувають серією.
+async function scanRotateAll(step) {
+    if (!scanState.pages.length || scanState.edit) return;
+    while (scanState.busy) await new Promise(r => setTimeout(r, 100));
+    scanState.busy = true;
+    const todo = scanTargets();
+    try {
+        for (let i = 0; i < todo.length; i++) {
+            scanStatus(t('scanProcessing').replace('{n}', i + 1).replace('{total}', todo.length));
+            await new Promise(r => setTimeout(r, 0));
+            todo[i].rotation = (todo[i].rotation + step + 360) % 360;
+            try { await scanRender(todo[i]); } catch (e) {}
+            scanRenderList();
+        }
+    } finally { scanState.busy = false; scanStatus(''); scanRenderList(); }
+}
+function scanSelectAll(on) { for (const p of scanState.pages) p.selected = on; scanRenderList(); }
+function scanDeleteSelected() {
+    const chosen = scanState.pages.filter(p => p.selected); if (!chosen.length) return;
+    for (const p of chosen) if (p.thumb) URL.revokeObjectURL(p.thumb);
+    scanState.pages = scanState.pages.filter(p => !p.selected); scanStatus(''); scanRenderList();
 }
 function scanMove(i, step) {
     const j = i + step, p = scanState.pages;
@@ -915,16 +851,16 @@ async function scanEditPreview() {
 // ---------- друк, «Поділитися», зберегти, відкрити ----------
 async function scanExport(action) {
     if (!scanState.pages.length || scanState.busy) return;
-    const format = scanEl('scan-format').value;
-    if (action === 'print') { scanPrint(format); return; }
+    const format = scanEl('scan-format').value, pages = scanTargets(), nup = scanNup();
+    if (action === 'print') { scanPrint(format, pages, nup); return; }
     scanState.busy = true; scanStatus(t('libLoading'));
     try {
         const target = action === 'open' && !format.startsWith('pdf') ? 'pdf-fit' : format;
         if (target.startsWith('pdf') && scanEl('scan-ocr')?.checked) {
-            try { await scanOcrAll(scanEl('scan-ocr-lang').value); }
+            try { await scanOcrAll(scanEl('scan-ocr-lang').value, pages); }
             catch (e) { scanStatus(t('scanOcrFailed')); await new Promise(r => setTimeout(r, 1200)); }   // PDF буде, лише без тексту
         }
-        const file = await scanMakeFile(target);
+        const file = await scanMakeFile(target, pages, target === format ? nup : 1);
         if (action === 'open') { closeScanner(); scanStatus(''); await openBookFile(file); return; }
         if (action === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
             try { await navigator.share({ files: [file], title: file.name }); scanStatus(''); return; }
@@ -948,25 +884,39 @@ async function scanSaveFile(file) {
     setTimeout(() => URL.revokeObjectURL(url), 60000);
     return t('scanSavedDownloads');
 }
-// Друк: кожна сторінка — окремий аркуш, уписана по центру. Розмір аркуша — як у вибраному PDF (A4 / Letter), інакше — принтера.
-function scanPrint(format) {
+// Друк: аркуші розкладаються так само, як у PDF (scanSheetCells: орієнтація, сітка, поля), кожна сторінка — на своєму
+// місці в мм; без A4/Letter — одна сторінка на аркуш принтера, уписана по центру.
+function scanPrint(format, pages = scanState.pages, nup = 1) {
     const frame = document.createElement('iframe');
     frame.style.cssText = 'position:fixed;left:-10000px;top:-10000px;width:1px;height:1px;border:0;opacity:0;';
     frame.title = t('scanPrint');
     document.body.append(frame);
-    const size = format === 'pdf-a4' ? 'A4' : format === 'pdf-letter' ? 'letter' : 'auto', margin = format === 'pdf-fit' ? '0' : '6mm';
+    const paper = format === 'pdf-a4' ? 'a4' : format === 'pdf-letter' ? 'letter' : '', mm = v => (v * 25.4 / 72).toFixed(2) + 'mm';
     const doc = frame.contentDocument;
     doc.open();
-    doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${size};margin:${margin}}html,body{margin:0;padding:0;background:#fff}
+    doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>
+        @page{size:auto;margin:6mm} @page port{size:${paper === 'letter' ? 'letter' : 'A4'} portrait;margin:0} @page land{size:${paper === 'letter' ? 'letter' : 'A4'} landscape;margin:0}
+        html,body{margin:0;padding:0;background:#fff}
         .p{width:100%;height:100vh;display:flex;align-items:center;justify-content:center;break-after:page;page-break-after:always;overflow:hidden}
-        .p:last-child{break-after:auto;page-break-after:auto}img{max-width:100%;max-height:100%;object-fit:contain}</style></head><body></body></html>`);
+        .p img{max-width:100%;max-height:100%;object-fit:contain}
+        .s{position:relative;overflow:hidden;break-after:page;page-break-after:always}.s.port{page:port}.s.land{page:land}
+        .s img{position:absolute;display:block}
+        .p:last-child,.s:last-child{break-after:auto;page-break-after:auto}</style></head><body></body></html>`);
     doc.close();
-    const urls = scanState.pages.map(p => URL.createObjectURL(p.out));
-    const loads = urls.map(url => new Promise(resolve => {
-        const wrap = doc.createElement('div'); wrap.className = 'p';
-        const img = doc.createElement('img'); img.onload = img.onerror = resolve; img.src = url;
-        wrap.append(img); doc.body.append(wrap);
-    }));
+    const urls = [], loads = [];
+    const image = (page, parent, style) => {
+        const url = URL.createObjectURL(page.out); urls.push(url);
+        const img = doc.createElement('img'); if (style) img.style.cssText = style;
+        loads.push(new Promise(resolve => { img.onload = img.onerror = resolve; })); img.src = url; parent.append(img);
+    };
+    if (!paper) for (const page of pages) { const wrap = doc.createElement('div'); wrap.className = 'p'; image(page, wrap); doc.body.append(wrap); }
+    else for (let i = 0; i < pages.length; i += nup) {
+        const { W, H, cells } = scanSheetCells(pages.slice(i, i + nup), paper, nup);
+        const sheet = doc.createElement('div'); sheet.className = 's ' + (W > H ? 'land' : 'port');
+        sheet.style.cssText = `width:${mm(W)};height:${mm(H)}`;
+        for (const c of cells) image(c.p, sheet, `left:${mm(c.x)};top:${mm(H - c.y - c.dh)};width:${mm(c.dw)};height:${mm(c.dh)}`);
+        doc.body.append(sheet);
+    }
     Promise.all(loads).then(() => {
         const cleanup = () => { try { frame.remove(); } catch (e) {} urls.forEach(u => URL.revokeObjectURL(u)); };
         frame.contentWindow.addEventListener('afterprint', cleanup, { once: true });

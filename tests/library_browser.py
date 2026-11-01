@@ -204,6 +204,35 @@ c.js("window.__opened = null; document.querySelectorAll('#library-list .library-
 check('20c a book opens through the Internet Archive path (the same file as above, kept for the session)', "!!__opened && __opened.name === 'Modern.epub' && __opened.type === 'application/epub+zip'")
 check('20d the choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'loc' && f.locLang === 'fre'; })()")
 
+# ---- 2026-11-01: source buttons with each library's own icon; newspapers and magazines; author and years ----
+check('20e every source has a button with its own icon (loaded), and the active one is marked; the source list itself is hidden',
+      """(() => { const chips = [...document.querySelectorAll('#library-chips .library-chip')];
+         return chips.map(b => b.dataset.source).join() === 'shelf,gutenberg,wikisource,archive,loc,press,bnr,se'
+           && chips.filter(b => b.querySelector('img')).every(b => b.querySelector('img').complete && b.querySelector('img').naturalWidth === 64)
+           && document.querySelector('#library-chips .library-chip.active').dataset.source === 'loc' && getComputedStyle(document.getElementById('library-source')).display === 'none'; })()""")
+c.js("(() => { __iaReqs.length = 0; document.querySelector('#library-chips .library-chip[data-source=press]').click(); return 1; })()"); time.sleep(1.5)
+check('20f «Newspapers & magazines»: a button switches to it, issues are listed at once from the archive\'s newspapers and periodicals, the list offers famous titles',
+      """libraryState.source === 'press' && __iaReqs.some(r => r.includes('op=ia-search') && r.includes('&coll=press') && !r.includes('&pub='))
+         && document.querySelectorAll('#library-list .library-card').length === 3 && document.querySelector('#library-chips .library-chip.active').dataset.source === 'press'
+         && [...document.getElementById('library-genre').options].some(o => o.value === 'new-york-times' && o.textContent === 'The New York Times')
+         && document.getElementById('library-genre').options[0].textContent === t('libPressAll') && document.querySelector('#library-modal .library-source').textContent === t('libPressSource')""")
+c.js("(() => { __iaReqs.length = 0; const g = document.getElementById('library-genre'); g.value = 'scientific-american'; g.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.5)
+check('20g picking a title searches only its issues', "__iaReqs.some(r => r.includes('&coll=press&pub=scientific-american'))")
+c.js("(() => { __iaReqs.length = 0; document.getElementById('library-adv-toggle').click(); const f = document.getElementById('library-from'), to = document.getElementById('library-to'); f.value = '1900'; f.dispatchEvent(new Event('input')); to.value = '1905'; to.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(1.5)
+check('20h «Author and years» opens; years narrow the issues (year of publication)',
+      "!document.getElementById('library-adv').hidden && __iaReqs.some(r => r.includes('&pub=scientific-american') && r.includes('&from=1900&to=1905')) && document.getElementById('library-years-note').textContent === t('libYearsPub')")
+check('20i the chosen title is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).pub === 'scientific-american'")
+c.js("(() => { __iaReqs.length = 0; document.querySelector('#library-chips .library-chip[data-source=archive]').click(); const a = document.getElementById('library-author'); a.value = 'Victor Hugo'; a.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(1.5)
+check('20j Internet Archive: the author alone is enough to search (no hint), together with the years', "__iaReqs.some(r => r.includes('&author=Victor Hugo') && r.includes('&from=1900&to=1905')) && document.getElementById('library-status').textContent !== t('libIaHint')")
+c.js("(() => { document.querySelector('#library-chips .library-chip[data-source=gutenberg]').click(); const l = document.getElementById('library-lang'); l.value = ''; l.dispatchEvent(new Event('change'));"
+     " const a = document.getElementById('library-author'); a.value = 'hugo'; a.dispatchEvent(new Event('input')); const f = document.getElementById('library-from'), to = document.getElementById('library-to'); f.value = ''; to.value = ''; f.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(1.2)
+check('20k Gutenberg: the author field matches the author only', "(a => a.length > 0 && a.every(e => /hugo/i.test(e.textContent)))([...document.querySelectorAll('#library-list .library-author')])")
+c.js("(() => { const a = document.getElementById('library-author'); a.value = ''; a.dispatchEvent(new Event('input')); const f = document.getElementById('library-from'), to = document.getElementById('library-to'); f.value = '1800'; to.value = '1810'; f.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(1.2)
+check('20l Gutenberg: years keep only authors who lived then (from the catalog\'s author years), and say so',
+      """(() => { const ids = new Set([...document.querySelectorAll('#library-list .library-card')].map(c => c.dataset.id || '')); const rows = libraryState.matches;
+          return rows.length > 20 && rows.every(b => (b[5] || b[6] - 70) <= 1810 && (b[6] || b[5] + 70) >= 1800) && document.getElementById('library-years-note').textContent === t('libYearsLife'); })()""")
+c.js("(() => { const f = document.getElementById('library-from'), to = document.getElementById('library-to'); f.value = ''; to.value = ''; f.dispatchEvent(new Event('input')); document.querySelector('#library-chips .library-chip[data-source=loc]').click(); return 1; })()"); time.sleep(1)
+
 # ---- Bibliothèque numérique romande and Standard Ebooks (French and English classics, EPUB) ----
 c.js("""(() => { window.__catReqs = []; window.__opened = null; const prev = window.fetch;
   window.fetch = async (url, opts) => { url = String(url);
