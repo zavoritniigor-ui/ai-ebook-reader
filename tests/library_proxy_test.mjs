@@ -53,9 +53,19 @@ ok('Standard Ebooks file: the download address is built from the id', r.status =
 await call('op=ia-search&coll=loc&lang=fre');
 ok('Library of Congress: the archive search is limited to its collection, browsable without a query',
    (q => q.includes('collection:(library_of_congress)') && q.includes('language:(fre OR French)'))(new URL(asked.at(-1)).searchParams.get('q')));
+// Advanced search (2026-11-01): author → creator, years → year:[from TO to]; newspapers and magazines (coll=press, pub=<slug>).
+await call('op=ia-search&author=Victor%20Hugo&from=1850&to=1880');
+ok('advanced search: the author goes to creator, the years to a year range, no other words needed',
+   (q => q.includes('creator:(Victor AND Hugo)') && q.includes('year:[1850 TO 1880]'))(new URL(asked.at(-1)).searchParams.get('q')));
+await call('op=ia-search&coll=press&pub=scientific-american&from=1900');
+ok('press: one publication → its pub_ collection, issues by date, an open «to» year',
+   (u => u.searchParams.get('q').includes('collection:(pub_scientific-american)') && u.searchParams.get('q').includes('year:[1900 TO 2100]') && u.searchParams.get('sort[]') === 'date asc')(new URL(asked.at(-1))));
+await call('op=ia-search&coll=press&q=war');
+ok('press: all newspapers and magazines → the archive\'s newspapers and periodicals collections',
+   new URL(asked.at(-1)).searchParams.get('q').includes('collection:(newspapers OR periodicals)'));
 const before = asked.length;
 for (const q of ['op=bnr-file&id=../x', 'op=bnr-file&id=a/b', 'op=se-file&id=a', 'op=se-file&id=a/../../b', 'op=se-file&id=A/B%3Fx', 'op=bnr-cover&path=../../wp-config.php',
-                 'op=se-cover&path=x/y/cover.jpg', 'op=se-search&q=x&genre=love', 'op=ia-search&coll=nasa', 'op=ia-search&coll=__proto__', 'op=bnr-search&q=x&genre=history'])
+                 'op=se-cover&path=x/y/cover.jpg', 'op=se-search&q=x&genre=love', 'op=ia-search&coll=nasa', 'op=ia-search&coll=__proto__', 'op=ia-search&coll=press&pub=evil', 'op=ia-search&pub=new-york-times', 'op=ia-search&from=abc', 'op=bnr-search&q=x&genre=history'])
     ok('rejected without fetching: ' + q, (await call(q)).status === 400 && asked.length === before);
 // Wikisource illustrations: only upload.wikimedia.org/wikipedia/<commons|<lang>wikisource>/…, only raster images, at most 5 MB.
 const imgAsked = [];

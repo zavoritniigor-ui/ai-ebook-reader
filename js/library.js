@@ -65,6 +65,22 @@ Object.assign(I18N, {
     libSourceSe: { uk: 'Standard Ebooks (англійською)', en: 'Standard Ebooks (English)', fr: 'Standard Ebooks (anglais)', ru: 'Standard Ebooks (по-английски)' },
     libSeSource: { uk: 'Книги з Standard Ebooks — англійська класика, вільне надбання, ретельно вичитані видання.', en: 'Books from Standard Ebooks — English classics, public domain, carefully proofread editions.',
                    fr: 'Livres de Standard Ebooks — classiques anglais du domaine public, éditions soigneusement relues.', ru: 'Книги из Standard Ebooks — английская классика, общественное достояние, тщательно вычитанные издания.' },
+    libSourcePress: { uk: 'Газети й журнали (Internet Archive)', en: 'Newspapers & magazines (Internet Archive)', fr: 'Journaux et magazines (Internet Archive)', ru: 'Газеты и журналы (Internet Archive)' },
+    libPressAll: { uk: 'Усі газети й журнали', en: 'All newspapers & magazines', fr: 'Tous les journaux et magazines', ru: 'Все газеты и журналы' },
+    libPressSource: { uk: 'Випуски газет і журналів з Internet Archive до 1930 року (вільне надбання) — скани, відкриваються як PDF. Виберіть видання й роки.',
+                      en: 'Newspaper and magazine issues from Internet Archive before 1930 (public domain) — scans that open as PDF. Pick a title and years.',
+                      fr: 'Numéros de journaux et magazines d’Internet Archive antérieurs à 1930 (domaine public) — scans ouverts en PDF. Choisissez un titre et des années.',
+                      ru: 'Выпуски газет и журналов из Internet Archive до 1930 года (общественное достояние) — сканы, открываются как PDF. Выберите издание и годы.' },
+    libChipShelf: { uk: 'Мої книги', en: 'My books', fr: 'Mes livres', ru: 'Мои книги' },
+    libChipWikisource: { uk: 'Вікіджерела', en: 'Wikisource', fr: 'Wikisource', ru: 'Викитека' },
+    libChipLoc: { uk: 'Бібліотека Конгресу', en: 'Library of Congress', fr: 'Bibl. du Congrès', ru: 'Библиотека Конгресса' },
+    libChipPress: { uk: 'Газети й журнали', en: 'Newspapers', fr: 'Presse', ru: 'Газеты и журналы' },
+    libAdvanced: { uk: '⚙ Автор і роки', en: '⚙ Author and years', fr: '⚙ Auteur et années', ru: '⚙ Автор и годы' },
+    libAuthor: { uk: 'Автор', en: 'Author', fr: 'Auteur', ru: 'Автор' },
+    libYearFrom: { uk: 'Рік від', en: 'Year from', fr: 'Année de', ru: 'Год от' },
+    libYearTo: { uk: 'до', en: 'to', fr: 'à', ru: 'до' },
+    libYearsLife: { uk: 'Роки — коли жив автор.', en: 'Years — when the author lived.', fr: 'Années — quand l’auteur a vécu.', ru: 'Годы — когда жил автор.' },
+    libYearsPub: { uk: 'Роки — рік видання.', en: 'Years — year of publication.', fr: 'Années — année de publication.', ru: 'Годы — год издания.' },
     libDownloading: { uk: 'Завантаження книги: {n} з {total} МБ…', en: 'Downloading the book: {n} of {total} MB…', fr: 'Téléchargement du livre : {n} sur {total} Mo…', ru: 'Загрузка книги: {n} из {total} МБ…' },
     libTooBig: { uk: 'Книга завелика для застосунку ({n} МБ, найбільше 300 МБ).', en: 'The book is too large for the app ({n} MB, 300 MB maximum).',
                  fr: 'Le livre est trop volumineux pour l’application ({n} Mo, 300 Mo maximum).', ru: 'Книга слишком большая для приложения ({n} МБ, максимум 300 МБ).' }
@@ -112,7 +128,22 @@ const LIBRARY_CATALOGS = {
     bnr: { langs: [['fr', '🇫🇷 Français']], genres: ['fiction', 'adventure', 'detective', 'historical', 'love', 'scifi', 'stories', 'poetry', 'drama', 'children', 'humor', 'biography', 'philosophy', 'travel'], note: 'libBnrSource' },
     se: { langs: [['en', '🇬🇧 English']], genres: ['fiction', 'adventure', 'detective', 'scifi', 'stories', 'poetry', 'drama', 'children', 'humor', 'biography', 'philosophy', 'travel'], note: 'libSeSource' }
 };
-const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'loc', 'bnr', 'se', 'shelf'];
+const LIBRARY_SOURCES = ['gutenberg', 'wikisource', 'archive', 'loc', 'press', 'bnr', 'se', 'shelf'];
+// Джерела з логотипами (icons/libraries/*.png — значки з їхніх власних сайтів) у тому порядку, як у рядку вибору над пошуком.
+const LIBRARY_CHIPS = [['shelf', 'libChipShelf', '', '📚'], ['gutenberg', 'libSourceGutenberg', 'gutenberg'], ['wikisource', 'libChipWikisource', 'wikisource'],
+    ['archive', 'libSourceArchive', 'archive'], ['loc', 'libChipLoc', 'loc'], ['press', 'libChipPress', 'archive', '📰'], ['bnr', 'libSourceBnr', 'bnr'], ['se', 'libSourceSe', 'se']];
+// Газети й журнали: відомі видання з вільними (до 1930) випусками в Internet Archive — той самий перелік, що IA_PRESS у functions/api/library.js.
+const LIBRARY_PRESS = [['new-york-times', 'The New York Times'], ['chicago-daily-tribune', 'Chicago Daily Tribune'], ['los-angeles-times', 'Los Angeles Times'],
+    ['washington-post', 'The Washington Post'], ['irish_times', 'The Irish Times'], ['economist', 'The Economist'], ['scientific-american', 'Scientific American'],
+    ['science', 'Science'], ['national-geographic', 'National Geographic'], ['popular-science', 'Popular Science'], ['popular-mechanics', 'Popular Mechanics'],
+    ['harpers-magazine', "Harper's Magazine"], ['harpers-weekly', "Harper's Weekly"], ['century-illustrated-monthly-magazine', 'The Century Magazine'],
+    ['scribners-magazine', "Scribner's Magazine"], ['strand-magazine', 'The Strand Magazine'], ['saturday-evening-post', 'The Saturday Evening Post'],
+    ['the-new-yorker', 'The New Yorker'], ['new-republic', 'The New Republic'], ['nation-and-athenaeum', 'The Nation and Athenaeum'], ['independent', 'The Independent'],
+    ['american-mercury', 'The American Mercury'], ['bookman-a-review-of-books-and-life', 'The Bookman'], ['crisis', 'The Crisis'],
+    ['illustrated-london-news', 'The Illustrated London News'], ['punch', 'Punch'], ['puck', 'Puck'], ['judge', 'Judge'], ['life', 'Life'], ['vanity-fair', 'Vanity Fair'],
+    ['vogue', 'Vogue'], ['ladies-home-journal', "Ladies' Home Journal"], ['good-housekeeping', 'Good Housekeeping']];
+// Розширений пошук: автор — усюди, де є пошук; роки — у Gutenberg (роки життя автора з каталогу) і в архіві (рік видання).
+const LIBRARY_YEARS = { gutenberg: 'libYearsLife', archive: 'libYearsPub', loc: 'libYearsPub', press: 'libYearsPub' };
 // Standard Ebooks відповідає серверам Cloudflare кодом 403, але дозволяє браузерам (Access-Control-Allow-Origin: *): пошук, обкладинки
 // й EPUB беруться прямо з пристрою (CSP у _headers дозволяє лише https://standardebooks.org — для даних і картинок, не для коду).
 // Теми — ті самі, що SE_GENRES у functions/api/library.js; id і шлях обкладинки перевіряються тими самими виразами.
@@ -137,35 +168,61 @@ function buildLibrary() {
     head.append(title, close);
     const tools = document.createElement('div'); tools.className = 'library-tools';
     const src = document.createElement('select'); src.id = 'library-source'; src.dataset.i18nTitle = 'libSourceLabel';
-    for (const [value, key] of [['shelf', 'shelfSource'], ['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive'], ['loc', 'libSourceLoc'], ['bnr', 'libSourceBnr'], ['se', 'libSourceSe']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
+    for (const [value, key] of [['shelf', 'shelfSource'], ['gutenberg', 'libSourceGutenberg'], ['wikisource', 'libSourceWikisource'], ['archive', 'libSourceArchive'], ['loc', 'libSourceLoc'], ['press', 'libSourcePress'], ['bnr', 'libSourceBnr'], ['se', 'libSourceSe']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; src.append(o); }
     const q = document.createElement('input'); q.type = 'search'; q.id = 'library-q'; q.autocomplete = 'off'; q.spellcheck = false;
     const lang = document.createElement('select'); lang.id = 'library-lang';
     for (const [code, label] of LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else o.dataset.i18n = 'libAllLangs'; lang.append(o); }
     const genre = document.createElement('select'); genre.id = 'library-genre';
     tools.append(src, q, lang, genre);
+    // Джерело вибирається кнопками з логотипами (власник, 2026-11-01: «до кожної назви бібліотеки додати її символ»); список-вибір
+    // лишається для читачів екрана й старого коду, але схований — кнопки змінюють саме його.
+    src.classList.add('library-source-select');
+    const chips = document.createElement('div'); chips.id = 'library-chips'; chips.className = 'library-chips'; chips.setAttribute('role', 'tablist');
+    for (const [value, key, logo, emoji] of LIBRARY_CHIPS) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'library-chip'; b.dataset.source = value; b.setAttribute('role', 'tab');
+        if (logo) { const img = document.createElement('img'); img.src = `icons/libraries/${logo}.png`; img.alt = ''; img.width = 20; img.height = 20; b.append(img); }
+        if (emoji) { const e = document.createElement('span'); e.className = 'library-chip-emoji'; e.textContent = emoji; e.setAttribute('aria-hidden', 'true'); b.append(e); }
+        const label = document.createElement('span'); label.dataset.i18n = key; b.append(label);
+        b.addEventListener('click', () => { if (src.value === value) return; src.value = value; src.dispatchEvent(new Event('change')); });
+        chips.append(b);
+    }
+    // Розширений пошук: автор і роки (від–до).
+    const advToggle = document.createElement('button'); advToggle.type = 'button'; advToggle.id = 'library-adv-toggle'; advToggle.className = 'library-adv-toggle';
+    advToggle.dataset.i18n = 'libAdvanced'; advToggle.setAttribute('aria-expanded', 'false'); advToggle.setAttribute('aria-controls', 'library-adv');
+    const adv = document.createElement('div'); adv.id = 'library-adv'; adv.className = 'library-adv'; adv.hidden = true;
+    const author = document.createElement('input'); author.type = 'search'; author.id = 'library-author'; author.autocomplete = 'off'; author.spellcheck = false; author.dataset.i18nPlaceholder = 'libAuthor'; author.dataset.i18nAria = 'libAuthor';
+    const yearBox = document.createElement('span'); yearBox.id = 'library-years'; yearBox.className = 'library-years';
+    const year = (id, key) => { const y = document.createElement('input'); y.type = 'number'; y.id = id; y.inputMode = 'numeric'; y.min = '-800'; y.max = '2100'; y.step = '1'; y.dataset.i18nPlaceholder = key; y.dataset.i18nAria = key; return y; };
+    const from = year('library-from', 'libYearFrom'), to = year('library-to', 'libYearTo');
+    const yearsNote = document.createElement('span'); yearsNote.id = 'library-years-note'; yearsNote.className = 'library-years-note';
+    yearBox.append(from, document.createTextNode('–'), to, yearsNote);
+    adv.append(author, yearBox);
+    advToggle.addEventListener('click', () => { adv.hidden = !adv.hidden; advToggle.setAttribute('aria-expanded', String(!adv.hidden)); if (!adv.hidden) author.focus({ preventScroll: true }); });
     const status = document.createElement('div'); status.id = 'library-status'; status.setAttribute('aria-live', 'polite');
     const list = document.createElement('div'); list.id = 'library-list';
     const more = document.createElement('button'); more.type = 'button'; more.id = 'library-more'; more.className = 'btn'; more.hidden = true; more.dataset.i18n = 'libMore';
     more.addEventListener('click', () => runLibrarySearch(libraryState.page + 1));
     const source = document.createElement('div'); source.className = 'library-source'; source.dataset.i18n = 'libSource';
-    box.append(head, tools, status, list, more, source); modal.append(box); document.body.append(modal);
+    box.append(head, chips, tools, advToggle, adv, status, list, more, source); modal.append(box); document.body.append(modal);
     const saved = (() => { try { return JSON.parse(localStorage.getItem('reader_library_filters') || '{}'); } catch (e) { return {}; } })();
     libraryState.source = LIBRARY_SOURCES.includes(saved.source) ? saved.source : 'gutenberg';
-    libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr', loc: saved.locLang || '' };
+    libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr', loc: saved.locLang || '', press: saved.pressLang || '' };
+    libraryState.pub = saved.pub && LIBRARY_PRESS.some(([slug]) => slug === saved.pub) ? saved.pub : '';
     src.value = libraryState.source;
     libraryState.topic = LIBRARY_GENRES.some(([topic]) => topic && topic === saved.topic) ? saved.topic : '';
     fillLibraryLangs();
     // Жанр зберігається один на всі джерела: якщо в цьому джерелі/мові його немає, список показує «Усі жанри», але вибір не губиться.
-    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, iaLang: libraryState.langBySource.archive, locLang: libraryState.langBySource.loc, topic: libraryState.topic })); } catch (e) {} };
+    const persist = () => { try { localStorage.setItem('reader_library_filters', JSON.stringify({ source: libraryState.source, lang: libraryState.langBySource.gutenberg, wsLang: libraryState.langBySource.wikisource, iaLang: libraryState.langBySource.archive, locLang: libraryState.langBySource.loc, pressLang: libraryState.langBySource.press, pub: libraryState.pub, topic: libraryState.topic })); } catch (e) {} };
     const restart = (e) => {
         libraryState.langBySource[libraryState.source] = lang.value;
-        if (e && e.target === genre) libraryState.topic = genre.value;
+        if (e && e.target === genre) { if (libraryState.source === 'press') libraryState.pub = genre.value; else libraryState.topic = genre.value; }
         if (e && e.target === lang) fillLibraryGenres();   // жанри Вікіджерел залежать від мови розділу
         persist();
         clearTimeout(libraryState.timer); libraryState.timer = setTimeout(() => runLibrarySearch(1), libraryState.source === 'gutenberg' ? 350 : 600);
     };
     src.addEventListener('change', () => { libraryState.source = src.value; fillLibraryLangs(); persist(); libraryEl('library-list').replaceChildren(); runLibrarySearch(1); });
     q.addEventListener('input', restart); lang.addEventListener('change', restart); genre.addEventListener('change', restart);
+    for (const el of [author, from, to]) el.addEventListener('input', restart);
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && libraryEl('library-modal')?.classList.contains('open')) closeLibrary(); });
     applyI18n(); q.placeholder = t('libSearch');
 }
@@ -173,6 +230,12 @@ function buildLibrary() {
 // Жанри: Gutenberg і Internet Archive — усі; Вікіджерела — лише ті, що мають категорії в розділі вибраної мови.
 function fillLibraryGenres() {
     const genre = libraryEl('library-genre'), src = libraryState.source;
+    if (src === 'press') {   // у газет і журналів замість жанрів — видання
+        genre.replaceChildren();
+        for (const [slug, name] of [['', null], ...LIBRARY_PRESS]) { const o = document.createElement('option'); o.value = slug; if (name) o.textContent = name; else { o.dataset.i18n = 'libPressAll'; o.textContent = t('libPressAll'); } genre.append(o); }
+        genre.value = libraryState.pub || ''; genre.hidden = false;
+        return;
+    }
     const ws = src === 'wikisource' ? LIBRARY_WS_GENRES[libraryEl('library-lang').value] || {} : null;
     const cat = LIBRARY_CATALOGS[src];
     genre.replaceChildren();
@@ -184,18 +247,53 @@ function fillLibraryGenres() {
     genre.value = [...genre.options].some(o => o.value === libraryState.topic) ? libraryState.topic : '';
     genre.hidden = src === 'shelf';
 }
+// Рядок джерел (активна кнопка) і розширений пошук: автор — де є пошук, роки — де їх знає джерело.
+function libraryAdvanced() {
+    const src = libraryState.source, years = !!LIBRARY_YEARS[src];
+    const num = id => { const v = parseInt(libraryEl(id)?.value || '', 10); return years && Number.isFinite(v) ? v : 0; };
+    return { author: src === 'shelf' ? '' : (libraryEl('library-author')?.value || '').trim(), from: num('library-from'), to: num('library-to') };
+}
+function libraryAdvancedQuery() {
+    const a = libraryAdvanced();
+    return (a.author ? '&author=' + encodeURIComponent(a.author) : '') + (a.from ? '&from=' + a.from : '') + (a.to ? '&to=' + a.to : '');
+}
+function libraryWithAuthor(q) { const a = libraryAdvanced().author; return a ? (q + ' ' + a).trim() : q; }   // джерела без поля автора: автор — ще слова запиту
+function libraryAdvancedSet() { const a = libraryAdvanced(); return !!(a.author || a.from || a.to); }
+function libraryChipsSync() {
+    for (const b of document.querySelectorAll('#library-chips .library-chip')) {
+        const on = b.dataset.source === libraryState.source; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on));
+    }
+    // Активна кнопка — у видимій частині рядка (на телефоні рядок довший за екран).
+    const row = libraryEl('library-chips'), active = row && row.querySelector('.library-chip.active');
+    if (active && row.clientWidth) { const l = active.offsetLeft - row.offsetLeft, r = l + active.offsetWidth; if (l < row.scrollLeft) row.scrollLeft = l - 8; else if (r > row.scrollLeft + row.clientWidth) row.scrollLeft = r - row.clientWidth + 8; }
+}
+function libraryYearsNote() {
+    const note = libraryEl('library-years-note'); if (!note) return;
+    const key = LIBRARY_YEARS[libraryState.source];
+    if (key) note.dataset.i18n = key; else delete note.dataset.i18n;
+    note.textContent = key ? t(key) : '';
+}
+function libraryChromeSync() {
+    const src = libraryState.source, toggle = libraryEl('library-adv-toggle'), adv = libraryEl('library-adv');
+    if (!toggle) return;
+    toggle.hidden = src === 'shelf'; if (src === 'shelf') adv.hidden = true;
+    libraryEl('library-years').hidden = !LIBRARY_YEARS[src];
+    libraryYearsNote(); libraryChipsSync();
+    for (const [id, key] of [['library-author', 'libAuthor'], ['library-from', 'libYearFrom'], ['library-to', 'libYearTo']]) libraryEl(id).placeholder = t(key);
+}
 // Список мов — за джерелом (мови в кожного джерела свої), за ним — жанри.
 function fillLibraryLangs() {
     const lang = libraryEl('library-lang'), src = libraryState.source;
     lang.replaceChildren();
-    for (const [code, label] of src === 'wikisource' ? LIBRARY_WS_LANGS : src === 'archive' || src === 'loc' ? LIBRARY_IA_LANGS : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].langs : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
+    for (const [code, label] of src === 'wikisource' ? LIBRARY_WS_LANGS : src === 'archive' || src === 'loc' || src === 'press' ? LIBRARY_IA_LANGS : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].langs : LIBRARY_LANGS) { const o = document.createElement('option'); o.value = code; if (label) o.textContent = label; else { o.dataset.i18n = 'libAllLangs'; o.textContent = t('libAllLangs'); } lang.append(o); }
     const want = libraryState.langBySource[libraryState.source];
     lang.value = [...lang.options].some(o => o.value === want) ? want : lang.options[0].value;
     fillLibraryGenres();
     // «Мої книги» — збережені на пристрої книги: без пошуку, мов і підпису джерела.
     lang.hidden = src === 'shelf'; libraryEl('library-q').hidden = src === 'shelf';
     const source = document.querySelector('#library-modal .library-source');
-    if (source) { source.hidden = src === 'shelf'; source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : src === 'loc' ? 'libLocSource' : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].note : 'libSource'; source.textContent = t(source.dataset.i18n); }
+    libraryChromeSync();
+    if (source) { source.hidden = src === 'shelf'; source.dataset.i18n = src === 'wikisource' ? 'libWsSource' : src === 'archive' ? 'libIaSource' : src === 'loc' ? 'libLocSource' : src === 'press' ? 'libPressSource' : LIBRARY_CATALOGS[src] ? LIBRARY_CATALOGS[src].note : 'libSource'; source.textContent = t(source.dataset.i18n); }
 }
 
 // source — одразу відкрити це джерело (кнопка «📖 Мої книги» в меню відкриває збережені на пристрої книги).
@@ -205,7 +303,7 @@ function openLibrary(source = null) {
         const select = libraryEl('library-source'); select.value = source; select.dispatchEvent(new Event('change'));
     }
     libraryEl('library-modal').classList.add('open');
-    libraryEl('library-q').placeholder = t('libSearch');
+    libraryEl('library-q').placeholder = t('libSearch'); libraryChromeSync();
     if (!libraryEl('library-list').children.length || libraryState.source === 'shelf') runLibrarySearch(1);
     libraryEl('library-q').focus({ preventScroll: true });
 }
@@ -232,7 +330,7 @@ async function runLibrarySearch(page) {
     list.classList.toggle('shelf-drum', libraryState.source === 'shelf');
     if (libraryState.source !== 'shelf') list.classList.remove('drum', 'drum-top', 'drum-bottom');
     if (libraryState.source === 'wikisource') { await runWikisourceSearch(page); return; }
-    if (libraryState.source === 'archive' || libraryState.source === 'loc') { await runArchiveSearch(page); return; }
+    if (libraryState.source === 'archive' || libraryState.source === 'loc' || libraryState.source === 'press') { await runArchiveSearch(page); return; }
     if (LIBRARY_CATALOGS[libraryState.source]) { await runCatalogSearch(libraryState.source, page); return; }
     if (libraryState.source === 'shelf') { await runShelfList(); return; }
     let catalog;
@@ -243,7 +341,12 @@ async function runLibrarySearch(page) {
         const words = libraryNorm(libraryEl('library-q').value).split(/\s+/).filter(Boolean);
         const lang = libraryEl('library-lang').value, topic = libraryEl('library-genre').value;
         const bit = topic ? 1 << catalog.themes.indexOf(topic) : 0;
-        libraryState.matches = catalog.books.filter(b => (!lang || b[3] === lang) && (!bit || (b[4] & bit)) && words.every(w => b.hay.includes(w)));
+        // Розширений пошук: слова автора — лише в імені автора; роки — коли жив автор (рядок каталогу v2: …, народився, помер;
+        // невідомий рік — 0, тоді книга з фільтром років не показується).
+        const adv = libraryAdvanced(), authorWords = libraryNorm(adv.author).split(/\s+/).filter(Boolean);
+        const lived = b => { const born = b[5] || (b[6] ? b[6] - 70 : 0), died = b[6] || (b[5] ? b[5] + 70 : 0); return (born || died) && (!adv.from || died >= adv.from) && (!adv.to || born <= adv.to); };
+        libraryState.matches = catalog.books.filter(b => (!lang || b[3] === lang) && (!bit || (b[4] & bit)) && words.every(w => b.hay.includes(w))
+            && (!authorWords.length || authorWords.every(w => libraryNorm(b[2]).includes(w))) && (!(adv.from || adv.to) || lived(b)));
         list.replaceChildren();
     }
     libraryState.page = page;
@@ -366,7 +469,7 @@ async function downloadLibraryBook(book, btn) {
 // Жанр — категорії розділу (LIBRARY_WS_GENRES); з жанром пошук працює й без запиту: тоді це просто перелік творів жанру.
 async function runWikisourceSearch(page = 1) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
-    const q = libraryEl('library-q').value.trim(), lang = libraryEl('library-lang').value;
+    const q = libraryWithAuthor(libraryEl('library-q').value.trim()), lang = libraryEl('library-lang').value;
     const cats = (LIBRARY_WS_GENRES[lang] || {})[libraryEl('library-genre').value] || '';
     const token = ++libraryState.wsToken;
     if (page === 1) { list.replaceChildren(); libraryState.wsSeen = new Set(); }
@@ -616,14 +719,16 @@ async function wsEpubFile(book, parts, meta) {
 async function runArchiveSearch(page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
     const q = libraryEl('library-q').value.trim(), lang = libraryEl('library-lang').value, topic = libraryEl('library-genre').value;
-    const src = libraryState.source;   // 'archive' — увесь архів; 'loc' — лише книги Бібліотеки Конгресу (їх можна гортати й без запиту)
+    const src = libraryState.source;   // 'archive' — увесь архів; 'loc' — книги Бібліотеки Конгресу, 'press' — газети й журнали (обидва можна гортати й без запиту)
     const token = ++libraryState.wsToken;
     if (page === 1) list.replaceChildren();
-    if (!q && !topic && src !== 'loc') { status.textContent = t('libIaHint'); return; }
+    if (!q && !topic && src === 'archive' && !libraryAdvancedSet()) { status.textContent = t('libIaHint'); return; }
     status.textContent = t('libLoading');
     let data;
     try {
-        const res = await fetch(`/api/library?op=ia-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}&page=${page}` + (topic ? '&genre=' + topic : '') + (src === 'loc' ? '&coll=loc' : ''));
+        const res = await fetch(`/api/library?op=ia-search&lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}&page=${page}`
+            + (src === 'press' ? '&coll=press' + (topic ? '&pub=' + encodeURIComponent(topic) : '') : (topic ? '&genre=' + topic : '') + (src === 'loc' ? '&coll=loc' : ''))
+            + libraryAdvancedQuery());
         if (!res.ok) throw new Error('HTTP ' + res.status);
         data = await res.json();
     } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
@@ -637,7 +742,7 @@ async function runArchiveSearch(page) {
 // Без запиту й жанру — найновіші (BNR) чи найпопулярніші (Standard Ebooks) книги, тож бібліотеку можна просто гортати.
 async function runCatalogSearch(kind, page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
-    const q = libraryEl('library-q').value.trim(), topic = libraryEl('library-genre').value;
+    const q = libraryWithAuthor(libraryEl('library-q').value.trim()), topic = libraryEl('library-genre').value;
     const token = ++libraryState.wsToken;
     if (page === 1) list.replaceChildren();
     status.textContent = t('libLoading');

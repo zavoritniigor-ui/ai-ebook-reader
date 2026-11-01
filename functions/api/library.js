@@ -17,6 +17,8 @@
 //   ?op=ia-file&id=<identifier>&name=<file.pdf|file.epub>             -> сам файл
 //   ?op=ia-cover&id=<identifier>                                      -> обкладинка
 //   ?op=ia-search&coll=loc[&q=…]                                      -> пошук лише в одній колекції архіву (loc — книги, оцифровані Бібліотекою Конгресу США)
+//   ?op=ia-search&coll=press[&pub=<slug>][&q=…]                       -> газети й журнали архіву (pub — одне видання з IA_PRESS)
+//   …&author=<text>&from=<year>&to=<year>                             -> розширений пошук: автор (creator) і роки видання (year)
 // Internet Archive: лише archive.org, ідентифікатор і назва файлу перевіряються тут; позичальні книги (access-restricted) відкинуто.
 //   ?op=bnr-search&q=<text>&page=<n>[&genre=<key>]                    -> пошук у Bibliothèque numérique romande (французька класика, EPUB)
 //   ?op=bnr-file&id=<slug>                                            -> EPUB книги (адреса файла береться зі сторінки книги)
@@ -32,7 +34,14 @@ const IA_LANGS = { ukr: 'Ukrainian', eng: 'English', fre: 'French', ger: 'German
 const IA_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 // Сам loc.gov закритий перевіркою Cloudflare «Just a moment…» (і для серверів, і для fetch із браузера), тож Бібліотека Конгресу —
 // це її оцифровані книги в Internet Archive (колекція library_of_congress, ~166 тис.): ті самі скани, той самий шлях файлів.
-const IA_COLLECTIONS = { loc: 'library_of_congress' };
+const IA_COLLECTIONS = { loc: 'library_of_congress', press: 'newspapers OR periodicals' };
+// Відомі газети й журнали (власник, 2026-11-01: «архів відомих газет і журналів»): колекції pub_<slug> архіву, де є вільні (до 1930)
+// випуски з PDF — кожну перевірено 2026-11-01. Клієнт показує їх у списку видань (LIBRARY_PRESS у js/library.js).
+const IA_PRESS = new Set(['new-york-times', 'chicago-daily-tribune', 'los-angeles-times', 'washington-post', 'irish_times', 'scientific-american',
+    'harpers-magazine', 'harpers-weekly', 'punch', 'illustrated-london-news', 'saturday-evening-post', 'popular-science', 'popular-mechanics',
+    'national-geographic', 'scribners-magazine', 'century-illustrated-monthly-magazine', 'strand-magazine', 'vanity-fair', 'life', 'puck', 'judge',
+    'science', 'economist', 'new-republic', 'nation-and-athenaeum', 'the-new-yorker', 'vogue', 'american-mercury', 'crisis',
+    'bookman-a-review-of-books-and-life', 'ladies-home-journal', 'good-housekeeping', 'independent']);
 // Вільне надбання (видання до 1930 р.) або явна вільна ліцензія; лише тексти, що мають PDF з текстовим шаром чи EPUB.
 const IA_FREE = 'mediatype:texts AND NOT access-restricted-item:true AND format:("Text PDF" OR "Additional Text PDF" OR EPUB)'
     + ' AND (year:[1 TO 1929] OR licenseurl:*creativecommons* OR licenseurl:*publicdomain*)';
@@ -196,9 +205,13 @@ export async function onRequestGet({ request }) {
             const genre = url.searchParams.get('genre') || '';
             const page = Math.min(50, Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1));
             const coll = url.searchParams.get('coll') || '';
+            const pub = url.searchParams.get('pub') || '', author = iaQuote((url.searchParams.get('author') || '').slice(0, 120));
+            const yearOf = k => { const v = parseInt(url.searchParams.get(k) || '', 10); return v >= 1 && v <= 2100 ? v : 0; };
+            const from = yearOf('from'), to = yearOf('to');
+            if (pub && (coll !== 'press' || !IA_PRESS.has(pub))) return json({ error: 'bad publication' }, 400);
             if (genre && !Object.prototype.hasOwnProperty.call(IA_GENRES, genre)) return json({ error: 'bad genre' }, 400);
             if (coll && !Object.prototype.hasOwnProperty.call(IA_COLLECTIONS, coll)) return json({ error: 'bad collection' }, 400);
-            if (!q && !genre && !coll) return json({ error: 'bad query' }, 400);
+            if (!q && !genre && !coll && !author && !from && !to) return json({ error: 'bad query' }, 400);
             if (lang && !IA_LANGS[lang]) return json({ error: 'bad lang' }, 400);
             // Кожне слово — або в назві, або в автора: «voltaire candide» знаходить «Candide» Вольтера (раніше обидва слова мали бути
             // в одному полі, і таких книг майже не було).
@@ -206,11 +219,16 @@ export async function onRequestGet({ request }) {
             let query = IA_FREE + words.map(w => ` AND (title:(${w}) OR creator:(${w}))`).join('');
             if (genre) query += ` AND subject:(${IA_GENRES[genre]})`;
             if (lang) query += ` AND language:(${lang} OR ${IA_LANGS[lang]})`;
-            if (coll) query += ` AND collection:(${IA_COLLECTIONS[coll]})`;
+            if (pub) query += ` AND collection:(pub_${pub})`;
+            else if (coll) query += ` AND collection:(${IA_COLLECTIONS[coll]})`;
+            const authorWords = author.split(/\s+/).filter(Boolean).slice(0, 6);
+            if (authorWords.length) query += ` AND creator:(${authorWords.join(' AND ')})`;
+            if (from || to) query += ` AND year:[${from || 1} TO ${to || 2100}]`;
             const api = new URL('https://archive.org/advancedsearch.php');
             api.searchParams.set('q', query);
             for (const f of ['identifier', 'title', 'creator', 'year', 'language', 'format']) api.searchParams.append('fl[]', f);
-            api.searchParams.append('sort[]', 'downloads desc');
+            // Одне видання — випуски за датою (так їх і гортають); решта — найпопулярніші спершу.
+            api.searchParams.append('sort[]', pub ? 'date asc' : 'downloads desc');
             api.searchParams.set('rows', '30'); api.searchParams.set('page', String(page)); api.searchParams.set('output', 'json');
             const res = await upstream(api.toString(), 'application/json');
             if (!res.ok) return json({ error: 'upstream', status: res.status }, 502);

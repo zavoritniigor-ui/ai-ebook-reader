@@ -1568,6 +1568,22 @@
         .library-tools { display: flex; gap: 8px; flex-wrap: wrap; }
         .library-tools input { flex: 1 1 180px; min-width: 0; padding: 8px 10px; font-size: 15px; }
         .library-tools select { padding: 8px; font-size: 14px; }
+        .library-tools .library-source-select { display: none; }
+        .library-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; margin: 0 -2px; -webkit-overflow-scrolling: touch; }
+        .library-chips::-webkit-scrollbar { display: none; }
+        .library-chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 12px 4px 6px; border-radius: 19px; font-size: 13px; white-space: nowrap; }
+        .library-chip img { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; background: #fff; }
+        .library-chip-emoji { font-size: 16px; line-height: 1; }
+        .library-chip img + .library-chip-emoji { margin-left: -12px; margin-top: 12px; font-size: 12px; }
+        .library-chip.active { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 18%, transparent); font-weight: 650; }
+        .library-adv-toggle { align-self: flex-start; min-height: 32px; padding: 2px 10px; font-size: 13px; background: none; border: none; color: var(--accent-color); }
+        .library-adv-toggle[hidden], .library-adv[hidden], .library-years[hidden] { display: none; }
+        .library-adv { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .library-adv input { padding: 8px 10px; font-size: 15px; min-width: 0; }
+        #library-author { flex: 1 1 180px; }
+        .library-years { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .library-years input { width: 92px; }
+        .library-years-note { font-size: 12px; color: var(--text-muted); }
         #library-status { font-size: 13px; color: var(--text-muted); min-height: 1em; }
         #library-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
         /* «Мої книги» у вікні бібліотеки: обкладинки й той самий барабан, що на стартовому екрані (js/book-shelf.js). */
@@ -2395,7 +2411,7 @@
     <script src="js/formats.js?v=17d78fa0f7d6"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=c5e48a8c8903"></script>
+    <script src="js/library.js?v=f0c918abc9cd"></script>
     <script src="js/book-shelf.js?v=0895e4123dc3"></script>
     <script src="js/scanner.js?v=ce1b3c21236c"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
@@ -2403,6 +2419,6 @@
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=c306090ed69f"></script>
     <script src="js/pwa-lifecycle.js?v=d2987066ddd8"></script>
-    <script src="js/i18n-es.js?v=c3fcead6f75d"></script>
+    <script src="js/i18n-es.js?v=6ad60eb19271"></script>
 </body>
 </html>
