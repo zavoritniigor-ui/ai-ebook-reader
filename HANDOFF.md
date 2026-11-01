@@ -9,8 +9,8 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Claude Code on the owner's computer | `feat/scanner-ocr` (also carries `feat/shelf-drum`) | scanner OCR → clickable PDF (`js/scanner.js`, `vendor/tesseract-7.0.0/`); «My books» covers + fading scroll (`js/book-shelf.js`, `js/library.js` one line, library CSS in `index.html`) | PR open | 2026-10-31 |
-| Claude Code on the owner's computer | — | broken sentence highlight on a tilted PDF page (owner's screenshot, p. 152 «Mémo»), `js/selection.js`; and the «Analects» OCR offset (`js/pdf-render.js`, waits for the file) | investigating | 2026-11-01 |
+| Claude Code on the owner's computer | `fix/scanner-many` (also carries `fix/tilted-sentence` #361) | `js/scanner.js` (a failing photo no longer stops a series), `js/selection.js` (tilted PDF frames) | PR open | 2026-11-01 |
+| Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 
 ## Active Agent Worktrees & Tasks
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
