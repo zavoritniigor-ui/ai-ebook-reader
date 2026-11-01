@@ -14,6 +14,10 @@ Object.assign(I18N, {
     scanCamera: { uk: '📷 Зняти', en: '📷 Take photo', fr: '📷 Photographier', ru: '📷 Снять' },
     scanCameraNext: { uk: '📷 Наступна сторінка', en: '📷 Next page', fr: '📷 Page suivante', ru: '📷 Следующая страница' },
     scanAllFilter: { uk: 'Для всіх сторінок:', en: 'For all pages:', fr: 'Pour toutes les pages :', ru: 'Для всех страниц:' },
+    scanOcr: { uk: '🔤 Розпізнати текст — PDF стане клікабельним', en: '🔤 Recognise text — the PDF becomes clickable', fr: '🔤 Reconnaître le texte — le PDF devient cliquable', ru: '🔤 Распознать текст — PDF станет кликабельным' },
+    scanOcrLang: { uk: 'Мова тексту', en: 'Text language', fr: 'Langue du texte', ru: 'Язык текста' },
+    scanOcrBusy: { uk: 'Розпізнавання тексту {n} з {total}…', en: 'Recognising text {n} of {total}…', fr: 'Reconnaissance du texte {n} sur {total}…', ru: 'Распознавание текста {n} из {total}…' },
+    scanOcrFailed: { uk: 'Текст не розпізнано — PDF буде без нього.', en: 'Text was not recognised — the PDF will be without it.', fr: 'Texte non reconnu — le PDF sera sans texte.', ru: 'Текст не распознан — PDF будет без него.' },
     scanJpgOne: { uk: 'JPG · усі сторінки одним зображенням', en: 'JPG · all pages as one image', fr: 'JPG · toutes les pages en une image', ru: 'JPG · все страницы одним изображением' },
     scanGallery: { uk: '🖼 З галереї', en: '🖼 From gallery', fr: '🖼 Depuis la galerie', ru: '🖼 Из галереи' },
     scanEmpty: { uk: 'Зніміть сторінку або виберіть фото з галереї. Краї аркуша знайдуться самі — їх можна підправити.',
@@ -383,28 +387,113 @@ async function scanBuildPdf(pages, paper) {
     const obj = (num, body) => { offsets[num] = length; push(`${num} 0 obj\n`); for (const b of [].concat(body)) push(b); push('\nendobj\n'); };
     const f = n => (Math.round(n * 100) / 100).toString();
     push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
-    const kids = pages.map((_, i) => `${3 + i * 3} 0 R`).join(' ');
+    // 3–6: невидимий шрифт текстового шару (якщо текст розпізнано): Type0 / Identity-H, код символу = його UTF-16, ToUnicode
+    // повертає ті самі коди — PDF.js і будь-яка читалка дістають з нього текст, тож слова клікабельні й шукаються.
+    const FIRST = 7, kids = pages.map((_, i) => `${FIRST + i * 3} 0 R`).join(' ');
     obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
     obj(2, `<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`);
+    obj(3, '<< /Type /Font /Subtype /Type0 /BaseFont /GlyphLessFont /Encoding /Identity-H /DescendantFonts [4 0 R] /ToUnicode 6 0 R >>');
+    obj(4, '<< /Type /Font /Subtype /CIDFontType2 /BaseFont /GlyphLessFont /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 5 0 R /DW 500 /CIDToGIDMap /Identity >>');
+    obj(5, '<< /Type /FontDescriptor /FontName /GlyphLessFont /Flags 5 /FontBBox [0 -200 500 800] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>');
+    const ranges = [];
+    for (let hi = 0; hi < 256; hi++) { if (hi >= 0xd8 && hi <= 0xdf) continue; const h = hi.toString(16).padStart(2, '0').toUpperCase(); ranges.push(`<${h}00> <${h}FF> <${h}00>`); }
+    let bf = '';
+    for (let i = 0; i < ranges.length; i += 100) { const chunk = ranges.slice(i, i + 100); bf += `${chunk.length} beginbfrange\n${chunk.join('\n')}\nendbfrange\n`; }   // не більше 100 в одному блоці
+    const cmap = '/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n'
+        + '/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n' + bf
+        + 'endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend';
+    obj(6, [`<< /Length ${cmap.length} >>\nstream\n`, cmap, '\nendstream']);
+    const hex = text => { let h = ''; for (const ch of text) { const c = ch.codePointAt(0); if (c <= 0xffff && (c < 0xd800 || c > 0xdfff)) h += c.toString(16).padStart(4, '0'); } return h; };
     for (let i = 0; i < pages.length; i++) {
-        const p = pages[i], num = 3 + i * 3, landscape = p.w > p.h * 1.05;   // майже квадратна сторінка — книжкова
+        const p = pages[i], num = FIRST + i * 3, landscape = p.w > p.h * 1.05;   // майже квадратна сторінка — книжкова
         let W, H, margin;
         if (paper === 'fit') { const k = 841.89 / Math.max(p.w, p.h); W = p.w * k; H = p.h * k; margin = 0; }
         else { const [a, b] = paper === 'letter' ? [612, 792] : [595.28, 841.89]; [W, H] = landscape ? [b, a] : [a, b]; margin = 18; }
-        const k = Math.min((W - 2 * margin) / p.w, (H - 2 * margin) / p.h), dw = p.w * k, dh = p.h * k;
-        const content = `q ${f(dw)} 0 0 ${f(dh)} ${f((W - dw) / 2)} ${f((H - dh) / 2)} cm /Im0 Do Q`;
+        const k = Math.min((W - 2 * margin) / p.w, (H - 2 * margin) / p.h), dw = p.w * k, dh = p.h * k, ox = (W - dw) / 2, oy = (H - dh) / 2;
+        let content = `q ${f(dw)} 0 0 ${f(dh)} ${f(ox)} ${f(oy)} cm /Im0 Do Q`;
+        // Невидимий текст (режим 3) точно над словами картинки: висота шрифту — висота рядка, ширина — розтягом Tz.
+        const words = p.ocr && p.ocr.out === p.out ? p.ocr.words : [];
+        if (words.length) {
+            content += '\nBT 3 Tr';
+            for (const wd of words) {
+                const code = hex(wd.t); if (!code) continue;
+                const fs = Math.max(1, (wd.ly1 - wd.ly0) * k), width = (wd.x1 - wd.x0) * k, natural = code.length / 4 * 0.5 * fs;
+                const x = ox + wd.x0 * k, y = oy + dh - wd.ly1 * k + fs * 0.2;
+                content += `\n/F1 ${f(fs)} Tf ${f(Math.max(1, 100 * width / natural))} Tz 1 0 0 1 ${f(x)} ${f(y)} Tm <${code}> Tj`;
+            }
+            content += '\nET';
+        }
         const jpeg = new Uint8Array(await p.out.arrayBuffer());
-        obj(num, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(W)} ${f(H)}] /Resources << /XObject << /Im0 ${num + 2} 0 R >> >> /Contents ${num + 1} 0 R >>`);
+        const fonts = words.length ? ' /Font << /F1 3 0 R >>' : '';
+        obj(num, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(W)} ${f(H)}] /Resources << /XObject << /Im0 ${num + 2} 0 R >>${fonts} >> /Contents ${num + 1} 0 R >>`);
         obj(num + 1, [`<< /Length ${content.length} >>\nstream\n`, content, '\nendstream']);
         obj(num + 2, [`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`, jpeg, '\nendstream']);
     }
-    const info = 3 + pages.length * 3;
+    const info = FIRST + pages.length * 3;
     obj(info, '<< /Producer (AI E-book Reader scanner) >>');
     const xref = length;
     push(`xref\n0 ${info + 1}\n0000000000 65535 f \n`);
     for (let i = 1; i <= info; i++) push(String(offsets[i]).padStart(10, '0') + ' 00000 n \n');
     push(`trailer\n<< /Size ${info + 1} /Root 1 0 R /Info ${info} 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
     return new Blob(parts, { type: 'application/pdf' });
+}
+
+// ---------- розпізнавання тексту (Tesseract, на пристрої) ----------
+// Щоб PDF зі сканера був клікабельним, як книги з текстовим шаром: кожна сторінка розпізнається, і слова з їхніми рамками
+// лягають у PDF невидимим текстом. Бібліотека й мовні дані — у vendor/tesseract-7.0.0 (завантажуються лише тут), фото
+// нікуди не надсилаються. Результат кешується на сторінці, поки її зображення (page.out) те саме.
+const SCAN_OCR_DIR = 'vendor/tesseract-7.0.0/';
+const SCAN_OCR_LANGS = [['fra', 'Français'], ['eng', 'English'], ['ukr', 'Українська'], ['deu', 'Deutsch'], ['spa', 'Español']];
+let scanOcrScript = null, scanOcrWorker = null, scanOcrWorkerLang = '';
+function scanLoadTesseract() {
+    if (window.Tesseract) return Promise.resolve();
+    if (!scanOcrScript) scanOcrScript = new Promise((resolve, reject) => {
+        const el = document.createElement('script'); el.src = SCAN_OCR_DIR + 'tesseract.min.js';
+        el.onload = resolve; el.onerror = () => { scanOcrScript = null; el.remove(); reject(new Error('ocr script')); };
+        document.head.append(el);
+    });
+    return scanOcrScript;
+}
+// SIMD у WebAssembly (той самий байт-код перевірки, що в wasm-feature-detect): з ним розпізнавання помітно швидше.
+function scanWasmSimd() {
+    try { return WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11])); }
+    catch (e) { return false; }
+}
+async function scanOcrWorkerFor(lang) {
+    await scanLoadTesseract();
+    if (scanOcrWorker && scanOcrWorkerLang === lang) return scanOcrWorker;
+    if (scanOcrWorker) { try { await scanOcrWorker.terminate(); } catch (e) {} scanOcrWorker = null; }
+    const base = new URL(SCAN_OCR_DIR, document.baseURI).href;
+    scanOcrWorker = await window.Tesseract.createWorker(lang, 1, {
+        workerPath: base + 'worker.min.js', corePath: base + (scanWasmSimd() ? 'tesseract-core-simd-lstm.js' : 'tesseract-core-lstm.js'),
+        langPath: base + 'lang', gzip: true, workerBlobURL: false
+    });
+    scanOcrWorkerLang = lang;
+    return scanOcrWorker;
+}
+function scanOcrLangDefault() {
+    const map = { uk: 'ukr', fr: 'fra', en: 'eng', de: 'deu', es: 'spa' };
+    return map[state.bookLangMeta] || map[state.uiLang] || 'eng';
+}
+// Слова сторінки з рамками в пікселях page.out; висота кожного слова — висота його рядка (рівний текстовий шар).
+async function scanOcrPage(page, lang) {
+    if (page.ocr && page.ocr.out === page.out && page.ocr.lang === lang) return;
+    const worker = await scanOcrWorkerFor(lang);
+    const { data } = await worker.recognize(page.out, {}, { blocks: true, text: false });
+    const words = [];
+    for (const block of data.blocks || []) for (const para of block.paragraphs || []) for (const line of para.lines || []) for (const w of line.words || []) {
+        const text = (w.text || '').trim();
+        if (!text || w.confidence < 20) continue;
+        words.push({ t: text, x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1, ly0: line.bbox.y0, ly1: line.bbox.y1 });
+    }
+    page.ocr = { out: page.out, lang, words };
+}
+async function scanOcrAll(lang) {
+    const pages = scanState.pages;
+    for (let i = 0; i < pages.length; i++) {
+        scanStatus(t('scanOcrBusy').replace('{n}', i + 1).replace('{total}', pages.length));
+        await scanOcrPage(pages[i], lang);
+    }
 }
 
 // ---------- файли ----------
@@ -508,7 +597,19 @@ function buildScanner() {
     actions.append(scanButton('scanPrint', () => scanExport('print')), scanButton('scanShare', () => scanExport('share')), scanButton('scanSave', () => scanExport('save')),
         scanButton('scanOpen', () => scanExport('open')), clear);
     for (const [i, b] of [...actions.children].entries()) b.id = ['scan-print', 'scan-share', 'scan-save', 'scan-open', 'scan-clear'][i];
-    out.append(allRow, format, actions);
+    const ocrRow = document.createElement('label'); ocrRow.className = 'scan-ocr'; ocrRow.id = 'scan-ocr-row';
+    const ocr = document.createElement('input'); ocr.type = 'checkbox'; ocr.id = 'scan-ocr';
+    ocr.checked = (() => { try { return localStorage.getItem('reader_scan_ocr') !== '0'; } catch (e) { return true; } })();
+    ocr.addEventListener('change', () => scanStore('reader_scan_ocr', ocr.checked ? '1' : '0'));
+    const ocrText = document.createElement('span'); ocrText.dataset.i18n = 'scanOcr';
+    const ocrLang = document.createElement('select'); ocrLang.id = 'scan-ocr-lang'; ocrLang.dataset.i18nTitle = 'scanOcrLang';
+    for (const [value, name] of SCAN_OCR_LANGS) { const o = document.createElement('option'); o.value = value; o.textContent = name; ocrLang.append(o); }
+    ocrLang.value = scanStored('reader_scan_ocr_lang', scanOcrLangDefault(), SCAN_OCR_LANGS);
+    ocrLang.addEventListener('change', () => scanStore('reader_scan_ocr_lang', ocrLang.value));
+    ocrRow.append(ocr, ocrText, ocrLang);
+    const syncOcr = () => { ocrRow.hidden = !format.value.startsWith('pdf'); };
+    format.addEventListener('change', syncOcr); syncOcr();
+    out.append(allRow, format, ocrRow, actions);
     const privacy = document.createElement('p'); privacy.className = 'scan-privacy'; privacy.dataset.i18n = 'scanPrivacy';
     const listView = document.createElement('div'); listView.id = 'scan-list-view'; listView.className = 'scan-view';
     listView.append(add, status, empty, list, out, privacy);
@@ -745,7 +846,12 @@ async function scanExport(action) {
     if (action === 'print') { scanPrint(format); return; }
     scanState.busy = true; scanStatus(t('libLoading'));
     try {
-        const file = await scanMakeFile(action === 'open' && !format.startsWith('pdf') ? 'pdf-fit' : format);
+        const target = action === 'open' && !format.startsWith('pdf') ? 'pdf-fit' : format;
+        if (target.startsWith('pdf') && scanEl('scan-ocr')?.checked) {
+            try { await scanOcrAll(scanEl('scan-ocr-lang').value); }
+            catch (e) { scanStatus(t('scanOcrFailed')); await new Promise(r => setTimeout(r, 1200)); }   // PDF буде, лише без тексту
+        }
+        const file = await scanMakeFile(target);
         if (action === 'open') { closeScanner(); scanStatus(''); await openBookFile(file); return; }
         if (action === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
             try { await navigator.share({ files: [file], title: file.name }); scanStatus(''); return; }

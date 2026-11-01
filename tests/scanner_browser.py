@@ -176,6 +176,31 @@ c.js("""(async () => { window.__added = 0; const fs = await Promise.all([__photo
   document.getElementById('scanner').dispatchEvent(new DragEvent('drop', {dataTransfer: dt, bubbles: true, cancelable: true})); 1; })()""" % (json.dumps(QUAD), json.dumps(QUAD)))
 check('18 several photos dropped into the window become pages at once', "!scanState.busy && scanState.pages.length === 5", timeout=90)
 
+# ---- recognised text: the scanner's PDF gets an invisible text layer, so its words are clickable in the reader
+c.js("""window.__ocr = null; (async () => { const cv = document.createElement('canvas'); cv.width = 1240; cv.height = 1754; const x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.fillStyle = '#111'; x.font = '56px serif';
+  ['Bonjour tout le monde,', 'le petit prince regardait', 'les étoiles chaque soir.'].forEach((line, i) => x.fillText(line, 120, 260 + i * 110));
+  const out = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+  const page = { id: 999, out, w: cv.width, h: cv.height, filter: 'doc', rotation: 0 };
+  const t0 = performance.now(); await scanOcrPage(page, 'fra'); const ms = performance.now() - t0;
+  const pdf = await scanBuildPdf([page], 'a4');
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(await pdf.arrayBuffer()) }).promise;
+  const tc = await (await doc.getPage(1)).getTextContent();
+  const text = tc.items.map(i => i.str).join(' ').replace(/\\s+/g, ' ');
+  const bon = tc.items.find(i => /Bonjour/.test(i.str));
+  window.__ocrPdf = pdf;
+  window.__ocr = { ms, words: page.ocr.words.length, text, bonX: bon && bon.transform[4], bonY: bon && bon.transform[5] }; })().catch(e => { window.__ocr = { error: String(e) }; }); 1""")
+check('19 OCR on the device finds the words of a page (French)', "!!__ocr && !__ocr.error && __ocr.words >= 10 || JSON.stringify(__ocr)", timeout=120)
+print('   OCR of one page took %.1f s' % (c.js("__ocr.ms") / 1000), flush=True)
+check('19b the PDF has an invisible text layer PDF.js reads back: «Bonjour … étoiles», at the word\'s place on the page',
+      "/Bonjour/.test(__ocr.text) && /étoiles/.test(__ocr.text) && __ocr.bonX > 40 && __ocr.bonX < 90 && __ocr.bonY > 650 && __ocr.bonY < 740 || JSON.stringify(__ocr)")
+c.js("openBookFile(new File([__ocrPdf], 'ocr.pdf', {type: 'application/pdf', lastModified: 5})); 1")
+check('19d opened in the reader, the scanned page has a text layer with its words (taps translate them)',
+      "state.format === 'pdf' && [...document.querySelectorAll('.pdf-text-layer span')].some(s => /Bonjour/.test(s.textContent))", timeout=40)
+c.js("openScanner(); 1"); time.sleep(0.3)
+check('19c the «Recognise text» switch is on by default and shown for PDF formats only',
+      "(() => { const f = document.getElementById('scan-format'), row = document.getElementById('scan-ocr-row'); f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); const a = !row.hidden && document.getElementById('scan-ocr').checked; f.value = 'png'; f.dispatchEvent(new Event('change')); const b = row.hidden; f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); return a && b; })()")
+
 # ---- Escape / Back
 c.js("scanOpenEditor(scanState.pages[0]); 1"); time.sleep(1.0)
 check('13 Back (overlay stack) closes the editor first', "topOpenOverlay() === 'scanner' && (closeTopOverlay('scanner'), !scanState.edit && scanIsOpen())", timeout=2)
