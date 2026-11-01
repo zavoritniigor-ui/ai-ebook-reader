@@ -10,6 +10,8 @@ dark; «B/W» gives black and white only; corners can be dragged in the editor a
 sides; pages can be reordered and deleted; a photo that is not an image is reported and skipped; the PDF (A4 and «photo size»)
 is a real PDF that the reader opens with the right page count and page size; several JPGs come as a ZIP, one PNG as a PNG file;
 nothing is sent over the network; Escape / Android Back close the editor first, then the scanner.
+Memory (2026-11-01, «сканер лягає, коли додати багато фото»): the straightening reads only the sheet's box and frees the
+photo at once; the recogniser is shut down after a PDF's pages are read; the PDF takes each page's JPEG Blob as is.
 """
 import json, os, time
 from browser_cdp import CDP
@@ -153,10 +155,10 @@ c.js("window.__pdf = null; scanBuildPdf(scanState.pages, 'a4').then(async b => {
 check('10 the PDF has a PDF header, %%EOF and two pages', "!!__pdf && __pdf.head === '%PDF-1.4' && __pdf.tail.startsWith('%%EOF') && __pdf.pages === 2 || JSON.stringify(__pdf)", timeout=20)
 c.js("(f => { f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11 «Open in the reader»: the scanner closes and the reader opens the A4 PDF with both pages', "!scanIsOpen() && state.format === 'pdf' && state.totalPages === 2", timeout=30)
-check('11b ... its pages are A4', "state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] - 595.28) < 0.5 && Math.abs(p.view[3] - 841.89) < 0.5 || JSON.stringify([p.view, scanState.pages.map(q => [q.w, q.h, q.corners])]))", timeout=10)
+check('11b ... its pages are A4', "!!state.pdfDoc && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] - 595.28) < 0.5 && Math.abs(p.view[3] - 841.89) < 0.5 || JSON.stringify([p.view, scanState.pages.map(q => [q.w, q.h, q.corners])]))", timeout=10)
 c.wait("!scanState.busy", timeout=20)   # «Open» stays busy until the reader has opened the A4 PDF
 c.js("openScanner(); (f => { f.value = 'pdf-fit'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
-check('11c «PDF · photo size»: pages in the page\'s own proportions', "state.format === 'pdf' && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] / p.view[3] - scanState.pages[0].w / scanState.pages[0].h) < 0.01)", timeout=30)
+check('11c «PDF · photo size»: pages in the page\'s own proportions', "state.format === 'pdf' && !!state.pdfDoc && !scanState.busy && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] / p.view[3] - scanState.pages[0].w / scanState.pages[0].h) < 0.01)", timeout=30)
 c.wait("!scanState.busy", timeout=20)
 c.js("openScanner(); (f => { f.value = 'jpg'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-save').click(); 1")
 check('12 Save without a file picker downloads the file and says so', "document.getElementById('scan-status').textContent === t('scanSavedDownloads')", timeout=20)
@@ -208,6 +210,24 @@ check('19d opened in the reader, the scanned page has a text layer with its word
 c.js("openScanner(); 1"); time.sleep(0.3)
 check('19c the «Recognise text» switch is on by default and shown for PDF formats only',
       "(() => { const f = document.getElementById('scan-format'), row = document.getElementById('scan-ocr-row'); f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); const a = !row.hidden && document.getElementById('scan-ocr').checked; f.value = 'png'; f.dispatchEvent(new Event('change')); const b = row.hidden; f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); return a && b; })()")
+
+# ---- memory (owner 2026-11-01: «сканер лягає, коли додати багато фото»)
+check('20 the straightening reads only the sheet\'s box: the right half of a red|blue photo comes out all blue, and with release the photo\'s canvas is freed at once',
+      """(() => { const cv = document.createElement('canvas'); cv.width = 400; cv.height = 300; const x = cv.getContext('2d');
+          x.fillStyle = '#f00'; x.fillRect(0, 0, 200, 300); x.fillStyle = '#00f'; x.fillRect(200, 0, 200, 300);
+          const img = scanWarp(cv, [[0.55, 0.1], [0.95, 0.12], [0.93, 0.9], [0.57, 0.88]], true), d = img.data;
+          let red = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 60) red++;
+          return red === 0 && d[2] > 200 && cv.width === 0 || JSON.stringify({ red, w: cv.width, px: [...d.slice(0, 4)] }); })()""")
+c.js("""window.__ocr2 = null; (async () => { const keep = scanState.pages; const one = { ...keep[0], ocr: null };
+  scanState.pages = [one, { ...keep[1], ocr: null }];
+  try { await scanOcrAll('fra'); window.__ocr2 = { worker: scanOcrWorker === null, done: scanState.pages.every(p => p.ocr && p.ocr.out === p.out) }; }
+  catch (e) { window.__ocr2 = { error: String(e) }; } finally { scanState.pages = keep; } })(); 1""")
+check('20b after recognising the pages for a PDF the recogniser is shut down (its WebAssembly memory only grows), every page keeps its text',
+      "!!__ocr2 && __ocr2.worker === true && __ocr2.done === true || JSON.stringify(__ocr2)", timeout=180)
+check('20c the PDF carries each page\'s JPEG as the Blob itself (no copy in JS memory) and its xref offsets still point at the objects',
+      """(async () => { const b = await scanBuildPdf(scanState.pages.slice(0, 2), 'a4'); const t = new TextDecoder('latin1').decode(new Uint8Array(await b.arrayBuffer()));
+          const xref = +t.match(/startxref\\n(\\d+)/)[1]; const offs = t.slice(xref).match(/\\d{10} 00000 n/g).map(x => +x.slice(0, 10));
+          return t.startsWith('xref', xref) && offs.every((o, i) => t.startsWith((i + 1) + ' 0 obj', o)) || JSON.stringify(offs.slice(0, 8)); })()""", timeout=20)
 
 # ---- Escape / Back
 c.js("scanOpenEditor(scanState.pages[0]); 1"); time.sleep(1.0)
