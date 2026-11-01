@@ -169,6 +169,8 @@ jobs:
           python3 -u tests/pdf_word_click_browser.py
           echo "Running pdf_split_word_browser.py..."
           python3 -u tests/pdf_split_word_browser.py
+          echo "Running pdf_tilted_sentence_browser.py..."
+          python3 -u tests/pdf_tilted_sentence_browser.py
 
           echo "Running pdf_page_identity_browser.py..."
           python3 -u tests/pdf_page_identity_browser.py
