@@ -203,7 +203,8 @@ function buildLibrary() {
     const more = document.createElement('button'); more.type = 'button'; more.id = 'library-more'; more.className = 'btn'; more.hidden = true; more.dataset.i18n = 'libMore';
     more.addEventListener('click', () => runLibrarySearch(libraryState.page + 1));
     const source = document.createElement('div'); source.className = 'library-source'; source.dataset.i18n = 'libSource';
-    box.append(head, chips, tools, advToggle, adv, status, list, more, source); modal.append(box); document.body.append(modal);
+    tools.append(advToggle);   // у ряду пошуку, поруч із жанром — без окремого порожнього рядка
+    box.append(head, chips, tools, adv, status, list, more, source); modal.append(box); document.body.append(modal);
     const saved = (() => { try { return JSON.parse(localStorage.getItem('reader_library_filters') || '{}'); } catch (e) { return {}; } })();
     libraryState.source = LIBRARY_SOURCES.includes(saved.source) ? saved.source : 'gutenberg';
     libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr', loc: saved.locLang || '', press: saved.pressLang || '' };
