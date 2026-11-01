@@ -182,13 +182,14 @@ async function renderRecentBooks() {
         grid.append(btn);
     }
     host.append(head, grid);
-    drumCenter = -1;
-    grid.addEventListener('scroll', () => { drumScrolled = true; drumFrame(grid); }, { passive: true });
+    drumBind(grid);
     drumFrame(grid);
 }
-// Список як барабан: прокручується у своїй висоті, верх і низ зникають прозоро (маска в index.html), а картки
-// ближче до країв трохи нахиляються й меншають. Кнопки над списком лишаються на місці.
-let drumRaf = 0, drumScrolled = false, drumCenter = -1;
+// Список прокручується у своїй висоті, верх і низ зникають прозоро (маска в index.html), картки не нахиляються.
+// Кнопки над списком лишаються на місці.
+// Стан кожного барабана: стартовий екран і «Мої книги» в бібліотеці.
+const drumState = new WeakMap();
+const drumOf = list => { let d = drumState.get(list); if (!d) { d = { raf: 0, scrolled: false, center: -1 }; drumState.set(list, d); } return d; };
 // Звук лопнутої бульбашки, коли під центр барабана підходить наступна книга: короткий синус, що швидко злітає вгору й
 // згасає (Web Audio, без файлів), і легка вібрація. Лише від прокрутки пальцем, не під час першого показу списку.
 let drumAudio = null;
@@ -209,26 +210,29 @@ function drumPop() {
     } catch (e) {}
     if (typeof haptic === 'function') haptic(4);
 }
+function drumBind(list) {
+    const d = drumOf(list); d.center = -1;
+    if (!d.bound) { d.bound = true; list.addEventListener('scroll', () => { d.scrolled = true; drumFrame(list); }, { passive: true }); }
+}
 function drumFrame(list) {
-    if (drumRaf) return;
-    drumRaf = requestAnimationFrame(() => {
-        drumRaf = 0;
-        // висота — до низу екрана (з полем), щоб барабан не виходив за край і сторінка не прокручувалась
-                list.style.maxHeight = Math.max(220, Math.floor(innerHeight - list.getBoundingClientRect().top - 16)) + 'px';
+    const st = drumOf(list);
+    if (st.raf) return;
+    st.raf = requestAnimationFrame(() => {
+        st.raf = 0;
+        // список бібліотеки став іншим джерелом — барабан вимкнено
+        if (list.id === 'library-list' && !list.classList.contains('shelf-drum')) { st.center = -1; return; }
+        // висота стартового барабана — до низу екрана (з полем), щоб він не виходив за край і сторінка не прокручувалась;
+        // у вікні бібліотеки висоту задає саме вікно
+        if (list.id !== 'library-list') list.style.maxHeight = Math.max(220, Math.floor(innerHeight - list.getBoundingClientRect().top - 16)) + 'px';
         const scrollable = list.scrollHeight > list.clientHeight + 2;
         list.classList.toggle('drum', scrollable);
         list.classList.toggle('drum-top', scrollable && list.scrollTop > 8);
         list.classList.toggle('drum-bottom', scrollable && list.scrollTop + list.clientHeight < list.scrollHeight - 8);
-        const box = list.getBoundingClientRect(), mid = box.top + box.height / 2, half = box.height / 2 || 1;
+        const box = list.getBoundingClientRect(), mid = box.top + box.height / 2;
         let nearest = -1, nearestD = Infinity;
         [...list.children].forEach((card, i) => { const r = card.getBoundingClientRect(), dd = Math.abs(r.top + r.height / 2 - mid); if (dd < nearestD) { nearestD = dd; nearest = i; } });
-        if (scrollable && drumScrolled && drumCenter >= 0 && nearest !== drumCenter) drumPop();
-        drumCenter = nearest; drumScrolled = false;
-        for (const card of list.children) {
-            if (!scrollable || matchMedia('(prefers-reduced-motion: reduce)').matches) { card.style.transform = ''; continue; }
-            const r = card.getBoundingClientRect(), d = Math.max(-1, Math.min(1, (r.top + r.height / 2 - mid) / half));
-            card.style.transform = `perspective(700px) rotateX(${(-d * 22).toFixed(1)}deg) scale(${(1 - Math.abs(d) * .1).toFixed(3)})`;
-        }
+        if (scrollable && st.scrolled && st.center >= 0 && nearest !== st.center) drumPop();
+        st.center = nearest; st.scrolled = false;
     });
 }
 addEventListener('resize', () => { const l = document.querySelector('#recent-books .recent-list'); if (l) drumFrame(l); });
@@ -244,6 +248,7 @@ async function runShelfList() {
         const card = document.createElement('div'); card.className = 'library-card';
         const info = document.createElement('div'); info.className = 'library-info';
         const name = document.createElement('div'); name.className = 'library-name'; name.textContent = b.title || b.name;
+        card.append(shelfCoverEl(b));
         const by = document.createElement('div'); by.className = 'library-author'; by.textContent = shelfCardMeta(b);
         info.append(name, by);
         const read = document.createElement('button'); read.type = 'button'; read.className = 'btn-primary'; read.textContent = t('libRead');
@@ -255,6 +260,7 @@ async function runShelfList() {
         card.append(info, actions);
         list.append(card);
     }
+    drumBind(list); drumFrame(list);
 }
 renderRecentBooks();
 // «📖 Мої книги» в меню: бібліотека одразу на збережених книгах, без перемикання джерела.

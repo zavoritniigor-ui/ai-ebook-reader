@@ -228,6 +228,9 @@ function loadLibraryCatalog() {
 async function runLibrarySearch(page) {
     const status = libraryEl('library-status'), list = libraryEl('library-list'), more = libraryEl('library-more');
     more.hidden = true;
+    // «Мої книги» — барабан (js/book-shelf.js); інші джерела — звичайний список без маски й нахилу
+    list.classList.toggle('shelf-drum', libraryState.source === 'shelf');
+    if (libraryState.source !== 'shelf') list.classList.remove('drum', 'drum-top', 'drum-bottom');
     if (libraryState.source === 'wikisource') { await runWikisourceSearch(page); return; }
     if (libraryState.source === 'archive' || libraryState.source === 'loc') { await runArchiveSearch(page); return; }
     if (LIBRARY_CATALOGS[libraryState.source]) { await runCatalogSearch(libraryState.source, page); return; }
