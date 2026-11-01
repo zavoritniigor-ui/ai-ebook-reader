@@ -30,6 +30,10 @@ c.js("openLibrary(); 1"); c.wait("document.querySelectorAll('#library-list .libr
 names = lambda: c.js("[...document.querySelectorAll('#library-list .library-name')].map(e => e.textContent)")
 check('2 the built-in catalog lists French books first (default language), 30 per page, with a Read button each and a Show-more button',
       "document.getElementById('library-modal').classList.contains('open') && document.querySelectorAll('#library-list .library-card').length === 30 && document.querySelectorAll('#library-list .btn-primary').length === 30 && !document.getElementById('library-more').hidden")
+check('2b with a long list the window keeps its header rows whole: the source buttons are full height and the note above the list is not covered (owner\'s phone, 2026-11-01)',
+      """(() => { const chips = document.getElementById('library-chips'), st = document.getElementById('library-status'), list = document.getElementById('library-list');
+         return document.querySelector('#library-chips .library-chip').getBoundingClientRect().height >= 36 && chips.getBoundingClientRect().height >= 38
+           && st.scrollHeight <= st.clientHeight + 1 && list.getBoundingClientRect().top >= st.getBoundingClientRect().bottom - 1; })()""")
 check('3 no network search request is made: filtering is local', "__reqs.every(r => !r.includes('op=search'))")
 c.js("(() => { const q = document.getElementById('library-q'); q.value = 'jules verne'; q.dispatchEvent(new Event('input')); return 1; })()"); time.sleep(0.8)
 check('4 searching by author finds Jules Verne books only (accent-insensitive)', "(a => a.length > 3 && a.every(e => e.textContent.includes('Verne')))([...document.querySelectorAll('#library-list .library-author')])")

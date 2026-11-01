@@ -9,7 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | PR #365 (scanner + ✦ test); next: library — `js/library.js`, `functions/api/library.js`, `library-catalog.json`, `tools/build_library_catalog.py`, `icons/libraries/`, `index.html` (library CSS), `js/i18n-es.js`, `tests/library_browser.py`, `tests/library_proxy_test.mjs` | PR #365 open; library working | 2026-11-01 |
+| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 
 ## Active Agent Worktrees & Tasks
