@@ -185,9 +185,9 @@ check('18b one photo of a series failing (no memory for its canvas) skips only t
       "scanState.pages.length === 7 && !scanState.busy && document.getElementById('scan-status').textContent.includes('m2.jpg')")
 
 # ---- recognised text: the scanner's PDF gets an invisible text layer, so its words are clickable in the reader
-c.js("""window.__ocr = null; (async () => { const cv = document.createElement('canvas'); cv.width = 1240; cv.height = 1754; const x = cv.getContext('2d');
-  x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.fillStyle = '#111'; x.font = '56px serif';
-  ['Bonjour tout le monde,', 'le petit prince regardait', 'les étoiles chaque soir.'].forEach((line, i) => x.fillText(line, 120, 260 + i * 110));
+c.js("""window.__ocr = null; (async () => { const cv = document.createElement('canvas'); cv.width = 2480; cv.height = 3508; const x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.fillStyle = '#111'; x.font = '112px serif';
+  ['Bonjour tout le monde,', 'le petit prince regardait', 'les étoiles chaque soir.'].forEach((line, i) => x.fillText(line, 240, 520 + i * 220));
   const out = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
   const page = { id: 999, out, w: cv.width, h: cv.height, filter: 'doc', rotation: 0 };
   const t0 = performance.now(); await scanOcrPage(page, 'fra'); const ms = performance.now() - t0;
@@ -198,7 +198,7 @@ c.js("""window.__ocr = null; (async () => { const cv = document.createElement('c
   const bon = tc.items.find(i => /Bonjour/.test(i.str));
   window.__ocrPdf = pdf;
   window.__ocr = { ms, words: page.ocr.words.length, text, bonX: bon && bon.transform[4], bonY: bon && bon.transform[5] }; })().catch(e => { window.__ocr = { error: String(e) }; }); 1""")
-check('19 OCR on the device finds the words of a page (French)', "!!__ocr && !__ocr.error && __ocr.words >= 10 || JSON.stringify(__ocr)", timeout=120)
+check('19 OCR on the device finds the words of a page (French; a 2480 px page is read from a smaller copy, boxes scaled back)', "!!__ocr && !__ocr.error && __ocr.words >= 10 || JSON.stringify(__ocr)", timeout=120)
 print('   OCR of one page took %.1f s' % (c.js("__ocr.ms") / 1000), flush=True)
 check('19b the PDF has an invisible text layer PDF.js reads back: «Bonjour … étoiles», at the word\'s place on the page',
       "/Bonjour/.test(__ocr.text) && /étoiles/.test(__ocr.text) && __ocr.bonX > 40 && __ocr.bonX < 90 && __ocr.bonY > 650 && __ocr.bonY < 740 || JSON.stringify(__ocr)")

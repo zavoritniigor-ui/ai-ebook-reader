@@ -446,7 +446,7 @@ async function scanBuildPdf(pages, paper) {
 // Щоб PDF зі сканера був клікабельним, як книги з текстовим шаром: кожна сторінка розпізнається, і слова з їхніми рамками
 // лягають у PDF невидимим текстом. Бібліотека й мовні дані — у vendor/tesseract-7.0.0 (завантажуються лише тут), фото
 // нікуди не надсилаються. Результат кешується на сторінці, поки її зображення (page.out) те саме.
-const SCAN_OCR_DIR = 'vendor/tesseract-7.0.0/';
+const SCAN_OCR_DIR = 'vendor/tesseract-7.0.0/', SCAN_OCR_SIDE = 2200;
 const SCAN_OCR_LANGS = [['fra', 'Français'], ['eng', 'English'], ['ukr', 'Українська'], ['deu', 'Deutsch'], ['spa', 'Español']];
 let scanOcrScript = null, scanOcrWorker = null, scanOcrWorkerLang = '';
 function scanLoadTesseract() {
@@ -483,12 +483,23 @@ function scanOcrLangDefault() {
 async function scanOcrPage(page, lang) {
     if (page.ocr && page.ocr.out === page.out && page.ocr.lang === lang) return;
     const worker = await scanOcrWorkerFor(lang);
-    const { data } = await worker.recognize(page.out, {}, { blocks: true, text: false });
+    // Розпізнається зменшена копія (довша сторона до SCAN_OCR_SIDE, ~200 dpi для A4): текст читається так само, а на
+    // телефоні це в кілька разів швидше й легше для пам'яті, ніж сторінка 3300 px. Рамки слів множаться назад.
+    let image = page.out, back = 1;
+    const k = SCAN_OCR_SIDE / Math.max(page.w, page.h);
+    if (k < 1) {
+        const bitmap = await createImageBitmap(page.out), canvas = document.createElement('canvas');
+        canvas.width = Math.round(page.w * k); canvas.height = Math.round(page.h * k);
+        const ctx = canvas.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height); bitmap.close();
+        try { image = await scanBlob(canvas, 'image/jpeg', 0.9); } finally { canvas.width = canvas.height = 0; }
+        back = page.w / Math.round(page.w * k);
+    }
+    const { data } = await worker.recognize(image, {}, { blocks: true, text: false });
     const words = [];
     for (const block of data.blocks || []) for (const para of block.paragraphs || []) for (const line of para.lines || []) for (const w of line.words || []) {
         const text = (w.text || '').trim();
         if (!text || w.confidence < 20) continue;
-        words.push({ t: text, x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1, ly0: line.bbox.y0, ly1: line.bbox.y1 });
+        words.push({ t: text, x0: w.bbox.x0 * back, y0: w.bbox.y0 * back, x1: w.bbox.x1 * back, y1: w.bbox.y1 * back, ly0: line.bbox.y0 * back, ly1: line.bbox.y1 * back });
     }
     page.ocr = { out: page.out, lang, words };
 }
@@ -496,7 +507,8 @@ async function scanOcrAll(lang) {
     const pages = scanState.pages;
     for (let i = 0; i < pages.length; i++) {
         scanStatus(t('scanOcrBusy').replace('{n}', i + 1).replace('{total}', pages.length));
-        await scanOcrPage(pages[i], lang);
+        // сторінка, яку не вдалося розпізнати, лишається без тексту; решта розпізнається далі
+        try { await scanOcrPage(pages[i], lang); } catch (e) { if (i === 0 && !window.Tesseract) throw e; }
     }
 }
 
