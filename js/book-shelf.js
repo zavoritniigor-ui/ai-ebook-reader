@@ -185,8 +185,8 @@ async function renderRecentBooks() {
     drumBind(grid);
     drumFrame(grid);
 }
-// Список як барабан: прокручується у своїй висоті, верх і низ зникають прозоро (маска в index.html), а картки
-// ближче до країв трохи нахиляються й меншають. Кнопки над списком лишаються на місці.
+// Список прокручується у своїй висоті, верх і низ зникають прозоро (маска в index.html), картки не нахиляються.
+// Кнопки над списком лишаються на місці.
 // Стан кожного барабана: стартовий екран і «Мої книги» в бібліотеці.
 const drumState = new WeakMap();
 const drumOf = list => { let d = drumState.get(list); if (!d) { d = { raf: 0, scrolled: false, center: -1 }; drumState.set(list, d); } return d; };
@@ -228,17 +228,11 @@ function drumFrame(list) {
         list.classList.toggle('drum', scrollable);
         list.classList.toggle('drum-top', scrollable && list.scrollTop > 8);
         list.classList.toggle('drum-bottom', scrollable && list.scrollTop + list.clientHeight < list.scrollHeight - 8);
-        const box = list.getBoundingClientRect(), mid = box.top + box.height / 2, half = box.height / 2 || 1;
+        const box = list.getBoundingClientRect(), mid = box.top + box.height / 2;
         let nearest = -1, nearestD = Infinity;
         [...list.children].forEach((card, i) => { const r = card.getBoundingClientRect(), dd = Math.abs(r.top + r.height / 2 - mid); if (dd < nearestD) { nearestD = dd; nearest = i; } });
         if (scrollable && st.scrolled && st.center >= 0 && nearest !== st.center) drumPop();
         st.center = nearest; st.scrolled = false;
-        for (const card of list.children) {
-            // у «Моїх книгах» — без «бочки» (власник, 2026-10-31): лише зникнення країв і звук
-            if (!scrollable || list.id === 'library-list' || matchMedia('(prefers-reduced-motion: reduce)').matches) { card.style.transform = ''; continue; }
-            const r = card.getBoundingClientRect(), d = Math.max(-1, Math.min(1, (r.top + r.height / 2 - mid) / half));
-            card.style.transform = `perspective(700px) rotateX(${(-d * 22).toFixed(1)}deg) scale(${(1 - Math.abs(d) * .1).toFixed(3)})`;
-        }
     });
 }
 addEventListener('resize', () => { const l = document.querySelector('#recent-books .recent-list'); if (l) drumFrame(l); });
