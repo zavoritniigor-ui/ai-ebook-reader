@@ -177,6 +177,13 @@ c.js("""(async () => { window.__added = 0; const fs = await Promise.all([__photo
   document.getElementById('scanner').dispatchEvent(new DragEvent('drop', {dataTransfer: dt, bubbles: true, cancelable: true})); 1; })()""" % (json.dumps(QUAD), json.dumps(QUAD)))
 check('18 several photos dropped into the window become pages at once', "!scanState.busy && scanState.pages.length === 5", timeout=90)
 
+c.js("""(async () => { window.__added = 0; const fs = await Promise.all([__photo(%s, 'm1.jpg'), __photo(%s, 'm2.jpg'), __photo(%s, 'm3.jpg')]);
+  const real = scanRender; let n = 0; scanRender = async (page, src) => { if (++n === 2) throw new Error('canvas out of memory'); return real(page, src); };
+  try { await scanAddFiles(fs, false); } finally { scanRender = real; } window.__added = 1; })(); 1""" % (json.dumps(QUAD), json.dumps(QUAD), json.dumps(QUAD)))
+c.wait("window.__added === 1", timeout=120)
+check('18b one photo of a series failing (no memory for its canvas) skips only that photo: the other two are added and the failed one is named',
+      "scanState.pages.length === 7 && !scanState.busy && document.getElementById('scan-status').textContent.includes('m2.jpg')")
+
 # ---- recognised text: the scanner's PDF gets an invisible text layer, so its words are clickable in the reader
 c.js("""window.__ocr = null; (async () => { const cv = document.createElement('canvas'); cv.width = 1240; cv.height = 1754; const x = cv.getContext('2d');
   x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.fillStyle = '#111'; x.font = '56px serif';
@@ -206,10 +213,10 @@ check('19c the «Recognise text» switch is on by default and shown for PDF form
 c.js("scanOpenEditor(scanState.pages[0]); 1"); time.sleep(1.0)
 check('13 Back (overlay stack) closes the editor first', "topOpenOverlay() === 'scanner' && (closeTopOverlay('scanner'), !scanState.edit && scanIsOpen())", timeout=2)
 c.js("document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); 1"); time.sleep(0.3)
-check('13b ... then Escape closes the scanner; the pages stay for this session', "!scanIsOpen() && scanState.pages.length === 5")
+check('13b ... then Escape closes the scanner; the pages stay for this session', "!scanIsOpen() && scanState.pages.length === 7")
 c.js("openScanner(); 1"); time.sleep(0.3)
 c.js("document.getElementById('scan-clear').click(); 1")
-check('14 Clear asks for a second tap', "scanState.pages.length === 5 && document.getElementById('scan-clear').textContent === t('scanClearSure')")
+check('14 Clear asks for a second tap', "scanState.pages.length === 7 && document.getElementById('scan-clear').textContent === t('scanClearSure')")
 c.js("document.getElementById('scan-clear').click(); 1")
 check('14b ... and then clears everything', "scanState.pages.length === 0 && !document.getElementById('scan-empty').hidden")
 print('ALL SCANNER CHECKS PASSED')

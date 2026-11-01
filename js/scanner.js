@@ -63,8 +63,12 @@ Object.assign(I18N, {
     scanFailed: { uk: 'Не вдалося створити файл. Спробуйте ще раз.', en: 'Could not create the file. Try again.', fr: 'Impossible de créer le fichier. Réessayez.', ru: 'Не удалось создать файл. Попробуйте ещё раз.' }
 });
 
-const SCAN_WORK_SIDE = 4000;   // фото зменшується до цього перед обробкою: аркуш на фото 12 МП лишається ~250 dpi для A4
-const SCAN_OUT_SIDE = 3300;    // довша сторона готової сторінки: A4 при ~280 dpi
+// Фото зменшується до SCAN_WORK_SIDE перед обробкою (аркуш на фото 12 МП лишається ~250 dpi для A4), готова сторінка —
+// до SCAN_OUT_SIDE (A4 при ~280 dpi). На телефоні з малою пам'яттю (navigator.deviceMemory ≤ 4 ГБ) — менше: повнорозмірне
+// фото, вирівняна копія й маски разом займають сотні МБ, і браузер на другому-третьому фото серії відмовляв у полотні.
+const SCAN_LOW_MEMORY = typeof navigator !== 'undefined' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 4;
+const SCAN_WORK_SIDE = SCAN_LOW_MEMORY ? 3000 : 4000;
+const SCAN_OUT_SIDE = SCAN_LOW_MEMORY ? 2600 : 3300;   // A4 при ~220 dpi — для друку й читання досить
 const SCAN_FILTERS = [['doc', 'scanFilterDoc'], ['bw', 'scanFilterBw'], ['gray', 'scanFilterGray'], ['orig', 'scanFilterOrig']];
 const SCAN_FORMATS = [['pdf-a4', 'scanPdfA4'], ['pdf-letter', 'scanPdfLetter'], ['pdf-fit', 'scanPdfFit'], ['jpg', 'scanJpg'], ['jpg-one', 'scanJpgOne'], ['png', 'scanPng']];
 // Сторінка: { file, corners: [[x,y]×4] частки фото (ЛВ, ПВ, ПН, ЛН), rotation (0/90/180/270), filter, out: JPEG Blob, w, h, thumb: blob-URL }.
@@ -678,9 +682,14 @@ async function scanAddFiles(files, fromCamera) {
             let source;
             try { source = await scanLoad(files[i], SCAN_WORK_SIDE); }
             catch (e) { failed.push(files[i].name || '?'); continue; }
-            try { page.corners = scanDetectCorners(source); await scanRender(page, source); } finally { source.width = 0; }
+            // Збій одного фото (браузеру забракло пам'яті на полотно, файл зіпсований) — лише це фото пропускається, решта серії
+            // обробляється далі; раніше виняток виривав увесь цикл, і з кількох вибраних фото додавалось одне або жодного.
+            try { page.corners = scanDetectCorners(source); await scanRender(page, source); }
+            catch (e) { failed.push(files[i].name || '?'); continue; }
+            finally { source.width = source.height = 0; }
             scanState.pages.push(page); added.push(page);
             scanRenderList();
+            await new Promise(r => setTimeout(r, 30));   // між фото браузер встигає звільнити пам'ять попереднього
         }
     } finally { scanState.busy = false; }
     scanStatus(failed.length ? t('scanBadImage').replace('{name}', failed.join(', ')) : '');
