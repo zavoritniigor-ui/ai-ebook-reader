@@ -1570,6 +1570,16 @@
         .library-tools select { padding: 8px; font-size: 14px; }
         #library-status { font-size: 13px; color: var(--text-muted); min-height: 1em; }
         #library-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+        /* «Мої книги» у вікні бібліотеки: обкладинки й той самий барабан, що на стартовому екрані (js/book-shelf.js). */
+        #library-list.shelf-drum { scrollbar-width: none; --fade-top: 0px; --fade-bottom: 0px;
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%); }
+        #library-list.shelf-drum::-webkit-scrollbar { display: none; }
+        #library-list.shelf-drum.drum-top { --fade-top: 48px; }
+        #library-list.shelf-drum.drum-bottom { --fade-bottom: 60px; }
+        #library-list.shelf-drum > .library-card { flex: none; transform-origin: 50% 50%; will-change: transform; }
+        .library-card > .recent-cover { width: 44px; flex: none; }
+        #library-more[hidden] { display: none; }   /* .btn задає display і без цього перекривав атрибут hidden */
         .library-card { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--border-color); border-radius: 10px; }
         .library-card img { width: 44px; height: 64px; object-fit: cover; border-radius: 4px; background: rgba(128,128,128,.18); flex-shrink: 0; }
         .library-info { flex: 1; min-width: 0; }
@@ -2373,8 +2383,8 @@
     <script src="js/formats.js?v=17d78fa0f7d6"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=bd6dd96b5d19"></script>
-    <script src="js/book-shelf.js?v=c75657e205b5"></script>
+    <script src="js/library.js?v=c5e48a8c8903"></script>
+    <script src="js/book-shelf.js?v=2a2275352009"></script>
     <script src="js/scanner.js?v=47ea1c00d23d"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
