@@ -66,7 +66,11 @@ Object.assign(I18N, {
 // Фото зменшується до SCAN_WORK_SIDE перед обробкою (аркуш на фото 12 МП лишається ~250 dpi для A4), готова сторінка —
 // до SCAN_OUT_SIDE (A4 при ~280 dpi). На телефоні з малою пам'яттю (navigator.deviceMemory ≤ 4 ГБ) — менше: повнорозмірне
 // фото, вирівняна копія й маски разом займають сотні МБ, і браузер на другому-третьому фото серії відмовляв у полотні.
-const SCAN_LOW_MEMORY = typeof navigator !== 'undefined' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 4;
+// Телефон теж: власник (2026-11-01) — «сканер лягає, коли додати багато фото». Android повідомляє deviceMemory до 8 ГБ навіть
+// на телефоні, де вкладці дістається кілька сотень МБ, а в режимі «версія для комп'ютера» ще й видає себе за Linux; тож
+// дотиковий екран із грубим вказівником — теж «мало пам'яті». 2600 px — це ~220 dpi для A4, розпізнавання бере 2200.
+const SCAN_LOW_MEMORY = typeof navigator !== 'undefined' && ((navigator.deviceMemory > 0 && navigator.deviceMemory <= 4)
+    || (navigator.maxTouchPoints > 0 && typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches));
 const SCAN_WORK_SIDE = SCAN_LOW_MEMORY ? 3000 : 4000;
 const SCAN_OUT_SIDE = SCAN_LOW_MEMORY ? 2600 : 3300;   // A4 при ~220 dpi — для друку й читання досить
 const SCAN_FILTERS = [['doc', 'scanFilterDoc'], ['bw', 'scanFilterBw'], ['gray', 'scanFilterGray'], ['orig', 'scanFilterOrig']];
@@ -273,20 +277,24 @@ function scanHomography(w, h, quad) {
 }
 const scanDist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 // Вирівнювання: чотирикутник аркуша → прямокутник (білінійна вибірка), розмір — за довжинами сторін аркуша на фото.
-function scanWarp(canvas, corners) {
+// Читаються лише пікселі прямокутника навколо аркуша (не все фото), а з release полотно фото звільняється одразу після
+// цього: раніше фото, його повна копія в пам'яті JS і вирівняна сторінка жили водночас — найвищий пік пам'яті сканера.
+function scanWarp(canvas, corners, release = false) {
     const quad = corners.map(([x, y]) => [x * canvas.width, y * canvas.height]);
     let ow = Math.max(scanDist(quad[0], quad[1]), scanDist(quad[3], quad[2]));
     let oh = Math.max(scanDist(quad[0], quad[3]), scanDist(quad[1], quad[2]));
     const k = Math.min(1, SCAN_OUT_SIDE / Math.max(ow, oh));
     ow = Math.max(16, Math.round(ow * k)); oh = Math.max(16, Math.round(oh * k));
     const H = scanHomography(ow, oh, quad);
-    const sw = canvas.width, sh = canvas.height;
-    const src = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, sw, sh).data;
+    const bx = Math.max(0, Math.floor(Math.min(...quad.map(q => q[0]))) - 1), by = Math.max(0, Math.floor(Math.min(...quad.map(q => q[1]))) - 1);
+    const sw = Math.min(canvas.width, Math.ceil(Math.max(...quad.map(q => q[0]))) + 2) - bx, sh = Math.min(canvas.height, Math.ceil(Math.max(...quad.map(q => q[1]))) + 2) - by;
+    const src = canvas.getContext('2d', { willReadFrequently: true }).getImageData(bx, by, Math.max(1, sw), Math.max(1, sh)).data;
+    if (release) canvas.width = canvas.height = 0;
     const out = new ImageData(ow, oh), d = out.data;
     for (let v = 0, o = 0; v < oh; v++) {
         for (let u = 0; u < ow; u++, o += 4) {
             const z = H[6] * u + H[7] * v + 1;
-            let x = (H[0] * u + H[1] * v + H[2]) / z - .5, y = (H[3] * u + H[4] * v + H[5]) / z - .5;
+            let x = (H[0] * u + H[1] * v + H[2]) / z - .5 - bx, y = (H[3] * u + H[4] * v + H[5]) / z - .5 - by;   // у вирізаному прямокутнику
             x = x < 0 ? 0 : x > sw - 1.001 ? sw - 1.001 : x; y = y < 0 ? 0 : y > sh - 1.001 ? sh - 1.001 : y;
             const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0;
             const i00 = (y0 * sw + x0) * 4, i10 = i00 + 4, i01 = i00 + sw * 4, i11 = i01 + 4;
@@ -366,10 +374,11 @@ function scanRotate(img, rotation) {
 }
 const scanBlob = (canvas, type, quality) => new Promise((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('encode')), type, quality));
 // Готова сторінка: вирівняна, покращена, повернута → JPEG і мініатюра. source — уже завантажене фото (у редакторі).
-async function scanRender(page, source = null) {
+// release: source більше не потрібне (додавання фото) — його полотно звільняється, щойно пікселі аркуша прочитано.
+async function scanRender(page, source = null, release = false) {
     const canvas = source || await scanLoad(page.file, SCAN_WORK_SIDE);
     try {
-        const out = scanRotate(scanFilter(scanWarp(canvas, page.corners), page.filter), page.rotation);
+        const out = scanRotate(scanFilter(scanWarp(canvas, page.corners, release || !source), page.filter), page.rotation);
         page.out = await scanBlob(out, 'image/jpeg', page.filter === 'bw' ? 0.82 : 0.88);
         page.w = out.width; page.h = out.height;
         const k = 240 / Math.max(out.width, out.height), thumb = document.createElement('canvas');
@@ -387,7 +396,7 @@ async function scanRender(page, source = null) {
 async function scanBuildPdf(pages, paper) {
     const enc = new TextEncoder(), parts = [], offsets = [];
     let length = 0;
-    const push = chunk => { const bytes = typeof chunk === 'string' ? enc.encode(chunk) : chunk; parts.push(bytes); length += bytes.length; };
+    const push = chunk => { const bytes = typeof chunk === 'string' ? enc.encode(chunk) : chunk; parts.push(bytes); length += bytes instanceof Blob ? bytes.size : bytes.length; };
     const obj = (num, body) => { offsets[num] = length; push(`${num} 0 obj\n`); for (const b of [].concat(body)) push(b); push('\nendobj\n'); };
     const f = n => (Math.round(n * 100) / 100).toString();
     push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
@@ -427,11 +436,12 @@ async function scanBuildPdf(pages, paper) {
             }
             content += '\nET';
         }
-        const jpeg = new Uint8Array(await p.out.arrayBuffer());
+        // Сам Blob сторінки, а не його копія в пам'яті JS: на 30 сторінках це десятки МБ, і разом з готовим PDF — вдвічі більше.
+        const jpeg = p.out;
         const fonts = words.length ? ' /Font << /F1 3 0 R >>' : '';
         obj(num, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(W)} ${f(H)}] /Resources << /XObject << /Im0 ${num + 2} 0 R >>${fonts} >> /Contents ${num + 1} 0 R >>`);
         obj(num + 1, [`<< /Length ${content.length} >>\nstream\n`, content, '\nendstream']);
-        obj(num + 2, [`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`, jpeg, '\nendstream']);
+        obj(num + 2, [`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.size} >>\nstream\n`, jpeg, '\nendstream']);
     }
     const info = FIRST + pages.length * 3;
     obj(info, '<< /Producer (AI E-book Reader scanner) >>');
@@ -503,13 +513,24 @@ async function scanOcrPage(page, lang) {
     }
     page.ocr = { out: page.out, lang, words };
 }
+// Пам'ять WebAssembly розпізнавача лише росте й назад не віддається, тож на довгій серії робітник перезапускається кожні
+// SCAN_OCR_RECYCLE сторінок, а після останньої — закривається (наступний експорт підніме його знову за секунду-дві).
+const SCAN_OCR_RECYCLE = 8;
+async function scanOcrStop() {
+    const worker = scanOcrWorker; scanOcrWorker = null; scanOcrWorkerLang = '';
+    if (worker) { try { await worker.terminate(); } catch (e) {} }
+}
 async function scanOcrAll(lang) {
     const pages = scanState.pages;
-    for (let i = 0; i < pages.length; i++) {
-        scanStatus(t('scanOcrBusy').replace('{n}', i + 1).replace('{total}', pages.length));
-        // сторінка, яку не вдалося розпізнати, лишається без тексту; решта розпізнається далі
-        try { await scanOcrPage(pages[i], lang); } catch (e) { if (i === 0 && !window.Tesseract) throw e; }
-    }
+    try {
+        for (let i = 0, done = 0; i < pages.length; i++) {
+            scanStatus(t('scanOcrBusy').replace('{n}', i + 1).replace('{total}', pages.length));
+            if (pages[i].ocr && pages[i].ocr.out === pages[i].out && pages[i].ocr.lang === lang) continue;
+            if (done && done % SCAN_OCR_RECYCLE === 0) await scanOcrStop();
+            // сторінка, яку не вдалося розпізнати, лишається без тексту; решта розпізнається далі
+            try { await scanOcrPage(pages[i], lang); done++; } catch (e) { if (i === 0 && !window.Tesseract) throw e; }
+        }
+    } finally { await scanOcrStop(); }
 }
 
 // ---------- файли ----------
@@ -696,7 +717,7 @@ async function scanAddFiles(files, fromCamera) {
             catch (e) { failed.push(files[i].name || '?'); continue; }
             // Збій одного фото (браузеру забракло пам'яті на полотно, файл зіпсований) — лише це фото пропускається, решта серії
             // обробляється далі; раніше виняток виривав увесь цикл, і з кількох вибраних фото додавалось одне або жодного.
-            try { page.corners = scanDetectCorners(source); await scanRender(page, source); }
+            try { page.corners = scanDetectCorners(source); await scanRender(page, source, true); }
             catch (e) { failed.push(files[i].name || '?'); continue; }
             finally { source.width = source.height = 0; }
             scanState.pages.push(page); added.push(page);

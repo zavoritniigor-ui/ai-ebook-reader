@@ -9,7 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Claude Code on the owner's computer | `fix/scanner-many` (also carries `fix/tilted-sentence` #361) | `js/scanner.js` (a failing photo no longer stops a series), `js/selection.js` (tilted PDF frames) | PR open | 2026-11-01 |
+| Claude Code, cloud session «Порівняння функцій конкурентів» (the computer agent is offline; it asked to take over) | `ccr-a7aab2dd-fip6w9` | `js/scanner.js`, `tests/scanner_browser.py` — memory: the scanner crashed with many photos | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 
 ## Active Agent Worktrees & Tasks
