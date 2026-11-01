@@ -108,7 +108,11 @@ tts_setup = c.js('''(()=>{
     return true;})()''')
 assert tts_setup is True
 
+# The browser's own voice list arrives asynchronously (voiceschanged) and may replace the mock voices between two
+# evaluations; on CI it did, intermittently. Put the mocks back in the SAME synchronous evaluation that reads them.
 tts_result = c.js('''(()=>{
+    voices.length=0; voices.push(...window.__ttsMockVoices);
+    state.selectedVoiceURIByLang.en='en-us'; state.selectedVoiceURIByLang.fr='fr-fr';
     const text="Today we learn bonjour and merci beaucoup.";
     const segments=buildLanguageSegments(text,'en');
     const words=s=>tokenizeForLang(s).filter(t=>t.isWord).map(t=>t.text.toLowerCase());
