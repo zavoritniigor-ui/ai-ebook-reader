@@ -175,11 +175,13 @@ function paragraphRangeAt(clientX, clientY) {
 // кадрами трохи "плаває". У такому разі шукаємо найближчий до точки тапу фрагмент напряму
 // за rect'ами, а НЕ відкочуємось до всього шару без фільтра за колонкою — інакше знову
 // повертається саме та помилка (змішування колонок), яку цей код мав виправити.
-function pdfNearestSpan(layer, x, y) {
+function pdfNearestSpan(layer, x0, y0) {
     const spans = pdfTextSpans(layer);
     let best = null, bestDist = Infinity;
     for (const s of spans) {
-        const r = s.getBoundingClientRect();
+        // a rotated item: the point is turned into the item's own frame (pdfSpanRect), else the tall screen box of a tilted
+        // line catches taps on the line below it
+        const r = pdfSpanRect(s), [x, y] = pdfPointInSpanFrame(s, x0, y0);
         if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return s;
         const dx = Math.max(r.left - x, 0, x - r.right);
         const dy = Math.max(r.top - y, 0, y - r.bottom);
@@ -231,6 +233,53 @@ function isExerciseBlankContinuation(leftText, rightText) {
 // pdfPartitionColumns (УСІ колонки одразу — для виділення, що навмисно захоплює і
 // оригінал, і переклад): саме групування спільне, розрізняється лише те, що
 // повертається — одна колонка чи всі.
+// Box of a text-layer item for grouping into lines and columns. A rotated item (a «Mémo» frame printed at 3.5° on a
+// textbook page) has a screen bounding box much taller than its line -- a long line tilted by 3.5° grows by 6% of its
+// width -- so neighbouring lines overlapped, fused into one «line» and the tapped sentence skipped a line. Here the
+// item's own box is taken in the frame of its rotation: its origin (PDF.js rotates each item about its top-left corner)
+// is turned back about the middle of the items with that rotation (pdfRotationPivot), its width is the laid-out width times --scale-x. Items without rotation, and
+// vertical text (more than 20°), keep their screen box.
+// Pivot of each rotation on a layer: the mean origin of its items with that angle. Turning them back about their own
+// middle keeps the frame where it is on the page, next to the straight text around it (about the layer's corner the
+// frame would move by tens of pixels and fuse with a neighbouring column).
+const pdfRotationPivots = new WeakMap();
+function pdfRotationPivot(layer, rot) {
+    const count = layer.childElementCount;
+    let hit = pdfRotationPivots.get(layer);
+    if (!hit || hit.count !== count) { hit = { count, pivots: new Map() }; pdfRotationPivots.set(layer, hit); }
+    const key = rot.toFixed(3);
+    if (!hit.pivots.has(key)) {
+        let sx = 0, sy = 0, n = 0;
+        for (const el of layer.querySelectorAll('span[style*="--rotate"]')) {
+            const r = parseFloat(el.style.getPropertyValue('--rotate')) || 0;
+            if (Math.abs(r - rot) < 1e-3) { sx += el.offsetLeft; sy += el.offsetTop; n++; }
+        }
+        hit.pivots.set(key, n ? [sx / n, sy / n] : [0, 0]);
+    }
+    return hit.pivots.get(key);
+}
+function pdfSpanRect(span) {
+    const rot = parseFloat(span.style && span.style.getPropertyValue('--rotate')) || 0;
+    const layer = span.offsetParent;
+    if (!rot || Math.abs(rot) > 20 || !layer || !layer.classList || !layer.classList.contains('pdf-text-layer')) return span.getBoundingClientRect();
+    const lr = layer.getBoundingClientRect(), k = (layer.offsetWidth ? lr.width / layer.offsetWidth : 1) || 1;
+    const sx = parseFloat(span.style.getPropertyValue('--scale-x')) || 1;
+    const [px, py] = pdfRotationPivot(layer, rot);
+    const a = -rot * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a), dx = span.offsetLeft - px, dy = span.offsetTop - py;
+    const x = px + dx * c - dy * sn, y = py + dx * sn + dy * c;
+    const w = span.offsetWidth * sx * k, h = span.offsetHeight * k, left = lr.left + x * k, top = lr.top + y * k;
+    return { left, top, right: left + w, bottom: top + h, width: w, height: h, x: left, y: top };
+}
+// A client point in the frame pdfSpanRect uses for this item (unchanged for an item without rotation).
+function pdfPointInSpanFrame(span, x, y) {
+    const rot = parseFloat(span.style && span.style.getPropertyValue('--rotate')) || 0;
+    const layer = span.offsetParent;
+    if (!rot || Math.abs(rot) > 20 || !layer || !layer.classList || !layer.classList.contains('pdf-text-layer')) return [x, y];
+    const lr = layer.getBoundingClientRect(), k = (layer.offsetWidth ? lr.width / layer.offsetWidth : 1) || 1;
+    const [px, py] = pdfRotationPivot(layer, rot), a = -rot * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    const dx = (x - lr.left) / k - px, dy = (y - lr.top) / k - py;
+    return [lr.left + (px + dx * c - dy * sn) * k, lr.top + (py + dx * sn + dy * c) * k];
+}
 // Horizontal line bands -> per-line segments split at column gaps. `columnStarts` are x positions of column
 // edges confirmed elsewhere on the page (see pdfLayerColumnStarts).
 // Text lines of a PDF text layer. A word belongs to a line when its box overlaps the line's MEAN box by at least half its
@@ -304,7 +353,7 @@ function pdfLayerColumnInfo(layer, layerWidth) {
     const hit = pdfColumnStartCache.get(layer);
     const all = pdfTextSpans(layer);
     if (hit && hit.width === layerWidth && hit.count === all.length && hit.left === layer.getBoundingClientRect().left) return hit;
-    const rects = all.map(s => s.getBoundingClientRect());
+    const rects = all.map(pdfSpanRect);
     const segments = pdfLineSegments(all, rects, layerWidth, []);
     const inner = segments.filter(s => !s.first).map(s => s.left).sort((a, b) => a - b);
     const starts = [];
@@ -374,7 +423,7 @@ function pdfPageColumns(layer, layerWidth) {
     return entry;
 }
 function pdfComputeColumns(spans, layerWidth) {
-    const rects = spans.map(s => s.getBoundingClientRect());
+    const rects = spans.map(pdfSpanRect);
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const layer = spans[0]?.closest?.('.pdf-text-layer');
     const info = layer ? pdfLayerColumnInfo(layer, layerWidth) : null;
@@ -404,8 +453,12 @@ function pdfComputeColumns(spans, layerWidth) {
         if (k === 0 || segLeft[si] - segLeft[segsByLeft[k - 1]] > columnGapThreshold) clusters.push([si]);
         else clusters[clusters.length - 1].push(si);
     });
+    // A block printed at another angle than the cluster before it (a tilted «Mémo» frame beside straight text) is a
+    // column of its own: nothing else can prove it, its lines no longer share bands with the straight ones.
+    const segRot = si => Math.round((parseFloat(spans[segments[si].indices[0]].style?.getPropertyValue('--rotate')) || 0) * 10);
+    const clusterRot = members => { const n = new Map(); for (const si of members) n.set(segRot(si), (n.get(segRot(si)) || 0) + 1); return [...n].sort((a, b) => b[1] - a[1])[0][0]; };
     clusters.forEach((members, ci) => {
-        if (ci > 0 && members.some(provesColumnEdge)) column++;
+        if (ci > 0 && (members.some(provesColumnEdge) || clusterRot(members) !== clusterRot(clusters[ci - 1]))) column++;
         members.forEach(si => { segColumn[si] = column; });
     });
     const spanSeg = new Array(spans.length);
@@ -466,7 +519,7 @@ function pdfVisualGroup(layer, targetSpan) {
 const PDF_SPAN_JOIN_GAP = 0.12;
 function pdfSpansContinueWord(prev, next) {
     if (!prev || !next) return false;
-    const a = prev.getBoundingClientRect(), b = next.getBoundingClientRect();
+    const a = pdfSpanRect(prev), b = pdfSpanRect(next);
     const h = Math.min(a.height, b.height);
     if (!(h > 0) || Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)) > h * 0.4) return false;   // another line
     const gap = b.left - a.right;
