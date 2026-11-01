@@ -157,6 +157,7 @@ check('11b ... its pages are A4', "state.pdfDoc.getPage(1).then(p => Math.abs(p.
 c.wait("!scanState.busy", timeout=20)   # «Open» stays busy until the reader has opened the A4 PDF
 c.js("openScanner(); (f => { f.value = 'pdf-fit'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11c «PDF · photo size»: pages in the page\'s own proportions', "state.format === 'pdf' && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] / p.view[3] - scanState.pages[0].w / scanState.pages[0].h) < 0.01)", timeout=30)
+c.wait("!scanState.busy", timeout=20)
 c.js("openScanner(); (f => { f.value = 'jpg'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-save').click(); 1")
 check('12 Save without a file picker downloads the file and says so', "document.getElementById('scan-status').textContent === t('scanSavedDownloads')", timeout=20)
 check('12b the chosen format is remembered', "localStorage.getItem('reader_scan_format') === 'jpg'")
