@@ -143,6 +143,8 @@ const I18N_ES = {
     scanPrint: '🖨 Imprimir', scanShare: '📤 Compartir', scanSave: '⬇ Guardar', scanOpen: '📖 Abrir en el lector', scanClear: 'Borrar',
     scanClearSure: 'Otra vez para borrarlo todo', scanSaved: 'Guardado.', scanSavedDownloads: 'Guardado en Descargas.',
     scanBadImage: 'No se pudo abrir la foto «{name}». Prueba con JPG o PNG.', scanFailed: 'No se pudo crear el archivo. Inténtalo de nuevo.',
+    scanHeic: 'La foto «{name}» está en HEIC, que el navegador no abre. Pon la cámara en JPEG («Más compatible»).',
+    scanTooBig: 'La foto «{name}» no cupo en la memoria del teléfono ni reducida. Añádela sola o cierra otras pestañas y apps.',
     libIaSource: 'Libros de Internet Archive: ediciones anteriores a 1930 (dominio público) y libros con licencias libres. Los libros escaneados se abren en PDF.',
     libSourceBnr: 'Bibliothèque numérique romande (francés)', libBnrSource: 'Libros de la Bibliothèque numérique romande: clásicos franceses de dominio público, revisados por voluntarios.',
     libSourceLoc: 'Biblioteca del Congreso (PDF, EPUB)', libLocSource: 'Libros digitalizados por la Biblioteca del Congreso de EE. UU. (su colección en Internet Archive): ediciones antiguas de dominio público. Los libros escaneados se abren en PDF.',

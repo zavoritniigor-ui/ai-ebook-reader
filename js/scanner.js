@@ -60,6 +60,14 @@ Object.assign(I18N, {
     scanSavedDownloads: { uk: 'Збережено в «Завантаження».', en: 'Saved to Downloads.', fr: 'Enregistré dans Téléchargements.', ru: 'Сохранено в «Загрузки».' },
     scanBadImage: { uk: 'Не вдалося відкрити фото «{name}». Спробуйте JPG або PNG.', en: 'Could not open the photo «{name}». Try JPG or PNG.',
                     fr: 'Impossible d’ouvrir la photo « {name} ». Essayez JPG ou PNG.', ru: 'Не удалось открыть фото «{name}». Попробуйте JPG или PNG.' },
+    scanHeic: { uk: 'Фото «{name}» у форматі HEIC — браузер його не відкриває. У налаштуваннях камери виберіть JPEG (або «Найсумісніший»).',
+                en: 'The photo «{name}» is HEIC, which the browser cannot open. Set the camera to JPEG («Most compatible»).',
+                fr: 'La photo « {name} » est au format HEIC, que le navigateur ne sait pas ouvrir. Réglez l’appareil photo sur JPEG (« Le plus compatible »).',
+                ru: 'Фото «{name}» в формате HEIC — браузер его не открывает. В настройках камеры выберите JPEG («Наиболее совместимый»).' },
+    scanTooBig: { uk: 'Фото «{name}» не вмістилося в пам\'ять телефону навіть зменшеним. Додайте його окремо або закрийте інші вкладки й застосунки.',
+                  en: 'The photo «{name}» did not fit in the phone\'s memory even reduced. Add it on its own, or close other tabs and apps.',
+                  fr: 'La photo « {name} » n’a pas tenu dans la mémoire du téléphone, même réduite. Ajoutez-la seule ou fermez d’autres onglets et applis.',
+                  ru: 'Фото «{name}» не поместилось в память телефона даже уменьшенным. Добавьте его отдельно или закройте другие вкладки и приложения.' },
     scanFailed: { uk: 'Не вдалося створити файл. Спробуйте ще раз.', en: 'Could not create the file. Try again.', fr: 'Impossible de créer le fichier. Réessayez.', ru: 'Не удалось создать файл. Попробуйте ещё раз.' }
 });
 
@@ -72,7 +80,8 @@ Object.assign(I18N, {
 const SCAN_LOW_MEMORY = typeof navigator !== 'undefined' && ((navigator.deviceMemory > 0 && navigator.deviceMemory <= 4)
     || (navigator.maxTouchPoints > 0 && typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches));
 const SCAN_WORK_SIDE = SCAN_LOW_MEMORY ? 3000 : 4000;
-const SCAN_OUT_SIDE = SCAN_LOW_MEMORY ? 2600 : 3300;   // A4 при ~220 dpi — для друку й читання досить
+const SCAN_OUT_SIDE = SCAN_LOW_MEMORY ? 2600 : 3300;
+const SCAN_RETRY_SIDE = 2000;   // друга спроба для фото, якому не вистачило пам'яті (A4 ~170 dpi — читається й розпізнається)   // A4 при ~220 dpi — для друку й читання досить
 const SCAN_FILTERS = [['doc', 'scanFilterDoc'], ['bw', 'scanFilterBw'], ['gray', 'scanFilterGray'], ['orig', 'scanFilterOrig']];
 const SCAN_FORMATS = [['pdf-a4', 'scanPdfA4'], ['pdf-letter', 'scanPdfLetter'], ['pdf-fit', 'scanPdfFit'], ['jpg', 'scanJpg'], ['jpg-one', 'scanJpgOne'], ['png', 'scanPng']];
 // Сторінка: { file, corners: [[x,y]×4] частки фото (ЛВ, ПВ, ПН, ЛН), rotation (0/90/180/270), filter, out: JPEG Blob, w, h, thumb: blob-URL }.
@@ -702,6 +711,16 @@ function closeScanner() {
 }
 function scanIsOpen() { return !!scanEl('scanner')?.classList.contains('open'); }
 
+// Чому фото не відкрилося — за першими байтами файлу: HEIC/HEIF/AVIF (камера телефона, «висока ефективність») браузер не
+// декодує; справжній JPEG/PNG/WebP, який відкрився або мав відкритися, — це нестача пам'яті; решта — не зображення.
+async function scanFailureKind(file, loaded) {
+    let head;
+    try { head = new Uint8Array(await file.slice(0, 16).arrayBuffer()); } catch (e) { return loaded ? 'memory' : 'bad'; }
+    const ascii = (a, b) => String.fromCharCode(...head.slice(a, b));
+    if (ascii(4, 8) === 'ftyp' && /^(hei[cxms]|hev[cx]|mif1|msf1|avif|avis)$/.test(ascii(8, 12))) return 'heic';
+    const image = (head[0] === 0xff && head[1] === 0xd8) || ascii(1, 4) === 'PNG' || (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') || ascii(0, 3) === 'GIF';
+    return loaded || image ? 'memory' : 'bad';
+}
 async function scanAddFiles(files, fromCamera) {
     if (!files.length) return;
     while (scanState.busy) await new Promise(r => setTimeout(r, 100));
@@ -712,20 +731,32 @@ async function scanAddFiles(files, fromCamera) {
             scanStatus(t('scanProcessing').replace('{n}', i + 1).replace('{total}', files.length));
             await new Promise(r => setTimeout(r, 0));   // статус устигає намалюватися
             const page = { id: scanState.nextId++, file: files[i], rotation: 0, filter, corners: null, out: null, thumb: '' };
-            let source;
-            try { source = await scanLoad(files[i], SCAN_WORK_SIDE); }
-            catch (e) { failed.push(files[i].name || '?'); continue; }
             // Збій одного фото (браузеру забракло пам'яті на полотно, файл зіпсований) — лише це фото пропускається, решта серії
             // обробляється далі; раніше виняток виривав увесь цикл, і з кількох вибраних фото додавалось одне або жодного.
-            try { page.corners = scanDetectCorners(source); await scanRender(page, source, true); }
-            catch (e) { failed.push(files[i].name || '?'); continue; }
-            finally { source.width = source.height = 0; }
+            // Перед тим як здатися, фото пробується ще раз меншим (SCAN_RETRY_SIDE) — після паузи, коли пам'ять попередніх
+            // уже звільнена (власник, 2026-11-01: одне фото з серії «не вдалося відкрити», хоча це звичайний JPG).
+            let ok = false, loaded = false;
+            for (const side of [SCAN_WORK_SIDE, SCAN_RETRY_SIDE]) {
+                let source;
+                try { source = await scanLoad(files[i], side); loaded = true; } catch (e) { source = null; }
+                if (source) {
+                    try { page.corners = scanDetectCorners(source); await scanRender(page, source, true); ok = true; }
+                    catch (e) { ok = false; }
+                    finally { source.width = source.height = 0; }
+                }
+                if (ok) break;
+                await new Promise(r => setTimeout(r, 400));
+            }
+            if (!ok) { failed.push({ name: files[i].name || '?', why: await scanFailureKind(files[i], loaded) }); continue; }
             scanState.pages.push(page); added.push(page);
             scanRenderList();
             await new Promise(r => setTimeout(r, 30));   // між фото браузер встигає звільнити пам'ять попереднього
         }
     } finally { scanState.busy = false; }
-    scanStatus(failed.length ? t('scanBadImage').replace('{name}', failed.join(', ')) : '');
+    // Кожна причина — своїм реченням: «не JPG/PNG», «HEIC з камери», «забракло пам'яті» (звичайний JPG не дасть порад про формат).
+    const why = { bad: 'scanBadImage', heic: 'scanHeic', memory: 'scanTooBig' };
+    scanStatus(Object.entries(why).map(([kind, key]) => { const names = failed.filter(f => f.why === kind).map(f => f.name); return names.length ? t(key).replace('{name}', names.join(', ')) : ''; })
+        .filter(Boolean).join(' '));
     scanRenderList();
     // Серія: після знімка — одразу «📷 Наступна сторінка», без редактора (краї знаходяться самі, кожну сторінку можна
     // відкрити з її картки). Редактор відкривається лише тоді, коли аркуша на фото не знайдено.
