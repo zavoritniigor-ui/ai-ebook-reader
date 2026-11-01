@@ -8,7 +8,9 @@
 //                                                                       cats — категорії жанру (лише прямі члени), тоді q може бути порожнім
 //   ?op=ws-page&lang=<…>&title=<title>                                -> HTML сторінки Wikisource (REST API; твір або його розділ)
 //   ?op=ws-subpages&lang=<…>&title=<title>                            -> список підсторінок-розділів твору (JSON)
+//   ?op=ws-image&path=<commons|<lang>wikisource>/[thumb/]x/xy/<file>[/<n>px-<file>]   -> ілюстрація твору (jpg/png/gif/webp, до 5 МБ)
 // Wikisource: лише хост <lang>.wikisource.org з білого списку мов, назва сторінки — звичайний рядок, кодується тут.
+// Ілюстрації: лише upload.wikimedia.org/wikipedia/<path>, шлях перевіряється тут; SVG не віддається (тільки растрові мініатюри).
 //   ?op=ia-search&lang=<ukr|eng|fre|…|>&q=<text>&page=<n>[&genre=<key>] -> пошук книг Internet Archive (лише вільне надбання / вільні ліцензії);
 //                                                                       genre — ключ жанру бібліотеки (IA_GENRES), тоді q може бути порожнім
 //   ?op=ia-files&id=<identifier>                                      -> PDF/EPUB файли книги (JSON)
@@ -70,6 +72,9 @@ const SE_COVER = /^[a-z0-9_-]{1,300}\/[0-9a-f]{40}\/cover\.jpg$/;
 const htmlText = s => String(s || '').replace(/<[^>]*>/g, '').replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&(rsquo|lsquo);/g, '’').replace(/&(rdquo|ldquo|quot);/g, '"')
     .replace(/&hellip;/g, '…').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+const WS_IMAGE_PATH = /^(commons|(uk|fr|en|de|es|it)wikisource)\/(thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/[^\/?#\\\s]{1,240}(\/\d{2,4}px-[^\/?#\\\s]{1,260})?$/;
+const WS_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const WS_IMAGE_MAX = 5 * 1024 * 1024;
 const WS_CAT = /^[^\u0000-\u001f#<>\[\]{}|"\\:]{1,80}$/;
 const iaQuote = s => s.replace(/[\\"():\[\]{}^~*?!+\-&|\/]/g, ' ').trim();
 
@@ -125,6 +130,30 @@ export async function onRequestGet({ request }) {
             return new Response(res.body, { status: 200, headers: {
                 'content-type': op === 'file' ? 'application/epub+zip' : 'image/jpeg',
                 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
+        }
+        if (op === 'ws-image') {
+            const path = url.searchParams.get('path') || '';
+            // Мініатюра (…/thumb/…/<n>px-<файл>) або сам файл; лише растрові формати за розширенням (і мініатюра SVG — це .png).
+            if (!WS_IMAGE_PATH.test(path) || path.includes('..') || /%2f|%5c/i.test(path) || !/\.(jpe?g|png|gif|webp)$/i.test(path)
+                || (/\/thumb\//.test(path) !== /\/\d{2,4}px-[^\/]+$/.test(path))) return json({ error: 'bad path' }, 400);
+            const target = new URL('https://upload.wikimedia.org/wikipedia/' + path);
+            if (target.hostname !== 'upload.wikimedia.org' || !target.pathname.startsWith('/wikipedia/') || target.search) return json({ error: 'bad path' }, 400);
+            const res = await upstream(target.href, 'image/*');
+            if (!res.ok) return json({ error: 'upstream', status: res.status }, res.status === 404 ? 404 : 502);
+            const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+            if (!WS_IMAGE_TYPES.has(type) || +(res.headers.get('content-length') || 0) > WS_IMAGE_MAX) return json({ error: 'bad image' }, 415);
+            // Довжину могли не повідомити: рахуємо самі й обриваємо понад межу.
+            const reader = res.body.getReader(), chunks = []; let size = 0;
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                size += value.byteLength;
+                if (size > WS_IMAGE_MAX) { reader.cancel().catch(() => {}); return json({ error: 'too large' }, 413); }
+                chunks.push(value);
+            }
+            return new Response(new Blob(chunks, { type }), { status: 200, headers: {
+                'content-type': type, 'cache-control': 'public, max-age=604800', 'x-content-type-options': 'nosniff',
+                'content-security-policy': "default-src 'none'; sandbox" } });
         }
         if (op === 'ws-search' || op === 'ws-page' || op === 'ws-subpages') {
             const lang = url.searchParams.get('lang') || '';

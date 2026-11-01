@@ -401,14 +401,66 @@ function wsSubpageLinks(doc, title) {
     }
     return out;
 }
-// Чистий текст розділу: без шапки-навігації Вікіджерел, номерів сторінок, посилань для редагування, зображень і скриптів.
+// Ілюстрація твору: адреса мініатюри на upload/thumb.wikimedia.org → шлях для /api/library?op=ws-image (той самий формат
+// перевіряє й проксі). Береться більша мініатюра з srcset (2x, зазвичай 500 px), значки (менше 48 px) відкидаються.
+const WS_IMAGE_SRC = /^(?:https?:)?\/\/(?:upload|thumb)\.wikimedia\.org\/wikipedia\/((?:commons|(?:uk|fr|en|de|es|it)wikisource)\/[^?#\s]+\.(?:jpe?g|png|gif|webp))(?:[?#]|$)/i;
+function wsImagePath(img) {
+    if (Math.max(+img.getAttribute('width') || 0, +img.getAttribute('height') || 0) && Math.max(+img.getAttribute('width') || 0, +img.getAttribute('height') || 0) < 48) return '';
+    const candidates = (img.getAttribute('srcset') || '').split(',').map(c => c.trim().split(/\s+/)[0]).filter(Boolean).reverse();
+    for (const src of [...candidates, img.getAttribute('src') || '']) { const m = WS_IMAGE_SRC.exec(src); if (m) return m[1]; }
+    return '';
+}
+// Чистий текст розділу: без шапки-навігації Вікіджерел, номерів сторінок, посилань для редагування і скриптів. Ілюстрації
+// лишаються лише як <img data-ws-image="шлях">: їх завантажує й вкладає в EPUB wsEmbedImages, решта зображень прибирається.
 function wsCleanBody(doc) {
     const body = doc.body.cloneNode(true);
-    body.querySelectorAll('script, style, link, meta, img, figure, .ws-noexport, .noprint, .wst-header, .ws-header, #headertemplate, .headertemplate, .mw-editsection, .pagenum, .ws-pagenum, .mw-cite-backlink, .navbox, .metadata').forEach(n => n.remove());
+    body.querySelectorAll('script, style, link, meta, .ws-noexport, .noprint, .wst-header, .ws-header, #headertemplate, .headertemplate, .mw-editsection, .pagenum, .ws-pagenum, .mw-cite-backlink, .navbox, .metadata').forEach(n => n.remove());
+    body.querySelectorAll('img').forEach(img => {
+        const path = wsImagePath(img);
+        if (!path) { img.remove(); return; }
+        const clean = doc.createElement('img'); clean.dataset.wsImage = path; clean.setAttribute('alt', (img.getAttribute('alt') || '').slice(0, 300));
+        img.replaceWith(clean);
+    });
     body.querySelectorAll('a').forEach(a => a.replaceWith(...a.childNodes));
     body.querySelectorAll('[style]').forEach(n => n.removeAttribute('style'));
-    body.querySelectorAll('section, div').forEach(n => { if (!n.textContent.trim()) n.remove(); });
+    body.querySelectorAll('figure, span, section, div').forEach(n => { if (!n.textContent.trim() && !n.querySelector('img')) n.remove(); });
     return body.innerHTML;
+}
+// Завантажує ілюстрації через проксі (CSP застосунку не дозволяє чужих хостів) і кладе їх у сам EPUB (images/…), тож книга
+// з ілюстраціями читається й без мережі. Межі: WS_MAX_IMAGES штук і WS_MAX_IMAGE_BYTES разом; що не завантажилось — прибирається.
+const WS_MAX_IMAGES = 40, WS_MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const WS_IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp' };
+async function wsEmbedImages(parts) {
+    const docs = parts.map(p => { if (!p.html) return null; const t = document.createElement('template'); t.innerHTML = p.html; return t; });
+    const paths = [];
+    for (const t of docs) if (t) for (const img of t.content.querySelectorAll('img[data-ws-image]')) if (!paths.includes(img.dataset.wsImage) && paths.length < WS_MAX_IMAGES) paths.push(img.dataset.wsImage);
+    const got = new Map(); let total = 0, next = 0;
+    const worker = async () => {
+        while (next < paths.length) {
+            const path = paths[next++];
+            try {
+                const res = await fetch(`/api/library?op=ws-image&path=${encodeURIComponent(path)}`);
+                const type = (res.headers.get('content-type') || '').split(';')[0].trim();
+                if (!res.ok || !WS_IMAGE_EXT[type]) continue;
+                const blob = await res.blob();
+                if (!blob.size || total + blob.size > WS_MAX_IMAGE_BYTES) continue;
+                total += blob.size; got.set(path, { blob, type });
+            } catch (e) { /* без цієї ілюстрації */ }
+        }
+    };
+    await Promise.all(Array.from({ length: 4 }, worker));
+    const images = [];
+    for (const path of paths) if (got.has(path)) { const g = got.get(path); g.name = `images/i${String(images.length + 1).padStart(3, '0')}.${WS_IMAGE_EXT[g.type]}`; images.push(g); }
+    docs.forEach((t, i) => {
+        if (!t) return;
+        for (const img of t.content.querySelectorAll('img[data-ws-image]')) {
+            const g = got.get(img.dataset.wsImage);
+            if (!g) { img.remove(); continue; }
+            img.removeAttribute('data-ws-image'); img.setAttribute('src', g.name);
+        }
+        parts[i] = { ...parts[i], html: t.innerHTML };
+    });
+    return images;
 }
 // Список підсторінок від API іде за абеткою («Chapter 1, Chapter 10, Chapter 11…»): впорядковуємо за числом, римські — за значенням.
 function wsRoman(s) { const v = { i: 1, v: 5, x: 10, l: 50, c: 100, d: 500, m: 1000 }; let n = 0; s = s.toLowerCase(); for (let i = 0; i < s.length; i++) { const a = v[s[i]], b = v[s[i + 1]] || 0; n += a < b ? -a : a; } return n; }
@@ -521,11 +573,14 @@ function wsNcxPoints(entries) {
     return xml;
 }
 async function wsEpubFile(book, parts, meta) {
+    parts = parts.slice();
     const lang = book.lang, source = `https://${lang}.wikisource.org/wiki/${encodeURIComponent(book.title.replace(/ /g, '_'))}`;
     const zip = new JSZip();
     const opts = { date: WS_EPUB_ENTRY_DATE };
     zip.file('mimetype', 'application/epub+zip', { compression: 'STORE', date: WS_EPUB_ENTRY_DATE });
     zip.file('META-INF/container.xml', '<?xml version="1.0" encoding="utf-8"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>', opts);
+    const images = await wsEmbedImages(parts);
+    for (const img of images) zip.file('OEBPS/' + img.name, img.blob, opts);
     const chapters = [], entries = [];
     for (const part of parts) {
         if (!part.html) { entries.push({ title: part.title, href: null, depth: part.depth || 0 }); continue; }
@@ -539,7 +594,8 @@ async function wsEpubFile(book, parts, meta) {
     zip.file('OEBPS/nav.xhtml', `<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${wsXml(lang)}" xml:lang="${wsXml(lang)}"><head><title>${wsXml(book.title)}</title></head><body><nav epub:type="toc" id="toc"><h1>${wsXml(book.title)}</h1>${wsNavOl(nav)}</nav></body></html>`, opts);
     zip.file('OEBPS/toc.ncx', `<?xml version="1.0" encoding="utf-8"?>\n<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="${wsXml(lang)}"><head><meta name="dtb:uid" content="${wsXml(source)}"/></head><docTitle><text>${wsXml(book.title)}</text></docTitle><navMap>${wsNcxPoints(nav)}</navMap></ncx>`, opts);
     const modified = new Date().toISOString().replace(/\.\d+Z$/, 'Z');   // завжди 20 знаків: розмір опису від дати не залежить
-    const manifest = chapters.map((c, i) => `<item id="c${i + 1}" href="${c}" media-type="application/xhtml+xml"/>`).join('');
+    const manifest = chapters.map((c, i) => `<item id="c${i + 1}" href="${c}" media-type="application/xhtml+xml"/>`).join('')
+        + images.map((img, i) => `<item id="img${i + 1}" href="${img.name}" media-type="${img.type}"/>`).join('');
     const spine = chapters.map((c, i) => `<itemref idref="c${i + 1}"/>`).join('');
     const opf = `<?xml version="1.0" encoding="utf-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="${wsXml(lang)}">`
         + `<metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="bookid">${wsXml(source)}</dc:identifier><dc:title>${wsXml(book.title)}</dc:title>`
