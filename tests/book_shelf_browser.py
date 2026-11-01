@@ -82,11 +82,23 @@ check('8 many books: the list scrolls in its own height like a drum, the buttons
 c.js("window.__pops = 0; const realPop = drumPop; drumPop = () => { __pops++; }; 1")
 for y in (40, 80, 120):
     c.js("document.querySelector('#recent-books .recent-list').scrollTop = %d; 1" % y); time.sleep(0.25)
-check('8b scrolled: the top fades too, and the cards near the edges tilt while the middle one stays flat',
-      "(() => { const l = document.querySelector('#recent-books .recent-list'); const box = l.getBoundingClientRect(), mid = box.top + box.height / 2; const cards = [...l.children]; const near = cards.reduce((a, c) => Math.abs(c.getBoundingClientRect().top + c.offsetHeight / 2 - mid) < Math.abs(a.getBoundingClientRect().top + a.offsetHeight / 2 - mid) ? c : a); return l.classList.contains('drum-top') && /rotateX/.test(cards[0].style.transform) && cards[0].style.transform !== near.style.transform; })()")
+check('8b scrolled: the top fades too; the cards stay flat (no barrel)',
+      "(() => { const l = document.querySelector('#recent-books .recent-list'); return l.classList.contains('drum-top') && [...l.children].every(c => !c.style.transform); })()")
 check('8c a bubble pops each time the next book reaches the drum\'s centre while scrolling (none on the first show)', "__pops >= 1 && __pops <= 3 || __pops")
 c.js("window.__pops = 0; renderRecentBooks().then(() => 1)"); time.sleep(0.5)
 check('8d re-drawing the list makes no sound', "__pops === 0 || __pops")
+c.js("openLibrary('shelf'); 1"); time.sleep(1.0)
+check('9 «My books» in the menu: every kept book has its cover; the list scrolls like the drum and its bottom fades',
+      "(() => { const l = document.getElementById('library-list'), cards = [...l.querySelectorAll('.library-card')]; return cards.length === 12 && cards.every(c => c.firstElementChild.classList.contains('recent-cover')) && l.classList.contains('shelf-drum') && l.scrollHeight > l.clientHeight && l.classList.contains('drum-bottom') && getComputedStyle(l).maskImage.includes('gradient') && getComputedStyle(document.getElementById('library-more')).display === 'none' || JSON.stringify({n: cards.length, cls: l.className, sh: l.scrollHeight, ch: l.clientHeight}); })()")
+c.js("window.__pops = 0; 1")
+for y in (60, 120, 180):
+    c.js("document.getElementById('library-list').scrollTop = %d; 1" % y); time.sleep(0.25)
+check('9b scrolling «My books» pops bubbles and fades the top; the cards stay flat (no barrel)', "__pops >= 1 && [...document.querySelectorAll('#library-list .library-card')].every(c => !c.style.transform) && document.getElementById('library-list').classList.contains('drum-top') || __pops")
+if os.environ.get('SHELF_SHOT2'):
+    import base64; open(os.environ['SHELF_SHOT2'], 'wb').write(base64.b64decode(c.call('Page.captureScreenshot')['data']))
+c.js("(() => { const s = document.getElementById('library-source'); s.value = 'gutenberg'; s.dispatchEvent(new Event('change')); return 1; })()"); time.sleep(1.0)
+check('9c another source: a plain list again (no drum, no fade)', "(l => !l.classList.contains('shelf-drum') && !l.classList.contains('drum-top') && !l.classList.contains('drum-bottom'))(document.getElementById('library-list'))")
+c.js("closeLibrary(); 1")
 if os.environ.get('SHELF_SHOT'):
     import base64; open(os.environ['SHELF_SHOT'], 'wb').write(base64.b64decode(c.call('Page.captureScreenshot')['data']))
 print('ALL PASS')

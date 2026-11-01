@@ -9,8 +9,8 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Claude Code on the owner's computer | `feat/scanner-batch` (also carries `feat/ws-images` #357 and `feat/drum-pop` #359) | `js/scanner.js`, `js/library.js` (Wikisource images), `functions/api/library.js` (op `ws-image`), `js/book-shelf.js` (drum pop), their tests | PR #358 | 2026-10-31 |
-| Claude Code on the owner's computer | — | scanned-PDF highlight offset («The Analects» p. 896–897): `js/pdf-render.js`; waits for the owner's PDF file | not started | 2026-10-31 |
+| Claude Code on the owner's computer | `feat/scanner-ocr` (also carries `feat/shelf-drum`) | scanner OCR → clickable PDF (`js/scanner.js`, `vendor/tesseract-7.0.0/`); «My books» covers + fading scroll (`js/book-shelf.js`, `js/library.js` one line, library CSS in `index.html`) | PR open | 2026-10-31 |
+| Claude Code on the owner's computer | — | broken sentence highlight on a tilted PDF page (owner's screenshot, p. 152 «Mémo»), `js/selection.js`; and the «Analects» OCR offset (`js/pdf-render.js`, waits for the file) | investigating | 2026-11-01 |
 
 ## Active Agent Worktrees & Tasks
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
