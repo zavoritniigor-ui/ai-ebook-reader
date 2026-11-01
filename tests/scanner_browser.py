@@ -7,7 +7,7 @@ quadrilateral on a dark table, with a shadow across it — saved as JPEG.
 Checks: the menu row, the start-screen button and the ✦ wheel open the scanner; the sheet's corners are found (each within 3% of
 the drawn ones); the straightened page has the sheet's proportions; «Document» makes the shadowed paper white and keeps the text
 dark; «B/W» gives black and white only; corners can be dragged in the editor and Done re-renders the page; rotation swaps the
-sides; pages can be reordered and deleted; a photo that is not an image is reported and skipped; the PDF (A4 and «photo size»)
+sides; pages can be reordered and deleted; a photo that is not an image is reported and skipped; a photo that fails is retried smaller, and the message says why (not an image / HEIC / out of memory); the PDF (A4 and «photo size»)
 is a real PDF that the reader opens with the right page count and page size; several JPGs come as a ZIP, one PNG as a PNG file;
 nothing is sent over the network; Escape / Android Back close the editor first, then the scanner.
 Memory (2026-11-01, «сканер лягає, коли додати багато фото»): the straightening reads only the sheet's box and frees the
@@ -138,7 +138,7 @@ c.js("localStorage.setItem('reader_scan_filter', 'doc'); 1")
 c.js("Promise.all([__photo(%s, 'two.jpg'), __photo(%s, 'three.jpg')]).then(fs => scanAddFiles([fs[0], new File(['not an image'], 'notes.jpg', {type: 'image/jpeg'}), fs[1]], false)).then(() => window.__added = 2); 1"
      % (json.dumps([[0.2, 0.1], [0.8, 0.1], [0.8, 0.9], [0.2, 0.9]]), json.dumps([[0.25, 0.12], [0.75, 0.1], [0.78, 0.88], [0.22, 0.9]])))
 c.wait("window.__added === 2", timeout=90)
-check('7 a file that is not a photo is reported by name and skipped; the other two are added', "scanState.pages.length === 3 && document.getElementById('scan-status').textContent.includes('notes.jpg')")
+check('7 a file that is not a photo is reported by name (as not an image) and skipped; the other two are added', "scanState.pages.length === 3 && document.getElementById('scan-status').textContent === t('scanBadImage').replace('{name}', 'notes.jpg')")
 check('7b three page cards with numbers', "[...document.querySelectorAll('#scan-pages .scan-num')].map(n => n.textContent).join() === '1,2,3'")
 ids = c.js("scanState.pages.map(p => p.id)")
 c.js("document.querySelectorAll('#scan-pages .scan-card')[0].querySelector('.scan-card-bar button:last-child').click(); 1"); time.sleep(0.2)
@@ -180,11 +180,19 @@ c.js("""(async () => { window.__added = 0; const fs = await Promise.all([__photo
 check('18 several photos dropped into the window become pages at once', "!scanState.busy && scanState.pages.length === 5", timeout=90)
 
 c.js("""(async () => { window.__added = 0; const fs = await Promise.all([__photo(%s, 'm1.jpg'), __photo(%s, 'm2.jpg'), __photo(%s, 'm3.jpg')]);
-  const real = scanRender; let n = 0; scanRender = async (page, src) => { if (++n === 2) throw new Error('canvas out of memory'); return real(page, src); };
-  try { await scanAddFiles(fs, false); } finally { scanRender = real; } window.__added = 1; })(); 1""" % (json.dumps(QUAD), json.dumps(QUAD), json.dumps(QUAD)))
+  const real = scanRender, realLoad = scanLoad; window.__tries = [];
+  scanLoad = (file, side) => { __tries.push([file.name, side]); return realLoad(file, side); };
+  scanRender = async (page, src, rel) => { if (page.file.name === 'm2.jpg') throw new Error('canvas out of memory'); return real(page, src, rel); };
+  try { await scanAddFiles(fs, false); } finally { scanRender = real; scanLoad = realLoad; } window.__added = 1; })(); 1""" % (json.dumps(QUAD), json.dumps(QUAD), json.dumps(QUAD)))
 c.wait("window.__added === 1", timeout=120)
 check('18b one photo of a series failing (no memory for its canvas) skips only that photo: the other two are added and the failed one is named',
       "scanState.pages.length === 7 && !scanState.busy && document.getElementById('scan-status').textContent.includes('m2.jpg')")
+check('18c ... that photo was tried a second time, smaller, before giving up, and the message says memory ran out (not «try JPG or PNG»)',
+      "(tries => tries.length === 2 && tries[0][1] === SCAN_WORK_SIDE && tries[1][1] === SCAN_RETRY_SIDE)(__tries.filter(x => x[0] === 'm2.jpg')) && document.getElementById('scan-status').textContent === t('scanTooBig').replace('{name}', 'm2.jpg') || JSON.stringify([__tries, document.getElementById('scan-status').textContent])")
+c.js("window.__added = 0; scanAddFiles([new File([new Uint8Array([0,0,0,24,102,116,121,112,104,101,105,99,0,0,0,0])], 'IMG_1.HEIC.jpg', {type: 'image/jpeg'})], false).then(() => window.__added = 1); 1")
+c.wait("window.__added === 1", timeout=30)
+check('18d a HEIC photo from a phone camera is named as HEIC, with how to switch the camera to JPEG',
+      "document.getElementById('scan-status').textContent === t('scanHeic').replace('{name}', 'IMG_1.HEIC.jpg') && scanState.pages.length === 7")
 
 # ---- recognised text: the scanner's PDF gets an invisible text layer, so its words are clickable in the reader
 c.js("""window.__ocr = null; (async () => { const cv = document.createElement('canvas'); cv.width = 2480; cv.height = 3508; const x = cv.getContext('2d');
