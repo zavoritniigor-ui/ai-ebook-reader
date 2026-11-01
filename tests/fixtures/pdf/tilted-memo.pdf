@@ -1,0 +1,45 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 920 >>
+stream
+BT /F1 11 Tf
+1.0000 0.0000 -0.0000 1.0000 40.00 700.00 Tm (Les verbes pronominaux se forment avec) Tj
+1.0000 0.0000 -0.0000 1.0000 40.00 682.00 Tm (l'auxiliaire etre suivi du participe passe.) Tj
+1.0000 0.0000 -0.0000 1.0000 40.00 664.00 Tm (Ex.: Elle s'est cassee le bras hier soir.) Tj
+0.9981 -0.0610 0.0610 0.9981 300.00 720.00 Tm (Situer une action dans le temps) Tj
+0.9981 -0.0610 0.0610 0.9981 299.15 706.03 Tm (•) Tj
+0.9981 -0.0610 0.0610 0.9981 311.12 705.29 Tm (Ca fait + \(periode de temps\) + que + present) Tj
+0.9981 -0.0610 0.0610 0.9981 298.29 692.05 Tm (Ex.:) Tj
+0.9981 -0.0610 0.0610 0.9981 322.25 690.59 Tm (–) Tj
+0.9981 -0.0610 0.0610 0.9981 334.22 689.85 Tm (Ca fait deux) Tj
+0.9981 -0.0610 0.0610 0.9981 402.10 685.70 Tm (jours que mon bras elance.) Tj
+0.9981 -0.0610 0.0610 0.9981 321.39 676.61 Tm (–) Tj
+0.9981 -0.0610 0.0610 0.9981 333.37 675.88 Tm (Ca fait quatre mois que j'ai mal au dos.) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000338 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1309
+%%EOF
