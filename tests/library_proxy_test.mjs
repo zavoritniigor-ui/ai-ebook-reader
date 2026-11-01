@@ -57,4 +57,23 @@ const before = asked.length;
 for (const q of ['op=bnr-file&id=../x', 'op=bnr-file&id=a/b', 'op=se-file&id=a', 'op=se-file&id=a/../../b', 'op=se-file&id=A/B%3Fx', 'op=bnr-cover&path=../../wp-config.php',
                  'op=se-cover&path=x/y/cover.jpg', 'op=se-search&q=x&genre=love', 'op=ia-search&coll=nasa', 'op=ia-search&coll=__proto__', 'op=bnr-search&q=x&genre=history'])
     ok('rejected without fetching: ' + q, (await call(q)).status === 400 && asked.length === before);
+// Wikisource illustrations: only upload.wikimedia.org/wikipedia/<commons|<lang>wikisource>/…, only raster images, at most 5 MB.
+const imgAsked = [];
+let imgType = 'image/jpeg', imgBody = new Uint8Array([255, 216, 255]), imgLen = null;
+globalThis.fetch = async (u) => { imgAsked.push(String(u)); const h = { 'content-type': imgType }; if (imgLen) h['content-length'] = String(imgLen); return new Response(imgBody, { status: 200, headers: h }); };
+r = await call('op=ws-image&path=' + encodeURIComponent('commons/thumb/8/83/Alice-white-rabbit.jpg/500px-Alice-white-rabbit.jpg'));
+ok('ws-image: a thumbnail is fetched from upload.wikimedia.org and served as an image with a sandbox CSP',
+   r.status === 200 && r.headers.get('content-type') === 'image/jpeg' && /sandbox/.test(r.headers.get('content-security-policy')) && imgAsked.at(-1) === 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Alice-white-rabbit.jpg/500px-Alice-white-rabbit.jpg' && (await r.arrayBuffer()).byteLength === 3);
+r = await call('op=ws-image&path=' + encodeURIComponent('frwikisource/3/3a/Gravure.png'));
+ok('ws-image: an original file of a language Wikisource is served too', r.status === 200 && imgAsked.at(-1) === 'https://upload.wikimedia.org/wikipedia/frwikisource/3/3a/Gravure.png');
+imgType = 'image/svg+xml'; r = await call('op=ws-image&path=' + encodeURIComponent('commons/3/3a/Fake.png'));
+ok('ws-image: an answer that is not a raster image is refused', r.status === 415);
+imgType = 'image/png'; imgLen = 6 * 1024 * 1024; r = await call('op=ws-image&path=' + encodeURIComponent('commons/3/3a/Big.png'));
+ok('ws-image: an announced size over 5 MB is refused', r.status === 415);
+imgLen = null; imgBody = new Uint8Array(5 * 1024 * 1024 + 10); r = await call('op=ws-image&path=' + encodeURIComponent('commons/3/3a/Big.png'));
+ok('ws-image: an unannounced body over 5 MB is cut off', r.status === 413);
+const imgBefore = imgAsked.length;
+for (const path of ['commons/3/3a/Logo.svg', 'commons/../../x/3/3a/a.png', 'ruwikisource/3/3a/a.png', 'commons/3/3a/a.png?x=1', 'commons/3/3a/a%2F..%2Fb.png', 'commons/thumb/3/3a/a.png',
+                    'commons/3/3a/a.png/500px-a.png', 'wikipedia/commons/3/3a/a.png', '//evil.example/a.png', 'commons/zz/3a/a.png', 'commons/3/3a/a.html'])
+    ok('ws-image rejected without fetching: ' + path, (await call('op=ws-image&path=' + encodeURIComponent(path))).status === 400 && imgAsked.length === imgBefore);
 console.log('ALL PASS library_proxy_test');

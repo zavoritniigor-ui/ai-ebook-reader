@@ -79,9 +79,14 @@ c.call('Page.reload'); c.wait(READY, timeout=30)
 c.wait("document.querySelectorAll('#recent-books .recent-book').length === 12", timeout=10); time.sleep(0.6)
 check('8 many books: the list scrolls in its own height like a drum, the buttons above stay on screen, the bottom fades',
       "(() => { const l = document.querySelector('#recent-books .recent-list'), b = document.getElementById('home-scanner').getBoundingClientRect(); return l.scrollHeight > l.clientHeight && l.getBoundingClientRect().bottom <= innerHeight + 1 && b.bottom < innerHeight && l.classList.contains('drum-bottom') && !l.classList.contains('drum-top') && getComputedStyle(l).maskImage.includes('gradient') || JSON.stringify({sh: l.scrollHeight, ch: l.clientHeight, lb: l.getBoundingClientRect().bottom, ih: innerHeight, bb: b.bottom, cls: l.className, st: l.scrollTop}); })()")
-c.js("document.querySelector('#recent-books .recent-list').scrollTop = 120; 1"); time.sleep(0.5)
+c.js("window.__pops = 0; const realPop = drumPop; drumPop = () => { __pops++; }; 1")
+for y in (40, 80, 120):
+    c.js("document.querySelector('#recent-books .recent-list').scrollTop = %d; 1" % y); time.sleep(0.25)
 check('8b scrolled: the top fades too, and the cards near the edges tilt while the middle one stays flat',
       "(() => { const l = document.querySelector('#recent-books .recent-list'); const box = l.getBoundingClientRect(), mid = box.top + box.height / 2; const cards = [...l.children]; const near = cards.reduce((a, c) => Math.abs(c.getBoundingClientRect().top + c.offsetHeight / 2 - mid) < Math.abs(a.getBoundingClientRect().top + a.offsetHeight / 2 - mid) ? c : a); return l.classList.contains('drum-top') && /rotateX/.test(cards[0].style.transform) && cards[0].style.transform !== near.style.transform; })()")
+check('8c a bubble pops each time the next book reaches the drum\'s centre while scrolling (none on the first show)', "__pops >= 1 && __pops <= 3 || __pops")
+c.js("window.__pops = 0; renderRecentBooks().then(() => 1)"); time.sleep(0.5)
+check('8d re-drawing the list makes no sound', "__pops === 0 || __pops")
 if os.environ.get('SHELF_SHOT'):
     import base64; open(os.environ['SHELF_SHOT'], 'wb').write(base64.b64decode(c.call('Page.captureScreenshot')['data']))
 print('ALL PASS')

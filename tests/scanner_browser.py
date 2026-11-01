@@ -67,6 +67,26 @@ c.wait("window.__added === 1", timeout=60)
 print('   one photo processed in %.1f s' % (time.time() - t0), flush=True)
 check('2 one page; its corners are found within 3% of the sheet',
       "scanState.pages.length === 1 && scanState.pages[0].corners.every((p, i) => Math.abs(p[0] - %s[i][0]) < .03 && Math.abs(p[1] - %s[i][1]) < .03) || JSON.stringify(scanState.pages[0]?.corners)" % (json.dumps(QUAD), json.dumps(QUAD)))
+# ---- harder photos for the edge finder: a sheet turned by 40° on a light, speckled table; a finger over one corner
+c.js("""window.__hard = async (angle, bg, finger) => { const W = 1600, H = 1200, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
+  x.fillStyle = bg; x.fillRect(0, 0, W, H);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2500; i++) { x.fillStyle = `rgba(${90 + rnd() * 60 | 0},${80 + rnd() * 50 | 0},${70 + rnd() * 40 | 0},0.18)`; x.fillRect(rnd() * W, rnd() * H, 4 + rnd() * 14, 2 + rnd() * 6); }
+  const cxp = W / 2, cyp = H / 2, pw = 520, ph = 700, a = angle * Math.PI / 180;
+  x.save(); x.translate(cxp, cyp); x.rotate(a); x.fillStyle = '#fbfaf6'; x.fillRect(-pw / 2, -ph / 2, pw, ph);
+  x.fillStyle = '#222'; for (let i = 0; i < 20; i++) x.fillRect(-pw / 2 + 50, -ph / 2 + 70 + i * 28, pw - 100 - (i % 3) * 50, 9); x.restore();
+  const corner = (u, v) => [(cxp + u * Math.cos(a) - v * Math.sin(a)) / W, (cyp + u * Math.sin(a) + v * Math.cos(a)) / H];
+  const quad = [corner(-pw / 2, -ph / 2), corner(pw / 2, -ph / 2), corner(pw / 2, ph / 2), corner(-pw / 2, ph / 2)];
+  if (finger) { const [fx, fy] = quad[2]; x.fillStyle = '#c58f6e'; x.beginPath(); x.ellipse(fx * W + 10, fy * H + 30, 34, 70, -0.5, 0, 2 * Math.PI); x.fill(); }
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9)); return { file: new File([blob], 'hard.jpg', {type: 'image/jpeg'}), quad }; }; 1""")
+for label, args in [('a sheet turned by 40° on a light speckled table', "40, '#d9d4cb', false"), ('a sheet with a finger over its bottom-right corner', "-12, '#8a7a66', true")]:
+    res = c.js("__hard(%s).then(async h => { const src = await scanLoad(h.file, SCAN_WORK_SIDE); const got = scanDetectCorners(src); src.width = 0; return JSON.stringify({got, quad: h.quad}); })" % args)
+    res = json.loads(res)
+    sort_key = lambda p: p
+    # the app returns TL, TR, BR, BL; compare each expected corner with the nearest found one
+    err = max(min(abs(g[0] - q[0]) + abs(g[1] - q[1]) for g in res['got']) for q in res['quad'])
+    assert err < 0.035, (label, res)
+    print('PASS 2b the edge finder handles ' + label + ' (max corner error %.3f)' % err, flush=True)
 check('3 the straightened page has the sheet\'s 3:4 proportions', "(p => Math.abs(p.w / p.h - 0.75) < 0.06 || JSON.stringify([p.w, p.h]))(scanState.pages[0])")
 STATS = """(async (blob) => { const b = await createImageBitmap(blob), cv = document.createElement('canvas'); cv.width = b.width; cv.height = b.height; const x = cv.getContext('2d'); x.drawImage(b, 0, 0);
   const d = x.getImageData(0, 0, cv.width, cv.height).data; let paper = [], ink = 0, mid = 0, n = 0;
@@ -133,7 +153,7 @@ c.js("window.__pdf = null; scanBuildPdf(scanState.pages, 'a4').then(async b => {
 check('10 the PDF has a PDF header, %%EOF and two pages', "!!__pdf && __pdf.head === '%PDF-1.4' && __pdf.tail.startsWith('%%EOF') && __pdf.pages === 2 || JSON.stringify(__pdf)", timeout=20)
 c.js("(f => { f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11 «Open in the reader»: the scanner closes and the reader opens the A4 PDF with both pages', "!scanIsOpen() && state.format === 'pdf' && state.totalPages === 2", timeout=30)
-check('11b ... its pages are A4', "state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] - 595.28) < 0.5 && Math.abs(p.view[3] - 841.89) < 0.5)", timeout=10)
+check('11b ... its pages are A4', "state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] - 595.28) < 0.5 && Math.abs(p.view[3] - 841.89) < 0.5 || JSON.stringify([p.view, scanState.pages.map(q => [q.w, q.h, q.corners])]))", timeout=10)
 c.wait("!scanState.busy", timeout=20)   # «Open» stays busy until the reader has opened the A4 PDF
 c.js("openScanner(); (f => { f.value = 'pdf-fit'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11c «PDF · photo size»: pages in the page\'s own proportions', "state.format === 'pdf' && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] / p.view[3] - scanState.pages[0].w / scanState.pages[0].h) < 0.01)", timeout=30)
@@ -142,14 +162,28 @@ check('12 Save without a file picker downloads the file and says so', "document.
 check('12b the chosen format is remembered', "localStorage.getItem('reader_scan_format') === 'jpg'")
 check('12c still no network request', "__net.filter(u => !/\\/(vendor|js)\\//.test(u)).length === 0 || JSON.stringify(__net)")
 
+# ---- a series: the camera button becomes «Next page», one filter for all pages, all pages as one image, drop several photos
+check('15 with pages the camera button says «Next page» (a series is shot without the editor in between)', "document.getElementById('scan-shoot').textContent === t('scanCameraNext')")
+c.js("window.__added = 0; __photo(%s, 'cam.jpg').then(f => scanAddFiles([f], true)).then(() => window.__added = 1); 1" % json.dumps(QUAD))
+c.wait("window.__added === 1", timeout=60); time.sleep(0.3)
+check('15b a camera shot with a found sheet goes straight to the list, no editor', "!scanState.edit && scanState.pages.length === 3")
+c.js("document.querySelector('#scan-all .scan-all-filter[data-filter=\"gray\"]').click(); 1")
+check('16 «For all pages: Grey» re-renders every page in grey', "!scanState.busy && scanState.pages.every(p => p.filter === 'gray') && document.querySelector('#scan-all .scan-all-filter.active')?.dataset.filter === 'gray'", timeout=60)
+c.js("window.__one = null; scanMakeFile('jpg-one').then(async f => { const b = await createImageBitmap(f); window.__one = {type: f.type, name: f.name, w: b.width, h: b.height}; }); 1")
+check('17 «JPG · all pages as one image» joins the pages one under another into one JPEG',
+      "!!__one && __one.type === 'image/jpeg' && /\\.jpg$/.test(__one.name) && __one.h > __one.w * 2 || JSON.stringify(__one)", timeout=30)
+c.js("""(async () => { window.__added = 0; const fs = await Promise.all([__photo(%s, 'd1.jpg'), __photo(%s, 'd2.jpg')]); const dt = new DataTransfer(); fs.forEach(f => dt.items.add(f));
+  document.getElementById('scanner').dispatchEvent(new DragEvent('drop', {dataTransfer: dt, bubbles: true, cancelable: true})); 1; })()""" % (json.dumps(QUAD), json.dumps(QUAD)))
+check('18 several photos dropped into the window become pages at once', "!scanState.busy && scanState.pages.length === 5", timeout=90)
+
 # ---- Escape / Back
 c.js("scanOpenEditor(scanState.pages[0]); 1"); time.sleep(1.0)
 check('13 Back (overlay stack) closes the editor first', "topOpenOverlay() === 'scanner' && (closeTopOverlay('scanner'), !scanState.edit && scanIsOpen())", timeout=2)
 c.js("document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); 1"); time.sleep(0.3)
-check('13b ... then Escape closes the scanner; the pages stay for this session', "!scanIsOpen() && scanState.pages.length === 2")
+check('13b ... then Escape closes the scanner; the pages stay for this session', "!scanIsOpen() && scanState.pages.length === 5")
 c.js("openScanner(); 1"); time.sleep(0.3)
 c.js("document.getElementById('scan-clear').click(); 1")
-check('14 Clear asks for a second tap', "scanState.pages.length === 2 && document.getElementById('scan-clear').textContent === t('scanClearSure')")
+check('14 Clear asks for a second tap', "scanState.pages.length === 5 && document.getElementById('scan-clear').textContent === t('scanClearSure')")
 c.js("document.getElementById('scan-clear').click(); 1")
 check('14b ... and then clears everything', "scanState.pages.length === 0 && !document.getElementById('scan-empty').hidden")
 print('ALL SCANNER CHECKS PASSED')

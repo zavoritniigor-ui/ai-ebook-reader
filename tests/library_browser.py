@@ -119,6 +119,24 @@ check('13d a volume without text of its own becomes a heading over its chapters;
            && /<dc:creator>Автор<\\/dc:creator>/.test(await zip.file('OEBPS/content.opf').async('text'))
            && !/onclick|javascript:/.test(c3);
          return ok || JSON.stringify({ nav: nav.slice(0, 600), ncx: ncx.slice(0, 600), c3: c3.slice(0, 300) }); })()""")
+check('13e illustrations: a Wikisource thumbnail is fetched through the proxy (the 2x one) and put INTO the EPUB; icons, foreign hosts and failed images are dropped',
+      """(async () => { const prev = window.fetch; const asked = [];
+         const cv = document.createElement('canvas'); cv.width = 8; cv.height = 8; const png = await new Promise(r => cv.toBlob(r, 'image/png'));
+         window.fetch = async (url, opts) => { url = String(url); if (url.includes('op=ws-image')) { const path = decodeURIComponent(url.split('path=')[1]); asked.push(path);
+             return path.includes('Broken') ? new Response('', {status: 502}) : new Response(png, {status: 200, headers: {'content-type': 'image/png'}}); } return prev(url, opts); };
+         try {
+           const doc = new DOMParser().parseFromString('<body><p>' + 'слово '.repeat(20) + '</p><figure><a href="./File:R.jpg"><img src="//thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Rabbit.jpg/250px-Rabbit.jpg?utm_source=x" srcset="//thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Rabbit.jpg/500px-Rabbit.jpg?utm_source=x 2x" width="250" height="380" alt="Кролик"></a><figcaption>Білий кролик</figcaption></figure>'
+             + '<img src="//thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Logo.svg/20px-Logo.svg.png" width="18" height="18"><img src="https://evil.example/x.png"><img src="//upload.wikimedia.org/wikipedia/commons/a/ab/Broken.png" width="300"></body>', 'text/html');
+           const html = wsCleanBody(doc);
+           const f = await wsEpubFile({ lang: 'uk', title: 'Ілюстрації' }, [{ title: '', html }], { author: '' }); const zip = await new JSZip().loadAsync(f);
+           const c1 = await zip.file('OEBPS/c001.xhtml').async('text'), opf = await zip.file('OEBPS/content.opf').async('text');
+           const x = new DOMParser().parseFromString(c1, 'application/xhtml+xml'), imgs = [...x.querySelectorAll('img')];
+           const ok = JSON.stringify(asked.sort()) === JSON.stringify(['commons/a/ab/Broken.png', 'commons/thumb/8/83/Rabbit.jpg/500px-Rabbit.jpg'])
+             && imgs.length === 1 && imgs[0].getAttribute('src') === 'images/i001.png' && imgs[0].getAttribute('alt') === 'Кролик'
+             && !!zip.file('OEBPS/images/i001.png') && /<item id="img1" href="images\/i001.png" media-type="image\/png"\/>/.test(opf)
+             && /Білий кролик/.test(c1) && !/evil|wikimedia|data-ws-image/.test(c1) && !x.querySelector('parsererror');
+           return ok || JSON.stringify({ asked, c1: c1.slice(0, 700) });
+         } finally { window.fetch = prev; } })()""")
 check('14 the choice of source is remembered', "JSON.parse(localStorage.getItem('reader_library_filters')).source === 'wikisource'")
 check('14a Wikisource genres: only those the language section has categories for (Ukrainian: poetry yes, detective no; French: detective yes)',
       """(() => { openLibrary(); const g = document.getElementById('library-genre'), l = document.getElementById('library-lang');

@@ -12,6 +12,9 @@ Object.assign(I18N, {
     wheelScan: { uk: 'Сканер', en: 'Scanner', fr: 'Scanner', ru: 'Сканер', zh: '扫描', ko: '스캐너', hi: 'स्कैनर', ga: 'Scanóir' },
     scanTitle: { uk: '📷 Сканер документів', en: '📷 Document scanner', fr: '📷 Scanner de documents', ru: '📷 Сканер документов' },
     scanCamera: { uk: '📷 Зняти', en: '📷 Take photo', fr: '📷 Photographier', ru: '📷 Снять' },
+    scanCameraNext: { uk: '📷 Наступна сторінка', en: '📷 Next page', fr: '📷 Page suivante', ru: '📷 Следующая страница' },
+    scanAllFilter: { uk: 'Для всіх сторінок:', en: 'For all pages:', fr: 'Pour toutes les pages :', ru: 'Для всех страниц:' },
+    scanJpgOne: { uk: 'JPG · усі сторінки одним зображенням', en: 'JPG · all pages as one image', fr: 'JPG · toutes les pages en une image', ru: 'JPG · все страницы одним изображением' },
     scanGallery: { uk: '🖼 З галереї', en: '🖼 From gallery', fr: '🖼 Depuis la galerie', ru: '🖼 Из галереи' },
     scanEmpty: { uk: 'Зніміть сторінку або виберіть фото з галереї. Краї аркуша знайдуться самі — їх можна підправити.',
                  en: 'Take a photo of a page or pick photos from the gallery. The edges of the sheet are found automatically and can be adjusted.',
@@ -59,7 +62,7 @@ Object.assign(I18N, {
 const SCAN_WORK_SIDE = 4000;   // фото зменшується до цього перед обробкою: аркуш на фото 12 МП лишається ~250 dpi для A4
 const SCAN_OUT_SIDE = 3300;    // довша сторона готової сторінки: A4 при ~280 dpi
 const SCAN_FILTERS = [['doc', 'scanFilterDoc'], ['bw', 'scanFilterBw'], ['gray', 'scanFilterGray'], ['orig', 'scanFilterOrig']];
-const SCAN_FORMATS = [['pdf-a4', 'scanPdfA4'], ['pdf-letter', 'scanPdfLetter'], ['pdf-fit', 'scanPdfFit'], ['jpg', 'scanJpg'], ['png', 'scanPng']];
+const SCAN_FORMATS = [['pdf-a4', 'scanPdfA4'], ['pdf-letter', 'scanPdfLetter'], ['pdf-fit', 'scanPdfFit'], ['jpg', 'scanJpg'], ['jpg-one', 'scanJpgOne'], ['png', 'scanPng']];
 // Сторінка: { file, corners: [[x,y]×4] частки фото (ЛВ, ПВ, ПН, ЛН), rotation (0/90/180/270), filter, out: JPEG Blob, w, h, thumb: blob-URL }.
 const scanState = { pages: [], busy: false, edit: null, nextId: 1 };
 function scanEl(id) { return document.getElementById(id); }
@@ -86,53 +89,160 @@ function scanLuma(data, n) {
     return out;
 }
 const SCAN_FULL = [[0, 0], [1, 0], [1, 1], [0, 1]];
-// Краї аркуша: аркуш світліший за тло. На зменшеній копії поріг Оцу відділяє світле, найбільша світла пляма — аркуш, її
-// крайні точки (мінімум і максимум x+y та x−y) — чотири кути. Пляма замала (менше 15% кадру) чи це майже весь кадр
-// (аркуш на білому столі, фото вже обрізане) — повертається все фото, кути читач підправить сам.
+// Краї аркуша. На зменшеній копії (до 320 px) будуються дві маски: «світліше за поріг Оцу» (білий аркуш на темному) і
+// «колір не як у тла» (тло — медіана рамки кадру; аркуш на світлому, сірому чи візерунчастому столі). Для кожної маски
+// найбільша пляма → її опукла оболонка → чотирикутник найбільшої площі на ній (так кути правильні й для аркуша, повернутого
+// на 45°) → кожна сторона уточнюється прямою за точками краю плями між кутами, кути — перетини цих прямих (кут, перекритий
+// пальцем чи загнутий, відновлюється продовженням сторін). Перемагає маска, чия пляма найкраще заповнює свій чотирикутник.
+// Нічого схожого на аркуш (менше 15% кадру, майже весь кадр, неправильна форма) — усе фото, кути читач підправить сам.
 function scanDetectCorners(canvas) {
-    const k = Math.min(1, 256 / Math.max(canvas.width, canvas.height));
-    const w = Math.max(8, Math.round(canvas.width * k)), h = Math.max(8, Math.round(canvas.height * k));
+    const k = Math.min(1, 320 / Math.max(canvas.width, canvas.height));
+    const w = Math.max(8, Math.round(canvas.width * k)), h = Math.max(8, Math.round(canvas.height * k)), n = w * h;
     const small = document.createElement('canvas'); small.width = w; small.height = h;
     const sctx = small.getContext('2d', { willReadFrequently: true });
-    sctx.filter = 'blur(1px)'; sctx.drawImage(canvas, 0, 0, w, h);
-    const lum = scanLuma(sctx.getImageData(0, 0, w, h).data, w * h);
-    const hist = new Array(256).fill(0); for (const v of lum) hist[v]++;
+    sctx.filter = 'blur(1.5px)'; sctx.drawImage(canvas, 0, 0, w, h);
+    const rgb = sctx.getImageData(0, 0, w, h).data; small.width = 0;
+    const lum = scanLuma(rgb, n);
+    // тло: медіана кожного каналу в рамці шириною 3% кадру
+    const ring = Math.max(2, Math.round(Math.min(w, h) * .03)), chans = [[], [], []];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (x >= ring && x < w - ring && y >= ring && y < h - ring) continue;
+        const j = (y * w + x) * 4; chans[0].push(rgb[j]); chans[1].push(rgb[j + 1]); chans[2].push(rgb[j + 2]);
+    }
+    const bgc = chans.map(c => c.sort((a, b) => a - b)[c.length >> 1]);
+    const dist = new Uint8ClampedArray(n);
+    for (let i = 0, j = 0; i < n; i++, j += 4) dist[i] = (Math.abs(rgb[j] - bgc[0]) + Math.abs(rgb[j + 1] - bgc[1]) + Math.abs(rgb[j + 2] - bgc[2])) / 2;
+    // третя маска: світліше за тло (білий аркуш на світлому столі, де темні візерунки столу заважають масці кольору)
+    const bgl = (bgc[0] * 77 + bgc[1] * 150 + bgc[2] * 29) >> 8, brighter = new Uint8ClampedArray(n);
+    for (let i = 0; i < n; i++) brighter[i] = Math.max(0, lum[i] - bgl) * 3;
+    let best = null;
+    for (const values of [lum, dist, brighter]) {
+        const thr = scanOtsu(values);
+        const mask = new Uint8Array(n); for (let i = 0; i < n; i++) mask[i] = values[i] > thr ? 1 : 0;
+        const quad = scanQuadFromMask(scanOpen(mask, w, h, 2), w, h);
+        if (quad && (!best || quad.fill > best.fill)) best = quad;
+    }
+    if (!best || best.fill < .8) return SCAN_FULL.map(c => c.slice());
+    const corners = best.corners.map(([x, y]) => [Math.min(1, Math.max(0, (x + .5) / w)), Math.min(1, Math.max(0, (y + .5) / h))]);
+    return scanQuadArea(corners) < 0.15 || scanQuadArea(corners) > 0.97 ? SCAN_FULL.map(c => c.slice()) : corners;
+}
+function scanOtsu(values) {
+    const hist = new Array(256).fill(0); for (const v of values) hist[v]++;
+    const total = values.length;
     let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
     let sumB = 0, wB = 0, best = 0, thr = 128;
     for (let i = 0; i < 256; i++) {
         wB += hist[i]; if (!wB) continue;
-        const wF = w * h - wB; if (!wF) break;
+        const wF = total - wB; if (!wF) break;
         sumB += i * hist[i];
         const between = wB * wF * (sumB / wB - (sum - sumB) / wF) ** 2;
         if (between > best) { best = between; thr = i; }
     }
-    const label = new Int32Array(w * h), stack = [];
+    return thr;
+}
+// Морфологічне «відкриття» (стиснути на r пікселів, потім розширити назад): тонкі ланцюжки плям столу, що зливаються з
+// аркушем, і дрібні цятки зникають, а великий аркуш лишається того самого розміру.
+function scanOpen(mask, w, h, r) {
+    let cur = mask;
+    // спершу «закриття» (розширити, стиснути): рядки тексту, що на зменшеній копії тонші за проміжки, не розрізають аркуш на смуги
+    for (const keep of [0, 1, 1, 0]) for (let pass = 0; pass < r; pass++) {
+        const next = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+            const p = y * w + x;
+            const nb = [cur[p], x > 0 ? cur[p - 1] : keep, x < w - 1 ? cur[p + 1] : keep, y > 0 ? cur[p - w] : keep, y < h - 1 ? cur[p + w] : keep];
+            next[p] = keep ? (nb.every(v => v) ? 1 : 0) : (nb.some(v => v) ? 1 : 0);
+        }
+        cur = next;
+    }
+    return cur;
+}
+// Найбільша пляма маски → {corners у пікселях зменшеної копії, fill = площа плями / площа чотирикутника}.
+function scanQuadFromMask(mask, w, h) {
+    const thr = 0, values = mask;
+    const n = w * h, label = new Int32Array(n), stack = [];
     let bestId = 0, bestSize = 0, id = 0;
-    for (let p = 0; p < w * h; p++) {
-        if (label[p] || lum[p] <= thr) continue;
+    for (let p = 0; p < n; p++) {
+        if (label[p] || values[p] <= thr) continue;
         id++; let size = 0; label[p] = id; stack.push(p);
         while (stack.length) {
             const q = stack.pop(); size++;
             const x = q % w, y = (q - x) / w;
-            if (x > 0 && !label[q - 1] && lum[q - 1] > thr) { label[q - 1] = id; stack.push(q - 1); }
-            if (x < w - 1 && !label[q + 1] && lum[q + 1] > thr) { label[q + 1] = id; stack.push(q + 1); }
-            if (y > 0 && !label[q - w] && lum[q - w] > thr) { label[q - w] = id; stack.push(q - w); }
-            if (y < h - 1 && !label[q + w] && lum[q + w] > thr) { label[q + w] = id; stack.push(q + w); }
+            if (x > 0 && !label[q - 1] && values[q - 1] > thr) { label[q - 1] = id; stack.push(q - 1); }
+            if (x < w - 1 && !label[q + 1] && values[q + 1] > thr) { label[q + 1] = id; stack.push(q + 1); }
+            if (y > 0 && !label[q - w] && values[q - w] > thr) { label[q - w] = id; stack.push(q - w); }
+            if (y < h - 1 && !label[q + w] && values[q + w] > thr) { label[q + w] = id; stack.push(q + w); }
         }
         if (size > bestSize) { bestSize = size; bestId = id; }
     }
-    if (!bestId || bestSize < w * h * 0.15 || bestSize > w * h * 0.97) return SCAN_FULL.map(c => c.slice());
-    let tl = [0, 0, Infinity], tr = [0, 0, -Infinity], br = [0, 0, -Infinity], bl = [0, 0, Infinity];
-    for (let p = 0; p < w * h; p++) {
-        if (label[p] !== bestId) continue;
-        const x = p % w, y = (p - x) / w;
-        if (x + y < tl[2]) tl = [x, y, x + y];
-        if (x + y > br[2]) br = [x, y, x + y];
-        if (x - y > tr[2]) tr = [x, y, x - y];
-        if (x - y < bl[2]) bl = [x, y, x - y];
+    if (!bestId || bestSize < n * 0.12 || bestSize > n * 0.985) return null;
+    // Край плями: крайні ліва й права точки кожного рядка та верхня й нижня кожного стовпця (дірки від тексту всередині не заважають).
+    const edge = [], top = new Int32Array(w).fill(-1), bot = new Int32Array(w).fill(-1);
+    for (let y = 0; y < h; y++) {
+        let l = -1, r = -1;
+        for (let x = 0; x < w; x++) if (label[y * w + x] === bestId) { if (l < 0) l = x; r = x; if (top[x] < 0) top[x] = y; bot[x] = y; }
+        if (l >= 0) { edge.push([l, y]); if (r !== l) edge.push([r, y]); }
     }
-    const corners = [tl, tr, br, bl].map(([x, y]) => [Math.min(1, Math.max(0, (x + .5) / w)), Math.min(1, Math.max(0, (y + .5) / h))]);
-    return scanQuadArea(corners) < 0.15 ? SCAN_FULL.map(c => c.slice()) : corners;
+    for (let x = 0; x < w; x++) if (top[x] >= 0) { edge.push([x, top[x]]); if (bot[x] !== top[x]) edge.push([x, bot[x]]); }
+    const hull = scanHull(edge);
+    if (hull.length < 4) return null;
+    const pts = hull.length > 90 ? hull.filter((_, i) => i % Math.ceil(hull.length / 90) === 0) : hull;
+    const m = pts.length, area = (a, b, c) => Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2;
+    let bestQ = null, bestA = -1;
+    for (let i = 0; i < m; i++) for (let kk = i + 2; kk < m; kk++) {
+        let a1 = -1, j1 = -1, a2 = -1, l2 = -1;
+        for (let j = i + 1; j < kk; j++) { const a = area(pts[i], pts[j], pts[kk]); if (a > a1) { a1 = a; j1 = j; } }
+        for (let l = kk + 1; l < m + i; l++) { const a = area(pts[kk], pts[l % m], pts[i]); if (a > a2) { a2 = a; l2 = l % m; } }
+        if (j1 >= 0 && l2 >= 0 && a1 + a2 > bestA) { bestA = a1 + a2; bestQ = [pts[i], pts[j1], pts[kk], pts[l2]]; }
+    }
+    if (!bestQ || bestA <= 0) return null;
+    // Порядок ЛВ, ПВ, ПН, ЛН: за кутом навколо центру, починаючи з найближчого до лівого верхнього кута кадру.
+    const cx = bestQ.reduce((s, p) => s + p[0], 0) / 4, cy = bestQ.reduce((s, p) => s + p[1], 0) / 4;
+    let quad = bestQ.slice().sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
+    const start = quad.reduce((bi, p, i, q) => (p[0] + p[1] < q[bi][0] + q[bi][1] ? i : bi), 0);
+    quad = [0, 1, 2, 3].map(i => quad[(start + i) % 4]);
+    quad = scanRefineQuad(quad, edge) || quad;
+    // Пляма на весь кадр — це світлий стіл, а не аркуш: хай вирішує інша маска.
+    if (scanQuadArea(quad) > n * 0.9) return null;
+    return { corners: quad, fill: bestSize / Math.max(1, scanQuadArea(quad)) };
+}
+function scanHull(points) {
+    const p = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (p.length < 3) return p;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [], upper = [];
+    for (const q of p) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop(); lower.push(q); }
+    for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop(); upper.push(q); }
+    return lower.slice(0, -1).concat(upper.slice(0, -1));
+}
+// Кожна сторона — пряма найменших квадратів через точки краю поблизу відрізка між кутами (середні 80% довжини, щоб
+// заокруглений чи перекритий кут її не тягнув); кути — перетини сусідніх прямих. Невдалий перетин — null (лишаються кути оболонки).
+function scanRefineQuad(quad, edge) {
+    const lines = [];
+    for (let s = 0; s < 4; s++) {
+        const a = quad[s], b = quad[(s + 1) % 4], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+        if (len < 4) return null;
+        const ux = dx / len, uy = dy / len, tol = Math.max(2, len * .03);
+        let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, cnt = 0;
+        for (const [x, y] of edge) {
+            const tpos = ((x - a[0]) * ux + (y - a[1]) * uy) / len, d = Math.abs((x - a[0]) * uy - (y - a[1]) * ux);
+            if (tpos < .1 || tpos > .9 || d > tol) continue;
+            sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; cnt++;
+        }
+        if (cnt < 6) return null;
+        const mx = sx / cnt, my = sy / cnt, cxx = sxx / cnt - mx * mx, cyy = syy / cnt - my * my, cxy = sxy / cnt - mx * my;
+        const ang = .5 * Math.atan2(2 * cxy, cxx - cyy);   // напрям прямої (головна вісь)
+        lines.push([mx, my, Math.cos(ang), Math.sin(ang)]);
+    }
+    const out = [];
+    for (let s = 0; s < 4; s++) {
+        const [x1, y1, dx1, dy1] = lines[(s + 3) % 4], [x2, y2, dx2, dy2] = lines[s];
+        const den = dx1 * dy2 - dy1 * dx2;
+        if (Math.abs(den) < 1e-3) return null;
+        const tt = ((x2 - x1) * dy2 - (y2 - y1) * dx2) / den, p = [x1 + tt * dx1, y1 + tt * dy1];
+        if (scanDist(p, quad[s]) > 25) return null;   // перетин далеко від кута оболонки — сторону знайдено погано
+        out.push(p);
+    }
+    return out;
 }
 function scanQuadArea(c) {
     let a = 0; for (let i = 0; i < 4; i++) { const [x1, y1] = c[i], [x2, y2] = c[(i + 1) % 4]; a += x1 * y2 - x2 * y1; }
@@ -277,7 +387,7 @@ async function scanBuildPdf(pages, paper) {
     obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
     obj(2, `<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`);
     for (let i = 0; i < pages.length; i++) {
-        const p = pages[i], num = 3 + i * 3, landscape = p.w > p.h;
+        const p = pages[i], num = 3 + i * 3, landscape = p.w > p.h * 1.05;   // майже квадратна сторінка — книжкова
         let W, H, margin;
         if (paper === 'fit') { const k = 841.89 / Math.max(p.w, p.h); W = p.w * k; H = p.h * k; margin = 0; }
         else { const [a, b] = paper === 'letter' ? [612, 792] : [595.28, 841.89]; [W, H] = landscape ? [b, a] : [a, b]; margin = 18; }
@@ -308,10 +418,29 @@ async function scanPageImage(page, type) {
     canvas.width = bitmap.width; canvas.height = bitmap.height; canvas.getContext('2d').drawImage(bitmap, 0, 0); bitmap.close();
     try { return await scanBlob(canvas, type); } finally { canvas.width = 0; }
 }
-// Файл у вибраному форматі: PDF — один файл; JPG/PNG — одна сторінка як є, кілька — ZIP.
+// Усі сторінки одним довгим зображенням (одна під одною, однакової ширини, з тонким проміжком). Висота обмежена тим,
+// що браузер ще може намалювати (SCAN_STITCH_MAX_SIDE): якщо сторінок багато, вони зменшуються.
+const SCAN_STITCH_MAX_SIDE = 16000, SCAN_STITCH_MAX_PIXELS = 64e6;
+async function scanStitch(pages) {
+    const gap = 24;
+    let width = Math.min(2000, Math.max(...pages.map(p => p.w)));
+    const heightAt = w => pages.reduce((s, p) => s + Math.round(p.h * w / p.w), 0) + gap * (pages.length - 1);
+    while (width > 300 && (heightAt(width) > SCAN_STITCH_MAX_SIDE || heightAt(width) * width > SCAN_STITCH_MAX_PIXELS)) width = Math.floor(width * .9);
+    const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = heightAt(width);
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingQuality = 'high';
+    let y = 0;
+    for (const p of pages) {
+        const bitmap = await createImageBitmap(p.out), h = Math.round(p.h * width / p.w);
+        ctx.drawImage(bitmap, 0, y, width, h); bitmap.close(); y += h + gap;
+    }
+    try { return await scanBlob(canvas, 'image/jpeg', 0.88); } finally { canvas.width = 0; }
+}
+// Файл у вибраному форматі: PDF — один файл; JPG/PNG — одна сторінка як є, кілька — ZIP; «одним зображенням» — склеєні.
 async function scanMakeFile(format) {
     const pages = scanState.pages, base = scanBaseName();
     if (format.startsWith('pdf')) return new File([await scanBuildPdf(pages, format.slice(4))], base + '.pdf', { type: 'application/pdf' });
+    if (format === 'jpg-one') return new File([pages.length === 1 ? pages[0].out : await scanStitch(pages)], base + '.jpg', { type: 'image/jpeg' });
     const [type, ext] = format === 'png' ? ['image/png', 'png'] : ['image/jpeg', 'jpg'];
     if (pages.length === 1) return new File([await scanPageImage(pages[0], type)], `${base}.${ext}`, { type });
     const zip = new JSZip();
@@ -340,7 +469,28 @@ function buildScanner() {
     const camera = document.createElement('input'); camera.type = 'file'; camera.accept = 'image/*'; camera.setAttribute('capture', 'environment'); camera.id = 'scan-camera-input'; camera.hidden = true;
     const gallery = document.createElement('input'); gallery.type = 'file'; gallery.accept = 'image/*'; gallery.multiple = true; gallery.id = 'scan-gallery-input'; gallery.hidden = true;
     for (const input of [camera, gallery]) input.addEventListener('change', () => { const files = [...input.files]; input.value = ''; scanAddFiles(files, input === camera); });
-    add.append(scanButton('scanCamera', () => camera.click(), 'btn-primary'), scanButton('scanGallery', () => gallery.click()), camera, gallery);
+    const shoot = scanButton('scanCamera', () => camera.click(), 'btn-primary'); shoot.id = 'scan-shoot';
+    add.append(shoot, scanButton('scanGallery', () => gallery.click()), camera, gallery);
+    // Фото можна й перетягнути у вікно чи вставити (Ctrl+V) — усі одразу стають сторінками.
+    modal.addEventListener('dragover', e => { if ([...(e.dataTransfer?.items || [])].some(i => i.kind === 'file')) { e.preventDefault(); modal.classList.add('scan-dropping'); } });
+    modal.addEventListener('dragleave', e => { if (e.target === modal) modal.classList.remove('scan-dropping'); });
+    modal.addEventListener('drop', e => {
+        e.preventDefault(); modal.classList.remove('scan-dropping');
+        const files = [...(e.dataTransfer?.files || [])].filter(f => /^image\//.test(f.type));
+        if (files.length && !scanState.edit) scanAddFiles(files, false);
+    });
+    document.addEventListener('paste', e => {
+        if (!scanIsOpen() || scanState.edit) return;
+        const files = [...(e.clipboardData?.files || [])].filter(f => /^image\//.test(f.type));
+        if (files.length) { e.preventDefault(); scanAddFiles(files, false); }
+    });
+    // Один фільтр на всі сторінки серії одним натиском.
+    const allRow = document.createElement('div'); allRow.className = 'scan-row scan-all'; allRow.id = 'scan-all';
+    const allLabel = document.createElement('span'); allLabel.dataset.i18n = 'scanAllFilter';
+    allRow.append(allLabel);
+    for (const [value, key] of SCAN_FILTERS) {
+        const b = scanButton(key, () => scanFilterAll(value), 'scan-all-filter'); b.dataset.filter = value; allRow.append(b);
+    }
     const status = document.createElement('div'); status.id = 'scan-status'; status.setAttribute('aria-live', 'polite');
     const list = document.createElement('div'); list.id = 'scan-pages';
     const empty = document.createElement('p'); empty.id = 'scan-empty'; empty.dataset.i18n = 'scanEmpty';
@@ -358,7 +508,7 @@ function buildScanner() {
     actions.append(scanButton('scanPrint', () => scanExport('print')), scanButton('scanShare', () => scanExport('share')), scanButton('scanSave', () => scanExport('save')),
         scanButton('scanOpen', () => scanExport('open')), clear);
     for (const [i, b] of [...actions.children].entries()) b.id = ['scan-print', 'scan-share', 'scan-save', 'scan-open', 'scan-clear'][i];
-    out.append(format, actions);
+    out.append(allRow, format, actions);
     const privacy = document.createElement('p'); privacy.className = 'scan-privacy'; privacy.dataset.i18n = 'scanPrivacy';
     const listView = document.createElement('div'); listView.id = 'scan-list-view'; listView.className = 'scan-view';
     listView.append(add, status, empty, list, out, privacy);
@@ -434,8 +584,9 @@ async function scanAddFiles(files, fromCamera) {
     } finally { scanState.busy = false; }
     scanStatus(failed.length ? t('scanBadImage').replace('{name}', failed.join(', ')) : '');
     scanRenderList();
-    // Одне фото з камери — одразу на перевірку кутів, як у сканерах; кілька з галереї — лише список (кожну можна відкрити).
-    if (fromCamera && added.length === 1) scanOpenEditor(added[0]);
+    // Серія: після знімка — одразу «📷 Наступна сторінка», без редактора (краї знаходяться самі, кожну сторінку можна
+    // відкрити з її картки). Редактор відкривається лише тоді, коли аркуша на фото не знайдено.
+    if (fromCamera && added.length === 1 && added[0].corners.every((c, i) => c[0] === SCAN_FULL[i][0] && c[1] === SCAN_FULL[i][1])) scanOpenEditor(added[0]);
 }
 function scanRenderList() {
     const list = scanEl('scan-pages'); if (!list) return;
@@ -453,9 +604,27 @@ function scanRenderList() {
         card.append(open, num, bar); list.append(card);
     });
     const has = scanState.pages.length > 0;
+    const shoot = scanEl('scan-shoot'); if (shoot) { shoot.dataset.i18n = has ? 'scanCameraNext' : 'scanCamera'; shoot.textContent = t(shoot.dataset.i18n); }
+    const common = has && scanState.pages.every(p => p.filter === scanState.pages[0].filter) ? scanState.pages[0].filter : '';
+    for (const b of document.querySelectorAll('#scan-all .scan-all-filter')) b.classList.toggle('active', b.dataset.filter === common);
     scanEl('scan-empty').hidden = has;
     scanEl('scan-out').hidden = !has;
     if (has && !scanState.busy && !scanEl('scan-status').textContent) scanStatus(t('scanPages').replace('{n}', scanState.pages.length));
+}
+async function scanFilterAll(filter) {
+    if (!scanState.pages.length || scanState.edit) return;
+    while (scanState.busy) await new Promise(r => setTimeout(r, 100));
+    scanState.busy = true; scanStore('reader_scan_filter', filter);
+    const todo = scanState.pages.filter(p => p.filter !== filter);
+    try {
+        for (let i = 0; i < todo.length; i++) {
+            scanStatus(t('scanProcessing').replace('{n}', i + 1).replace('{total}', todo.length));
+            await new Promise(r => setTimeout(r, 0));
+            todo[i].filter = filter;
+            try { await scanRender(todo[i]); } catch (e) {}
+            scanRenderList();
+        }
+    } finally { scanState.busy = false; scanStatus(''); scanRenderList(); }
 }
 function scanMove(i, step) {
     const j = i + step, p = scanState.pages;
