@@ -1623,7 +1623,15 @@
         .scan-all button { min-height: 36px; padding: 0 10px; font-size: 13px; }
         #scanner.scan-dropping .scan-box { outline: 3px dashed var(--accent-color); outline-offset: -6px; }
         .scan-out { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 10px; }
-        #scan-format { min-height: 40px; padding: 6px 8px; font-size: 14px; }
+        .scan-format-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        #scan-format { flex: 1 1 200px; min-height: 40px; padding: 6px 8px; font-size: 14px; }
+        #scan-nup { flex: 0 1 150px; min-height: 40px; padding: 6px 8px; font-size: 14px; }
+        #scan-nup[hidden], #scan-select-row[hidden], #scan-delete-selected[hidden] { display: none; }
+        .scan-select { justify-content: flex-start; align-items: center; }
+        .scan-select button { min-height: 36px; padding: 0 12px; font-size: 13px; }
+        #scan-selected { font-size: 13px; color: var(--text-muted); }
+        .scan-check { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; margin: 0; accent-color: var(--accent-color); cursor: pointer; }
+        .scan-card.selected .scan-thumb { outline: 3px solid var(--accent-color); outline-offset: -3px; }
         .scan-actions button { flex: 1 1 130px; min-height: 44px; }
         .scan-clear { flex: 0 1 auto !important; color: var(--text-muted); }
         .scan-privacy { margin: 0; font-size: 11px; color: var(--text-muted); text-align: center; }
@@ -2389,12 +2397,12 @@
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=c5e48a8c8903"></script>
     <script src="js/book-shelf.js?v=0895e4123dc3"></script>
-    <script src="js/scanner.js?v=f5ca6247f34d"></script>
+    <script src="js/scanner.js?v=ce1b3c21236c"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=c306090ed69f"></script>
     <script src="js/pwa-lifecycle.js?v=d2987066ddd8"></script>
-    <script src="js/i18n-es.js?v=c9503f5a0bf5"></script>
+    <script src="js/i18n-es.js?v=c3fcead6f75d"></script>
 </body>
 </html>
