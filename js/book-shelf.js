@@ -182,12 +182,33 @@ async function renderRecentBooks() {
         grid.append(btn);
     }
     host.append(head, grid);
-    grid.addEventListener('scroll', () => drumFrame(grid), { passive: true });
+    drumCenter = -1;
+    grid.addEventListener('scroll', () => { drumScrolled = true; drumFrame(grid); }, { passive: true });
     drumFrame(grid);
 }
 // Список як барабан: прокручується у своїй висоті, верх і низ зникають прозоро (маска в index.html), а картки
 // ближче до країв трохи нахиляються й меншають. Кнопки над списком лишаються на місці.
-let drumRaf = 0;
+let drumRaf = 0, drumScrolled = false, drumCenter = -1;
+// Звук лопнутої бульбашки, коли під центр барабана підходить наступна книга: короткий синус, що швидко злітає вгору й
+// згасає (Web Audio, без файлів), і легка вібрація. Лише від прокрутки пальцем, не під час першого показу списку.
+let drumAudio = null;
+function drumPop() {
+    try {
+        if (!drumAudio) drumAudio = new (window.AudioContext || window.webkitAudioContext)();
+        if (drumAudio.state === 'suspended') drumAudio.resume();
+        const now = drumAudio.currentTime, osc = drumAudio.createOscillator(), gain = drumAudio.createGain();
+        const base = 380 + Math.random() * 160;   // кожна бульбашка трохи інша
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(base, now);
+        osc.frequency.exponentialRampToValueAtTime(base * 3.2, now + 0.045);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+        osc.connect(gain).connect(drumAudio.destination);
+        osc.start(now); osc.stop(now + 0.08);
+    } catch (e) {}
+    if (typeof haptic === 'function') haptic(4);
+}
 function drumFrame(list) {
     if (drumRaf) return;
     drumRaf = requestAnimationFrame(() => {
@@ -199,6 +220,10 @@ function drumFrame(list) {
         list.classList.toggle('drum-top', scrollable && list.scrollTop > 8);
         list.classList.toggle('drum-bottom', scrollable && list.scrollTop + list.clientHeight < list.scrollHeight - 8);
         const box = list.getBoundingClientRect(), mid = box.top + box.height / 2, half = box.height / 2 || 1;
+        let nearest = -1, nearestD = Infinity;
+        [...list.children].forEach((card, i) => { const r = card.getBoundingClientRect(), dd = Math.abs(r.top + r.height / 2 - mid); if (dd < nearestD) { nearestD = dd; nearest = i; } });
+        if (scrollable && drumScrolled && drumCenter >= 0 && nearest !== drumCenter) drumPop();
+        drumCenter = nearest; drumScrolled = false;
         for (const card of list.children) {
             if (!scrollable || matchMedia('(prefers-reduced-motion: reduce)').matches) { card.style.transform = ''; continue; }
             const r = card.getBoundingClientRect(), d = Math.max(-1, Math.min(1, (r.top + r.height / 2 - mid) / half));
