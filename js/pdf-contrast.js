@@ -18,6 +18,10 @@
  * платить ні мілісекунди на перемальовування, а полотно лишається недоторканим: виділення слів,
  * текстовий шар і рукописний шар працюють із тими самими координатами, що й раніше.
  *
+ * Розмиті літери: окремо перевіряємо вузькі смуги у вихідній роздільності. Якщо більшість
+ * текстових країв м’які, додаємо слабкий просторовий фільтр різкості перед контрастом.
+ * Чіткий цифровий текст не загострюємо; результати аналізу зникають разом із полотном.
+ *
  * Чого НЕ робимо. Кольорову сторінку (ілюстрація, мапа, обкладинка) не чіпаємо взагалі —
  * її видно за середньою насиченістю. Сторінку, яка вже контрастна (чорне нижче
  * PDF_CONTRAST_SKIP_BLACK і розмах від PDF_CONTRAST_SKIP_RANGE), теж лишаємо як є: підсилювати
@@ -39,6 +43,71 @@ const PDF_CONTRAST_HISTORY = 5;           // по скількох сторін�
 
 let pdfContrastHistory = [];   // [[чорне, папір], ...] останніх надійних сторінок цієї книги
 let pdfContrastLast = null;    // для 📋 діагностики
+const pdfSharpnessCache = new WeakMap(); // immutable rendered canvases; no retained page bitmaps
+
+// Inspect a few native-resolution strips, not the thumbnail used for paper levels:
+// downsampling would hide the very blur we need to find. A sharp edge crosses the
+// middle half of the ink/paper range in 1–2 screen pixels; a soft scan takes more.
+function pdfContrastSoftText(canvas, black, paper) {
+    if (pdfSharpnessCache.has(canvas)) return pdfSharpnessCache.get(canvas);
+    const ctx = canvas.getContext('2d');
+    if (!ctx || canvas.width < 32 || canvas.height < 32) return false;
+    const density = Math.max(0.5, canvas.width / (parseFloat(canvas.style.width) || canvas.width));
+    const low = black + (paper - black) * 0.25;
+    const high = black + (paper - black) * 0.75;
+    let edges = 0, soft = 0;
+    try {
+        for (let strip = 1; strip <= 7; strip++) {
+            const y = Math.min(canvas.height - 8, Math.floor(canvas.height * strip / 8));
+            const data = ctx.getImageData(0, y, canvas.width, 8).data;
+            for (let row = 0; row < 8; row += 2) {
+                let side = 0, last = 0;
+                for (let x = 0; x < canvas.width; x++) {
+                    const i = (row * canvas.width + x) * 4;
+                    const v = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const next = v <= low ? -1 : v >= high ? 1 : 0;
+                    if (!next) continue;
+                    if (side && next !== side) {
+                        const width = x - last;
+                        // Broad gradients/photos and near-flat scanner noise are not text edges.
+                        if (width <= 12 * density) {
+                            edges++;
+                            if (width > 2 * density) soft++;
+                        }
+                    }
+                    side = next; last = x;
+                }
+            }
+        }
+    } catch (e) { return false; }
+    const result = edges >= 80 && soft / edges >= 0.6;
+    pdfSharpnessCache.set(canvas, result);
+    return result;
+}
+
+function pdfContrastSharpenFilter() {
+    const id = 'reader-pdf-sharpen';
+    if (!document.getElementById(id)) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(ns, 'svg');
+        svg.setAttribute('width', '0'); svg.setAttribute('height', '0');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.style.position = 'absolute'; svg.style.pointerEvents = 'none';
+        const filter = document.createElementNS(ns, 'filter');
+        filter.id = id;
+        filter.setAttribute('x', '0'); filter.setAttribute('y', '0');
+        filter.setAttribute('width', '100%'); filter.setAttribute('height', '100%');
+        filter.setAttribute('color-interpolation-filters', 'sRGB');
+        const kernel = document.createElementNS(ns, 'feConvolveMatrix');
+        kernel.setAttribute('order', '3');
+        // Mild unsharp mask; weights sum to one so flat paper stays unchanged.
+        kernel.setAttribute('kernelMatrix', '0 -0.35 0 -0.35 2.4 -0.35 0 -0.35 0');
+        kernel.setAttribute('edgeMode', 'duplicate');
+        kernel.setAttribute('preserveAlpha', 'true');
+        filter.appendChild(kernel); svg.appendChild(filter); document.body.appendChild(svg);
+    }
+    return 'url("#' + id + '")';
+}
 
 function pdfContrastChoice() {
     const saved = readStored(PDF_CONTRAST_KEY);
@@ -123,8 +192,11 @@ function pdfContrastFor(canvas) {
     const n = pdfContrastHistory.length || 1;
     const black = pdfContrastHistory.length ? Math.round(pdfContrastHistory.reduce((s, p) => s + p[0], 0) / n) : m.black;
     const paper = pdfContrastHistory.length ? Math.round(pdfContrastHistory.reduce((s, p) => s + p[1], 0) / n) : m.paper;
-    const filter = pdfContrastFilter(black, paper, m.saturation, mode);
-    pdfContrastLast = { mode: mode, black: black, paper: paper, saturation: Math.round(m.saturation), pages: pdfContrastHistory.length, filter: filter };
+    let filter = pdfContrastFilter(black, paper, m.saturation, mode);
+    const sharpened = m.saturation <= PDF_CONTRAST_COLOR && m.paper - m.black >= PDF_CONTRAST_MIN_RANGE
+        && pdfContrastSoftText(canvas, m.black, m.paper);
+    if (sharpened) filter = [pdfContrastSharpenFilter(), filter].filter(Boolean).join(' ');
+    pdfContrastLast = { mode: mode, black: black, paper: paper, saturation: Math.round(m.saturation), pages: pdfContrastHistory.length, sharpened: sharpened, filter: filter };
     return filter;
 }
 

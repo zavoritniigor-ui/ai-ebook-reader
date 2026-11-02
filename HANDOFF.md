@@ -9,8 +9,14 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
+| Codex, cloud | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | locally validated; PR API blocked | 2026-11-01 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
+
+## Codex — blurred scan sharpness (2026-11-01)
+- Branch: `fix/blurred-scan-sharpness`. Automatic mild sharpening for soft monochrome PDF text, independently of faded-ink contrast. Native-resolution strip sampling is bounded and cached per canvas; source pixels and selection/ink geometry are unchanged. Original-file mode disables all processing.
+- Verified: `tests/pdf_contrast_browser.py` (real blurred raster PDF, output edge gradients, sharp/colour pages, DPR 1/2, dark/off modes), `tests/pdf_ux_browser.py`, `tests/learning_ux_browser.py`; JS syntax, app-shell version and CI suite coverage gates, CDP transport tests.
+- Delivery pending: the proxy denies CONNECT to `api.github.com` (403), so PR creation, remote CI and merge cannot be completed yet. Added that hostname to the environment configuration draft; apply the settings before retrying GitHub CLI. No main merge or production deployment claimed.
 
 ## Active Agent Worktrees & Tasks
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):

@@ -159,6 +159,85 @@ open_pdf(scan_pdf_bytes(pages=2, paper=(1, 1, 1), ink=(0, 0, 0)), 'sharp.pdf')
 check('11 opening another book forgets the previous book levels', "pdfContrastReport().pagesAveraged <= 2 && %s === ''" % FILTER)
 
 check('12 nothing threw', "__errors.length === 0 || JSON.stringify(__errors)")
+# ---------------------------------------------------------------- soft raster text, including dark ink on white paper
+# Render the fixture in the browser, then embed those pixels as a real PDF image.
+# This catches accidental sharpening of digital/vector text and proves the normal
+# PDF render path uses the filter, not just an isolated image-processing helper.
+import zlib
+
+def soft_scan_pdf(colour=False):
+    rgb = c.js("""(() => {
+      const source = document.createElement('canvas'); source.width=600; source.height=800;
+      const a=source.getContext('2d'); a.fillStyle='white'; a.fillRect(0,0,600,800);
+      a.fillStyle=%r; a.font='20px sans-serif';
+      for(let y=40;y<780;y+=28) a.fillText('Blurred letters need clearer edges 0123456789',30,y);
+      const blurred=document.createElement('canvas'); blurred.width=600; blurred.height=800;
+      const b=blurred.getContext('2d'); b.filter='blur(1.6px)'; b.drawImage(source,0,0);
+      const data=b.getImageData(0,0,600,800).data; let out='';
+      for(let i=0;i<data.length;i+=4) out+=String.fromCharCode(data[i],data[i+1],data[i+2]);
+      return btoa(out);
+    })()""" % ('#125ac8' if colour else '#111111'))
+    image=zlib.compress(base64.b64decode(rgb))
+    content=b'q 600 0 0 800 0 0 cm /Scan Do Q'
+    objs=[b'<< /Type /Catalog /Pages 2 0 R >>',
+          b'<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
+          b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Resources << /XObject << /Scan 5 0 R >> >> /Contents 4 0 R >>',
+          f'<< /Length {len(content)} >>\nstream\n'.encode()+content+b'\nendstream',
+          f'<< /Type /XObject /Subtype /Image /Width 600 /Height 800 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length {len(image)} >>\nstream\n'.encode()+image+b'\nendstream']
+    data=b'%PDF-1.4\n'; offsets=[]
+    for n,obj in enumerate(objs,1):
+        offsets.append(len(data)); data+=f'{n} 0 obj\n'.encode()+obj+b'\nendobj\n'
+    start=len(data); data+=b'xref\n0 6\n0000000000 65535 f \n'
+    data+=b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets)
+    return data+f'trailer << /Size 6 /Root 1 0 R >>\nstartxref\n{start}\n%%EOF'.encode()
+
+load()
+open_pdf(soft_scan_pdf(), 'soft-raster.pdf')
+check('14 blurry raster text is sharpened even when its ink is already dark',
+      "pdfContrastReport().last.sharpened === true && /reader-pdf-sharpen/.test(%s)" % FILTER)
+check('14b sharpening increases actual edge gradients, not just a style string', r"""(() => {
+  const page=document.querySelector('#reader-pages .pdf-canvas');
+  function energy(filter) {
+    const out=document.createElement('canvas'); out.width=page.width; out.height=page.height;
+    const ctx=out.getContext('2d'); ctx.filter=filter || 'none'; ctx.drawImage(page,0,0);
+    const d=ctx.getImageData(0,0,out.width,out.height).data; let e=0;
+    for(let y=10;y<out.height-10;y++) for(let x=10;x<out.width-10;x++) {
+      const i=(y*out.width+x)*4, delta=d[i]-d[i-4]; e+=delta*delta;
+    }
+    return e;
+  }
+  const normal=page.style.filter.replace(/url\([^)]*\)/g,'').trim();
+  const before=energy(normal), after=energy(page.style.filter);
+  return after>before*1.03 || {before,after};
+})()""")
+check('14c text and handwriting overlays do not receive the sharpening filter',
+      "[...document.querySelectorAll('.pdf-text-layer,.ink-layer')].every(e=>getComputedStyle(e).filter==='none')")
+c.js("document.getElementById('pdf-contrast').value='off'; document.getElementById('pdf-contrast').dispatchEvent(new Event('change')); 1")
+check('15 original-file mode removes sharpening immediately', "%s === ''" % FILTER)
+c.js("document.getElementById('pdf-contrast').value='auto'; document.getElementById('pdf-contrast').dispatchEvent(new Event('change')); 1")
+check('15b enabling automatic again restores sharpening on the existing canvas',
+      "/reader-pdf-sharpen/.test(%s)" % FILTER)
+load()
+open_pdf(soft_scan_pdf(colour=True), 'soft-colour.pdf')
+check('16 coloured soft text is not sharpened', "!pdfContrastReport().last.sharpened && %s === ''" % FILTER)
+
+# Pixel density must not turn a sharp digital PDF into a "blurry" scan.
+c.call('Emulation.setDeviceMetricsOverride', width=1280, height=900, deviceScaleFactor=2, mobile=False)
+load()
+open_pdf(scan_pdf_bytes(pages=1, paper=(1, 1, 1), ink=(0, 0, 0)), 'sharp-retina.pdf')
+check('17 high-density digital text is left untouched', "%s === '' && !pdfContrastReport().last.sharpened" % FILTER)
+load('dark')
+open_pdf(soft_scan_pdf(), 'soft-retina.pdf')
+check('18 soft high-density text is sharpened before dark-page inversion',
+      "pdfContrastReport().last.sharpened && /reader-pdf-sharpen/.test(%s) && /invert/.test(%s)" % (FILTER, FILTER))
+check('19 processing leaves the source bitmap unchanged and reuses its analysis', """(() => {
+  const canvas=document.querySelector('#reader-pages .pdf-canvas');
+  const before=canvas.toDataURL();
+  pdfContrastRefreshRendered(); pdfContrastRefreshRendered();
+  return canvas.toDataURL()===before && document.querySelectorAll('#reader-pdf-sharpen').length===1;
+})()""")
+c.call('Emulation.setDeviceMetricsOverride', width=1280, height=900, deviceScaleFactor=1, mobile=False)
+
 load()
 check('13 cleanup: the next suite finds the default setting', "localStorage.getItem(%r) === null && pdfContrastChoice() === 'auto'" % KEY)
 print('ALL PDF CONTRAST CHECKS PASSED')
