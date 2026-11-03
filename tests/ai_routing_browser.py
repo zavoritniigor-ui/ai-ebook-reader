@@ -141,4 +141,65 @@ check("16 a multi-word fragment does NOT start the on-device translator (only si
 c.js("els.ttCloseBtn.click(); delete window.Translator; localTranslators.clear(); state.translationCache = {}; __timeline.length = 0; window.__aiDelay = 100; handleWordOrSelection('verte', 300, 300, null); 1")
 check("17 without the Translator API the word is simply answered by the AI", "els.ttTranslation.textContent.includes('груша') && !els.ttTranslation.textContent.includes('ЛОКАЛЬНО')", timeout=6)
 check("18 no application errors", "__errors.length === 0 || JSON.stringify(__errors)")
+
+# Dictionary requests may never settle: completion, persistent caching and a repeated tap must not wait for them.
+c.js("""els.ttCloseBtn.click(); state.translationCache = trStartCache;
+  for (const key of Object.keys(state.translationCache)) delete state.translationCache[key];
+  __calls.length = 0; __aiDelay = 0;
+  window.__dictJobs = [];
+  machineTranslate = () => new Promise((resolve, reject) => __dictJobs.push({resolve, reject}));
+  window.__lookupDone = false;
+  handleWordOrSelection('rapide', 300, 300, null).then(() => { __lookupDone = true; }); 1""")
+check('19 a hanging dictionary cannot hold the AI lookup or cache open',
+      "__lookupDone && !state.tooltipLoading && Object.keys(state.translationCache).length === 1 && els.ttTranslation.textContent.includes('груша')", timeout=3)
+check('19b the AI answer is persisted before the dictionary answers', """(async () => {
+  const key = Object.keys(state.translationCache)[0]; const db = await trDb();
+  const entry = await new Promise(resolve => { const r = db.transaction(TR_STORE).objectStore(TR_STORE).get(key); r.onsuccess = () => resolve(r.result); });
+  return entry?.q === 'ai' && JSON.stringify(entry.v).includes('груша');
+})()""")
+c.js("window.__requestsBefore = __calls.length; handleWordOrSelection('rapide', 300, 300, null); 1")
+check('19c repeat tap reuses the AI answer while dictionary still hangs',
+      "__calls.length === __requestsBefore && __dictJobs.length === 1 && !state.tooltipLoading", timeout=1)
+c.js("__dictJobs[0].resolve({extras:'<span>STALE DICTIONARY</span>'}); 1")
+check('19d dictionary from an older lookup cannot change the repeated popup',
+      "(async () => { await new Promise(r => setTimeout(r, 100)); return !els.ttTranslation.textContent.includes('STALE'); })()")
+
+c.js("""els.ttCloseBtn.click(); state.translationCache = {}; __lookupDone = false;
+  handleWordOrSelection('lentement', 300, 300, null).then(() => { __lookupDone = true; }); 1""")
+check('20 second word completes independently too', "__lookupDone && __dictJobs.length === 2", timeout=3)
+c.js("__dictJobs[1].resolve({extras:'<span>EXTRA MEANING</span>'}); 1")
+check('20b current dictionary can enrich the popup and cached answer after completion',
+      "els.ttTranslation.textContent.includes('EXTRA MEANING') && Object.values(state.translationCache).some(v => JSON.stringify(v).includes('EXTRA MEANING'))", timeout=2)
+c.js("""els.ttCloseBtn.click(); state.translationCache = {}; __lookupDone = false;
+  handleWordOrSelection('toujours', 300, 300, null).then(() => { __lookupDone = true; }); 1""")
+check('21 another word completes before dictionary failure', "__lookupDone && __dictJobs.length === 3", timeout=3)
+c.js("__dictJobs[2].reject(new Error('dictionary unavailable')); 1")
+check('21b dictionary failure keeps the AI answer and cache',
+      "(async () => { await new Promise(r => setTimeout(r, 100)); return els.ttTranslation.textContent.includes('груша') && Object.keys(state.translationCache).length === 1 && !state.tooltipLoading && __errors.length === 0; })()")
+
+# Real timeout/abort path, including the explicitly chosen Groq used by the popup.
+# OpenAI deliberately takes longer than Groq's short deadline: it must retain its normal timeout.
+c.js("""els.ttCloseBtn.click(); machineTranslate = async () => ({extras:''}); state.translationCache = {};
+  const previousFetch = window.fetch; window.__timeoutCalls = []; window.__groqAborted = false;
+  window.fetch = async (url, options = {}) => {
+    const a = String(url);
+    if (a.includes('api.groq.com')) {
+      __timeoutCalls.push(['groq', performance.now()]);
+      return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => {
+        __groqAborted = true; reject(new DOMException('Cancelled','AbortError'));
+      }, {once:true}));
+    }
+    if (a.includes('api.openai.com')) {
+      __timeoutCalls.push(['openai', performance.now()]);
+      await new Promise(r => setTimeout(r, 3200));
+    }
+    return previousFetch(url, options);
+  };
+  window.__lookupDone = false;
+  handleWordOrSelection('demain', 300, 300, null).then(() => { __lookupDone = true; }); 1""")
+check('22 a silent Groq is aborted and OpenAI starts within 4.5 seconds',
+      "__groqAborted && __timeoutCalls.length === 2 && __timeoutCalls[1][0] === 'openai' && __timeoutCalls[1][1] - __timeoutCalls[0][1] < 4500", timeout=5)
+check('22b OpenAI keeps its own timeout and completes after the Groq deadline',
+      "__lookupDone && els.ttTranslation.textContent.includes('груша точна') && els.ttTranslation.textContent.includes('🧠') && !state.tooltipLoading", timeout=6)
+check('22c no cancellation errors or late Groq answer replaced the backup', "__errors.length === 0 && __timeoutCalls.length === 2")
 print('ALL AI ROUTING + INSTANT TRANSLATION CHECKS PASSED')

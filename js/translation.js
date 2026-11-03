@@ -379,20 +379,21 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         };
         if (ai) {
             const main = renderAi(ai, aiMark);
-            let extrasHtml = '';
             alignmentResult = main.al;
             html = main.html;
             els.ttTranslation.innerHTML = html;
-            // Для окремого слова додаємо словникові значення: вони не дублюють переклад, а показують інші можливі значення.
+            // Dictionary additions must not delay completion, speech or caching of the AI answer.
+            // A later tap owns the popup: a late dictionary response must never overwrite it.
             if (!isMultiWord) {
-                try {
-                    const m = await machineTranslate(cleanText, srcCode, isMultiWord, task.signal, targetLang);
-                    if (myLookup !== state.lookupToken || !task.current()) return;
-                    if (m.extras) extrasHtml = m.extras;
-                } catch (e) {}
+                machineTranslate(cleanText, srcCode, false, task.signal, targetLang).then(m => {
+                    if (!m.extras || myLookup !== state.lookupToken || !task.current()) return;
+                    const enriched = main.html + m.extras;
+                    els.ttTranslation.innerHTML = enriched;
+                    state.translationCache[cacheKey] = main.al ? { ...main.al, html: enriched } : enriched;
+                    storeTranslation(cacheKey, state.translationCache[cacheKey], 'ai');
+                    const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
+                }).catch(() => {});
             }
-            alignmentResult = main.al;
-            html = main.html + extrasHtml;
             quality = 'ai';
         } else if (isMultiWord) {
             // Речення й фрази онлайн — лише через AI (машинний переклад Google не бачить контексту). Без AI (офлайн, без ключа чи AI не відповів)
