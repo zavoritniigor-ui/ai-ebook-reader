@@ -9,9 +9,16 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
+| Codex, cloud | `fix/word-translation-latency` | `js/translation.js`, `js/ai-client.js`, translation timing regression tests | working | 2026-11-03 |
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
+
+## Codex — word translation latency (2026-11-03)
+- Branch: `fix/word-translation-latency`; owner's task: decouple translation completion/cache from dictionaries and try OpenAI sooner when Groq stalls.
+- Implemented: optional dictionary additions run independently with current-lookup guards; AI answers cache immediately. Groq translation deadline is 3 seconds when a backup exists; OpenAI retains its normal timeout.
+- Verified locally: routing/timing regressions (including persistent cache before dictionary completion and real timeout/abort), single-word translation, persistent cache, popup timer, robust translation, rate limits, PDF UX and learning UX. Provider responses mocked, no paid calls. Syntax, shell version and CI coverage gates passed.
+- Next: final pre-push gate, PR exact-head CI, normal merge, main CI and production verification. No direct main push or check bypass.
 
 ## Codex — blurred scan sharpness (2026-11-02)
 - **Owner's task:** improve blurry letters in scanned books. **Owner's delivery requirement: merge ONLY after successful GitHub CI on the exact final PR head.** Opening a PR does not waive checks. Do not push directly to main, bypass checks, or claim delivery based on local tests alone.

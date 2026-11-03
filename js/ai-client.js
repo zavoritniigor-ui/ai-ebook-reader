@@ -574,7 +574,7 @@ function groqNoteLimit(err) {
 const groqCoolingDown = () => Date.now() < groqCooldownUntil;
 const groqLimitedRecently = () => Date.now() - groqLimitedAt < 60000;   // for the note beside the backup's mark
 // With OpenAI as a backup, Groq is not waited for as long as a slow provider would be: past this it counts as "not answering".
-const GROQ_FIRST_TIMEOUT_MS = { practice_reading: 60000, rules_search: 30000, grammar_analysis: 30000, sentence_structure: 30000 };
+const GROQ_FIRST_TIMEOUT_MS = { translation: 3000, practice_reading: 60000, rules_search: 30000, grammar_analysis: 30000, sentence_structure: 30000 };
 function groqFirstTimeout(task) { return GROQ_FIRST_TIMEOUT_MS[task] || 20000; }
 
 // Groq streams like OpenAI for the reading tasks that show their answer as it is written (Ask AI, language level: the task's
@@ -729,7 +729,10 @@ async function requestCloudAI(prompt, dataUrl, signal, task = 'default', onDelta
     const provider = forced || aiProviderForTask(task);
     const backup = forced ? null : aiBackupProvider(provider);
     const meta = options.meta || (options.meta = {});   // one meta object for the caller, whichever provider answers
-    const first = backup && !options.timeoutMs ? Object.assign({}, options, { timeoutMs: groqFirstTimeout(task) }) : options;
+    // Translation selects its providers itself, but its forced Groq attempt still needs a short deadline
+    // when a backup exists. Keep that deadline on the first attempt only; OpenAI retains its own budget.
+    const translationBackup = forced && task === 'translation' && provider === 'groq' && aiBackupProvider(provider);
+    const first = (backup || translationBackup) && !options.timeoutMs ? Object.assign({}, options, { timeoutMs: groqFirstTimeout(task) }) : options;
     try {
         if (provider === 'groq' && !dataUrl && groqCoolingDown()) {   // known to refuse for a while: no round trip, the backup answers at once
             recordAiRequest({ task, provider, ok: false, reason: 'cooldown', status: 429, skipped: true, ms: 0 });
