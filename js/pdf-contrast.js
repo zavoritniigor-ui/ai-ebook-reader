@@ -209,9 +209,15 @@ function pdfContrastFor(canvas, textItems) {
     const black = pdfContrastHistory.length ? Math.round(pdfContrastHistory.reduce((s, p) => s + p[0], 0) / n) : m.black;
     const paper = pdfContrastHistory.length ? Math.round(pdfContrastHistory.reduce((s, p) => s + p[1], 0) / n) : m.paper;
     let filter = pdfContrastFilter(black, paper, m.saturation, mode);
-    const sharpened = !pdfContrastHasVectorText(canvas, textItems)
+    const hasVectorText = pdfContrastHasVectorText(canvas, textItems);
+    const softText = !hasVectorText && pdfContrastSoftText(canvas, m.black, m.paper);
+    // A raster page whose contrast pass already needs work is a safe fallback when a
+    // sparse native strip misses enough edges (for example after a long shared-Chrome run).
+    // Vector-text pages never reach this branch, so crisp digital PDFs stay untouched.
+    const rasterNeedsWork = !hasVectorText && !!filter && m.black > PDF_CONTRAST_SKIP_BLACK;
+    const sharpened = !hasVectorText
         && m.saturation <= PDF_CONTRAST_COLOR && m.paper - m.black >= PDF_CONTRAST_MIN_RANGE
-        && pdfContrastSoftText(canvas, m.black, m.paper);
+        && (softText || rasterNeedsWork);
     if (sharpened) filter = [pdfContrastSharpenFilter(), filter].filter(Boolean).join(' ');
     pdfContrastLast = { mode: mode, black: black, paper: paper, saturation: Math.round(m.saturation), pages: pdfContrastHistory.length, sharpened: sharpened, filter: filter };
     return filter;
