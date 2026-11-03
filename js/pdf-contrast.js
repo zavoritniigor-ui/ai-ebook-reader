@@ -44,6 +44,22 @@ const PDF_CONTRAST_HISTORY = 5;           // по скількох сторін�
 let pdfContrastHistory = [];   // [[чорне, папір], ...] останніх надійних сторінок цієї книги
 let pdfContrastLast = null;    // для 📋 діагностики
 const pdfSharpnessCache = new WeakMap(); // immutable rendered canvases; no retained page bitmaps
+const pdfSharpnessTextCache = new WeakMap(); // vector-text pages must not get a raster filter
+
+// PDF.js gives us the text items before the canvas is inserted into the page wrapper. Cache
+// that fact so a later settings refresh makes the same decision without re-reading the PDF.
+function pdfContrastHasVectorText(canvas, textItems) {
+    if (Array.isArray(textItems)) {
+        const hasText = textItems.some(item => typeof item?.str === 'string' && item.str.trim());
+        pdfSharpnessTextCache.set(canvas, hasText);
+        return hasText;
+    }
+    if (pdfSharpnessTextCache.has(canvas)) return pdfSharpnessTextCache.get(canvas);
+    const layer = canvas.parentElement?.querySelector('.pdf-text-layer');
+    const hasText = !!layer?.textContent?.trim();
+    pdfSharpnessTextCache.set(canvas, hasText);
+    return hasText;
+}
 
 // Inspect a few native-resolution strips, not the thumbnail used for paper levels:
 // downsampling would hide the very blur we need to find. A sharp edge crosses the
@@ -179,7 +195,7 @@ function pdfContrastFilter(black, paper, saturation, mode) {
 
 // Рівні цієї сторінки, згладжені по останніх сторінках книги: сусідні сторінки одного скану майже
 // однакові, і без згладжування кожен перехід ледь помітно міняв яскравість сусідньої сторінки.
-function pdfContrastFor(canvas) {
+function pdfContrastFor(canvas, textItems) {
     const mode = pdfContrastChoice();
     if (mode === 'off') { pdfContrastLast = { mode: mode, filter: '' }; return ''; }
     const m = pdfContrastMeasure(canvas);
@@ -193,7 +209,8 @@ function pdfContrastFor(canvas) {
     const black = pdfContrastHistory.length ? Math.round(pdfContrastHistory.reduce((s, p) => s + p[0], 0) / n) : m.black;
     const paper = pdfContrastHistory.length ? Math.round(pdfContrastHistory.reduce((s, p) => s + p[1], 0) / n) : m.paper;
     let filter = pdfContrastFilter(black, paper, m.saturation, mode);
-    const sharpened = m.saturation <= PDF_CONTRAST_COLOR && m.paper - m.black >= PDF_CONTRAST_MIN_RANGE
+    const sharpened = !pdfContrastHasVectorText(canvas, textItems)
+        && m.saturation <= PDF_CONTRAST_COLOR && m.paper - m.black >= PDF_CONTRAST_MIN_RANGE
         && pdfContrastSoftText(canvas, m.black, m.paper);
     if (sharpened) filter = [pdfContrastSharpenFilter(), filter].filter(Boolean).join(' ');
     pdfContrastLast = { mode: mode, black: black, paper: paper, saturation: Math.round(m.saturation), pages: pdfContrastHistory.length, sharpened: sharpened, filter: filter };
