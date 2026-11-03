@@ -9,8 +9,17 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
+| Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
+
+## Codex — blurred scan sharpness (2026-11-02)
+- **Owner's task:** improve blurry letters in scanned books. **Owner's delivery requirement: merge ONLY after successful GitHub CI on the exact final PR head.** Opening a PR does not waive checks. Do not push directly to main, bypass checks, or claim delivery based on local tests alone.
+- **Branch / PR:** `fix/blurred-scan-sharpness`, isolated worktree `../wt-scan-sharpness`; [PR #367](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/367) targets `main`. Implementation `28411ec53bbc6ffdcc880ec2b80dd5bc5f901d65`; verified base `4bbd0cefadcc5205e43454b50f692e9493fedcf9`. GitHub API access works in this local session; the previous cloud networking blocker does not prevent delivery here.
+- **Implemented / reviewed:** mild automatic sharpening for soft monochrome PDF text before existing contrast/dark-mode filters. Bounded native-resolution strips and a per-canvas WeakMap; no new dependency or setting. Original-file mode removes the filter; source pixels and text/handwriting geometry remain unchanged. Sharp digital text and tested colour pages are left alone. `index.html` / `sw.js` contain generated hashes only; `js/pdf-render.js` is untouched.
+- **Independently verified locally:** `python3 tools/run_tests.py tests/pdf_contrast_browser.py tests/pdf_ux_browser.py tests/learning_ux_browser.py` PASS; all application/worker syntax, app-shell hashes, all 148 browser suites' CI coverage, CDP transport and `git diff --check` PASS. Re-running the shell generator produced no changes. Browser checks include actual edge gradients, DPR 1/2, dark/off modes, sharp/colour pages, unchanged pixels and filter reuse.
+- **Current state:** PR open; exact-final-head GitHub CI, merge and production verification are pending. This commit changes handoff documentation only; no unrelated working-tree changes.
+- **Next:** monitor PR #367's current head with `tools/ci_wait.sh <sha>`; resolve any failures before normal merge. Then verify main CI and production and remove this Claims row. The owner's original blurred book and physical tablet still need a visual check.
 
 ## Active Agent Worktrees & Tasks
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):

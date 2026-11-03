@@ -191,7 +191,7 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         // Бліді скани (js/pdf-contrast.js): рівні рахуються по зменшеній копії щойно намальованого
         // полотна й лягають CSS-фільтром. Пікселі полотна не змінюються, тому текстовий шар,
         // виділення слів і рукописний шар бачать ту саму картинку, що й до цього.
-        try { if (typeof pdfContrastFor === 'function') c.style.filter = pdfContrastFor(c); } catch (e) { /* контраст ніколи не ламає показ сторінки */ }
+        try { if (typeof pdfContrastFor === 'function') c.style.filter = pdfContrastFor(c, textItems); } catch (e) { /* контраст ніколи не ламає показ сторінки */ }
 
         // Native PDF link annotations — clickable overlay from real annotation
         // rects, never a visually-detected link (see js/pdf-outline.js).
