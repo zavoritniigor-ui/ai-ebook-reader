@@ -21,8 +21,10 @@ c.call('Network.setCacheDisabled', cacheDisabled=True); c.call('Network.setBypas
 c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False)
 c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
 window.__speakCalls = []; window.__localCalls = []; window.__played = []; window.__ended = [];
+window.__localErrors = []; addEventListener('error', e => __localErrors.push(e.message));
 window.__localMode = 'ok'; // ok | fail | slow | hang
 window.__audioMode = 'ok'; window.__fastTimeout = false;
+window.__browserDelay = 30; window.__browserCancels = 0;
 const originalTimeout = window.setTimeout;
 window.setTimeout = (fn, ms, ...args) => originalTimeout(fn, __fastTimeout && ms === 20000 ? 80 : ms, ...args);
 window.__healthy = true;
@@ -64,15 +66,22 @@ const synth = {
   speaking: false, pending: false, paused: false, onvoiceschanged: null, _cur: null,
   getVoices: () => [{voiceURI: 'fr-fr', name: 'French', lang: 'fr-FR', localService: true},
                     {voiceURI: 'en-us', name: 'English', lang: 'en-US', localService: true}],
-  addEventListener() {}, cancel() { this.speaking = false; this.pending = false; },
-  speak(u) { __speakCalls.push(u.text); setTimeout(() => u.onend && u.onend({}), 30); }
+  addEventListener() {}, cancel() { __browserCancels++; clearTimeout(this._timer); this.speaking = false; this.pending = false; },
+  speak(u) {
+    __speakCalls.push(u.text); this.speaking = true;
+    this._timer = setTimeout(() => { this.speaking = false; if (u.onend) u.onend({}); }, __browserDelay);
+  }
 };
 Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: synth});
 window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; this.lang = ''; this.voice = null; this.rate = 1; } };
 localStorage.setItem('reader_local_speech', '1');
 ''')
 c.call('Page.navigate', url=URL)
-c.wait("document.readyState==='complete' && !document.body.inert && typeof speakInLang==='function' && typeof speakViaLocal==='function'", timeout=30)
+try:
+    c.wait("document.readyState==='complete' && !document.body.inert && typeof speakInLang==='function' && typeof speakViaLocal==='function'", timeout=30)
+except TimeoutError:
+    print('Startup diagnostics:', c.js('({url:location.href,ready:document.readyState,inert:document.body.inert,speech:typeof speakViaLocal,errors:window.__localErrors})'))
+    raise
 
 
 def pause(s): c.js(f'new Promise(r => setTimeout(r, {int(s * 1000)}))')
@@ -96,7 +105,7 @@ def user_gesture():
 
 def reset():
     user_gesture()
-    c.js('__speakCalls.length = 0; __localCalls.length = 0; __played.length = 0; __ended.length = 0; __localMode = "ok"; __audioMode = "ok"; __fastTimeout = false; __healthy = true; localSpeechHealth = {at: 0, ok: false}; stopTooltipSpeech(); true')
+    c.js('__speakCalls.length = 0; __localCalls.length = 0; __played.length = 0; __ended.length = 0; __localMode = "ok"; __audioMode = "ok"; __fastTimeout = false; __browserDelay = 30; __browserCancels = 0; __healthy = true; localSpeechHealth = {at: 0, ok: false}; stopTooltipSpeech(); true')
     c.js('refreshLocalSpeech(); true'); pause(0.3)
 
 
@@ -237,6 +246,13 @@ page('Bonjour les amis. Nous lisons un livre.')
 c.js('__localMode = "slow"; speakInLang("Un ancien message.", "fr", "tr"); startTTS(); true')
 c.wait('__localCalls.length === 3 && !isSpeakingGlobal', timeout=8)
 check('starting page cancels previous popup audio and keeps reading queue intact', '__played.length === 2 && __speakCalls.length === 0 && state.speakingSide === null')
+
+page('Bonjour les amis. Nous lisons un livre.')
+c.js('__localMode = "fail"; __browserDelay = 500; startTTS(); true')
+c.wait('__speakCalls.length === 1 && speechSynthesis.speaking', timeout=5)
+c.js('document.getElementById("btn-local-speech").click(); true')
+c.wait('!isSpeakingGlobal', timeout=8)
+check('disabling local voice during browser fallback cancels it before restarting, without queued duplicate', '__browserCancels === 1 && __speakCalls.join("|") === "Bonjour les amis.|Bonjour les amis.|Nous lisons un livre." && !speechSynthesis.speaking && __played.length === 0')
 
 # Suites share browser storage: leave the opt-in server feature disabled for subsequent suites.
 c.js('stopGlobalTTS(); localStorage.removeItem("reader_local_speech"); true')

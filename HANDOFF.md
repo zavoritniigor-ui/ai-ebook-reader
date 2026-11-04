@@ -9,7 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `tests/local_speech_browser.py`; generated shell hashes | working: server speech for pages and selections | 2026-11-04 |
+| Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `tests/local_speech_browser.py`, `tests/tts_first_tap_browser.py`; generated shell hashes | working: server speech for pages and selections | 2026-11-04 |
 | Codex, cloud | `feat/separate-scans-shelf` | `js/book-shelf.js`, `js/scanner.js`, `tests/book_shelf_browser.py`, `tests/scanner_browser.py`, `ARCHITECTURE.md`; shelf CSS and generated hashes | working | current session |
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
@@ -19,7 +19,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 - Branch: `fix/server-page-speech`, isolated worktree `/workspace/wt-server-page-speech`, based on main `febe5bbb76eef6bc9375cd49abc2c9f9a332c4a0`.
 - Owner reports server speech works for phrases but page/selection reading uses the system voice. Root cause confirmed: `speakCurrentSentence` calls only `startUtterance`; local speech also falls back on the first request while health is pending.
 - Implemented shared server playback for page/selection language segments, sentence highlight, pause/stop/rapid-step cancellation, first-request routing, bounded requests and browser fallback without skipped sentences. Switching Local voice off restarts the current sentence via browser. No credentials or infrastructure changes.
-- Local verification passed: 27 local-speech behavior assertions, double-voice, first-tap, recovery, voice-language mismatch, language context, book speech, PDF UX and learning UX; syntax, shell versions and CI coverage. Fixed test opt-in storage cleanup; a transient first-tap close timing failure passed on focused rerun without weakening the test. Next: PR exact-head CI, merge only after green checks, main CI and production verification.
+- Local verification passed: 28 local-speech behavior assertions, double-voice, first-tap, recovery, voice-language mismatch, language context, book speech, PDF UX and learning UX; syntax, shell versions and CI coverage. Fixed test opt-in storage cleanup. Stabilised the existing popup-close assertion by holding the mock utterance until cancellation, eliminating a race against a 108 ms word without weakening cancellation checks. Added a regression for disabling Local voice during an active browser fallback; the existing fallback is now cancelled before restart. Next: PR exact-head CI, merge only after green checks, main CI and production verification.
 
 ## Codex — separate saved scans and fifteen books
 - Branch: `feat/separate-scans-shelf`; owner requested separate scan/book lists and a fifteen-book limit.

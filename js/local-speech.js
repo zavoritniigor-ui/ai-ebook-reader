@@ -151,7 +151,7 @@ Object.assign(I18N, {
         if (!on) {
             if (isSpeakingGlobal && !state.ttsPaused) {
                 state.ttsGen++;
-                stopLocalSpeech();
+                cancelSpeech();
                 // Restart this sentence with the browser voice instead of leaving its queue waiting.
                 speakCurrentSentence();
             } else stopTooltipSpeech();
