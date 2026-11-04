@@ -448,16 +448,6 @@ function speakCurrentSentence() {
             const text = seg.text ? seg.text.trim() : '';
             if (!text) continue; // Loop iteratively instead of recursing on empty segments
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            const { lang, voice } = voiceForLangCode(seg.lang);
-            let chosen = voice;
-            if (state.altVoices) {
-                const pair = pickVoicePair(seg.lang);
-                if (pair) chosen = pair[sentenceIndex % 2];
-            }
-            setUtteranceVoice(utterance, lang, chosen);
-            utterance.rate = 0.95;
-
             let handled = false;
             const onSegmentDone = () => {
                 if (handled) return;
@@ -471,9 +461,24 @@ function speakCurrentSentence() {
                 });
             };
 
-            utterance.onend = onSegmentDone;
-            utterance.onerror = onSegmentDone;
-            startUtterance(utterance, gen);
+            const browserSpeak = () => {
+                if (gen !== state.ttsGen || !isSpeakingGlobal || state.ttsPaused) return;
+                const utterance = new SpeechSynthesisUtterance(text);
+                const { lang, voice } = voiceForLangCode(seg.lang);
+                let chosen = voice;
+                if (state.altVoices) {
+                    const pair = pickVoicePair(seg.lang);
+                    if (pair) chosen = pair[sentenceIndex % 2];
+                }
+                setUtteranceVoice(utterance, lang, chosen);
+                utterance.rate = 0.95;
+                utterance.onend = onSegmentDone;
+                utterance.onerror = onSegmentDone;
+                startUtterance(utterance, gen);
+            };
+            // Pages and selections share the same local/server path as popup speech.
+            // Audio has no word boundaries: retain the existing sentence highlight.
+            if (!speakViaLocal(text, seg.lang, null, 0, onSegmentDone, gen, browserSpeak)) browserSpeak();
             return;
         }
 
@@ -517,6 +522,7 @@ function startTTS() {
     }
     const queue = buildSentenceRanges(range);
     if (!queue.length) return;
+    stopTooltipSpeech(); // cancel any popup audio or pending server request before taking over
     state.ttsQueue = queue; state.ttsIndex = 0; state.ttsPaused = false;
     isSpeakingGlobal = true;
     updateTtsButtons();
