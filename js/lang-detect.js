@@ -139,7 +139,7 @@ function scoreWord(w) {
 // qu'il, well-known лишаються ОДНИМ токеном) і "розділювачі" (пробіли, пунктуація,
 // цифри). Розділювачі зберігаються як є, тому конкатенація токенів дає вихідний
 // текст без жодних змін — це і дозволяє потім озвучувати відрізки без спотворень.
-const LANG_TOKEN_RE = /[A-Za-zÀ-ÖØ-öø-ÿ]+(?:['’ʼ-][A-Za-zÀ-ÖØ-öø-ÿ]+)*|[^A-Za-zÀ-ÖØ-öø-ÿ]+/g;
+const LANG_TOKEN_RE = /[A-Za-zÀ-ÖØ-öø-ÿ]+(?:(?:['’ʼ-]|\u00ad+)[A-Za-zÀ-ÖØ-öø-ÿ]+)*|[^A-Za-zÀ-ÖØ-öø-ÿ]+/g;
 function tokenizeForLang(text) {
     const pieces = text.match(LANG_TOKEN_RE) || [];
     return pieces.map(p => ({ text: p, isWord: /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(p) }));
@@ -147,7 +147,7 @@ function tokenizeForLang(text) {
 function classifyTokens(tokens) {
     return tokens.map(tok => {
         if (!tok.isWord) return Object.assign({ fr: 0, en: 0, tier: 'sep' }, tok);
-        const { fr, en } = scoreWord(tok.text.toLowerCase());
+        const { fr, en } = scoreWord(tok.text.replace(/\u00ad/g, '').toLowerCase());
         let tier = 'neutral';
         if (fr >= STRONG_MIN && fr > en) tier = 'strong-fr';
         else if (en >= STRONG_MIN && en > fr) tier = 'strong-en';
@@ -504,13 +504,16 @@ function pageLang() { return state.sourceLang || (explicitBookLang() && LATIN_LA
 // ПЕРЕКЛАДУ, хоча користувача цікавить мова САМЕ виділеного фрагмента. Повертає
 // 'fr'/'en'/код кирилиці, або null — якщо фрагмент не знайдено чи контексту нема
 // (виклик має тоді сам вирішити запасний варіант, напр. detectLang(fragment)).
-function fragmentLangInContext(fragment, context) {
+function fragmentLangInContext(fragment, context, fragmentStart = null) {
     const clean = (fragment || '').trim();
     if (!clean || !context || context.length < clean.length) return null;
     const special = specialLanguage(clean);
     if (special) return special;
     if (/[а-яёіїєґ]/i.test(clean)) return cyrillicLang(clean) || cyrillicLang(context) || (/[іїєґ]/i.test(clean + ' ' + context) ? 'uk-UA' : 'ru-RU');
-    const idx = context.toLowerCase().indexOf(clean.toLowerCase());
+    // A word must not take its language from a substring inside a different word
+    // («est» inside «test», «car» inside «cartoon»). Prefer the actual tapped occurrence.
+    const hits = findSurfaceOccurrences(context.toLowerCase(), clean.toLowerCase());
+    const idx = Number.isInteger(fragmentStart) && hits.includes(fragmentStart) ? fragmentStart : (hits[0] ?? -1);
     if (idx === -1) return null;
     const prior = (state.ctxPanelLang && LATIN_LANG_LOCALES[state.ctxPanelLang]) ? state.ctxPanelLang : pageLang().slice(0, 2);
     const segs = buildLanguageSegments(context, prior);
@@ -528,10 +531,31 @@ function fragmentLangInContext(fragment, context) {
 // в якому воно стоїть (state.ctxSentence) — тонкий виклик fragmentLangInContext
 // вище. Якщо контексту немає, фрагмент довший за нього, чи позицію не знайдено —
 // фрагмент говорить сам за себе (detectLang).
+function readerFragmentOffset(fragment, context) {
+    // PDF sentence text can use visual order and synthetic spaces; raw DOM offsets
+    // do not identify that string reliably. Keep its existing lexical fallback.
+    if (state.format === 'pdf' || !context || !state.ctxSentenceRange) return null;
+    try {
+        const sentence = state.ctxSentenceRange;
+        const raw = sentence.toString();
+        if (raw.trim().slice(0, 400) !== context) return null;
+        let selected = state.lastSelectedRange;
+        if (!selected && state.lastWordNode?.nodeType && document.contains(state.lastWordNode)) {
+            selected = document.createRange(); selected.selectNodeContents(state.lastWordNode);
+        }
+        if (!selected || !document.contains(selected.startContainer) || !sentence.isPointInRange(selected.startContainer, selected.startOffset)) return null;
+        const prefix = sentence.cloneRange(); prefix.setEnd(selected.startContainer, selected.startOffset);
+        const leadingContext = raw.length - raw.trimStart().length;
+        const selectedText = selected.toString();
+        const leadingSelection = selectedText.length - selectedText.trimStart().length;
+        const start = prefix.toString().length - leadingContext + leadingSelection;
+        return start >= 0 && context.slice(start, start + fragment.length).toLowerCase() === fragment.toLowerCase() ? start : null;
+    } catch (e) { return null; }
+}
 function langForText(text) {
     const clean = text.trim();
     if (!clean) return pageLang();
-    const found = fragmentLangInContext(clean, state.ctxSentence);
+    const found = fragmentLangInContext(clean, state.ctxSentence, readerFragmentOffset(clean, state.ctxSentence));
     if (found && LATIN_LANG_LOCALES[found]) return LATIN_LANG_LOCALES[found];
     if (found) return found; // код кирилиці (uk-UA/ru-RU) чи zh/ko/hi/ga
     return detectLang(clean);

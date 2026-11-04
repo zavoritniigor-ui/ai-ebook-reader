@@ -251,7 +251,7 @@ function speakInLang(text, langCode, side, offset, onEnd) {
         bindUtterance(u, side, text, offset, onEnd);
         startUtterance(u, gen);
     };
-    // Локальний голос (js/local-speech.js) для uk/en/fr, якщо увімкнений; інакше браузерний.
+    // Локальний голос (js/local-speech.js) для en/fr, якщо увімкнений; інакше браузерний.
     if (!speakViaLocal(text, langCode, side, offset, onEnd, gen, browserSpeak)) browserSpeak();
 }
 
