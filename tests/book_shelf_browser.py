@@ -1,7 +1,7 @@
 """«Мої книги»: an opened book (from the library or the device) is kept on the device (IndexedDB), so it is not lost when
 Android unloads the app or it is closed — before, only the reading position survived and a library book had to be found and
 downloaded again. After a reload the start screen lists it; one tap reopens it at the same page. The library window has a
-«My books» source with Read / remove, and old books are evicted (at most 12). No network."""
+«My books» source with Read / remove, and old books are evicted (at most 15). Scanner documents have their own collection. No network."""
 import json, os, time
 from browser_cdp import CDP
 
@@ -72,11 +72,11 @@ check('6d the start screen shows both books with their cover images; the side ta
       "(() => { const imgs = [...document.querySelectorAll('#recent-books .recent-cover img')]; const hidden = id => { const e = document.getElementById(id); return !e || getComputedStyle(e).display === 'none'; }; return imgs.length === 2 && imgs.every(i => i.complete && i.naturalWidth > 0) && hidden('quick-menu-dock') && hidden('ask-tab') && hidden('grammar-tab') && hidden('rules-tab'); })()")
 for k in c.js("listShelfBooks().then(b => JSON.stringify(b.map(x => x.key)))") and json.loads(c.js("listShelfBooks().then(b => JSON.stringify(b.map(x => x.key)))")):
     c.js("removeShelfBook(%s).then(() => 1)" % json.dumps(k))
-c.js("""(async () => { for (let i = 0; i < 14; i++) { await shelveBook(new File(['book ' + i], 'b' + i + '.txt', {lastModified: i + 1}), 'k' + i); await new Promise(r => setTimeout(r, 5)); } return 1; })()""")
-check('7 at most 12 books are kept; the oldest opened go first', "listShelfBooks().then(b => b.length === 12 && b[0].key === 'k13' && !b.some(x => x.key === 'k0' || x.key === 'k1'))")
+c.js("""(async () => { for (let i = 0; i < 17; i++) { await shelveBook(new File(['book ' + i], 'b' + i + '.txt', {lastModified: i + 1}), 'k' + i); await new Promise(r => setTimeout(r, 5)); } return 1; })()""")
+check('7 at most 15 books are kept; the oldest opened go first', "listShelfBooks().then(b => b.length === 15 && b[0].key === 'k16' && !b.some(x => x.key === 'k0' || x.key === 'k1'))")
 c.call('Emulation.setDeviceMetricsOverride', width=412, height=860, deviceScaleFactor=1, mobile=True)
 c.call('Page.reload'); c.wait(READY, timeout=30)
-c.wait("document.querySelectorAll('#recent-books .recent-book').length === 12", timeout=10); time.sleep(0.6)
+c.wait("document.querySelectorAll('#recent-books .recent-book').length === 15", timeout=10); time.sleep(0.6)
 check('8 many books: the list scrolls in its own height like a drum, the buttons above stay on screen, the bottom fades',
       "(() => { const l = document.querySelector('#recent-books .recent-list'), b = document.getElementById('home-scanner').getBoundingClientRect(); return l.scrollHeight > l.clientHeight && l.getBoundingClientRect().bottom <= innerHeight + 1 && b.bottom < innerHeight && l.classList.contains('drum-bottom') && !l.classList.contains('drum-top') && getComputedStyle(l).maskImage.includes('gradient') || JSON.stringify({sh: l.scrollHeight, ch: l.clientHeight, lb: l.getBoundingClientRect().bottom, ih: innerHeight, bb: b.bottom, cls: l.className, st: l.scrollTop}); })()")
 c.js("window.__pops = 0; const realPop = drumPop; drumPop = () => { __pops++; }; 1")
@@ -89,7 +89,7 @@ c.js("window.__pops = 0; renderRecentBooks().then(() => 1)"); time.sleep(0.5)
 check('8d re-drawing the list makes no sound', "__pops === 0 || __pops")
 c.js("openLibrary('shelf'); 1"); time.sleep(1.0)
 check('9 «My books» in the menu: every kept book has its cover; the list scrolls like the drum and its bottom fades',
-      "(() => { const l = document.getElementById('library-list'), cards = [...l.querySelectorAll('.library-card')]; return cards.length === 12 && cards.every(c => c.firstElementChild.classList.contains('recent-cover')) && l.classList.contains('shelf-drum') && l.scrollHeight > l.clientHeight && l.classList.contains('drum-bottom') && getComputedStyle(l).maskImage.includes('gradient') && getComputedStyle(document.getElementById('library-more')).display === 'none' || JSON.stringify({n: cards.length, cls: l.className, sh: l.scrollHeight, ch: l.clientHeight}); })()")
+      "(() => { const l = document.getElementById('library-list'), cards = [...l.querySelectorAll('.library-card')]; return cards.length === 15 && cards.every(c => c.firstElementChild.classList.contains('recent-cover')) && l.classList.contains('shelf-drum') && l.scrollHeight > l.clientHeight && l.classList.contains('drum-bottom') && getComputedStyle(l).maskImage.includes('gradient') && getComputedStyle(document.getElementById('library-more')).display === 'none' || JSON.stringify({n: cards.length, cls: l.className, sh: l.scrollHeight, ch: l.clientHeight}); })()")
 c.js("window.__pops = 0; 1")
 for y in (60, 120, 180):
     c.js("document.getElementById('library-list').scrollTop = %d; 1" % y); time.sleep(0.25)
@@ -101,4 +101,82 @@ check('9c another source: a plain list again (no drum, no fade)', "(l => !l.clas
 c.js("closeLibrary(); 1")
 if os.environ.get('SHELF_SHOT'):
     import base64; open(os.environ['SHELF_SHOT'], 'wb').write(base64.b64decode(c.call('Page.captureScreenshot')['data']))
+
+# Explicit provenance works even with a custom title; lots of scans must not displace any of the 15 books.
+c.js("""(async () => {
+  for (let i = 0; i < 20; i++) await shelveBook(markShelfScan(new File(['scan ' + i], 'Document ' + i + '.txt', {lastModified:i+100})), 's'+i);
+  await renderRecentBooks(); return true;
+})()""")
+check('10 twenty scans do not count against the fifteen-book limit', """(async () => {
+  const books=await listShelfBooks(), scans=await listShelfBooks('scan');
+  return books.length===15 && books[0].key==='k16' && scans.length===20 && scans.every(s=>s.kind==='scan');
+})()""")
+c.call('Page.reload'); c.wait(READY, timeout=30)
+c.wait("document.querySelectorAll('#recent-books .recent-book').length===15", timeout=10)
+check('10b restart shows books alone and an independent scan count',
+      "document.querySelector('#recent-books [data-kind=book]').textContent.includes('(15)') && document.querySelector('#recent-books [data-kind=scan]').textContent.includes('(20)') && [...document.querySelectorAll('#recent-books .recent-book b')].every(b=>!b.textContent.startsWith('Document'))")
+c.js("document.querySelector('#recent-books [data-kind=scan]').click(); 1")
+c.wait("document.querySelectorAll('#recent-books .recent-book').length===20", timeout=5)
+check('10c scans have their own start-screen list with a pressed accessible control',
+      "document.querySelector('#recent-books [data-kind=scan]').getAttribute('aria-pressed')==='true' && [...document.querySelectorAll('#recent-books .recent-book b')].every(b=>b.textContent.startsWith('Document'))")
+check('10c2 changing the UI language translates collection labels without dropping their counts', """(() => {
+  const previous=state.uiLang; state.uiLang='fr'; applyI18n();
+  const label=document.querySelector('#recent-books [data-kind=scan]').textContent;
+  const ok=label.includes('Numérisations') && label.includes('(20)');
+  state.uiLang=previous; applyI18n(); return ok;
+})()""")
+c.call('Emulation.setDeviceMetricsOverride', width=320, height=860, deviceScaleFactor=1, mobile=True)
+check('10c3 collection buttons fit a narrow phone and have usable tap targets', """(() => {
+  const tabs=[...document.querySelectorAll('#recent-books .shelf-tab')];
+  return tabs.length===2 && tabs.every(b=>{const r=b.getBoundingClientRect();return r.height>=44 && r.left>=0 && r.right<=innerWidth;});
+})()""")
+c.call('Emulation.setDeviceMetricsOverride', width=412, height=860, deviceScaleFactor=1, mobile=True)
+if os.environ.get('SHELF_SCANS_SHOT'):
+    import base64; open(os.environ['SHELF_SCANS_SHOT'], 'wb').write(base64.b64decode(c.call('Page.captureScreenshot')['data']))
+c.js("openLibrary('shelf'); 1")
+c.wait("document.querySelectorAll('#library-list .library-card').length===20", timeout=5)
+check('10d scans have their own library list too', "[...document.querySelectorAll('#library-list .library-name')].every(b=>b.textContent.startsWith('Document'))")
+c.js("document.querySelector('#library-status [data-kind=book]').click(); 1")
+c.wait("document.querySelectorAll('#library-list .library-card').length===15", timeout=5)
+check('10e switching back restores all books and the fifteen-book note', "document.querySelector('#library-status .shelf-note').textContent.includes('15') && ![...document.querySelectorAll('#library-list .library-name')].some(b=>b.textContent.startsWith('Document'))")
+c.js("document.querySelector('#library-status [data-kind=scan]').click(); 1")
+c.wait("document.querySelectorAll('#library-list .library-card').length===20", timeout=5)
+c.js("document.querySelector('#library-list .library-save').click(); 1")
+c.wait("document.querySelectorAll('#library-list .library-card').length===19", timeout=5)
+check('10f removing a scan leaves every book in place', "listShelfBooks().then(b=>b.length===15)")
+
+# Exercise byte-budget isolation without allocating hundreds of MB: only quota metadata is enlarged.
+check('11 scan pruning is independent of both book count and book bytes', """(async () => {
+  await shelfTx('readwrite',async store=>{
+    const b=await shelfReq(store.get('k16')); b.size=SHELF_MAX_BYTES; store.put(b);
+    const s=await shelfReq(store.get('s0')); s.size=SHELF_MAX_BYTES; store.put(s);
+  });
+  await shelveBook(markShelfScan(new File(['new scan'],'Receipt.txt',{lastModified:999})), 'new-scan');
+  const b=await listShelfBooks(), s=await listShelfBooks('scan');
+  return b.length===15 && b.some(x=>x.key==='k16') && s.length===19 && s.some(x=>x.key==='new-scan') && !s.some(x=>x.key==='s0');
+})()""")
+c.js("closeLibrary(); 1")
+
+# A pre-upgrade scanner record has no kind. Reading the metadata must not rename the file or lose its bookmark.
+check('12 legacy scanner PDFs are classified without rewriting stored files or keys', """(async () => {
+  const r=await fetch('tests/fixtures/pdf/reportlab-multilingual-illustrated.pdf'); const blob=await r.blob();
+  window.__legacyFile=new File([blob],'scan-2025-01-01-1234.pdf',{type:'application/pdf',lastModified:123});
+  window.__legacyKey=bookKeyFor(__legacyFile);
+  await shelfTx('readwrite', store=>store.put({key:__legacyKey,name:__legacyFile.name,title:'Legacy scan',type:'application/pdf',size:blob.size,lastModified:123,openedAt:1,blob}));
+  const row=(await listShelfBooks('scan')).find(x=>x.key===__legacyKey);
+  const original=await shelfTx('readonly',async(store,done)=>done(await shelfReq(store.get(__legacyKey))));
+  return row?.kind==='scan' && original.kind===undefined && original.blob.size===blob.size && original.lastModified===123
+    && shelfKind({name:'Scanned textbook.pdf'})==='book' && shelfKind({name:'scan-2025-01-01-1234.pdf',kind:'book'})==='book';
+})()""")
+c.js("openShelfBook(__legacyKey); 1")
+c.wait("state.bookKey===__legacyKey && state.format==='pdf' && !!state.pdfDoc", timeout=30)
+c.wait("listShelfBooks('scan').then(s=>s.some(x=>x.key===__legacyKey && x.kind==='scan'))", timeout=10)
+check('12b an old scan reopens with the original key and remains a scan', "state.bookKey===__legacyKey && listShelfBooks().then(b=>b.length===15 && !b.some(x=>x.key===__legacyKey))")
+
+check('13 a scan with a custom PDF name keeps its category after reopening', """(async () => {
+  const f=markShelfScan(new File([__legacyFile],'Meeting notes.pdf',{type:'application/pdf',lastModified:321}));
+  const key=bookKeyFor(f); await shelveBook(f,key); await openShelfBook(key);
+  await shelveBook(new File([f],f.name,{type:f.type,lastModified:f.lastModified}),key);
+  return (await listShelfBooks('scan')).some(s=>s.key===key && s.kind==='scan');
+})()""")
 print('ALL PASS')
