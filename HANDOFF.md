@@ -9,6 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
+| Codex, cloud | `feat/iridescent-bottom-bar` | `index.html` (bottom reading capsule CSS only); generated shell hash | working | 2026-11-03 |
 | Codex, cloud | `fix/word-translation-latency` | `js/translation.js`, `js/ai-client.js`, translation timing regression tests | working | 2026-11-03 |
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
@@ -27,6 +28,13 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 - **Independently verified locally:** `python3 tools/run_tests.py tests/pdf_contrast_browser.py tests/pdf_ux_browser.py tests/learning_ux_browser.py` PASS; all application/worker syntax, app-shell hashes, all 148 browser suites' CI coverage, CDP transport and `git diff --check` PASS. Re-running the shell generator produced no changes. Browser checks include actual edge gradients, DPR 1/2, dark/off modes, sharp/colour pages, unchanged pixels and filter reuse.
 - **Current state:** PR open; exact-final-head GitHub CI, merge and production verification are pending. This commit changes handoff documentation only; no unrelated working-tree changes.
 - **Next:** monitor PR #367's current head with `tools/ci_wait.sh <sha>`; resolve any failures before normal merge. Then verify main CI and production and remove this Claims row. The owner's original blurred book and physical tablet still need a visual check.
+
+## Codex — iridescent bottom reading bar
+- Branch: `feat/iridescent-bottom-bar`; base `89a289d05b4aa770515676b1193b5ad28d5ed6e1`.
+- Owner's request: smoothly changing translucent colours in the bottom button panel.
+- Changed only the reading capsule CSS: blue/mint/violet/pink gradient over the theme-aware glass base, 18-second loop, static gradient for reduced motion. Controls, hit targets and layout stay intact; offline shell identity regenerated.
+- Validation: application/worker syntax, app-shell versions, all 148 suites' CI coverage, `reading_bottom_row_browser.py` and `page_arrows_browser.py` PASS. Browser visual smoke PASS in light/dark/sepia, gradient position changes over time, reduced motion is static. Screenshots and smoke helper are outside the checkout.
+- Delivery: GitHub API currently returns proxy Forbidden; PR creation, CI verification, merge and production delivery remain unverified. Never bypass these gates.
 
 ## Active Agent Worktrees & Tasks
 - **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
