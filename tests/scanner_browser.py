@@ -142,6 +142,8 @@ c.js("(f => { f.value = 'pdf-a4'; f.dispatchEvent(new Event('change')); })(docum
 check('11 «Open in the reader»: the scanner closes and the reader opens the A4 PDF with both pages', "!scanIsOpen() && state.format === 'pdf' && state.totalPages === 2", timeout=30)
 check('11b ... its pages are A4, turned to the page (a wide whole photo goes on a landscape A4)', "!!state.pdfDoc && state.pdfDoc.getPage(1).then(p => Math.abs(Math.min(p.view[2], p.view[3]) - 595.28) < 0.5 && Math.abs(Math.max(p.view[2], p.view[3]) - 841.89) < 0.5 && (p.view[2] > p.view[3]) === (scanState.pages[0].w > scanState.pages[0].h * 1.1) || JSON.stringify([p.view, scanState.pages.map(q => [q.w, q.h, q.corners])]))", timeout=10)
 c.wait("!scanState.busy", timeout=20)   # «Open» stays busy until the reader has opened the A4 PDF
+check('11 shelf: a document opened from the scanner is kept separately from books',
+      "listShelfBooks('scan').then(s => s.some(x => x.key === state.bookKey && x.kind === 'scan'))", timeout=10)
 c.js("openScanner(); (f => { f.value = 'pdf-fit'; f.dispatchEvent(new Event('change')); })(document.getElementById('scan-format')); document.getElementById('scan-open').click(); 1")
 check('11c «PDF · photo size»: pages in the page\'s own proportions', "state.format === 'pdf' && !!state.pdfDoc && !scanState.busy && state.pdfDoc.getPage(1).then(p => Math.abs(p.view[2] / p.view[3] - scanState.pages[0].w / scanState.pages[0].h) < 0.01)", timeout=30)
 c.wait("!scanState.busy", timeout=20)

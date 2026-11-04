@@ -9,16 +9,24 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex, cloud | `fix/word-translation-latency` | `js/translation.js`, `js/ai-client.js`, translation timing regression tests | working | 2026-11-03 |
+| Codex, cloud | `feat/separate-scans-shelf` | `js/book-shelf.js`, `js/scanner.js`, `tests/book_shelf_browser.py`, `tests/scanner_browser.py`, `ARCHITECTURE.md`; shelf CSS and generated hashes | working | current session |
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
+
+## Codex — separate saved scans and fifteen books
+- Branch: `feat/separate-scans-shelf`; owner requested separate scan/book lists and a fifteen-book limit.
+- Implemented: separate collection controls/counts on the home screen and in My books; 15 books, scans outside the book count and byte budget; explicit scan provenance and compatibility with legacy generated filenames without changing file/bookmark keys. Added a stale-render token for source switches and localised scan retention information.
+- Verified locally: shelf persistence/eviction/legacy/custom-name/320px/i18n regressions, scanner, start screen, library, PDF UX and learning UX. Phone screenshot inspected. Syntax, app-shell versions, CI coverage and the final focused rerun all pass.
+- Next: commit/push this feature branch, PR exact-head CI, normal merge, main CI and production verification. Keep branch refs unless deletion is explicitly authorised.
 
 ## Codex — word translation latency (2026-11-03)
 - Branch: `fix/word-translation-latency`; owner's task: decouple translation completion/cache from dictionaries and try OpenAI sooner when Groq stalls.
 - Implemented: optional dictionary additions run independently with current-lookup guards; AI answers cache immediately. Groq translation deadline is 3 seconds when a backup exists; OpenAI retains its normal timeout.
 - Verified locally: routing/timing regressions (including persistent cache before dictionary completion and real timeout/abort), single-word translation, persistent cache, popup timer, robust translation, rate limits, PDF UX and learning UX. Provider responses mocked, no paid calls. Syntax, shell version and CI coverage gates passed.
-- Next: final pre-push gate, PR exact-head CI, normal merge, main CI and production verification. No direct main push or check bypass.
+- Delivery: PR #368 merged after exact-head CI success; merge `89a289d05b4aa770515676b1193b5ad28d5ed6e1`. Cloudflare production check succeeded; live HTML, worker and changed JS match the merge. Live Chromium smoke confirms the 3000 ms Groq deadline and lookup/cache completion with a hanging dictionary (provider mocked, all POSTs blocked). Main CI run 41729521494 completed successfully: https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/41729521494.
+- Follow-up inspection requested by owner: old UI is possible after the 3500 ms navigation timeout (cached shell) or resuming an existing page; the navigation function reproduced old/new/offline results. Existing exit/update/start-URL browser suites pass. No update-lifecycle code changed.
+- Complete: PR and main CI green; exact production files and live Chromium lookup verified. Automatic approval review rejected deleting the remote feature ref without explicit permission. The cleanup command did not execute; local and remote feature branches are retained. The completed handoff is preserved in the subsequent shelf task. No direct main push or check bypass.
 
 ## Codex — blurred scan sharpness (2026-11-02)
 - **Owner's task:** improve blurry letters in scanned books. **Owner's delivery requirement: merge ONLY after successful GitHub CI on the exact final PR head.** Opening a PR does not waive checks. Do not push directly to main, bypass checks, or claim delivery based on local tests alone.

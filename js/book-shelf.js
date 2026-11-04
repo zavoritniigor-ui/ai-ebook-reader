@@ -1,8 +1,8 @@
 /* «Мої книги»: кожна відкрита книга (з бібліотеки чи з пристрою) зберігається на пристрої в IndexedDB, щоб не губитися,
  * коли Android вивантажує застосунок із фону чи його закривають: раніше зберігалась лише позиція читання, а сам файл жив
  * у пам'яті сторінки — книгу з бібліотеки доводилося шукати й завантажувати знову. Ключ запису = state.bookKey (назва +
- * розмір + lastModified), тож відкрита звідси книга продовжується з тієї самої сторінки. Старі книги витісняються:
- * не більше SHELF_MAX_BOOKS і SHELF_MAX_BYTES разом, найдавніше відкриті — першими. */
+ * розмір + lastModified), тож відкрита звідси книга продовжується з тієї самої сторінки. Книги та документи зі сканера
+ * мають окремі списки й обсяги зберігання; ліміт SHELF_MAX_BOOKS стосується лише книг. */
 Object.assign(I18N, {
     myBooksLabel: { uk: 'Мої книги', en: 'My books', fr: 'Mes livres', ru: 'Мои книги', es: 'Mis libros', zh: '我的书', ko: '내 책', hi: 'मेरी किताबें', ga: 'Mo leabhair' },
     tMyBooks: { uk: 'Книги, які ви вже відкривали (збережені на цьому пристрої)', en: 'Books you have opened before (kept on this device)', fr: 'Les livres déjà ouverts (gardés sur cet appareil)',
@@ -15,11 +15,24 @@ Object.assign(I18N, {
     shelfNote: { uk: 'Книги збережено на цьому пристрої (найбільше {n}); найдавніші видаляються самі.', en: 'Books are kept on this device (up to {n}); the oldest are removed automatically.',
                  fr: 'Les livres sont conservés sur cet appareil (jusqu’à {n}) ; les plus anciens sont supprimés automatiquement.', ru: 'Книги хранятся на этом устройстве (до {n}); самые старые удаляются сами.',
                  es: 'Los libros se guardan en este dispositivo (hasta {n}); los más antiguos se eliminan solos.' },
+    shelfCollections: { uk: 'Збережене на пристрої', en: 'Saved on this device', fr: 'Sur cet appareil', ru: 'Сохранено на устройстве', es: 'Guardado en este dispositivo', zh: '本机保存', ko: '기기에 저장됨', hi: 'डिवाइस पर सहेजा गया', ga: 'Sábháilte ar an ngléas' },
+    shelfScans: { uk: 'Скани', en: 'Scans', fr: 'Numérisations', ru: 'Сканы', es: 'Escaneos', zh: '扫描件', ko: '스캔', hi: 'स्कैन', ga: 'Scananna' },
+    shelfScansEmpty: { uk: 'Тут з’являться документи, які ви відкрили зі сканера.', en: 'Documents you open from the scanner will appear here.', fr: 'Les documents ouverts depuis le scanner apparaîtront ici.', ru: 'Здесь появятся документы, открытые из сканера.', es: 'Aquí aparecerán los documentos que abras desde el escáner.', zh: '从扫描仪打开的文档将显示在这里。', ko: '스캐너에서 연 문서가 여기에 표시됩니다.', hi: 'स्कैनर से खोले गए दस्तावेज़ यहाँ दिखेंगे।', ga: 'Beidh cáipéisí a osclaíonn tú ón scanóir anseo.' },
+    shelfScansNote: { uk: 'Скани збережено окремо (до 600 МБ); найдавніші видаляються автоматично.', en: 'Scans are kept separately (up to 600 MB); the oldest are removed automatically.', fr: 'Les numérisations sont conservées séparément (600 Mo maximum) ; les plus anciennes sont supprimées automatiquement.', ru: 'Сканы хранятся отдельно (до 600 МБ); самые старые удаляются автоматически.', es: 'Los escaneos se guardan por separado (hasta 600 MB); los más antiguos se eliminan automáticamente.', zh: '扫描件单独保存（最多600 MB），最旧的会自动删除。', ko: '스캔은 별도로 최대 600MB까지 저장되며 오래된 항목부터 자동 삭제됩니다.', hi: 'स्कैन अलग रखे जाते हैं (600 MB तक); सबसे पुराने अपने आप हटा दिए जाते हैं।', ga: 'Coinnítear scananna ar leith (suas le 600 MB); baintear na cinn is sine go huathoibríoch.' },
     shelfAll: { uk: 'Усі', en: 'All', fr: 'Tous', ru: 'Все', es: 'Todos' },
     shelfRemove: { uk: 'Видалити з пристрою', en: 'Remove from device', fr: 'Supprimer de l’appareil', ru: 'Удалить с устройства', es: 'Quitar del dispositivo' },
     shelfMissing: { uk: 'Цієї книги вже немає на пристрої.', en: 'This book is no longer on the device.', fr: 'Ce livre n’est plus sur l’appareil.', ru: 'Этой книги уже нет на устройстве.', es: 'Este libro ya no está en el dispositivo.' }
 });
-const SHELF_DB = 'reader-books', SHELF_STORE = 'books', SHELF_MAX_BOOKS = 12, SHELF_MAX_BYTES = 600 * 1024 * 1024, SHELF_MAX_BOOK_BYTES = 300 * 1024 * 1024;
+const SHELF_DB = 'reader-books', SHELF_STORE = 'books', SHELF_MAX_BOOKS = 15, SHELF_MAX_BYTES = 600 * 1024 * 1024, SHELF_MAX_BOOK_BYTES = 300 * 1024 * 1024;
+// Keep the existing DB and keys: bookmarks and files survive without copying or renaming them.
+const shelfScanFiles = new WeakSet();
+function markShelfScan(file) { shelfScanFiles.add(file); return file; }
+function shelfKind(record) {
+    if (record.kind === 'book' || record.kind === 'scan') return record.kind;
+    // Older scanner exports had no provenance field; only its exact generated PDF name is recognised.
+    return /^scan-\d{4}-\d{2}-\d{2}-\d{4}\.pdf$/i.test(record.name || '') ? 'scan' : 'book';
+}
+let shelfView = 'book';
 let shelfDbPromise = null;
 function shelfDb() {
     if (!shelfDbPromise) shelfDbPromise = new Promise((resolve, reject) => {
@@ -42,9 +55,10 @@ function shelfTx(mode, run) {
 }
 const shelfReq = req => new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
 // Список без самих файлів (лише опис), найсвіжіші першими.
-async function listShelfBooks() {
+async function listShelfBooks(kind = 'book') {
     const all = await shelfTx('readonly', async (store, done) => done(await shelfReq(store.getAll())));
-    return (all || []).map(({ blob, ...meta }) => meta).sort((a, b) => b.openedAt - a.openedAt);
+    return (all || []).map(({ blob, ...meta }) => ({ ...meta, kind: shelfKind(meta) }))
+        .filter(b => !kind || b.kind === kind).sort((a, b) => b.openedAt - a.openedAt);
 }
 function shelfTitle(name) { return String(name || '').replace(/\.(epub|pdf|fb2(\.zip)?|txt|md|markdown|html?|docx|rtf)$/i, ''); }
 // Обкладинка — маленький JPEG у тому самому записі: з EPUB (зображення з маніфесту, позначене як обкладинка) або перша
@@ -99,14 +113,15 @@ async function shelveBook(file, key = state.bookKey) {
     try {
         if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
         const old = await shelfTx('readonly', async (store, done) => done(await shelfReq(store.get(key))));
+        const kind = shelfScanFiles.has(file) ? 'scan' : shelfKind(old || file);
         const cover = old && old.cover ? old.cover : (key === state.bookKey ? await makeShelfCover() : null);
         await shelfTx('readwrite', store => {
-            store.put({ key, name: file.name, type: file.type || '', size: file.size, lastModified: file.lastModified || 0,
+            store.put({ key, kind, name: file.name, type: file.type || '', size: file.size, lastModified: file.lastModified || 0,
                 title: shelfTitle(file.name), openedAt: Date.now(), cover: cover || null, blob: old && old.blob && old.size === file.size ? old.blob : file });
         });
-        const books = await listShelfBooks();
+        const books = await listShelfBooks(kind);
         let total = 0;
-        const evict = books.filter((b, i) => { total += b.size; return i >= SHELF_MAX_BOOKS || (i > 0 && total > SHELF_MAX_BYTES); });
+        const evict = books.filter((b, i) => { total += b.size; return (kind === 'book' && i >= SHELF_MAX_BOOKS) || (i > 0 && total > SHELF_MAX_BYTES); });
         if (evict.length) await shelfTx('readwrite', store => { for (const b of evict) store.delete(b.key); });
         renderRecentBooks();
     } catch (e) { /* немає місця чи IndexedDB заборонено — книга просто не збережеться, читання не страждає */ }
@@ -128,7 +143,8 @@ async function openShelfBook(key) {
     const rec = await shelfTx('readonly', async (store, done) => done(await shelfReq(store.get(key))));
     if (!rec || !rec.blob) { showToast(t('shelfMissing')); renderRecentBooks(); return false; }
     // Ті самі name/size/lastModified → той самий state.bookKey → читання продовжується з тієї ж сторінки.
-    await openBookFile(new File([rec.blob], rec.name, { type: rec.type, lastModified: rec.lastModified }));
+    const file = new File([rec.blob], rec.name, { type: rec.type, lastModified: rec.lastModified });
+    await openBookFile(shelfKind(rec) === 'scan' ? markShelfScan(file) : file);
     return true;
 }
 function shelfCardMeta(b) {
@@ -154,17 +170,39 @@ function shelfCoverEl(b) {
     }
     return box;
 }
-// Стартовий екран (книгу ще не відкрито): останні книги з обкладинками, одним натисканням.
+function shelfTabs(all) {
+    const tabs = document.createElement('div'); tabs.className = 'shelf-tabs';
+    tabs.setAttribute('role', 'group'); tabs.dataset.i18nAria = 'shelfCollections'; tabs.setAttribute('aria-label', t('shelfCollections'));
+    for (const [kind, label] of [['book', 'myBooksLabel'], ['scan', 'shelfScans']]) {
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'shelf-tab'; btn.dataset.kind = kind;
+        const text = document.createElement('span'); text.dataset.i18n = label; text.textContent = t(label);
+        btn.append(text, ' (' + all.filter(b => b.kind === kind).length + ')');
+        btn.setAttribute('aria-pressed', String(shelfView === kind));
+        btn.addEventListener('click', () => {
+            shelfView = kind; renderRecentBooks();
+            if (typeof libraryState !== 'undefined' && libraryState.source === 'shelf') runShelfList();
+        });
+        tabs.append(btn);
+    }
+    return tabs;
+}
+// Стартовий екран: книги й скани в окремих списках, з однаковим доступом до читання.
 async function renderRecentBooks() {
     const host = document.getElementById('recent-books');
     if (!host) return;
-    let books = [];
-    try { books = await listShelfBooks(); } catch (e) {}
+    let all = [];
+    try { all = await listShelfBooks(null); } catch (e) {}
+    const books = all.filter(b => b.kind === shelfView);
     host.replaceChildren();
-    for (const [key, url] of shelfCoverUrls) if (!books.some(b => b.key === key && b.cover)) { URL.revokeObjectURL(url); shelfCoverUrls.delete(key); }
-    if (!books.length) return;
+    for (const [key, url] of shelfCoverUrls) if (!all.some(b => b.key === key && b.cover)) { URL.revokeObjectURL(url); shelfCoverUrls.delete(key); }
+    if (!all.length) return;
+    host.append(shelfTabs(all));
+    if (!books.length) {
+        const empty = document.createElement('p'); empty.className = 'recent-empty'; empty.dataset.i18n = shelfView === 'scan' ? 'shelfScansEmpty' : 'shelfEmpty'; empty.textContent = t(empty.dataset.i18n);
+        host.append(empty); return;
+    }
     const head = document.createElement('div'); head.className = 'recent-head';
-    const h = document.createElement('h3'); h.dataset.i18n = 'shelfRecent'; h.textContent = t('shelfRecent');
+    const h = document.createElement('h3'); h.dataset.i18n = shelfView === 'scan' ? 'shelfScans' : 'shelfRecent'; h.textContent = t(h.dataset.i18n);
     head.append(h);
     {
         const all = document.createElement('button'); all.type = 'button'; all.className = 'recent-all'; all.id = 'home-my-books';
@@ -237,13 +275,19 @@ function drumFrame(list) {
 }
 addEventListener('resize', () => { const l = document.querySelector('#recent-books .recent-list'); if (l) drumFrame(l); });
 // Джерело «Мої книги» у вікні бібліотеки (js/library.js викликає, коли вибрано це джерело).
+let shelfListToken = 0;
 async function runShelfList() {
+    const token = ++shelfListToken;
     const status = libraryEl('library-status'), list = libraryEl('library-list');
     list.replaceChildren();
-    let books = [];
-    try { books = await listShelfBooks(); } catch (e) {}
-    if (libraryState.source !== 'shelf') return;
-    status.textContent = books.length ? t('shelfNote').replace('{n}', SHELF_MAX_BOOKS) : t('shelfEmpty');
+    let all = [];
+    try { all = await listShelfBooks(null); } catch (e) {}
+    if (token !== shelfListToken || libraryState.source !== 'shelf') return;
+    const books = all.filter(b => b.kind === shelfView);
+    const note = document.createElement('p'); note.className = 'shelf-note';
+    note.textContent = shelfView === 'scan' ? t(books.length ? 'shelfScansNote' : 'shelfScansEmpty')
+        : books.length ? t('shelfNote').replace('{n}', SHELF_MAX_BOOKS) : t('shelfEmpty');
+    status.replaceChildren(shelfTabs(all), note);
     for (const b of books) {
         const card = document.createElement('div'); card.className = 'library-card';
         const info = document.createElement('div'); info.className = 'library-info';
