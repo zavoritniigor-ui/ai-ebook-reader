@@ -254,6 +254,18 @@ c.js('document.getElementById("btn-local-speech").click(); true')
 c.wait('!isSpeakingGlobal', timeout=8)
 check('disabling local voice during browser fallback cancels it before restarting, without queued duplicate', '__browserCancels === 1 && __speakCalls.join("|") === "Bonjour les amis.|Bonjour les amis.|Nous lisons un livre." && !speechSynthesis.speaking && __played.length === 0')
 
+# Cyrillic text must not inherit the FR/EN segmenter's English fallback.
+c.js('localStorage.setItem("reader_local_speech", "1"); true')
+page('Перевіряємо серверне читання українського речення.')
+c.js('startTTS(); true')
+c.wait('__localCalls.length === 1 && !isSpeakingGlobal', timeout=8)
+check('Ukrainian page uses Ukrainian server voice even with French book prior', '__localCalls[0].lang === "uk" && __played.length === 1 && __speakCalls.length === 0')
+
+page('Skip this sentence. Перевіряємо виділене українське речення.')
+c.js('(()=>{ const textNode = els.pages.firstChild.firstChild; const selected = document.createRange(); selected.setStart(textNode,20); selected.setEnd(textNode,textNode.length); window.getSelection().addRange(selected); startTTS(); return true; })()')
+c.wait('__localCalls.length === 1 && !isSpeakingGlobal', timeout=8)
+check('selected Ukrainian text keeps its language and exact selected range', '__localCalls[0].lang === "uk" && __localCalls[0].text === "Перевіряємо виділене українське речення." && __speakCalls.length === 0')
+
 # Suites share browser storage: leave the opt-in server feature disabled for subsequent suites.
 c.js('stopGlobalTTS(); localStorage.removeItem("reader_local_speech"); true')
 
