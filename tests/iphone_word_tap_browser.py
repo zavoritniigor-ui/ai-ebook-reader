@@ -1,9 +1,11 @@
 """A swipe can end without a compatibility click (Safari/iPhone and other touch
 browsers). Its suppression must not swallow the next deliberate word tap.
 Exercise real touch gestures, popup switching and same-gesture ghost clicks;
-only translation providers and speech are mocked.
+a real EPUB contains inline italic/bold words. Only providers and speech are mocked.
+The first scenario deliberately withholds compatibility clicks, reproducing
+the browser event missing from the recorded failure deterministically.
 """
-import json,os,time
+import base64,io,json,os,time,zipfile
 from pathlib import Path
 from browser_cdp import CDP
 c=CDP();c.call('Page.enable');c.call('Runtime.enable');c.call('Network.enable')
@@ -14,13 +16,21 @@ c.call('Page.addScriptToEvaluateOnNewDocument',source="window.__tapErrors=[];add
 c.call('Page.navigate',url=os.environ.get('READER_TEST_URL','http://127.0.0.1:8765/index.html'))
 c.wait("document.readyState==='complete'&&!document.body.inert&&typeof openBookFile==='function'",timeout=35)
 TEXT='\n\n'.join('Curious travelers enjoy beautiful stories beside the river. '*16 for _ in range(36))
-c.js("localStorage.setItem('reader_onboarding_done','1');window.__bookReady=0;openBookFile(new File(["+json.dumps(TEXT)+"],'word-tap.txt',{type:'text/plain',lastModified:37})).then(()=>__bookReady=1);true")
+out=io.BytesIO()
+with zipfile.ZipFile(out,'w') as z:
+ z.writestr('mimetype','application/epub+zip')
+ z.writestr('META-INF/container.xml','<container><rootfiles><rootfile full-path="book.opf"/></rootfiles></container>')
+ z.writestr('book.opf','<package><metadata><dc:language xmlns:dc="http://purl.org/dc/elements/1.1/">en</dc:language></metadata><manifest><item id="a" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="a"/></spine></package>')
+ z.writestr('chapter.xhtml','<html xmlns="http://www.w3.org/1999/xhtml"><body>'+''.join('<p>'+p.replace('travelers','<em>travelers</em>').replace('beautiful','<strong>beautiful</strong>')+'</p>' for p in TEXT.split('\n\n'))+'</body></html>')
+c.js("localStorage.setItem('reader_onboarding_done','1');window.__bookReady=0;openBookFile(new File([Uint8Array.from(atob("+json.dumps(base64.b64encode(out.getvalue()).decode())+"),c=>c.charCodeAt(0))],'word-tap.epub',{lastModified:91})).then(()=>__bookReady=1);true")
 c.wait('__bookReady===1',timeout=30)
+assert c.js("state.format==='epub'&&els.pages.querySelector('em')!==null"),'real EPUB import failed'
 c.js("""state.translateMode=true;state.targetLang='uk';document.body.classList.add('immersive-mode','mode-translate-on');
 speakText=()=>{};speakInLang=()=>{};aiAvailable=()=>true;appendDictionaries=()=>{};window.__providerHold=true;window.__providerRelease=null;callAI=()=>__providerHold?new Promise(resolve=>{__providerRelease=()=>{__providerHold=false;resolve(JSON.stringify({direct:'переклад',context:null}));};}):Promise.resolve(JSON.stringify({direct:'переклад',context:null}));machineTranslate=async()=>({plain:'переклад',html:'переклад',extras:''});
-window.__wordCalls=[];const originalWordHandler=handleWordOrSelection;handleWordOrSelection=(...args)=>{__wordDispatchAt=performance.now();__wordCalls.push(args[0]);return originalWordHandler(...args);};
-window.__popupShownAt=0;window.__tapStartedAt=0;window.__lastClickAt=0;window.__wordDispatchAt=0;new MutationObserver(()=>{if(!__popupShownAt&&els.tooltip.style.display==='flex')__popupShownAt=performance.now();}).observe(els.tooltip,{attributes:true,attributeFilter:['style']});
-window.__tapTrace=[];addEventListener('click',()=>__lastClickAt=performance.now(),true);addEventListener('pointerdown',()=>__tapStartedAt=performance.now(),true);for(const kind of ['pointerdown','pointerup','touchend','click'])addEventListener(kind,e=>__tapTrace.push({type:kind,pointer:e.pointerType,suppress:state.suppressNextClick,target:e.target.id,book:els.pages.contains(e.target),prevented:e.defaultPrevented}),true);true""")
+window.__blockCompatClick=true;addEventListener('click',e=>{if(__blockCompatClick&&els.pages.contains(e.target))e.stopImmediatePropagation();},true);
+window.__wordCalls=[];const originalWordHandler=handleWordOrSelection;handleWordOrSelection=(...args)=>{__wordCalls.push(args[0]);return originalWordHandler(...args);};
+window.__popupShownAt=0;window.__tapStartedAt=0;new MutationObserver(()=>{if(!__popupShownAt&&els.tooltip.style.display==='flex')__popupShownAt=performance.now();}).observe(els.tooltip,{attributes:true,attributeFilter:['style']});
+window.__tapTrace=[];addEventListener('pointerdown',()=>__tapStartedAt=performance.now(),true);for(const kind of ['pointerdown','pointerup','touchend','click'])addEventListener(kind,e=>__tapTrace.push({type:kind,pointer:e.pointerType,suppress:state.suppressNextClick,target:e.target.id,book:els.pages.contains(e.target),prevented:e.defaultPrevented}),true);true""")
 
 def point(word):
  p=c.js("""((word)=>{const b=els.container.getBoundingClientRect(),it=document.createTreeWalker(els.pages,NodeFilter.SHOW_TEXT);let n;
@@ -54,8 +64,8 @@ def swipe():
 
 tap('river')
 check('popup appears while the translation provider is still pending',"els.tooltip.style.display==='flex'&&els.ttOriginal.textContent==='river'&&typeof __providerRelease==='function'&&els.ttTranslation.textContent.includes(t('translating'))",timeout=5)
-latency=c.js('__popupShownAt-__tapStartedAt');Path('/tmp/iphone-popup-timing.json').write_text(json.dumps(c.js('({browserTapToPopupMs:__popupShownAt-__tapStartedAt,pointerToClickMs:__lastClickAt-__tapStartedAt,clickToDispatchMs:__wordDispatchAt-__lastClickAt,dispatchToPopupMs:__popupShownAt-__wordDispatchAt,providerHeld:true})')));print('Tap-to-popup ms (provider held):',round(latency,1),flush=True)
-c.js('__providerRelease();true')
+latency=c.js('__popupShownAt-__tapStartedAt');Path('/tmp/iphone-popup-timing.json').write_text(json.dumps({'browserTapToPopupMs':latency,'providerHeld':True}));print('Tap-to-popup ms (provider held):',round(latency,1),flush=True)
+c.js('__blockCompatClick=false;__providerRelease();true')
 check('first word tap receives its translation',"els.tooltip.style.display==='flex'&&els.ttOriginal.textContent==='river'&&els.ttTranslation.textContent.includes('переклад')",timeout=5)
 swipe()
 tap('beautiful')
@@ -68,5 +78,13 @@ c.js("(()=>{const e=document.elementFromPoint("+str(p['x'])+","+str(p['y'])+");e
 check('a compatibility click without a new gesture still opens no popup',"els.tooltip.style.display!=='flex'&&__wordCalls.length===3")
 tap('river')
 check('a real tap following the swallowed ghost click works once',"els.tooltip.style.display==='flex'&&els.ttOriginal.textContent==='river'&&__wordCalls.length===4",timeout=4)
+c.js('new Promise(resolve=>setTimeout(resolve,450))')
+check('no delayed compatibility click duplicates the word lookup','__wordCalls.length===4')
+c.js("els.ttCloseBtn.click();window.__heldPage=state.pageInChapter;true")
+p=point('beautiful')
+c.call('Input.dispatchTouchEvent',type='touchStart',touchPoints=[dict(x=p['x'],y=p['y'],id=1)])
+c.wait('state.touchSelecting&&!!dragSel',timeout=3)
+c.call('Input.dispatchTouchEvent',type='touchEnd',touchPoints=[])
+check('holding an EPUB word still commits the existing selection once',"state.touchJustCommitted>0&&els.tooltip.style.display==='flex'&&els.ttOriginal.textContent==='beautiful'&&__wordCalls.length===5&&state.pageInChapter===__heldPage",timeout=4)
 check('no application error','__tapErrors.length===0')
 print('ALL IPHONE WORD TAP CHECKS PASSED',flush=True)
