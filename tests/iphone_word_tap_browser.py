@@ -30,7 +30,7 @@ speakText=()=>{};speakInLang=()=>{};aiAvailable=()=>true;appendDictionaries=()=>
 window.__blockCompatClick=true;addEventListener('click',e=>{if(__blockCompatClick&&els.pages.contains(e.target))e.stopImmediatePropagation();},true);
 window.__wordCalls=[];const originalWordHandler=handleWordOrSelection;handleWordOrSelection=(...args)=>{__wordCalls.push(args[0]);return originalWordHandler(...args);};
 window.__popupShownAt=0;window.__tapStartedAt=0;new MutationObserver(()=>{if(!__popupShownAt&&els.tooltip.style.display==='flex')__popupShownAt=performance.now();}).observe(els.tooltip,{attributes:true,attributeFilter:['style']});
-window.__tapTrace=[];addEventListener('pointerdown',()=>__tapStartedAt=performance.now(),true);for(const kind of ['pointerdown','pointerup','touchend','click'])addEventListener(kind,e=>__tapTrace.push({type:kind,pointer:e.pointerType,suppress:state.suppressNextClick,target:e.target.id,book:els.pages.contains(e.target),prevented:e.defaultPrevented}),true);true""")
+window.__tapTrace=[];addEventListener('pointerdown',()=>__tapStartedAt=performance.now(),true);for(const kind of ['pointerdown','pointerup','touchend','click'])addEventListener(kind,e=>__tapTrace.push({type:kind,pointer:e.pointerType,suppress:state.suppressNextClick,target:e.target.id,tag:e.target.tagName,book:els.pages.contains(e.target),prevented:e.defaultPrevented}),true);true""")
 
 def point(word):
  p=c.js("""((word)=>{const b=els.container.getBoundingClientRect(),it=document.createTreeWalker(els.pages,NodeFilter.SHOW_TEXT);let n;
@@ -40,7 +40,7 @@ def point(word):
  return p
 
 def tap(word):
- p=point(word);c.touch_tap(p['x'],p['y']);return p
+ p=point(word);c.js('window.__tapPoint='+json.dumps(p)+';true');c.touch_tap(p['x'],p['y']);return p
 
 def check(name,expression,timeout=0):
  until=time.monotonic()+timeout
@@ -48,7 +48,7 @@ def check(name,expression,timeout=0):
   value=c.js(expression)
   if value is True:break
   if time.monotonic()>=until:
-   raise AssertionError((name,value,c.js('({popup:els.tooltip.style.display,word:els.ttOriginal.textContent,calls:__wordCalls,suppress:state.suppressNextClick,page:state.pageInChapter,events:__tapTrace,errors:__tapErrors})')))
+   raise AssertionError((name,value,c.js('({popup:els.tooltip.style.display,word:els.ttOriginal.textContent,calls:__wordCalls,suppress:state.suppressNextClick,page:state.pageInChapter,format:state.format,translate:state.translateMode,ink:state.inkMode,region:document.body.classList.contains("region-mode"),candidate:reflowTouchTap,committed:state.touchJustCommitted,point:window.__tapPoint,hit:document.elementFromPoint(__tapPoint.x,__tapPoint.y)?.id,scale:visualViewport.scale,events:__tapTrace,errors:__tapErrors})')))
   time.sleep(.05)
  print('PASS',name,flush=True)
 
