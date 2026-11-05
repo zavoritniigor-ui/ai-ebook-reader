@@ -10,7 +10,8 @@ from browser_cdp import CDP
 c=CDP();c.call('Page.enable');c.call('Runtime.enable');c.call('Network.enable')
 c.call('Network.setBypassServiceWorker',bypass=True);c.call('Network.setCacheDisabled',cacheDisabled=True)
 c.call('Page.addScriptToEvaluateOnNewDocument',source="""
-window.__cropErrors=[];window.__translations=0;
+window.__cropErrors=[];window.__translations=0;window.__regionEvents=[];
+for(const type of ['pointerdown','pointerup'])addEventListener(type,e=>__regionEvents.push({type,target:e.target.id,x:e.clientX,y:e.clientY,hidden:document.hidden}),true);
 addEventListener('error',e=>__cropErrors.push(e.message));
 addEventListener('unhandledrejection',e=>__cropErrors.push(String(e.reason)));
 """)
@@ -45,6 +46,7 @@ for mobile,theme,dpr in [(False,'sepia',1),(True,'dark',2)]:
  time.sleep(.7)
  c.js("window.__pageBefore=state.pageInChapter;selectRangeAndTranslate=()=>{__translations++;return true;};els.tooltip.style.display='flex';document.getElementById('btn-region').click();true")
  c.wait("document.body.classList.contains('region-mode')&&typeof window.html2canvas==='function'",timeout=20)
+ c.js("window.__captureOriginal=window.html2canvas;window.__regionRenderError='';window.html2canvas=(...args)=>__captureOriginal(...args).catch(e=>{__regionRenderError=String(e);throw e;});true")
  check('capture hides obsolete panel tabs, menu and wheel',"['#menu-handle','#quick-menu-dock','.panel-tab','#page-arrows'].every(s=>[...document.querySelectorAll(s)].every(e=>getComputedStyle(e).visibility==='hidden'))")
  check('old tooltip and native selection are cleared',"els.tooltip.style.display==='none'&&!getSelection().toString()")
  # An image in the visible book area, without changing pagination.
@@ -60,7 +62,11 @@ for mobile,theme,dpr in [(False,'sepia',1),(True,'dark',2)]:
  before=c.call('Page.captureScreenshot',format='png',clip=dict(x=rect['left'],y=rect['top'],width=rect['width'],height=rect['height'],scale=1))['data']
  c.js("regionOverlay.style.visibility='';true")
  drag(rect,mobile=mobile,reverse=mobile)
- c.wait("cropDialog.open&&document.getElementById('crop-preview').naturalWidth>0",timeout=25)
+ try:
+  c.wait("cropDialog.open&&document.getElementById('crop-preview').naturalWidth>0",timeout=25)
+ except Exception:
+  print('REGION CAPTURE DIAGNOSTICS',c.js("({events:__regionEvents,errors:__cropErrors,hidden:document.hidden,format:state.format,book:state.bookKey,page:state.pageInChapter,before:__pageBefore,chapter:state.currentIndex,region:document.body.classList.contains('region-mode'),start:regionStart,capturing:regionCapturing,seq:regionCaptureSeq,pdfPointers:pdfPointers.size,toast:document.getElementById('reader-toast')?.textContent,renderer:typeof window.html2canvas,renderError:window.__regionRenderError,clones:document.querySelectorAll('iframe.html2canvas-container').length})"),flush=True)
+  raise
  check('framing never requests translation or changes reading page',"__translations===0&&els.tooltip.style.display!=='flex'&&!getSelection().toString()&&state.pageInChapter===__pageBefore")
  result=c.js("cropData.split(',')[1]")
  # Compare in browser canvas: no image-processing package is needed in CI.
