@@ -1,5 +1,5 @@
-/* local-speech.js — озвучення окремих фраз через ЛОКАЛЬНИЙ мовний сервер (Kokoro для
- * англійської/французької, Piper для української), сервер на 127.0.0.1:8880.
+/* local-speech.js — озвучення через ЛОКАЛЬНИЙ мовний сервер (Kokoro для
+ * англійської/французької), сервер на 127.0.0.1:8880. Українська — системним голосом.
  *
  * Вимкнено за замовчуванням. Вмикається прапорцем localStorage `reader_local_speech`
  * = '1' (його ставить власник на своєму ПК). Без сервера або без прапорця кожна фраза
@@ -16,7 +16,7 @@
 // На ПК власника сторінка йде прямо до сервера; з телефона/планшета (і з самого сайту) — через Pages Function
 // /api/speech, яка передає запит на сервер через тунель (functions/api/speech/[[path]].js).
 const LOCAL_SPEECH_URL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://127.0.0.1:8880' : '/api/speech';
-const LOCAL_SPEECH_LANGS = new Set(['en', 'fr', 'uk']);
+const LOCAL_SPEECH_LANGS = new Set(['en', 'fr']);
 const LOCAL_SPEECH_HEALTH_TTL_MS = 30000;
 const LOCAL_SPEECH_HEALTH_TIMEOUT_MS = 1500;
 const LOCAL_SPEECH_REQUEST_TIMEOUT_MS = 20000;
@@ -70,7 +70,9 @@ function stopLocalSpeech() {
 // якщо за час запиту фразу скасували (новий тап, stopTooltipSpeech), аудіо не програється.
 function speakViaLocal(text, langCode, side, offset, onEnd, gen, fallback) {
     if (!localSpeechReady(langCode)) return false;
-    const spoken = offset ? text.slice(offset) : text;
+    // Soft hyphens are layout hints, not pronunciation or word boundaries.
+    // Keep source DOM/selection offsets intact and remove them only from server input.
+    const spoken = (offset ? text.slice(offset) : text).replace(/\u00ad/g, '');
     const controller = new AbortController();
     localSpeechInFlight = controller;
     let timedOut = false;

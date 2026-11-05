@@ -3,7 +3,7 @@
 The local server is replaced by an in-page stub (window.fetch for http://127.0.0.1:8880): /health answers,
 /speak returns a short silent WAV or a configured failure. Asserts that:
 - with the flag off (default) nothing is requested and the browser voice speaks as before;
-- with the flag on and the server healthy, a French/English/Ukrainian phrase is sent to /speak with the
+- with the flag on and the server healthy, a French/English phrase is sent to /speak with the
   right lang code and played through an Audio element, NOT through speechSynthesis;
 - the translation speaker's onEnd fires when the audio ends;
 - a server error after the request falls back to speechSynthesis for the same phrase;
@@ -20,7 +20,7 @@ c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable')
 c.call('Network.setCacheDisabled', cacheDisabled=True); c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False)
 c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
-window.__speakCalls = []; window.__localCalls = []; window.__played = []; window.__ended = [];
+window.__speakCalls = []; window.__systemLangs = []; window.__localCalls = []; window.__played = []; window.__ended = [];
 window.__localErrors = []; addEventListener('error', e => __localErrors.push(e.message));
 window.__localMode = 'ok'; // ok | fail | slow | hang
 window.__audioMode = 'ok'; window.__fastTimeout = false;
@@ -36,10 +36,11 @@ window.fetch = async (input, init) => {
   const body = JSON.parse(init.body);
   __localCalls.push(body);
   if (__localMode === 'fail') return new Response('{"error":"boom"}', {status: 500});
-  const delay = __localMode === 'hang' ? 60000 : __localMode === 'slow' ? 400 : 20;
+  const ignoreAbort = __localMode === 'late';
+  const delay = __localMode === 'hang' ? 60000 : ['slow', 'late'].includes(__localMode) ? 400 : 20;
   await new Promise((resolve, reject) => {
     const t = setTimeout(resolve, delay);
-    init.signal && init.signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('aborted', 'AbortError')); });
+    init.signal && !ignoreAbort && init.signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('aborted', 'AbortError')); });
   });
   return new Response(silentWav(), {status: 200, headers: {'Content-Type': 'audio/wav'}});
 };
@@ -65,10 +66,11 @@ HTMLMediaElement.prototype.play = function () {
 const synth = {
   speaking: false, pending: false, paused: false, onvoiceschanged: null, _cur: null,
   getVoices: () => [{voiceURI: 'fr-fr', name: 'French', lang: 'fr-FR', localService: true},
-                    {voiceURI: 'en-us', name: 'English', lang: 'en-US', localService: true}],
+                    {voiceURI: 'en-us', name: 'English', lang: 'en-US', localService: true},
+                    {voiceURI: 'uk-ua', name: 'Ukrainian', lang: 'uk-UA', localService: true}],
   addEventListener() {}, cancel() { __browserCancels++; clearTimeout(this._timer); this.speaking = false; this.pending = false; },
   speak(u) {
-    __speakCalls.push(u.text); this.speaking = true;
+    __speakCalls.push(u.text); __systemLangs.push(u.lang); this.speaking = true;
     this._timer = setTimeout(() => { this.speaking = false; if (u.onend) u.onend({}); }, __browserDelay);
   }
 };
@@ -105,7 +107,7 @@ def user_gesture():
 
 def reset():
     user_gesture()
-    c.js('__speakCalls.length = 0; __localCalls.length = 0; __played.length = 0; __ended.length = 0; __localMode = "ok"; __audioMode = "ok"; __fastTimeout = false; __browserDelay = 30; __browserCancels = 0; __healthy = true; localSpeechHealth = {at: 0, ok: false}; stopTooltipSpeech(); true')
+    c.js('__speakCalls.length = 0; __systemLangs.length = 0; __localCalls.length = 0; __played.length = 0; __ended.length = 0; __localMode = "ok"; __audioMode = "ok"; __fastTimeout = false; __browserDelay = 30; __browserCancels = 0; __healthy = true; localSpeechHealth = {at: 0, ok: false}; stopTooltipSpeech(); true')
     c.js('refreshLocalSpeech(); true'); pause(0.3)
 
 
@@ -130,11 +132,11 @@ pause(0.8)
 check('en sent to /speak with lang en', '__localCalls.some(b => b.lang === "en")')
 check('en did not use speechSynthesis', '__speakCalls.length === 0')
 
-# 4. Ukrainian phrase: local only, lang uk.
+# 4. Ukrainian always uses the system voice, without any server request.
 reset()
 c.js('speakInLang("Привіт, це тест українського голосу.", "uk", "translation", 0, null); true')
 pause(0.8)
-check('uk sent to /speak with lang uk', '__localCalls.some(b => b.lang === "uk")')
+check('Ukrainian popup uses system voice without contacting server', '__localCalls.length === 0 && __played.length === 0 && __systemLangs.join() === "uk-UA"')
 
 # 5. Unsupported language never reaches the local server.
 reset()
@@ -253,6 +255,53 @@ c.wait('__speakCalls.length === 1 && speechSynthesis.speaking', timeout=5)
 c.js('document.getElementById("btn-local-speech").click(); true')
 c.wait('!isSpeakingGlobal', timeout=8)
 check('disabling local voice during browser fallback cancels it before restarting, without queued duplicate', '__browserCancels === 1 && __speakCalls.join("|") === "Bonjour les amis.|Bonjour les amis.|Nous lisons un livre." && !speechSynthesis.speaking && __played.length === 0')
+
+# Cyrillic text must not inherit the FR/EN segmenter's English fallback.
+c.js('localStorage.setItem("reader_local_speech", "1"); true')
+page('Перевіряємо серверне читання українського речення.')
+c.js('startTTS(); true')
+c.wait('__speakCalls.length === 1 && !isSpeakingGlobal', timeout=8)
+check('Ukrainian page uses Ukrainian system voice even with French book prior', '__localCalls.length === 0 && __played.length === 0 && __systemLangs.join() === "uk-UA"')
+
+page('Skip this sentence. Перевіряємо виділене українське речення.')
+c.js('(()=>{ const textNode = els.pages.firstChild.firstChild; const selected = document.createRange(); selected.setStart(textNode,20); selected.setEnd(textNode,textNode.length); window.getSelection().addRange(selected); startTTS(); return true; })()')
+c.wait('__speakCalls.length === 1 && !isSpeakingGlobal', timeout=8)
+check('selected Ukrainian text uses exact range and Ukrainian system voice without server', '__localCalls.length === 0 && __systemLangs.join() === "uk-UA" && __speakCalls[0] === "Перевіряємо виділене українське речення."')
+
+# Real pointer clicks: selected glyphs -> contextual language -> exact server payload.
+def tap_word(markup, expected_text, expected_lang):
+    import json
+    c.js('stopGlobalTTS(); dismissReaderPopup(); true')
+    reset()
+    c.js("state.format='txt'; state.sourceLang='fr-FR'; state.bookKey='word-speech-audit'; state.translateMode=true; state.speakSide='original'; state.ctxPanelLang=''; state.ctxSentence=''; aiTranslateText=async()=> 'meaning'; machineTranslate=async()=>({html:'meaning',extras:''}); els.pages.innerHTML=" + json.dumps('<p style="margin:180px 40px;font-size:24px;line-height:1.8">' + markup + '</p>') + "; window.getSelection().removeAllRanges(); true")
+    point = c.js('(()=>{const r=els.pages.querySelector("[data-word-target]").getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()')
+    for kind in ['mousePressed', 'mouseReleased']:
+        c.call('Input.dispatchMouseEvent', type=kind, x=point['x'], y=point['y'], button='left', clickCount=1)
+    c.wait('__localCalls.length === 1', timeout=6)
+    pause(.5)
+    got = c.js('({selected:els.ttOriginal.textContent,payload:__localCalls[0],played:__played.length,system:__speakCalls})')
+    assert got['selected'].replace('\u00ad','') == expected_text, got
+    assert got['payload'] == {'text': expected_text, 'lang': expected_lang}, got
+    assert got['played'] == 1 and not got['system'], got
+    print('PASS pointer word / server:', expected_text, expected_lang, flush=True)
+
+
+tap_word('The cartoon is funny, mais je reste <span data-word-target>car</span> il pleut.', 'car', 'fr')
+tap_word('The test is simple, il <span data-word-target>est</span> facile.', 'est', 'fr')
+tap_word('This conversation is long, mais <span data-word-target>on</span> parle français.', 'on', 'fr')
+tap_word('The chat is ready, mais le <span data-word-target>chat</span> est ici.', 'chat', 'fr')
+tap_word('The <span data-word-target>chat</span> is ready, mais le chat est ici.', 'chat', 'en')
+tap_word('Nous voulons étu<strong data-word-target>di</strong>er ensemble.', 'étudier', 'fr')
+tap_word('Nous aimons in\u00adter<strong data-word-target>national</strong> ensemble.', 'international', 'fr')
+tap_word('Nous apprenons l’<strong data-word-target>anglais</strong> ensemble.', 'l’anglais', 'fr')
+c.js('dismissReaderPopup(); true')
+
+reset()
+c.js('__localMode="late"; speakText("Bonjour", "orig", 0, ()=>__ended.push("old")); true')
+pause(.05)
+c.js('__localMode="ok"; speakText("Merci", "orig", 0, ()=>__ended.push("new")); true')
+pause(.8)
+check('rapid word change discards late old server audio and old completion callback', '__localCalls.length === 2 && __localCalls[1].text === "Merci" && __played.length === 1 && __ended.join() === "new" && __speakCalls.length === 0')
 
 # Suites share browser storage: leave the opt-in server feature disabled for subsequent suites.
 c.js('stopGlobalTTS(); localStorage.removeItem("reader_local_speech"); true')

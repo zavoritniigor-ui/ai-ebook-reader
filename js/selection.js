@@ -1373,7 +1373,7 @@ function reflowWordBounds(node, offset) {
     }
     walk(root);
     if (point < 0) return null;
-    for (const match of text.matchAll(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*(?:['’\u02bc-][\p{L}\p{N}][\p{L}\p{N}\p{M}]*)*/gu)) {
+    for (const match of text.matchAll(/[\p{L}\p{N}][\p{L}\p{N}\p{M}\u00ad]*(?:['’\u02bc-][\p{L}\p{N}][\p{L}\p{N}\p{M}\u00ad]*)*/gu)) {
         const start = match.index, end = start + match[0].length;
         if (point < start) return null;
         if (point > end) continue;
