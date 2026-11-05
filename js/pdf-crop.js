@@ -114,12 +114,11 @@ Object.assign(I18N, {
     shareNeedsHttps: { uk: 'Поділитися можна лише на сторінці https://. Скористайтеся Save PNG.', en: 'Sharing needs the https:// page. Use Save PNG.', fr: 'Le partage nécessite la page https://. Utilisez Save PNG.', ru: 'Поделиться можно только на странице https://. Используйте Save PNG.' },
     shareUnsupported: { uk: 'Цей браузер не має системного меню «Поділитися». Скористайтеся Save PNG або Copy image.', en: 'This browser has no system Share menu. Use Save PNG or Copy image.', fr: "Ce navigateur n'a pas de menu Partager. Utilisez Save PNG ou Copy image.", ru: 'В этом браузере нет системного меню «Поделиться». Используйте Save PNG или Copy image.' },
     shareFilesUnsupported: { uk: 'Цей браузер не може поділитися зображенням. Скористайтеся Save PNG або Copy image.', en: 'This browser cannot share images. Use Save PNG or Copy image.', fr: "Ce navigateur ne peut pas partager d'images. Utilisez Save PNG ou Copy image.", ru: 'Этот браузер не может поделиться изображением. Используйте Save PNG или Copy image.' },
-    cropGemini: { uk: 'Запитати Gemini', en: 'Ask Gemini', fr: 'Demander à Gemini', ru: 'Спросить Gemini', zh: '询问 Gemini', ko: 'Gemini에 묻기', hi: 'Gemini से पूछें', ga: 'Fiafraigh de Gemini', es: 'Preguntar a Gemini' },
-    cropGeminiPaste: { uk: 'Зображення скопійовано. У вкладці Gemini вставте його: Ctrl+V, на телефоні — довгий дотик і «Вставити».', en: 'The image is copied. In the Gemini tab paste it: Ctrl+V, or a long press and «Paste» on a phone.', fr: "L'image est copiée. Dans l'onglet Gemini, collez-la : Ctrl+V, ou appui long puis « Coller » sur téléphone.", ru: 'Изображение скопировано. Во вкладке Gemini вставьте его: Ctrl+V, на телефоне — долгое нажатие и «Вставить».', zh: '图片已复制。在 Gemini 标签页中粘贴：Ctrl+V，手机上长按并选择「粘贴」。', ko: '이미지를 복사했습니다. Gemini 탭에서 붙여넣으세요: Ctrl+V, 휴대폰에서는 길게 눌러 «붙여넣기».', hi: 'छवि कॉपी हो गई। Gemini टैब में चिपकाएँ: Ctrl+V, फ़ोन पर देर तक दबाकर «पेस्ट»।', ga: 'Tá an íomhá cóipeáilte. Sa chluaisín Gemini greamaigh í: Ctrl+V, nó brú fada agus «Greamaigh» ar fhón.', es: 'La imagen está copiada. En la pestaña de Gemini pégala: Ctrl+V, o pulsación larga y «Pegar» en el teléfono.' },
-    cropGeminiShare: { uk: 'Цей браузер не копіює зображення — відкриваємо системне «Поділитися». Виберіть у ньому Gemini.', en: 'This browser cannot copy an image — opening the system share sheet. Choose Gemini there.', fr: "Ce navigateur ne copie pas les images — ouverture du partage système. Choisissez Gemini.", ru: 'Этот браузер не копирует изображения — открываем системное «Поделиться». Выберите в нём Gemini.', zh: '此浏览器无法复制图片，正在打开系统分享。请在其中选择 Gemini。', ko: '이 브라우저는 이미지를 복사하지 못합니다. 시스템 공유를 엽니다. 거기서 Gemini를 선택하세요.', hi: 'यह ब्राउज़र छवि कॉपी नहीं करता — सिस्टम शेयर खोल रहे हैं। वहाँ Gemini चुनें।', ga: 'Ní féidir leis an mbrabhsálaí seo íomhá a chóipeáil — osclaítear roinnt an chórais. Roghnaigh Gemini ann.', es: 'Este navegador no copia imágenes: se abre el menú de compartir del sistema. Elige Gemini allí.' },
-    cropGeminiNoClipboard: { uk: 'Цей браузер не копіює зображення. Збережіть PNG і додайте його в Gemini вручну.', en: 'This browser cannot copy an image. Save the PNG and attach it in Gemini yourself.', fr: "Ce navigateur ne copie pas les images. Enregistrez le PNG et joignez-le dans Gemini.", ru: 'Этот браузер не копирует изображения. Сохраните PNG и добавьте его в Gemini вручную.', zh: '此浏览器无法复制图片。请保存 PNG，然后在 Gemini 中手动添加。', ko: '이 브라우저는 이미지를 복사하지 못합니다. PNG를 저장해 Gemini에 직접 첨부하세요.', hi: 'यह ब्राउज़र छवि कॉपी नहीं करता। PNG सहेजें और Gemini में स्वयं जोड़ें।', ga: 'Ní féidir leis an mbrabhsálaí seo íomhá a chóipeáil. Sábháil an PNG agus ceangail i Gemini é.', es: 'Este navegador no copia imágenes. Guarda el PNG y adjúntalo en Gemini.' },
-    cropGeminiBlocked: { uk: 'Браузер заблокував нову вкладку. Дозвольте спливні вікна або відкрийте gemini.google.com самі — зображення вже скопійоване.', en: 'The browser blocked the new tab. Allow pop-ups or open gemini.google.com yourself — the image is already copied.', fr: "Le navigateur a bloqué le nouvel onglet. Autorisez les pop-ups ou ouvrez gemini.google.com vous-même — l'image est déjà copiée.", ru: 'Браузер заблокировал новую вкладку. Разрешите всплывающие окна или откройте gemini.google.com сами — изображение уже скопировано.', zh: '浏览器拦截了新标签页。请允许弹出窗口，或自行打开 gemini.google.com，图片已复制。', ko: '브라우저가 새 탭을 막았습니다. 팝업을 허용하거나 직접 gemini.google.com을 여세요. 이미지는 이미 복사되었습니다.', hi: 'ब्राउज़र ने नया टैब रोका। पॉप-अप की अनुमति दें या स्वयं gemini.google.com खोलें — छवि कॉपी हो चुकी है।', ga: 'Chuir an brabhsálaí bac ar an gcluaisín nua. Ceadaigh preabfhuinneoga nó oscail gemini.google.com tú féin — tá an íomhá cóipeáilte cheana.', es: 'El navegador bloqueó la pestaña nueva. Permite las ventanas emergentes o abre gemini.google.com tú mismo: la imagen ya está copiada.' },
-    shareFailed: { uk: 'Не вдалося поділитися', en: 'Sharing failed', fr: 'Échec du partage', ru: 'Не удалось поделиться', zh: '分享失败', ko: '공유하지 못했습니다', hi: 'साझा नहीं हो सका', ga: 'Theip ar an gcomhroinnt' },
+    cropGoogleSearch: {"uk": "Пошук у Google", "en": "Search Google", "fr": "Rechercher sur Google", "ru": "Поиск в Google", "zh": "Google 图片搜索", "ko": "Google 이미지 검색", "hi": "Google में खोजें", "ga": "Cuardaigh le Google", "es": "Buscar en Google"},
+    cropGoogleOpening: {"uk": "Відкриваємо пошук Google з вирізаним зображенням…", "en": "Opening Google search with the cropped image…", "fr": "Ouverture de la recherche Google avec l’image recadrée…", "ru": "Открываем поиск Google с вырезанным изображением…", "zh": "正在用裁剪的图片打开 Google 搜索…", "ko": "잘라낸 이미지로 Google 검색을 엽니다…", "hi": "काटी गई छवि के साथ Google खोज खोल रहे हैं…", "ga": "Cuardach Google á oscailt leis an íomhá bhearrtha…", "es": "Abriendo Google con la imagen recortada…"},
+    cropGoogleShare: {"uk": "Виберіть Google або Lens у меню «Поділитися».", "en": "Choose Google or Lens in the share menu.", "fr": "Choisissez Google ou Lens dans le menu de partage.", "ru": "Выберите Google или Lens в меню «Поделиться».", "zh": "请在分享菜单中选择 Google 或 Lens。", "ko": "공유 메뉴에서 Google 또는 Lens를 선택하세요.", "hi": "साझा मेनू में Google या Lens चुनें।", "ga": "Roghnaigh Google nó Lens sa roghchlár comhroinnte.", "es": "Elige Google o Lens en el menú de compartir."},
+    cropGoogleUnsupported: {"uk": "Збережіть PNG і завантажте його в пошук Google за зображенням.", "en": "Save the PNG and upload it to Google image search.", "fr": "Enregistrez le PNG et importez-le dans la recherche par image Google.", "ru": "Сохраните PNG и загрузите его в поиск Google по изображению.", "zh": "请保存 PNG，然后上传到 Google 图片搜索。", "ko": "PNG를 저장한 뒤 Google 이미지 검색에 업로드하세요.", "hi": "PNG सहेजें और Google की छवि खोज में अपलोड करें।", "ga": "Sábháil an PNG agus uaslódáil é chuig cuardach íomhá Google.", "es": "Guarda el PNG y súbelo a la búsqueda por imagen de Google."},
+    cropGoogleTooLarge: {"uk": "Фрагмент завеликий для Google (понад 20 МБ). Виріжте меншу ділянку.", "en": "The crop exceeds Google’s 20 MB limit. Select a smaller area.", "fr": "L’image dépasse la limite de 20 Mo de Google. Sélectionnez une zone plus petite.", "ru": "Фрагмент превышает лимит Google в 20 МБ. Выделите меньшую область.", "zh": "图片超过 Google 的 20 MB 限制，请选择更小的区域。", "ko": "Google의 20MB 제한을 초과했습니다. 더 작은 영역을 선택하세요.", "hi": "छवि Google की 20 MB सीमा से बड़ी है। छोटा क्षेत्र चुनें।", "ga": "Sáraíonn an íomhá teorainn 20 MB Google. Roghnaigh limistéar níos lú.", "es": "El recorte supera el límite de 20 MB de Google. Selecciona un área menor."},
 });
 let cropData = null, cropBlob = null;
 function closeCropPreview() {
@@ -166,33 +165,49 @@ document.getElementById('crop-copy').onclick = async () => {
         document.getElementById('crop-status').textContent = '✓ Copied';
     } catch (e) { document.getElementById('crop-status').textContent = e.message; }
 };
-// «Запитати Gemini»: не наш AI, а сам Gemini у вкладці браузера — там у читача свій обліковий запис і своя квота.
-// Сторінка НЕ МОЖЕ прикріпити файл до чужого сайту: ні Google, ні будь-хто інший не дає посилання, яке відкриває
-// Gemini з готовим зображенням. Тому єдиний чесний шлях у браузері — буфер обміну: копіюємо PNG, відкриваємо вкладку
-// й кажемо вставити. Вкладку відкриваємо СИНХРОННО в тому ж дотику: після await браузер вважає відкриття вікна
-// непроханим і блокує його. Якщо браузер не вміє копіювати зображення (Firefox, частина iOS), пробуємо системне
-// «Поділитися» — на Android воно віддає знімок просто в застосунок Gemini; інакше лишається Save PNG.
-const GEMINI_URL = 'https://gemini.google.com/app';
-document.getElementById('crop-gemini').onclick = () => {
-    if (!cropBlob) return;
-    const status = document.getElementById('crop-status');
-    const canCopy = window.isSecureContext && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined';
-    if (!canCopy) {
-        const files = [cropFile()];
-        if (window.isSecureContext && navigator.share && navigator.canShare?.({ files })) {
-            status.textContent = t('cropGeminiShare');
-            navigator.share({ files }).catch(e => { if (e.name !== 'AbortError') status.textContent = `${t('shareFailed')} (${e.name})`; });
-            return;
+// File upload form used by Chromium's own Lens search. The crop is sent only on
+// this explicit click; no API keys, clipboard access or public image hosting.
+const GOOGLE_IMAGE_SEARCH_URL = 'https://lens.google.com/v3/upload?ep=cntpubb&re=df&s=4';
+const GOOGLE_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+// Accept the earlier action ID too: an older cached HTML shell can load this script.
+const cropGoogleButton = document.getElementById('crop-google') || document.getElementById('crop-gemini');
+if (cropGoogleButton) {
+    cropGoogleButton.id = 'crop-google';
+    cropGoogleButton.dataset.i18n = 'cropGoogleSearch';
+    cropGoogleButton.textContent = t('cropGoogleSearch');
+    cropGoogleButton.onclick = () => {
+        if (!cropBlob || document.hidden) return;
+        const status = document.getElementById('crop-status');
+        if (cropBlob.size > GOOGLE_IMAGE_MAX_BYTES) { status.textContent = t('cropGoogleTooLarge'); return; }
+        const file = cropFile();
+        let form = null;
+        try {
+            const transfer = new DataTransfer();
+            transfer.items.add(file);
+            const input = document.createElement('input');
+            input.type = 'file'; input.name = 'encoded_image'; input.accept = 'image/png';
+            input.files = transfer.files;
+            if (input.files.length !== 1) throw new Error('File assignment unavailable');
+            form = document.createElement('form');
+            form.method = 'POST'; form.enctype = 'multipart/form-data';
+            form.action = GOOGLE_IMAGE_SEARCH_URL; form.target = '_blank';
+            form.rel = 'noopener noreferrer'; form.hidden = true;
+            form.appendChild(input); document.body.appendChild(form);
+            form.submit();
+            status.textContent = t('cropGoogleOpening');
+            setTimeout(() => form.remove(), 1000);
+        } catch (e) {
+            if (form) form.remove();
+            const files = [file];
+            if (window.isSecureContext && navigator.share && navigator.canShare?.({ files })) {
+                status.textContent = t('cropGoogleShare');
+                navigator.share({ files }).catch(error => {
+                    if (error.name !== 'AbortError') status.textContent = t('cropGoogleUnsupported');
+                });
+            } else status.textContent = t('cropGoogleUnsupported');
         }
-        status.textContent = t('cropGeminiNoClipboard');
-        return;
-    }
-    const tab = window.open(GEMINI_URL, '_blank', 'noopener');
-    status.textContent = t('cropGeminiPaste');
-    navigator.clipboard.write([new ClipboardItem({ 'image/png': cropBlob })])
-        .catch(() => { status.textContent = t('cropGeminiNoClipboard'); });
-    if (!tab) status.textContent = t('cropGeminiBlocked');
-};
+    };
+}
 document.getElementById('crop-ai').onclick = () => {
     if (!cropData || document.hidden) return;
     // No key: say so here and keep the dialog (and the crop) instead of attaching something that cannot be sent.
