@@ -1559,6 +1559,9 @@ let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 const onStartScreen = (target) => !state.format || !!target?.closest?.('#home-screen, #recent-books');
 
 els.mainArea.addEventListener('pointerdown', (e) => {
+    // A swipe may emit no compatibility click. Its old guard must not consume
+    // the next deliberate tap; a fresh primary down starts a new gesture.
+    if (e.isPrimary !== false && els.pages.contains(e.target)) state.suppressNextClick = false;
     if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
     if (state.format === 'pdf' && !els.container.contains(e.target)) return;
