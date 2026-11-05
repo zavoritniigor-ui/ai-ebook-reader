@@ -100,6 +100,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          # Keep failures visible through the checks API when signed Actions
+          # log downloads are unavailable. Preserve the failing exit status.
+          browser_ci_log="$RUNNER_TEMP/reader-browser-tests.log"
+          report_browser_failure() {
+            local failed_status="$1" failed_command="$2"
+            trap - ERR
+            python3 - "$browser_ci_log" "$failed_command" <<'PYCI' || true
+          import pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          tail = '\n'.join(path.read_text(errors='replace').splitlines()[-55:]) if path.exists() else 'No captured output'
+          message = 'Failed command: ' + sys.argv[2] + '\n' + tail[-10000:]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::error title=Browser suite failure::' + message, flush=True)
+          PYCI
+            exit "$failed_status"
+          }
+          trap 'report_browser_failure "$?" "$BASH_COMMAND"' ERR
+          exec > >(tee "$browser_ci_log") 2>&1
           
           # 1. Start HTTP Server
           echo "Starting HTTP Server..."
