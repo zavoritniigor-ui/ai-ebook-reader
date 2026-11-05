@@ -1,8 +1,8 @@
-/* pdf-crop.js — виділення області сторінки PDF (пером/мишею/пальцем) і перевірка
+/* pdf-crop.js — знімок області сторінки PDF або текстової книги й перевірка
  * вправи через AI vision: regionStart/regionBox — стан обведення (region-mode),
  * exitRegionMode виходить без захоплення, cropPdfRegion вирізає саме обведену
  * ділянку з canvas сторінки, openCropPreview/closeCropPreview показують/ховають
- * попередній перегляд (Save PNG / Share / Copy PNG / надіслати AI), і
+ * попередній перегляд (Save PNG / Share / Copy PNG / пошук Google), і
  * checkExerciseImage надсилає обрізане зображення на перевірку.
  *
  * Класичний <script src>, НЕ ES-модуль — див. js/core.js. Завантажується одразу
@@ -14,22 +14,63 @@
 
 // ========== ВИДІЛЕННЯ ОБЛАСТІ СТОРІНКИ Й ПЕРЕВІРКА ЧЕРЕЗ AI ==========
 // Обводиш пером (або мишею чи пальцем) фрагмент вправи — програма вирізає саме цю
-// ділянку зі сторінки PDF. Надсилання AI — лише окрема явна дія після preview.
+// ділянку сторінки. Пошук Google й надсилання AI — окремі явні дії після preview.
 const regionOverlay = document.getElementById('region-overlay');
 const regionBox = document.getElementById('region-box');
 let regionStart = null;
+let regionCaptureSeq = 0, regionCapturing = false;
+// Scope this style to capture mode; do not change the normal reading layout or
+// another agent's library CSS in index.html.
+const regionStyle = document.createElement('style');
+regionStyle.textContent = `
+body.region-mode #menu-handle, body.region-mode #quick-menu-dock,
+body.region-mode .side-panel, body.region-mode .panel-tab,
+body.region-mode .row-tab, body.region-mode #page-arrows,
+body.region-mode #footer-handle, body.region-mode #app-footer,
+body.region-mode #word-tooltip, body.region-mode #rules-tab {
+    visibility: hidden !important; pointer-events: none !important;
+}
+body.region-mode #region-overlay { user-select: none; -webkit-user-select: none; }
+`;
+document.head.appendChild(regionStyle);
+let regionRendererPromise = null;
+function loadRegionRenderer() {
+    if (typeof window.html2canvas === 'function') return Promise.resolve(window.html2canvas);
+    if (!regionRendererPromise) regionRendererPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'vendor/html2canvas-1.4.1.min.js'; script.async = true;
+        const timer = setTimeout(() => finish(new Error('Capture renderer timed out')), 15000);
+        const finish = error => {
+            clearTimeout(timer); script.onload = script.onerror = null;
+            if (error || typeof window.html2canvas !== 'function') {
+                script.remove(); regionRendererPromise = null;
+                reject(error || new Error('Capture renderer unavailable'));
+            } else resolve(window.html2canvas);
+        };
+        script.onload = () => finish();
+        script.onerror = () => finish(new Error('Capture renderer unavailable'));
+        document.head.appendChild(script);
+    });
+    return regionRendererPromise;
+}
 document.getElementById('region-cancel').onclick = exitRegionMode;
 
 document.getElementById('btn-region').onclick = () => {
     if (!state.format) { showToast(t('noBook')); return; }
-    // PDF — вирізане зображення; текстові книги (EPUB, FB2, TXT, HTML…) — текст усередині рамки стає звичайним виділенням
-    // (раніше тут була лише підказка «працює в PDF», а книги з бібліотеки здебільшого EPUB).
-    document.getElementById('region-hint').textContent = t(state.format === 'pdf' ? 'regionHint' : 'regionHintText');
+    document.getElementById('region-hint').textContent = t('regionCaptureHint');
+    window.getSelection()?.removeAllRanges();
+    clearSelectionHighlight(); invalidateSelection();
+    cancelTooltipHide(); stopTooltipSpeech();
+    els.tooltip.style.display = 'none'; state.tooltipPersistent = false;
+    state.lastSelectedRange = null; state.ctxSentenceRange = null;
+    closeFooterMenu();
+    if (state.format !== 'pdf') loadRegionRenderer().catch(() => {});
     state.inkMode = false; document.body.classList.remove('ink-mode');
     document.body.classList.add('region-mode');
     document.body.classList.add('immersive-mode');   // прибираємо меню з дороги
 };
 function exitRegionMode() {
+    regionCaptureSeq++; regionCapturing = false;
     document.body.classList.remove('region-mode');
     regionBox.style.display = 'none';
     regionStart = null;
@@ -39,7 +80,8 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && document.body.classList.contains('region-mode')) exitRegionMode();
 });
 regionOverlay.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('button') || regionStart || pdfPointers.size > 1) return;
+    if (e.target.closest('button') || regionCapturing || regionStart || pdfPointers.size > 1) return;
+    e.stopPropagation();
     regionStart = { x: e.clientX, y: e.clientY, id: e.pointerId };
     regionBox.style.display = 'block';
     regionBox.style.left = e.clientX + 'px'; regionBox.style.top = e.clientY + 'px';
@@ -49,77 +91,86 @@ regionOverlay.addEventListener('pointerdown', (e) => {
 });
 regionOverlay.addEventListener('pointermove', (e) => {
     if (!regionStart || regionStart.id !== e.pointerId) return;
+    e.preventDefault(); e.stopPropagation();
     const x = Math.min(e.clientX, regionStart.x), y = Math.min(e.clientY, regionStart.y);
     regionBox.style.left = x + 'px'; regionBox.style.top = y + 'px';
     regionBox.style.width = Math.abs(e.clientX - regionStart.x) + 'px';
     regionBox.style.height = Math.abs(e.clientY - regionStart.y) + 'px';
 });
 regionOverlay.addEventListener('pointerup', async (e) => {
-    if (!regionStart || regionStart.id !== e.pointerId) return;
+    if (!regionStart || regionStart.id !== e.pointerId || regionCapturing) return;
+    e.preventDefault(); e.stopPropagation();
+    const start = regionStart;
     const rect = {
-        left: Math.min(e.clientX, regionStart.x), top: Math.min(e.clientY, regionStart.y),
-        width: Math.abs(e.clientX - regionStart.x), height: Math.abs(e.clientY - regionStart.y)
+        left: Math.min(e.clientX, start.x), top: Math.min(e.clientY, start.y),
+        width: Math.abs(e.clientX - start.x), height: Math.abs(e.clientY - start.y)
     };
-    if (state.format !== 'pdf') {
-        exitRegionMode();
-        if (rect.width < 20 || rect.height < 20) return;   // випадковий тап
-        const range = textRangeInRect(rect);
-        if (!range || !selectRangeAndTranslate(range, rect.left + rect.width / 2, rect.top + rect.height / 2, 'phrase_translation')) showToast(t('regionNoText'));
-        return;
-    }
-    // Resolve WHICH page the gesture started on — continuous scroll can have
-    // several pages rendered at once, unlike the old single-page layout.
-    const startWrapper = document.elementFromPoint(regionStart.x, regionStart.y)?.closest('.pdf-page-wrapper');
-    exitRegionMode();
-    if (rect.width < 20 || rect.height < 20) return;   // випадковий тап
-    const dataUrl = cropPdfRegion(rect, startWrapper);
-    if (!dataUrl) { showToast(t('regionFail')); return; }
-    openCropPreview(dataUrl);
-});
-
-// Текст книги всередині рамки: від першого до останнього символу, центр якого лежить у ній (лише видима сторінка).
-function textRangeInRect(rect) {
-    const right = rect.left + rect.width, bottom = rect.top + rect.height;
-    const inside = b => { const x = b.left + b.width / 2, y = b.top + b.height / 2; return b.width > 0 && x >= rect.left && x <= right && y >= rect.top && y <= bottom; };
-    const touches = b => b.width > 0 && b.left < right && b.right > rect.left && b.top < bottom && b.bottom > rect.top;
-    const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT);
-    const r = document.createRange();
-    let first = null, last = null, node;
-    while ((node = walker.nextNode())) {
-        if (!node.nodeValue.trim()) continue;
-        r.selectNodeContents(node);
-        if (![...r.getClientRects()].some(touches)) continue;
-        for (let i = 0; i < node.length; i++) {
-            if (/\s/.test(node.nodeValue[i])) continue;
-            r.setStart(node, i); r.setEnd(node, i + 1);
-            if (!inside(r.getBoundingClientRect())) continue;
-            if (!first) first = { node, i };
-            last = { node, i };
+    if (regionOverlay.hasPointerCapture(e.pointerId)) regionOverlay.releasePointerCapture(e.pointerId);
+    regionStart = null;
+    if (rect.width < 20 || rect.height < 20) { exitRegionMode(); return; }
+    // The overlay is the top hit. Look underneath it to find the actual PDF
+    // page where the gesture started (including continuous-scroll neighbours).
+    const startWrapper = document.elementsFromPoint(start.x, start.y)
+        .map(el => el.closest('.pdf-page-wrapper')).find(Boolean);
+    const seq = ++regionCaptureSeq;
+    const book = state.bookKey, page = state.currentIndex, textPage = state.pageInChapter, format = state.format;
+    regionCapturing = true; regionBox.style.display = 'none';
+    document.getElementById('region-hint').textContent = t('regionCapturing');
+    try {
+        const dataUrl = format === 'pdf' ? cropPdfRegion(rect, startWrapper) : await cropTextRegion(rect);
+        if (seq !== regionCaptureSeq) return; // cancelled, or a new capture owns the overlay
+        if (document.hidden || !document.body.classList.contains('region-mode') || book !== state.bookKey || page !== state.currentIndex || textPage !== state.pageInChapter || format !== state.format) {
+            exitRegionMode(); return;
         }
+        exitRegionMode();
+        if (!dataUrl) { showToast(t('regionFail')); return; }
+        openCropPreview(dataUrl);
+    } catch (error) {
+        if (seq !== regionCaptureSeq) return;
+        exitRegionMode(); showToast(t('regionFail'));
     }
-    if (!first) return null;
-    const range = document.createRange();
-    range.setStart(first.node, first.i); range.setEnd(last.node, last.i + 1);
-    return range;
-}
+});
 regionOverlay.addEventListener('pointercancel', () => { regionStart = null; regionBox.style.display = 'none'; });
+
+// Rasterize only the visible book area, not menus, translation popups or the
+// capture overlay. Rendering stays local; the crop leaves only after Search/Share.
+async function cropTextRegion(rect) {
+    const b = els.container.getBoundingClientRect();
+    const left = Math.max(rect.left, b.left, 0), top = Math.max(rect.top, b.top, 0);
+    const right = Math.min(rect.left + rect.width, b.right, window.innerWidth);
+    const bottom = Math.min(rect.top + rect.height, b.bottom, window.innerHeight);
+    const width = right - left, height = bottom - top;
+    if (width < 5 || height < 5) return null;
+    const render = await loadRegionRenderer();
+    const scale = Math.min(window.devicePixelRatio || 1, 2, 2400 / Math.max(width, height));
+    const canvas = await render(els.container, {
+        x: left - b.left, y: top - b.top, width, height, scale,
+        windowWidth: window.innerWidth, windowHeight: window.innerHeight,
+        backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg-color').trim() || '#fff',
+        allowTaint: false, useCORS: false, foreignObjectRendering: false,
+        imageTimeout: 3000, logging: false, removeContainer: true,
+        // Its outer shadow belongs to the reader window, not the captured page.
+        onclone: doc => { doc.getElementById('reader-container').style.boxShadow = 'none'; },
+        ignoreElements: el => el.id === 'word-tooltip' || el.id === 'region-overlay'
+    });
+    return canvas.toDataURL('image/png');
+}
 const cropDialog = document.getElementById('crop-dialog');
 Object.assign(I18N, {
-    regionHintText: { uk: 'Обведіть фрагмент сторінки — текст у ньому виділиться', en: 'Draw around part of the page — its text gets selected', fr: 'Entourez une partie de la page — son texte sera sélectionné',
-                      ru: 'Обведите фрагмент страницы — текст в нём выделится', es: 'Rodea una parte de la página: su texto quedará seleccionado' },
-    regionNoText: { uk: 'У цій рамці немає тексту книги.', en: 'There is no book text inside this frame.', fr: 'Aucun texte du livre dans ce cadre.', ru: 'В этой рамке нет текста книги.', es: 'No hay texto del libro en este recuadro.' },
+    regionCaptureHint: {"uk": "Обведіть фрагмент сторінки для знімка", "en": "Draw around the area to capture", "fr": "Entourez la zone à capturer", "ru": "Обведите фрагмент страницы для снимка", "zh": "框选要截图的区域", "ko": "캡처할 영역을 드래그하세요", "hi": "कैप्चर करने के लिए क्षेत्र घेरें", "ga": "Tarraing timpeall an limistéir le gabháil", "es": "Rodea la zona que deseas capturar"},
+    regionCapturing: {"uk": "Готуємо зображення…", "en": "Preparing image…", "fr": "Préparation de l’image…", "ru": "Готовим изображение…", "zh": "正在准备图片…", "ko": "이미지 준비 중…", "hi": "छवि तैयार हो रही है…", "ga": "An íomhá á hullmhú…", "es": "Preparando imagen…"},
     cropAttached: { uk: 'Фрагмент сторінки додано. Поставте запитання й натисніть ➤', en: 'Page crop attached. Ask your question and press ➤', fr: 'Extrait de page joint. Posez votre question et appuyez sur ➤', ru: 'Фрагмент страницы добавлен. Задайте вопрос и нажмите ➤', zh: '已附加页面片段。请输入问题并按 ➤', ko: '페이지 조각을 첨부했습니다. 질문을 입력하고 ➤ 를 누르세요', hi: 'पृष्ठ का अंश जोड़ा गया। अपना प्रश्न लिखें और ➤ दबाएँ', ga: 'Tá blúire den leathanach ceangailte. Cuir do cheist agus brúigh ➤' },
     cropRemove: { uk: 'Прибрати зображення', en: 'Remove image', fr: "Retirer l'image", ru: 'Убрать изображение', zh: '移除图片', ko: '이미지 제거', hi: 'छवि हटाएँ', ga: 'Bain an íomhá' },
     cropAskPlaceholder: { uk: 'Запитання про зображення (порожнє — перевірити вправу)', en: 'Question about the image (empty = check the exercise)', fr: "Question sur l'image (vide = vérifier l'exercice)", ru: 'Вопрос об изображении (пусто — проверить упражнение)', zh: '关于图片的问题（留空 = 检查练习）', ko: '이미지에 대한 질문 (비우면 = 연습 확인)', hi: 'छवि के बारे में प्रश्न (खाली = अभ्यास जाँचें)', ga: 'Ceist faoin íomhá (folamh = seiceáil an cleachtadh)' },
     shareNeedsHttps: { uk: 'Поділитися можна лише на сторінці https://. Скористайтеся Save PNG.', en: 'Sharing needs the https:// page. Use Save PNG.', fr: 'Le partage nécessite la page https://. Utilisez Save PNG.', ru: 'Поделиться можно только на странице https://. Используйте Save PNG.' },
     shareUnsupported: { uk: 'Цей браузер не має системного меню «Поділитися». Скористайтеся Save PNG або Copy image.', en: 'This browser has no system Share menu. Use Save PNG or Copy image.', fr: "Ce navigateur n'a pas de menu Partager. Utilisez Save PNG ou Copy image.", ru: 'В этом браузере нет системного меню «Поделиться». Используйте Save PNG или Copy image.' },
     shareFilesUnsupported: { uk: 'Цей браузер не може поділитися зображенням. Скористайтеся Save PNG або Copy image.', en: 'This browser cannot share images. Use Save PNG or Copy image.', fr: "Ce navigateur ne peut pas partager d'images. Utilisez Save PNG ou Copy image.", ru: 'Этот браузер не может поделиться изображением. Используйте Save PNG или Copy image.' },
-    cropGemini: { uk: 'Запитати Gemini', en: 'Ask Gemini', fr: 'Demander à Gemini', ru: 'Спросить Gemini', zh: '询问 Gemini', ko: 'Gemini에 묻기', hi: 'Gemini से पूछें', ga: 'Fiafraigh de Gemini', es: 'Preguntar a Gemini' },
-    cropGeminiPaste: { uk: 'Зображення скопійовано. У вкладці Gemini вставте його: Ctrl+V, на телефоні — довгий дотик і «Вставити».', en: 'The image is copied. In the Gemini tab paste it: Ctrl+V, or a long press and «Paste» on a phone.', fr: "L'image est copiée. Dans l'onglet Gemini, collez-la : Ctrl+V, ou appui long puis « Coller » sur téléphone.", ru: 'Изображение скопировано. Во вкладке Gemini вставьте его: Ctrl+V, на телефоне — долгое нажатие и «Вставить».', zh: '图片已复制。在 Gemini 标签页中粘贴：Ctrl+V，手机上长按并选择「粘贴」。', ko: '이미지를 복사했습니다. Gemini 탭에서 붙여넣으세요: Ctrl+V, 휴대폰에서는 길게 눌러 «붙여넣기».', hi: 'छवि कॉपी हो गई। Gemini टैब में चिपकाएँ: Ctrl+V, फ़ोन पर देर तक दबाकर «पेस्ट»।', ga: 'Tá an íomhá cóipeáilte. Sa chluaisín Gemini greamaigh í: Ctrl+V, nó brú fada agus «Greamaigh» ar fhón.', es: 'La imagen está copiada. En la pestaña de Gemini pégala: Ctrl+V, o pulsación larga y «Pegar» en el teléfono.' },
-    cropGeminiShare: { uk: 'Цей браузер не копіює зображення — відкриваємо системне «Поділитися». Виберіть у ньому Gemini.', en: 'This browser cannot copy an image — opening the system share sheet. Choose Gemini there.', fr: "Ce navigateur ne copie pas les images — ouverture du partage système. Choisissez Gemini.", ru: 'Этот браузер не копирует изображения — открываем системное «Поделиться». Выберите в нём Gemini.', zh: '此浏览器无法复制图片，正在打开系统分享。请在其中选择 Gemini。', ko: '이 브라우저는 이미지를 복사하지 못합니다. 시스템 공유를 엽니다. 거기서 Gemini를 선택하세요.', hi: 'यह ब्राउज़र छवि कॉपी नहीं करता — सिस्टम शेयर खोल रहे हैं। वहाँ Gemini चुनें।', ga: 'Ní féidir leis an mbrabhsálaí seo íomhá a chóipeáil — osclaítear roinnt an chórais. Roghnaigh Gemini ann.', es: 'Este navegador no copia imágenes: se abre el menú de compartir del sistema. Elige Gemini allí.' },
-    cropGeminiNoClipboard: { uk: 'Цей браузер не копіює зображення. Збережіть PNG і додайте його в Gemini вручну.', en: 'This browser cannot copy an image. Save the PNG and attach it in Gemini yourself.', fr: "Ce navigateur ne copie pas les images. Enregistrez le PNG et joignez-le dans Gemini.", ru: 'Этот браузер не копирует изображения. Сохраните PNG и добавьте его в Gemini вручную.', zh: '此浏览器无法复制图片。请保存 PNG，然后在 Gemini 中手动添加。', ko: '이 브라우저는 이미지를 복사하지 못합니다. PNG를 저장해 Gemini에 직접 첨부하세요.', hi: 'यह ब्राउज़र छवि कॉपी नहीं करता। PNG सहेजें और Gemini में स्वयं जोड़ें।', ga: 'Ní féidir leis an mbrabhsálaí seo íomhá a chóipeáil. Sábháil an PNG agus ceangail i Gemini é.', es: 'Este navegador no copia imágenes. Guarda el PNG y adjúntalo en Gemini.' },
-    cropGeminiBlocked: { uk: 'Браузер заблокував нову вкладку. Дозвольте спливні вікна або відкрийте gemini.google.com самі — зображення вже скопійоване.', en: 'The browser blocked the new tab. Allow pop-ups or open gemini.google.com yourself — the image is already copied.', fr: "Le navigateur a bloqué le nouvel onglet. Autorisez les pop-ups ou ouvrez gemini.google.com vous-même — l'image est déjà copiée.", ru: 'Браузер заблокировал новую вкладку. Разрешите всплывающие окна или откройте gemini.google.com сами — изображение уже скопировано.', zh: '浏览器拦截了新标签页。请允许弹出窗口，或自行打开 gemini.google.com，图片已复制。', ko: '브라우저가 새 탭을 막았습니다. 팝업을 허용하거나 직접 gemini.google.com을 여세요. 이미지는 이미 복사되었습니다.', hi: 'ब्राउज़र ने नया टैब रोका। पॉप-अप की अनुमति दें या स्वयं gemini.google.com खोलें — छवि कॉपी हो चुकी है।', ga: 'Chuir an brabhsálaí bac ar an gcluaisín nua. Ceadaigh preabfhuinneoga nó oscail gemini.google.com tú féin — tá an íomhá cóipeáilte cheana.', es: 'El navegador bloqueó la pestaña nueva. Permite las ventanas emergentes o abre gemini.google.com tú mismo: la imagen ya está copiada.' },
     shareFailed: { uk: 'Не вдалося поділитися', en: 'Sharing failed', fr: 'Échec du partage', ru: 'Не удалось поделиться', zh: '分享失败', ko: '공유하지 못했습니다', hi: 'साझा नहीं हो सका', ga: 'Theip ar an gcomhroinnt' },
+    cropGoogleSearch: {"uk": "Пошук у Google", "en": "Search Google", "fr": "Rechercher sur Google", "ru": "Поиск в Google", "zh": "Google 图片搜索", "ko": "Google 이미지 검색", "hi": "Google में खोजें", "ga": "Cuardaigh le Google", "es": "Buscar en Google"},
+    cropGoogleOpening: {"uk": "Відкриваємо пошук Google з вирізаним зображенням…", "en": "Opening Google search with the cropped image…", "fr": "Ouverture de la recherche Google avec l’image recadrée…", "ru": "Открываем поиск Google с вырезанным изображением…", "zh": "正在用裁剪的图片打开 Google 搜索…", "ko": "잘라낸 이미지로 Google 검색을 엽니다…", "hi": "काटी गई छवि के साथ Google खोज खोल रहे हैं…", "ga": "Cuardach Google á oscailt leis an íomhá bhearrtha…", "es": "Abriendo Google con la imagen recortada…"},
+    cropGoogleShare: {"uk": "Виберіть Google або Lens у меню «Поділитися».", "en": "Choose Google or Lens in the share menu.", "fr": "Choisissez Google ou Lens dans le menu de partage.", "ru": "Выберите Google или Lens в меню «Поделиться».", "zh": "请在分享菜单中选择 Google 或 Lens。", "ko": "공유 메뉴에서 Google 또는 Lens를 선택하세요.", "hi": "साझा मेनू में Google या Lens चुनें।", "ga": "Roghnaigh Google nó Lens sa roghchlár comhroinnte.", "es": "Elige Google o Lens en el menú de compartir."},
+    cropGoogleUnsupported: {"uk": "Збережіть PNG і завантажте його в пошук Google за зображенням.", "en": "Save the PNG and upload it to Google image search.", "fr": "Enregistrez le PNG et importez-le dans la recherche par image Google.", "ru": "Сохраните PNG и загрузите его в поиск Google по изображению.", "zh": "请保存 PNG，然后上传到 Google 图片搜索。", "ko": "PNG를 저장한 뒤 Google 이미지 검색에 업로드하세요.", "hi": "PNG सहेजें और Google की छवि खोज में अपलोड करें।", "ga": "Sábháil an PNG agus uaslódáil é chuig cuardach íomhá Google.", "es": "Guarda el PNG y súbelo a la búsqueda por imagen de Google."},
+    cropGoogleTooLarge: {"uk": "Фрагмент завеликий для Google (понад 20 МБ). Виріжте меншу ділянку.", "en": "The crop exceeds Google’s 20 MB limit. Select a smaller area.", "fr": "L’image dépasse la limite de 20 Mo de Google. Sélectionnez une zone plus petite.", "ru": "Фрагмент превышает лимит Google в 20 МБ. Выделите меньшую область.", "zh": "图片超过 Google 的 20 MB 限制，请选择更小的区域。", "ko": "Google의 20MB 제한을 초과했습니다. 더 작은 영역을 선택하세요.", "hi": "छवि Google की 20 MB सीमा से बड़ी है। छोटा क्षेत्र चुनें।", "ga": "Sáraíonn an íomhá teorainn 20 MB Google. Roghnaigh limistéar níos lú.", "es": "El recorte supera el límite de 20 MB de Google. Selecciona un área menor."},
 });
 let cropData = null, cropBlob = null;
 function closeCropPreview() {
@@ -166,33 +217,49 @@ document.getElementById('crop-copy').onclick = async () => {
         document.getElementById('crop-status').textContent = '✓ Copied';
     } catch (e) { document.getElementById('crop-status').textContent = e.message; }
 };
-// «Запитати Gemini»: не наш AI, а сам Gemini у вкладці браузера — там у читача свій обліковий запис і своя квота.
-// Сторінка НЕ МОЖЕ прикріпити файл до чужого сайту: ні Google, ні будь-хто інший не дає посилання, яке відкриває
-// Gemini з готовим зображенням. Тому єдиний чесний шлях у браузері — буфер обміну: копіюємо PNG, відкриваємо вкладку
-// й кажемо вставити. Вкладку відкриваємо СИНХРОННО в тому ж дотику: після await браузер вважає відкриття вікна
-// непроханим і блокує його. Якщо браузер не вміє копіювати зображення (Firefox, частина iOS), пробуємо системне
-// «Поділитися» — на Android воно віддає знімок просто в застосунок Gemini; інакше лишається Save PNG.
-const GEMINI_URL = 'https://gemini.google.com/app';
-document.getElementById('crop-gemini').onclick = () => {
-    if (!cropBlob) return;
-    const status = document.getElementById('crop-status');
-    const canCopy = window.isSecureContext && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined';
-    if (!canCopy) {
-        const files = [cropFile()];
-        if (window.isSecureContext && navigator.share && navigator.canShare?.({ files })) {
-            status.textContent = t('cropGeminiShare');
-            navigator.share({ files }).catch(e => { if (e.name !== 'AbortError') status.textContent = `${t('shareFailed')} (${e.name})`; });
-            return;
+// File upload form used by Chromium's own Lens search. The crop is sent only on
+// this explicit click; no API keys, clipboard access or public image hosting.
+const GOOGLE_IMAGE_SEARCH_URL = 'https://lens.google.com/v3/upload?ep=cntpubb&re=df&s=4';
+const GOOGLE_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+// Accept the earlier action ID too: an older cached HTML shell can load this script.
+const cropGoogleButton = document.getElementById('crop-google') || document.getElementById('crop-gemini');
+if (cropGoogleButton) {
+    cropGoogleButton.id = 'crop-google';
+    cropGoogleButton.dataset.i18n = 'cropGoogleSearch';
+    cropGoogleButton.textContent = t('cropGoogleSearch');
+    cropGoogleButton.onclick = () => {
+        if (!cropBlob || document.hidden) return;
+        const status = document.getElementById('crop-status');
+        if (cropBlob.size > GOOGLE_IMAGE_MAX_BYTES) { status.textContent = t('cropGoogleTooLarge'); return; }
+        const file = cropFile();
+        let form = null;
+        try {
+            const transfer = new DataTransfer();
+            transfer.items.add(file);
+            const input = document.createElement('input');
+            input.type = 'file'; input.name = 'encoded_image'; input.accept = 'image/png';
+            input.files = transfer.files;
+            if (input.files.length !== 1) throw new Error('File assignment unavailable');
+            form = document.createElement('form');
+            form.method = 'POST'; form.enctype = 'multipart/form-data';
+            form.action = GOOGLE_IMAGE_SEARCH_URL; form.target = '_self';
+            form.rel = 'noopener noreferrer'; form.hidden = true;
+            form.appendChild(input); document.body.appendChild(form);
+            form.submit();
+            status.textContent = t('cropGoogleOpening');
+            setTimeout(() => form.remove(), 1000);
+        } catch (e) {
+            if (form) form.remove();
+            const files = [file];
+            if (window.isSecureContext && navigator.share && navigator.canShare?.({ files })) {
+                status.textContent = t('cropGoogleShare');
+                navigator.share({ files }).catch(error => {
+                    if (error.name !== 'AbortError') status.textContent = t('cropGoogleUnsupported');
+                });
+            } else status.textContent = t('cropGoogleUnsupported');
         }
-        status.textContent = t('cropGeminiNoClipboard');
-        return;
-    }
-    const tab = window.open(GEMINI_URL, '_blank', 'noopener');
-    status.textContent = t('cropGeminiPaste');
-    navigator.clipboard.write([new ClipboardItem({ 'image/png': cropBlob })])
-        .catch(() => { status.textContent = t('cropGeminiNoClipboard'); });
-    if (!tab) status.textContent = t('cropGeminiBlocked');
-};
+    };
+}
 document.getElementById('crop-ai').onclick = () => {
     if (!cropData || document.hidden) return;
     // No key: say so here and keep the dialog (and the crop) instead of attaching something that cannot be sent.
