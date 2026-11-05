@@ -3,7 +3,7 @@ PNG, not translation. Compare against Chrome's own pixels on a later page,
 including theme, an illustration, crop coordinates and DPR; test cancellation.
 All rendering is local and the Google action is not pressed in this suite.
 """
-import base64, json, os, time
+import base64, io, json, os, struct, time, zipfile, zlib
 from pathlib import Path
 from browser_cdp import CDP
 
@@ -17,6 +17,23 @@ addEventListener('unhandledrejection',e=>__cropErrors.push(String(e.reason)));
 """)
 URL=os.environ.get('READER_TEST_URL','http://127.0.0.1:8765/index.html')
 BOOK='# Capture test\n\n'+'\n\n'.join('Paragraph %d: '%i+('Visible words belong to this page and must remain an image. '*22) for i in range(35))
+
+
+def epub_fixture():
+ # A real ZIP/OPF/spine import, not a text book labelled as EPUB. Pictures use
+ # the normal archive image mapping, and inline italic text crosses word spans.
+ def chunk(kind, data):
+  return struct.pack('>I',len(data))+kind+data+struct.pack('>I',zlib.crc32(kind+data)&0xffffffff)
+ png=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',40,20,8,2,0,0,0))+chunk(b'IDAT',zlib.compress((b'\0'+bytes([24,184,64])*40)*20))+chunk(b'IEND',b'')
+ out=io.BytesIO()
+ with zipfile.ZipFile(out,'w') as z:
+  z.writestr('mimetype','application/epub+zip')
+  z.writestr('META-INF/container.xml','<container><rootfiles><rootfile full-path="OEBPS/book.opf"/></rootfiles></container>')
+  z.writestr('OEBPS/book.opf','<package><metadata><dc:language xmlns:dc="http://purl.org/dc/elements/1.1/">en</dc:language></metadata><manifest><item id="a" href="chapter.xhtml" media-type="application/xhtml+xml"/><item id="pic" href="picture.png" media-type="image/png"/></manifest><spine><itemref idref="a"/></spine></package>')
+  paras=''.join('<p><img src="picture.png" width="40" height="20"/> Paragraph %d: '%i+('Visible <em>EPUB words</em> must remain an image. '*22)+'</p>' for i in range(35))
+  z.writestr('OEBPS/chapter.xhtml','<html xmlns="http://www.w3.org/1999/xhtml"><head><title>EPUB capture</title></head><body>'+paras+'</body></html>')
+  z.writestr('OEBPS/picture.png',png)
+ return base64.b64encode(out.getvalue()).decode()
 
 def check(name,expr):
  value=c.js(expr)
@@ -36,14 +53,19 @@ def drag(rect,mobile=False,reverse=False):
   c.call('Input.dispatchMouseEvent',type='mouseReleased',x=x1,y=y1,button='left',buttons=0,clickCount=1)
 
 for mobile,theme,dpr in [(False,'sepia',1),(True,'dark',2)]:
+ is_epub=mobile
  c.call('Emulation.setDeviceMetricsOverride',width=412 if mobile else 1100,height=900,deviceScaleFactor=dpr,mobile=mobile)
  c.call('Emulation.setTouchEmulationEnabled',enabled=mobile)
  c.call('Page.navigate',url=URL)
  c.wait("document.readyState==='complete'&&!document.body.inert&&typeof openBookFile==='function'",timeout=35)
- c.js("localStorage.setItem('reader_onboarding_done','1');showUpdateBanner=()=>{};window.__loaded=0;openBookFile(new File(["+json.dumps(BOOK)+"],'capture.md',{lastModified:42})).then(()=>__loaded=1);true")
+ content=('Uint8Array.from(atob('+json.dumps(epub_fixture())+'),ch=>ch.charCodeAt(0))') if is_epub else json.dumps(BOOK)
+ filename='capture.epub' if is_epub else 'capture.md'
+ c.js("localStorage.setItem('reader_onboarding_done','1');showUpdateBanner=()=>{};window.__loaded=0;openBookFile(new File(["+content+"],"+json.dumps(filename)+",{lastModified:42})).then(()=>__loaded=1);true")
  c.wait('__loaded===1',timeout=30)
  c.js("document.body.dataset.theme="+json.dumps(theme)+";for(let i=0;i<4;i++)goNext();true")
  time.sleep(.7)
+ if is_epub:
+  check('real EPUB import retains inline text and archive images',"state.format==='epub'&&els.pages.querySelector('em')!==null&&[...els.pages.querySelectorAll('img')].some(im=>im.complete&&im.naturalWidth===40)")
  c.js("window.__pageBefore=state.pageInChapter;selectRangeAndTranslate=()=>{__translations++;return true;};els.tooltip.style.display='flex';document.getElementById('btn-region').click();true")
  c.wait("document.body.classList.contains('region-mode')&&typeof window.html2canvas==='function'",timeout=20)
  c.js("window.__captureOriginal=window.html2canvas;window.__regionRenderError='';window.html2canvas=(...args)=>__captureOriginal(...args).catch(e=>{__regionRenderError=String(e);throw e;});true")
