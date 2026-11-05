@@ -111,7 +111,7 @@ jobs:
           import pathlib, sys
           path = pathlib.Path(sys.argv[1])
           tail = '\n'.join(path.read_text(errors='replace').splitlines()[-55:]) if path.exists() else 'No captured output'
-          message = 'Failed command: ' + sys.argv[2] + '\n' + tail[-10000:]
+          message = 'Failed command: ' + sys.argv[2] + '\n' + tail[-3000:]
           message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
           print('::error title=Browser suite failure::' + message, flush=True)
           PYCI
@@ -119,6 +119,7 @@ jobs:
           }
           trap 'report_browser_failure "$?" "$BASH_COMMAND"' ERR
           exec > >(tee "$browser_ci_log") 2>&1
+
           
           # 1. Start HTTP Server
           echo "Starting HTTP Server..."
@@ -183,6 +184,7 @@ jobs:
           python3 -u tests/tooltip_touch_ux_browser.py
           python3 -u tests/menu_discoverability_browser.py
           python3 -u tests/single_word_translation_browser.py
+          python3 -u tests/iphone_word_tap_browser.py
 
           echo "Running pdf_word_click_browser.py..."
           python3 -u tests/pdf_word_click_browser.py

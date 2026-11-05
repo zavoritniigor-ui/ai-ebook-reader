@@ -11,6 +11,7 @@ from pdf_audit_fixtures import pdf_document
 URL = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html')
 c = CDP()
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable')
+c.call('Page.addScriptToEvaluateOnNewDocument',source="window.__printBootErrors=[];addEventListener('error',e=>__printBootErrors.push({message:e.message,file:e.filename}));")
 c.call('Network.setCacheDisabled', cacheDisabled=True)
 c.call('Network.setBypassServiceWorker', bypass=True)
 
@@ -139,13 +140,20 @@ print('PASS P1-4: print frame renders non-empty image at full natural dimensions
 
 # Test Ctrl+P shortcut intercepts to printCurrentReaderPage
 c.js("""(() => {
+    // Exercise the reader shortcut, rather than a still-focused upload/key
+    // input: the product intentionally leaves Ctrl+P alone in text fields.
+    els.container.tabIndex = -1;
+    els.container.focus({ preventScroll: true });
     window.__printCalled = false;
     const orig = printCurrentReaderPage;
     printCurrentReaderPage = () => { window.__printCalled = true; };
     const evt = new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true, cancelable: true });
-    document.dispatchEvent(evt);
+    window.__shortcutFocus={tag:document.activeElement?.tagName,id:document.activeElement?.id,format:state.format,bootErrors:__printBootErrors};
+    els.container.dispatchEvent(evt);
     printCurrentReaderPage = orig;
 })()""")
+if c.js('window.__printCalled') is not True:
+    print('PRINT SHORTCUT FAILURE CONTEXT', c.js('__shortcutFocus'), flush=True)
 check('P1-4: Ctrl+P keyboard shortcut triggers printCurrentReaderPage', "window.__printCalled === true")
 
 

@@ -1463,6 +1463,7 @@ function wordBoundsAt(clientX, clientY, anchor = null) {
 }
 
 let lastDragClientX = 0, lastDragClientY = 0;
+let reflowTouchTap = null;
 // A finger drag holds on to the LINE its end is on: on a phone a PDF line is ~7 px tall with the next one 8 px below, and a
 // fingertip lands a few pixels lower than the reader aims, so the end used to jump to the line below («une cuisinière»
 // dragged right-to-left came out «cuisinière o une»). The end moves to another line only once the finger is more than a
@@ -1483,6 +1484,7 @@ let pdfSelectionTouch = null;
 let penSelectionActive = false;
 
 function cancelDragSelection() {
+    reflowTouchTap = null;
     const hadDragHighlight = !!state.dragRange;
     clearTimeout(touchSelTimer); touchSelTimer = null;
     dragSel = null; dragMoved = false; state.dragRange = null; dragLine = null;
@@ -1498,12 +1500,22 @@ document.addEventListener('pointercancel', cancelDragSelection);
 // real touchscreens. Small pre-hold moves must not hand the gesture to native scrolling.
 // Touch coordinates remain authoritative even on browsers that coalesce pointer moves.
 document.addEventListener('touchstart', e => {
+    reflowTouchTap = null;
+    if (e.touches.length === 1 && state.format && state.format !== 'pdf' &&
+        state.translateMode && !state.inkMode && els.pages.contains(e.target) &&
+        !document.body.classList.contains('region-mode') &&
+        !e.target.closest('a, button, input, textarea, select, audio, video, [contenteditable]')) {
+        const t = e.touches[0];
+        reflowTouchTap = { id: t.identifier, x: t.clientX, y: t.clientY, at: Date.now() };
+    }
     if (e.touches.length !== 1) { cancelDragSelection(); return; }
     if (state.format !== 'pdf' || !touchSelTimer || !els.container.contains(e.target) || e.target.closest('.pdf-audio-marker')) return;
     const t = e.touches[0];
     pdfSelectionTouch = { id: t.identifier, x: t.clientX, y: t.clientY, blocked: false, scrolling: false };
 }, { passive: true });
 function guardTouchSelectionMove(e) {
+    if (reflowTouchTap && (e.touches.length !== 1 ||
+        Math.hypot(e.touches[0].clientX - reflowTouchTap.x, e.touches[0].clientY - reflowTouchTap.y) > 18)) reflowTouchTap = null;
     if (penSelectionActive && e.touches.length === 1) {
         if (e.cancelable) e.preventDefault();   // the pen's own touch stream: keep it a selection drag
         return;
@@ -1559,6 +1571,9 @@ let dragStartX = 0, dragStartY = 0, dragMoved = false, touchSelTimer = null;
 const onStartScreen = (target) => !state.format || !!target?.closest?.('#home-screen, #recent-books');
 
 els.mainArea.addEventListener('pointerdown', (e) => {
+    // A swipe may emit no compatibility click. Its old guard must not consume
+    // the next deliberate tap; a fresh primary down starts a new gesture.
+    if (e.pointerType === 'touch' && e.isPrimary !== false && els.pages.contains(e.target)) state.suppressNextClick = false;
     if (state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) return;
     if (e.pointerType === 'touch' && !e.isPrimary) { cancelDragSelection(); return; }
     if (state.format === 'pdf' && !els.container.contains(e.target)) return;
@@ -1766,6 +1781,7 @@ function commitDragSelection(clientX, clientY) {
 }
 
 document.addEventListener('touchend', (e) => {
+    const tap = reflowTouchTap; reflowTouchTap = null;
     const gesture = pdfSelectionTouch;
     pdfSelectionTouch = null;
     clearTimeout(touchSelTimer); touchSelTimer = null;
@@ -1776,6 +1792,21 @@ document.addEventListener('touchend', (e) => {
             const touch = e.changedTouches?.[0];
             commitDragSelection(touch ? touch.clientX : (lastDragClientX || dragStartX), touch ? touch.clientY : (lastDragClientY || dragStartY));
         }
+    }
+    const touch = e.changedTouches?.[0];
+    // A browser may omit/delay the compatibility click on EPUB's inline text.
+    // Handle this completed short tap once, while retaining its user activation;
+    // cancelling touchend prevents a second lookup from a later native click.
+    if (tap && touch && touch.identifier === tap.id && e.touches.length === 0 &&
+        e.changedTouches.length === 1 && e.cancelable && !e.defaultPrevented &&
+        Date.now() - tap.at < 380 && Math.hypot(touch.clientX - tap.x, touch.clientY - tap.y) <= 18 &&
+        state.format !== 'pdf' && state.translateMode && !state.inkMode && !state.suppressNextClick &&
+        !state.touchSelecting && !(state.touchJustCommitted && Date.now() - state.touchJustCommitted < 700) &&
+        els.pages.contains(e.target) && !document.body.classList.contains('region-mode')) {
+        e.preventDefault();
+        const alignment = alignmentSourceAt(touch.clientX, touch.clientY);
+        if (alignment !== null) flashAlignment(alignment);
+        else handleReadingClick({ target: e.target, clientX: touch.clientX, clientY: touch.clientY });
     }
 }, { passive: false });
 
@@ -1836,7 +1867,8 @@ function rangeBetweenWords(a, b) {
  * для одного й того самого елемента, коли реальна ціль кліку — його нащадок.
  */
 
-els.mainArea.addEventListener('click', (e) => {
+els.mainArea.addEventListener('click', handleReadingClick);
+function handleReadingClick(e) {
     if (e.target.closest('#pdf-scrubber')) return;
     if (state.inkMode) return;   // у режимі письма тап малює, а не перекладає
     if (onStartScreen(e.target)) return;   // стартовий екран: кнопки, назви, список книг — не текст для перекладу
@@ -1911,4 +1943,4 @@ els.mainArea.addEventListener('click', (e) => {
     else if (x > rect.width * 0.80) goNext();
     // The middle of the page shows the «◀ page ▶» bar for a few seconds (as in other readers); the menu has its ☰ button.
     else openFooterMenu();
-});
+}
