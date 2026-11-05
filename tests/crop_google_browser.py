@@ -5,7 +5,8 @@ The endpoint/field are the file-upload form used by Chromium's Lens search.
 Check real PNG bytes, synchronous user activation, source preview retention,
 no Gemini/clipboard/AI detour, limits and an OS-share/manual-save fallback.
 """
-import base64, json, os, time
+import base64, json, os, time, threading
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from browser_cdp import CDP
 
 URL = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html')
@@ -21,6 +22,7 @@ addEventListener('error',e=>__cropErrors.push(e.message));
 Object.defineProperty(document,'hidden',{configurable:true,get:()=>__forceHidden});
 const NativeTransfer=window.DataTransfer;
 window.DataTransfer=function(){if(__noTransfer)throw new Error('File assignment unsupported');return new NativeTransfer();};
+window.__nativeCropSubmit=HTMLFormElement.prototype.submit;
 HTMLFormElement.prototype.submit=function(){
  if(__submitFails)throw new Error('Submission failed');
  const file=this.querySelector('input[type=file]');window.__lastUploadFile=file?.files[0];
@@ -66,7 +68,7 @@ press()
 check('one multipart file navigation opens Google Lens', "__uploads.length===1&&__uploads[0].action==='https://lens.google.com/v3/upload?ep=cntpubb&re=df&s=4'&&__uploads[0].method==='post'&&__uploads[0].enctype==='multipart/form-data'")
 check('the selected crop is sent as a PNG file in encoded_image',"__uploads[0].field==='encoded_image'&&__uploads[0].filename==='pdf-page-7.png'&&__uploads[0].type==='image/png'&&__uploads[0].size>0")
 check('PNG bytes are exactly the cropped image',"(async()=>{const bytes=new Uint8Array(await __lastUploadFile.arrayBuffer());return btoa(String.fromCharCode(...bytes))==="+json.dumps(PNG)+";})()")
-check('navigation stays in the user click and isolates the new tab',"__uploads[0].active&&__uploads[0].connected&&__uploads[0].target==='_blank'&&/noopener/.test(__uploads[0].rel)&&/noreferrer/.test(__uploads[0].rel)")
+check('navigation stays in the user click and uses the current window',"__uploads[0].active&&__uploads[0].connected&&__uploads[0].target==='_self'&&/noopener/.test(__uploads[0].rel)&&/noreferrer/.test(__uploads[0].rel)")
 check('no clipboard, Gemini window or AI call is needed','__copies.length===0&&__opened.length===0&&__visionCalls===0')
 check('preview remains available after requesting search',"cropDialog.open&&document.getElementById('crop-preview').naturalWidth===2&&document.getElementById('crop-status').textContent===t('cropGoogleOpening')")
 c.js('new Promise(r=>setTimeout(r,1100))')
@@ -90,4 +92,31 @@ c.js('__forceHidden=false;closeCropPreview();__uploads.length=0;document.getElem
 check('a closed preview cannot reuse an old crop','__uploads.length===0&&__shared.length===0')
 check('new text is available in all nine menu languages',"(()=>{const keys=['cropGoogleSearch','cropGoogleOpening','cropGoogleShare','cropGoogleUnsupported','cropGoogleTooLarge'];return keys.every(k=>['uk','en','fr','ru','zh','ko','hi','ga','es'].every(l=>typeof I18N[k]?.[l]==='string'&&I18N[k][l]!==k));})()")
 check('nothing threw','__cropErrors.length===0')
+# Exercise the browser's real form submission too. The destination alone is
+# replaced with a local receiver, so this test cannot upload to Google.
+packets=[]
+class Receiver(BaseHTTPRequestHandler):
+    def do_POST(self):
+        packets.append((self.headers.get('Content-Type',''),self.rfile.read(int(self.headers['Content-Length']))))
+        self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
+        self.wfile.write(b'<!doctype html><title>Crop upload received</title>OK')
+    def log_message(self,*args): pass
+server=ThreadingHTTPServer(('127.0.0.1',0),Receiver)
+threading.Thread(target=server.serve_forever,daemon=True).start()
+try:
+    reset()
+    destination='http://127.0.0.1:'+str(server.server_port)+'/crop-receiver'
+    original_target=c.call('Target.getTargetInfo')['targetInfo']['targetId']
+    c.js('HTMLFormElement.prototype.submit=function(){this.action='+json.dumps(destination)+';return __nativeCropSubmit.call(this);};true')
+    point=c.js('(()=>{const r=document.getElementById("crop-google").getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()')
+    for kind in ['mousePressed','mouseReleased']:
+        c.call('Input.dispatchMouseEvent',type=kind,x=point['x'],y=point['y'],button='left',clickCount=1)
+    c.wait('location.href==='+json.dumps(destination),timeout=10)
+    assert c.call('Target.getTargetInfo')['targetInfo']['targetId']==original_target
+    assert len(packets)==1 and 'multipart/form-data' in packets[0][0]
+    assert b'name="encoded_image"; filename="pdf-page-7.png"' in packets[0][1]
+    assert base64.b64decode(PNG) in packets[0][1]
+    print('PASS native form navigates the current window with the exact PNG bytes',flush=True)
+finally:
+    server.shutdown();server.server_close()
 print('ALL GOOGLE IMAGE SEARCH CROP CHECKS PASSED',flush=True)

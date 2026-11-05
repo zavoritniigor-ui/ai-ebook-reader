@@ -216,6 +216,8 @@ jobs:
 
           echo "Running crop_google_browser.py (Google image search for a page crop)..."
           python3 -u tests/crop_google_browser.py
+          echo "Running region_screenshot_browser.py (text page screenshot, no translation)..."
+          python3 -u tests/region_screenshot_browser.py
 
           echo "Running epub_toc_browser.py (the real EPUB contents from nav.xhtml / toc.ncx)..."
           python3 -u tests/epub_toc_browser.py

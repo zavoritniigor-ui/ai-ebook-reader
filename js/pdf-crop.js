@@ -1,8 +1,8 @@
-/* pdf-crop.js — виділення області сторінки PDF (пером/мишею/пальцем) і перевірка
+/* pdf-crop.js — знімок області сторінки PDF або текстової книги й перевірка
  * вправи через AI vision: regionStart/regionBox — стан обведення (region-mode),
  * exitRegionMode виходить без захоплення, cropPdfRegion вирізає саме обведену
  * ділянку з canvas сторінки, openCropPreview/closeCropPreview показують/ховають
- * попередній перегляд (Save PNG / Share / Copy PNG / надіслати AI), і
+ * попередній перегляд (Save PNG / Share / Copy PNG / пошук Google), і
  * checkExerciseImage надсилає обрізане зображення на перевірку.
  *
  * Класичний <script src>, НЕ ES-модуль — див. js/core.js. Завантажується одразу
@@ -14,22 +14,63 @@
 
 // ========== ВИДІЛЕННЯ ОБЛАСТІ СТОРІНКИ Й ПЕРЕВІРКА ЧЕРЕЗ AI ==========
 // Обводиш пером (або мишею чи пальцем) фрагмент вправи — програма вирізає саме цю
-// ділянку зі сторінки PDF. Надсилання AI — лише окрема явна дія після preview.
+// ділянку сторінки. Пошук Google й надсилання AI — окремі явні дії після preview.
 const regionOverlay = document.getElementById('region-overlay');
 const regionBox = document.getElementById('region-box');
 let regionStart = null;
+let regionCaptureSeq = 0, regionCapturing = false;
+// Scope this style to capture mode; do not change the normal reading layout or
+// another agent's library CSS in index.html.
+const regionStyle = document.createElement('style');
+regionStyle.textContent = `
+body.region-mode #menu-handle, body.region-mode #quick-menu-dock,
+body.region-mode .side-panel, body.region-mode .panel-tab,
+body.region-mode .row-tab, body.region-mode #page-arrows,
+body.region-mode #footer-handle, body.region-mode #app-footer,
+body.region-mode #word-tooltip, body.region-mode #rules-tab {
+    visibility: hidden !important; pointer-events: none !important;
+}
+body.region-mode #region-overlay { user-select: none; -webkit-user-select: none; }
+`;
+document.head.appendChild(regionStyle);
+let regionRendererPromise = null;
+function loadRegionRenderer() {
+    if (typeof window.html2canvas === 'function') return Promise.resolve(window.html2canvas);
+    if (!regionRendererPromise) regionRendererPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'vendor/html2canvas-1.4.1.min.js'; script.async = true;
+        const timer = setTimeout(() => finish(new Error('Capture renderer timed out')), 15000);
+        const finish = error => {
+            clearTimeout(timer); script.onload = script.onerror = null;
+            if (error || typeof window.html2canvas !== 'function') {
+                script.remove(); regionRendererPromise = null;
+                reject(error || new Error('Capture renderer unavailable'));
+            } else resolve(window.html2canvas);
+        };
+        script.onload = () => finish();
+        script.onerror = () => finish(new Error('Capture renderer unavailable'));
+        document.head.appendChild(script);
+    });
+    return regionRendererPromise;
+}
 document.getElementById('region-cancel').onclick = exitRegionMode;
 
 document.getElementById('btn-region').onclick = () => {
     if (!state.format) { showToast(t('noBook')); return; }
-    // PDF — вирізане зображення; текстові книги (EPUB, FB2, TXT, HTML…) — текст усередині рамки стає звичайним виділенням
-    // (раніше тут була лише підказка «працює в PDF», а книги з бібліотеки здебільшого EPUB).
-    document.getElementById('region-hint').textContent = t(state.format === 'pdf' ? 'regionHint' : 'regionHintText');
+    document.getElementById('region-hint').textContent = t('regionCaptureHint');
+    window.getSelection()?.removeAllRanges();
+    clearSelectionHighlight(); invalidateSelection();
+    cancelTooltipHide(); stopTooltipSpeech();
+    els.tooltip.style.display = 'none'; state.tooltipPersistent = false;
+    state.lastSelectedRange = null; state.ctxSentenceRange = null;
+    closeFooterMenu();
+    if (state.format !== 'pdf') loadRegionRenderer().catch(() => {});
     state.inkMode = false; document.body.classList.remove('ink-mode');
     document.body.classList.add('region-mode');
     document.body.classList.add('immersive-mode');   // прибираємо меню з дороги
 };
 function exitRegionMode() {
+    regionCaptureSeq++; regionCapturing = false;
     document.body.classList.remove('region-mode');
     regionBox.style.display = 'none';
     regionStart = null;
@@ -39,7 +80,8 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && document.body.classList.contains('region-mode')) exitRegionMode();
 });
 regionOverlay.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('button') || regionStart || pdfPointers.size > 1) return;
+    if (e.target.closest('button') || regionCapturing || regionStart || pdfPointers.size > 1) return;
+    e.stopPropagation();
     regionStart = { x: e.clientX, y: e.clientY, id: e.pointerId };
     regionBox.style.display = 'block';
     regionBox.style.left = e.clientX + 'px'; regionBox.style.top = e.clientY + 'px';
@@ -49,65 +91,74 @@ regionOverlay.addEventListener('pointerdown', (e) => {
 });
 regionOverlay.addEventListener('pointermove', (e) => {
     if (!regionStart || regionStart.id !== e.pointerId) return;
+    e.preventDefault(); e.stopPropagation();
     const x = Math.min(e.clientX, regionStart.x), y = Math.min(e.clientY, regionStart.y);
     regionBox.style.left = x + 'px'; regionBox.style.top = y + 'px';
     regionBox.style.width = Math.abs(e.clientX - regionStart.x) + 'px';
     regionBox.style.height = Math.abs(e.clientY - regionStart.y) + 'px';
 });
 regionOverlay.addEventListener('pointerup', async (e) => {
-    if (!regionStart || regionStart.id !== e.pointerId) return;
+    if (!regionStart || regionStart.id !== e.pointerId || regionCapturing) return;
+    e.preventDefault(); e.stopPropagation();
+    const start = regionStart;
     const rect = {
-        left: Math.min(e.clientX, regionStart.x), top: Math.min(e.clientY, regionStart.y),
-        width: Math.abs(e.clientX - regionStart.x), height: Math.abs(e.clientY - regionStart.y)
+        left: Math.min(e.clientX, start.x), top: Math.min(e.clientY, start.y),
+        width: Math.abs(e.clientX - start.x), height: Math.abs(e.clientY - start.y)
     };
-    if (state.format !== 'pdf') {
-        exitRegionMode();
-        if (rect.width < 20 || rect.height < 20) return;   // випадковий тап
-        const range = textRangeInRect(rect);
-        if (!range || !selectRangeAndTranslate(range, rect.left + rect.width / 2, rect.top + rect.height / 2, 'phrase_translation')) showToast(t('regionNoText'));
-        return;
-    }
-    // Resolve WHICH page the gesture started on — continuous scroll can have
-    // several pages rendered at once, unlike the old single-page layout.
-    const startWrapper = document.elementFromPoint(regionStart.x, regionStart.y)?.closest('.pdf-page-wrapper');
-    exitRegionMode();
-    if (rect.width < 20 || rect.height < 20) return;   // випадковий тап
-    const dataUrl = cropPdfRegion(rect, startWrapper);
-    if (!dataUrl) { showToast(t('regionFail')); return; }
-    openCropPreview(dataUrl);
-});
-
-// Текст книги всередині рамки: від першого до останнього символу, центр якого лежить у ній (лише видима сторінка).
-function textRangeInRect(rect) {
-    const right = rect.left + rect.width, bottom = rect.top + rect.height;
-    const inside = b => { const x = b.left + b.width / 2, y = b.top + b.height / 2; return b.width > 0 && x >= rect.left && x <= right && y >= rect.top && y <= bottom; };
-    const touches = b => b.width > 0 && b.left < right && b.right > rect.left && b.top < bottom && b.bottom > rect.top;
-    const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT);
-    const r = document.createRange();
-    let first = null, last = null, node;
-    while ((node = walker.nextNode())) {
-        if (!node.nodeValue.trim()) continue;
-        r.selectNodeContents(node);
-        if (![...r.getClientRects()].some(touches)) continue;
-        for (let i = 0; i < node.length; i++) {
-            if (/\s/.test(node.nodeValue[i])) continue;
-            r.setStart(node, i); r.setEnd(node, i + 1);
-            if (!inside(r.getBoundingClientRect())) continue;
-            if (!first) first = { node, i };
-            last = { node, i };
+    if (regionOverlay.hasPointerCapture(e.pointerId)) regionOverlay.releasePointerCapture(e.pointerId);
+    regionStart = null;
+    if (rect.width < 20 || rect.height < 20) { exitRegionMode(); return; }
+    // The overlay is the top hit. Look underneath it to find the actual PDF
+    // page where the gesture started (including continuous-scroll neighbours).
+    const startWrapper = document.elementsFromPoint(start.x, start.y)
+        .map(el => el.closest('.pdf-page-wrapper')).find(Boolean);
+    const seq = ++regionCaptureSeq;
+    const book = state.bookKey, page = state.currentIndex, textPage = state.pageInChapter, format = state.format;
+    regionCapturing = true; regionBox.style.display = 'none';
+    document.getElementById('region-hint').textContent = t('regionCapturing');
+    try {
+        const dataUrl = format === 'pdf' ? cropPdfRegion(rect, startWrapper) : await cropTextRegion(rect);
+        if (seq !== regionCaptureSeq) return; // cancelled, or a new capture owns the overlay
+        if (document.hidden || !document.body.classList.contains('region-mode') || book !== state.bookKey || page !== state.currentIndex || textPage !== state.pageInChapter || format !== state.format) {
+            exitRegionMode(); return;
         }
+        exitRegionMode();
+        if (!dataUrl) { showToast(t('regionFail')); return; }
+        openCropPreview(dataUrl);
+    } catch (error) {
+        if (seq !== regionCaptureSeq) return;
+        exitRegionMode(); showToast(t('regionFail'));
     }
-    if (!first) return null;
-    const range = document.createRange();
-    range.setStart(first.node, first.i); range.setEnd(last.node, last.i + 1);
-    return range;
-}
+});
 regionOverlay.addEventListener('pointercancel', () => { regionStart = null; regionBox.style.display = 'none'; });
+
+// Rasterize only the visible book area, not menus, translation popups or the
+// capture overlay. Rendering stays local; the crop leaves only after Search/Share.
+async function cropTextRegion(rect) {
+    const b = els.container.getBoundingClientRect();
+    const left = Math.max(rect.left, b.left, 0), top = Math.max(rect.top, b.top, 0);
+    const right = Math.min(rect.left + rect.width, b.right, window.innerWidth);
+    const bottom = Math.min(rect.top + rect.height, b.bottom, window.innerHeight);
+    const width = right - left, height = bottom - top;
+    if (width < 5 || height < 5) return null;
+    const render = await loadRegionRenderer();
+    const scale = Math.min(window.devicePixelRatio || 1, 2, 2400 / Math.max(width, height));
+    const canvas = await render(els.container, {
+        x: left - b.left, y: top - b.top, width, height, scale,
+        windowWidth: window.innerWidth, windowHeight: window.innerHeight,
+        backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg-color').trim() || '#fff',
+        allowTaint: false, useCORS: false, foreignObjectRendering: false,
+        imageTimeout: 3000, logging: false, removeContainer: true,
+        // Its outer shadow belongs to the reader window, not the captured page.
+        onclone: doc => { doc.getElementById('reader-container').style.boxShadow = 'none'; },
+        ignoreElements: el => el.id === 'word-tooltip' || el.id === 'region-overlay'
+    });
+    return canvas.toDataURL('image/png');
+}
 const cropDialog = document.getElementById('crop-dialog');
 Object.assign(I18N, {
-    regionHintText: { uk: 'Обведіть фрагмент сторінки — текст у ньому виділиться', en: 'Draw around part of the page — its text gets selected', fr: 'Entourez une partie de la page — son texte sera sélectionné',
-                      ru: 'Обведите фрагмент страницы — текст в нём выделится', es: 'Rodea una parte de la página: su texto quedará seleccionado' },
-    regionNoText: { uk: 'У цій рамці немає тексту книги.', en: 'There is no book text inside this frame.', fr: 'Aucun texte du livre dans ce cadre.', ru: 'В этой рамке нет текста книги.', es: 'No hay texto del libro en este recuadro.' },
+    regionCaptureHint: {"uk": "Обведіть фрагмент сторінки для знімка", "en": "Draw around the area to capture", "fr": "Entourez la zone à capturer", "ru": "Обведите фрагмент страницы для снимка", "zh": "框选要截图的区域", "ko": "캡처할 영역을 드래그하세요", "hi": "कैप्चर करने के लिए क्षेत्र घेरें", "ga": "Tarraing timpeall an limistéir le gabháil", "es": "Rodea la zona que deseas capturar"},
+    regionCapturing: {"uk": "Готуємо зображення…", "en": "Preparing image…", "fr": "Préparation de l’image…", "ru": "Готовим изображение…", "zh": "正在准备图片…", "ko": "이미지 준비 중…", "hi": "छवि तैयार हो रही है…", "ga": "An íomhá á hullmhú…", "es": "Preparando imagen…"},
     cropAttached: { uk: 'Фрагмент сторінки додано. Поставте запитання й натисніть ➤', en: 'Page crop attached. Ask your question and press ➤', fr: 'Extrait de page joint. Posez votre question et appuyez sur ➤', ru: 'Фрагмент страницы добавлен. Задайте вопрос и нажмите ➤', zh: '已附加页面片段。请输入问题并按 ➤', ko: '페이지 조각을 첨부했습니다. 질문을 입력하고 ➤ 를 누르세요', hi: 'पृष्ठ का अंश जोड़ा गया। अपना प्रश्न लिखें और ➤ दबाएँ', ga: 'Tá blúire den leathanach ceangailte. Cuir do cheist agus brúigh ➤' },
     cropRemove: { uk: 'Прибрати зображення', en: 'Remove image', fr: "Retirer l'image", ru: 'Убрать изображение', zh: '移除图片', ko: '이미지 제거', hi: 'छवि हटाएँ', ga: 'Bain an íomhá' },
     cropAskPlaceholder: { uk: 'Запитання про зображення (порожнє — перевірити вправу)', en: 'Question about the image (empty = check the exercise)', fr: "Question sur l'image (vide = vérifier l'exercice)", ru: 'Вопрос об изображении (пусто — проверить упражнение)', zh: '关于图片的问题（留空 = 检查练习）', ko: '이미지에 대한 질문 (비우면 = 연습 확인)', hi: 'छवि के बारे में प्रश्न (खाली = अभ्यास जाँचें)', ga: 'Ceist faoin íomhá (folamh = seiceáil an cleachtadh)' },
@@ -190,7 +241,7 @@ if (cropGoogleButton) {
             if (input.files.length !== 1) throw new Error('File assignment unavailable');
             form = document.createElement('form');
             form.method = 'POST'; form.enctype = 'multipart/form-data';
-            form.action = GOOGLE_IMAGE_SEARCH_URL; form.target = '_blank';
+            form.action = GOOGLE_IMAGE_SEARCH_URL; form.target = '_self';
             form.rel = 'noopener noreferrer'; form.hidden = true;
             form.appendChild(input); document.body.appendChild(form);
             form.submit();
