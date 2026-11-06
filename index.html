@@ -1696,6 +1696,12 @@
         .home-actions > * > span { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
         @media (max-width: 340px) { .home-actions { grid-template-columns: 1fr; } }
         #recent-books { width: 100%; margin-top: 26px; text-align: left; }
+        .shelf-tabs { display: flex; gap: 8px; margin: 0 0 12px; }
+        .shelf-tab { flex: 1; min-width: 0; min-height: 44px; padding: 8px; border: 1px solid var(--border-color); border-radius: 10px;
+            background: var(--panel-bg); color: var(--text-color); font: inherit; font-size: 14px; cursor: pointer; overflow-wrap: anywhere; }
+        .shelf-tab[aria-pressed="true"] { background: var(--accent-color); color: var(--accent-contrast); border-color: var(--accent-color); }
+        .shelf-tab:focus-visible { outline: 3px solid var(--accent-color); outline-offset: 3px; }
+        .shelf-note, .recent-empty { margin: 0 0 10px; color: var(--text-muted); font-size: 13px; }
         .recent-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
         #recent-books h3 { font-size: 15px; margin: 0; color: var(--text-muted); font-weight: 600; }
         .recent-all { background: none; border: 0; color: var(--accent-color); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 44px; padding: 0 4px; }
@@ -2381,10 +2387,10 @@
     </div>
 
     <script src="js/core.js?v=281021281c18"></script>
-    <script src="js/lang-detect.js?v=efc5ec19e3e0"></script>
-    <script src="js/local-speech.js?v=c3244d9e7daf"></script>
-    <script src="js/tts.js?v=c8a69d8615fd"></script>
-    <script src="js/selection.js?v=ede5d87d9e7d"></script>
+    <script src="js/lang-detect.js?v=5690558f59cc"></script>
+    <script src="js/local-speech.js?v=338f138ee734"></script>
+    <script src="js/tts.js?v=ed91c72615f3"></script>
+    <script src="js/selection.js?v=6a45bc305fb1"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
@@ -2413,7 +2419,7 @@
     <script src="js/device-llm.js?v=9b6f20f6d2d6"></script>
     <script src="js/pdf-ink.js?v=0b9c9e47c2e9"></script>
     <script src="js/text-ink.js?v=4ba7df76e282"></script>
-    <script src="js/pdf-crop.js?v=478d28ec89bb"></script>
+    <script src="js/pdf-crop.js?v=ef01b312aeee"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
     <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
@@ -2425,8 +2431,8 @@
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
     <script src="js/library.js?v=2daa015f41b4"></script>
-    <script src="js/book-shelf.js?v=0895e4123dc3"></script>
-    <script src="js/scanner.js?v=ce1b3c21236c"></script>
+    <script src="js/book-shelf.js?v=e2c7895176e5"></script>
+    <script src="js/scanner.js?v=1cfd10be8932"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
     <script src="js/developer.js?v=67c700255062"></script>

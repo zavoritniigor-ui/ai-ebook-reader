@@ -19,7 +19,7 @@ c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable')
 c.call('Network.setCacheDisabled', cacheDisabled=True); c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Emulation.setDeviceMetricsOverride', width=1000, height=900, deviceScaleFactor=1, mobile=False)
 c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
-window.__tl = []; window.__faults = []; window.__warnings = []; window.__errors = [];
+window.__tl = []; window.__faults = []; window.__warnings = []; window.__errors = []; window.__holdEnd = false;
 addEventListener('error', e => __errors.push(e.message));
 const warn = console.warn.bind(console); console.warn = (...a) => { __warnings.push(a.join(' ')); warn(...a); };
 const log = (ev, extra) => __tl.push(Object.assign({ev, t: performance.now()}, extra || {}));
@@ -42,6 +42,7 @@ const synth = {
     if (fault) { this._timers.push(setTimeout(() => { this._cur = null; this.pending = false; u.onerror && u.onerror({error: fault}); }, 5)); return; }
     this._timers.push(setTimeout(() => {
       this.pending = false; this.speaking = true; log('start', {text: u.text}); u.onstart && u.onstart({});
+      if (__holdEnd) return;
       this._timers.push(setTimeout(() => { this.speaking = false; this._cur = null; log('end', {text: u.text}); u.onend && u.onend({}); }, 60 + u.text.length * 12));
     }, 30));
   }
@@ -145,11 +146,13 @@ check('6 sentence interrupted by a word: the word plays whole after the cancel; 
       "(ev => ev.includes('cancel') && !ev.includes('end ' + %s))(%s) && %s('dort')" % (json.dumps(SENTENCE), EV, COMPLETE))
 
 # 8: open / close UI, then play
-fresh(); tap('chat'); c.wait("__tl.some(e => e.ev === 'start')", timeout=3)
+# Hold this utterance until cancellation: polling must not race a 108 ms synthetic word.
+fresh(); c.js('__holdEnd = true; 1'); tap('chat'); c.wait("__tl.some(e => e.ev === 'start')", timeout=3)
 c.js("els.ttCloseBtn.click(); 1"); idle()
 check('8 closing the popup while speaking stops it', "(ev => ev.includes('cancel') && !ev.includes('end chat'))(%s)" % EV)
 c.js("__tl.length = 0; els.ttCloseBtn.click(); 1"); pause(.1)
 check('8 closing an idle popup sends no cancel()', "!__tl.some(e => e.ev === 'cancel')")
+c.js('__holdEnd = false; 1')
 tap('beau'); idle()
 check('8 next word after closing plays at once and whole', "__tl[0].ev === 'speak' && __tl[0].inEvent !== null && %s('beau')" % COMPLETE)
 c.js("els.ttCloseBtn.click(); 1"); pause(.2)

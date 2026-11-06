@@ -1,13 +1,13 @@
-/* local-speech.js — озвучення окремих фраз через ЛОКАЛЬНИЙ мовний сервер (Kokoro для
- * англійської/французької, Piper для української), сервер на 127.0.0.1:8880.
+/* local-speech.js — озвучення через ЛОКАЛЬНИЙ мовний сервер (Kokoro для
+ * англійської/французької), сервер на 127.0.0.1:8880. Українська — системним голосом.
  *
  * Вимкнено за замовчуванням. Вмикається прапорцем localStorage `reader_local_speech`
  * = '1' (його ставить власник на своєму ПК). Без сервера або без прапорця кожна фраза
  * іде через браузерний speechSynthesis, як і раніше — жодна поведінка не змінюється.
  *
  * Що покриває: одна фраза за раз — динаміки у спливаючому вікні (оригінал/переклад),
- * озвучка перекладу мовою (speakInLang). Неперервне читання сторінки (speakCurrentSentence)
- * і підсвітка за onboundary лишаються на браузерному синтезаторі.
+ * озвучка перекладу мовою (speakInLang), читання сторінки й виділення (speakCurrentSentence).
+ * Серверне аудіо зберігає підсвітку речення; часових меж окремих слів сервер не повертає.
  *
  * Класичний <script src>, НЕ ES-модуль — див. js/core.js. Викликається з js/tts.js
  * (speakText/speakInLang) і cancelSpeech() зупиняє поточне локальне відтворення.
@@ -16,9 +16,10 @@
 // На ПК власника сторінка йде прямо до сервера; з телефона/планшета (і з самого сайту) — через Pages Function
 // /api/speech, яка передає запит на сервер через тунель (functions/api/speech/[[path]].js).
 const LOCAL_SPEECH_URL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://127.0.0.1:8880' : '/api/speech';
-const LOCAL_SPEECH_LANGS = new Set(['en', 'fr', 'uk']);
+const LOCAL_SPEECH_LANGS = new Set(['en', 'fr']);
 const LOCAL_SPEECH_HEALTH_TTL_MS = 30000;
 const LOCAL_SPEECH_HEALTH_TIMEOUT_MS = 1500;
+const LOCAL_SPEECH_REQUEST_TIMEOUT_MS = 20000;
 
 let localSpeechHealth = { at: 0, ok: false };
 let localSpeechInFlight = null;   // AbortController запиту, що ще чекає на аудіо
@@ -41,11 +42,13 @@ function refreshLocalSpeech() {
         .catch(() => { localSpeechHealth = { at: Date.now(), ok: false }; });
 }
 
-// Чи можна зараз озвучити цією мовою локально (синхронно, за кешем).
+// Health is advisory: do not send the first tap to the system voice while it is pending.
+// The speech request itself establishes availability and has a bounded fallback.
 function localSpeechReady(langCode) {
     if (!localSpeechEnabled() || !LOCAL_SPEECH_LANGS.has(langCode)) return false;
+    const recentlyFailed = localSpeechHealth.failed && Date.now() - localSpeechHealth.at < LOCAL_SPEECH_HEALTH_TTL_MS;
     refreshLocalSpeech();
-    return localSpeechHealth.ok;
+    return !recentlyFailed;
 }
 
 // Зупиняє все локальне: запит, що чекає, і поточне відтворення. Викликається з cancelSpeech(),
@@ -67,9 +70,13 @@ function stopLocalSpeech() {
 // якщо за час запиту фразу скасували (новий тап, stopTooltipSpeech), аудіо не програється.
 function speakViaLocal(text, langCode, side, offset, onEnd, gen, fallback) {
     if (!localSpeechReady(langCode)) return false;
-    const spoken = offset ? text.slice(offset) : text;
+    // Soft hyphens are layout hints, not pronunciation or word boundaries.
+    // Keep source DOM/selection offsets intact and remove them only from server input.
+    const spoken = (offset ? text.slice(offset) : text).replace(/\u00ad/g, '');
     const controller = new AbortController();
     localSpeechInFlight = controller;
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, LOCAL_SPEECH_REQUEST_TIMEOUT_MS);
     fetch(LOCAL_SPEECH_URL + '/speak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,14 +88,17 @@ function speakViaLocal(text, langCode, side, offset, onEnd, gen, fallback) {
             return r.blob();
         })
         .then(blob => {
+            clearTimeout(timeout);
             if (controller.signal.aborted || state.ttsGen !== gen) return;
             localSpeechInFlight = null;
+            localSpeechHealth = { at: Date.now(), ok: true };
             playLocalBlob(blob, side, text, offset, onEnd, gen, fallback);
         })
         .catch(err => {
-            if (controller.signal.aborted || state.ttsGen !== gen) return;
+            clearTimeout(timeout);
+            if ((controller.signal.aborted && !timedOut) || state.ttsGen !== gen) return;
             localSpeechInFlight = null;
-            localSpeechHealth = { at: Date.now(), ok: false };
+            localSpeechHealth = { at: Date.now(), ok: false, failed: true };
             console.warn('Local speech unavailable, using browser voice:', err);
             fallback();
         });
@@ -102,20 +112,29 @@ function playLocalBlob(blob, side, text, offset, onEnd, gen, fallback) {
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     const u = {};   // bindUtterance лише вішає onboundary/onend/onerror на цей об'єкт
-    bindUtterance(u, side, text, offset, onEnd);
+    if (side) bindUtterance(u, side, text, offset, onEnd);
+    else u.onend = onEnd;  // page/selection queue, without changing popup speaker state
     if (typeof pauseBookAudio === 'function') pauseBookAudio();
     localSpeechAudio = audio;
     localSpeechAudioUrl = url;
-    audio.onended = () => { stopLocalSpeech(); if (u.onend) u.onend(); };
-    audio.onerror = () => { stopLocalSpeech(); if (u.onerror) u.onerror(); };
-    audio.play().catch(err => {
-        // Автовідтворення заборонене або файл не відкрився: прибираємо стан і переходимо на браузерний голос.
-        if (state.ttsGen !== gen) return;
+    let settled = false;
+    const current = () => !settled && state.ttsGen === gen && localSpeechAudio === audio;
+    audio.onended = () => {
+        if (!current()) return;
+        settled = true;
         stopLocalSpeech();
-        if (u.onerror) u.onerror();
+        if (u.onend) u.onend();
+    };
+    const playbackFailed = err => {
+        if (!current()) return;
+        settled = true;
+        stopLocalSpeech();
+        // Finish only after the fallback speaks; advancing here would skip this segment.
         console.warn('Local speech playback failed, using browser voice:', err);
         fallback();
-    });
+    };
+    audio.onerror = playbackFailed;
+    audio.play().catch(playbackFailed);
 }
 
 // Перемикач у «Налаштуваннях» (index.html, #btn-local-speech) — той самий прапорець reader_local_speech, що й раніше.
@@ -131,7 +150,14 @@ Object.assign(I18N, {
     btn.onclick = () => {
         const on = !localSpeechEnabled();
         writeStored('reader_local_speech', on ? '1' : '0');
-        if (!on) stopLocalSpeech();
+        if (!on) {
+            if (isSpeakingGlobal && !state.ttsPaused) {
+                state.ttsGen++;
+                cancelSpeech();
+                // Restart this sentence with the browser voice instead of leaving its queue waiting.
+                speakCurrentSentence();
+            } else stopTooltipSpeech();
+        }
         localSpeechHealth = { at: 0, ok: false };   // перевірити доступність заново при наступній фразі
         paint();
     };

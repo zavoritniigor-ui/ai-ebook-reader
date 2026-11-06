@@ -861,7 +861,7 @@ async function scanExport(action) {
             catch (e) { scanStatus(t('scanOcrFailed')); await new Promise(r => setTimeout(r, 1200)); }   // PDF буде, лише без тексту
         }
         const file = await scanMakeFile(target, pages, target === format ? nup : 1);
-        if (action === 'open') { closeScanner(); scanStatus(''); await openBookFile(file); return; }
+        if (action === 'open') { closeScanner(); scanStatus(''); await openBookFile(markShelfScan(file)); return; }
         if (action === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
             try { await navigator.share({ files: [file], title: file.name }); scanStatus(''); return; }
             catch (e) { if (e && e.name === 'AbortError') { scanStatus(''); return; } }

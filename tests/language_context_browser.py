@@ -138,3 +138,11 @@ assert tts_result['voiceTrace'][2]['ttsLang'] == 'en-US' and tts_result['voiceTr
 print('PASS mixed EN/FR TTS voice-selection smoke (no drops, correct alternation)', flush=True)
 
 print('ALL CONTEXT-AWARE LANGUAGE/TTS CHECKS PASSED')
+
+# Whole-word context matches must not borrow a substring inside an earlier word.
+for fragment,context in [('car','The cartoon is funny, mais je reste car il pleut.'),
+                         ('est','The test is simple, il est facile.'),
+                         ('on','This conversation is long, mais on parle français.')]:
+    got=c.js('(()=>{state.ctxPanelLang="";state.sourceLang="fr-FR";return fragmentLangInContext('+json.dumps(fragment)+','+json.dumps(context)+');})()')
+    assert got=='fr',(fragment,context,got)
+    print('PASS whole-word contextual language',fragment,flush=True)
