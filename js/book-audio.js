@@ -562,9 +562,21 @@ function baMarksReady() { return baMarks.key === state.bookKey && !!baMarks.list
 function baRestarts(cd) {
     const marks = baMarks.list.filter(m => (m.cd || 0) === (cd || 0) && m.kind === 'piste');
     const discTracks = bookAudio.tracks.filter(x => (x.cd || 0) === (cd || 0) && !x.section).length;
-    if (discTracks < 6 || !marks.length) return false;
-    const firstPages = new Set(marks.filter(m => m.track === 1).map(m => m.page));
-    return firstPages.size >= 3 && Math.max(...marks.map(m => m.track)) <= discTracks / 2;
+    if (!marks.length) return false;
+    // (1) the numbers run through the disc: piste 1 on three or more pages and the highest piste at most half of the disc's tracks
+    if (discTracks >= 6) {
+        const firstPages = new Set(marks.filter(m => m.track === 1).map(m => m.page));
+        if (firstPages.size >= 3 && Math.max(...marks.map(m => m.track)) <= discTracks / 2) return true;
+    }
+    // (2) the numbers restart in every section: the same number is printed on three or more pages of the book. Then one number
+    // names a different dialogue in every section and the app cannot know which one the page means. This reading is taken from the
+    // book alone, so an incomplete set of files (fewer tracks than the book has dialogues) cannot hide the restart.
+    // A mark that names its page (a transcript) repeats a number on purpose: it does not count.
+    const own = marks.filter(m => !m.ref);
+    const pagesOf = new Map();
+    for (const m of own) { if (!pagesOf.has(m.track)) pagesOf.set(m.track, new Set()); pagesOf.get(m.track).add(m.page); }
+    for (const pages of pagesOf.values()) if (pages.size >= 3) return true;
+    return false;
 }
 function baTarget(m) {
     if (!baMarksReady()) return { cd: m.cd, track: m.track, pending: true };

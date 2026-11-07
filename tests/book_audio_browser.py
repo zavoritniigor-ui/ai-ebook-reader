@@ -599,5 +599,29 @@ check('14m A phone\'s folder pick of a «Downloads»: only the folders the book\
     return shown && stored === '1-3 2-15 2-7' && none || JSON.stringify({ shown, text, stored, none, msg: d.querySelector('.ba-message').textContent });
 })()""", timeout=30)
 
+check('14n A section set (files «…_EP01_P1 …») whose book numbers restart per section, and whose files are fewer than the book has dialogues, does not play: every mark is blocked and the status is amber (no other dialogue)', """(() => {
+    const m = (track, page) => ({ cd: null, track, page, kind: 'piste' });
+    // the files carry a section, so the old test (the numbers run through the disc) never looked at them
+    const rec = (section, track) => ({ id: 'z' + section + '-' + track, cd: null, section, track });
+    bookAudio.tracks = [1, 2, 3].flatMap(s => [1, 2, 3, 4].map(t => rec(s, t)));
+    const restart = [];
+    for (let sec = 0; sec < 3; sec++) for (let t = 1; t <= 4; t++) restart.push(m(t, 5 + sec * 10 + t));
+    Object.assign(baMarks, { key: state.bookKey, tables: new Map(), shift: 0, busy: null, list: restart });
+    const blocked = restart.every(x => baFindMark(x).blocked === 'restart');
+    const none = restart.every(x => !baFindMark(x).rec);
+    openBookAudioDialog('');
+    const st = document.getElementById('book-audio-dialog').querySelector('.ba-status');
+    const amber = st.textContent === t('baRestart') && st.classList.contains('ba-warn') && !st.classList.contains('ba-ok');
+    // the same book with the numbers running through: the marks play the track of their number
+    bookAudio.tracks = Array.from({ length: 12 }, (_, i) => ({ id: 'w' + i, cd: null, section: 1, track: i + 1 }));
+    const through = [];
+    Object.assign(baMarks, { list: Array.from({ length: 12 }, (_, i) => m(i + 1, 40 + i)) });
+    for (let i = 0; i < 12; i++) { const f = baFindMark(m(i + 1, 40 + i)); through.push(f.rec ? f.rec.track : 0); }
+    document.getElementById('book-audio-dialog').close();
+    Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0 });
+    return blocked && none && amber && through.join(',') === '1,2,3,4,5,6,7,8,9,10,11,12'
+        || JSON.stringify({ blocked, none, amber, through });
+})()""")
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')

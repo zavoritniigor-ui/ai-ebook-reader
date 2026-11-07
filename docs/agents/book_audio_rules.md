@@ -151,6 +151,10 @@ marks in one of three ways, and the app finds out which, from the book itself, i
 2. **No table, and the marks of a disc restart** (piste 1 on three or more pages, and the highest piste is at most half of
    that disc's tracks): the numbers are per section and cannot be matched without the publisher's table. Those marks do not
    play; the dialog says so in amber. Guessing a track would play another page's dialogue: worse than silence.
+   The same restart is read from the book alone when the files cannot answer it (a **section set**, or fewer files than the
+   book has dialogues): the same number is printed on three or more pages of the book. A mark that names its page (a
+   transcript) does not count: it repeats a number on purpose. Then the numbers are per section as well, and the marks do
+   not play.
 3. **Otherwise the numbers run through the disc** («CD1 - piste 30» = disc-1 track 30), the usual case:
    - **disc marks** («CD2 - piste 35») play the disc-2 track 35 of a disc set (A);
    - **bare marks** take the disc from the nearest disc mark above them on the page («CD2 - piste 40, piste 41» = CD2 · 41);
@@ -193,6 +197,7 @@ gives the expected result **both automatically (remembered folder) and by hand (
 | disc set as flat AIFF files `CD1 - 14 Audio Track.aiff` outside the book folder, chosen by hand | stored as Opus (≈10× smaller than WAV); all marks solid and playing |
 | a book whose marks restart per episode and which prints a track table (marks «CDn - piste k», «CDn - Exercice k») | every mark plays the track of its table row (e.g. the episode-22 page's «CD2 - piste 1» → disc-2 track 25); table rows give no buttons |
 | a book whose marks restart per unit, without a table | amber line, the marks do not play |
+| a book whose marks restart per section, whose files are a section set (`XYZ_EP01_P1 …`) and fewer than the book has dialogues | amber line, the marks do not play (no other dialogue) |
 | book folder with a section set `XYZ_EP01_P1 …` beside a disc set | both kept; disc marks play the disc set; nothing overwritten |
 | book folder with `.work/cache/*.mp3` (thousands of files) | ignored; the count of tracks equals the real tracks |
 | bilingual book: PDF + narration only, no marks | narration connected; no track count, no error |
@@ -202,7 +207,7 @@ gives the expected result **both automatically (remembered folder) and by hand (
 Report the numbers: tracks stored per disc / set, marks found vs marks solid, narration sentences. A browser test for
 each row lives in `tests/book_audio_browser.py` / `tests/book_folder_browser.py`, with invented names (§2).
 
-## 9. State (2026-10-28, PR «track tables, Opus»)
+## 9. State (2026-10-28, PR «track tables, Opus»; 2026-11-06, PR «restarting numbers read from the book»)
 
 Fixed in code: package audio of any folder name; hidden / system folders skipped (pick, drop, package); a sub-folder holding
 another book is not read; `…_p011_t006` = track 6; sections parsed; sets kept apart (old tracks replaced, not doubled); bare
@@ -216,6 +221,13 @@ transcripts → track 5, «CD2 - Exercice 9» → track 49); 5-6: 205/205; 7-8: 
 unit, with 236 invented tracks: 0/500, amber; bilingual book: 0 marks. 96 AIFF tracks (1.33 GB) stored as Opus: 89.5 MB, in
 101 s on a computer, durations unchanged. Before this the textbook with a track table played the wrong track for almost every
 mark after its first episode, and the status counted them as «playing».
+
+2026-11-06: a book whose numbers restart per section played **another page's dialogue** when its files were a section set
+(«…_EP01_P1 …»): the old restart test only looked at the tracks of a disc, so a section set was invisible to it, and the
+files (fewer than the book has dialogues) could not pass its "half of the disc's tracks" test either. The restart is now also
+read from the book alone (§6.2), so those marks do not play and the dialog says so in amber. Measured after the change on the
+owner's books: 1-2 258/258, 3-4 187/189, 7-8 157/157 (unchanged); the listening book with 500 marks and 26 section files:
+0/500, amber (before: 500/500 green, every mark playing a wrong dialogue).
 
 Still open:
 - A book whose audio lies outside its folder is found only by hand (§5.1), by design.
