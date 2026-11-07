@@ -288,16 +288,25 @@ async function bsImport(fileList) {
         // a big file takes a while to be stored on the device (a phone: tens of seconds): say so, never look idle
         const mb = Math.round(items.reduce((n, x) => n + (x.blob ? x.blob.size : 0), 0) / 1048576);
         if (mb >= 20) showToast(t('spkLoading').replace('{mb}', mb));
-        // a narration made for another book: its page count differs from the open PDF's
-        const other = items.find(x => x.meta.pdf && x.meta.pdf.pages && state.format === 'pdf' && state.totalPages && x.meta.pdf.pages !== state.totalPages);
-        if (other) { bsNote('import-refused', { why: 'another book', its: other.meta.pdf, open: state.totalPages }); showToast(t('spkWrongBook').replace('{book}', other.meta.pdf.name || '?')); return; }
+        // a narration made for another book (rules §4.1): it is skipped, and the others of the batch are still imported
+        const good = [];
         for (const x of items) {
+            if (x.meta.pdf && x.meta.pdf.pages && state.format === 'pdf' && state.totalPages && x.meta.pdf.pages !== state.totalPages) {
+                bsNote('import-refused', { why: 'another book', its: x.meta.pdf, open: state.totalPages });
+                showToast(t('spkWrongBook').replace('{book}', (x.meta.pdf && x.meta.pdf.name) || x.name));
+                continue;
+            }
             const same = await bsSameBook(x.meta);
-            if (same !== 'other') continue;
-            bsNote('import-refused', { why: 'another book (text differs)', its: x.meta.pdf || null, open: state.totalPages });
-            showToast(t('spkWrongBook').replace('{book}', (x.meta.pdf && x.meta.pdf.name) || x.name));
-            return;
+            if (same === 'other') {
+                bsNote('import-refused', { why: 'another book (text differs)', its: x.meta.pdf || null, open: state.totalPages });
+                showToast(t('spkWrongBook').replace('{book}', (x.meta.pdf && x.meta.pdf.name) || x.name));
+                continue;
+            }
+            good.push(x);
         }
+        if (!good.length) return;
+        items.length = 0;
+        items.push(...good);
         for (const { meta, blob, name } of items) {
             await bsPut({ id: key + '\u0000' + meta.voice, bookKey: key, voice: meta.voice, audioName: name,
                 timing: meta.timing === 'aligned' ? 'aligned' : 'estimated', sentences: meta.sentences,

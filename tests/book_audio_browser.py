@@ -411,7 +411,7 @@ check('14d Disc-less files in a book with discs ask «which disc» after the pic
         const ask = dialog.querySelector('.ba-disc-ask');
         if (!dialog.querySelector('.pdf-audio-marker[data-cd="1"]') && !document.querySelector('.pdf-audio-marker[data-cd="1"]')) return 'no CD1 marker on the page';
         const noSelect = !dialog.querySelector('select');
-        baImportOrAskDisc([file('1 Audio Track.aiff'), file('2 Audio Track.aiff')]);
+        await baImportOrAskDisc([file('1 Audio Track.aiff'), file('2 Audio Track.aiff')]);
         const labels = Array.from(ask.querySelectorAll('button')).map(b => b.textContent).join('|');
         if (ask.hidden || labels !== 'CD1|CD2|' + t('baDiscNone')) return 'ask: ' + ask.hidden + ' ' + labels;
         if ((await baList(probe)).length) return 'imported before the answer';
@@ -419,7 +419,7 @@ check('14d Disc-less files in a book with discs ask «which disc» after the pic
         const rows = await rowsAfter(2);
         const placed = ask.hidden && rows.length === 2 && rows.every(r => r.cd === 2);
         // files whose folder names the disc are not asked about
-        baImportOrAskDisc([Object.defineProperty(file('3 Audio Track.aiff'), 'webkitRelativePath', { value: 'Audio/CD 1-1/3 Audio Track.aiff' })]);
+        await baImportOrAskDisc([Object.defineProperty(file('3 Audio Track.aiff'), 'webkitRelativePath', { value: 'Audio/CD 1-1/3 Audio Track.aiff' })]);
         const folderNotAsked = ask.hidden;
         const rows2 = await rowsAfter(3);
         const dropHint = dialog.querySelector('.ba-drop').hidden === !matchMedia('(any-pointer: fine)').matches;
@@ -621,6 +621,41 @@ check('14n A section set (files «…_EP01_P1 …») whose book numbers restart 
     Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0 });
     return blocked && none && amber && through.join(',') === '1,2,3,4,5,6,7,8,9,10,11,12'
         || JSON.stringify({ blocked, none, amber, through });
+})()""")
+
+check('14o The book\'s narration chosen among the tracks does not make the app ask which disc it is from, and is not saved as a track', """(async () => {
+    const saved = state.bookKey, probe = 'probe_narr_ask', dialog = document.getElementById('book-audio-dialog');
+    // an MP3 with the narration tag of the app (ID3v2, a GEOB frame «ai-ebook-reader-narration»)
+    const enc = new TextEncoder();
+    const cat = list => { const n = list.reduce((a, b) => a + b.length, 0), out = new Uint8Array(n); let o = 0; for (const a of list) { out.set(a, o); o += a.length; } return out; };
+    const syncsafe = n => new Uint8Array([(n >> 21) & 127, (n >> 14) & 127, (n >> 7) & 127, n & 127]);
+    const plain = n => new Uint8Array([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+    const zstr = s => cat([enc.encode(s), new Uint8Array([0])]);
+    const payload = enc.encode(JSON.stringify({ voice: 'Kokoro', sentences: [{ text: 'Bonjour', page: 1 }] }));
+    const geo = cat([new Uint8Array([0]), zstr('application/json'), zstr('narration.json'), zstr('ai-ebook-reader-narration'), payload]);
+    const frame = cat([enc.encode('GEOB'), plain(geo.length), new Uint8Array([0, 0]), geo]);
+    const mp3 = cat([enc.encode('ID3'), new Uint8Array([3, 0, 0]), syncsafe(frame.length), frame, new Uint8Array(64)]);
+    const narration = new File([mp3], 'Par Ici 5-6 Manuel de comprehension orale.mp3', { type: 'audio/mpeg' });
+    const track = new File([new Uint8Array(8)], '3 Audio Track.aiff', { type: '' });
+    Object.defineProperty(track, 'webkitRelativePath', { value: 'Audio/CD 1-1/3 Audio Track.aiff' });
+    const rowsAfter = async n => { for (let i = 0; i < 40; i++) { const rows = await baList(probe); if (rows.length >= n && !baImporting) return rows; await new Promise(r => setTimeout(r, 50)); } return baList(probe); };
+    state.bookKey = probe;
+    try {
+        openBookAudioDialog('');
+        const ask = dialog.querySelector('.ba-disc-ask');
+        if (!dialog.querySelector('.pdf-audio-marker[data-cd="1"]') && !document.querySelector('.pdf-audio-marker[data-cd="1"]')) return 'no CD1 marker on the page';
+        await baImportOrAskDisc([narration, track]);
+        const asked = !ask.hidden;
+        const rows = await rowsAfter(1);
+        const notATrack = !rows.some(r => String(r.name || '').indexOf('Manuel') >= 0);
+        return !asked && rows.length === 1 && notATrack
+            || JSON.stringify({ asked, rows: rows.map(r => [r.cd, r.track, r.name]) });
+    } finally {
+        await baDeleteBook(probe);
+        if (typeof bsDelete === 'function') await bsDelete(probe);
+        state.bookKey = saved;
+        dialog.close();
+    }
 })()""")
 
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
