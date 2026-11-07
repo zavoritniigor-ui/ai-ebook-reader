@@ -181,7 +181,8 @@ Ask only when two readings are equally possible, after the pick, once per book, 
   (CD1, CD2, …, «Без диска»);
 - two sets fit the same marks equally → show the two folder names, the learner taps one.
 
-Never ask what the files can answer.
+Never ask what the files can answer. The book's own narration (an MP3 with the narration tag of §4.1) is not a track at all:
+it never makes the app ask which disc it is from, and it is never saved as a track.
 
 ## 8. Check BEFORE merging any change to book audio (required)
 
@@ -202,6 +203,7 @@ gives the expected result **both automatically (remembered folder) and by hand (
 | book folder with `.work/cache/*.mp3` (thousands of files) | ignored; the count of tracks equals the real tracks |
 | bilingual book: PDF + narration only, no marks | narration connected; no track count, no error |
 | a folder with no audio at all | «Нічого не знайдено» + «Додати вручну» lit; nothing stored |
+| book folder: PDF + the book's narration + another book's narration + `audio CD 56` (disc set) + `audio 56` (section set) | both sets kept apart (disc 1, disc 2, five sections); the book's narration connected; the other book's narration skipped with a note; no question about the disc |
 | «Downloads»: the book PDF, its narration, its CD folders, voice messages, music, documents, pictures, programs, another book's folder | only the CD folders and the narration offered, shown first; nothing stored before «Підключити»; the folder not remembered |
 
 Report the numbers: tracks stored per disc / set, marks found vs marks solid, narration sentences. A browser test for
@@ -228,6 +230,15 @@ files (fewer than the book has dialogues) could not pass its "half of the disc's
 read from the book alone (§6.2), so those marks do not play and the dialog says so in amber. Measured after the change on the
 owner's books: 1-2 258/258, 3-4 187/189, 7-8 157/157 (unchanged); the listening book with 500 marks and 26 section files:
 0/500, amber (before: 500/500 green, every mark playing a wrong dialogue).
+
+2026-11-07: the owner's own flow — choosing the folder(s) by hand — was broken in two places. (1) The book's own narration
+(the MP3 with the narration tag) was counted as a loose track, so the app asked «З якого диска ці файли?» for a folder that
+holds the book; the narration is now recognised before the question and never stored as a track (§4.1, §7). (2) When several
+narrations were picked at once, one narration of another book refused the whole batch, so the book's own narration was never
+connected; now the narration of another book is skipped and the others are imported. Measured on the owner's listening book
+(«Par Ici 5-6 Manuel», 148 pages, 500 marks): choosing the book's folder gives 122 tracks (disc 1: 53, disc 2: 43, five
+sections: 26) and the book's narration (8939 sentences), no question; the narration of the other book in the same folder
+(«livre 56», 203 pages) is skipped with the note «another book».
 
 Still open:
 - A book whose audio lies outside its folder is found only by hand (§5.1), by design.
