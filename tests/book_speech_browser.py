@@ -96,6 +96,7 @@ c.js(f"""(async () => {{
     window.__packed = toFile('{base64.b64encode(packed(1)).decode()}', 'Speech test - voice.mp3', 'audio/mpeg');
     window.__sameSize = toFile('{base64.b64encode(packed(1, OTHER_TEXT)).decode()}', 'Same size - voice.mp3', 'audio/mpeg');
     window.__otherBook = toFile('{base64.b64encode(packed(99)).decode()}', 'Other book - voice.mp3', 'audio/mpeg');
+    window.__secondVoice = toFile('{base64.b64encode(packed(1, dict(META, voice="voice-two"))).decode()}', 'Second voice.mp3', 'audio/mpeg');
 }})()""")
 
 check('1 The PDF opens and its page 1 text layer is there', """(() => {
@@ -302,6 +303,15 @@ check('13d A narration made for another book (other page count) is refused', """
 check('13d2 Another book with the same page count is refused by its text', """(async () => {
     await bsImport([window.__sameSize]);
     return bsSets.list.length === 0 && bsTrace.some(x => x.ev === 'import-refused' && x.why === 'another book (text differs)');
+})()""", timeout=20)
+check('13h A batch that holds a narration of another book keeps the one of this book', """(async () => {
+    await bsRemoveFromDialog();
+    await bsImport([window.__otherBook, window.__secondVoice]);
+    const sets = bsSets.list;
+    const refused = bsTrace.some(x => x.ev === 'import-refused' && x.why === 'another book');
+    const ok = sets.length === 1 && sets[0].voice === 'voice-two' && refused;
+    await bsRemoveFromDialog();   // the next checks start with no narration
+    return ok || JSON.stringify({ sets: sets.map(s => s.voice), refused });
 })()""", timeout=20)
 check('13e A plain MP3 that is not a narration is refused', """(async () => {
     await bsImport([new File([new Uint8Array([0xff, 0xfb, 0x90, 0x00, 1, 2, 3, 4, 5, 6, 7, 8])], 'song.mp3', { type: 'audio/mpeg' })]);
