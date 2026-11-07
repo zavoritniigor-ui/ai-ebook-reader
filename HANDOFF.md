@@ -14,8 +14,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
-| Claude Code, local | `feat/ba-annex-list` | the book's own list of its recordings (rules §6.4) — `js/book-audio.js`, `tests/book_audio_annex_browser.py`, `docs/agents/book_audio_rules.md`; generated hashes | working: local gates PASS; measured on the Manuel (243 entries, shift +3, 241/257 body marks) | 2026-11-07 |
-| Claude Code, local | `fix/ba-narration-disc-ask` | book audio: the book's narration must not ask which disc (`js/book-audio.js`, `js/book-speech.js`, `tests/book_audio_browser.py`, `tests/book_speech_browser.py`, `docs/agents/book_audio_rules.md`) | PR #378 open; local gates PASS; exact-head CI pending | 2026-11-06 |
+| Claude Code, local | `feat/ba-annex-list` | the book's own list of its recordings (rules §6.4) — `js/book-audio.js`, `tests/book_audio_annex_browser.py`, `docs/agents/book_audio_rules.md`; generated hashes | PR #379 open; local gates and 4 book-audio suites PASS; exact-head CI pending | 2026-11-07 |
 
 ## Claude Code — the book's own list of its recordings (2026-11-07)
 - Branch `feat/ba-annex-list` (worktree `/home/igor/Projects/wt-ba-stations`), base `origin/main` a49d05c. Rules §6.4 of `docs/agents/book_audio_rules.md`.
@@ -28,7 +27,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 ## Claude Code — book audio: choosing the folders by hand (2026-11-07)
 
 **Where to start tomorrow (nothing else is pending on this side):**
-1. PR #378 (`fix/ba-narration-disc-ask`) — merge it when its CI is green, then check production. Then PR #377 (this docs branch).
+1. PR #378 (`fix/ba-narration-disc-ask`) is **merged** (main `089f9da`): the narration no longer asks which disc and one foreign narration no longer blocks the batch. PR #379 (the book's own list of its recordings) is next: it is open, wait for its exact-head CI, then merge and check production.
 2. The Manuel's own 236 pistes are still missing — the owner's files or the publisher's table; nothing to code until then (§ below).
 
 ### What PR #378 changes (owner: «я просто вручну вказати папку… може бути не одна папка, а дві»)

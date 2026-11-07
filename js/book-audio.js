@@ -842,7 +842,19 @@ function baAutoFailed() {
     renderBookAudioDialog(t('baAutoFail'));
     dialog.querySelector('.ba-files').classList.add('ba-hint');
 }
-async function importBookAudio(fileList, disc = null) {
+// The MP3s that are the book's narration (rules §4.1): they are not tracks and never make the app ask which disc they are from.
+async function baNarrationFiles(files) {
+    const out = [];
+    if (typeof bsUnpack !== 'function') return out;
+    for (const f of files) {
+        if (!/\.mp3$/i.test(f.name)) continue;
+        let packed = null;
+        try { packed = await bsUnpack(f); } catch (e) { /* not readable as a narration */ }
+        if (packed && bsValidMeta(packed.meta)) out.push(f);
+    }
+    return out;
+}
+async function importBookAudio(fileList, disc = null, knownNarrations = null) {
     const key = state.bookKey;
     if (!key || baImporting) return;
     let files = Array.from(fileList || []).filter(f => baIsAudio(f) && !baHiddenPath(f.webkitRelativePath));
@@ -850,16 +862,10 @@ async function importBookAudio(fileList, disc = null) {
     files = files.filter(f => !refused.includes(f));
     const refusedNote = () => { if (refused.length) openBookAudioDialog(t('baUnsupported').replace('{n}', refused.length).replace('{ext}', [...new Set(refused.map(f => f.name.split('.').pop().toUpperCase()))].join(', '))); };
     // a book narration chosen here by mistake (it is an MP3 too) goes where it belongs, not in as «track 4» of «textbook 3-4»
-    const narrations = [];
-    if (typeof bsUnpack === 'function') {
-        for (const f of files) {
-            if (!/\.mp3$/i.test(f.name)) continue;
-            let packed = null;
-            try { packed = await bsUnpack(f); } catch (e) { /* not readable as a narration */ }
-            if (packed && bsValidMeta(packed.meta)) narrations.push(f);
-        }
+    const narrations = knownNarrations || await baNarrationFiles(files);
+    if (narrations.length) {
         files = files.filter(f => !narrations.includes(f));
-        if (narrations.length) bsNote('tracks-narration', { files: narrations.map(f => f.name) });
+        bsNote('tracks-narration', { files: narrations.map(f => f.name) });
     }
     if (!files.length) { if (narrations.length) bsImport(narrations); else if (refused.length) refusedNote(); else baAutoFailed(); return; }
     baImporting = true;
@@ -1208,18 +1214,21 @@ async function baTakeFolder(list, folderName, mixed = baMixedFolder(list.map(f =
     box.querySelector('.ba-take-no').onclick = () => { box.hidden = true; };
     box.querySelector('.ba-take-yes').focus();
 }
-function baImportOrAskDisc(list) {
+async function baImportOrAskDisc(list) {
     const dialog = bookAudioDialog(), ask = dialog && dialog.querySelector('.ba-disc-ask');
     const audio = Array.from(list || []).filter(f => baIsAudio(f) && !baHiddenPath(f.webkitRelativePath));
-    const loose = baAssignDiscs(audio.map(f => baParseFile(f.name, f.webkitRelativePath || ''))).some(p => p.cd === null && !p.section && !p.group && p.page === null && p.track !== null);
+    // the book's narration is not a track: it never makes the app ask which disc it is from (rules §4.1, §7)
+    const narrations = await baNarrationFiles(audio);
+    const tracks = audio.filter(f => !narrations.includes(f));
+    const loose = baAssignDiscs(tracks.map(f => baParseFile(f.name, f.webkitRelativePath || ''))).some(p => p.cd === null && !p.section && !p.group && p.page === null && p.track !== null);
     const known = loose ? baKnownDiscs() : [];
-    if (!ask || !known.length) { if (ask) ask.hidden = true; importBookAudio(list); return; }
+    if (!ask || !known.length) { if (ask) ask.hidden = true; importBookAudio(list, null, narrations); return; }
     const choices = ask.querySelector('.ba-disc-choices');
     choices.textContent = '';
     const add = (disc, label) => {
         const btn = document.createElement('button');
         btn.type = 'button'; btn.className = 'btn-secondary'; btn.dataset.disc = disc ? String(disc) : ''; btn.textContent = label;
-        btn.onclick = () => { ask.hidden = true; importBookAudio(list, disc); };
+        btn.onclick = () => { ask.hidden = true; importBookAudio(list, disc, narrations); };
         choices.appendChild(btn);
     };
     for (let disc = 1; disc <= Math.max(2, known[known.length - 1]); disc++) add(disc, 'CD' + disc);
