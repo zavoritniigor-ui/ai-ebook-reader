@@ -14,6 +14,15 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
+| Claude Code, local | `fix/rollback-crop-372` | revert of PR #372 (`js/pdf-crop.js`, `sw.js`, `index.html`, `.github/workflows/ci.yml`, `tests/`) | PR open; restores the 2026-11-04 green main | 2026-11-06 |
+
+## Claude Code — rollback of PR #372 (2026-11-06)
+- Owner's decision: the app stopped behaving correctly after the Codex/ChatGPT work; roll the code back to the last known good state (2026-11-04) and continue from there.
+- This branch reverts merge `e96e677` (PR #372, "EPUB screenshot capture and cropped-image Google search") with `git revert -m 1`. The resulting tree is byte-identical to `032dea6` (merge #371, the last green `main` of 2026-11-04): `git diff 032dea6 HEAD` is empty.
+- What goes away with the revert: the text-book/EPUB region screenshot capture (vendored `vendor/html2canvas-1.4.1.min.js`), the cropped-image Google Lens search, `tests/crop_google_browser.py`, `tests/region_screenshot_browser.py`; the earlier text-book region path and the Gemini crop dialog come back with `tests/crop_gemini_browser.py`. CI runs 148 browser suites again (149 with #372).
+- Evidence that #372 caused the red main CI: run `42077881188` (push of `e96e677`) failed in `tests/reader_repair_verification_browser.py` ("Ctrl+P keyboard shortcut triggers printCurrentReaderPage"); the same suite passes locally on the reverted tree, together with `tests/crop_gemini_browser.py` and `tests/menu_toggle_region_browser.py`. Syntax gate, `tests/app_shell_versions.py` and `tests/ci_suite_coverage.py` pass.
+- Not reverted (all green in CI, merged 2026-11-03/04 and kept on purpose): #368 word-translation latency, #369 separate scans shelf, #370/#371 server speech for French/English. PR #373 (Codex "Fix EPUB word taps") stays open and red; it is not merged here.
+- Next: PR to `main`, exact-head CI green, normal merge, main CI green, production check; then update the owner's local checkout to the merged `main`.
 
 ## Codex — server speech and selected words
 - Worktree `/workspace/wt-server-page-speech`, branch `fix/server-page-speech`. PR #370 merged as `1759723eda10d7c2ec7337c127d0f726cb9404aa` after exact-head CI `41899329848` and Cloudflare preview success. Production HTML/JS/worker match; French page and English selection played real server WAV with no system fallback.
