@@ -14,7 +14,31 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
-| Claude Code, local | `fix/ba-section-marks` | book audio: numbers that restart per section (`js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`) | PR #376 merged; green CI; production check pending | 2026-11-06 |
+| Claude Code, local | `fix/ba-narration-disc-ask` | book audio: the book's narration must not ask which disc (`js/book-audio.js`, `js/book-speech.js`, `tests/book_audio_browser.py`, `tests/book_speech_browser.py`, `docs/agents/book_audio_rules.md`) | PR #378 open; local gates PASS; exact-head CI pending | 2026-11-06 |
+
+## Claude Code — book audio: choosing the folders by hand (2026-11-07)
+
+**Where to start tomorrow (nothing else is pending on this side):**
+1. PR #378 (`fix/ba-narration-disc-ask`) — merge it when its CI is green, then check production. Then PR #377 (this docs branch).
+2. The Manuel's own 236 pistes are still missing — the owner's files or the publisher's table; nothing to code until then (§ below).
+
+### What PR #378 changes (owner: «я просто вручну вказати папку… може бути не одна папка, а дві»)
+- The owner's manual flow was broken in two places, both on the **real** book folder `~/Books/Par Ici 5-6`:
+  1. the app asked **«З якого диска ці файли?»** for the folder that holds the book, because the book's own narration MP3
+     (an MP3 with the narration tag, rules §4.1) was counted as a loose track. Now `baNarrationFiles()` recognises it
+     **before** the question (§4.1, §7); it is never stored as a track.
+  2. the folder holds **two narrations**: the book's own (148 pages) and «livre 56» (203 pages). The second one made
+     `bsImport` refuse the **whole batch**, so the book's own narration was never connected. Now a narration of another
+     book is **skipped** (noted in the 📋 report) and the others are imported.
+- Measured on the owner's book (clean Chrome profile, 8767 server, choosing the book folder): **122 tracks** (disc 1: 53,
+  disc 2: 43, five sections: 26) + the book's narration (**8939 sentences**), **no question**; the other book's narration is
+  skipped. Two folders picked one after another keep both sets side by side (§6.4) — nothing is overwritten.
+- Tests: `book_audio_browser.py` **14o** (new: the narration raises no question and is no track), 14d now awaits the
+  async call; `book_speech_browser.py` **13h** (new: a batch with a foreign narration keeps this book's one).
+  Suites `book_audio_browser.py`, `book_folder_browser.py`, `book_speech_browser.py` pass locally; `app_shell_versions.py`
+  and `ci_suite_coverage.py` pass.
+- Note for the next run: a browser keeps the **old** JS until the new service worker is active — reload the page two or
+  three times after `tools/version_app_shell.py`, or the suite silently tests the previous build.
 
 ## Claude Code — book audio: a wrong dialogue (2026-11-06)
 - Owner's report (tablet screenshot): the Par Ici 5-6 Manuel played **another page's dialogue**; the dialog said «Грають усі позначки книги: 500». Checked on the owner's computer with the real PDF and the real folder: the same thing — **not a device bug**.
