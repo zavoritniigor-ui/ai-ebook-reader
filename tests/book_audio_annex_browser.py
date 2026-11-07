@@ -201,3 +201,6 @@ check('9 A number that the book’s list does not place stays undecided: no othe
 })()""")
 
 check('10 No error was thrown while the book was read', "(() => !window.__errors.length || window.__errors.join(' | '))()")
+
+# the tracks of this test must not stay in the device's database for the next suite
+c.js("(async () => { await baDeleteBook(state.bookKey); await refreshBookAudio(); return 1 })()")

@@ -430,6 +430,9 @@ jobs:
           echo "Running book_audio_browser.py..."
           python3 -u tests/book_audio_browser.py
 
+          echo "Running book_audio_annex_browser.py..."
+          python3 -u tests/book_audio_annex_browser.py
+
           echo "Running book_speech_browser.py..."
           python3 -u tests/book_speech_browser.py
 
