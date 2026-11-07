@@ -1,59 +1,13 @@
 """Focused checks for current-page stats, added languages, and grammar rules."""
-import os, json, hashlib, base64
+import os
 from browser_cdp import CDP
 
 c = CDP()
-# Observe the actual selection module response and boot errors. A CI run lost
-# this helper while the checked-in source and isolated tests both contained it.
-# Diagnostics reraises the original error; it never retries or skips a check.
-selection_responses, selection_failures, selection_requests = [], [], set()
-original_note = c._note_event
-
-def note_selection_network(event):
-    method, params = event.get('method'), event.get('params', {})
-    if method == 'Network.requestWillBeSent' and '/js/selection.js' in params.get('request', {}).get('url', ''):
-        selection_requests.add(params['requestId'])
-    if method == 'Network.responseReceived' and params.get('requestId') in selection_requests:
-        response = params['response']
-        selection_responses.append({'requestId': params['requestId'], **{k: response.get(k) for k in ('url', 'status', 'mimeType', 'fromDiskCache', 'fromServiceWorker')}})
-    if method == 'Network.loadingFailed' and params.get('requestId') in selection_requests:
-        selection_failures.append(params)
-    original_note(event)
-
-c._note_event = note_selection_network
 c.call('Page.enable')
-c.call('Network.enable')
-c.call('Page.addScriptToEvaluateOnNewDocument', source="""
-window.__statsBootErrors=[];
-addEventListener('error', e=>__statsBootErrors.push({message:String(e.message||'resource load failure').slice(0,500),source:e.filename||e.target?.src||'',line:e.lineno}),true);
-""")
-original_js = c.js
-boot_selection = None
-
-def diagnostic_js(expression):
-    try:
-        return original_js(expression)
-    except Exception:
-        try:
-            snapshot = original_js("({url:location.href,ready:document.readyState,selection:typeof selectRangeAndTranslate,errors:window.__statsBootErrors,selectionScripts:[...document.scripts].filter(s=>s.src.includes('/js/selection.js')).map(s=>s.src)})")
-            print('MODULE DIAGNOSTICS', json.dumps({'boot': boot_selection, 'current': snapshot, 'responses': selection_responses, 'failures': selection_failures}), flush=True)
-            for response in selection_responses:
-                try:
-                    body=c.call('Network.getResponseBody',requestId=response['requestId'])
-                    data=base64.b64decode(body['body']) if body.get('base64Encoded') else body['body'].encode()
-                    print('SELECTION RESPONSE',json.dumps({'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'has_dispatch':b'function selectRangeAndTranslate(' in data}),flush=True)
-                except Exception as error:
-                    print('SELECTION RESPONSE UNAVAILABLE',str(error)[:300],flush=True)
-        except Exception as error:
-            print('MODULE DIAGNOSTICS UNAVAILABLE',str(error)[:300],flush=True)
-        raise
-
-c.js = diagnostic_js
 c.call('Network.setBypassServiceWorker', bypass=True)
 c.call('Emulation.setDeviceMetricsOverride', width=1100, height=900, deviceScaleFactor=1, mobile=False)
 c.call('Page.navigate', url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html'))
 c.wait("document.readyState==='complete' && !document.body.inert")
-boot_selection = c.js("({helper:typeof selectRangeAndTranslate,errors:window.__statsBootErrors})")
 
 def check(name, expression):
     value = c.js(expression)
