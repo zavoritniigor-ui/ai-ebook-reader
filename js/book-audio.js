@@ -4,9 +4,10 @@
  * (IndexedDB, one record per track with the audio Blob inside), so it works offline and on any device that has the files. Nothing
  * is uploaded and nothing is shared between devices.
  *
- *  - file names -> (CD, track): «01 Track 01.m4a» in a folder «A1 CD1», «01 Track 01 1.m4a» in «A1 CD2» (the second disc's copy of a
- *    track number), «CD2 - 05.mp3», «Piste 12.mp3»... (baParseFile / baAssignDiscs; a plain file picker has no folder names, so a track
- *    number that occurs twice is split into discs by the copy suffix).
+ *  - file names -> (CD, section, group, page, track): «01 Track 01.m4a» in a folder «A1 CD1», «01 Track 01 1.m4a» in «A1 CD2» (the second
+ *    disc's copy of a track number), «CD2 - 05.mp3», «Piste 12.mp3», «Station 02 - piste 5.mp3», «page 27 - piste 5.mp3»...
+ *    (baParseFile / baAssignDiscs; a plain file picker has no folder names, so a track number that occurs twice is split into discs
+ *    by the copy suffix).
  *  - marks in the book: every PDF page's text items are scanned for «CD2 - piste 35» (also split over several items); each mark gets a
  *    button over its printed text (.pdf-audio-marker, in a .pdf-audio-layer built with the page like the link layer) -- tapping it plays.
  *  - one player (#audio-player: play / pause, position, speed, close), one dialog (#book-audio-dialog: choose folder / files, status,
@@ -376,31 +377,48 @@ const BA_DISC_RE = /(?:^|[^\p{L}])(?:cd|disc|disk|диск)\s*[-_ ]?\s*0*([1-9])
 const BA_SECTION_RE = /(?:^|[^\p{L}])(?:ep|episode|épisode|unit|unité|unite|leçon|lecon|lesson|module)\s*[-_ ]?\s*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
 const BA_TRACK_RE = /(?:^|[^\p{L}\d])(?:track|piste|plage|pista|tr|t)[ _-]*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
 const BA_P_RE = /(?:^|[^\p{L}\d])p[ _-]*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
+// The page of the file: the book prints it in words («page 27», «p. 27») or as «p027» next to a track it names in words.
+const BA_PAGE_WORD_RE = /(?:^|[^\p{L}\d])(?:pages?|p{1,2}\.)\s*[-_ ]?\s*0*(\d{1,3})(?![\p{L}\d])/iu;
+const BA_PAGE_SHORT_RE = /(?:^|[^\p{L}\d])p[ _-]?0*(\d{3})(?![\p{L}\d])/iu;
+// The group of the file: the words before its track name the group of the book it belongs to («Station 05 - piste 5» = the group
+// «station 5», the same words the book prints as the heading of that group). Only a word that names a group counts.
+const BA_GROUP_WORD_RE = /(?:^|[^\p{L}])(?:stations?|bilan|annexes?|épisodes?|episodes?|units?|unités?|unites?|leçons?|lecons?|lessons?|modules?|phonétique|phonetique|phono)(?![\p{L}])/iu;
 function baParseFile(name, path) {
     const base = String(name || '').replace(/\.[^.]+$/, '');
     const folders = String(path || name || '').split('/').slice(0, -1).reverse();
-    let cd = null, section = null;
+    let cd = null, section = null, page = null, group = null;
     for (const seg of folders) { const m = seg.match(BA_DISC_RE); if (m) { cd = Number(m[1]); break; } }
     if (cd === null) { const m = base.match(/(?:^|[^\p{L}])(?:cd|disc)\s*[-_ ]?\s*0*([1-9])(?![\p{L}\d])/iu); if (m) cd = Number(m[1]); }
     for (const seg of [base, ...folders]) { const m = seg.match(BA_SECTION_RE); if (m) { section = Number(m[1]); break; } }
     // the bare-number fallbacks never take the disc's or the section's own number for the track
     const rest = base.replace(BA_SECTION_RE, ' ').replace(/(?:^|[^\p{L}])(?:cd|disc)\s*[-_ ]?\s*0*[1-9](?![\p{L}\d])/iu, ' ');
-    let track = null, copy = 0, m = base.match(BA_TRACK_RE) || base.match(BA_P_RE);
+    let track = null, copy = 0, m = base.match(BA_TRACK_RE);
+    const named = !!m;    // the name says its track in words: then it may also say its page
+    if (!m) m = base.match(BA_P_RE);
     if (m) {
         track = Number(m[1]);
         const dup = base.slice(m.index + m[0].length).match(/^[\s_(-]*(\d)\)?\s*$/);
         if (dup) copy = Number(dup[1]);
     } else if ((m = rest.match(/^\s*0*([1-9]\d{0,2})(?![\d])/))) track = Number(m[1]);
     else if ((m = rest.match(/0*([1-9]\d{0,2})(?!.*\d)/))) track = Number(m[1]);
-    return { name, path: path || name, cd, section, track, copy };
+    if (named) { const pm = base.match(BA_PAGE_WORD_RE) || base.match(BA_PAGE_SHORT_RE); if (pm) page = Number(pm[1]); }
+    // the group of the file: the words before its track, or the folder it lies in
+    if (cd === null && section === null && page === null) {
+        const head = named ? base.slice(0, m.index) : '';
+        const inName = baGroupKey(head);
+        if (inName && BA_GROUP_WORD_RE.test(head)) group = inName;
+        else for (const seg of folders) { const k = baGroupKey(seg); if (k && BA_GROUP_WORD_RE.test(seg)) { group = k; break; } }
+    }
+    return { name, path: path || name, cd, section, page, group, track, copy };
 }
-// The set a track belongs to: disc tracks, section tracks and plain numbered tracks of one book are stored apart, so one set
-// never overwrites another (rules §6.4). Tracks saved before this have no section and keep working as disc or plain tracks.
-const baSetOf = p => p.cd ? 'cd' : p.section ? 'sec' : 'one';
+// The set a track belongs to: disc tracks, section tracks, group tracks (the book names the group in the file name), page tracks
+// (the file names the book's page) and plain numbered tracks of one book are stored apart, so one set never overwrites another
+// (rules §6.4). Tracks saved before this have no section and keep working as disc or plain tracks.
+const baSetOf = p => p.cd ? 'cd' : p.section ? 'sec' : p.group ? 'grp' : p.page ? 'pg' : 'one';
 // A plain file picker has no folder names, so two sets with the same track numbers cannot be told apart by CD: the ones whose name
 // carries a copy suffix («Track 01 1») are the later disc. Only tracks without a disc or a section of their own are touched.
 function baAssignDiscs(parsed) {
-    const loose = parsed.filter(p => p.cd === null && !p.section && p.track !== null);
+    const loose = parsed.filter(p => p.cd === null && !p.section && !p.group && p.page === null && p.track !== null);
     const byTrack = new Map();
     for (const p of loose) { if (!byTrack.has(p.track)) byTrack.set(p.track, []); byTrack.get(p.track).push(p); }
     for (const group of byTrack.values()) {
@@ -410,11 +428,36 @@ function baAssignDiscs(parsed) {
     }
     return parsed;
 }
-function baLabel(cd, track, kind) { return (cd ? 'CD' + cd + ' · ' : '') + (kind === 'ex' ? 'exercice ' : 'piste ') + track; }
+// The name of a recording, as the player shows it: the group of the book (its own words) and the page it belongs to, or the disc.
+function baLabel(cd, track, kind, entry) {
+    const name = (kind === 'ex' ? 'exercice ' : 'piste ') + track;
+    if (entry) {
+        const parts = [];
+        if (entry.label) parts.push(entry.label);
+        if (entry.ref != null) parts.push(t('page') + ' ' + entry.ref);
+        if (parts.length) return parts.join(' · ') + ' · ' + name;
+    }
+    return (cd ? 'CD' + cd + ' · ' : '') + name;
+}
 // The track a mark names: the exact disc, else a disc-less track number that exists once. A disc mark never plays a section track
 // (another set of the book); a mark without a disc prefers the one disc-less track of that number over disc tracks.
-function baFind(cd, track, tracks = bookAudio.tracks) {
-    const same = tracks.filter(x => x.track === track);
+// With the book's own list (rules §6.4) the file must carry the same page (or the same group) and the same number: no other file
+// plays, so the dialogue of another page never answers a mark.
+function baFind(cd, track, tracks = bookAudio.tracks, section = null, entry = null) {
+    if (entry) {
+        const same = tracks.filter(x => x.track === track && (x.set === 'pg' || x.set === 'grp'));
+        const byPage = entry.ref != null ? same.filter(x => x.set === 'pg' && x.page === entry.ref) : [];
+        if (byPage.length === 1) return { rec: byPage[0] };
+        const byGroup = entry.group ? same.filter(x => x.set === 'grp' && x.group === entry.group) : [];
+        if (byGroup.length === 1) return { rec: byGroup[0] };
+        if (byPage.length > 1 || byGroup.length > 1) return { rec: null, ambiguous: true };
+        return { rec: null };
+    }
+    if (section !== null && section !== undefined) {
+        const rec = tracks.find(x => x.section === section && x.track === track);
+        return rec ? { rec } : { rec: null };
+    }
+    const same = tracks.filter(x => x.track === track && x.set !== 'grp' && x.set !== 'pg');
     if (cd) {
         const exact = same.find(x => x.cd === cd);
         if (exact) return { rec: exact };
@@ -578,8 +621,128 @@ function baRestarts(cd) {
     for (const pages of pagesOf.values()) if (pages.size >= 3) return true;
     return false;
 }
+// ---------- the book's own list of its recordings (rules §6.4) ---------------------------------------------------
+// Some books number their pistes anew in every station (a station is a chapter of the method: «Station 2 : Comment faire ?») and
+// print, at the end of the book, the list of their own recordings: «STATION 2 / i Piste 5, page 27» — the recording, the page it
+// belongs to and the group it stands under. That list is the book's own answer to «which dialogue is this number»: with it the app
+// knows the page and the group of every number, so a file set that carries the page («page 27 - piste 5.mp3») or the group
+// («Station 02 - piste 5.mp3») in its name plays on every mark. Without such a list the numbers stay undecided: the marks do not
+// play (rules §6.2).
+// The page's items in the order a reader reads them (pdf.js gives the items of a column one after the other), each line's items
+// joined. Sideways text (a rotated sidebar heading) is not part of the flow and is left out: the columns of the list keep their order.
+function baFlowLines(items) {
+    const lines = [];
+    let cur = null;
+    for (const it of items || []) {
+        if (!it.str || !it.transform) continue;
+        const t = it.transform;
+        if (Math.abs(t[1]) > 0.01 || Math.abs(t[2]) > 0.01) continue;   // sideways text: a rotated heading in the margin
+        const size = Math.hypot(t[2], t[3]) || it.height || 1;
+        if (!cur || Math.abs(cur.y - t[5]) > size * 0.45) { cur = { y: t[5], size, parts: [] }; lines.push(cur); }
+        cur.parts.push(it);
+    }
+    for (const line of lines) {
+        let text = '', last = null;
+        for (const it of line.parts) {
+            const gap = last ? it.transform[4] - (last.transform[4] + (last.width || 0)) : 0;
+            if (last && gap > line.size * 2) text += ' | ';
+            else if (last && gap > line.size * 0.2 && !/\s$/.test(text) && !/^\s/.test(it.str)) text += ' ';
+            text += it.str; last = it;
+        }
+        line.text = text.trim();
+    }
+    return lines;
+}
+// The words of a group in one shape: lower case, no accent, one space between the words, no leading zero in a number
+// («STATION 05» and «station 5» are the same group).
+function baGroupKey(text) {
+    const s = String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+    return s.replace(/(^|\s)0+(\d)/g, '$1$2');
+}
+// The heading of a group of the book: «STATION 3», «STATION PHONÉTIQUE», «ANNEXE – MORPHOLOGIE». A line that names the group
+// without anything else («STATION», the running head of a page) names no group and is left out.
+const BA_GROUP_HEAD_RE = /^\s*(STATIONS?|BILANS?|ANNEXES?|ÉPISODES?|EPISODES?|UNITÉS?|UNITES?|LEÇONS?|LECONS?|LESSONS?|MODULES?)\b(.*)$/iu;
+function baGroupHead(text) {
+    const m = String(text || '').match(BA_GROUP_HEAD_RE);
+    if (!m) return null;
+    const rest = (m[2] || '').split(':')[0].trim();   // «Station 1 : On déménage !»: only the name of the group counts
+    if (!rest) return null;
+    const label = (m[1] + ' ' + rest).trim().replace(/\s+/g, ' ');
+    return { key: baGroupKey(label), label };
+}
+// The book's own list: every line that names a recording and the page it belongs to («i Piste 5, page 27»), with the group it
+// stands under (the heading above it in the order a reader reads the book).
+function baAnnexEntries(flow) {
+    const out = [];
+    let group = null, label = null;
+    for (const line of flow) {
+        const head = baGroupHead(line.text);
+        if (head) { group = head.key; label = head.label; continue; }
+        for (const m of baFindMarks(line.text)) {
+            if (m.ref == null) continue;
+            out.push({ track: m.track, kind: m.kind, ref: m.ref, group, label, page: line.page });
+        }
+    }
+    return out;
+}
+// The book's own pages are not the PDF's pages: the difference is measured from the book (the list names the page of every recording,
+// the marks stand on the PDF's pages). Two shifts that fit the book equally well decide nothing.
+function baAnnexShift(entries, marks) {
+    const byPage = new Map();
+    for (const m of marks) {
+        if (m.ref || m.cd) continue;
+        if (!byPage.has(m.page)) byPage.set(m.page, new Set());
+        byPage.get(m.page).add(m.track);
+    }
+    if (!byPage.size || !entries.length) return 0;
+    const votes = [];
+    for (let sh = -24; sh <= 24; sh++) {
+        let n = 0;
+        for (const e of entries) { const set = byPage.get(e.ref + sh); if (set && set.has(e.track)) n++; }
+        votes.push({ sh, n });
+    }
+    votes.sort((a, b) => b.n - a.n);
+    const best = votes[0], second = votes[1];
+    if (!best || best.n < 5) return 0;
+    if (second && best.n < second.n * 2) return 0;
+    return best.sh;
+}
+// The recording of every page of the book: the key is the PDF's page, the kind of the mark and the number of the piste.
+function baAnnexMap(entries, shift) {
+    const map = new Map();
+    for (const e of entries) {
+        const key = (e.ref + shift) + '|' + (e.kind || 'piste') + '|' + e.track;
+        if (!map.has(key)) map.set(key, e);
+    }
+    return map;
+}
+// The list's own marks: the key is the PDF's page of the list, the page the mark names, the kind and the number (the same number
+// can be listed twice on one page: once for the station it belongs to, once for another).
+function baAnnexListMap(entries) {
+    const map = new Map();
+    for (const e of entries) {
+        const key = e.page + '|' + e.ref + '|' + (e.kind || 'piste') + '|' + e.track;
+        if (!map.has(key)) map.set(key, e);
+    }
+    return map;
+}
+// The recording the book's own list gives to a mark: the mark of the list plays the recording it names, the mark of the body plays
+// the recording the list places on its page.
+function baAnnexOf(m) {
+    const kind = m.kind || 'piste';
+    if (m.ref != null) {
+        const list = baMarks.annexList;
+        if (list && list.size) { const e = list.get(m.page + '|' + m.ref + '|' + kind + '|' + m.track); if (e) return e; }
+    }
+    const map = baMarks.annexMap;
+    if (!map || !map.size) return null;
+    return map.get(m.page + '|' + kind + '|' + m.track) || null;
+}
 function baTarget(m) {
     if (!baMarksReady()) return { cd: m.cd, track: m.track, pending: true };
+    // the book's own table of tracks (rules §6.1) decides first: it names the disc and the name of the recording.
+    let hit = null, blocked = null;
     const tables = baMarks.tables;
     if (tables && tables.size) {
         const own = m.cd ? tables.get(m.cd) : null, pool = own ? [[m.cd, own]] : m.cd ? [] : [...tables];
@@ -591,9 +754,15 @@ function baTarget(m) {
                 for (const pg of r.pages) if (Math.abs(pg - printed) < dist) { dist = Math.abs(pg - printed); best = { cd: cd || null, track: r.track, name: r.name }; }
             }
         }
-        if (best && dist <= 2) return best;
-        if (own || !m.cd) return { blocked: 'row' };
+        if (best && dist <= 2) hit = best;
+        else if (own || !m.cd) blocked = 'row';
     }
+    // the book's own list of its recordings decides when the table does not (rules §6.4): only the file of the same page or
+    // the same group with the same number plays, so a dialogue of another page never answers a mark.
+    const entry = baAnnexOf(m);
+    if (entry && !m.cd && !hit) return { cd: null, track: m.track, entry };
+    if (hit) return hit;
+    if (blocked) return { blocked };
     if (m.kind === 'ex') return { blocked: 'row' };
     if (baRestarts(m.cd)) return { blocked: 'restart' };
     return { cd: m.cd, track: m.track };
@@ -602,7 +771,7 @@ function baTarget(m) {
 function baFindMark(m) {
     const target = baTarget(m);
     if (target.blocked) return { rec: null, blocked: target.blocked, target };
-    return Object.assign(baFind(target.cd, target.track), { target });
+    return Object.assign(baFind(target.cd, target.track, bookAudio.tracks, target.section || null, target.entry || null), { target });
 }
 const baMarkOf = btn => ({ cd: btn.dataset.cd ? Number(btn.dataset.cd) : null, track: Number(btn.dataset.track), kind: btn.dataset.kind || 'piste',
     page: Number(btn.dataset.page), ref: btn.dataset.ref ? Number(btn.dataset.ref) : null });
@@ -653,7 +822,7 @@ function onBookAudioBookChanged() {
 // Every mark on screen shows whether its track is on this device (solid) or not yet (dashed), and which one plays.
 function syncAudioMarkers(root = document) {
     for (const btn of root.querySelectorAll('.pdf-audio-marker')) {
-        const m = baMarkOf(btn), found = baFindMark(m).rec, label = baLabel(m.cd, m.track, m.kind);
+        const m = baMarkOf(btn), found = baFindMark(m).rec, label = baLabel(m.cd, m.track, m.kind, baAnnexOf(m));
         btn.classList.toggle('has-audio', !!found);
         btn.classList.toggle('playing', !!found && !!bookAudio.playing && bookAudio.playing.id === found.id && !baAudio.paused);
         btn.setAttribute('aria-label', t('baPlayMark').replace('{label}', label)); btn.title = label;
@@ -696,7 +865,7 @@ async function importBookAudio(fileList, disc = null) {
     baImporting = true;
     const parsed = baAssignDiscs(files.map(f => {
         const p = Object.assign(baParseFile(f.name, f.webkitRelativePath || ''), { file: f });
-        if (p.cd === null && !p.section && disc) p.cd = disc;   // the disc the user chose for these files: a phone's file picker does not show the folders
+        if (p.cd === null && !p.section && !p.group && p.page === null && disc) p.cd = disc;   // the disc the user chose for these files: a phone's file picker does not show the folders
         return p;
     })).filter(p => p.track !== null);
     // the 📋 report: what this pick held and how it was read (a folder that «finds nothing» shows why)
@@ -717,9 +886,11 @@ async function importBookAudio(fileList, disc = null) {
             if (state.bookKey !== key) break;
             setBookAudioProgress(t('baSaving').replace('{i}', saved + 1).replace('{n}', parsed.length), saved / parsed.length);
             const blob = await baPlayableBlob(p.file);
-            const id = key + '\u0000' + baSetOf(p) + '\u0000' + (p.cd || 0) + '-' + (p.section || 0) + '-' + p.track;
-            await baPut({ id, bookKey: key, cd: p.cd, section: p.section, track: p.track, name: p.name, path: p.path, type: blob.type || '', size: blob.size, blob },
-                p.section ? null : key + '\u0000' + (p.cd || 0) + '-' + p.track);
+            const set = baSetOf(p);
+            const id = key + '\u0000' + set + '\u0000' + (p.cd || 0) + '-' + (p.section || 0) + '-' + (p.group || '') + '-' + (p.page || 0) + '-' + p.track;
+            // a file of a group or of a page never replaces a disc's file of the same number (they are different dialogues)
+            const legacy = set === 'cd' || set === 'one' ? key + '\u0000' + (p.cd || 0) + '-' + p.track : null;
+            await baPut({ id, bookKey: key, cd: p.cd, section: p.section, group: p.group || null, page: p.page || null, set, track: p.track, name: p.name, path: p.path, type: blob.type || '', size: blob.size, blob }, legacy);
             saved++;
         }
     } catch (err) {
@@ -751,21 +922,22 @@ function baUnlock() {
 }
 async function tapBookAudioMark(btn) {
     baUnlock();
-    const m = baMarkOf(btn), label = baLabel(m.cd, m.track, m.kind);
+    let m = baMarkOf(btn), label = baLabel(m.cd, m.track, m.kind, baAnnexOf(m));
     if (!bookAudio.tracks.length) { openBookAudioDialog(t('baConnect')); return; }
     if (!baMarksReady()) {   // the book's marks are still being read: the track can depend on its table
         const key = state.bookKey;
         baScanMarks();
         try { await baMarks.busy; } catch (e) { /* read as far as it went */ }
         if (state.bookKey !== key) return;
+        m = baMarkOf(btn); label = baLabel(m.cd, m.track, m.kind, baAnnexOf(m));   // the book's own list may have been read since
     }
     const { rec, ambiguous, blocked, target } = baFindMark(m);
-    if (typeof bsNote === 'function') bsNote('mark', { label, page: m.page, plays: target && target.track ? baLabel(target.cd, target.track) : null,
-        how: blocked || (target && target.name ? 'table' : 'printed'), tracks: bookAudio.tracks.length, found: !!rec, ambiguous: !!ambiguous });
+    if (typeof bsNote === 'function') bsNote('mark', { label, page: m.page, plays: target && target.track ? baLabel(target.cd, target.track, target.kind, target.entry) : null,
+        how: blocked || (target && target.entry ? 'annex' : (target && target.name ? 'table' : 'printed')), tracks: bookAudio.tracks.length, found: !!rec, ambiguous: !!ambiguous });
     if (blocked === 'restart') { openBookAudioDialog(t('baRestart')); return; }
     if (blocked) { openBookAudioDialog(t('baNoRow').replace('{label}', label)); return; }
     if (ambiguous) { showToast(t('baAmbiguous').replace('{label}', label)); return; }
-    if (!rec) { openBookAudioDialog(t('baMissing').replace('{label}', baLabel(target.cd, target.track))); return; }   // the dialog adds the missing files
+    if (!rec) { openBookAudioDialog(t('baMissing').replace('{label}', baLabel(target.cd, target.track, target.kind, target.entry))); return; }   // the dialog adds the missing files
     playBookTrack(rec, target.name ? label + ' · ' + target.name : label);
 }
 async function playBookTrack(rec, label) {
@@ -889,27 +1061,38 @@ function renderBookAudioDialog(message) {
 // Every audio mark of the open PDF, all pages (the status counts the ones that play). Read once per book, in the background.
 // The book's track table (rules §6.1) is read in the same pass: its rows, whole per disc, and the shift between its page numbers
 // and the PDF's.
-const baMarks = { key: null, list: null, busy: null, tables: null, shift: 0 };
+const baMarks = { key: null, list: null, busy: null, tables: null, shift: 0, annexMap: null, annexList: null, annex: null };
 function baScanMarks() {
     const key = state.bookKey, doc = state.pdfDoc;
     if (!key || state.format !== 'pdf' || !doc) return;
     if (baMarks.key === key && (baMarks.list || baMarks.busy)) return;
     baMarks.key = key; baMarks.list = null; baMarks.tables = null; baMarks.shift = 0;
+    baMarks.annexMap = null; baMarks.annexList = null; baMarks.annex = null;
     baMarks.busy = (async () => {
-        const list = [], rows = [];
+        const list = [], rows = [], flow = [];
         for (let p = 1; p <= doc.numPages; p++) {
             if (state.bookKey !== key) return;
             try {
                 const page = await doc.getPage(p), items = (await page.getTextContent()).items, table = baTableRows(items);
                 if (table.length) { rows.push(...table); continue; }
                 for (const b of baMarkBoxes(items, page.getViewport({ scale: 1 }))) list.push({ page: p, cd: b.cd, track: b.track, kind: b.kind, ref: b.ref });
+                // the book's own list of its recordings (rules §6.4): every page in the order a reader reads it
+                for (const line of baFlowLines(items)) flow.push({ page: p, text: line.text });
             } catch (e) { /* a page without text */ }
         }
         if (baMarks.key !== key) return;
         const tables = baWholeTables(rows);
         baMarks.tables = tables; baMarks.shift = tables.size ? baPageShift(list, tables) : 0;
         baMarks.list = list;
-        if (typeof bsNote === 'function') bsNote('marks', { marks: list.length, tableRows: rows.length, tables: Object.fromEntries([...tables].map(([cd, r]) => ['CD' + cd, r.length])), shift: baMarks.shift });
+        // the book's own list (rules §6.4): it says the page and the group of every number
+        const entries = baAnnexEntries(flow);
+        const annexShift = baAnnexShift(entries, list);
+        baMarks.annexMap = baAnnexMap(entries, annexShift);
+        baMarks.annexList = baAnnexListMap(entries);
+        baMarks.annex = { entries: entries.length, shift: annexShift, mapped: baMarks.annexMap.size, listed: baMarks.annexList.size,
+            groups: [...new Set(entries.map(e => e.group).filter(Boolean))].length };
+        if (typeof bsNote === 'function') bsNote('marks', { marks: list.length, tableRows: rows.length, tables: Object.fromEntries([...tables].map(([cd, r]) => ['CD' + cd, r.length])), shift: baMarks.shift,
+            annex: baMarks.annex });
         syncAudioMarkers(); renderBookAudioDialog();
     })().finally(() => { if (baMarks.key === key) baMarks.busy = null; });
 }
@@ -1007,7 +1190,7 @@ async function baTakeFolder(list, folderName, mixed = baMixedFolder(list.map(f =
         for (const f of files) {
             const p = baParseFile(f.name, f.webkitRelativePath || '');
             if (p.track === null) continue;
-            const id = baSetOf(p) + '-' + (p.cd || 0) + '-' + (p.section || 0) + '-' + p.track, had = best.get(id);
+            const id = baSetOf(p) + '-' + (p.cd || 0) + '-' + (p.section || 0) + '-' + (p.group || '') + '-' + (p.page || 0) + '-' + p.track, had = best.get(id);
             if (!had || f.size < had.file.size) best.set(id, { file: f, dir });
         }
     }
@@ -1028,7 +1211,7 @@ async function baTakeFolder(list, folderName, mixed = baMixedFolder(list.map(f =
 function baImportOrAskDisc(list) {
     const dialog = bookAudioDialog(), ask = dialog && dialog.querySelector('.ba-disc-ask');
     const audio = Array.from(list || []).filter(f => baIsAudio(f) && !baHiddenPath(f.webkitRelativePath));
-    const loose = baAssignDiscs(audio.map(f => baParseFile(f.name, f.webkitRelativePath || ''))).some(p => p.cd === null && !p.section && p.track !== null);
+    const loose = baAssignDiscs(audio.map(f => baParseFile(f.name, f.webkitRelativePath || ''))).some(p => p.cd === null && !p.section && !p.group && p.page === null && p.track !== null);
     const known = loose ? baKnownDiscs() : [];
     if (!ask || !known.length) { if (ask) ask.hidden = true; importBookAudio(list); return; }
     const choices = ask.querySelector('.ba-disc-choices');

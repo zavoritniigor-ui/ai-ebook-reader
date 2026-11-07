@@ -15,6 +15,15 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 | Claude Code, local | `fix/rollback-crop-372` | revert of PR #372 (`js/pdf-crop.js`, `sw.js`, `index.html`, `.github/workflows/ci.yml`, `tests/`) | PR open; restores the 2026-11-04 green main | 2026-11-06 |
+| Claude Code, local | `feat/ba-annex-list` | the book's own list of its recordings (rules §6.4) — `js/book-audio.js`, `tests/book_audio_annex_browser.py`, `docs/agents/book_audio_rules.md`; generated hashes | working: local gates PASS; measured on the Manuel (243 entries, shift +3, 241/257 body marks) | 2026-11-07 |
+
+## Claude Code — the book's own list of its recordings (2026-11-07)
+- Branch `feat/ba-annex-list` (worktree `/home/igor/Projects/wt-ba-stations`), base `origin/main` a49d05c. Rules §6.4 of `docs/agents/book_audio_rules.md`.
+- The owner's question: «can the audio be attached by hand so that it works for ALL the dialogues of the book?» Answer: yes, for a book that prints its own list of its recordings. The Manuel «Par Ici 5-6» prints it at the end (243 entries «i Piste N, page M» under «STATION 1..10», «STATION PHONÉTIQUE», «ANNEXE – MORPHOLOGIE», «ANNEXE – STRATÉGIES»).
+- What the app does now: reads that list in the order a reader reads it (the sideways headings in the margin are left out), measures the shift between the book's pages and the PDF's (+3 on the Manuel), and every mark of the body knows the page and the group of its number. A file named by the page (`page 27 - piste 5.mp3`) or by the group (`Station 02 - piste 5.mp3`, or a folder `Station 02`) plays on its mark and on nothing else; the mark of the list plays the recording it names.
+- Measured on the owner's Manuel (148 PDF pages): 243 entries read, shift +3, 13 groups, 241 of the 257 marks of the body placed (the 16 left are the pages that describe the book, not dialogues), all 243 marks of the list placed. Every mark of the body and of the list resolves to the same recording as the entry of the list.
+- Tests: `tests/book_audio_annex_browser.py` (10 checks, PASS) on a synthetic book; `tests/book_audio_browser.py` and `tests/book_folder_browser.py` unchanged (PASS). Local server 8769, Chrome CDP 9405.
+- Next: PR to `main`, exact-head CI green, normal merge, main CI green, production check; then remove the claims row.
 
 ## Claude Code — rollback of PR #372 (2026-11-06)
 - Owner's decision: the app stopped behaving correctly after the Codex/ChatGPT work; roll the code back to the last known good state (2026-11-04) and continue from there.
