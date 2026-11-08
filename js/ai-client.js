@@ -867,8 +867,9 @@ Example: "Le chat noir dort." → "Чорний кіт спить." gives [{"sou
 Align meaning, never word positions. Group articles, pronouns, auxiliaries and compound tenses as needed. Allow multiple source spans for separated phrasal verbs. One translated word can align to several source words. Target phrases must not overlap. Do not invent an equivalent for an omitted article. Return at most 40 confident links.`;
     // Бюджет відповіді — за довжиною тексту. Раніше переклад мав фіксовані 128 (OpenAI) / 256 (Groq) токенів: речення разом
     // із JSON-розміткою відповідності слів туди не вміщувалось, відповідь обривалась, і читач бачив «AI не зміг перекласти».
-    const budget = isWord ? 300 : Math.min(6000, Math.ceil(text.length * (withAlignment ? 1.6 : 0.8)) + (withAlignment ? 500 : 300));
+    const budget = isWord ? 300 : Math.min(8000, Math.ceil(text.length * (withAlignment ? 1.8 : 1.2)) + (withAlignment ? 500 : 400));
     const options = { maxOutputTokens: budget };
+    if (!isWord && text.length > 250) options.timeoutMs = Math.min(25000, 3000 + Math.ceil(text.length * 6));
     if (provider) options.provider = provider;
     try {
         let out;
@@ -894,8 +895,12 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
             if (!translation) return null;
             return typeof parsed === 'string' ? translation : { ...parsed, translation };
         }
-        // Уламок JSON («{broken», обірвана розмітка) — не переклад; показувати його як текст не можна.
-        if (/^\s*(?:```|[\[{])/.test(String(out || ''))) return null;
+        // Якщо модель або стаб усе ж обгорнули простий переклад у {"translation": "..."}, дістаємо рядок перед перевіркою.
+        if (/^\s*(?:```|[\[{])/.test(String(out || ''))) {
+            const parsed = parseAiJson(out);
+            const tr = parsed.ok && parsed.value && typeof parsed.value.translation === 'string' ? parsed.value.translation : null;
+            return tr ? normalizeTranslation(tr, targetLang, false) : null;
+        }
         return normalizeTranslation(out, targetLang, false);
     } catch (e) { return null; }
 }
