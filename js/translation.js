@@ -360,7 +360,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         const probe = navigator.onLine ? ensureSharedAiProviders() : null;   // the site's shared Groq must be known before the order is chosen
         if (probe) await probe;
         const providers = navigator.onLine && aiAvailable() ? translationProviders() : [];
-        const askProvider = (p, info) => aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 2000, p || null, info);
+        const askProvider = (p, info) => aiTranslateText(cleanText, srcCode, task.signal, targetLang, contextSentence, isMultiWord && cleanText.length <= 450, p || null, info);
         // 🧠 mini: OpenAI's smaller model answered -- this device used up the day's free pool of the big one (js/ai-client.js, openaiModel).
         const markOf = (p, model) => (p === 'groq' ? '⚡' : '🧠') + (p === 'openai' && /mini/.test(model || '') ? ' mini' : '');
         const answered = {};   // who REALLY answered: a refused shared Groq key is repeated on the shared OpenAI inside the request, the mark must follow
