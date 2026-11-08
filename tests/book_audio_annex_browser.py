@@ -197,7 +197,56 @@ check('8 The marker of the third page is solid (its recording is on the device) 
 
 check('9 A number that the book’s list does not place stays undecided: no other group’s recording plays', """(() => {
     const m = baFindMark({ page: 1, track: 9 });
-    return !m.rec && !m.ambiguous || JSON.stringify(m);
+    return !m.rec && !m.ambiguous && m.blocked === 'row' || JSON.stringify(m);
+})()""")
+
+check('11 Level-prefixed Bilan headings, chapter words, bare-number group files, and short page prefixes parse and match their group', """(() => {
+    const h1 = baGroupHead('NIVEAU 5 – BILAN'), h2 = baGroupHead('NIVEAU 6 - BILAN');
+    const h3 = baGroupHead('CHAPITRE 3 : En ville'), h4 = baGroupHead('STATION');
+    const f1 = baParseFile('Station 01 - 05.mp3', 'Station 01 - 05.mp3');
+    const f2 = baParseFile('Bilan 5 - piste 2.mp3', 'Bilan 5 - piste 2.mp3');
+    const f3 = baParseFile('p21_piste20.mp3', 'p21_piste20.mp3');
+    const f4 = baParseFile('page 21 - 20.mp3', 'page 21 - 20.mp3');
+    const f5 = baParseFile('piste 3.mp3', 'Unité 2/piste 3.mp3');
+    const f6 = baParseFile('piste 1.mp3', 'Phonétique/piste 1.mp3');
+    return h1 && h1.key === 'niveau 5 bilan' && h1.label === 'NIVEAU 5 – BILAN' &&
+           h2 && h2.key === 'niveau 6 bilan' &&
+           h3 && h3.key === 'chapitre 3' && h4 === null &&
+           f1.group === 'station 1' && f1.track === 5 &&
+           f2.group === 'bilan 5' && f2.track === 2 && baGroupSame(f2.group, h1.key) &&
+           f3.page === 21 && f3.track === 20 && f4.page === 21 && f4.track === 20 &&
+           f5.group === 'unite 2' && f5.section === 2 && f5.track === 3 &&
+           f6.group === 'phonetique' && baGroupSame(f6.group, 'station phonetique') && !baGroupSame('bilan 5', 'station 5') ||
+           JSON.stringify({ h1, h2, h3, h4, f1, f2, f3, f4, f5, f6 });
+})()""")
+
+check('12 A complete sequential or multi-disc track set matching the annex recording count plays in annex order; a wrong-sized disc does not', """(() => {
+    const seqPool = Array.from({ length: 6 }, (_, i) => ({ id: 'seq-' + (i + 1), cd: i < 3 ? 1 : 2, track: (i % 3) + 1, set: 'cd' }));
+    const r1 = baFind(null, 1, seqPool, null, baAnnexOf({ page: 1, track: 1 }));
+    const r2 = baFind(null, 1, seqPool, null, baAnnexOf({ page: 3, track: 1 }));
+    const wrongPool = Array.from({ length: 12 }, (_, i) => ({ id: 'w-' + (i + 1), cd: 1, track: i + 1, set: 'cd' }));
+    const rWrong = baFind(null, 1, wrongPool, null, baAnnexOf({ page: 1, track: 1 }));
+    return r1.rec && r1.rec.id === 'seq-1' && r2.rec && r2.rec.id === 'seq-4' && !rWrong.rec ||
+           JSON.stringify({ r1, r2, rWrong });
+})()""")
+
+check('13 Unmapped intro marks in an annex book never trigger a false baRestart warning; missing-track status names the annex group and page', """(() => {
+    const savedTracks = bookAudio.tracks, savedList = baMarks.list.slice();
+    try {
+        // Add an unmapped intro mark on page 1 and a third page with piste 1 so baRestarts(null) is true
+        baMarks.list = [{ page: 1, cd: null, track: 9, kind: 'piste', ref: null }, ...savedList, { page: 2, cd: null, track: 1, kind: 'piste', ref: null }];
+        openBookAudioDialog('');
+        const d = document.getElementById('book-audio-dialog'), st = d.querySelector('.ba-status');
+        const someOk = st.classList.contains('ba-ok') && !st.classList.contains('ba-warn') && st.textContent !== t('baRestart');
+        bookAudio.tracks = [{ id: 'other-99', cd: 1, track: 99, set: 'cd' }];
+        renderBookAudioDialog();
+        const noneWarn = st.classList.contains('ba-warn') && st.textContent !== t('baRestart') && /STATION 1/.test(st.textContent) && /10/.test(st.textContent);
+        d.close();
+        return someOk && noneWarn || JSON.stringify({ someOk, noneWarn, text: st.textContent });
+    } finally {
+        bookAudio.tracks = savedTracks;
+        baMarks.list = savedList;
+    }
 })()""")
 
 check('10 No error was thrown while the book was read', "(() => !window.__errors.length || window.__errors.join(' | '))()")
