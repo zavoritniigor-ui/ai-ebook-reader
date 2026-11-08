@@ -9,6 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
+| Antigravity | `fix/ba-general-rules` | `js/book-audio.js`, `tests/book_audio_annex_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
 | Codex, cloud | `feat/separate-scans-shelf` | `js/book-shelf.js`, `js/scanner.js`, `tests/book_shelf_browser.py`, `tests/scanner_browser.py`, `ARCHITECTURE.md`; shelf CSS and generated hashes | working | current session |
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
@@ -98,9 +99,10 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 - **Next:** monitor PR #367's current head with `tools/ci_wait.sh <sha>`; resolve any failures before normal merge. Then verify main CI and production and remove this Claims row. The owner's original blurred book and physical tablet still need a visual check.
 
 ## Active Agent Worktrees & Tasks
-- **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
-  - Task: Token optimization (compact rules, docs archiving, .vscode search exclusions) and Antigravity workflow definitions.
-  - Status: In progress.
+- **Antigravity** (Branch: `fix/ba-general-rules`, worktree `../wt-ba-general-rules`):
+  - Task: General book-audio rules for annex/group headings (`NIVEAU N – BILAN`, chapter words, group synonym matching), bare-number group/page file parsing, sequential/multi-disc matching for annex & continuous bare-mark books, and preventing unmapped intro marks in annex books from triggering a false `baRestart` warning.
+  - Verified locally: `tests/book_audio_annex_browser.py`, `tests/book_audio_browser.py`, `tests/book_folder_browser.py`, `tests/book_speech_browser.py`, `tests/pdf_ux_browser.py`, `tests/learning_ux_browser.py`, syntax and app-shell version gates PASS.
+  - Status: PR open, awaiting exact-head CI before merge.
 - **Claude Code** (2026-10-26 evening; merge chain running unattended):
   - Merged + in production today: #288 #289 #291 #292 #293 #294 #295 #296 #297 #298 #299 #300 #301 #302 #303
     (CBZ, narration text rules, free dictionaries, Persian + flags, word-level alignment, folder narration import,

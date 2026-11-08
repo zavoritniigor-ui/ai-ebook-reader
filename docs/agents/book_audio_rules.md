@@ -51,14 +51,16 @@ For every audio file found (`mp3 m4a m4b mp4 aac wav ogg oga opus flac wma aif a
    - **disc** — `cd`, `disc`, `disk`, `диск` + a number, from the nearest folder, else from the file name.
      A folder `CD1-2` / `CD 1-2` is **part 2 of disc 1**, not disc 2 or disc 12.
    - **section** — `ep`, `episode`, `épisode`, `unit`, `unité`, `leçon`, `lesson`, `module` + a number.
-   - **group** — the words before the track that name a **group of the book** (`station`, `bilan`, `annexe`, `épisode`,
-     `unité`, `leçon`, `lesson`, `module`, `phonétique`): `Station 05 - piste 5` → group «station 5»; also read
-     from the folder the file lies in (`Station 3/piste 5.mp3`). The words are compared the way the book writes them:
-     lower case, no accent, no leading zero in a number (`STATION 05`, `Station 5` and `station 5` are one group).
+   - **group** — the words before the track that name a **group of the book** (`station`, `bilan`, `niveau`, `annexe`, `épisode`,
+     `unité`, `leçon`, `lesson`, `module`, `chapitre`, `partie`, `dossier`, `thème`, `séquence`, `phonétique`, `morphologie`,
+     `stratégies`): `Station 05 - piste 5` or `Station 05 - 05` → group «station 5»; `Bilan 5 - piste 2` matches heading
+     `NIVEAU 5 – BILAN`; also read from the folder the file lies in (`Station 3/piste 5.mp3`, `Unité 2/piste 3.mp3`). The words
+     are compared the way the book writes them: lower case, no accent, no leading zero in a number (`STATION 05`, `Station 5`
+     and `station 5` are one group).
    - **track** — `track`, `piste`, `plage`, `pista`, `t` + a number; else a number at the start of the name
-     (`07 Audio Track`); else the last number in the name.
-   - **page** — the book's own page, in words (`page 27`, `p. 27`) or as `p` + 3 digits (`p027`), **when the name also has an
-     explicit track token** (`…_p011_t006` = page 11, track 6; `page 27 - piste 5` = page 27, track 5).
+     (`07 Audio Track`); else the last number in the name (ignoring disc, section, group and page numbers).
+   - **page** — the book's own page, in words (`page 27`, `p. 27`) or as `p` + 1–3 digits (`p027`, `p27`) next to an
+     explicit track token (`…_p011_t006` = page 11, track 6; `page 27 - piste 5` or `page 27 - 05` = page 27, track 5).
      Without a track token, `p` + number is the track (`…_EP01_P3` = track 3).
    - a trailing copy number (`01 Track 01 1`) = the same track number on the next disc, used only when no folder says
      the disc (a plain file picker has no folder names).

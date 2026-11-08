@@ -377,12 +377,13 @@ const BA_DISC_RE = /(?:^|[^\p{L}])(?:cd|disc|disk|диск)\s*[-_ ]?\s*0*([1-9])
 const BA_SECTION_RE = /(?:^|[^\p{L}])(?:ep|episode|épisode|unit|unité|unite|leçon|lecon|lesson|module)\s*[-_ ]?\s*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
 const BA_TRACK_RE = /(?:^|[^\p{L}\d])(?:track|piste|plage|pista|tr|t)[ _-]*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
 const BA_P_RE = /(?:^|[^\p{L}\d])p[ _-]*0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
-// The page of the file: the book prints it in words («page 27», «p. 27») or as «p027» next to a track it names in words.
+// The page of the file: the book prints it in words («page 27», «p. 27») or as «p027» / «p27» next to a track it names in words.
 const BA_PAGE_WORD_RE = /(?:^|[^\p{L}\d])(?:pages?|p{1,2}\.)\s*[-_ ]?\s*0*(\d{1,3})(?![\p{L}\d])/iu;
-const BA_PAGE_SHORT_RE = /(?:^|[^\p{L}\d])p[ _-]?0*(\d{3})(?![\p{L}\d])/iu;
+const BA_PAGE_SHORT_RE = /(?:^|[^\p{L}\d])p[ _-]?0*([1-9]\d{0,2})(?![\p{L}\d])/iu;
 // The group of the file: the words before its track name the group of the book it belongs to («Station 05 - piste 5» = the group
 // «station 5», the same words the book prints as the heading of that group). Only a word that names a group counts.
-const BA_GROUP_WORD_RE = /(?:^|[^\p{L}])(?:stations?|bilan|annexes?|épisodes?|episodes?|units?|unités?|unites?|leçons?|lecons?|lessons?|modules?|phonétique|phonetique|phono)(?![\p{L}])/iu;
+const BA_GROUP_WORD_RE = /(?:^|[^\p{L}])(?:stations?|bilans?|niveaux?|annexes?|épisodes?|episodes?|units?|unités?|unites?|leçons?|lecons?|lessons?|modules?|chapitres?|chapters?|parties?|parts?|dossiers?|thèmes?|themes?|séquences?|sequences?|phonétique|phonetique|phono|morphologie|stratégies|strategies)(?![\p{L}])/iu;
+const BA_GROUP_NUM_RE = /(?:^|[^\p{L}])(?:stations?|bilans?|niveaux?|annexes?|chapitres?|chapters?|parties?|parts?|dossiers?|thèmes?|themes?|séquences?|sequences?)\s*[-_ ]?\s*0*([1-9]\d{0,2})(?![\p{L}\d])/giu;
 function baParseFile(name, path) {
     const base = String(name || '').replace(/\.[^.]+$/, '');
     const folders = String(path || name || '').split('/').slice(0, -1).reverse();
@@ -390,8 +391,10 @@ function baParseFile(name, path) {
     for (const seg of folders) { const m = seg.match(BA_DISC_RE); if (m) { cd = Number(m[1]); break; } }
     if (cd === null) { const m = base.match(/(?:^|[^\p{L}])(?:cd|disc)\s*[-_ ]?\s*0*([1-9])(?![\p{L}\d])/iu); if (m) cd = Number(m[1]); }
     for (const seg of [base, ...folders]) { const m = seg.match(BA_SECTION_RE); if (m) { section = Number(m[1]); break; } }
-    // the bare-number fallbacks never take the disc's or the section's own number for the track
-    const rest = base.replace(BA_SECTION_RE, ' ').replace(/(?:^|[^\p{L}])(?:cd|disc)\s*[-_ ]?\s*0*[1-9](?![\p{L}\d])/iu, ' ');
+    // the bare-number fallbacks never take the disc's, the section's, the group's or the page's own number for the track
+    const blank = s => ' '.repeat(s.length);
+    const rest = base.replace(BA_SECTION_RE, blank).replace(/(?:^|[^\p{L}])(?:cd|disc)\s*[-_ ]?\s*0*[1-9](?![\p{L}\d])/giu, blank)
+        .replace(BA_GROUP_NUM_RE, blank).replace(BA_PAGE_WORD_RE, blank);
     let track = null, copy = 0, m = base.match(BA_TRACK_RE);
     const named = !!m;    // the name says its track in words: then it may also say its page
     if (!m) m = base.match(BA_P_RE);
@@ -401,10 +404,12 @@ function baParseFile(name, path) {
         if (dup) copy = Number(dup[1]);
     } else if ((m = rest.match(/^\s*0*([1-9]\d{0,2})(?![\d])/))) track = Number(m[1]);
     else if ((m = rest.match(/0*([1-9]\d{0,2})(?!.*\d)/))) track = Number(m[1]);
-    if (named) { const pm = base.match(BA_PAGE_WORD_RE) || base.match(BA_PAGE_SHORT_RE); if (pm) page = Number(pm[1]); }
+    const withoutTrack = named && m ? base.slice(0, m.index) + ' ' + base.slice(m.index + m[0].length) : '';
+    const pm = base.match(BA_PAGE_WORD_RE) || (named ? withoutTrack.match(BA_PAGE_SHORT_RE) : null);
+    if (pm) page = Number(pm[1]);
     // the group of the file: the words before its track, or the folder it lies in
-    if (cd === null && section === null && page === null) {
-        const head = named ? base.slice(0, m.index) : '';
+    if (cd === null && page === null) {
+        const head = m ? base.slice(0, m.index) : '';
         const inName = baGroupKey(head);
         if (inName && BA_GROUP_WORD_RE.test(head)) group = inName;
         else for (const seg of folders) { const k = baGroupKey(seg); if (k && BA_GROUP_WORD_RE.test(seg)) { group = k; break; } }
@@ -445,12 +450,18 @@ function baLabel(cd, track, kind, entry) {
 // plays, so the dialogue of another page never answers a mark.
 function baFind(cd, track, tracks = bookAudio.tracks, section = null, entry = null) {
     if (entry) {
-        const same = tracks.filter(x => x.track === track && (x.set === 'pg' || x.set === 'grp'));
-        const byPage = entry.ref != null ? same.filter(x => x.set === 'pg' && x.page === entry.ref) : [];
+        const byPage = entry.ref != null ? tracks.filter(x => x.set === 'pg' && x.page === entry.ref && x.track === track) : [];
         if (byPage.length === 1) return { rec: byPage[0] };
-        const byGroup = entry.group ? same.filter(x => x.set === 'grp' && x.group === entry.group) : [];
+        const byGroup = entry.group ? tracks.filter(x => (x.set === 'grp' || x.set === 'sec') && x.group && baGroupSame(x.group, entry.group) && x.track === track) : [];
         if (byGroup.length === 1) return { rec: byGroup[0] };
         if (byPage.length > 1 || byGroup.length > 1) return { rec: null, ambiguous: true };
+        if (entry.seq && baMarks.annex && baMarks.annex.unique >= 5) {
+            const seqPool = tracks.filter(x => x.set === 'cd' || x.set === 'one');
+            if (Math.abs(seqPool.length - baMarks.annex.unique) <= 2 || Math.abs(seqPool.length - baMarks.annex.entries) <= 2) {
+                const sorted = [...seqPool].sort((a, b) => (a.cd || 0) - (b.cd || 0) || a.track - b.track);
+                if (sorted[entry.seq - 1]) return { rec: sorted[entry.seq - 1] };
+            }
+        }
         return { rec: null };
     }
     if (section !== null && section !== undefined) {
@@ -463,6 +474,14 @@ function baFind(cd, track, tracks = bookAudio.tracks, section = null, entry = nu
         if (exact) return { rec: exact };
         const open = same.filter(x => x.cd === null && !x.section);
         return open.length === 1 && same.length === 1 ? { rec: open[0] } : { rec: null };
+    }
+    const cdPool = tracks.filter(x => x.cd && x.set === 'cd');
+    if (cdPool.length && cdPool.length === tracks.filter(x => x.set !== 'grp' && x.set !== 'pg').length && baMarksReady() && baMarks.list.length && baMarks.list.every(m => !m.cd)) {
+        const maxDiscTrack = Math.max(...cdPool.map(x => x.track)), maxMark = Math.max(...baMarks.list.map(m => m.track));
+        if (maxMark > maxDiscTrack && maxMark <= cdPool.length + 2) {
+            const sorted = [...cdPool].sort((a, b) => a.cd - b.cd || a.track - b.track);
+            return sorted[track - 1] ? { rec: sorted[track - 1] } : { rec: null };
+        }
     }
     if (same.length === 1) return { rec: same[0] };
     const discless = same.filter(x => x.cd === null);
@@ -660,28 +679,53 @@ function baGroupKey(text) {
         .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
     return s.replace(/(^|\s)0+(\d)/g, '$1$2');
 }
-// The heading of a group of the book: «STATION 3», «STATION PHONÉTIQUE», «ANNEXE – MORPHOLOGIE». A line that names the group
-// without anything else («STATION», the running head of a page) names no group and is left out.
-const BA_GROUP_HEAD_RE = /^\s*(STATIONS?|BILANS?|ANNEXES?|ÉPISODES?|EPISODES?|UNITÉS?|UNITES?|LEÇONS?|LECONS?|LESSONS?|MODULES?)\b(.*)$/iu;
+function baGroupNorm(k) {
+    return String(k || '').replace(/\b(?:ep|episodes?)\b/g, 'episode').replace(/\b(?:units?|unites?)\b/g, 'unite')
+        .replace(/\b(?:lecons?|lessons?)\b/g, 'lecon').replace(/\b(?:chapitres?|chapters?)\b/g, 'chapitre')
+        .replace(/\b(?:parties?|parts?)\b/g, 'partie').replace(/\bphono\b/g, 'phonetique')
+        .replace(/\b(station|bilan|annexe|module|dossier|theme|sequence)s\b/g, '$1').replace(/\bniveaux\b/g, 'niveau');
+}
+function baGroupSame(a, b) {
+    if (!a || !b) return false;
+    const na = baGroupNorm(a), nb = baGroupNorm(b);
+    if (na === nb) return true;
+    if (/\bbilan\b/.test(na) && /\bbilan\b/.test(nb)) {
+        const ma = na.match(/\b(\d+)\b/), mb = nb.match(/\b(\d+)\b/);
+        if (ma && mb && ma[1] === mb[1]) return true;
+    }
+    if (!/\d/.test(na) && !/\d/.test(nb)) {
+        const strip = s => s.replace(/^(?:station|annexe)\s+/, '');
+        if (strip(na) === strip(nb)) return true;
+    }
+    return false;
+}
+// The heading of a group of the book: «STATION 3», «STATION PHONÉTIQUE», «NIVEAU 5 – BILAN», «ANNEXE – MORPHOLOGIE». A line that
+// names the group without anything else («STATION», the running head of a page) names no group and is left out.
+const BA_GROUP_HEAD_RE = /^\s*(?:(NIVEAUX?\s*\d+)\s*[-–—:]\s*)?(STATIONS?|BILANS?|ANNEXES?|ÉPISODES?|EPISODES?|UNITÉS?|UNITES?|LEÇONS?|LECONS?|LESSONS?|MODULES?|CHAPITRES?|CHAPTERS?|PARTIES?|PARTS?|DOSSIERS?|THÈMES?|THEMES?|SÉQUENCES?|SEQUENCES?)\b(.*)$/iu;
 function baGroupHead(text) {
     const m = String(text || '').match(BA_GROUP_HEAD_RE);
     if (!m) return null;
-    const rest = (m[2] || '').split(':')[0].trim();   // «Station 1 : On déménage !»: only the name of the group counts
-    if (!rest) return null;
-    const label = (m[1] + ' ' + rest).trim().replace(/\s+/g, ' ');
+    const niv = (m[1] || '').trim(), word = m[2], rest = (m[3] || '').split(':')[0].trim();   // «Station 1 : On déménage !»: only the name of the group counts
+    if (!rest && !niv) return null;
+    const num = rest.match(/^[-–—]?\s*0*([1-9]\d{0,2})(?![\p{L}\d])/u);
+    if (!niv && !num && rest !== rest.toUpperCase() && !BA_GROUP_WORD_RE.test(rest)) return null;
+    const tail = num ? num[1] : rest.replace(/^[-–—\s]+/, '').trim();
+    const label = ((niv ? niv + ' – ' : '') + word + (tail ? (/^[-–—]/.test(rest) && !num ? ' – ' : ' ') + tail : '')).trim().replace(/\s+/g, ' ');
     return { key: baGroupKey(label), label };
 }
 // The book's own list: every line that names a recording and the page it belongs to («i Piste 5, page 27»), with the group it
-// stands under (the heading above it in the order a reader reads the book).
+// stands under (the heading above it in the order a reader reads the book) and its sequential index across unique recordings.
 function baAnnexEntries(flow) {
-    const out = [];
-    let group = null, label = null;
+    const out = [], seen = new Map();
+    let group = null, label = null, seq = 0;
     for (const line of flow) {
         const head = baGroupHead(line.text);
         if (head) { group = head.key; label = head.label; continue; }
         for (const m of baFindMarks(line.text)) {
             if (m.ref == null) continue;
-            out.push({ track: m.track, kind: m.kind, ref: m.ref, group, label, page: line.page });
+            const gKey = (group || '') + '|' + (m.kind || 'piste') + '|' + m.track;
+            if (!seen.has(gKey)) seen.set(gKey, ++seq);
+            out.push({ track: m.track, kind: m.kind, ref: m.ref, group, label, page: line.page, seq: seen.get(gKey) });
         }
     }
     return out;
@@ -761,10 +805,18 @@ function baTarget(m) {
     // the same group with the same number plays, so a dialogue of another page never answers a mark.
     const entry = baAnnexOf(m);
     if (entry && !m.cd && !hit) return { cd: null, track: m.track, entry };
+    if (!m.cd && !hit && baMarks.annexMap && baMarks.annexMap.size) blocked = 'row';
     if (hit) return hit;
     if (blocked) return { blocked };
     if (m.kind === 'ex') return { blocked: 'row' };
-    if (baRestarts(m.cd)) return { blocked: 'restart' };
+    if (baRestarts(m.cd)) {
+        const g = m.group || (baMarks.list && (baMarks.list.find(x => x.page === m.page && x.track === m.track && x.group) || {}).group);
+        const gl = m.groupLabel || (baMarks.list && (baMarks.list.find(x => x.page === m.page && x.track === m.track && x.groupLabel) || {}).groupLabel);
+        if (!m.cd && g && bookAudio.tracks.some(x => (x.set === 'grp' || x.set === 'sec') && x.group && baGroupSame(x.group, g))) {
+            return { cd: null, track: m.track, entry: { group: g, label: gl || g.toUpperCase(), ref: null } };
+        }
+        return { blocked: 'restart' };
+    }
     return { cd: m.cd, track: m.track };
 }
 // The stored track a mark plays, and why not when it does not.
@@ -1039,11 +1091,11 @@ function renderBookAudioDialog(message) {
     if (n && marks && marks.length) {
         const found = marks.map(m => baFindMark(m));
         const playing = found.filter(f => f.rec).length, restart = found.some(f => f.blocked === 'restart');
-        const miss = marks.find((m, i) => !found[i].rec);
-        if (restart) { text = t('baRestart'); ok = false; warn = true; }   // never «playing» when the numbers cannot be matched
-        else if (playing === marks.length) text = t('baMarksAll').replace('{n}', playing);
+        const miss = marks.find((m, i) => !found[i].rec && !found[i].blocked) || marks.find((m, i) => !found[i].rec);
+        if (playing === marks.length) text = t('baMarksAll').replace('{n}', playing);
         else if (playing) text = t('baMarksSome').replace('{k}', playing).replace('{n}', marks.length);
-        else { text = t('baMarksNone').replace('{n}', n).replace('{label}', baLabel(miss.cd, miss.track, miss.kind)); ok = false; warn = true; }
+        else if (restart) { text = t('baRestart'); ok = false; warn = true; }   // never «playing» when the numbers cannot be matched
+        else { text = t('baMarksNone').replace('{n}', n).replace('{label}', baLabel(miss.cd, miss.track, miss.kind, baAnnexOf(miss))); ok = false; warn = true; }
         tap = playing > 0;
     } else if (n) { text = t('baCount').replace('{n}', n); tap = true; }
     else if (marks && marks.length) { text = t('baMarksEmpty').replace('{n}', marks.length); ok = false; warn = true; }   // the narration is not the book's recordings
@@ -1076,14 +1128,21 @@ function baScanMarks() {
     baMarks.annexMap = null; baMarks.annexList = null; baMarks.annex = null;
     baMarks.busy = (async () => {
         const list = [], rows = [], flow = [];
+        let bodyGroup = null, bodyLabel = null;
         for (let p = 1; p <= doc.numPages; p++) {
             if (state.bookKey !== key) return;
             try {
                 const page = await doc.getPage(p), items = (await page.getTextContent()).items, table = baTableRows(items);
                 if (table.length) { rows.push(...table); continue; }
-                for (const b of baMarkBoxes(items, page.getViewport({ scale: 1 }))) list.push({ page: p, cd: b.cd, track: b.track, kind: b.kind, ref: b.ref });
-                // the book's own list of its recordings (rules §6.4): every page in the order a reader reads it
-                for (const line of baFlowLines(items)) flow.push({ page: p, text: line.text });
+                const pageFlow = baFlowLines(items);
+                for (const line of pageFlow) {
+                    const head = baGroupHead(line.text);
+                    if (head && !baFindMarks(line.text).some(m => m.ref != null)) { bodyGroup = head.key; bodyLabel = head.label; }
+                    flow.push({ page: p, text: line.text });
+                }
+                for (const b of baMarkBoxes(items, page.getViewport({ scale: 1 }))) {
+                    list.push({ page: p, cd: b.cd, track: b.track, kind: b.kind, ref: b.ref, group: b.ref ? null : bodyGroup, groupLabel: b.ref ? null : bodyLabel });
+                }
             } catch (e) { /* a page without text */ }
         }
         if (baMarks.key !== key) return;
@@ -1095,7 +1154,7 @@ function baScanMarks() {
         const annexShift = baAnnexShift(entries, list);
         baMarks.annexMap = baAnnexMap(entries, annexShift);
         baMarks.annexList = baAnnexListMap(entries);
-        baMarks.annex = { entries: entries.length, shift: annexShift, mapped: baMarks.annexMap.size, listed: baMarks.annexList.size,
+        baMarks.annex = { entries: entries.length, unique: new Set(entries.map(e => e.seq)).size, shift: annexShift, mapped: baMarks.annexMap.size, listed: baMarks.annexList.size,
             groups: [...new Set(entries.map(e => e.group).filter(Boolean))].length };
         if (typeof bsNote === 'function') bsNote('marks', { marks: list.length, tableRows: rows.length, tables: Object.fromEntries([...tables].map(([cd, r]) => ['CD' + cd, r.length])), shift: baMarks.shift,
             annex: baMarks.annex });
@@ -1159,7 +1218,12 @@ function baSetFits(files) {
     const parsed = files.map(f => baParseFile(f.name, f.webkitRelativePath || '')).filter(p => p.track !== null);
     const marks = baMarksReady() ? baMarks.list : null;
     if (!marks || !marks.length) return parsed.length >= 3;
-    if (!parsed.length || (parsed.length === 1 && parsed[0].cd === null)) return false;   // one loose «Voice 3» is no disc of the book
+    if (!parsed.length || (parsed.length === 1 && parsed[0].cd === null && !parsed[0].group && parsed[0].page === null)) return false;   // one loose «Voice 3» is no disc of the book
+    if (baMarks.annexMap && baMarks.annexMap.size) {
+        const entries = marks.map(m => baTarget(m).entry).filter(Boolean);
+        const hits = parsed.filter(p => entries.some(e => (p.page !== null && p.page === e.ref && p.track === e.track) || (p.group && e.group && baGroupSame(p.group, e.group) && p.track === e.track))).length;
+        return hits >= 1 && hits >= parsed.length * 0.6;
+    }
     const wanted = new Set();
     for (const m of marks) { const target = baTarget(m); if (target.track) wanted.add((target.cd || 0) + '-' + target.track); }
     const discless = marks.filter(m => !m.cd).length * 2 >= marks.length;
