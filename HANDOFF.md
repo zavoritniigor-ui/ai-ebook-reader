@@ -14,21 +14,31 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
-| Claude Code, local | `feat/ba-annex-list` | the book's own list of its recordings (rules §6.4) — `js/book-audio.js`, `tests/book_audio_annex_browser.py`, `docs/agents/book_audio_rules.md`; generated hashes | PR #379 open; local gates and 4 book-audio suites PASS; exact-head CI pending | 2026-11-07 |
 
-## Claude Code — the book's own list of its recordings (2026-11-07)
-- Branch `feat/ba-annex-list` (worktree `/home/igor/Projects/wt-ba-stations`), base `origin/main` a49d05c. Rules §6.4 of `docs/agents/book_audio_rules.md`.
-- The owner's question: «can the audio be attached by hand so that it works for ALL the dialogues of the book?» Answer: yes, for a book that prints its own list of its recordings. The Manuel «Par Ici 5-6» prints it at the end (243 entries «i Piste N, page M» under «STATION 1..10», «STATION PHONÉTIQUE», «ANNEXE – MORPHOLOGIE», «ANNEXE – STRATÉGIES»).
-- What the app does now: reads that list in the order a reader reads it (the sideways headings in the margin are left out), measures the shift between the book's pages and the PDF's (+3 on the Manuel), and every mark of the body knows the page and the group of its number. A file named by the page (`page 27 - piste 5.mp3`) or by the group (`Station 02 - piste 5.mp3`, or a folder `Station 02`) plays on its mark and on nothing else; the mark of the list plays the recording it names.
-- Measured on the owner's Manuel (148 PDF pages): 243 entries read, shift +3, 13 groups, 241 of the 257 marks of the body placed (the 16 left are the pages that describe the book, not dialogues), all 243 marks of the list placed. Every mark of the body and of the list resolves to the same recording as the entry of the list.
-- Tests: `tests/book_audio_annex_browser.py` (10 checks, PASS) on a synthetic book; `tests/book_audio_browser.py` and `tests/book_folder_browser.py` unchanged (PASS). Local server 8769, Chrome CDP 9405.
-- Next: PR #379 is open; wait for the exact-head CI to be green, merge it, check main CI and production, then remove the claims row.
+## Claude Code — the book's own list of its recordings (2026-11-07) — MERGED (PR #379, main `ed3063f`)
+- Rules §6.4 of `docs/agents/book_audio_rules.md`; the code is in `js/book-audio.js`; the test is `tests/book_audio_annex_browser.py`
+  (10 checks, in CI). The branch `feat/ba-annex-list` (worktree `/home/igor/Projects/wt-ba-stations`) is merged; nothing is pending on it.
+- The owner's question: «can the audio be attached by hand so that it works for ALL the dialogues of the book?» — **yes**, for a book
+  that prints its own list of its recordings.
+- The Manuel «Par Ici 5-6 Manuel» prints that list at the end: **243 entries** «i Piste N, page M» under 13 headings (STATION 1 … STATION 10,
+  STATION PHONÉTIQUE, ANNEXE – MORPHOLOGIE, ANNEXE – STRATÉGIES). The app reads it in the order a reader reads it (the sideways headings
+  in the margin are left out), measures the shift to the PDF's pages (**+3**), and every mark then knows its page and its group.
+- Measured on the owner's **real** Manuel (148 PDF pages, 500 marks): 243 entries read, 13 groups, **241 of the 257** body marks placed
+  (the 16 left are on pages 4/9/10 — the pages that describe the book, not dialogues), **243 of 243** list marks placed; the body mark
+  and the list mark of one dialogue resolve to the same recording. End to end with the real file: `page 16 - piste 1.mp3` plays on the
+  body mark **and** on the list's mark of that dialogue; `Station 1 - piste 2.mp3` plays on station 1's piste 2 only; the piste 1 of
+  another page does not pick it up.
+- How to attach by hand: name the files by the book's printed page (`page 27 - piste 5.mp3`) or by the book's own group heading
+  (`Station 02 - piste 5.mp3`, or a folder `Station 02`). A plain `piste 5.mp3` stays undecided — the numbers restart in every station.
+- **Still missing:** the Manuel's own 236 pistes are not on the disk (page 3 of the PDF: «Accédez au matériel audio et vidéo du manuel au
+  www.methode-parici.com»). The CD «audio CD 56» (96 tracks) belongs to the textbook `livre 56.pdf`; the folder `audio 56` (26 FLS2 files)
+  is not the Manuel's audio.
 
 ## Claude Code — book audio: choosing the folders by hand (2026-11-07)
 
 **Where to start tomorrow (nothing else is pending on this side):**
-1. PR #378 (`fix/ba-narration-disc-ask`) is **merged** (main `089f9da`): the narration no longer asks which disc and one foreign narration no longer blocks the batch. PR #379 (the book's own list of its recordings) is next: it is open, wait for its exact-head CI, then merge and check production.
-2. The Manuel's own 236 pistes are still missing — the owner's files or the publisher's table; nothing to code until then (§ below).
+1. PR #378 (`fix/ba-narration-disc-ask`) is **merged** (main `089f9da`): the narration no longer asks which disc and one foreign narration no longer blocks the batch. PR #379 (the book's own list of its recordings) is **merged** too (main `ed3063f`) — see the section above.
+2. The Manuel's own 236 pistes are still missing — they are on www.methode-parici.com (§ above); once the owner downloads them and names them by page or by station, every dialogue of the Manuel plays. Nothing to code until then.
 
 ### What PR #378 changes (owner: «я просто вручну вказати папку… може бути не одна папка, а дві»)
 - The owner's manual flow was broken in two places, both on the **real** book folder `~/Books/Par Ici 5-6`:
