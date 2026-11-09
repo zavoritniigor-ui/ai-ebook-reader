@@ -159,9 +159,10 @@ marks in one of three ways, and the app finds out which, from the book itself, i
    that disc's tracks): the numbers are per section and cannot be matched without the publisher's table. Those marks do not
    play; the dialog says so in amber. Guessing a track would play another page's dialogue: worse than silence.
    The same restart is read from the book alone when the files cannot answer it (a **section set**, or fewer files than the
-   book has dialogues): the same number is printed on three or more pages of the book. A mark that names its page (a
-   transcript) does not count: it repeats a number on purpose. Then the numbers are per section as well, and the marks do
-   not play.
+   book has dialogues): piste 1 on three or more pages, or multiple numbers each printed on three or more pages of the book
+   (a single number cited across multiple pages, such as an exercise, answers and credits, does not trigger a false restart).
+   A mark that names its page (a transcript) does not count: it repeats a number on purpose. Then the numbers are per section
+   as well, and the marks do not play.
 3. **Otherwise the numbers run through the disc** («CD1 - piste 30» = disc-1 track 30), the usual case:
    - **disc marks** («CD2 - piste 35») play the disc-2 track 35 of a disc set (A);
    - **bare marks** take the disc from the nearest disc mark above them on the page («CD2 - piste 40, piste 41» = CD2 · 41);

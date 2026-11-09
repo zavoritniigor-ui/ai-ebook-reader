@@ -629,15 +629,18 @@ function baRestarts(cd) {
     if (discTracks >= 6) {
         const firstPages = new Set(marks.filter(m => m.track === 1).map(m => m.page));
         if (firstPages.size >= 3 && Math.max(...marks.map(m => m.track)) <= discTracks / 2) return true;
+        if (Math.max(...marks.map(m => m.track)) > discTracks / 2) return false;
     }
-    // (2) the numbers restart in every section: the same number is printed on three or more pages of the book. Then one number
-    // names a different dialogue in every section and the app cannot know which one the page means. This reading is taken from the
-    // book alone, so an incomplete set of files (fewer tracks than the book has dialogues) cannot hide the restart.
+    // (2) the numbers restart in every section: piste 1 on three or more pages, or multiple numbers each printed on three or more
+    // pages of the book. A single number cited across multiple pages (e.g. an exercise, an answer key and credits) is not a restart.
+    // This reading is taken from the book alone, so an incomplete set of files cannot hide the restart.
     // A mark that names its page (a transcript) repeats a number on purpose: it does not count.
     const own = marks.filter(m => !m.ref);
+    const firstPages = new Set(own.filter(m => m.track === 1).map(m => m.page));
     const pagesOf = new Map();
     for (const m of own) { if (!pagesOf.has(m.track)) pagesOf.set(m.track, new Set()); pagesOf.get(m.track).add(m.page); }
-    for (const pages of pagesOf.values()) if (pages.size >= 3) return true;
+    const repeatingTracks = [...pagesOf.values()].filter(p => p.size >= 3).length;
+    if (firstPages.size >= 3 || repeatingTracks >= 2) return true;
     return false;
 }
 // ---------- the book's own list of its recordings (rules §6.4) ---------------------------------------------------

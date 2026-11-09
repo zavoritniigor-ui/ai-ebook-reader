@@ -577,6 +577,20 @@ check('14l Without a table, numbers that restart per section do not play and the
     return restart && amber && through || JSON.stringify({ restart, amber, through, text: st.textContent });
 })()""")
 
+check('14l2 A single track cited on multiple pages (exercise, answer key, credits) in a sequential book never triggers baRestart', """(() => {
+    const m = (track, page) => ({ cd: null, track, page, kind: 'piste' });
+    const rec = n => ({ id: 'delf' + n, cd: null, track: n, section: null });
+    bookAudio.tracks = Array.from({ length: 46 }, (_, i) => rec(i + 1));
+    const marks = [m(2, 169), m(2, 207), m(2, 208)];
+    for (let i = 3; i <= 46; i++) marks.push(m(i, 169 + i));
+    Object.assign(baMarks, { key: state.bookKey, tables: new Map(), shift: 0, busy: null, list: marks });
+    const restart = baRestarts(null);
+    const target = baFindMark(m(2, 169));
+    const plays = target.rec && target.rec.track === 2 && !target.blocked;
+    Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0 });
+    return !restart && plays || JSON.stringify({ restart, target });
+})()""")
+
 check('14m A phone\'s folder pick of a «Downloads»: only the folders the book\'s marks point to, shown first; a numbered music folder and a voice message stay out', """(async () => {
     stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
     Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0, busy: null });
