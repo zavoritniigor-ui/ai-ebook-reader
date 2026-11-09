@@ -672,5 +672,71 @@ check('14o The book\'s narration chosen among the tracks does not make the app a
     }
 })()""")
 
+check('14p Generic mark matching parses comma separator (CD 1, piste 2), wrapped CD header above piste, and la piste vs la plage', """(() => {
+    // 1. Comma after CD
+    const marks1 = baFindMarks('Consignes : CD 1, piste 2 et CD 2, piste 56.');
+    const ok1 = marks1.length === 2 && marks1[0].cd === 1 && marks1[0].track === 2 && marks1[1].cd === 2 && marks1[1].track === 56;
+    // 2. la piste is recognized, while la plage and une piste are ignored
+    const marks2 = baFindMarks('Reprise de la piste 3 dans la plage 4 avec une piste 5.');
+    const ok2 = marks2.length === 1 && marks2[0].track === 3 && marks2[0].cd === null;
+    // 3. Multi-line wrapped CD header on line above piste
+    const vp = { width: 600, height: 800, convertToViewportPoint: (x, y) => [x, 800 - y] };
+    const items = [
+        { str: 'CD 1,', transform: [1, 0, 0, 1, 50, 700], width: 30, height: 12 },
+        { str: 'piste 42', transform: [1, 0, 0, 1, 50, 680], width: 40, height: 12 }
+    ];
+    const boxes = baMarkBoxes(items, vp);
+    const ok3 = boxes.length === 1 && boxes[0].cd === 1 && boxes[0].track === 42;
+    return ok1 && ok2 && ok3 || JSON.stringify({ ok1, ok2, ok3, marks1, marks2, boxes });
+})()""")
+
+check('14q baPickBestParsed disambiguates competing files for the same track slot (vocal over _vi, and matching folder over supplement)', """(() => {
+    const origName = state.bookFileName;
+    try {
+        state.bookFileName = 'Livre de l eleve 1.pdf';
+        // Case 1: vocal vs instrumental suffix _vi
+        const f1 = { name: 'cd1_piste_16.mp3', path: 'Audio/cd1_piste_16.mp3', cd: 1, section: null, group: null, page: null, track: 16, copy: 0, named: true, cleanTail: true };
+        const f2 = { name: 'cd1_piste_16_vi.mp3', path: 'Audio/cd1_piste_16_vi.mp3', cd: 1, section: null, group: null, page: null, track: 16, copy: 0, named: true, cleanTail: false };
+        const picked1 = baPickBestParsed([f2, f1]);
+        const ok1 = picked1.length === 1 && picked1[0].name === 'cd1_piste_16.mp3';
+
+        // Case 2: main folder (covers marks) vs 3-track supplement
+        const marks = Array.from({ length: 40 }, (_, i) => ({ cd: null, track: i + 1, page: 10 + i, kind: 'piste' }));
+        Object.assign(baMarks, { key: state.bookKey, list: marks, busy: null });
+        const mainFiles = Array.from({ length: 40 }, (_, i) => ({
+            name: `Track ${i + 1}.mp3`, path: `Audio/Track ${i + 1}.mp3`,
+            cd: null, section: null, group: null, page: null, track: i + 1, copy: 0, named: true, cleanTail: true
+        }));
+        const suppFiles = [1, 2, 3].map(t => ({
+            name: `Supplement Track ${t}.mp3`, path: `Supplement/Supplement Track ${t}.mp3`,
+            cd: null, section: null, group: null, page: null, track: t, copy: 0, named: true, cleanTail: true
+        }));
+        const picked2 = baPickBestParsed([...suppFiles, ...mainFiles]);
+        const ok2 = picked2.length === 40 && picked2.slice(0, 3).every(p => p.path.startsWith('Audio/'));
+        return ok1 && ok2 || JSON.stringify({ ok1, ok2, picked1: picked1.map(p => p.name), picked2Count: picked2.length });
+    } finally {
+        state.bookFileName = origName;
+        Object.assign(baMarks, { key: null, list: null });
+    }
+})()""")
+
+check('14r renderBookAudioDialog suppresses duplicate message when message matches status text', """(() => {
+    const dialog = document.getElementById('book-audio-dialog');
+    openBookAudioDialog('');
+    // Simulate restart status condition
+    const m = (track, page) => ({ cd: null, track, page, kind: 'piste' });
+    const restartMarks = [m(1, 5), m(1, 15), m(1, 25), m(2, 6)];
+    Object.assign(baMarks, { key: state.bookKey, list: restartMarks, busy: null });
+    bookAudio.tracks = [{ id: 't1', cd: null, track: 1 }, { id: 't2', cd: null, track: 2 }];
+    renderBookAudioDialog(t('baRestart'));
+    const statusText = dialog.querySelector('.ba-status').textContent;
+    const msg = dialog.querySelector('.ba-message');
+    const statusHasRestart = statusText === t('baRestart');
+    const msgHidden = msg.hidden && !msg.textContent;
+    dialog.close();
+    Object.assign(baMarks, { key: null, list: null });
+    return statusHasRestart && msgHidden || JSON.stringify({ statusText, msgHidden, msgText: msg.textContent });
+})()""")
+
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')

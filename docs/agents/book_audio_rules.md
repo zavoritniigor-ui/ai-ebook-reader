@@ -70,6 +70,11 @@ For every audio file found (`mp3 m4a m4b mp4 aac wav ogg oga opus flac wma aif a
 5. **A format the browser cannot play** (`wma` in Chrome; checked with `canPlayType`) is not stored: the dialog says how many
    such files were skipped and that MP3 / M4A play everywhere. It is never stored silently to fail on the first tap.
 
+6. **Competing files for the same track slot**: when a folder contains multiple files for the same slot (e.g. vocal and
+   instrumental `_vi` variants, a full course audio set and a short mock exam supplement, or sibling books sharing a folder),
+   the importer ranks candidates by book title token overlap, coverage of the open book's marks, explicit track naming, and
+   clean track suffix without extra tags.
+
 ### 4.6 How a track is stored (owner, 2026-10-28: «AIFF must be squeezed about 10 times»)
 
 Uncompressed audio (`aif aiff wav flac`) is **encoded to Opus (Ogg) at import**, in the browser (WebCodecs `AudioEncoder`,
@@ -102,6 +107,8 @@ tracks is amber («Записів до позначок книги ще нема
 reported as the book's recordings (owner, 2026-10-28: a green «Аудіо підключено» hid that no dialogue was connected).
 Marks that cannot be matched (§6.2: numbers restart per section and the book has no track table) give an amber line
 that says so; they are not counted as playing.
+When a status warning (such as the amber restart warning) is shown in `.ba-status`, the `.ba-message` paragraph suppresses
+duplicate text so the exact same warning is never displayed twice.
 
 ### 5.2 By hand: «Вибрати папку з аудіо»
 
@@ -137,10 +144,12 @@ remembering it as the books folder, is wrong. So:
 
 ## 6. Which track a mark in the book plays
 
-Marks are found in the PDF text: «CD2 - piste 35», «CD1 - Piste 3», «CD2 - Exercice 4», a bare «piste 37» / «plage 4» /
-«track 12» (a bare «exercice 4» is running text, never a mark). A headphones
+Marks are found in the PDF text: «CD2 - piste 35», «CD1 - Piste 3», «CD 1, piste 2» (comma separator allowed), «CD2 - Exercice 4»,
+a bare «piste 37» / «plage 4» / «track 12» (a bare «exercice 4» is running text, never a mark). Multi-line narrow columns where
+«CD 1,» sits on the line directly above «piste 42» pass down the disc. «la piste 3» is recognized as a mark, while «la plage 11»
+and «une piste» remain excluded running text. A headphones
 icon set in a symbol font comes out as one small letter glued to the mark («iCD1- piste 4») and does not hide it.
-Not marks: a bare «plage 11» / «piste 3» after an article («la plage», «une piste») — the word in running text; and a word
+Not marks: a bare «plage 11» after an article («la plage»), or «une piste 3» — the word in running text; and a word
 followed by a number of the NEXT table column (a gap of several letters: «10. plage      20. calepin»). A bilingual book with
 no audio must show no marks at all (checked: 0 on a 657-page French–English book).
 
@@ -272,6 +281,14 @@ connected; now the narration of another book is skipped and the others are impor
 («Par Ici 5-6 Manuel», 148 pages, 500 marks): choosing the book's folder gives 122 tracks (disc 1: 53, disc 2: 43, five
 sections: 26) and the book's narration (8939 sentences), no question; the narration of the other book in the same folder
 («livre 56», 203 pages) is skipped with the note «another book».
+
+2026-11-08: Generalised mark parsing, dialog deduplication, and slot disambiguation across language learning textbooks (PR #383).
+(1) `renderBookAudioDialog` suppresses duplicate messages when `message === text` (such as `t('baRestart')`), preventing duplicate
+identical paragraphs. (2) `BA_MARK_RE` accepts commas and slashes after `CD N` (`CD 1, piste 2`). (3) `baMarkBoxes` updates disc
+from preceding line headers in narrow columns. (4) `la piste N` is parsed while preserving article exclusion for «la plage» and «une piste».
+(5) `baAssignDiscs` requires duplicate files with a copy suffix (`copy > 0`) before assigning artificial CD numbers.
+(6) `baPickBestParsed` disambiguates duplicate slots by book token overlap, coverage of the open book's marks, explicit track names,
+and clean suffixes (vocal over `_vi`, main audio over short supplements).
 
 Still open:
 - A book whose audio lies outside its folder is found only by hand (§5.1), by design.
