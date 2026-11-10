@@ -50,7 +50,7 @@ check('3 clicking share button opens app-share-modal with QR and URL',
           const qr = document.getElementById('app-share-qr');
           const url = document.getElementById('app-share-url');
           return qr && qr.getAttribute('src') === 'ai-ebook-reader-qr.png' &&
-                 url && url.textContent.includes('ai-ebook-reader.pages.dev');
+                 url && url.textContent.includes('ai-ebook-reader.uk');
       })()""")
 
 check('4 clicking copy button updates status message',
