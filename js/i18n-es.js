@@ -3,6 +3,7 @@
 // (fallback de t()); tests/menu_labels_browser.py comprueba que no quede ninguna.
 const I18N_ES = {
     toc: '☰ Índice', open: '📂 Abrir libro', loading: 'Cargando...', read: '🔊 Leer en voz alta', pause: '⏸ Pausa', resume: '▶ Reanudar',
+    mShareApp: 'Compartir la aplicación', mShareAppDesc: 'Código QR y dirección de la aplicación', shareAppTitle: 'Compartir la aplicación', shareAppNow: 'Compartir', shareAppCopy: 'Copiar dirección', shareAppCopied: 'Dirección copiada', bookTitleLabel: 'Libro actual',
     altVoicesOn: '👥 Dos voces: SÍ', altVoicesOff: '👥 Dos voces: NO', learnOn: '🔮 Estudio de palabras: SÍ', learnOff: '🔮 Estudio de palabras: NO',
     themeLight: 'Claro', themeSepia: 'Sepia', themeDark: 'Oscuro', aiKey: '🔑 Clave de IA', noBook: 'Ningún libro cargado',
     welcome: 'Pulsa «Abrir» para cargar un libro (EPUB, PDF, DOCX, FB2, TXT, MD, HTML o RTF).',

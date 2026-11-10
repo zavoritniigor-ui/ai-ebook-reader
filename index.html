@@ -103,6 +103,27 @@
             font: inherit; text-align: left; white-space: normal; cursor: pointer; height: auto; justify-content: flex-start;
             -webkit-tap-highlight-color: transparent;
         }
+        #book-title-bar {
+            position: absolute; top: max(10px, env(safe-area-inset-top, 0px)); left: 50%; z-index: 20;
+            width: min(72%, 620px); transform: translateX(-50%); padding: 7px 14px;
+            border: 1px solid var(--border-color); border-radius: 999px; background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+            box-shadow: 0 4px 16px rgba(var(--shadow-color), .12); backdrop-filter: blur(10px);
+            color: var(--text-color); font-size: 13px; font-weight: 650; line-height: 1.25; text-align: center;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+        }
+        #book-title-bar[hidden] { display: none; }
+        #app-share-modal { position: fixed; inset: 0; z-index: 27000; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.42); }
+        #app-share-modal[hidden] { display: none; }
+        .app-share-box { width: min(420px, 100%); padding: 24px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--panel-bg); color: var(--text-color); box-shadow: 0 18px 60px rgba(0,0,0,.28); }
+        .app-share-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .app-share-head h2 { font-size: 20px; flex: 1; }
+        .app-share-close { width: 40px; height: 40px; padding: 0; border-radius: 50%; }
+        .app-share-qr { display: block; width: min(280px, 80vw); aspect-ratio: 1; margin: 8px auto 18px; image-rendering: pixelated; border: 8px solid #fff; border-radius: 4px; }
+        .app-share-url { display: block; width: 100%; padding: 11px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-color); font: inherit; text-align: center; overflow-wrap: anywhere; }
+        .app-share-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+        .app-share-status { min-height: 1.3em; margin-top: 10px; color: var(--text-muted); text-align: center; font-size: 13px; }
+        @media (max-width: 640px) { #book-title-bar { width: calc(100% - 100px); } .app-share-box { padding: 20px 16px; } }
+
         button.menu-row:hover, button.menu-row-main:hover, .menu-row-select:hover, .menu-cta:hover { background: var(--hover-color); }
         button.menu-row:active, button.menu-row-main:active, .menu-cta:active { transform: none; background: var(--hover-color); }
         .menu-row > svg.mi, .menu-row-main > svg.mi { color: var(--accent-color); }
@@ -1970,6 +1991,7 @@
         <symbol id="i-struct" viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="5" rx="1.2"/><rect x="13.5" y="4" width="7" height="5" rx="1.2"/><rect x="8.5" y="15" width="7" height="5" rx="1.2"/><path d="M7 9v2.5h10V9M12 11.5V15"/></symbol>
         <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10.5" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></symbol>
         <symbol id="i-send" viewBox="0 0 24 24"><path d="M21.5 2.5 10.5 13.5"/><path d="M21.5 2.5 14.5 21.5l-4-8-8-4z"/></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
         <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
         <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
         <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2v.1"/></symbol>
@@ -1997,6 +2019,7 @@
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown,.cbz">
                 <button type="button" class="menu-row my-books-btn" id="btn-my-books" aria-labelledby="mr-shelf-t" aria-describedby="mr-shelf-d"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span class="mr-text"><span class="mr-title" id="mr-shelf-t" data-i18n="mShelf">Мої книги</span><span class="mr-desc" id="mr-shelf-d" data-i18n="mShelfDesc">Нещодавні й збережені на пристрої</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-free-library" aria-labelledby="mr-lib-t" aria-describedby="mr-lib-d"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span class="mr-text"><span class="mr-title" id="mr-lib-t" data-i18n="mLibrary">Безкоштовна бібліотека</span><span class="mr-desc" id="mr-lib-d" data-i18n="mLibraryDesc">Gutenberg, Вікіджерела, Internet Archive</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-share-app" aria-labelledby="mr-share-t" aria-describedby="mr-share-d"><svg class="mi" aria-hidden="true"><use href="#i-share"/></svg><span class="mr-text"><span class="mr-title" id="mr-share-t" data-i18n="mShareApp">Поділитися застосунком</span><span class="mr-desc" id="mr-share-d" data-i18n="mShareAppDesc">QR-код і адреса застосунку</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="toggle-toc-desktop" aria-labelledby="mr-toc-t" aria-describedby="mr-toc-d"><svg class="mi book-nav-icon" aria-hidden="true"><use href="#i-toc"/></svg><span class="mr-text"><span class="mr-title" id="mr-toc-t" data-i18n="mToc">Зміст</span><span class="mr-desc" id="mr-toc-d" data-i18n="mTocDesc">Розділи та мініатюри сторінок</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-book-audio" data-only="pdf" aria-labelledby="mr-audio-t" aria-describedby="mr-audio-d"><svg class="mi" aria-hidden="true"><use href="#i-audio"/></svg><span class="mr-text"><span class="mr-title" id="mr-audio-t" data-i18n="mAudio">Аудіо до книги</span><span class="mr-desc" id="mr-audio-d" data-i18n="mAudioDesc">Діалоги й записи до підручника: тап на позначку в книзі вмикає запис</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
             </section>
@@ -2145,7 +2168,7 @@
         </nav>
 
         <main id="main-area">
-            <div id="reader-container"><div id="reader-pages">
+            <div id="reader-container"><div id="book-title-bar" hidden role="status" aria-live="polite"></div><div id="reader-pages">
                 <!-- Стартовий екран (книгу ще не відкрито): головні дії великими кнопками й останні книги. Меню на старті закрите. -->
                 <section class="home" id="home-screen">
                     <div class="home-brand"><img class="home-logo" src="icons/icon-192.png" alt="" width="40" height="40"><h1 class="home-title">AI E-book Reader</h1></div>
@@ -2336,6 +2359,16 @@
         <button type="button" id="page-arrow-next" class="page-arrow" data-i18n-aria="next" data-i18n-title="next" aria-label="Вперед ▶" title="Вперед ▶">›</button>
     </div>
 
+    <div id="app-share-modal" hidden role="dialog" aria-modal="true" aria-labelledby="app-share-title">
+        <div class="app-share-box">
+            <div class="app-share-head"><h2 id="app-share-title" data-i18n="shareAppTitle">Поділитися застосунком</h2><button type="button" class="app-share-close" id="app-share-close" data-i18n-title="tClose" data-i18n-aria="tClose"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+            <img class="app-share-qr" id="app-share-qr" src="ai-ebook-reader-qr.png" alt="QR-код AI Ebook Reader">
+            <div class="app-share-url" id="app-share-url" role="textbox" aria-readonly="true">https://ai-ebook-reader.pages.dev</div>
+            <div class="app-share-actions"><button type="button" class="btn-primary" id="app-share-native" data-i18n="shareAppNow">Поділитися</button><button type="button" class="btn-secondary" id="app-share-copy" data-i18n="shareAppCopy">Скопіювати адресу</button></div>
+            <p class="app-share-status" id="app-share-status" role="status" aria-live="polite"></p>
+        </div>
+    </div>
+
     <div id="settings-modal">
         <div class="modal-content">
             <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" data-close-settings data-i18n="close" data-i18n-title="tClose">✕</button>
@@ -2375,7 +2408,7 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=281021281c18"></script>
+    <script src="js/core.js?v=1c80467ecb80"></script>
     <script src="js/lang-detect.js?v=5690558f59cc"></script>
     <script src="js/local-speech.js?v=3c6738acab5e"></script>
     <script src="js/tts.js?v=24e28a57806a"></script>
@@ -2425,8 +2458,8 @@
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
     <script src="js/developer.js?v=67c700255062"></script>
-    <script src="js/main.js?v=c306090ed69f"></script>
+    <script src="js/main.js?v=8471d2a78376"></script>
     <script src="js/pwa-lifecycle.js?v=d2987066ddd8"></script>
-    <script src="js/i18n-es.js?v=6ad60eb19271"></script>
+    <script src="js/i18n-es.js?v=edbac17beeb6"></script>
 </body>
 </html>
