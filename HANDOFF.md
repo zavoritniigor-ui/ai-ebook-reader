@@ -9,13 +9,18 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex, local | `fix/selection-across-visited` | `js/selection.js`, drag regression tests; generated hashes | working; owner authorized selection.js takeover 2026-11-10 | 2026-11-10 |
 | Antigravity | `fix/ba-restart-single-track` | `js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
 | Codex, cloud | `feat/separate-scans-shelf` | `js/book-shelf.js`, `js/scanner.js`, `tests/book_shelf_browser.py`, `tests/scanner_browser.py`, `ARCHITECTURE.md`; shelf CSS and generated hashes | working | current session |
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
+
+## Codex — exact selection around a grey tapped word (2026-11-10)
+- Branch `fix/selection-across-visited`, PR [#387](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/387), worktree `../wt-selection-visited`.
+- Owner authorized taking over `js/selection.js` for this fix. PDF item clipping now excludes unselected text nodes around `.word-visited`; wrappers no longer introduce spaces inside one item.
+- Local PASS: `pdf_visited_drag_browser.py` (real touch, both directions, one/two columns, exact translated text and visible highlights), `pdf_ux_browser.py`, `learning_ux_browser.py`, `pdf_sentence_reselect_browser.py`, `pdf_drag_line_hold_browser.py`, `pdf_scan_selection_browser.py`; JS syntax, app-shell versions, CI coverage.
+- Implementation complete; no further source edits planned. PR #387 tracks CI and delivery. Next owner check: repeat the original selection gesture on the physical tablet after the update.
 
 ## Claude Code — the book's own list of its recordings (2026-11-07) — MERGED (PR #379, main `ed3063f`)
 - Rules §6.4 of `docs/agents/book_audio_rules.md`; the code is in `js/book-audio.js`; the test is `tests/book_audio_annex_browser.py`
