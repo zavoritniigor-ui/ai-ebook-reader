@@ -75,6 +75,8 @@ Object.assign(I18N, {
     libChipWikisource: { uk: 'Вікіджерела', en: 'Wikisource', fr: 'Wikisource', ru: 'Викитека' },
     libChipLoc: { uk: 'Бібліотека Конгресу', en: 'Library of Congress', fr: 'Bibl. du Congrès', ru: 'Библиотека Конгресса' },
     libChipPress: { uk: 'Газети й журнали', en: 'Newspapers', fr: 'Presse', ru: 'Газеты и журналы' },
+    libChipsPrev: { uk: 'Попередні бібліотеки', en: 'Previous libraries', fr: 'Bibliothèques précédentes', ru: 'Предыдущие библиотеки' },
+    libChipsNext: { uk: 'Наступні бібліотеки', en: 'Next libraries', fr: 'Autres bibliothèques', ru: 'Следующие библиотеки' },
     libAdvanced: { uk: '⚙ Автор і роки', en: '⚙ Author and years', fr: '⚙ Auteur et années', ru: '⚙ Автор и годы' },
     libAuthor: { uk: 'Автор', en: 'Author', fr: 'Auteur', ru: 'Автор' },
     libYearFrom: { uk: 'Рік від', en: 'Year from', fr: 'Année de', ru: 'Год от' },
@@ -177,6 +179,11 @@ function buildLibrary() {
     // Джерело вибирається кнопками з логотипами (власник, 2026-11-01: «до кожної назви бібліотеки додати її символ»); список-вибір
     // лишається для читачів екрана й старого коду, але схований — кнопки змінюють саме його.
     src.classList.add('library-source-select');
+    const chipsWrap = document.createElement('div'); chipsWrap.className = 'library-chips-wrap';
+    const prevBtn = document.createElement('button'); prevBtn.type = 'button'; prevBtn.className = 'library-chips-nav prev'; prevBtn.dataset.i18nTitle = 'libChipsPrev';
+    prevBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+    const nextBtn = document.createElement('button'); nextBtn.type = 'button'; nextBtn.className = 'library-chips-nav next'; nextBtn.dataset.i18nTitle = 'libChipsNext';
+    nextBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
     const chips = document.createElement('div'); chips.id = 'library-chips'; chips.className = 'library-chips'; chips.setAttribute('role', 'tablist');
     for (const [value, key, logo, emoji] of LIBRARY_CHIPS) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'library-chip'; b.dataset.source = value; b.setAttribute('role', 'tab');
@@ -186,6 +193,54 @@ function buildLibrary() {
         b.addEventListener('click', () => { if (src.value === value) return; src.value = value; src.dispatchEvent(new Event('change')); });
         chips.append(b);
     }
+    prevBtn.addEventListener('click', () => { chips.scrollBy({ left: -220, behavior: 'smooth' }); });
+    nextBtn.addEventListener('click', () => { chips.scrollBy({ left: 220, behavior: 'smooth' }); });
+    // Коліщатко мишки: горизонтальне прокручування стрічки на комп'ютері
+    chips.addEventListener('wheel', (e) => {
+        if (chips.scrollWidth <= chips.clientWidth) return;
+        const delta = Math.abs(e.deltaX) >= Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        if (delta !== 0) {
+            chips.scrollLeft += delta;
+            e.preventDefault();
+            libraryChipsNavSync();
+        }
+    }, { passive: false });
+    // Перетягування мишкою (drag-to-scroll) на комп'ютері: затиснути й протягнути стрічку
+    let isDown = false, startX = 0, scrollStart = 0, hasDragged = false;
+    chips.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isDown = true;
+        hasDragged = false;
+        startX = e.pageX;
+        scrollStart = chips.scrollLeft;
+    });
+    window.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        const dx = e.pageX - startX;
+        if (!hasDragged && Math.abs(dx) > 4) {
+            hasDragged = true;
+            chips.classList.add('grabbing');
+        }
+        if (hasDragged) {
+            e.preventDefault();
+            chips.scrollLeft = scrollStart - dx;
+            libraryChipsNavSync();
+        }
+    });
+    window.addEventListener('mouseup', () => {
+        if (!isDown) return;
+        isDown = false;
+        chips.classList.remove('grabbing');
+        if (hasDragged) {
+            const blockClick = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+            chips.addEventListener('click', blockClick, { capture: true, once: true });
+            setTimeout(() => chips.removeEventListener('click', blockClick, { capture: true }), 50);
+            hasDragged = false;
+        }
+    });
+    chips.addEventListener('scroll', libraryChipsNavSync, { passive: true });
+    window.addEventListener('resize', libraryChipsNavSync);
+    chipsWrap.append(prevBtn, chips, nextBtn);
     // Розширений пошук: автор і роки (від–до).
     const advToggle = document.createElement('button'); advToggle.type = 'button'; advToggle.id = 'library-adv-toggle'; advToggle.className = 'library-adv-toggle';
     advToggle.dataset.i18n = 'libAdvanced'; advToggle.setAttribute('aria-expanded', 'false'); advToggle.setAttribute('aria-controls', 'library-adv');
@@ -204,7 +259,7 @@ function buildLibrary() {
     more.addEventListener('click', () => runLibrarySearch(libraryState.page + 1));
     const source = document.createElement('div'); source.className = 'library-source'; source.dataset.i18n = 'libSource';
     tools.append(advToggle);   // у ряду пошуку, поруч із жанром — без окремого порожнього рядка
-    box.append(head, chips, tools, adv, status, list, more, source); modal.append(box); document.body.append(modal);
+    box.append(head, chipsWrap, tools, adv, status, list, more, source); modal.append(box); document.body.append(modal);
     const saved = (() => { try { return JSON.parse(localStorage.getItem('reader_library_filters') || '{}'); } catch (e) { return {}; } })();
     libraryState.source = LIBRARY_SOURCES.includes(saved.source) ? saved.source : 'gutenberg';
     libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr', loc: saved.locLang || '', press: saved.pressLang || '' };
@@ -260,6 +315,22 @@ function libraryAdvancedQuery() {
 }
 function libraryWithAuthor(q) { const a = libraryAdvanced().author; return a ? (q + ' ' + a).trim() : q; }   // джерела без поля автора: автор — ще слова запиту
 function libraryAdvancedSet() { const a = libraryAdvanced(); return !!(a.author || a.from || a.to); }
+function libraryChipsNavSync() {
+    const chips = libraryEl('library-chips');
+    const prev = document.querySelector('.library-chips-nav.prev');
+    const next = document.querySelector('.library-chips-nav.next');
+    if (!chips || !prev || !next) return;
+    const overflow = chips.scrollWidth > chips.clientWidth + 2;
+    if (!overflow) {
+        prev.hidden = true;
+        next.hidden = true;
+        return;
+    }
+    prev.hidden = false;
+    next.hidden = false;
+    prev.disabled = chips.scrollLeft <= 2;
+    next.disabled = chips.scrollLeft + chips.clientWidth >= chips.scrollWidth - 2;
+}
 function libraryChipsSync() {
     for (const b of document.querySelectorAll('#library-chips .library-chip')) {
         const on = b.dataset.source === libraryState.source; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on));
@@ -267,6 +338,7 @@ function libraryChipsSync() {
     // Активна кнопка — у видимій частині рядка (на телефоні рядок довший за екран).
     const row = libraryEl('library-chips'), active = row && row.querySelector('.library-chip.active');
     if (active && row.clientWidth) { const l = active.offsetLeft - row.offsetLeft, r = l + active.offsetWidth; if (l < row.scrollLeft) row.scrollLeft = l - 8; else if (r > row.scrollLeft + row.clientWidth) row.scrollLeft = r - row.clientWidth + 8; }
+    libraryChipsNavSync();
 }
 function libraryYearsNote() {
     const note = libraryEl('library-years-note'); if (!note) return;
@@ -280,6 +352,10 @@ function libraryChromeSync() {
     toggle.hidden = src === 'shelf'; if (src === 'shelf') adv.hidden = true;
     libraryEl('library-years').hidden = !LIBRARY_YEARS[src];
     libraryYearsNote(); libraryChipsSync();
+    const prev = document.querySelector('.library-chips-nav.prev');
+    const next = document.querySelector('.library-chips-nav.next');
+    if (prev) { prev.title = t('libChipsPrev'); prev.setAttribute('aria-label', t('libChipsPrev')); }
+    if (next) { next.title = t('libChipsNext'); next.setAttribute('aria-label', t('libChipsNext')); }
     for (const [id, key] of [['library-author', 'libAuthor'], ['library-from', 'libYearFrom'], ['library-to', 'libYearTo']]) libraryEl(id).placeholder = t(key);
 }
 // Список мов — за джерелом (мови в кожного джерела свої), за ним — жанри.
@@ -305,6 +381,7 @@ function openLibrary(source = null) {
     }
     libraryEl('library-modal').classList.add('open');
     libraryEl('library-q').placeholder = t('libSearch'); libraryChromeSync();
+    requestAnimationFrame(() => { libraryChipsSync(); libraryChipsNavSync(); });
     if (!libraryEl('library-list').children.length || libraryState.source === 'shelf') runLibrarySearch(1);
     libraryEl('library-q').focus({ preventScroll: true });
 }

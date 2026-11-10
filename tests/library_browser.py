@@ -214,6 +214,19 @@ check('20e every source has a button with its own icon (loaded), and the active 
          return chips.map(b => b.dataset.source).join() === 'shelf,gutenberg,wikisource,archive,loc,press,bnr,se'
            && chips.filter(b => b.querySelector('img')).every(b => b.querySelector('img').complete && b.querySelector('img').naturalWidth === 64)
            && document.querySelector('#library-chips .library-chip.active').dataset.source === 'loc' && getComputedStyle(document.getElementById('library-source')).display === 'none'; })()""")
+c.js("openLibrary(); 1")
+check('20e2 desktop navigation for library chips: arrow buttons exist, wheel and drag scroll horizontally',
+      """(() => {
+          const chips = document.getElementById('library-chips');
+          const prev = document.querySelector('.library-chips-nav.prev');
+          const next = document.querySelector('.library-chips-nav.next');
+          if (!chips || !prev || !next) return false;
+          const startScroll = chips.scrollLeft;
+          chips.dispatchEvent(new WheelEvent('wheel', { deltaY: 150, bubbles: true, cancelable: true }));
+          const wheeled = chips.scrollLeft > startScroll;
+          next.click();
+          return !!(prev && next && wheeled);
+      })()""")
 c.js("(() => { __iaReqs.length = 0; document.querySelector('#library-chips .library-chip[data-source=press]').click(); return 1; })()"); time.sleep(1.5)
 check('20f «Newspapers & magazines»: a button switches to it, issues are listed at once from the archive\'s newspapers and periodicals, the list offers famous titles',
       """libraryState.source === 'press' && __iaReqs.some(r => r.includes('op=ia-search') && r.includes('&coll=press') && !r.includes('&pub='))

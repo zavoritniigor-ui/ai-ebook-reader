@@ -1583,6 +1583,9 @@
         #library-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index: 30000; justify-content: center; align-items: center; padding: 12px; }
         #library-modal.open { display: flex; }
         .library-box { position: relative; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 14px; width: min(640px, 100%); max-height: min(88vh, 100%); display: flex; flex-direction: column; padding: 14px; gap: 10px; }
+        @media (min-width: 641px) {
+            .library-box { width: min(760px, 100%); }
+        }
         .library-head { display: flex; align-items: center; justify-content: space-between; }
         .library-head h3 { margin: 0; font-size: 17px; }
         .library-head .close-panel-btn { position: static; }
@@ -1591,12 +1594,26 @@
         .library-tools select { padding: 8px; font-size: 14px; }
         .library-tools .library-source-select { display: none; }
         /* Вікно бібліотеки — колонка з обмеженою висотою: без flex-shrink: 0 довгий список стискав рядок кнопок (з прокруткою вбік) майже до нуля. */
-        .library-chips, .library-tools, .library-adv-toggle, .library-adv, .library-head, #library-status, #library-more, .library-source { flex-shrink: 0; }
-        .library-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; margin: 0 -2px; -webkit-overflow-scrolling: touch; }
+        .library-chips-wrap, .library-chips, .library-tools, .library-adv-toggle, .library-adv, .library-head, #library-status, #library-more, .library-source { flex-shrink: 0; }
+        .library-chips-wrap { position: relative; display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; }
+        .library-chips { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; margin: 0 -2px; -webkit-overflow-scrolling: touch; cursor: grab; user-select: none; }
+        .library-chips.grabbing { cursor: grabbing; scroll-behavior: auto; }
         .library-chips::-webkit-scrollbar { display: none; }
-        .library-chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 12px 4px 6px; border-radius: 19px; font-size: 13px; white-space: nowrap; }
-        .library-chip img { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; background: #fff; }
-        .library-chip-emoji { font-size: 16px; line-height: 1; }
+        @media (hover: hover) and (pointer: fine) {
+            .library-chips { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent-color) 40%, transparent) transparent; }
+            .library-chips::-webkit-scrollbar { display: block; height: 4px; }
+            .library-chips::-webkit-scrollbar-track { background: transparent; }
+            .library-chips::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent-color) 35%, transparent); border-radius: 4px; }
+            .library-chips::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+        }
+        .library-chips-nav { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; min-width: 30px; padding: 0; border-radius: 50%; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); box-shadow: 0 1px 4px rgba(0,0,0,0.12); cursor: pointer; flex-shrink: 0; transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease; }
+        .library-chips-nav:hover:not(:disabled) { background: color-mix(in srgb, var(--accent-color) 15%, var(--panel-bg)); border-color: var(--accent-color); }
+        .library-chips-nav:active:not(:disabled) { transform: scale(0.92); }
+        .library-chips-nav:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+        .library-chips-nav[hidden] { display: none; }
+        .library-chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 12px 4px 6px; border-radius: 19px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+        .library-chip img { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; background: #fff; pointer-events: none; }
+        .library-chip-emoji { font-size: 16px; line-height: 1; pointer-events: none; }
         .library-chip img + .library-chip-emoji { margin-left: -12px; margin-top: 12px; font-size: 12px; }
         .library-chip.active { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 18%, transparent); font-weight: 650; }
         .library-adv-toggle { align-self: center; min-height: 36px; padding: 2px 10px; font-size: 13px; background: none; border: none; color: var(--accent-color); }
@@ -2452,7 +2469,7 @@
     <script src="js/formats.js?v=17d78fa0f7d6"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=2daa015f41b4"></script>
+    <script src="js/library.js?v=bbf70458f958"></script>
     <script src="js/book-shelf.js?v=e2c7895176e5"></script>
     <script src="js/scanner.js?v=1cfd10be8932"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
