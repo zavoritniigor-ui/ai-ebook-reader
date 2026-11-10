@@ -599,8 +599,9 @@ function pdfRangeText(range) {
         const from = (n === range.startContainer) ? range.startOffset : 0;
         const to = (n === range.endContainer) ? range.endOffset : n.nodeValue.length;
         if (to <= from) continue;
-        const span = n.parentElement?.closest('span') || null;
-        if (text && !/\s$/.test(text) && !pdfSpansContinueWord(prevSpan, span)) text += ' ';
+        const span = n.parentElement?.closest('.pdf-text-layer > span, .markedContent > span') || n.parentElement?.closest('span') || null;
+        // Highlight wrappers split an item, not its printed text.
+        if (text && span !== prevSpan && !/\s$/.test(text) && !/^\s/.test(n.nodeValue.slice(from, to)) && !pdfSpansContinueWord(prevSpan, span)) text += ' ';
         text += n.nodeValue.slice(from, to);
         prevSpan = span || prevSpan;
     }
@@ -699,17 +700,16 @@ function resolveCanonicalPdfSelection(range, options = {}) {
         const headOffset = rangeStartsFirst ? range.startOffset : pdfWordStartAt(range.endContainer, range.endOffset);
         const tailOffset = rangeStartsFirst ? range.endOffset : pdfWordEndAt(range.startContainer, range.startOffset);
 
+        // A visited word splits one PDF item into several text nodes. Clip in
+        // the item's coordinates, then resolve only the nodes inside that window;
+        // clipping just headNode/tailNode also included their unselected siblings.
+        const headStart = pdfOffsetInSpan(firstSpan, headNode) + headOffset;
+        const tailEnd = pdfOffsetInSpan(lastSpan, tailNode) + tailOffset;
         const pieces = [];
         for (const sp of selectedSpans) {
-            const walker = document.createTreeWalker(sp, NodeFilter.SHOW_TEXT);
-            let n, foundText = false;
-            while ((n = walker.nextNode())) {
-                foundText = true;
-                const pStart = (sp === firstSpan && n === headNode) ? headOffset : 0;
-                const pEnd = (sp === lastSpan && n === tailNode) ? tailOffset : n.nodeValue.length;
-                if (pEnd > pStart) pieces.push({ node: n, start: pStart, end: pEnd, span: sp });
-            }
-            if (!foundText && sp.textContent) pieces.push({ node: sp.firstChild || sp, start: 0, end: (sp.textContent || '').length, span: sp });
+            pieces.push(...pdfResolveSpanPieces(sp,
+                sp === firstSpan ? headStart : 0,
+                sp === lastSpan ? tailEnd : sp.textContent.length));
         }
         range._pdfPieces = pieces;
         // The text the reader sees selected: the spans in reading order, words joined the PDF way (pdfSpansToChars), cut at
@@ -1571,6 +1571,10 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         e.target.closest('#tts-controls') || e.target.closest('nav') || e.target.closest('header')) return;
 
     cancelDragSelection();
+    // Unwrap the previous PDF selection before retaining the new drag's text
+    // node. The document's popup-dismiss listener runs later in bubbling order;
+    // letting it unwrap afterwards disconnects the mouse/pen anchor.
+    if (e.pointerType !== 'touch' && state.selSpans.length) clearSelectionHighlight();
     dragStartX = e.clientX; dragStartY = e.clientY; dragMoved = false;
 
     if (e.pointerType === 'touch') {
