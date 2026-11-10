@@ -1571,6 +1571,10 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         e.target.closest('#tts-controls') || e.target.closest('nav') || e.target.closest('header')) return;
 
     cancelDragSelection();
+    // Unwrap the previous PDF selection before retaining the new drag's text
+    // node. The document's popup-dismiss listener runs later in bubbling order;
+    // letting it unwrap afterwards disconnects the mouse/pen anchor.
+    if (e.pointerType !== 'touch' && state.selSpans.length) clearSelectionHighlight();
     dragStartX = e.clientX; dragStartY = e.clientY; dragMoved = false;
 
     if (e.pointerType === 'touch') {

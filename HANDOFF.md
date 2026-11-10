@@ -18,9 +18,9 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 ## Codex — exact selection around a grey tapped word (2026-11-10)
 - Branch `fix/selection-across-visited`, PR [#387](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/387), worktree `../wt-selection-visited`.
-- Owner authorized taking over `js/selection.js` for this fix. PDF item clipping now excludes unselected text nodes around `.word-visited`; wrappers no longer introduce spaces inside one item.
-- Local PASS: `pdf_visited_drag_browser.py` (real touch, both directions, one/two columns, exact translated text and visible highlights), `pdf_ux_browser.py`, `learning_ux_browser.py`, `pdf_sentence_reselect_browser.py`, `pdf_drag_line_hold_browser.py`, `pdf_scan_selection_browser.py`; JS syntax, app-shell versions, CI coverage.
-- Implementation complete; no further source edits planned. PR #387 tracks CI and delivery. Next owner check: repeat the original selection gesture on the physical tablet after the update.
+- Owner authorized taking over `js/selection.js` for this fix. PDF item clipping now excludes unselected text nodes around `.word-visited`; wrappers no longer introduce spaces inside one item. A new drag unwraps the prior highlight before recording its anchor, preventing repeated mouse/pen drags from losing that node.
+- Local PASS: `pdf_visited_drag_browser.py` (real mouse/pen, repeated drags, both directions, one/two columns, exact translated text and visible highlights), `pdf_ux_browser.py`, `learning_ux_browser.py`, `pdf_sentence_reselect_browser.py`, `pdf_drag_line_hold_browser.py`, `pdf_scan_selection_browser.py`; JS syntax, app-shell versions, CI coverage.
+- Implementation complete; no further source edits planned. PR #387 tracks CI and delivery. Separate follow-up: an expanded repeated-finger probe failed; loss of events after unwrapping its touch target is INFERRED. Owner confirmed PDF mouse/pen scope. Next owner check: repeat the original selection gesture on the physical tablet after the update.
 
 ## Claude Code — the book's own list of its recordings (2026-11-07) — MERGED (PR #379, main `ed3063f`)
 - Rules §6.4 of `docs/agents/book_audio_rules.md`; the code is in `js/book-audio.js`; the test is `tests/book_audio_annex_browser.py`

@@ -1,5 +1,5 @@
 """A grey tapped word must not widen subsequent PDF drags.
-Real PDF.js text items, phone touch input, both directions and two columns.
+Real PDF.js text items, mouse/pen input, both directions and one/two columns.
 """
 import base64, json, os, time
 from browser_cdp import CDP
@@ -56,13 +56,18 @@ for columns in (COLUMNS, []):
     pt = lambda x, y: [{'x': x, 'y': y, 'id': 1}]
 
 
-    def touch_drag(a, b):
-        c.js("clearSelectionHighlight(); els.tooltip.style.display='none'; window.__sent=[]; 1"); time.sleep(0.3)
-        c.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=pt(*a)); time.sleep(0.55)
-        for s in range(1, 11):
-            c.call('Input.dispatchTouchEvent', type='touchMove', touchPoints=pt(a[0] + (b[0] - a[0]) * s / 10, a[1] + (b[1] - a[1]) * s / 10)); time.sleep(0.02)
-        c.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[]); time.sleep(0.9)
-        return c.js("__sent.slice(-1)[0] || ''")
+    def input_drag(a, b, pointer):
+        # Let real pointerdown close/unwrap the preceding selection. Manual
+        # cleanup here would hide disconnected anchors on repeated drags.
+        c.js("window.__sent=[]; 1"); time.sleep(.3)
+        c.call('Input.dispatchMouseEvent', type='mousePressed', x=a[0], y=a[1], button='left', buttons=1, clickCount=1, pointerType=pointer)
+        for step in range(1, 11):
+            x, y = a[0] + (b[0] - a[0]) * step / 10, a[1] + (b[1] - a[1]) * step / 10
+            c.call('Input.dispatchMouseEvent', type='mouseMoved', x=x, y=y, button='left', buttons=1, pointerType=pointer)
+            time.sleep(.02)
+        c.call('Input.dispatchMouseEvent', type='mouseReleased', x=b[0], y=b[1], button='left', buttons=0, clickCount=1, pointerType=pointer)
+        time.sleep(.9)
+        return c.js("__sent.at(-1) || ''")
 
 
     # Tap middle word before dragging from either side.
@@ -71,12 +76,13 @@ for columns in (COLUMNS, []):
     c.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
     time.sleep(.8)
     check('tap marks the middle word grey', "[...document.querySelectorAll('.word-visited')].some(x=>x.textContent==='table')")
-    for first, last in [('de', 'bureau'), ('bureau', 'de'), ('une', 'bureau'), ('bureau', 'une'), ('une', 'table'), ('table', 'une')]:
-        a, b = box(first, 1 if first == 'une' else 0), box(last, 1 if last == 'une' else 0)
-        forward = a['cx'] < b['cx']
-        got = touch_drag((a['l'] + 1 if forward else a['r'] - 1, a['cy']),
-                         (b['r'] - 1 if forward else b['l'] + 1, b['cy']))
-        print('DRAG', first, last, repr(got), 'state', c.js("({text:state.lastSelectionText, canonical:state.canonicalSelection?.text})"), flush=True)
-        expected = 'de bureau' if 'de' in (first,last) else 'une table' if 'table' in (first,last) else 'une table de bureau'
-        assert got == expected, (first, last, got, expected)
-        check('visible selection matches the requested words', "state.selSpans.map(s=>s.textContent).join('') === " + json.dumps(expected))
+    for pointer in ('mouse', 'pen'):
+        for first, last in [('de', 'bureau'), ('bureau', 'de'), ('une', 'bureau'), ('bureau', 'une'), ('une', 'table'), ('table', 'une')]:
+            a, b = box(first, 1 if first == 'une' else 0), box(last, 1 if last == 'une' else 0)
+            forward = a['cx'] < b['cx']
+            got = input_drag((a['l'] + 1 if forward else a['r'] - 1, a['cy']),
+                             (b['r'] - 1 if forward else b['l'] + 1, b['cy']), pointer)
+            print('DRAG', pointer, first, last, repr(got), 'state', c.js("({text:state.lastSelectionText, canonical:state.canonicalSelection?.text})"), flush=True)
+            expected = 'de bureau' if 'de' in (first,last) else 'une table' if 'table' in (first,last) else 'une table de bureau'
+            assert got == expected, (first, last, got, expected)
+            check('visible selection matches the requested words', "state.selSpans.map(s=>s.textContent).join('') === " + json.dumps(expected))
