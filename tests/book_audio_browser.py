@@ -411,7 +411,7 @@ check('14d Disc-less files in a book with discs ask «which disc» after the pic
         const ask = dialog.querySelector('.ba-disc-ask');
         if (!dialog.querySelector('.pdf-audio-marker[data-cd="1"]') && !document.querySelector('.pdf-audio-marker[data-cd="1"]')) return 'no CD1 marker on the page';
         const noSelect = !dialog.querySelector('select');
-        baImportOrAskDisc([file('1 Audio Track.aiff'), file('2 Audio Track.aiff')]);
+        await baImportOrAskDisc([file('1 Audio Track.aiff'), file('2 Audio Track.aiff')]);
         const labels = Array.from(ask.querySelectorAll('button')).map(b => b.textContent).join('|');
         if (ask.hidden || labels !== 'CD1|CD2|' + t('baDiscNone')) return 'ask: ' + ask.hidden + ' ' + labels;
         if ((await baList(probe)).length) return 'imported before the answer';
@@ -419,7 +419,7 @@ check('14d Disc-less files in a book with discs ask «which disc» after the pic
         const rows = await rowsAfter(2);
         const placed = ask.hidden && rows.length === 2 && rows.every(r => r.cd === 2);
         // files whose folder names the disc are not asked about
-        baImportOrAskDisc([Object.defineProperty(file('3 Audio Track.aiff'), 'webkitRelativePath', { value: 'Audio/CD 1-1/3 Audio Track.aiff' })]);
+        await baImportOrAskDisc([Object.defineProperty(file('3 Audio Track.aiff'), 'webkitRelativePath', { value: 'Audio/CD 1-1/3 Audio Track.aiff' })]);
         const folderNotAsked = ask.hidden;
         const rows2 = await rowsAfter(3);
         const dropHint = dialog.querySelector('.ba-drop').hidden === !matchMedia('(any-pointer: fine)').matches;
@@ -577,6 +577,20 @@ check('14l Without a table, numbers that restart per section do not play and the
     return restart && amber && through || JSON.stringify({ restart, amber, through, text: st.textContent });
 })()""")
 
+check('14l2 A single track cited on multiple pages (exercise, answer key, credits) in a sequential book never triggers baRestart', """(() => {
+    const m = (track, page) => ({ cd: null, track, page, kind: 'piste' });
+    const rec = n => ({ id: 'delf' + n, cd: null, track: n, section: null });
+    bookAudio.tracks = Array.from({ length: 46 }, (_, i) => rec(i + 1));
+    const marks = [m(2, 169), m(2, 207), m(2, 208)];
+    for (let i = 3; i <= 46; i++) marks.push(m(i, 169 + i));
+    Object.assign(baMarks, { key: state.bookKey, tables: new Map(), shift: 0, busy: null, list: marks });
+    const restart = baRestarts(null);
+    const target = baFindMark(m(2, 169));
+    const plays = target.rec && target.rec.track === 2 && !target.blocked;
+    Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0 });
+    return !restart && plays || JSON.stringify({ restart, target });
+})()""")
+
 check('14m A phone\'s folder pick of a «Downloads»: only the folders the book\'s marks point to, shown first; a numbered music folder and a voice message stay out', """(async () => {
     stopBookAudio(); await baDeleteBook(state.bookKey); await refreshBookAudio();
     Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0, busy: null });
@@ -598,6 +612,131 @@ check('14m A phone\'s folder pick of a «Downloads»: only the folders the book\
     d.close();
     return shown && stored === '1-3 2-15 2-7' && none || JSON.stringify({ shown, text, stored, none, msg: d.querySelector('.ba-message').textContent });
 })()""", timeout=30)
+
+check('14n A section set (files «…_EP01_P1 …») whose book numbers restart per section, and whose files are fewer than the book has dialogues, does not play: every mark is blocked and the status is amber (no other dialogue)', """(() => {
+    const m = (track, page) => ({ cd: null, track, page, kind: 'piste' });
+    // the files carry a section, so the old test (the numbers run through the disc) never looked at them
+    const rec = (section, track) => ({ id: 'z' + section + '-' + track, cd: null, section, track });
+    bookAudio.tracks = [1, 2, 3].flatMap(s => [1, 2, 3, 4].map(t => rec(s, t)));
+    const restart = [];
+    for (let sec = 0; sec < 3; sec++) for (let t = 1; t <= 4; t++) restart.push(m(t, 5 + sec * 10 + t));
+    Object.assign(baMarks, { key: state.bookKey, tables: new Map(), shift: 0, busy: null, list: restart });
+    const blocked = restart.every(x => baFindMark(x).blocked === 'restart');
+    const none = restart.every(x => !baFindMark(x).rec);
+    openBookAudioDialog('');
+    const st = document.getElementById('book-audio-dialog').querySelector('.ba-status');
+    const amber = st.textContent === t('baRestart') && st.classList.contains('ba-warn') && !st.classList.contains('ba-ok');
+    // the same book with the numbers running through: the marks play the track of their number
+    bookAudio.tracks = Array.from({ length: 12 }, (_, i) => ({ id: 'w' + i, cd: null, section: 1, track: i + 1 }));
+    const through = [];
+    Object.assign(baMarks, { list: Array.from({ length: 12 }, (_, i) => m(i + 1, 40 + i)) });
+    for (let i = 0; i < 12; i++) { const f = baFindMark(m(i + 1, 40 + i)); through.push(f.rec ? f.rec.track : 0); }
+    document.getElementById('book-audio-dialog').close();
+    Object.assign(baMarks, { key: null, list: null, tables: null, shift: 0 });
+    return blocked && none && amber && through.join(',') === '1,2,3,4,5,6,7,8,9,10,11,12'
+        || JSON.stringify({ blocked, none, amber, through });
+})()""")
+
+check('14o The book\'s narration chosen among the tracks does not make the app ask which disc it is from, and is not saved as a track', """(async () => {
+    const saved = state.bookKey, probe = 'probe_narr_ask', dialog = document.getElementById('book-audio-dialog');
+    // an MP3 with the narration tag of the app (ID3v2, a GEOB frame «ai-ebook-reader-narration»)
+    const enc = new TextEncoder();
+    const cat = list => { const n = list.reduce((a, b) => a + b.length, 0), out = new Uint8Array(n); let o = 0; for (const a of list) { out.set(a, o); o += a.length; } return out; };
+    const syncsafe = n => new Uint8Array([(n >> 21) & 127, (n >> 14) & 127, (n >> 7) & 127, n & 127]);
+    const plain = n => new Uint8Array([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+    const zstr = s => cat([enc.encode(s), new Uint8Array([0])]);
+    const payload = enc.encode(JSON.stringify({ voice: 'Kokoro', sentences: [{ text: 'Bonjour', page: 1 }] }));
+    const geo = cat([new Uint8Array([0]), zstr('application/json'), zstr('narration.json'), zstr('ai-ebook-reader-narration'), payload]);
+    const frame = cat([enc.encode('GEOB'), plain(geo.length), new Uint8Array([0, 0]), geo]);
+    const mp3 = cat([enc.encode('ID3'), new Uint8Array([3, 0, 0]), syncsafe(frame.length), frame, new Uint8Array(64)]);
+    const narration = new File([mp3], 'Par Ici 5-6 Manuel de comprehension orale.mp3', { type: 'audio/mpeg' });
+    const track = new File([new Uint8Array(8)], '3 Audio Track.aiff', { type: '' });
+    Object.defineProperty(track, 'webkitRelativePath', { value: 'Audio/CD 1-1/3 Audio Track.aiff' });
+    const rowsAfter = async n => { for (let i = 0; i < 40; i++) { const rows = await baList(probe); if (rows.length >= n && !baImporting) return rows; await new Promise(r => setTimeout(r, 50)); } return baList(probe); };
+    state.bookKey = probe;
+    try {
+        openBookAudioDialog('');
+        const ask = dialog.querySelector('.ba-disc-ask');
+        if (!dialog.querySelector('.pdf-audio-marker[data-cd="1"]') && !document.querySelector('.pdf-audio-marker[data-cd="1"]')) return 'no CD1 marker on the page';
+        await baImportOrAskDisc([narration, track]);
+        const asked = !ask.hidden;
+        const rows = await rowsAfter(1);
+        const notATrack = !rows.some(r => String(r.name || '').indexOf('Manuel') >= 0);
+        return !asked && rows.length === 1 && notATrack
+            || JSON.stringify({ asked, rows: rows.map(r => [r.cd, r.track, r.name]) });
+    } finally {
+        await baDeleteBook(probe);
+        if (typeof bsDelete === 'function') await bsDelete(probe);
+        state.bookKey = saved;
+        dialog.close();
+    }
+})()""")
+
+check('14p Generic mark matching parses comma separator (CD 1, piste 2), wrapped CD header above piste, and la piste vs la plage', """(() => {
+    // 1. Comma after CD
+    const marks1 = baFindMarks('Consignes : CD 1, piste 2 et CD 2, piste 56.');
+    const ok1 = marks1.length === 2 && marks1[0].cd === 1 && marks1[0].track === 2 && marks1[1].cd === 2 && marks1[1].track === 56;
+    // 2. la piste is recognized, while la plage and une piste are ignored
+    const marks2 = baFindMarks('Reprise de la piste 3 dans la plage 4 avec une piste 5.');
+    const ok2 = marks2.length === 1 && marks2[0].track === 3 && marks2[0].cd === null;
+    // 3. Multi-line wrapped CD header on line above piste
+    const vp = { width: 600, height: 800, convertToViewportPoint: (x, y) => [x, 800 - y] };
+    const items = [
+        { str: 'CD 1,', transform: [1, 0, 0, 1, 50, 700], width: 30, height: 12 },
+        { str: 'piste 42', transform: [1, 0, 0, 1, 50, 680], width: 40, height: 12 }
+    ];
+    const boxes = baMarkBoxes(items, vp);
+    const ok3 = boxes.length === 1 && boxes[0].cd === 1 && boxes[0].track === 42;
+    return ok1 && ok2 && ok3 || JSON.stringify({ ok1, ok2, ok3, marks1, marks2, boxes });
+})()""")
+
+check('14q baPickBestParsed disambiguates competing files for the same track slot (vocal over _vi, and matching folder over supplement)', """(() => {
+    const origName = state.bookFileName;
+    try {
+        state.bookFileName = 'Livre de l eleve 1.pdf';
+        // Case 1: vocal vs instrumental suffix _vi
+        const f1 = { name: 'cd1_piste_16.mp3', path: 'Audio/cd1_piste_16.mp3', cd: 1, section: null, group: null, page: null, track: 16, copy: 0, named: true, cleanTail: true };
+        const f2 = { name: 'cd1_piste_16_vi.mp3', path: 'Audio/cd1_piste_16_vi.mp3', cd: 1, section: null, group: null, page: null, track: 16, copy: 0, named: true, cleanTail: false };
+        const picked1 = baPickBestParsed([f2, f1]);
+        const ok1 = picked1.length === 1 && picked1[0].name === 'cd1_piste_16.mp3';
+
+        // Case 2: main folder (covers marks) vs 3-track supplement
+        const marks = Array.from({ length: 40 }, (_, i) => ({ cd: null, track: i + 1, page: 10 + i, kind: 'piste' }));
+        Object.assign(baMarks, { key: state.bookKey, list: marks, busy: null });
+        const mainFiles = Array.from({ length: 40 }, (_, i) => ({
+            name: `Track ${i + 1}.mp3`, path: `Audio/Track ${i + 1}.mp3`,
+            cd: null, section: null, group: null, page: null, track: i + 1, copy: 0, named: true, cleanTail: true
+        }));
+        const suppFiles = [1, 2, 3].map(t => ({
+            name: `Supplement Track ${t}.mp3`, path: `Supplement/Supplement Track ${t}.mp3`,
+            cd: null, section: null, group: null, page: null, track: t, copy: 0, named: true, cleanTail: true
+        }));
+        const picked2 = baPickBestParsed([...suppFiles, ...mainFiles]);
+        const ok2 = picked2.length === 40 && picked2.slice(0, 3).every(p => p.path.startsWith('Audio/'));
+        return ok1 && ok2 || JSON.stringify({ ok1, ok2, picked1: picked1.map(p => p.name), picked2Count: picked2.length });
+    } finally {
+        state.bookFileName = origName;
+        Object.assign(baMarks, { key: null, list: null });
+    }
+})()""")
+
+check('14r renderBookAudioDialog suppresses duplicate message when message matches status text', """(() => {
+    const dialog = document.getElementById('book-audio-dialog');
+    openBookAudioDialog('');
+    // Simulate restart status condition
+    const m = (track, page) => ({ cd: null, track, page, kind: 'piste' });
+    const restartMarks = [m(1, 5), m(1, 15), m(1, 25), m(2, 6)];
+    Object.assign(baMarks, { key: state.bookKey, list: restartMarks, busy: null });
+    bookAudio.tracks = [{ id: 't1', cd: null, track: 1 }, { id: 't2', cd: null, track: 2 }];
+    renderBookAudioDialog(t('baRestart'));
+    const statusText = dialog.querySelector('.ba-status').textContent;
+    const msg = dialog.querySelector('.ba-message');
+    const statusHasRestart = statusText === t('baRestart');
+    const msgHidden = msg.hidden && !msg.textContent;
+    dialog.close();
+    Object.assign(baMarks, { key: null, list: null });
+    return statusHasRestart && msgHidden || JSON.stringify({ statusText, msgHidden, msgText: msg.textContent });
+})()""")
 
 check('15 No uncaught errors occurred', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL BOOK AUDIO CHECKS PASSED')

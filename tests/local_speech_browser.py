@@ -303,6 +303,18 @@ c.js('__localMode="ok"; speakText("Merci", "orig", 0, ()=>__ended.push("new")); 
 pause(.8)
 check('rapid word change discards late old server audio and old completion callback', '__localCalls.length === 2 && __localCalls[1].text === "Merci" && __played.length === 1 && __ended.join() === "new" && __speakCalls.length === 0')
 
+# Long full-page selection (> 1,000 chars) via speakText chunks by sentence, prefetches, and never falls back to system voice.
+reset()
+c.js('''(() => {
+  const s = "Bonjour à tous, aujourd'hui nous allons écouter les dialogues de la première station du manuel. ";
+  const fullPage = Array.from({length: 14}, (_, i) => `Phrase ${i + 1}: ` + s).join('');
+  speakText(fullPage, "orig", 0, () => __ended.push("pageDone"));
+  return true;
+})()''')
+c.wait('__ended.includes("pageDone")', timeout=10)
+check('long page selection (>1200 chars) split into chunks <= 260 chars and played locally without system voice',
+      '__localCalls.length >= 5 && __localCalls.every(b => b.lang === "fr" && b.text.length <= 260) && __played.length === __localCalls.length && __speakCalls.length === 0 && state.speakingSide === null')
+
 # Suites share browser storage: leave the opt-in server feature disabled for subsequent suites.
 c.js('stopGlobalTTS(); localStorage.removeItem("reader_local_speech"); true')
 
