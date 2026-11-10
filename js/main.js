@@ -25,6 +25,98 @@
  * взаємодію користувача, доки не завершиться завантаження геть усіх скриптів.
  */
 
+const APP_SHARE_URL = 'https://ai-ebook-reader.uk';
+const bookTitleBar = document.getElementById('book-title-bar');
+function setBookTitle(fileName) {
+    const title = String(fileName || '').replace(/\.(fb2\.zip|epub|pdf|txt|docx|fb2|html?|rtf|md|markdown|cbz)$/i, '').trim();
+    if (!bookTitleBar) return;
+    bookTitleBar.textContent = title;
+    bookTitleBar.title = title;
+    bookTitleBar.setAttribute('aria-label', title ? (t('bookTitleLabel') + ': ' + title) : '');
+    bookTitleBar.hidden = !title;
+}
+
+function openAppShare() {
+    const modal = document.getElementById('app-share-modal');
+    if (!modal) return;
+    modal.hidden = false;
+    const status = document.getElementById('app-share-status');
+    if (status) status.textContent = '';
+    const closeBtn = document.getElementById('app-share-close');
+    if (closeBtn) closeBtn.focus();
+}
+
+function closeAppShare() {
+    const modal = document.getElementById('app-share-modal');
+    if (modal) modal.hidden = true;
+    const trigger = document.getElementById('btn-share-app');
+    if (trigger && !trigger.hidden && typeof trigger.focus === 'function') {
+        try { trigger.focus(); } catch {}
+    }
+}
+
+const btnShareApp = document.getElementById('btn-share-app');
+if (btnShareApp) btnShareApp.addEventListener('click', openAppShare);
+
+const btnShareClose = document.getElementById('app-share-close');
+if (btnShareClose) btnShareClose.addEventListener('click', closeAppShare);
+
+const shareModal = document.getElementById('app-share-modal');
+if (shareModal) {
+    shareModal.addEventListener('click', e => {
+        if (e.target && e.target.id === 'app-share-modal') closeAppShare();
+    });
+}
+
+const btnShareCopy = document.getElementById('app-share-copy');
+if (btnShareCopy) {
+    btnShareCopy.addEventListener('click', async () => {
+        const statusEl = document.getElementById('app-share-status');
+        try {
+            await navigator.clipboard.writeText(APP_SHARE_URL);
+            if (statusEl) statusEl.textContent = t('shareAppCopied');
+        } catch {
+            const urlEl = document.getElementById('app-share-url');
+            if (urlEl) {
+                const range = document.createRange();
+                range.selectNodeContents(urlEl);
+                const sel = getSelection();
+                if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }
+            if (statusEl) statusEl.textContent = t('shareAppCopied');
+        }
+    });
+}
+
+const btnShareNative = document.getElementById('app-share-native');
+if (btnShareNative) {
+    btnShareNative.addEventListener('click', async () => {
+        if (!navigator.share) {
+            const copyBtn = document.getElementById('app-share-copy');
+            if (copyBtn) copyBtn.click();
+            return;
+        }
+        try {
+            await navigator.share({ title: 'AI Ebook Reader', text: t('shareAppTitle'), url: APP_SHARE_URL });
+        } catch (e) {
+            const statusEl = document.getElementById('app-share-status');
+            if (e && e.name !== 'AbortError' && statusEl) {
+                statusEl.textContent = e.message || t('shareAppTitle');
+            }
+        }
+    });
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        const m = document.getElementById('app-share-modal');
+        if (m && !m.hidden) closeAppShare();
+    }
+});
+
 // Мова інтерфейсу: застосовуємо збережений вибір і перемальовуємо всі написи.
 els.uiLang.value = state.uiLang;
 els.uiLang.onchange = (e) => {
@@ -32,6 +124,7 @@ els.uiLang.onchange = (e) => {
     writeStored('reader_ui_lang', state.uiLang);
     document.documentElement.lang = state.uiLang;
     applyI18n();
+    if (state.bookFileName) setBookTitle(state.bookFileName);
 };
 
 // Тема оформлення й режим "Вивчення" — теж переживають перезапуск/повернення з
@@ -162,6 +255,7 @@ async function openBookFile(file) {
     document.body.classList.add('immersive-mode');   // the menu (a drawer over the page) gives way to the book on every screen
     state.bookKey = bookKeyFor(file);
     state.bookFileName = file.name || '';
+    setBookTitle(state.bookFileName);
     state.oldBookKey = oldBookKeyFor(file);
     if (typeof onBookAudioBookChanged === 'function') onBookAudioBookChanged();
     if (typeof applySyncedBook === 'function') applySyncedBook(state.bookKey);   // місце/нотатки з іншого пристрою (js/sync.js)
