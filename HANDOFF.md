@@ -9,6 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
+| Codex, local | `fix/selection-across-visited` | `js/selection.js`, drag regression tests; generated hashes | working; owner authorized selection.js takeover 2026-11-10 | 2026-11-10 |
 | Antigravity | `fix/ba-restart-single-track` | `js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
 | Codex, cloud | `feat/separate-scans-shelf` | `js/book-shelf.js`, `js/scanner.js`, `tests/book_shelf_browser.py`, `tests/scanner_browser.py`, `ARCHITECTURE.md`; shelf CSS and generated hashes | working | current session |
