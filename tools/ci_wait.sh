@@ -54,20 +54,21 @@ except Exception:
     sys.exit(0)
 for job in data.get("jobs", []):
     if job.get("conclusion") == "failure":
-        print(f"\n--- FAILED JOB: {job.get(\"name\")} (ID: {job.get(\"databaseId\")}) ---")
-        job_id = job.get("databaseId")
-        if job_id:
+        jname = job.get("name")
+        jid = job.get("databaseId")
+        print(f"\n--- FAILED JOB: {jname} (ID: {jid}) ---")
+        if jid:
             try:
-                proc = subprocess.run(["gh", "run", "view", "--job", str(job_id), "--log-failed"], capture_output=True, text=True, timeout=30)
+                proc = subprocess.run(["gh", "run", "view", "--job", str(jid), "--log-failed"], capture_output=True, text=True, timeout=30)
                 out = proc.stdout.strip()
                 if not out:
-                    proc = subprocess.run(["gh", "api", f"repos/{job.get(\"url\",\"/\").split(\"/repos/\")[-1].split(\"/actions\")[0]}/actions/jobs/{job_id}/logs"], capture_output=True, text=True, timeout=30)
+                    proc = subprocess.run(["gh", "api", f"repos/{job.get('url','/').split('/repos/')[-1].split('/actions')[0]}/actions/jobs/{jid}/logs"], capture_output=True, text=True, timeout=30)
                     out = proc.stdout.strip()
                 lines = out.splitlines()
                 tail = "\n".join(lines[-60:]) if len(lines) > 60 else "\n".join(lines)
                 print(tail)
             except Exception as e:
-                print(f"Could not retrieve logs for job {job_id}: {e}")
+                print(f"Could not retrieve logs for job {jid}: {e}")
 ' <<< "$JOBS_JSON"
             exit 1
         fi
