@@ -25,7 +25,7 @@
  * взаємодію користувача, доки не завершиться завантаження геть усіх скриптів.
  */
 
-const APP_SHARE_URL = 'https://ai-ebook-reader.pages.dev';
+const APP_SHARE_URL = 'https://ai-ebook-reader.uk';
 const bookTitleBar = document.getElementById('book-title-bar');
 function setBookTitle(fileName) {
     const title = String(fileName || '').replace(/\.(fb2\.zip|epub|pdf|txt|docx|fb2|html?|rtf|md|markdown|cbz)$/i, '').trim();
