@@ -23,7 +23,7 @@ Object.assign(I18N, {
     shelfRemove: { uk: 'Видалити з пристрою', en: 'Remove from device', fr: 'Supprimer de l’appareil', ru: 'Удалить с устройства', es: 'Quitar del dispositivo' },
     shelfMissing: { uk: 'Цієї книги вже немає на пристрої.', en: 'This book is no longer on the device.', fr: 'Ce livre n’est plus sur l’appareil.', ru: 'Этой книги уже нет на устройстве.', es: 'Este libro ya no está en el dispositivo.' }
 });
-const SHELF_DB = 'reader-books', SHELF_STORE = 'books', SHELF_MAX_BOOKS = 15, SHELF_MAX_BYTES = 600 * 1024 * 1024, SHELF_MAX_BOOK_BYTES = 300 * 1024 * 1024;
+const SHELF_DB = 'reader-books', SHELF_STORE = 'books', SHELF_MAX_BOOKS = 15, SHELF_MAX_BYTES = 600 * 1024 * 1024;
 // Keep the existing DB and keys: bookmarks and files survive without copying or renaming them.
 const shelfScanFiles = new WeakSet();
 function markShelfScan(file) { shelfScanFiles.add(file); return file; }
@@ -101,15 +101,20 @@ async function makeShelfCover() {
             const page = await state.pdfDoc.getPage(1), base = page.getViewport({ scale: 1 });
             const vp = page.getViewport({ scale: SHELF_COVER_W / base.width }), canvas = document.createElement('canvas');
             canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
-            await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-            return await shrinkCover(canvas, canvas.width, canvas.height);
+            try {
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+                return await shrinkCover(canvas, canvas.width, canvas.height);
+            } finally {
+                if (typeof pdfWantedPages !== 'undefined' && !pdfWantedPages.has(1)) { try { page.cleanup(); } catch (e) {} }
+                canvas.width = canvas.height = 0;
+            }
         }
     } catch (e) { /* без обкладинки картка покаже назву на кольоровому тлі */ }
     return null;
 }
 // Зберігає щойно відкриту книгу (або оновлює час відкриття) і витісняє найдавніші, коли їх забагато.
 async function shelveBook(file, key = state.bookKey) {
-    if (!file || !key || file.size > SHELF_MAX_BOOK_BYTES) return;
+    if (!file || !key) return false;
     try {
         if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
         const old = await shelfTx('readonly', async (store, done) => done(await shelfReq(store.get(key))));
@@ -117,14 +122,16 @@ async function shelveBook(file, key = state.bookKey) {
         const cover = old && old.cover ? old.cover : (key === state.bookKey ? await makeShelfCover() : null);
         await shelfTx('readwrite', store => {
             store.put({ key, kind, name: file.name, type: file.type || '', size: file.size, lastModified: file.lastModified || 0,
-                title: shelfTitle(file.name), openedAt: Date.now(), cover: cover || null, blob: old && old.blob && old.size === file.size ? old.blob : file });
+                series: old?.series || '', volume: old?.volume || '', issue: old?.issue || '', sourceId: old?.sourceId || '',
+                ...publicationMetadata.get(file), title: shelfTitle(file.name), openedAt: Date.now(), cover: cover || null, blob: old && old.blob && old.size === file.size ? old.blob : file });
         });
         const books = await listShelfBooks(kind);
         let total = 0;
-        const evict = books.filter((b, i) => { total += b.size; return (kind === 'book' && i >= SHELF_MAX_BOOKS) || (i > 0 && total > SHELF_MAX_BYTES); });
+        const evict = books.filter((b, i) => { total += b.size; return (kind === 'book' && i >= SHELF_MAX_BOOKS) || (kind === 'scan' && i > 0 && total > SHELF_MAX_BYTES); });
         if (evict.length) await shelfTx('readwrite', store => { for (const b of evict) store.delete(b.key); });
         renderRecentBooks();
-    } catch (e) { /* немає місця чи IndexedDB заборонено — книга просто не збережеться, читання не страждає */ }
+        return true;
+    } catch (e) { showToast(t('publicationStorageFull')); return false; }
 }
 // Запис великого файлу (PDF на десятки МБ) не має змагатися з першим відмальовуванням книги: зберігаємо за кілька секунд,
 // коли браузер вільний, і лише якщо ця книга досі відкрита.
@@ -144,12 +151,13 @@ async function openShelfBook(key) {
     if (!rec || !rec.blob) { showToast(t('shelfMissing')); renderRecentBooks(); return false; }
     // Ті самі name/size/lastModified → той самий state.bookKey → читання продовжується з тієї ж сторінки.
     const file = new File([rec.blob], rec.name, { type: rec.type, lastModified: rec.lastModified });
+    publicationMetadata.set(file, { series: rec.series, volume: rec.volume, issue: rec.issue, sourceId: rec.sourceId });
     await openBookFile(shelfKind(rec) === 'scan' ? markShelfScan(file) : file);
     return true;
 }
 function shelfCardMeta(b) {
     const mb = b.size / 1048576;
-    return [b.name.split('.').pop().toUpperCase(), (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + ' MB', new Date(b.openedAt).toLocaleDateString(state.uiLang)].join(' · ');
+    return [b.series, b.volume && 'Vol. ' + b.volume, b.issue && 'No. ' + b.issue, b.name.split('.').pop().toUpperCase(), (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + ' MB', new Date(b.openedAt).toLocaleDateString(state.uiLang)].filter(Boolean).join(' · ');
 }
 // Обкладинка картки: збережене зображення або назва на кольоровому тлі (колір сталий для книги).
 const shelfCoverUrls = new Map();

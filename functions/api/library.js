@@ -226,7 +226,7 @@ export async function onRequestGet({ request }) {
             if (from || to) query += ` AND year:[${from || 1} TO ${to || 2100}]`;
             const api = new URL('https://archive.org/advancedsearch.php');
             api.searchParams.set('q', query);
-            for (const f of ['identifier', 'title', 'creator', 'year', 'language', 'format']) api.searchParams.append('fl[]', f);
+            for (const f of ['identifier', 'title', 'creator', 'year', 'language', 'format', 'series', 'volume', 'issue']) api.searchParams.append('fl[]', f);
             // Одне видання — випуски за датою (так їх і гортають); решта — найпопулярніші спершу.
             api.searchParams.append('sort[]', pub ? 'date asc' : 'downloads desc');
             api.searchParams.set('rows', '30'); api.searchParams.set('page', String(page)); api.searchParams.set('output', 'json');
@@ -237,6 +237,7 @@ export async function onRequestGet({ request }) {
             const results = ((data.response && data.response.docs) || []).filter(d => IA_ID.test(d.identifier || '')).map(d => {
                 const formats = [].concat(d.format || []);
                 return { id: d.identifier, title: String(one(d.title) || d.identifier).slice(0, 300), creator: [].concat(d.creator || []).slice(0, 3).map(String),
+                    series: String(one(d.series) || '').slice(0, 300), volume: String(one(d.volume) || '').slice(0, 80), issue: String(one(d.issue) || '').slice(0, 80),
                     year: String(one(d.year) || ''), lang: String(one(d.language) || ''),
                     pdf: formats.includes('Text PDF') || formats.includes('Additional Text PDF'), epub: formats.includes('EPUB') };
             });
@@ -261,7 +262,8 @@ export async function onRequestGet({ request }) {
                 const all = data.files || [];
                 const files = all.filter(f => IA_BOOK_FORMATS.has(f.format) && /\.(pdf|epub)$/i.test(f.name || '') && !String(f.name).includes('..'))
                     .map(f => ({ name: String(f.name), format: f.format, size: Number(f.size) || 0 }));
-                return json({ scan: all.some(f => IA_SCAN_FORMATS.has(f.format)), files }, 200, 3600);
+                const one = v => Array.isArray(v) ? v[0] : v;
+                return json({ series: String(one(meta.series) || one(meta.title) || '').slice(0, 300), volume: String(one(meta.volume) || '').slice(0, 80), issue: String(one(meta.issue) || '').slice(0, 80), scan: all.some(f => IA_SCAN_FORMATS.has(f.format)), files }, 200, 3600);
             }
             const name = url.searchParams.get('name') || '';
             if (!/\.(pdf|epub)$/i.test(name) || name.length > 300 || name.includes('..') || /[\u0000-\u001f\\]/.test(name)) return json({ error: 'bad name' }, 400);

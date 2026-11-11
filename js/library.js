@@ -81,9 +81,7 @@ Object.assign(I18N, {
     libYearTo: { uk: 'до', en: 'to', fr: 'à', ru: 'до' },
     libYearsLife: { uk: 'Роки — коли жив автор.', en: 'Years — when the author lived.', fr: 'Années — quand l’auteur a vécu.', ru: 'Годы — когда жил автор.' },
     libYearsPub: { uk: 'Роки — рік видання.', en: 'Years — year of publication.', fr: 'Années — année de publication.', ru: 'Годы — год издания.' },
-    libDownloading: { uk: 'Завантаження книги: {n} з {total} МБ…', en: 'Downloading the book: {n} of {total} MB…', fr: 'Téléchargement du livre : {n} sur {total} Mo…', ru: 'Загрузка книги: {n} из {total} МБ…' },
-    libTooBig: { uk: 'Книга завелика для застосунку ({n} МБ, найбільше 300 МБ).', en: 'The book is too large for the app ({n} MB, 300 MB maximum).',
-                 fr: 'Le livre est trop volumineux pour l’application ({n} Mo, 300 Mo maximum).', ru: 'Книга слишком большая для приложения ({n} МБ, максимум 300 МБ).' }
+    libDownloading: { uk: 'Завантаження книги: {n} з {total} МБ…', en: 'Downloading the book: {n} of {total} MB…', fr: 'Téléchargement du livre : {n} sur {total} Mo…', ru: 'Загрузка книги: {n} из {total} МБ…' }
 });
 // Ключ теми = ключ у library-catalog.json (themes[]); бітова маска книги збігається з порядком там.
 const LIBRARY_GENRES = [['', 'genAll'], ['fiction', 'genFiction'], ['adventure', 'genAdventure'], ['detective', 'genDetective'], ['historical', 'genHistorical'],
@@ -121,7 +119,7 @@ const LIBRARY_WS_GENRES = {
 };
 // Internet Archive: живий пошук через свій проксі; коди мов — як у самому архіві (MARC).
 const LIBRARY_IA_LANGS = [['ukr', '🇺🇦 Українська'], ['eng', '🇬🇧 English'], ['fre', '🇫🇷 Français'], ['ger', '🇩🇪 Deutsch'], ['spa', '🇪🇸 Español'], ['ita', '🇮🇹 Italiano'], ['pol', '🇵🇱 Polski'], ['rus', '🇷🇺 Русский'], ['', null]];
-const LIBRARY_MAX_BYTES = 300 * 1024 * 1024;
+
 // Bibliothèque numérique romande і Standard Ebooks: живий пошук через свій проксі (він розбирає HTML їхнього пошуку); кожна — однією
 // мовою, жанри — лише ті, що мають свої рубрики/теми там (той самий перелік, що BNR_GENRES і SE_GENRES у functions/api/library.js).
 const LIBRARY_CATALOGS = {
@@ -204,7 +202,7 @@ function buildLibrary() {
     more.addEventListener('click', () => runLibrarySearch(libraryState.page + 1));
     const source = document.createElement('div'); source.className = 'library-source'; source.dataset.i18n = 'libSource';
     tools.append(advToggle);   // у ряду пошуку, поруч із жанром — без окремого порожнього рядка
-    box.append(head, chips, tools, adv, status, list, more, source); modal.append(box); document.body.append(modal);
+    box.append(head, chips, tools, adv, status, list, more, source); buildLibraryQueue(box); modal.append(box); document.body.append(modal);
     const saved = (() => { try { return JSON.parse(localStorage.getItem('reader_library_filters') || '{}'); } catch (e) { return {}; } })();
     libraryState.source = LIBRARY_SOURCES.includes(saved.source) ? saved.source : 'gutenberg';
     libraryState.langBySource = { gutenberg: saved.lang !== undefined ? saved.lang : 'fr', wikisource: saved.wsLang || 'uk', archive: saved.iaLang !== undefined ? saved.iaLang : 'ukr', loc: saved.locLang || '', press: saved.pressLang || '' };
@@ -369,7 +367,7 @@ function libraryCard(book) {
     const name = document.createElement('div'); name.className = 'library-name'; name.textContent = book.title;
     const by = document.createElement('div'); by.className = 'library-author';
     by.textContent = book.ws ? 'Wikisource · ' + book.lang.toUpperCase()
-        : book.ia ? [(book.authors || []).join('; '), book.year, [book.pdf && 'PDF', book.epub && 'EPUB'].filter(Boolean).join(' · ')].filter(Boolean).join(' · ')
+        : book.ia ? [(book.authors || []).join('; '), book.series, book.volume && 'Vol. ' + book.volume, book.issue && 'No. ' + book.issue, book.year, [book.pdf && 'PDF', book.epub && 'EPUB'].filter(Boolean).join(' · ')].filter(Boolean).join(' · ')
         : (book.authors || []).join(', ');
     info.append(name, by);
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-primary'; btn.textContent = t('libRead');
@@ -377,49 +375,67 @@ function libraryCard(book) {
     const save = document.createElement('button'); save.type = 'button'; save.className = 'library-save'; save.textContent = t('libSave'); save.title = t('libSaveTitle');
     save.addEventListener('click', () => saveLibraryBook(book, save));
     const actions = document.createElement('div'); actions.className = 'library-actions'; actions.append(btn, save);
-    card.append(cover, info, actions);
+    card.append(librarySelectControl(book), cover, info, actions);
+    if (book.ia) {
+        const files = document.createElement('div'); files.className = 'library-files'; files.hidden = true;
+        const choose = document.createElement('button'); choose.type = 'button'; choose.textContent = t('libFiles');
+        choose.onclick = () => showLibraryFiles(book, files, choose); actions.append(choose); card.append(files);
+    }
     return card;
 }
 
 // Файл книги: завантажується один раз за сеанс (і для читання, і для збереження).
 const libraryFiles = new Map();
-const wsProgress = book => (n, total) => { libraryEl('library-status').textContent = t('libWsChapters').replace('{n}', n).replace('{total}', total); };
-function libraryFileName(book, ext = 'epub') { return book.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80).trim() + '.' + ext; }
+function trimLibraryFiles() {
+    let size = [...libraryFiles.values()].reduce((n, file) => n + file.size, 0);
+    for (const [key, file] of libraryFiles) {
+        if (libraryFiles.size <= 3 && size <= 32 * 1024 * 1024) break;
+        libraryFiles.delete(key); size -= file.size;
+    }
+}
+const wsProgress = book => (n, total) => { libraryEl('library-status').textContent = book.ws ? t('libWsChapters').replace('{n}', n).replace('{total}', total) : t('libDownloading').replace('{n}', (n / 1048576).toFixed(1)).replace('{total}', total ? (total / 1048576).toFixed(1) : '?'); };
+function libraryFileName(book, ext = 'epub') {
+    // Keep existing ordinary-book filenames/bookmark keys byte-for-byte stable.
+    const limit = book.file || book.series || book.volume || book.issue ? 160 : 80;
+    return [book.series, book.volume && 'Vol. ' + book.volume, book.issue && 'No. ' + book.issue, book.title]
+        .filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ')
+        .replace(/[\\/:*?"<>|]+/g, ' ').slice(0, limit).trim() + '.' + ext;
+}
 async function fetchLibraryFile(book, onProgress = () => {}) {
-    const cacheKey = book.ws ? 'ws:' + book.lang + ':' + book.title : book.ia ? 'ia:' + book.id : book.cat ? book.cat + ':' + book.id : book.id;
+    const cacheKey = libraryBookId(book);
     if (libraryFiles.has(cacheKey)) return libraryFiles.get(cacheKey);
     if (book.cat) {
         if (book.cat === 'se' && !SE_BOOK_ID.test(book.id)) throw new Error('bad id');
         const res = await fetch(book.cat === 'se' ? `${SE_SITE}/ebooks/${book.id}/downloads/${book.id.replace(/\//g, '_')}.epub?source=download`
             : `/api/library?op=${book.cat}-file&id=` + encodeURIComponent(book.id), { credentials: 'omit', referrerPolicy: 'no-referrer' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const blob = await res.blob();
+        const blob = await readPublicationResponse(res, 0, onProgress);
         let h = 0; for (const ch of cacheKey) h = (h * 31 + ch.codePointAt(0)) >>> 0;
         // Той самий id → той самий «ключ книги»: позиція читання переживає повторне завантаження.
-        const file = new File([blob], libraryFileName(book), { type: 'application/epub+zip', lastModified: h });
+        const file = publicationFile(blob, libraryFileName(book), { type: 'application/epub+zip', lastModified: h });
         libraryFiles.set(cacheKey, file);
-        if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+        trimLibraryFiles();
         return file;
     }
     if (book.ia) {
-        const file = await fetchArchiveBook(book);
+        const file = await fetchArchiveBook(book, onProgress);
         libraryFiles.set(cacheKey, file);
-        if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+        trimLibraryFiles();
         return file;
     }
     if (book.ws) {
         const file = await buildWikisourceBook(book, onProgress);
         libraryFiles.set(cacheKey, file);
-        if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+        trimLibraryFiles();
         return file;
     }
     const res = await fetch('/api/library?op=file&id=' + encodeURIComponent(book.id));
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const blob = await res.blob();
+    const blob = await readPublicationResponse(res, 0, onProgress);
     // Той самий id → той самий «ключ книги» (назва+розмір+lastModified): позиція читання переживає повторне завантаження.
-    const file = new File([blob], libraryFileName(book), { type: 'application/epub+zip', lastModified: book.id });
-    libraryFiles.set(book.id, file);
-    if (libraryFiles.size > 3) libraryFiles.delete(libraryFiles.keys().next().value);
+    const file = publicationFile(blob, libraryFileName(book), { type: 'application/epub+zip', lastModified: book.id });
+    libraryFiles.set(cacheKey, file);
+    trimLibraryFiles();
     return file;
 }
 // Зберегти книгу на пристрій: де браузер уміє (комп'ютер) — у теку, яку читач вибере сам; інакше (Android) — звичайним
@@ -445,7 +461,7 @@ async function saveLibraryBook(book, btn) {
         setTimeout(() => URL.revokeObjectURL(url), 60000);
         status.textContent = t('libSavedDownloads');
     } catch (e) {
-        status.textContent = e && e.libraryMessage || t('libBookError');
+        status.textContent = e && (e.libraryMessage || e.message) || t('libBookError');
     } finally {
         btn.disabled = false; btn.textContent = label;
     }
@@ -460,7 +476,7 @@ async function downloadLibraryBook(book, btn) {
         closeLibrary();
         await openBookFile(file);
     } catch (e) {
-        libraryEl('library-status').textContent = e && e.libraryMessage || t('libBookError');
+        libraryEl('library-status').textContent = e && (e.libraryMessage || e.message) || t('libBookError');
     } finally {
         libraryState.busy = false; btn.disabled = false; btn.textContent = t('libRead');
     }
@@ -713,7 +729,7 @@ async function wsEpubFile(book, parts, meta) {
     zip.file('OEBPS/content.opf', opf, { compression: 'STORE', date: WS_EPUB_ENTRY_DATE });
     const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip', compression: 'DEFLATE', compressionOptions: { level: 6 } });
     let h = 0; for (const ch of book.lang + ':' + book.title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-    return new File([blob], libraryFileName(book), { type: 'application/epub+zip', lastModified: h });
+    return publicationFile(blob, libraryFileName(book), { type: 'application/epub+zip', lastModified: h });
 }
 
 // ---------- Internet Archive ----------
@@ -735,7 +751,7 @@ async function runArchiveSearch(page) {
     } catch (e) { if (token === libraryState.wsToken) status.textContent = t('libError'); return; }
     if (token !== libraryState.wsToken || libraryState.source !== src) return;
     libraryState.page = page;
-    for (const r of data.results || []) list.append(libraryCard({ ia: true, id: r.id, title: r.title, authors: r.creator, year: r.year, pdf: r.pdf, epub: r.epub }));
+    for (const r of data.results || []) list.append(libraryCard({ ia: true, id: r.id, title: r.title, authors: r.creator, year: r.year, pdf: r.pdf, epub: r.epub, series: r.series, volume: r.volume, issue: r.issue }));
     status.textContent = list.children.length ? '' : t('libEmpty');
     more.hidden = page * 30 >= (data.total || 0);
 }
@@ -788,29 +804,20 @@ function pickArchiveFile(info) {
     const epub = files.filter(f => f.format === 'EPUB').sort((a, b) => a.size - b.size)[0];
     return info.scan ? (pdf || epub) : (epub || pdf);
 }
-async function fetchArchiveBook(book) {
-    const status = libraryEl('library-status');
+async function fetchArchiveBook(book, onProgress = wsProgress(book)) {
     const infoRes = await fetch('/api/library?op=ia-files&id=' + encodeURIComponent(book.id));
     if (!infoRes.ok) throw new Error('HTTP ' + infoRes.status);
-    const chosen = pickArchiveFile(await infoRes.json());
+    const info = await infoRes.json();
+    const chosen = book.file ? (info.files || []).find(f => f.name === book.file.name) : pickArchiveFile(info);
     if (!chosen) throw new Error('no file');
-    const mb = n => (n / 1048576).toFixed(n < 10485760 ? 1 : 0);
-    if (chosen.size > LIBRARY_MAX_BYTES) throw Object.assign(new Error('too big'), { libraryMessage: t('libTooBig').replace('{n}', mb(chosen.size)) });
     const res = await fetch(`/api/library?op=ia-file&id=${encodeURIComponent(book.id)}&name=${encodeURIComponent(chosen.name)}`);
-    if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
-    // Скани бувають десятки мегабайтів: показуємо, скільки вже завантажено.
-    const reader = res.body.getReader(), chunks = [];
-    let got = 0, shown = 0;
-    for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value); got += value.length;
-        if (got - shown > 262144) { shown = got; status.textContent = t('libDownloading').replace('{n}', mb(got)).replace('{total}', mb(chosen.size)); }
-    }
+    const blob = await readPublicationResponse(res, chosen.size, onProgress);
     const isPdf = /\.pdf$/i.test(chosen.name);
-    let h = 0; for (const ch of 'ia:' + book.id) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    let h = 0; for (const ch of 'ia:' + book.id + (book.file ? ':' + chosen.name : '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
     // Той самий id → той самий «ключ книги»: позиція читання переживає повторне завантаження.
-    return new File(chunks, libraryFileName(book, isPdf ? 'pdf' : 'epub'), { type: isPdf ? 'application/pdf' : 'application/epub+zip', lastModified: h });
+    const file = publicationFile(blob, libraryFileName(book, isPdf ? 'pdf' : 'epub'), { type: isPdf ? 'application/pdf' : 'application/epub+zip', lastModified: h });
+    publicationMetadata.set(file, { series: info.series || book.series || '', volume: info.volume || book.volume || '', issue: info.issue || book.issue || '', sourceId: book.id });
+    return file;
 }
 
 buildLibrary();
