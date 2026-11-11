@@ -825,6 +825,11 @@ const practiceStyles = `
     column-gap: 8px;
     row-gap: 2px;
 }
+/* Generated reading remains selectable across its inline Grammar targets. */
+.practice-sentence-text, .practice-sentence-text * {
+    -webkit-user-select: text;
+    user-select: text;
+}
 .practice-sentence-text {
     flex: 1 1 auto;
     min-width: 55%;

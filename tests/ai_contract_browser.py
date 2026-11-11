@@ -634,7 +634,8 @@ check("9: five items are accepted; the tapped word's own occurrence is focused (
       "grammarContext.analysis.items.length===5 && grammarContext.focused?.surface==='effectuer' && grammarContext.mode==='verbs' && !!document.querySelector('#grammar-content .grammar-focus') && document.querySelector('#grammar-content .grammar-context-target')?.textContent==='effectuer'")
 assert c.js("readerAiDiagnostics().filter(d=>d.task==='grammar_analysis').at(-1).sourceLanguage") == 'fr'
 print("PASS 9: source language French, French 'Verbes' mode, English tense controls absent (French chips only)", flush=True)
-check("9: French tense controls only (no English names leaking)", "[...document.querySelectorAll('#grammar-controls-bar button')].map(b=>b.textContent).join()===GRAMMAR_LANG_CONFIG.fr.verb.tenses.map(t=>t.label).join()")
+# The timeline changes visual order; the full French label set must stay exact.
+check("9: French tense controls only (no English names leaking)", "[...document.querySelectorAll('#grammar-controls-bar button')].map(b=>b.textContent).sort().join()===GRAMMAR_LANG_CONFIG.fr.verb.tenses.map(t=>t.label).sort().join()")
 n0 = c.js("__stub.requests.length")
 c.js("switchGrammarMode('adjectives')")
 check("9: Adjectifs lists the two adjectives with NO tense controls, from the cached analysis (0 requests)",
@@ -751,7 +752,7 @@ else:
     assert st['ok'] is True and st['lang'] == 'fr' and st['mode'] == 'verbs' and not st['banner'], st
     assert st['n'] == 4, ('all four items of the fenced reply must be accepted on the real page', st)
     assert st['focused'] == 'effectuer', ("the tapped word's own occurrence is focused", st)
-    assert st['chips'] == c.js("GRAMMAR_LANG_CONFIG.fr.verb.tenses.map(t=>t.label)"), ('French tense controls only', st['chips'])
+    assert sorted(st['chips']) == sorted(c.js("GRAMMAR_LANG_CONFIG.fr.verb.tenses.map(t=>t.label)")), ('French tense controls only', st['chips'])
     print("PASS 10: a fenced reply that names the language 'French' and lower-cases 'Établir' is accepted on the real page (4 items, recovered: %s), the tapped 'effectuer' is focused, Verbes mode, French controls only" % st['notes'], flush=True)
     assert any(i['surface'] == 'Établir' for i in c.js("grammarContext.analysis.items")), "the displayed surface must be the SOURCE text's own spelling"
     print("PASS 10: the surface shown for the lower-cased 'établir' is the page's own 'Établir'", flush=True)
