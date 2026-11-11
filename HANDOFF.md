@@ -106,12 +106,12 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 - **Next:** monitor PR #367's current head with `tools/ci_wait.sh <sha>`; resolve any failures before normal merge. Then verify main CI and production and remove this Claims row. The owner's original blurred book and physical tablet still need a visual check.
 
 ## Active Agent Worktrees & Tasks
-- **Codex — PDF and large publications (2026-11-11)** (branch `fix/pdf-large-publications`, worktree `../wt-pdf-large-publications`, base `0903ecd`):
-  - High-risk task: readable sidebar fit, complete translations, continuous newspaper selection, >300 MiB PDFs, series/issue batch downloads with independent retries.
-  - Implementation and tests are uncommitted; no PR yet. `ARCHITECTURE.md` maps the new streaming and queue modules.
-  - Confirmed locally: three 301 MiB downloads with one injected failure/retry, saved reopening after reload, tablet 800×1280 sidebar/popup; PDF/learning, library/shelf, translation/cache/offline, PDF memory/workspace/visited/bilingual suites passed.
-  - Next: finish real touch-drag and final regression checks, syntax/version gates, commit/PR, exact-head CI, review/merge, main CI and production verification.
-  - Format scope: large PDF opening is incremental; existing EPUB/DOCX archive security limits remain enforced.
+- **Codex — PDF and large publications (2026-11-11)** (branch `fix/pdf-large-publications`, worktree `../wt-pdf-large-publications`; implementation `95831fd`; [PR #389](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/389)):
+  - High-risk fixes: readable sidebar fit, complete long translations, continuous newspaper selection/repeated touch drags, >300 MiB PDFs, series/issue batch downloads with independent retries. `ARCHITECTURE.md` maps the new modules.
+  - All functional changes are committed; no unrelated work in this task worktree. PR #389 is the delivery record for exact-head CI, merge and resulting main workflow.
+  - Confirmed local browser validation at 800×1280: three 301 MiB downloads, injected failure/individual retry, reload/reopening every saved issue, thumbnail navigation and repeated sidebar toggles, full popup scrolling, and real forward/reverse touch drags through multiple paragraphs.
+  - Local gates passed: PDF/learning, large-publication, scan/workspace/visited/bilingual/memory, library/shelf, translation/cache/offline, AI provider, proxy and migration suites; all-JS syntax, app-shell versions and CI suite coverage.
+  - Next device check: owner verifies the original publications on the physical tablet. Large PDF opening is incremental; existing EPUB/DOCX archive security limits remain enforced.
 - **Antigravity** (Branch: `fix/multi-device-page-speech`, worktree `../wt-ba-general-rules`; previous `fix/ba-general-rules` PR #381 merged `5ffd5c5`, main CI `42510962711` green):
   - Task: Multi-device parallel full-page local speech & translation (`js/local-speech.js`, `js/tts.js`, `js/translation.js`, `js/ai-client.js`, plus local `/home/igor/tools/tts-server/server.py`): split long selected passages (> 260 chars) into sentence chunks with background prefetching in `speakViaLocal`, avoid disabling local speech on HTTP 400, disable word-alignment JSON overhead for selections > 450 chars, scale Groq translation timeout and token budget for full-page selections, and raise local server `MAX_CHARS` (5000), `RATE_MAX` (240/min per Wi-Fi IP), and GPU synthesis lock.
   - Verified locally: `tests/local_speech_browser.py`, `tests/translation_robust_browser.py`, `tests/bilingual_selection_browser.py`, `tests/groq_limit_browser.py`, `tests/ai_groq_first_own_keys_browser.py`, `tests/pdf_ux_browser.py`, `tests/learning_ux_browser.py`, syntax and app-shell version gates PASS.
