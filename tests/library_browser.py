@@ -20,6 +20,9 @@ def check(name, expression):
     print('PASS', name, flush=True)
 
 
+check('ordinary long titles retain their original filenames and bookmark keys', "libraryFileName({title:'Long title '.repeat(25)}) === 'Long title '.repeat(25).slice(0,80).trim()+'.epub'")
+check('issue cards distinguish the supplied series, volume and issue before downloading', "libraryCard({ia:true,id:'series-7',title:'Journal',series:'Science',volume:'12',issue:'7',pdf:true}).querySelector('.library-author').textContent==='Science · Vol. 12 · No. 7 · PDF'")
+
 c.js("""(() => { window.__reqs = []; window.__opened = null; const real = window.fetch.bind(window);
   window.fetch = async (url, opts) => { url = String(url); if (url.startsWith('/api/library')) { __reqs.push(url); return new Response(url.includes('op=file') ? new Blob(['fake epub bytes']) : '', {status: 200}); }
     return real(url, opts); };

@@ -367,7 +367,7 @@ function libraryCard(book) {
     const name = document.createElement('div'); name.className = 'library-name'; name.textContent = book.title;
     const by = document.createElement('div'); by.className = 'library-author';
     by.textContent = book.ws ? 'Wikisource · ' + book.lang.toUpperCase()
-        : book.ia ? [(book.authors || []).join('; '), book.year, [book.pdf && 'PDF', book.epub && 'EPUB'].filter(Boolean).join(' · ')].filter(Boolean).join(' · ')
+        : book.ia ? [(book.authors || []).join('; '), book.series, book.volume && 'Vol. ' + book.volume, book.issue && 'No. ' + book.issue, book.year, [book.pdf && 'PDF', book.epub && 'EPUB'].filter(Boolean).join(' · ')].filter(Boolean).join(' · ')
         : (book.authors || []).join(', ');
     info.append(name, by);
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-primary'; btn.textContent = t('libRead');
@@ -394,7 +394,13 @@ function trimLibraryFiles() {
     }
 }
 const wsProgress = book => (n, total) => { libraryEl('library-status').textContent = book.ws ? t('libWsChapters').replace('{n}', n).replace('{total}', total) : t('libDownloading').replace('{n}', (n / 1048576).toFixed(1)).replace('{total}', total ? (total / 1048576).toFixed(1) : '?'); };
-function libraryFileName(book, ext = 'epub') { return [book.series, book.volume && 'Vol. ' + book.volume, book.issue && 'No. ' + book.issue, book.title].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ').replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 160).trim() + '.' + ext; }
+function libraryFileName(book, ext = 'epub') {
+    // Keep existing ordinary-book filenames/bookmark keys byte-for-byte stable.
+    const limit = book.file || book.series || book.volume || book.issue ? 160 : 80;
+    return [book.series, book.volume && 'Vol. ' + book.volume, book.issue && 'No. ' + book.issue, book.title]
+        .filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ')
+        .replace(/[\\/:*?"<>|]+/g, ' ').slice(0, limit).trim() + '.' + ext;
+}
 async function fetchLibraryFile(book, onProgress = () => {}) {
     const cacheKey = libraryBookId(book);
     if (libraryFiles.has(cacheKey)) return libraryFiles.get(cacheKey);
