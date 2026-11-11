@@ -328,6 +328,12 @@ const GRAMMAR_LANG_CONFIG = {
             features: ['tense', 'mood', 'person', 'number', 'auxiliary', 'participle'],
             // "être" / "allé" alone beside "3e personne" do not say WHICH role they play in a compound tense.
             featureLabels: { auxiliary: 'auxiliaire', participle: 'participe' },
+            // Display order only: retain tenses[0] as the dictionary lookup default.
+            timeline: {
+                label: 'Passé ← Présent → Futur',
+                past: ['plus_que_parfait', 'indicatif_imparfait', 'indicatif_passe_compose'],
+                present: ['indicatif_present'], future: ['indicatif_futur']
+            },
             tenses: [
                 { id: 'indicatif_present', label: 'Présent' },
                 { id: 'indicatif_imparfait', label: 'Imparfait' },

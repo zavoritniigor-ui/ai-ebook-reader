@@ -86,4 +86,18 @@ const imgBefore = imgAsked.length;
 for (const path of ['commons/3/3a/Logo.svg', 'commons/../../x/3/3a/a.png', 'ruwikisource/3/3a/a.png', 'commons/3/3a/a.png?x=1', 'commons/3/3a/a%2F..%2Fb.png', 'commons/thumb/3/3a/a.png',
                     'commons/3/3a/a.png/500px-a.png', 'wikipedia/commons/3/3a/a.png', '//evil.example/a.png', 'commons/zz/3a/a.png', 'commons/3/3a/a.html'])
     ok('ws-image rejected without fetching: ' + path, (await call('op=ws-image&path=' + encodeURIComponent(path))).status === 400 && imgAsked.length === imgBefore);
+// Series fields and large-file metadata must survive the fixed-host proxy.
+globalThis.fetch = async u => {
+    asked.push(String(u));
+    if (String(u).includes('/metadata/')) return new Response(JSON.stringify({
+        metadata: { title: ['Journal'], series: ['Science series'], volume: ['12'], issue: '7' },
+        files: [{ name: 'issue.pdf', format: 'Text PDF', size: String(400 * 1048576) }]
+    }));
+    return new Response(JSON.stringify({ response: { numFound: 1, docs: [{ identifier: 'journal-7', title: 'Journal', series: ['Science series'], volume: '12', issue: ['7'], format: ['Text PDF'] }] } }));
+};
+j = await (await call('op=ia-search&q=journal')).json();
+ok('archive search preserves supplied series, volume and issue fields', j.results[0].series === 'Science series' && j.results[0].volume === '12' && j.results[0].issue === '7');
+j = await (await call('op=ia-files&id=journal-7')).json();
+ok('archive file list keeps >300 MiB sizes and series metadata', j.files[0].size === 400 * 1048576 && j.series === 'Science series' && j.volume === '12' && j.issue === '7');
+
 console.log('ALL PASS library_proxy_test');

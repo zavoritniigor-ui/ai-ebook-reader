@@ -962,7 +962,7 @@
             /* flex:1 + min-height:0 замість height:100%: у flex-рядку з автоматичною висотою
                відсоткова висота нема від чого рахувати, тому блок не обмежувався й не
                прокручувався — саме через це скролінг і не працював. */
-            flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overflow-x: hidden;
+            flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overflow-x: hidden; align-self: stretch; white-space: pre-wrap;
             overscroll-behavior: contain; min-height: 0;
             -webkit-overflow-scrolling: touch;      /* плавна інерційна прокрутка на дотик */
             touch-action: pan-y;                    /* палець і перо прокручують вертикально */
@@ -1626,6 +1626,16 @@
         .library-years-note { font-size: 12px; color: var(--text-muted); }
         #library-status { font-size: 13px; color: var(--text-muted); min-height: 1em; }
         #library-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+        #library-batch { flex-shrink: 0; min-height: 40px; margin: 8px 0; }
+        #library-downloads { flex: 0 0 auto; max-height: 26vh; overflow-y: auto; overscroll-behavior: contain; }
+        .library-download { padding: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px solid var(--border-color); }
+        .library-download strong { flex: 1 1 160px; overflow-wrap: anywhere; }
+        .library-download-status { font-size: 13px; }
+        .library-download progress { flex-basis: 100%; width: 100%; }
+        .library-select { flex-shrink: 0; min-width: 24px; min-height: 24px; }
+        .library-files { width: 100%; }
+        .library-file { display: flex; align-items: center; gap: 8px; padding: 5px; overflow-wrap: anywhere; }
+        .library-card:has(.library-files) { flex-wrap: wrap; }
         /* «Мої книги» у вікні бібліотеки: обкладинки й той самий барабан, що на стартовому екрані (js/book-shelf.js). */
         #library-list.shelf-drum { scrollbar-width: none; --fade-top: 0px; --fade-bottom: 0px;
             -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%);
@@ -2425,30 +2435,30 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=1c80467ecb80"></script>
+    <script src="js/core.js?v=ee36ed3849fb"></script>
     <script src="js/lang-detect.js?v=5690558f59cc"></script>
     <script src="js/local-speech.js?v=3c6738acab5e"></script>
     <script src="js/tts.js?v=24e28a57806a"></script>
-    <script src="js/selection.js?v=6a45bc305fb1"></script>
+    <script src="js/selection.js?v=84c1930c64d4"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
     <script src="js/navigation.js?v=c9d54288e58a"></script>
-    <script src="js/pdf-zoom-pan.js?v=c2233b957e5a"></script>
+    <script src="js/pdf-zoom-pan.js?v=2c20d3b84752"></script>
     <script src="js/ui-tooltip.js?v=456649d2a3d0"></script>
-    <script src="js/translation.js?v=1d0fed8bb179"></script>
+    <script src="js/translation.js?v=2925232e7629"></script>
     <script src="js/dictionaries.js?v=a8f7f2bcfc69"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
-    <script src="js/grammar-svo.js?v=d480e2202ddf"></script>
+    <script src="js/grammar-svo.js?v=cca5ba0e66aa"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
     <script src="js/grammar-rules.js?v=cdddc9a470fc"></script>
-    <script src="js/ai-client.js?v=ae58eb856385"></script>
+    <script src="js/ai-client.js?v=9452e4cd46e2"></script>
     <script src="js/practice-session.js?v=276c4226546f"></script>
-    <script src="js/practice-worksheet.js?v=cca1a85581f5"></script>
+    <script src="js/practice-worksheet.js?v=8f514e294034"></script>
     <script src="js/dictation.js?v=f8b1e587d988"></script>
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-dict-catalog.js?v=16288e0c6804"></script>
@@ -2461,22 +2471,24 @@
     <script src="js/pdf-crop.js?v=478d28ec89bb"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
-    <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
+    <script src="js/pdf-continuous.js?v=27e38d441df2"></script>
     <script src="js/pdf-contrast.js?v=b98318b19203"></script>
-    <script src="js/pdf-render.js?v=1ea77bfd4182"></script>
+    <script src="js/publication-files.js?v=fc9d7045fe37"></script>
+    <script src="js/pdf-render.js?v=ff46a3606dc9"></script>
     <script src="js/book-audio.js?v=b8af6790a42c"></script>
     <script src="js/book-speech.js?v=d745dd4b6dc8"></script>
     <script src="js/formats.js?v=17d78fa0f7d6"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=1a9cd97207fa"></script>
-    <script src="js/book-shelf.js?v=e2c7895176e5"></script>
+    <script src="js/library-queue.js?v=6ce14022aee1"></script>
+    <script src="js/library.js?v=470439275805"></script>
+    <script src="js/book-shelf.js?v=81d40fa40727"></script>
     <script src="js/scanner.js?v=1cfd10be8932"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
     <script src="js/developer.js?v=67c700255062"></script>
-    <script src="js/main.js?v=aee6926a2cb8"></script>
+    <script src="js/main.js?v=06c0272e7463"></script>
     <script src="js/pwa-lifecycle.js?v=d2987066ddd8"></script>
-    <script src="js/i18n-es.js?v=e46273a9b8b9"></script>
+    <script src="js/i18n-es.js?v=36d0a596c921"></script>
 </body>
 </html>

@@ -224,6 +224,7 @@ function stretchStalePdfPageContent(w, width, height) {
 
 function relayoutContinuousPdfAtScale(explicitAnchor) {
     if (!pdfContinuousReady) return;
+    if (state.pdfFit === 'width') state.pdfScale = 1;
     if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
     const anchor = explicitAnchor && pdfPageWrappers[explicitAnchor.page] ? explicitAnchor : pdfAnchor();
     pdfSuppressActiveTracking = true;
