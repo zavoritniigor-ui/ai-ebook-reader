@@ -9,7 +9,6 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex, local | `feat/practice-selection-tense-timeline` | `js/translation.js`, `js/practice-worksheet.js`, `js/grammar-svo.js`, French tense layout metadata in `js/core.js`; focused tests; generated hashes only in shell | working | 2026-11-10 |
 | Antigravity | `fix/ba-restart-single-track` | `js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
 | Codex, cloud | `feat/separate-scans-shelf` | `js/book-shelf.js`, `js/scanner.js`, `tests/book_shelf_browser.py`, `tests/scanner_browser.py`, `ARCHITECTURE.md`; shelf CSS and generated hashes | working | current session |
@@ -18,11 +17,11 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 
 ## Codex — Practice selection and French tense timeline (2026-11-10)
-- Branch `feat/practice-selection-tense-timeline`, worktree `../wt-practice-timeline`; PR pending. Implementation and local validation complete; preparing commit/push.
+- Branch `feat/practice-selection-tense-timeline`, worktree `../wt-practice-timeline`; PR [#388](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/388). Implementation and local validation complete; no further source edits planned.
 - Practice mouse/pen drags select generated words across clickable targets and sentence/story rows; plain target clicks still focus Grammar. Translation and highlights exclude sentence action icons and expanded translations. Native target selection retains handles; pen touch events are blocked only while selecting.
 - French controls: past forms left, Présent centered initially/on resize, Futur simple right; moods stay separate. Soft theme-aware shades deepen away from the center, all labels meet AA in the three themes. Default tense lookup and other languages are preserved.
 - Final local PASS: Practice selection, timeline, panel translation, sentence actions, AI contract (including the real PDF acceptance), PDF UX and learning UX; syntax, app-shell and CI coverage. Related Practice reading, Grammar redesign/French/lookup and legacy Practice also passed. Existing label checks compare the complete French set without imposing the old visual order; the speech test now uses `original` and asserts the exact spoken word.
-- Next: finish gates, PR/exact-head CI, merge/main CI, production checks, cleanup. Physical Android stylus acceptance remains an owner check.
+- Delivery and CI are tracked in PR #388. No uncommitted work is planned after the handoff commit. Next owner check: Practice selection with the physical Android stylus and the French tense strip in the preferred theme.
 
 ## Claude Code — the book's own list of its recordings (2026-11-07) — MERGED (PR #379, main `ed3063f`)
 - Rules §6.4 of `docs/agents/book_audio_rules.md`; the code is in `js/book-audio.js`; the test is `tests/book_audio_annex_browser.py`
