@@ -151,7 +151,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     pdfContinuousReady = false;
     pdfSuppressActiveTracking = false;
     state.activeSelectionAnchor = null;
-    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
+    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor(true);
     clearTimeout(bookmarkSaveTimer);
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
     if (pdfPageObserver) { pdfPageObserver.disconnect(); pdfPageObserver = null; }
