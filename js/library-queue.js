@@ -21,7 +21,7 @@ function libraryBookId(book) {
 function buildLibraryQueue(box) {
     const batch = document.createElement('button'); batch.type = 'button'; batch.id = 'library-batch'; batch.dataset.i18n = 'libBatch'; batch.textContent = t('libBatch'); batch.disabled = true;
     batch.onclick = () => { for (const book of librarySelection.values()) enqueueLibraryBook(book); };
-    const queue = document.createElement('section'); queue.id = 'library-downloads'; queue.hidden = true; queue.setAttribute('aria-label', t('libQueue'));
+    const queue = document.createElement('section'); queue.id = 'library-downloads'; queue.hidden = true; queue.dataset.i18nAria = 'libQueue'; queue.setAttribute('aria-label', t('libQueue'));
     box.append(batch, queue);
 }
 function librarySelectControl(book) {

@@ -108,7 +108,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 ## Active Agent Worktrees & Tasks
 - **Codex — PDF and large publications (2026-11-11)** (branch `fix/pdf-large-publications`, worktree `../wt-pdf-large-publications`; implementation `95831fd`; [PR #389](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/389)):
   - High-risk fixes: readable sidebar fit, complete long translations, continuous newspaper selection/repeated touch drags, >300 MiB PDFs, series/issue batch downloads with independent retries. `ARCHITECTURE.md` maps the new modules.
-  - All functional changes are committed; no unrelated work in this task worktree. PR #389 is the delivery record for exact-head CI, merge and resulting main workflow.
+  - PR #389 is the delivery record for exact-head CI, merge and resulting main workflow. Initial full CI confirmed the large-file scenarios but caught missing Spanish queue labels; the follow-up adds every label and keeps the queue's accessible name localised. No unrelated work in this task worktree.
   - Confirmed local browser validation at 800×1280: three 301 MiB downloads, injected failure/individual retry, reload/reopening every saved issue, thumbnail navigation and repeated sidebar toggles, full popup scrolling, and real forward/reverse touch drags through multiple paragraphs.
   - Local gates passed: PDF/learning, large-publication, scan/workspace/visited/bilingual/memory, library/shelf, translation/cache/offline, AI provider, proxy and migration suites; all-JS syntax, app-shell versions and CI suite coverage.
   - Next device check: owner verifies the original publications on the physical tablet. Large PDF opening is incremental; existing EPUB/DOCX archive security limits remain enforced.
