@@ -1103,10 +1103,12 @@ function ensureGrammarTimelineStyles() {
     document.head.appendChild(style);
 }
 
-function renderGrammarControlsBar(langCode) {
+function renderGrammarControlsBar(langCode, { preserveScroll = false } = {}) {
     const bar = document.getElementById('grammar-controls-bar');
     if (!bar) return;
-    const oldScroll = bar.dataset.timelineLang === langCode ? bar.querySelector('.grammar-time-scroll')?.scrollLeft : undefined;
+    const previous = bar.querySelector('.grammar-time-scroll');
+    const oldScroll = preserveScroll && bar.dataset.timelineLang === langCode && previous?.dataset.positioned === '1'
+        ? previous.scrollLeft : undefined;
     bar._timelineResizeObserver?.disconnect();
     bar.replaceChildren();
     bar.classList.remove('has-timeline');
@@ -1164,6 +1166,7 @@ function renderGrammarControlsBar(langCode) {
     requestAnimationFrame(() => {
         if (!scroll.isConnected) return;
         if (oldScroll === undefined) centerPresent(); else scroll.scrollLeft = oldScroll;
+        scroll.dataset.positioned = '1';
     });
     let width = scroll.clientWidth;
     bar._timelineResizeObserver = new ResizeObserver(() => {
@@ -1593,7 +1596,7 @@ function presentGrammarAnalysis(analysis, langCode) {
 
 async function selectGrammarTense(tenseId, tenseLabel, langCode) {
     grammarContext.activeTenseId = tenseId;
-    renderGrammarControlsBar(langCode);
+    renderGrammarControlsBar(langCode, { preserveScroll: true });
     const focused = grammarContext.focused;
     if (!focused || focused.pos !== 'verb') return; // nothing focused yet — just remember the choice
     await fetchVerbParadigm(focused, langCode, tenseId, tenseLabel);
