@@ -162,8 +162,8 @@ check('14d with neither a query nor a genre the hint asks for one', "document.ge
 
 # ---- Internet Archive (third source: PDF / EPUB) ----
 c.js("""(() => { window.__iaReqs = []; window.__opened = null; const prev = window.fetch;
-  const files = { kobzar_1889: {scan: true, files: [{name: 'kobzar_1889.epub', format: 'EPUB', size: 31e6}, {name: 'kobzar_1889_text.pdf', format: 'Additional Text PDF', size: 2000}]},
-                  modern_book: {scan: false, files: [{name: 'modern.pdf', format: 'Text PDF', size: 900}, {name: 'modern.epub', format: 'EPUB', size: 1200}]},
+  const files = { kobzar_1889: {scan: true, files: [{name: 'kobzar_1889.epub', format: 'EPUB', size: 31e6}, {name: 'kobzar_1889_text.pdf', format: 'Additional Text PDF', size: 13}]},
+                  modern_book: {scan: false, files: [{name: 'modern.pdf', format: 'Text PDF', size: 900}, {name: 'modern.epub', format: 'EPUB', size: 12}]},
                   huge_scan: {scan: true, files: [{name: 'huge.pdf', format: 'Text PDF', size: 400 * 1048576}]} };
   window.fetch = async (url, opts) => { url = String(url);
     if (url.includes('op=ia-')) { __iaReqs.push(decodeURIComponent(url));
@@ -192,7 +192,13 @@ check('17 a scanned book opens as its text PDF (not the OCR EPUB)', "!!__opened 
 c.js("window.__opened = null; document.querySelectorAll('#library-list .library-card')[1].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
 check('18 a born-digital book opens as EPUB', "!!__opened && __opened.name === 'Modern.epub' && __opened.type === 'application/epub+zip'")
 c.js("window.__opened = null; openLibrary(); document.querySelectorAll('#library-list .library-card')[2].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
-check('19 a file over 300 MB is not downloaded; the reader is told why', "__opened === null && !__iaReqs.some(r => r.includes('name=huge.pdf')) && document.getElementById('library-status').textContent.includes('400')")
+check('19 metadata over 300 MB permits downloading, but an incomplete body is rejected clearly', "__opened === null && __iaReqs.some(r => r.includes('name=huge.pdf')) && document.getElementById('library-status').textContent === t('publicationIncomplete')")
+c.js("document.querySelectorAll('#library-list .library-card')[0].querySelector('.library-actions').lastElementChild.click(); 1"); time.sleep(.5)
+check('19b an archive item exposes its individual issue/volume files for explicit selection',
+      "document.querySelectorAll('#library-list .library-card .library-files .library-select').length===2 && libraryBookId({ia:true,id:'set',file:{name:'one.pdf'}})!==libraryBookId({ia:true,id:'set',file:{name:'two.pdf'}})")
+c.js("document.querySelectorAll('#library-list .library-card .library-files .library-select')[1].click(); document.getElementById('library-batch').click(); 1"); time.sleep(1)
+check('19c a single explicitly selected file is downloaded to My books, independently of Read',
+      "!libraryQueueRunning && libraryDownloads.size===1 && [...libraryDownloads.values()][0].state==='saved' && [...libraryDownloads.values()][0].book.file.name==='kobzar_1889_text.pdf'")
 check('20 the Internet Archive choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'archive' && f.iaLang === 'ukr'; })()")
 
 # ---- Library of Congress: its digitised books, i.e. the library_of_congress collection of Internet Archive (loc.gov itself

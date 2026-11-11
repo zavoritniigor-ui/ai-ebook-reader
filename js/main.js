@@ -202,11 +202,8 @@ els.askSendBtn.onclick = () => {
 els.askInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') els.askSendBtn.click(); });
 
 // ПАРСЕРИ ФОРМАТІВ
-// Стеля розміру файла ДО будь-якого парсингу: жоден із форматів нижче (EPUB/ZIP,
-// PDF, DOCX, TXT) сам по собі розмір не перевіряє, а всі вони зрештою читають
-// файл цілком у пам'ять (file.arrayBuffer()/file.text()). Без цієї перевірки
-// випадково чи навмисно підсунутий файл на кілька гігабайт міг би підвісити
-// вкладку — особливо помітно на планшеті з обмеженою пам'яттю.
+// Reflowable formats still use bounded whole-file parsers/ZIP validation.
+// PDFs use disk-backed byte ranges (pdf-render.js), so they have no 300 MiB cap.
 const MAX_BOOK_FILE_BYTES = 300 * 1024 * 1024;
 // Єдина точка входу "відкрити книгу файлом" — скид усього стану читання й
 // диспетчер форматів за розширенням, окремо від самого обробника <input
@@ -214,7 +211,7 @@ const MAX_BOOK_FILE_BYTES = 300 * 1024 * 1024;
 async function openBookFile(file) {
     if (!file) return;
     stopDictation(); stopOnboarding();
-    if (file.size > MAX_BOOK_FILE_BYTES) { showReaderError(new Error(t('fileTooLarge'))); return; }
+    if (file.size > MAX_BOOK_FILE_BYTES && !/\.pdf$/i.test(file.name || '')) { showReaderError(new Error(t('fileTooLarge'))); return; }
     const epoch = ++readerEpoch.book; ++readerEpoch.render;
     clearTimeout(wheelZoomTimer); clearTimeout(resizeTimer);
     clearLongPress(); clearTimeout(touchSelTimer);

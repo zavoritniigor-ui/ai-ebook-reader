@@ -133,6 +133,20 @@ document.addEventListener('click', e => {
 document.addEventListener('scroll', clearAlignmentFlash, true);
 window.addEventListener('resize', clearAlignmentFlash);
 
+// The same full-source contract applies to browser/device/offline engines,
+// some of which otherwise silently trim their input to 2,000/4,000 chars.
+async function translateCompleteSelection(text, translate, signal) {
+    const translated = [];
+    for (const chunk of translationChunks(text)) {
+        if (signal?.aborted) return null;
+        const result = await translate(chunk);
+        if (!result) return null;
+        translated.push(result);
+    }
+    if (signal?.aborted) return null;
+    return translated.join('\n\n');
+}
+
 async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpContext = null, helpSource = null) {
     const cleanText = text.trim(); if (!cleanText) return;
     // A bilingual PDF drag's own study-language-only text (js/selection.js), if any — read and
@@ -309,7 +323,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // Переклад слова тепер залежить від речення, тому в ключ кешу входить і контекст:
     // "fait" у різних реченнях — це різні значення, і одне не має підміняти інше.
     const ctxKey = isMultiWord ? (selectionContext ? '@' + selectionContext.slice(0, 80).toLowerCase() : '') : '@' + (contextSentence || '').slice(0, 80).toLowerCase();
-    const cacheKey = srcCode + '>' + state.targetLang + '|' + (isMultiWord ? cleanText : cleanText.toLowerCase()) + ctxKey;
+    const cacheKey = (isMultiWord ? 'complete-v2|' : '') + srcCode + '>' + state.targetLang + '|' + (isMultiWord ? cleanText : cleanText.toLowerCase()) + ctxKey;
     const myLookup = ++state.lookupToken;   // щоб пізня відповідь не перебила новий тап
     // Free dictionaries for a word, by themselves (js/dictionaries.js): asked at once, beside the translation -- never after
     // it (the dictionary meanings from machine translation can take long or never answer).
@@ -337,7 +351,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         // переклад на комп'ютері практично ніколи не вмикався.
         let aiDone = false;
         if (!isMultiWord) {
-            waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 8000).then(local => {
+            waitForResult(translateCompleteSelection(cleanText, part => translateLocally(part, srcCode, targetLang), task.signal), task.signal, 8000).then(local => {
                 if (!local || aiDone || myLookup !== state.lookupToken || !task.current()) return;
                 els.ttTranslation.innerHTML = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
                 const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
@@ -350,7 +364,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         const previewTimer = setTimeout(async () => {
             // a word: its meaning in this sentence (js/offline-translate.js offlineTranslateWord), a phrase: as it is
             const word = !isMultiWord ? await (previewWord = offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal)) : null;
-            const local = word ? null : isMultiWord ? await (previewSentence = offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal)) : null;   // with the pack's dictionary, if any
+            const local = word ? null : isMultiWord ? await (previewSentence = translateCompleteSelection(cleanText, part => offlineTranslateSentence(part, srcCode, targetLang, task.signal), task.signal)) : null;   // with the pack's dictionary, if any
             if (!(word || local) || aiDone || myLookup !== state.lookupToken || !task.current()) return;
             els.ttTranslation.innerHTML = word ? offlineTrWordHtml(word) : escapeHtml(local) + ' <span class="tt-note">⌂</span>';
             const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
@@ -400,13 +414,13 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             // перекладає локальна модель Chrome на пристрої (⌂), а де її нема (Android) — встановлений офлайн-пакет; якщо немає й його —
             // показуємо причину.
             let local = null, mark = '⌂';
-            try { local = await waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 20000); } catch (e) { if (e && e.name === 'AbortError') return; }
+            try { local = await waitForResult(translateCompleteSelection(cleanText, part => translateLocally(part, srcCode, targetLang), task.signal), task.signal, 20000); } catch (e) { if (e && e.name === 'AbortError') return; }
             if (local) quality = 'local';
             else {
                 // The AI on the device (js/device-llm.js) sees the context and translates better than the offline pack, which is the last resort.
-                try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, selectionContext, task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
+                try { local = await translateCompleteSelection(cleanText, part => deviceLlmTranslate(part, srcCode, targetLang, selectionContext, task.signal), task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
                 if (local) { quality = 'device'; mark = t('dlMark'); }
-                else if ((local = await (previewSentence || offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal)))) quality = 'device';
+                else if ((local = await (previewSentence || translateCompleteSelection(cleanText, part => offlineTranslateSentence(part, srcCode, targetLang, task.signal), task.signal)))) quality = 'device';
             }
             if (myLookup !== state.lookupToken || !task.current()) return;
             if (local) html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`;
@@ -802,12 +816,12 @@ function translatePanelPoint(e, root, { keepNative = false } = {}) {
     if (selection?.rangeCount && !selection.isCollapsed) {
         const selected = selection.getRangeAt(0);
         if (root.contains(selected.startContainer) && root.contains(selected.endContainer)) {
-            range = selected.cloneRange(); text = range.toString().trim().slice(0, AI_PROMPT_TEXT_MAX);
+            range = selected.cloneRange(); text = range.toString().trim();
         }
     }
     if (control && !(range && root.id === 'practice-panel' && control.matches('.practice-target'))) return;
     const practiceParts = range && root.id === 'practice-panel' ? practiceTextRanges(range, root) : [];
-    if (practiceParts.length) text = practiceParts.map(part => part.toString()).join(' ').trim().slice(0, AI_PROMPT_TEXT_MAX);
+    if (practiceParts.length) text = practiceParts.map(part => part.toString()).join(' ').trim();
     // A displayed conjugated form/cell is a useful phrase, not separate words.
     const phrase = e.target.closest('.verb-forme, .grammar-grid-value, .grammar-focus-pattern, td');
     if (!text && phrase && root.contains(phrase) && phrase.textContent.trim().length <= 120) {

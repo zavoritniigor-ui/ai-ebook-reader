@@ -15,27 +15,35 @@
 
 async function initPdf(file, epoch = readerEpoch.book) {
     if (!window.pdfjsLib) throw new Error('Не завантажено бібліотеку PDF. Перевірте з’єднання та оновіть сторінку.');
-    // Track the file-read phase too, before PDF.js has a loading task to destroy.
-    let cancelled = false;
-    let data;
-    const reading = { destroy: async () => { cancelled = true; } };
-    pdfTasks.loading = reading;
-    try { data = await file.arrayBuffer(); }
-    finally { if (pdfTasks.loading === reading) pdfTasks.loading = null; }
-    if (cancelled || epoch !== readerEpoch.book) return;
     if (typeof resetPdfPageLabels === 'function') resetPdfPageLabels();
-    if (typeof pdfContrastReset === 'function') pdfContrastReset();   // рівні попередньої книги до цієї не стосуються
-    // isEvalSupported прибрано разом з переходом на PDF.js 6.x: єдиний код, що колись
-    // використовував eval (PostScriptCompiler для PDF-функцій), сама бібліотека видалила
-    // як мертвий — тепер eval у PDF.js не використовується взагалі, і цей прапорець
-    // нізвідки не читається (тож заборона eval гарантована безумовно, без опції).
-    // PDF.js 6 moved JPEG2000, JBIG2 and CCITT decoding into separate files.
-    // Without this directory the worker resolves failed image resources to null,
-    // so page.render() can succeed with a completely white scanned page.
-    const loading = pdfjsLib.getDocument({
-        data,
-        wasmUrl: new URL('vendor/pdfjs-6.3.289/wasm/', document.baseURI).href
-    });
+    if (typeof pdfContrastReset === 'function') pdfContrastReset();
+    const options = { wasmUrl: new URL('vendor/pdfjs-6.3.289/wasm/', document.baseURI).href };
+    // A Blob/File is already backed by disk. Ask only for the byte ranges PDF.js
+    // needs instead of copying a large publication into one contiguous buffer.
+    if (file.size > 16 * 1024 * 1024) {
+        let cancelled = false;
+        const range = new pdfjsLib.PDFDataRangeTransport(file.size, new Uint8Array(), true);
+        range.requestDataRange = (begin, end) => {
+            file.slice(begin, end).arrayBuffer().then(data => {
+                if (!cancelled && epoch === readerEpoch.book) range.onDataRange(begin, new Uint8Array(data));
+            }).catch(err => {
+                if (!cancelled && epoch === readerEpoch.book) {
+                    showReaderError(err);
+                    loading.destroy().catch(() => {});
+                }
+            });
+        };
+        range.abort = () => { cancelled = true; };
+        Object.assign(options, { range, rangeChunkSize: 256 * 1024, disableAutoFetch: true, disableStream: true });
+    } else {
+        let cancelled = false;
+        const reading = { destroy: async () => { cancelled = true; } };
+        pdfTasks.loading = reading;
+        try { options.data = await file.arrayBuffer(); }
+        finally { if (pdfTasks.loading === reading) pdfTasks.loading = null; }
+        if (cancelled || epoch !== readerEpoch.book) return;
+    }
+    const loading = pdfjsLib.getDocument(options);
     pdfTasks.loading = loading;
     let doc;
     try { doc = await loading.promise; }
