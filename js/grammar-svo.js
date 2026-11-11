@@ -1078,22 +1078,98 @@ function renderGrammarModeBar(langCode) {
     if (typeof renderGrammarLookupLabels === 'function') renderGrammarLookupLabels();
 }
 
+function ensureGrammarTimelineStyles() {
+    if (document.getElementById('grammar-timeline-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'grammar-timeline-styles';
+    style.textContent = `
+        .grammar-controls-bar.has-timeline { display: block; min-width: 0; }
+        .grammar-time-scroll { width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 4px; }
+        .grammar-time-rail { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; width: max-content; min-width: 100%; position: relative; padding: 6px 0; }
+        .grammar-time-rail::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--border-color); pointer-events: none; }
+        .grammar-time-group { display: flex; align-items: center; gap: 6px; }
+        .grammar-time-group[data-time="past"] { justify-content: flex-end; }
+        .grammar-time-group[data-time="future"] { justify-content: flex-start; }
+        .grammar-time-rail button[data-time] { position: relative; height: 36px; flex-shrink: 0; white-space: nowrap; padding: 0 12px; color: var(--text-color);
+            background: color-mix(in srgb, var(--time-color) var(--time-tint), var(--panel-bg));
+            border-color: color-mix(in srgb, var(--time-color) 28%, var(--border-color)); }
+        .grammar-time-rail button[data-time="past"] { --time-color: color-mix(in srgb, var(--accent-color) 65%, #8b78b5); }
+        .grammar-time-rail button[data-time="present"] { --time-color: var(--accent-color); font-weight: 700; }
+        .grammar-time-rail button[data-time="future"] { --time-color: color-mix(in srgb, var(--accent-color) 30%, #8d9d72); }
+        .grammar-time-rail button[data-time]:hover { box-shadow: inset 0 0 0 1px var(--time-color); }
+        .grammar-time-rail button[data-time].active { color: var(--text-color); font-weight: 700; border-color: var(--accent-color); box-shadow: inset 0 0 0 1px var(--accent-color); }
+        .grammar-mood-controls { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; }
+    `;
+    document.head.appendChild(style);
+}
+
 function renderGrammarControlsBar(langCode) {
     const bar = document.getElementById('grammar-controls-bar');
     if (!bar) return;
-    bar.innerHTML = '';
-    if (grammarContext.mode === 'adjectives') return; // no tense/mood controls for adjectives (section 5)
-    if (!grammarContext.analysis && !grammarContext.focused) return; // nothing to act on yet / stale language cleared
+    const oldScroll = bar.dataset.timelineLang === langCode ? bar.querySelector('.grammar-time-scroll')?.scrollLeft : undefined;
+    bar._timelineResizeObserver?.disconnect();
+    bar.replaceChildren();
+    bar.classList.remove('has-timeline');
+    delete bar.dataset.timelineLang;
+    if (grammarContext.mode === 'adjectives') return;
+    if (!grammarContext.analysis && !grammarContext.focused) return;
     const cfg = grammarConfigFor(langCode);
-    cfg.verb.tenses.forEach(tense => {
+    function makeButton(tense) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = tense.label;
         btn.dataset.tenseId = tense.id;
-        btn.classList.toggle('active', grammarContext.activeTenseId === tense.id);
+        const active = grammarContext.activeTenseId === tense.id;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', String(active));
         btn.onclick = () => selectGrammarTense(tense.id, tense.label, langCode);
-        bar.appendChild(btn);
+        return btn;
+    }
+    const timeline = cfg.verb.timeline;
+    if (!timeline) { cfg.verb.tenses.forEach(tense => bar.appendChild(makeButton(tense))); return; }
+    ensureGrammarTimelineStyles();
+    bar.classList.add('has-timeline');
+    bar.dataset.timelineLang = langCode;
+    const scroll = document.createElement('div');
+    scroll.className = 'grammar-time-scroll'; scroll.tabIndex = 0;
+    scroll.setAttribute('role', 'group'); scroll.setAttribute('aria-label', timeline.label);
+    scroll.title = timeline.label;
+    const rail = document.createElement('div'); rail.className = 'grammar-time-rail';
+    const placed = new Set();
+    for (const side of ['past', 'present', 'future']) {
+        const group = document.createElement('div'); group.className = 'grammar-time-group'; group.dataset.time = side;
+        const ids = timeline[side];
+        ids.forEach((id, index) => {
+            const tense = cfg.verb.tenses.find(t => t.id === id);
+            if (!tense) return;
+            placed.add(id);
+            const button = makeButton(tense);
+            button.dataset.time = side;
+            const distance = side === 'past' ? ids.length - index : side === 'present' ? 0 : index + 1;
+            button.style.setProperty('--time-tint', (10 + distance * 4) + '%');
+            group.appendChild(button);
+        });
+        rail.appendChild(group);
+    }
+    scroll.appendChild(rail); bar.appendChild(scroll);
+    const moods = document.createElement('div'); moods.className = 'grammar-mood-controls';
+    cfg.verb.tenses.filter(tense => !placed.has(tense.id)).forEach(tense => moods.appendChild(makeButton(tense)));
+    if (moods.childElementCount) bar.appendChild(moods);
+    function centerPresent() {
+        const present = rail.querySelector('[data-tense-id="' + timeline.present[0] + '"]');
+        if (!present) return;
+        const point = present.getBoundingClientRect(), viewport = scroll.getBoundingClientRect();
+        scroll.scrollLeft += point.left + point.width / 2 - viewport.left - viewport.width / 2;
+    }
+    requestAnimationFrame(() => {
+        if (!scroll.isConnected) return;
+        if (oldScroll === undefined) centerPresent(); else scroll.scrollLeft = oldScroll;
     });
+    let width = scroll.clientWidth;
+    bar._timelineResizeObserver = new ResizeObserver(() => {
+        if (scroll.clientWidth !== width) { width = scroll.clientWidth; centerPresent(); }
+    });
+    bar._timelineResizeObserver.observe(scroll);
 }
 
 // Main list: groups detected occurrences by lemma so a repeated lemma across the
