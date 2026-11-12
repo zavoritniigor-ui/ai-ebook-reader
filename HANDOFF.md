@@ -9,7 +9,8 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex, local delivery | `fix/iphone-word-tap` | existing PR #373 selection merge, iPhone/bilingual tests, CI lists; generated hashes | owner requested completion; working | 2026-11-12 |
+| Codex, local delivery | `fix/iphone-word-tap` | existing PR #373 selection merge, iPhone/bilingual tests, CI lists; generated hashes | PR #373; main #374 integrated, local gates PASS, exact-head CI next | 2026-11-12 |
+
 | Codex, local | `fix/pdf-sidebar-reflow` | `js/navigation.js`, `js/pdf-continuous.js`, `js/pdf-zoom-pan.js`, `tests/large_publications_browser.py`; generated hashes | PR #390; implementation complete, CI scheduling blocked | 2026-11-11 |
 | Antigravity | `fix/ba-restart-single-track` | `js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
@@ -200,4 +201,8 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 ## Codex — delivery of PRs #391, #374, #373 (2026-11-12)
 - Owner requested completion and normal merge of all three PRs. PR #373 is being integrated in `../wt-deliver-373`; existing unrelated dirty worktrees are preserved.
 - Confirmed #373 CI failure: pending-provider assertion received an active local preview (`річка ⌂`), not the loading label. Isolate mocked translation providers in the touch test; retain all gesture assertions. Preserve main’s detached-target PDF touch ownership and share/title UI during integration.
-- Local PASS after integration: single-word translation then iPhone tap, bilingual selection, visited PDF drags, PDF UX, learning UX, app sharing/title, large publications and print/repair suites; application/worker syntax, hashes and 155-suite CI coverage. No unrelated work included. Next: exact-head CI, final review, normal merge, main CI and production smoke.
+- Local PASS after integration: single-word translation then iPhone tap, bilingual selection, visited PDF drags, PDF UX, learning UX, app sharing/title, large publications and print/repair suites; application/worker syntax, hashes and 155-suite CI coverage. No unrelated work included. Previous head `5146474` passed hosted CI [43219870244](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43219870244); latest main #374 is now integrated and iPhone tap, bottom-row/page-arrow, PDF UX and learning UX gates pass again. Next: new exact-head CI, final review, normal merge, main CI and production smoke.
+
+## Codex — iridescent bottom reading bar delivery (2026-11-12)
+- PR #374 merged as `364d940a83e1234403d439cb4ebee7139b013885` after exact-head CI [43219553679](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43219553679) passed. Main CI [43225399563](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43225399563) and production verification are pending; preserve its merged CSS when integrating other work.
+- Local PASS: `reading_bottom_row_browser.py`, `page_arrows_browser.py`, application/worker syntax, app-shell hashes, all 154 CI suite invocations. Next: exact-head CI, final review, normal merge, main CI and production smoke.
