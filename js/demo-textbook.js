@@ -155,7 +155,9 @@ async function demoRunRoute() {
             demoTour.step = 1; demoSetStep(t('demoStepCover')); return;
         }
         if (demoTour.step === 1) {
-            demoSetPage(2); await demoSleep(900); demoTour.step = 2; demoSetStep(t('demoStepPage')); return;
+            demoSetPage(2); await demoSleep(500);
+            document.querySelector('.pdf-page-wrapper[data-page="2"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            await demoSleep(1300); demoTour.step = 2; demoSetStep(t('demoStepPage')); return;
         }
         if (demoTour.step === 2) {
             const target = await demoWaitFor(demoVisibleTextTarget, 12000);
