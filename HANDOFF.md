@@ -10,6 +10,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
 | Codex, local delivery | `feat/demo-textbook` (`../wt-demo-textbook`) | guided demo, real PDF/MP3, reader/PWA integration, `tests/demo_textbook_browser.py`, CI invocation; generated hashes | PR #391; local route and regression gates PASS; exact-head CI next | 2026-11-12 |
+
 | Codex, local | `fix/pdf-sidebar-reflow` | `js/navigation.js`, `js/pdf-continuous.js`, `js/pdf-zoom-pan.js`, `tests/large_publications_browser.py`; generated hashes | PR #390; implementation complete, CI scheduling blocked | 2026-11-11 |
 | Antigravity | `fix/ba-restart-single-track` | `js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
@@ -204,4 +205,8 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 - Local PASS: demo route, PDF UX, learning UX, migration/script order, Spanish UI, PDF ink ownership/storage, PWA online/offline redirect recovery; all application/worker syntax, shell hashes and all 155 CI-suite invocations.
 - Import race: a deterministic pending-PDF test reproduced Exit incorrectly shelving the demo after UI settings were restored. `openBookFile` now captures per-file `isDemo`; the regression also proves normal files still reach My Books.
 - Additional verification: complete route passes at 390×844; screenshots caught/fixed tour-card occlusion. PWA’s shared background/exit switch pauses the demo player. Three-theme bottom-bar screenshots and reduced-motion checks pass in PR #374.
-- Next: exact-head CI, final review, normal merge, main CI and production smoke. Physical tablet/iPhone validation remains the owner’s device check.
+- Latest main #374 is integrated; demo, shelf, bottom-row, PDF UX and learning UX gates pass again. Final push/CI will follow the #373 merge so the tested head includes both earlier PRs. Physical tablet/iPhone validation remains the owner’s device check.
+
+## Codex — iridescent bottom reading bar delivery (2026-11-12)
+- PR #374 merged as `364d940a83e1234403d439cb4ebee7139b013885` after exact-head CI [43219553679](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43219553679) passed. Main CI [43225399563](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43225399563) and production verification are pending; preserve its merged CSS when integrating other work.
+- Local PASS: `reading_bottom_row_browser.py`, `page_arrows_browser.py`, application/worker syntax, app-shell hashes, all 154 CI suite invocations. Next: exact-head CI, final review, normal merge, main CI and production smoke.

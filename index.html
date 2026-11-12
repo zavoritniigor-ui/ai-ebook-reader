@@ -861,10 +861,21 @@
             content: ''; position: fixed; z-index: 94; pointer-events: none; box-sizing: border-box;
             left: calc(var(--row-l) + var(--row-out) - 6px); width: calc(var(--row-w) - 2 * var(--row-out) + 12px);
             bottom: calc(6px + env(safe-area-inset-bottom, 0px)); height: 56px; border-radius: 28px;
-            background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+            background-color: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+            background-image: linear-gradient(110deg, rgba(68,158,255,.26), rgba(79,218,185,.22), rgba(170,124,255,.26), rgba(246,140,191,.24), rgba(68,158,255,.26));
+            background-size: 320% 100%; background-position: 0% 50%;
+            animation: reading-row-shimmer 18s ease-in-out infinite;
             backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
             border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
             box-shadow: 0 12px 32px -12px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.08); }
+        @keyframes reading-row-shimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden])::before {
+                animation: none; background-position: 50% 50%; }
+        }
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode) #page-arrows:not([hidden]) .page-arrow,
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #menu-handle,
         body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #pdf-scrubber.available {
