@@ -84,4 +84,17 @@ next_step(1)
 c.js('demoTour.next.click();demoTour.exit.click();true')
 c.js('new Promise(resolve=>setTimeout(resolve,2300))')
 check('exit cancels pending tour continuation', 'demoTour.root.hidden&&!demoTour.busy&&!state.demoMode&&demoTour.step===0&&state.translateMode===__demoSettings.translate&&__demoErrors.length===0')
+
+# Keep the actual PDF import pending at its completion boundary, then exit.
+# The file's demo identity must survive the restored UI settings.
+c.js("""window.__releaseDemoImport=null;const realDemoInitPdf=initPdf;
+initPdf=async(...args)=>{await realDemoInitPdf(...args);await new Promise(resolve=>__releaseDemoImport=resolve);};
+openDemoTextbook();true""")
+c.wait("typeof __releaseDemoImport==='function'", timeout=35)
+c.js('demoTour.exit.click();__releaseDemoImport();true')
+c.wait('!state.bookOpening', timeout=15)
+check('exiting during PDF import never shelves the demo', 'demoTour.root.hidden&&__demoShelved===0')
+c.js("initPdf=realDemoInitPdf;openBookFile(new File(['Ordinary reader book.'],'normal.txt'));true")
+c.wait('!state.bookOpening', timeout=15)
+check('ordinary book imports still reach My Books', '__demoShelved===1&&!state.demoMode')
 print('ALL DEMO TEXTBOOK CHECKS PASSED', flush=True)
