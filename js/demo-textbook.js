@@ -19,7 +19,9 @@ Object.assign(I18N, {
     demoLoading: { uk: 'Відкриваю справжній PDF…', en: 'Opening the real PDF…', fr: 'Ouverture du vrai PDF…', ru: 'Открываю настоящий PDF…', es: 'Abriendo el PDF real…' },
     demoRunning: { uk: 'Рідер виконує маршрут: тап → переклад → озвучка → розбір → граматика → практика → письмо.', en: 'The reader is running the route: tap → translation → speech → breakdown → grammar → Practice → writing.', fr: 'Le lecteur suit le parcours : mot → traduction → voix → analyse → grammaire → pratique → écriture.', ru: 'Ридер выполняет маршрут: тап → перевод → озвучка → разбор → грамматика → практика → письмо.', es: 'El lector ejecuta la ruta: toque → traducción → voz → análisis → gramática → práctica → escritura.' },
     demoNext: { uk: 'Далі', en: 'Next', fr: 'Suivant', ru: 'Далее', es: 'Siguiente' },
-    demoStepCover: { uk: 'Крок 1. Це перша сторінка підручника. Подивіться на обкладинку, потім натисніть «Далі».', en: 'Step 1. This is the textbook cover. Look at it, then press “Next”.', fr: 'Étape 1. Voici la couverture. Regardez-la, puis appuyez sur « Suivant ».', ru: 'Шаг 1. Это обложка учебника. Посмотрите, затем нажмите «Далее».', es: 'Paso 1. Esta es la portada. Mírala y pulsa «Siguiente».' },
+    demoPause: { uk: 'Пауза', en: 'Pause', fr: 'Pause', ru: 'Пауза', es: 'Pausa' },
+    demoResume: { uk: 'Продовжити', en: 'Resume', fr: 'Reprendre', ru: 'Продолжить', es: 'Reanudar' },
+    demoStepCover: { uk: 'Крок 1. Перша сторінка підручника. Зараз автоматично перейдемо до тексту…', en: 'Step 1. Textbook cover. Moving to the text page automatically…', fr: 'Étape 1. Couverture. Passage automatique à la page de texte…', ru: 'Шаг 1. Обложка учебника. Переходим к тексту…', es: 'Paso 1. Portada. Pasando automáticamente al texto…' },
     demoStepPage: { uk: 'Крок 2. Переходимо до сторінки з текстом і вправами.', en: 'Step 2. We are moving to a page with text and exercises.', fr: 'Étape 2. Nous passons à une page avec du texte et des exercices.', ru: 'Шаг 2. Переходим на страницу с текстом и упражнениями.', es: 'Paso 2. Pasamos a una página con texto y ejercicios.' },
     demoStepWord: { uk: 'Крок 3. Слово підсвічене. Подивіться, де воно, потім натисніть «Далі» — рідер зробить один реальний тап.', en: 'Step 3. The word is highlighted. Look at it, then press “Next” for one real reader tap.', fr: 'Étape 3. Le mot est surligné. Regardez-le, puis appuyez sur « Suivant » pour un vrai toucher.', ru: 'Шаг 3. Слово подсвечено. Посмотрите, затем нажмите «Далее» — ридер сделает один тап.', es: 'Paso 3. La palabra está resaltada. Mírala y pulsa «Siguiente» para un toque real.' },
     demoStepWordResult: { uk: 'Крок 4. Переклад слова відкритий. Натисніть 🔊 у вікні, якщо хочете почути слово, і «Далі», коли переглянете результат.', en: 'Step 4. The word translation is open. Press 🔊 in the popup if you want to hear it, then press “Next”.', fr: 'Étape 4. La traduction du mot est ouverte. Appuyez sur 🔊 si vous voulez l’écouter, puis sur « Suivant ».', ru: 'Шаг 4. Перевод слова открыт. Нажмите 🔊 в окне, затем «Далее».', es: 'Paso 4. La traducción está abierta. Pulsa 🔊 si quieres oírla y luego «Siguiente».' },
@@ -30,7 +32,9 @@ Object.assign(I18N, {
     demoStepPractice: { uk: 'Крок 9. Натискаємо «Практика» окремо. Якщо AI-ключа немає, рідер чесно покаже штатне повідомлення.', en: 'Step 9. We press “Practice” separately. Without an AI key, the reader shows its normal honest message.', fr: 'Étape 9. Nous ouvrons « Pratique » séparément. Sans clé IA, le lecteur affiche son message normal.', ru: 'Шаг 9. Отдельно нажимаем «Практика». Без AI-ключа ридер покажет штатное сообщение.', es: 'Paso 9. Abrimos «Práctica» por separado. Sin clave de IA se muestra el mensaje normal.' },
     demoStepInk: { uk: 'Крок 10. Відкриваємо письмо, показуємо один штрих і залишаємо його на екрані.', en: 'Step 10. We open handwriting, draw one stroke and leave it visible.', fr: 'Étape 10. Nous ouvrons l’écriture, traçons un trait et le laissons visible.', ru: 'Шаг 10. Открываем письмо, рисуем один штрих и оставляем его видимым.', es: 'Paso 10. Abrimos escritura, dibujamos un trazo y lo dejamos visible.' },
     demoStepAudio: { uk: 'Крок 11. Окремо запускаємо аудіо діалогу. Прослухайте кілька секунд.', en: 'Step 11. We start the dialogue audio separately. Listen for a few seconds.', fr: 'Étape 11. Nous lançons séparément l’audio du dialogue. Écoutez quelques secondes.', ru: 'Шаг 11. Отдельно запускаем аудио диалога. Послушайте несколько секунд.', es: 'Paso 11. Iniciamos el audio del diálogo por separado. Escucha unos segundos.' },
-    demoDone: { uk: 'Готово: демо пройшло PDF, переклад, озвучку, граматику, практику та письмо. Натисніть «Діалог», щоб почути файл.', en: 'Done: the demo covered PDF, translation, speech, grammar, Practice and writing. Press “Dialogue” to hear the audio file.', fr: 'Terminé : la démo a couvert le PDF, la traduction, la voix, la grammaire, la pratique et l’écriture. Appuyez sur « Dialogue » pour écouter le fichier.', ru: 'Готово: демо прошло PDF, перевод, озвучку, грамматику, практику и письмо. Нажмите «Диалог», чтобы услышать файл.', es: 'Listo: la demo cubrió PDF, traducción, voz, gramática, práctica y escritura. Pulsa «Diálogo» para oír el archivo.' },
+    demoStepBottomBar: { uk: 'Крок 12. Нижнє меню прокрутки: швидкий перехід по сторінках і налаштування читання.', en: 'Step 12. Bottom scroll bar: quick page navigation and reading controls.', fr: 'Étape 12. Barre inférieure : navigation rapide et contrôles de lecture.', ru: 'Шаг 12. Нижнее меню прокрутки: быстрый переход по страницам и настройки.', es: 'Paso 12. Barra inferior: navegación rápida y controles de lectura.' },
+    demoStepSidebar: { uk: 'Крок 13. Бічне меню: зміст книги, закладки та швидкий доступ до всіх розділів.', en: 'Step 13. Side menu: table of contents, bookmarks and quick access to all sections.', fr: 'Étape 13. Menu latéral : table des matières, signets et accès rapide.', ru: 'Шаг 13. Боковое меню: оглавление, закладки и быстрый доступ к разделам.', es: 'Paso 13. Menú lateral: índice, marcadores y acceso rápido.' },
+    demoDone: { uk: 'Готово: демо пройшло PDF, переклад, озвучку, граматику, практику, письмо, меню прокрутки та бічне меню.', en: 'Done: the demo covered PDF, translation, speech, grammar, Practice, writing, scroll bar and side menu.', fr: 'Terminé : la démo a couvert PDF, traduction, voix, grammaire, pratique, écriture, barre et menu latéral.', ru: 'Готово: демо показало PDF, перевод, озвучку, грамматику, практику, письмо, меню прокрутки и боковое меню.', es: 'Listo: la demo cubrió PDF, traducción, voz, gramática, práctica, escritura, barra y menú lateral.' },
     demoNoTarget: { uk: 'Не знайшов текстовий шар сторінки. Спробуйте ще раз після завантаження.', en: 'The page text layer was not ready. Try again after loading.', fr: 'Le texte de la page n’est pas prêt. Réessayez après le chargement.', ru: 'Текстовый слой страницы ещё не готов. Повторите после загрузки.', es: 'La capa de texto aún no está lista. Inténtalo de nuevo tras la carga.' },
     demoAudioError: { uk: 'Аудіо не відтворилося на цьому пристрої.', en: 'The audio could not play on this device.', fr: 'La lecture audio a échoué sur cet appareil.', ru: 'Аудио не воспроизвелось на этом устройстве.', es: 'No se pudo reproducir el audio en este dispositivo.' }
 });
@@ -42,6 +46,7 @@ const demoTour = {
     copy: document.getElementById('demo-tour-copy'),
     status: document.getElementById('demo-tour-status'),
     next: document.getElementById('demo-tour-next'),
+    pause: document.getElementById('demo-tour-pause'),
     audio: document.getElementById('demo-tour-audio'),
     exit: document.getElementById('demo-tour-exit'),
     player: document.getElementById('demo-tour-player'),
@@ -50,6 +55,9 @@ const demoTour = {
     previousTranslate: false,
     step: 0,
     busy: false,
+    autoplay: false,
+    paused: false,
+    timer: null,
     generation: 0
 };
 
@@ -89,18 +97,47 @@ function demoRestoreSettings() {
     if (state.translateMode !== demoTour.previousTranslate) els.translateBtn?.click();
     state.demoMode = false;
 }
+function demoClearTimer() {
+    if (demoTour.timer) { clearTimeout(demoTour.timer); demoTour.timer = null; }
+}
+function demoScheduleNext(delayMs = 2400) {
+    demoClearTimer();
+    if (!demoTour.autoplay || demoTour.paused || demoTour.root.hidden) return;
+    const generation = demoTour.generation;
+    demoTour.timer = setTimeout(() => {
+        demoTour.timer = null;
+        if (generation === demoTour.generation && demoTour.autoplay && !demoTour.paused && !demoTour.root.hidden) {
+            demoRunRoute();
+        }
+    }, delayMs);
+}
+function demoShowTapAt(target) {
+    if (!target || typeof target.getBoundingClientRect !== 'function') return;
+    const r = target.getBoundingClientRect();
+    if (!r.width && !r.height) return;
+    const ring = document.createElement('div');
+    ring.className = 'demo-tap-ring';
+    ring.style.left = (r.left + r.width / 2) + 'px';
+    ring.style.top = (r.top + r.height / 2) + 'px';
+    document.body.appendChild(ring);
+    setTimeout(() => ring.remove(), 700);
+}
 function demoShowWelcome() {
+    demoClearTimer();
     demoClearTarget();
+    demoTour.autoplay = false; demoTour.paused = false;
     demoTour.root.classList.remove('demo-active');
     demoTour.root.hidden = false;
     demoSetCopy(t('demoWelcome'));
     demoTour.next.hidden = false; demoTour.next.textContent = t('demoStart');
+    if (demoTour.pause) demoTour.pause.hidden = true;
     demoTour.audio.hidden = false; demoTour.exit.hidden = false;
 }
 function demoShowDone() {
-    demoClearTarget(); demoTour.root.hidden = false;
+    demoClearTimer();
+    demoClearTarget(); demoTour.autoplay = false; demoTour.paused = false; demoTour.root.hidden = false;
     demoSetCopy(t('demoDone'));
-    demoTour.next.hidden = true; demoTour.audio.hidden = false; demoTour.exit.hidden = false;
+    demoTour.next.hidden = true; if (demoTour.pause) demoTour.pause.hidden = true; demoTour.audio.hidden = false; demoTour.exit.hidden = false;
 }
 function demoVisibleTextTarget() {
     const spans = [...els.pages.querySelectorAll('.pdf-text-layer span')].filter(span => {
@@ -111,16 +148,22 @@ function demoVisibleTextTarget() {
         spans.find(s => /bonjour|comment|monsieur|madame/i.test(s.textContent)) || spans[0] || null;
 }
 function demoRealTap(target) {
+    demoShowTapAt(target);
     const r = target.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
     const init = { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, button: 0, buttons: 1, view: window };
     target.dispatchEvent(new MouseEvent('click', init));
 }
-function demoSetStep(text, { next = true } = {}) {
+function demoSetStep(text, { next = true, delay = 2500 } = {}) {
     demoTour.root.classList.add('demo-active');
     demoTour.root.hidden = false;
     demoSetCopy(text, { status: t('demoRunning') });
     demoTour.next.hidden = !next;
     demoTour.next.textContent = t('demoNext');
+    if (demoTour.pause) {
+        demoTour.pause.hidden = !demoTour.autoplay;
+        demoTour.pause.textContent = t(demoTour.paused ? 'demoResume' : 'demoPause');
+    }
+    demoScheduleNext(delay);
 }
 function demoSetPage(page) {
     const range = document.getElementById('pdf-page-range');
@@ -200,9 +243,33 @@ async function demoRunRoute() {
             closeRulesPanel?.(); document.getElementById('btn-ink')?.click(); await demoWaitFor(() => document.querySelector('.pdf-page-wrapper .ink-layer'), 3000); demoDrawInk(); await demoSleep(500); demoTour.step = 10; demoSetStep(t('demoStepInk')); return;
         }
         if (demoTour.step === 10) {
-            document.getElementById('ink-done')?.click(); demoTour.player.src = DEMO_TEXTBOOK_AUDIO; demoTour.player.play().catch(() => {}); await demoSleep(3500); demoTour.step = 11; demoSetStep(t('demoStepAudio')); return;
+            document.getElementById('ink-done')?.click(); demoTour.player.src = DEMO_TEXTBOOK_AUDIO; demoTour.player.play().catch(() => {}); await demoSleep(3500); demoTour.step = 11; demoSetStep(t('demoStepAudio'), { delay: 2600 }); return;
         }
-        demoTour.player.pause(); demoTour.player.currentTime = 0; demoTour.busy = false; demoShowDone();
+        if (demoTour.step === 11) {
+            demoTour.player.pause(); demoTour.player.currentTime = 0;
+            const bottomBar = document.getElementById('bottom-bar') || document.getElementById('pdf-nav') || document.getElementById('pdf-page-range');
+            if (bottomBar) {
+                bottomBar.hidden = false;
+                bottomBar.classList.remove('hidden');
+                demoClearTarget(); demoTour.target = bottomBar; bottomBar.classList.add('demo-tour-target');
+                demoShowTapAt(bottomBar);
+            }
+            demoTour.step = 12; demoSetStep(t('demoStepBottomBar'), { delay: 2800 }); return;
+        }
+        if (demoTour.step === 12) {
+            demoClearTarget();
+            const sidebar = document.getElementById('sidebar');
+            const sidebarBtn = document.getElementById('btn-toc') || document.getElementById('sidebar-toggle');
+            if (sidebarBtn) demoShowTapAt(sidebarBtn);
+            if (sidebar) {
+                sidebar.classList.remove('collapsed');
+                demoTour.target = sidebar; sidebar.classList.add('demo-tour-target');
+            }
+            demoTour.step = 13; demoSetStep(t('demoStepSidebar'), { delay: 2800 }); return;
+        }
+        demoClearTarget();
+        document.getElementById('sidebar')?.classList.add('collapsed');
+        demoTour.busy = false; demoShowDone();
     } catch (error) {
         if (error.name !== 'AbortError') throw error;
     } finally {
@@ -235,8 +302,11 @@ async function openDemoTextbook() {
     }
 }
 function closeDemoTextbook() {
-    demoTour.generation++; demoTour.busy = false;
+    demoClearTimer();
+    demoTour.generation++; demoTour.busy = false; demoTour.autoplay = false; demoTour.paused = false;
     demoClearTarget(); demoTour.root.classList.remove('demo-active'); demoTour.root.hidden = true; demoTour.player.pause(); demoTour.player.currentTime = 0; demoTour.step = 0;
+    if (demoTour.pause) demoTour.pause.hidden = true;
+    document.getElementById('sidebar')?.classList.add('collapsed');
     stopTooltipSpeech?.(); stopGlobalTTS?.(); closeRulesPanel?.();
     if (state.inkMode) document.getElementById('ink-done')?.click();
     els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.remove('expanded');
@@ -246,7 +316,17 @@ function closeDemoTextbook() {
 // Tour controls must not bubble into the reader's outside-popup dismissal.
 demoTour.root.addEventListener('click', e => e.stopPropagation());
 demoTour.root.addEventListener('pointerdown', e => e.stopPropagation());
-demoTour.next.addEventListener('click', demoRunRoute);
+demoTour.next.addEventListener('click', () => {
+    demoClearTimer();
+    if (demoTour.step === 0) { demoTour.autoplay = true; demoTour.paused = false; }
+    demoRunRoute();
+});
+demoTour.pause?.addEventListener('click', () => {
+    demoTour.paused = !demoTour.paused;
+    demoTour.pause.textContent = t(demoTour.paused ? 'demoResume' : 'demoPause');
+    if (demoTour.paused) demoClearTimer();
+    else demoScheduleNext(600);
+});
 demoTour.exit.addEventListener('click', closeDemoTextbook);
 demoTour.audio.addEventListener('click', () => {
     demoTour.player.src = DEMO_TEXTBOOK_AUDIO;

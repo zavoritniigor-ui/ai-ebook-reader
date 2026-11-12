@@ -41,9 +41,11 @@ def next_step(step):
 
 
 check('real PDF stays out of My Books', 'state.pdfDoc.numPages>3&&__demoShelved===0')
-for step in range(1, 12):
+for step in range(1, 14):
     next_step(step)
-    if step == 3:
+    if step == 1:
+        check('autoplay is active with Pause button visible', 'demoTour.autoplay&&!demoTour.pause.hidden')
+    elif step == 3:
         check('text target belongs to the real reader', 'demoTour.target.isConnected&&els.pages.contains(demoTour.target)')
     elif step == 4:
         check('word result remains open', "els.tooltip.style.display==='flex'&&els.ttOriginal.textContent==='salle'&&els.ttTranslation.textContent.includes('переклад')")
@@ -69,6 +71,10 @@ for step in range(1, 12):
         check('bundled dialogue audio is playable', 'Number.isFinite(demoTour.player.duration)&&demoTour.player.duration>0')
         c.js('stopBackgroundActivity();true')
         check('PWA background/exit switch pauses demo audio', 'demoTour.player.paused')
+    elif step == 12:
+        check('bottom reading bar is highlighted', "!!demoTour.target&&demoTour.target.classList.contains('demo-tour-target')")
+    elif step == 13:
+        check('sidebar is opened and highlighted', "!document.getElementById('sidebar').classList.contains('collapsed')")
 
 c.js('demoTour.next.click();true')
 c.wait('!demoTour.busy', timeout=10)
