@@ -228,5 +228,18 @@ check('5e a sentence that wraps from a deeply indented first line is read whole,
       all(sentence_of(i) == want for i in (1, 3, 5, 6)), [sentence_of(i) for i in (1, 3, 5, 6)])
 check('5f ... and the sentences around it are not dragged in', sentence_of(0) == 'The children were happy.' and sentence_of(7) == 'It will be fun.', (sentence_of(0), sentence_of(7)))
 
+# Newspaper content streams can list the two gesture endpoints together, and
+# the middle of the paragraph AFTER them. The short endpoint run looks ordered.
+news = [span('Other', 300, 100, 42, 18), span('organizations', 348, 100, 110, 18),
+        span('representing', 300, 124, 100, 18), span('people', 406, 124, 50, 18),
+        span('with', 300, 148, 36, 18), span('dementia', 342, 148, 75, 18),
+        span('carefully', 300, 172, 70, 18), span('monitored.', 376, 172, 90, 18),
+        span('The', 300, 210, 30, 18), span('Dementia', 336, 210, 75, 18), span('Action', 417, 210, 50, 18)]
+load(news, [0, 1, 8, 9, 10, 2, 3, 4, 5, 6, 7], 300)
+for a, b in ((0, 10), (10, 0)):
+    got = drag(a, b)
+    check('newspaper adjacent DOM endpoints keep every intermediate line, direction ' + str(a),
+          got['shown'] == list(range(11)) and got['text'] == 'Other organizations representing people with dementia carefully monitored. The Dementia Action', got)
+
 check('no application errors', c.js('(window.__errors || []).length === 0'), c.js('window.__errors'))
 print('ALL PDF SCAN SELECTION CHECKS PASSED')

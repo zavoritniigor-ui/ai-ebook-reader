@@ -20,6 +20,9 @@ def check(name, expression):
     print('PASS', name, flush=True)
 
 
+check('ordinary long titles retain their original filenames and bookmark keys', "libraryFileName({title:'Long title '.repeat(25)}) === 'Long title '.repeat(25).slice(0,80).trim()+'.epub'")
+check('issue cards distinguish the supplied series, volume and issue before downloading', "libraryCard({ia:true,id:'series-7',title:'Journal',series:'Science',volume:'12',issue:'7',pdf:true}).querySelector('.library-author').textContent==='Science · Vol. 12 · No. 7 · PDF'")
+
 c.js("""(() => { window.__reqs = []; window.__opened = null; const real = window.fetch.bind(window);
   window.fetch = async (url, opts) => { url = String(url); if (url.startsWith('/api/library')) { __reqs.push(url); return new Response(url.includes('op=file') ? new Blob(['fake epub bytes']) : '', {status: 200}); }
     return real(url, opts); };
@@ -162,8 +165,8 @@ check('14d with neither a query nor a genre the hint asks for one', "document.ge
 
 # ---- Internet Archive (third source: PDF / EPUB) ----
 c.js("""(() => { window.__iaReqs = []; window.__opened = null; const prev = window.fetch;
-  const files = { kobzar_1889: {scan: true, files: [{name: 'kobzar_1889.epub', format: 'EPUB', size: 31e6}, {name: 'kobzar_1889_text.pdf', format: 'Additional Text PDF', size: 2000}]},
-                  modern_book: {scan: false, files: [{name: 'modern.pdf', format: 'Text PDF', size: 900}, {name: 'modern.epub', format: 'EPUB', size: 1200}]},
+  const files = { kobzar_1889: {scan: true, files: [{name: 'kobzar_1889.epub', format: 'EPUB', size: 31e6}, {name: 'kobzar_1889_text.pdf', format: 'Additional Text PDF', size: 13}]},
+                  modern_book: {scan: false, files: [{name: 'modern.pdf', format: 'Text PDF', size: 900}, {name: 'modern.epub', format: 'EPUB', size: 12}]},
                   huge_scan: {scan: true, files: [{name: 'huge.pdf', format: 'Text PDF', size: 400 * 1048576}]} };
   window.fetch = async (url, opts) => { url = String(url);
     if (url.includes('op=ia-')) { __iaReqs.push(decodeURIComponent(url));
@@ -192,7 +195,13 @@ check('17 a scanned book opens as its text PDF (not the OCR EPUB)', "!!__opened 
 c.js("window.__opened = null; document.querySelectorAll('#library-list .library-card')[1].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
 check('18 a born-digital book opens as EPUB', "!!__opened && __opened.name === 'Modern.epub' && __opened.type === 'application/epub+zip'")
 c.js("window.__opened = null; openLibrary(); document.querySelectorAll('#library-list .library-card')[2].querySelector('.btn-primary').click(); 1"); time.sleep(1.5)
-check('19 a file over 300 MB is not downloaded; the reader is told why', "__opened === null && !__iaReqs.some(r => r.includes('name=huge.pdf')) && document.getElementById('library-status').textContent.includes('400')")
+check('19 metadata over 300 MB permits downloading, but an incomplete body is rejected clearly', "__opened === null && __iaReqs.some(r => r.includes('name=huge.pdf')) && document.getElementById('library-status').textContent === t('publicationIncomplete')")
+c.js("document.querySelectorAll('#library-list .library-card')[0].querySelector('.library-actions').lastElementChild.click(); 1"); time.sleep(.5)
+check('19b an archive item exposes its individual issue/volume files for explicit selection',
+      "document.querySelectorAll('#library-list .library-card .library-files .library-select').length===2 && libraryBookId({ia:true,id:'set',file:{name:'one.pdf'}})!==libraryBookId({ia:true,id:'set',file:{name:'two.pdf'}})")
+c.js("document.querySelectorAll('#library-list .library-card .library-files .library-select')[1].click(); document.getElementById('library-batch').click(); 1"); time.sleep(1)
+check('19c a single explicitly selected file is downloaded to My books, independently of Read',
+      "!libraryQueueRunning && libraryDownloads.size===1 && [...libraryDownloads.values()][0].state==='saved' && [...libraryDownloads.values()][0].book.file.name==='kobzar_1889_text.pdf'")
 check('20 the Internet Archive choice and its language are remembered', "(() => { const f = JSON.parse(localStorage.getItem('reader_library_filters')); return f.source === 'archive' && f.iaLang === 'ukr'; })()")
 
 # ---- Library of Congress: its digitised books, i.e. the library_of_congress collection of Internet Archive (loc.gov itself
@@ -214,6 +223,19 @@ check('20e every source has a button with its own icon (loaded), and the active 
          return chips.map(b => b.dataset.source).join() === 'shelf,gutenberg,wikisource,archive,loc,press,bnr,se'
            && chips.filter(b => b.querySelector('img')).every(b => b.querySelector('img').complete && b.querySelector('img').naturalWidth === 64)
            && document.querySelector('#library-chips .library-chip.active').dataset.source === 'loc' && getComputedStyle(document.getElementById('library-source')).display === 'none'; })()""")
+c.js("openLibrary(); 1")
+check('20e2 desktop navigation for library chips: arrow buttons exist, wheel and drag scroll horizontally',
+      """(() => {
+          const chips = document.getElementById('library-chips');
+          const prev = document.querySelector('.library-chips-nav.prev');
+          const next = document.querySelector('.library-chips-nav.next');
+          if (!chips || !prev || !next) return false;
+          const startScroll = chips.scrollLeft;
+          chips.dispatchEvent(new WheelEvent('wheel', { deltaY: 150, bubbles: true, cancelable: true }));
+          const wheeled = chips.scrollLeft > startScroll;
+          next.click();
+          return !!(prev && next && wheeled);
+      })()""")
 c.js("(() => { __iaReqs.length = 0; document.querySelector('#library-chips .library-chip[data-source=press]').click(); return 1; })()"); time.sleep(1.5)
 check('20f «Newspapers & magazines»: a button switches to it, issues are listed at once from the archive\'s newspapers and periodicals, the list offers famous titles',
       """libraryState.source === 'press' && __iaReqs.some(r => r.includes('op=ia-search') && r.includes('&coll=press') && !r.includes('&pub='))

@@ -427,8 +427,10 @@ els.mainArea.addEventListener('wheel', (e) => {
 let resizeTimer = null;
 let lastContainerResizeSize = null;
 let pendingPdfResizeAnchor = null;
-function invalidatePendingPdfResizeAnchor() {
-    if (resizeTimer !== null) {
+function invalidatePendingPdfResizeAnchor(cancelLayout = false) {
+    // Navigation/scrolling supersedes the old reading anchor, not the pending
+    // geometry update. Explicit setup/relayout replaces that scheduled update.
+    if (cancelLayout && resizeTimer !== null) {
         clearTimeout(resizeTimer);
         resizeTimer = null;
     }
@@ -485,7 +487,9 @@ const containerResizeObserver = new ResizeObserver((entries) => {
         // stack rather than just re-rendering one page.
         if (state.format === 'pdf') {
             if (state.pdfDoc && !document.hidden && pdfContinuousReady) {
-                const anchor = pendingPdfResizeAnchor;
+                // A newer navigation/scroll owns the reading position, but
+                // still needs the stack fitted to its new container size.
+                const anchor = pendingPdfResizeAnchor || pdfAnchor();
                 pendingPdfResizeAnchor = null;
                 if (anchor) {
                     cancelPdfInteraction();

@@ -133,6 +133,20 @@ document.addEventListener('click', e => {
 document.addEventListener('scroll', clearAlignmentFlash, true);
 window.addEventListener('resize', clearAlignmentFlash);
 
+// The same full-source contract applies to browser/device/offline engines,
+// some of which otherwise silently trim their input to 2,000/4,000 chars.
+async function translateCompleteSelection(text, translate, signal) {
+    const translated = [];
+    for (const chunk of translationChunks(text)) {
+        if (signal?.aborted) return null;
+        const result = await translate(chunk);
+        if (!result) return null;
+        translated.push(result);
+    }
+    if (signal?.aborted) return null;
+    return translated.join('\n\n');
+}
+
 async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpContext = null, helpSource = null) {
     const cleanText = text.trim(); if (!cleanText) return;
     // A bilingual PDF drag's own study-language-only text (js/selection.js), if any — read and
@@ -309,7 +323,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
     // Переклад слова тепер залежить від речення, тому в ключ кешу входить і контекст:
     // "fait" у різних реченнях — це різні значення, і одне не має підміняти інше.
     const ctxKey = isMultiWord ? (selectionContext ? '@' + selectionContext.slice(0, 80).toLowerCase() : '') : '@' + (contextSentence || '').slice(0, 80).toLowerCase();
-    const cacheKey = srcCode + '>' + state.targetLang + '|' + (isMultiWord ? cleanText : cleanText.toLowerCase()) + ctxKey;
+    const cacheKey = (isMultiWord ? 'complete-v2|' : '') + srcCode + '>' + state.targetLang + '|' + (isMultiWord ? cleanText : cleanText.toLowerCase()) + ctxKey;
     const myLookup = ++state.lookupToken;   // щоб пізня відповідь не перебила новий тап
     // Free dictionaries for a word, by themselves (js/dictionaries.js): asked at once, beside the translation -- never after
     // it (the dictionary meanings from machine translation can take long or never answer).
@@ -337,7 +351,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         // переклад на комп'ютері практично ніколи не вмикався.
         let aiDone = false;
         if (!isMultiWord) {
-            waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 8000).then(local => {
+            waitForResult(translateCompleteSelection(cleanText, part => translateLocally(part, srcCode, targetLang), task.signal), task.signal, 8000).then(local => {
                 if (!local || aiDone || myLookup !== state.lookupToken || !task.current()) return;
                 els.ttTranslation.innerHTML = escapeHtml(local) + ' <span class="tt-note">⌂</span>';
                 const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
@@ -350,7 +364,7 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
         const previewTimer = setTimeout(async () => {
             // a word: its meaning in this sentence (js/offline-translate.js offlineTranslateWord), a phrase: as it is
             const word = !isMultiWord ? await (previewWord = offlineTranslateWord(cleanText, contextSentence, srcCode, targetLang, task.signal)) : null;
-            const local = word ? null : isMultiWord ? await (previewSentence = offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal)) : null;   // with the pack's dictionary, if any
+            const local = word ? null : isMultiWord ? await (previewSentence = translateCompleteSelection(cleanText, part => offlineTranslateSentence(part, srcCode, targetLang, task.signal), task.signal)) : null;   // with the pack's dictionary, if any
             if (!(word || local) || aiDone || myLookup !== state.lookupToken || !task.current()) return;
             els.ttTranslation.innerHTML = word ? offlineTrWordHtml(word) : escapeHtml(local) + ' <span class="tt-note">⌂</span>';
             const a = state.tooltipAnchor; if (a) positionTooltip(a.clientX, a.clientY, a.anchorRect);
@@ -400,13 +414,13 @@ async function handleWordOrSelection(text, clientX, clientY, anchorRect, helpCon
             // перекладає локальна модель Chrome на пристрої (⌂), а де її нема (Android) — встановлений офлайн-пакет; якщо немає й його —
             // показуємо причину.
             let local = null, mark = '⌂';
-            try { local = await waitForResult(translateLocally(cleanText, srcCode, targetLang), task.signal, 20000); } catch (e) { if (e && e.name === 'AbortError') return; }
+            try { local = await waitForResult(translateCompleteSelection(cleanText, part => translateLocally(part, srcCode, targetLang), task.signal), task.signal, 20000); } catch (e) { if (e && e.name === 'AbortError') return; }
             if (local) quality = 'local';
             else {
                 // The AI on the device (js/device-llm.js) sees the context and translates better than the offline pack, which is the last resort.
-                try { local = await deviceLlmTranslate(cleanText, srcCode, targetLang, selectionContext, task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
+                try { local = await translateCompleteSelection(cleanText, part => deviceLlmTranslate(part, srcCode, targetLang, selectionContext, task.signal), task.signal); } catch (e) { if (e && e.name === 'AbortError') return; }
                 if (local) { quality = 'device'; mark = t('dlMark'); }
-                else if ((local = await (previewSentence || offlineTranslateSentence(cleanText, srcCode, targetLang, task.signal)))) quality = 'device';
+                else if ((local = await (previewSentence || translateCompleteSelection(cleanText, part => offlineTranslateSentence(part, srcCode, targetLang, task.signal), task.signal)))) quality = 'device';
             }
             if (myLookup !== state.lookupToken || !task.current()) return;
             if (local) html = escapeHtml(local) + ` <span class="tt-note">${escapeHtml(mark)}</span>`;
@@ -795,15 +809,19 @@ function panelStudyLang(root) {
 }
 function translatePanelPoint(e, root, { keepNative = false } = {}) {
     state.tooltipFromRules = !!root && root.id === 'rules-content';
-    if (e.target.closest('button, a, input, select, textarea') || root.closest('.loading')) return;
+    if (root.closest('.loading')) return;
+    const control = e.target.closest('button, a, input, select, textarea');
     const selection = window.getSelection();
     let text = '', range = null;
     if (selection?.rangeCount && !selection.isCollapsed) {
         const selected = selection.getRangeAt(0);
         if (root.contains(selected.startContainer) && root.contains(selected.endContainer)) {
-            range = selected.cloneRange(); text = range.toString().trim().slice(0, AI_PROMPT_TEXT_MAX);
+            range = selected.cloneRange(); text = range.toString().trim();
         }
     }
+    if (control && !(range && root.id === 'practice-panel' && control.matches('.practice-target'))) return;
+    const practiceParts = range && root.id === 'practice-panel' ? practiceTextRanges(range, root) : [];
+    if (practiceParts.length) text = practiceParts.map(part => part.toString()).join(' ').trim();
     // A displayed conjugated form/cell is a useful phrase, not separate words.
     const phrase = e.target.closest('.verb-forme, .grammar-grid-value, .grammar-focus-pattern, td');
     if (!text && phrase && root.contains(phrase) && phrase.textContent.trim().length <= 120) {
@@ -820,7 +838,17 @@ function translatePanelPoint(e, root, { keepNative = false } = {}) {
     state.lastTapPoint = { x: e.clientX, y: e.clientY }; state.expandLevel = 0;
     // keepNative (виділення пальцем із ручками): нативне виділення НЕ знімаємо, щоб читач міг тягнути ручки далі — від слова до
     // речення; вікно просто оновлюється, коли виділення розширилось.
-    if (range) { state.lastSelectionText = text; if (!keepNative) { showSelectionHighlight(range); selection?.removeAllRanges(); } }
+    if (range) {
+        state.lastWordNode = null;
+        if (!keepNative) {
+            showSelectionHighlight(range);
+            if (practiceParts.length && typeof Highlight !== 'undefined' && window.CSS?.highlights) {
+                CSS.highlights.set(SEL_HL_NAME, new Highlight(...practiceParts));
+            }
+            selection?.removeAllRanges();
+        }
+        state.lastSelectionText = text;
+    }
     handleWordOrSelection(text, e.clientX, e.clientY, range?.getBoundingClientRect());
 }
 els.askContent.addEventListener('click', e => translatePanelPoint(e, els.askContent));
@@ -841,6 +869,91 @@ function wirePracticePanelTranslate(panel) {
     if (!panel || panel.dataset.translateWired) return;
     panel.dataset.translateWired = '1';
     panel.addEventListener('click', e => { if (!e.target.closest('.practice-target')) translatePanelPoint(e, panel); });
+    wirePracticeTextSelection(panel);
+}
+// Only the generated prose, excluding sentence action icons and expanded translations.
+function practiceTextRanges(range, panel) {
+    const parts = [];
+    for (const host of panel.querySelectorAll('.practice-sentence-text')) {
+        if (!range.intersectsNode(host)) continue;
+        const part = document.createRange(); part.selectNodeContents(host);
+        if (range.compareBoundaryPoints(Range.START_TO_START, part) > 0) part.setStart(range.startContainer, range.startOffset);
+        if (range.compareBoundaryPoints(Range.END_TO_END, part) < 0) part.setEnd(range.endContainer, range.endOffset);
+        if (!part.collapsed && part.toString().trim()) parts.push(part);
+    }
+    return parts;
+}
+// Practice's targets are real buttons: native mouse selection cannot start on
+// them. Keep a plain click as Grammar, and build word-aligned ranges for drags.
+function wirePracticeTextSelection(panel) {
+    let drag = null, suppressClick = false;
+    function boundsAt(x, y) {
+        const caret = caretRangeAt(x, y);
+        if (!caret || caret.startContainer.nodeType !== Node.TEXT_NODE) return null;
+        const host = caret.startContainer.parentElement?.closest('.practice-sentence-text');
+        if (!host || !panel.contains(host)) return null;
+        const bounds = reflowWordBounds(caret.startContainer, caret.startOffset);
+        if (!bounds || !host.contains(bounds.node) || !host.contains(bounds.endNode || bounds.node)) return null;
+        const range = rangeBetweenWords(bounds, bounds);
+        return range && isPointInRects(x, y, range.getClientRects(), 2) ? bounds : null;
+    }
+    function cancel() {
+        if (!drag) return;
+        const moved = drag.moved;
+        drag = null;
+        delete panel.dataset.textSelecting;
+        if (moved) window.getSelection()?.removeAllRanges();
+    }
+    panel.addEventListener('pointerdown', e => {
+        suppressClick = false;
+        if (e.pointerType === 'touch') { cancel(); return; }
+        if (e.button !== 0 || !e.target.closest('.practice-sentence-text')) return;
+        dismissReaderPopup();
+        const anchor = boundsAt(e.clientX, e.clientY);
+        if (!anchor) return;
+        drag = { anchor, id: e.pointerId, x: e.clientX, y: e.clientY, moved: false, range: null };
+        e.preventDefault();
+    });
+    document.addEventListener('pointermove', e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        if (panel.hidden || panel.inert || !panel.contains(drag.anchor.node)) { cancel(); return; }
+        if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+        const end = boundsAt(e.clientX, e.clientY);
+        if (!end) return;
+        const range = rangeBetweenWords(drag.anchor, end);
+        if (!range) return;
+        drag.moved = true; drag.range = range;
+        panel.dataset.textSelecting = '1';
+        clearTimeout(panelSelectionTimer);
+        if (!panel.hasPointerCapture(e.pointerId)) panel.setPointerCapture(e.pointerId);
+        const selection = window.getSelection();
+        selection.removeAllRanges(); selection.addRange(range);
+        e.preventDefault();
+    });
+    document.addEventListener('pointerup', e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        if (panel.hidden || panel.inert || !panel.contains(drag.anchor.node)) { cancel(); return; }
+        const selected = drag;
+        drag = null;
+        delete panel.dataset.textSelecting;
+        if (!selected.moved || !selected.range) return;
+        suppressClick = true;
+        const selection = window.getSelection();
+        selection.removeAllRanges(); selection.addRange(selected.range);
+        const host = selected.range.startContainer.parentElement.closest('.practice-sentence-text');
+        translatePanelPoint({ target: host, clientX: e.clientX, clientY: e.clientY }, panel);
+        e.preventDefault();
+    });
+    panel.addEventListener('click', e => {
+        if (!suppressClick || e.detail === 0) return;
+        suppressClick = false;
+        e.preventDefault(); e.stopImmediatePropagation();
+    }, true);
+    // Android can deliver pen gestures as touch events too. Block their native
+    // pan while the pen selects; ordinary finger scrolling has no active drag.
+    panel.addEventListener('touchmove', e => { if (drag && e.cancelable) e.preventDefault(); }, { passive: false });
+    document.addEventListener('pointercancel', cancel);
+    window.addEventListener('blur', cancel);
 }
 window.wirePracticePanelTranslate = wirePracticePanelTranslate;
 
@@ -856,7 +969,9 @@ function panelRootForRange(range) {
 document.addEventListener('selectionchange', () => {
     clearTimeout(panelSelectionTimer);
     const sel = window.getSelection();
-    if (!sel || !sel.rangeCount || sel.isCollapsed || !panelRootForRange(sel.getRangeAt(0))) return;
+    if (!sel || !sel.rangeCount || sel.isCollapsed) return;
+    const root = panelRootForRange(sel.getRangeAt(0));
+    if (!root || root.dataset.textSelecting === '1') return;
     const snapshot = sel.toString();
     panelSelectionTimer = setTimeout(() => {
         const now = window.getSelection();
