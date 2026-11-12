@@ -822,7 +822,7 @@ const state = {
     lastGrammarSourceText: null,
     selectionContext: '',   // the sentence around a dragged part of it (js/selection.js), read once by the translation
     refinedKeys: new Set(),
-    sourceLang: 'en-US', ctxSentence: '',
+    sourceLang: 'en-US', ctxSentence: '', demoMode: false,
     ink: {}, inkMode: false, inkErase: false, inkEraseWhole: false, inkMarker: false, inkColor: '#1a56db', inkMarkerColor: '#f2c200',
     // Continuous PDF viewer (js/pdf-continuous.js et al.): pdfDoc set by initPdf,
     // pdfPageMeta[n] caches {width,height} natural size once page n is measured,
