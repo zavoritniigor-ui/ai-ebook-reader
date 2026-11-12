@@ -104,13 +104,23 @@ print_res = c.js("""(async () => {
         return el;
     };
 
+    // Own this test's native printer boundary, even when earlier suites have
+    // installed iframe observers. Image readiness precedes decode/print/focus;
+    // starting the keyboard check at that earlier point races the print job.
+    const printObserver = new MutationObserver(records => {
+        for (const record of records) for (const node of record.addedNodes) {
+            if (node === capturedFrame) node.contentWindow.print = () => { printed = true; };
+        }
+    });
+    printObserver.observe(document.body, { childList: true });
+
     try {
         printCurrentReaderPage();
         // Wait for iframe and image to populate
         for (let i = 0; i < 50; i++) {
             if (capturedFrame && capturedFrame.contentDocument) {
                 const img = capturedFrame.contentDocument.querySelector('img');
-                if (img && img.src && img.complete && img.naturalWidth > 0) {
+                if (img && img.src && img.complete && img.naturalWidth > 0 && printed) {
                     frameImg = {
                         width: img.naturalWidth,
                         height: img.naturalHeight,
@@ -123,12 +133,14 @@ print_res = c.js("""(async () => {
             await new Promise(r => setTimeout(r, 100));
         }
     } finally {
+        printObserver.disconnect();
+        capturedFrame?.remove();
         document.body.append = origAppend;
         document.createElement = origCreate;
     }
 
     return {
-        canvasOwner,
+        canvasOwner, printed,
         frameImg
     };
 })()""")
@@ -137,8 +149,11 @@ assert print_res and print_res.get('canvasOwner') == 'host', f"Expected canvasOw
 print('PASS P1-4: canvas created in host document (fonts available, no tofu)')
 assert print_res and print_res.get('frameImg') and print_res['frameImg']['width'] > 500, f"Expected non-empty image, got {print_res}"
 print('PASS P1-4: print frame renders non-empty image at full natural dimensions')
+assert print_res.get('printed') is True, 'Rasterized page never reached the native printer'
+print('PASS P1-4: native print completes before testing keyboard focus')
 
 # Test Ctrl+P shortcut intercepts to printCurrentReaderPage
+c.call('Page.bringToFront')
 c.js("""(() => {
     // Exercise the reader shortcut, rather than a still-focused upload/key
     // input: the product intentionally leaves Ctrl+P alone in text fields.
@@ -146,12 +161,15 @@ c.js("""(() => {
     els.container.focus({ preventScroll: true });
     window.__printCalled = false;
     const orig = printCurrentReaderPage;
+    window.__restoreShortcutPrint = () => { printCurrentReaderPage = orig; };
     printCurrentReaderPage = () => { window.__printCalled = true; };
-    const evt = new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true, cancelable: true });
-    window.__shortcutFocus={tag:document.activeElement?.tagName,id:document.activeElement?.id,format:state.format,bootErrors:__printBootErrors};
-    els.container.dispatchEvent(evt);
-    printCurrentReaderPage = orig;
+    window.__shortcutFocus={tag:document.activeElement?.tagName,id:document.activeElement?.id,format:state.format,connected:els.container.isConnected,bootErrors:__printBootErrors};
 })()""")
+try:
+    c.call('Input.dispatchKeyEvent', type='keyDown', key='p', code='KeyP', modifiers=2, windowsVirtualKeyCode=80)
+    c.call('Input.dispatchKeyEvent', type='keyUp', key='p', code='KeyP', modifiers=2, windowsVirtualKeyCode=80)
+finally:
+    c.js('__restoreShortcutPrint();true')
 if c.js('window.__printCalled') is not True:
     print('PRINT SHORTCUT FAILURE CONTEXT', c.js('__shortcutFocus'), flush=True)
 check('P1-4: Ctrl+P keyboard shortcut triggers printCurrentReaderPage', "window.__printCalled === true")
