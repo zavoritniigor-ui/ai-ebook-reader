@@ -100,6 +100,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Keep failures visible through the checks API when signed Actions
+          # log downloads are unavailable. Preserve the failing exit status.
+          browser_ci_log="$RUNNER_TEMP/reader-browser-tests.log"
+          report_browser_failure() {
+            local failed_status="$1" failed_command="$2"
+            trap - ERR
+            python3 - "$browser_ci_log" "$failed_command" <<'PYCI' || true
+          import pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          tail = '\n'.join(path.read_text(errors='replace').splitlines()[-55:]) if path.exists() else 'No captured output'
+          message = 'Failed command: ' + sys.argv[2] + '\n' + tail[-3000:]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::error title=Browser suite failure::' + message, flush=True)
+          PYCI
+            exit "$failed_status"
+          }
+          trap 'report_browser_failure "$?" "$BASH_COMMAND"' ERR
+          exec > >(tee "$browser_ci_log") 2>&1
+
           
           # 1. Start HTTP Server
           echo "Starting HTTP Server..."
@@ -164,6 +183,7 @@ jobs:
           python3 -u tests/tooltip_touch_ux_browser.py
           python3 -u tests/menu_discoverability_browser.py
           python3 -u tests/single_word_translation_browser.py
+          python3 -u tests/iphone_word_tap_browser.py
 
           echo "Running pdf_word_click_browser.py..."
           python3 -u tests/pdf_word_click_browser.py
@@ -218,6 +238,8 @@ jobs:
 
           echo "Running crop_gemini_browser.py (sending a page crop to Gemini in the browser)..."
           python3 -u tests/crop_gemini_browser.py
+          echo "Running share_app_browser.py (app share and current book title)..."
+          python3 -u tests/share_app_browser.py
 
           echo "Running epub_toc_browser.py (the real EPUB contents from nav.xhtml / toc.ncx)..."
           python3 -u tests/epub_toc_browser.py
@@ -355,7 +377,6 @@ jobs:
           echo "Running menu_labels_browser.py..."
           python3 -u tests/menu_labels_browser.py
           python3 -u tests/menu_phone_scroll_browser.py
-          python3 -u tests/share_app_browser.py
 
           echo "Running panel_translate_layout_browser.py..."
           python3 -u tests/panel_translate_layout_browser.py
