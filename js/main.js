@@ -211,6 +211,8 @@ const MAX_BOOK_FILE_BYTES = 300 * 1024 * 1024;
 async function openBookFile(file) {
     if (!file) return;
     const isDemo = !!file.__readerDemo;
+    if (!isDemo && document.getElementById('demo-tour')?.hidden === false &&
+        typeof closeDemoTextbook === 'function') closeDemoTextbook();
     state.demoMode = isDemo;
     stopDictation(); stopOnboarding();
     if (file.size > MAX_BOOK_FILE_BYTES && !/\.pdf$/i.test(file.name || '')) { showReaderError(new Error(t('fileTooLarge'))); return; }
