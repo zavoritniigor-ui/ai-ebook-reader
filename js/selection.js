@@ -599,8 +599,9 @@ function pdfRangeText(range) {
         const from = (n === range.startContainer) ? range.startOffset : 0;
         const to = (n === range.endContainer) ? range.endOffset : n.nodeValue.length;
         if (to <= from) continue;
-        const span = n.parentElement?.closest('span') || null;
-        if (text && !/\s$/.test(text) && !pdfSpansContinueWord(prevSpan, span)) text += ' ';
+        const span = n.parentElement?.closest('.pdf-text-layer > span, .markedContent > span') || n.parentElement?.closest('span') || null;
+        // Highlight wrappers split an item, not its printed text.
+        if (text && span !== prevSpan && !/\s$/.test(text) && !/^\s/.test(n.nodeValue.slice(from, to)) && !pdfSpansContinueWord(prevSpan, span)) text += ' ';
         text += n.nodeValue.slice(from, to);
         prevSpan = span || prevSpan;
     }
@@ -677,7 +678,9 @@ function resolveCanonicalPdfSelection(range, options = {}) {
         const colIdx = pageSpans.map((_, i) => i).filter(i => pageCols.segColumn[pageCols.spanSeg[i]] === startCol);   // DOM order
         const p1 = colIdx.indexOf(pageSpans.indexOf(startSpan)), p2 = colIdx.indexOf(pageSpans.indexOf(endSpan));
         const run = colIdx.slice(Math.min(p1, p2), Math.max(p1, p2) + 1);
-        const climbs = run.some((i, k) => k && pageCols.rects[i].top < pageCols.rects[run[k - 1]].top - pageCols.rects[run[k - 1]].height * 0.8);
+        // Endpoints can be adjacent in the content stream while all intervening lines
+        // are stored later. Inspect the whole column, not just the endpoint run.
+        const climbs = colIdx.some((i, k) => k && pageCols.rects[i].top < pageCols.rects[colIdx[k - 1]].top - pageCols.rects[colIdx[k - 1]].height * 0.8);
         if (!climbs) { layerInOrder = true; selectedSpans = run.map(i => pageSpans[i]); }
         else {
             const colSpans = pdfReadingOrder(colIdx.map(i => pageCols.rects[i])).map(k => pageSpans[colIdx[k]]);
@@ -699,17 +702,16 @@ function resolveCanonicalPdfSelection(range, options = {}) {
         const headOffset = rangeStartsFirst ? range.startOffset : pdfWordStartAt(range.endContainer, range.endOffset);
         const tailOffset = rangeStartsFirst ? range.endOffset : pdfWordEndAt(range.startContainer, range.startOffset);
 
+        // A visited word splits one PDF item into several text nodes. Clip in
+        // the item's coordinates, then resolve only the nodes inside that window;
+        // clipping just headNode/tailNode also included their unselected siblings.
+        const headStart = pdfOffsetInSpan(firstSpan, headNode) + headOffset;
+        const tailEnd = pdfOffsetInSpan(lastSpan, tailNode) + tailOffset;
         const pieces = [];
         for (const sp of selectedSpans) {
-            const walker = document.createTreeWalker(sp, NodeFilter.SHOW_TEXT);
-            let n, foundText = false;
-            while ((n = walker.nextNode())) {
-                foundText = true;
-                const pStart = (sp === firstSpan && n === headNode) ? headOffset : 0;
-                const pEnd = (sp === lastSpan && n === tailNode) ? tailOffset : n.nodeValue.length;
-                if (pEnd > pStart) pieces.push({ node: n, start: pStart, end: pEnd, span: sp });
-            }
-            if (!foundText && sp.textContent) pieces.push({ node: sp.firstChild || sp, start: 0, end: (sp.textContent || '').length, span: sp });
+            pieces.push(...pdfResolveSpanPieces(sp,
+                sp === firstSpan ? headStart : 0,
+                sp === lastSpan ? tailEnd : sp.textContent.length));
         }
         range._pdfPieces = pieces;
         // The text the reader sees selected: the spans in reading order, words joined the PDF way (pdfSpansToChars), cut at
@@ -1497,12 +1499,16 @@ document.addEventListener('pointercancel', cancelDragSelection);
 // Register before touchstart: adding a blocking listener after the hold is too late on
 // real touchscreens. Small pre-hold moves must not hand the gesture to native scrolling.
 // Touch coordinates remain authoritative even on browsers that coalesce pointer moves.
-document.addEventListener('touchstart', e => {
+function startPdfSelectionTouch(e) {
     if (e.touches.length !== 1) { cancelDragSelection(); return; }
-    if (state.format !== 'pdf' || !touchSelTimer || !els.container.contains(e.target) || e.target.closest('.pdf-audio-marker')) return;
+    // The validated pointerdown armed this timer. Popup dismissal can unwrap
+    // its old highlighted target before touchstart; that detached target no
+    // longer passes contains(), but its touch stream still needs ownership.
+    if (state.format !== 'pdf' || !touchSelTimer) return;
     const t = e.touches[0];
     pdfSelectionTouch = { id: t.identifier, x: t.clientX, y: t.clientY, blocked: false, scrolling: false };
-}, { passive: true });
+}
+document.addEventListener('touchstart', startPdfSelectionTouch, { passive: true });
 function guardTouchSelectionMove(e) {
     if (penSelectionActive && e.touches.length === 1) {
         if (e.cancelable) e.preventDefault();   // the pen's own touch stream: keep it a selection drag
@@ -1535,6 +1541,26 @@ function guardTouchSelectionMove(e) {
     } else if (state.touchSelecting) {
         updateDragSelection(t);
     }
+}
+// A previous selection's wrapper can be removed by popup dismissal on this
+// pointerdown. Touch events keep that original target for the whole gesture and
+// then stop bubbling to document. Retain the same handlers on that target only
+// while it is detached; connected targets still use the document handlers once.
+function retainPdfSelectionTouchTarget(target) {
+    const start = e => { if (!target.isConnected) startPdfSelectionTouch(e); };
+    const move = e => { if (!target.isConnected) guardTouchSelectionMove(e); };
+    const cleanup = () => {
+        target.removeEventListener('touchstart', start);
+        target.removeEventListener('touchmove', move);
+        target.removeEventListener('touchend', end);
+        target.removeEventListener('touchcancel', cancel);
+    };
+    const end = e => { if (!target.isConnected) finishPdfSelectionTouch(e); cleanup(); };
+    const cancel = () => { if (!target.isConnected) cancelDragSelection(); cleanup(); };
+    target.addEventListener('touchstart', start, { passive: true });
+    target.addEventListener('touchmove', move, { passive: false });
+    target.addEventListener('touchend', end, { passive: false });
+    target.addEventListener('touchcancel', cancel);
 }
 document.addEventListener('touchmove', guardTouchSelectionMove, { passive: false });
 document.addEventListener('touchcancel', cancelDragSelection);
@@ -1571,9 +1597,14 @@ els.mainArea.addEventListener('pointerdown', (e) => {
         e.target.closest('#tts-controls') || e.target.closest('nav') || e.target.closest('header')) return;
 
     cancelDragSelection();
+    // Unwrap the previous PDF selection before retaining the new drag's text
+    // node. The document's popup-dismiss listener runs later in bubbling order;
+    // letting it unwrap afterwards disconnects the mouse/pen anchor.
+    if (e.pointerType !== 'touch' && state.selSpans.length) clearSelectionHighlight();
     dragStartX = e.clientX; dragStartY = e.clientY; dragMoved = false;
 
     if (e.pointerType === 'touch') {
+        if (state.format === 'pdf') retainPdfSelectionTouchTarget(e.target);
         // Пальцем виділяємо через УТРИМАННЯ: короткий рух пальцем — це гортання
         // сторінки, і плутати ці два жести не можна. Потримав — почалось виділення.
         clearTimeout(touchSelTimer);
@@ -1765,7 +1796,7 @@ function commitDragSelection(clientX, clientY) {
     handleWordOrSelection(text, clientX, clientY, rect, helpContext, 'phrase_translation');
 }
 
-document.addEventListener('touchend', (e) => {
+function finishPdfSelectionTouch(e) {
     const gesture = pdfSelectionTouch;
     pdfSelectionTouch = null;
     clearTimeout(touchSelTimer); touchSelTimer = null;
@@ -1777,7 +1808,8 @@ document.addEventListener('touchend', (e) => {
             commitDragSelection(touch ? touch.clientX : (lastDragClientX || dragStartX), touch ? touch.clientY : (lastDragClientY || dragStartY));
         }
     }
-}, { passive: false });
+}
+document.addEventListener('touchend', finishPdfSelectionTouch, { passive: false });
 
 // The sentence a dragged selection stands in, when the selection is a part of it: the translation then renders only the
 // selected words, in the sense they have in that sentence (js/translation.js). '' for a whole sentence or several.

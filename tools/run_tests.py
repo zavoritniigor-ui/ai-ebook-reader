@@ -48,6 +48,7 @@ def ensure_browser_environment():
                 "--headless",
                 "--no-sandbox",
                 "--disable-gpu",
+                "--disable-dev-shm-usage",
                 "--remote-debugging-port=9222",
                 f"--user-data-dir={chr_dir}",
                 "about:blank",

@@ -51,9 +51,16 @@ For every audio file found (`mp3 m4a m4b mp4 aac wav ogg oga opus flac wma aif a
    - **disc** — `cd`, `disc`, `disk`, `диск` + a number, from the nearest folder, else from the file name.
      A folder `CD1-2` / `CD 1-2` is **part 2 of disc 1**, not disc 2 or disc 12.
    - **section** — `ep`, `episode`, `épisode`, `unit`, `unité`, `leçon`, `lesson`, `module` + a number.
+   - **group** — the words before the track that name a **group of the book** (`station`, `bilan`, `niveau`, `annexe`, `épisode`,
+     `unité`, `leçon`, `lesson`, `module`, `chapitre`, `partie`, `dossier`, `thème`, `séquence`, `phonétique`, `morphologie`,
+     `stratégies`): `Station 05 - piste 5` or `Station 05 - 05` → group «station 5»; `Bilan 5 - piste 2` matches heading
+     `NIVEAU 5 – BILAN`; also read from the folder the file lies in (`Station 3/piste 5.mp3`, `Unité 2/piste 3.mp3`). The words
+     are compared the way the book writes them: lower case, no accent, no leading zero in a number (`STATION 05`, `Station 5`
+     and `station 5` are one group).
    - **track** — `track`, `piste`, `plage`, `pista`, `t` + a number; else a number at the start of the name
-     (`07 Audio Track`); else the last number in the name.
-   - **page** — `p` + 3 digits **when the name also has an explicit track token** (`…_p011_t006` = page 11, track 6).
+     (`07 Audio Track`); else the last number in the name (ignoring disc, section, group and page numbers).
+   - **page** — the book's own page, in words (`page 27`, `p. 27`) or as `p` + 1–3 digits (`p027`, `p27`) next to an
+     explicit track token (`…_p011_t006` = page 11, track 6; `page 27 - piste 5` or `page 27 - 05` = page 27, track 5).
      Without a track token, `p` + number is the track (`…_EP01_P3` = track 3).
    - a trailing copy number (`01 Track 01 1`) = the same track number on the next disc, used only when no folder says
      the disc (a plain file picker has no folder names).
@@ -62,6 +69,11 @@ For every audio file found (`mp3 m4a m4b mp4 aac wav ogg oga opus flac wma aif a
 4. **Images, PDFs, text files** next to the audio are ignored without a message.
 5. **A format the browser cannot play** (`wma` in Chrome; checked with `canPlayType`) is not stored: the dialog says how many
    such files were skipped and that MP3 / M4A play everywhere. It is never stored silently to fail on the first tap.
+
+6. **Competing files for the same track slot**: when a folder contains multiple files for the same slot (e.g. vocal and
+   instrumental `_vi` variants, a full course audio set and a short mock exam supplement, or sibling books sharing a folder),
+   the importer ranks candidates by book title token overlap, coverage of the open book's marks, explicit track naming, and
+   clean track suffix without extra tags.
 
 ### 4.6 How a track is stored (owner, 2026-10-28: «AIFF must be squeezed about 10 times»)
 
@@ -95,6 +107,8 @@ tracks is amber («Записів до позначок книги ще нема
 reported as the book's recordings (owner, 2026-10-28: a green «Аудіо підключено» hid that no dialogue was connected).
 Marks that cannot be matched (§6.2: numbers restart per section and the book has no track table) give an amber line
 that says so; they are not counted as playing.
+When a status warning (such as the amber restart warning) is shown in `.ba-status`, the `.ba-message` paragraph suppresses
+duplicate text so the exact same warning is never displayed twice.
 
 ### 5.2 By hand: «Вибрати папку з аудіо»
 
@@ -130,10 +144,12 @@ remembering it as the books folder, is wrong. So:
 
 ## 6. Which track a mark in the book plays
 
-Marks are found in the PDF text: «CD2 - piste 35», «CD1 - Piste 3», «CD2 - Exercice 4», a bare «piste 37» / «plage 4» /
-«track 12» (a bare «exercice 4» is running text, never a mark). A headphones
+Marks are found in the PDF text: «CD2 - piste 35», «CD1 - Piste 3», «CD 1, piste 2» (comma separator allowed), «CD2 - Exercice 4»,
+a bare «piste 37» / «plage 4» / «track 12» (a bare «exercice 4» is running text, never a mark). Multi-line narrow columns where
+«CD 1,» sits on the line directly above «piste 42» pass down the disc. «la piste 3» is recognized as a mark, while «la plage 11»
+and «une piste» remain excluded running text. A headphones
 icon set in a symbol font comes out as one small letter glued to the mark («iCD1- piste 4») and does not hide it.
-Not marks: a bare «plage 11» / «piste 3» after an article («la plage», «une piste») — the word in running text; and a word
+Not marks: a bare «plage 11» after an article («la plage»), or «une piste 3» — the word in running text; and a word
 followed by a number of the NEXT table column (a gap of several letters: «10. plage      20. calepin»). A bilingual book with
 no audio must show no marks at all (checked: 0 on a 657-page French–English book).
 
@@ -151,17 +167,38 @@ marks in one of three ways, and the app finds out which, from the book itself, i
 2. **No table, and the marks of a disc restart** (piste 1 on three or more pages, and the highest piste is at most half of
    that disc's tracks): the numbers are per section and cannot be matched without the publisher's table. Those marks do not
    play; the dialog says so in amber. Guessing a track would play another page's dialogue: worse than silence.
+   The same restart is read from the book alone when the files cannot answer it (a **section set**, or fewer files than the
+   book has dialogues): piste 1 on three or more pages, or multiple numbers each printed on three or more pages of the book
+   (a single number cited across multiple pages, such as an exercise, answers and credits, does not trigger a false restart).
+   A mark that names its page (a transcript) does not count: it repeats a number on purpose. Then the numbers are per section
+   as well, and the marks do not play.
 3. **Otherwise the numbers run through the disc** («CD1 - piste 30» = disc-1 track 30), the usual case:
    - **disc marks** («CD2 - piste 35») play the disc-2 track 35 of a disc set (A);
    - **bare marks** take the disc from the nearest disc mark above them on the page («CD2 - piste 40, piste 41» = CD2 · 41);
      without one, a track that exists once, else the one disc-less track of that number (a set without discs, B).
    - an «exercice N» mark has no meaning without a table and does not play.
 
+4. **Or the book prints its own list of its recordings** (rules §6.4). This is not a fourth way of numbering, it is the
+   publisher's own answer to the second case. Some books number their pistes anew in every station
+   (a station is a chapter of the method: «Station 2 : Comment faire ?») and print, at the end of the book, the list of their own
+   recordings — `«STATION 2 / i Piste 5, page 27»`: the recording, the page of the book it belongs to and the group it stands
+   under. That list is the book's own answer to «which dialogue is this number», and the app reads it:
+   - the list is read in the order a reader reads the book (the columns keep their order), the sideways headings in the margin
+     are left out, and the group of a recording is the heading above it (`STATION 1` … `STATION 10`, `STATION PHONÉTIQUE`,
+     `ANNEXE – MORPHOLOGIE` …: the book's own words);
+   - the difference between the book's pages and the PDF's pages is **measured**, not guessed: the shift that puts the most
+     recordings on the page they name, when it fits the book at least twice as well as the next one;
+   - a mark then knows the page and the group of its number, and plays **only** the file that carries that page
+     (`page 27 - piste 5.mp3`) or that group (`Station 02 - piste 5.mp3`) with the same number — never the file of another page.
+     A number the list does not place does not play;
+   - a track table (§6.1) still decides first: the list answers only what the table leaves open.
+
 Also:
 
-- **Two sets never overwrite each other.** Tracks are stored per kind of set (`baSetOf`: disc / section / plain), so a
-  disc set and a section set of one book live side by side. A disc mark plays only a disc track (or the one plain track
-  of that number); it never plays a section track. Two copies of the same set are one set.
+- **Two sets never overwrite each other.** Tracks are stored per kind of set (`baSetOf`: disc / section / group / page /
+  plain), so a disc set and a section set of one book live side by side, and two groups of one book keep their own files.
+  A disc mark plays only a disc track (or the one plain track of that number); it never plays a section track, a group
+  track or a page track. Two copies of the same set are one set.
 - A mark whose track is on the device is drawn solid, one that is not yet is dashed; a tap on a dashed mark opens the
   dialog with the reason («у вибраних файлах немає доріжки CD2 · piste 35»).
 - The marks of the whole book are read in the background as soon as the book has tracks (a tap waits for it), because
@@ -177,7 +214,8 @@ Ask only when two readings are equally possible, after the pick, once per book, 
   (CD1, CD2, …, «Без диска»);
 - two sets fit the same marks equally → show the two folder names, the learner taps one.
 
-Never ask what the files can answer.
+Never ask what the files can answer. The book's own narration (an MP3 with the narration tag of §4.1) is not a track at all:
+it never makes the app ask which disc it is from, and it is never saved as a track.
 
 ## 8. Check BEFORE merging any change to book audio (required)
 
@@ -193,16 +231,20 @@ gives the expected result **both automatically (remembered folder) and by hand (
 | disc set as flat AIFF files `CD1 - 14 Audio Track.aiff` outside the book folder, chosen by hand | stored as Opus (≈10× smaller than WAV); all marks solid and playing |
 | a book whose marks restart per episode and which prints a track table (marks «CDn - piste k», «CDn - Exercice k») | every mark plays the track of its table row (e.g. the episode-22 page's «CD2 - piste 1» → disc-2 track 25); table rows give no buttons |
 | a book whose marks restart per unit, without a table | amber line, the marks do not play |
+| a book whose marks restart per section, whose files are a section set (`XYZ_EP01_P1 …`) and fewer than the book has dialogues | amber line, the marks do not play (no other dialogue) |
+| a book whose numbers restart per station and which prints its own list of its recordings (`«i Piste 5, page 27» under `«STATION 2») | the list is read (its pages and its groups); every mark plays the file named by that page (`page 27 - piste 5`) or by that group (`Station 02 - piste 5`); the same number in two stations plays two different recordings; a number the list does not place does not play |
 | book folder with a section set `XYZ_EP01_P1 …` beside a disc set | both kept; disc marks play the disc set; nothing overwritten |
 | book folder with `.work/cache/*.mp3` (thousands of files) | ignored; the count of tracks equals the real tracks |
 | bilingual book: PDF + narration only, no marks | narration connected; no track count, no error |
 | a folder with no audio at all | «Нічого не знайдено» + «Додати вручну» lit; nothing stored |
+| book folder: PDF + the book's narration + another book's narration + `audio CD 56` (disc set) + `audio 56` (section set) | both sets kept apart (disc 1, disc 2, five sections); the book's narration connected; the other book's narration skipped with a note; no question about the disc |
 | «Downloads»: the book PDF, its narration, its CD folders, voice messages, music, documents, pictures, programs, another book's folder | only the CD folders and the narration offered, shown first; nothing stored before «Підключити»; the folder not remembered |
 
 Report the numbers: tracks stored per disc / set, marks found vs marks solid, narration sentences. A browser test for
-each row lives in `tests/book_audio_browser.py` / `tests/book_folder_browser.py`, with invented names (§2).
+each row lives in `tests/book_audio_browser.py` / `tests/book_folder_browser.py` / `tests/book_audio_annex_browser.py`, with
+invented names (§2).
 
-## 9. State (2026-10-28, PR «track tables, Opus»)
+## 9. State (2026-10-28, PR «track tables, Opus»; 2026-11-06, PR «restarting numbers read from the book»)
 
 Fixed in code: package audio of any folder name; hidden / system folders skipped (pick, drop, package); a sub-folder holding
 another book is not read; `…_p011_t006` = track 6; sections parsed; sets kept apart (old tracks replaced, not doubled); bare
@@ -216,6 +258,37 @@ transcripts → track 5, «CD2 - Exercice 9» → track 49); 5-6: 205/205; 7-8: 
 unit, with 236 invented tracks: 0/500, amber; bilingual book: 0 marks. 96 AIFF tracks (1.33 GB) stored as Opus: 89.5 MB, in
 101 s on a computer, durations unchanged. Before this the textbook with a track table played the wrong track for almost every
 mark after its first episode, and the status counted them as «playing».
+
+2026-11-06: a book whose numbers restart per section played **another page's dialogue** when its files were a section set
+(«…_EP01_P1 …»): the old restart test only looked at the tracks of a disc, so a section set was invisible to it, and the
+files (fewer than the book has dialogues) could not pass its "half of the disc's tracks" test either. The restart is now also
+read from the book alone (§6.2), so those marks do not play and the dialog says so in amber. Measured after the change on the
+owner's books: 1-2 258/258, 3-4 187/189, 7-8 157/157 (unchanged); the listening book with 500 marks and 26 section files:
+0/500, amber (before: 500/500 green, every mark playing a wrong dialogue).
+
+2026-11-07: a book whose numbers restart per station and which prints its own list of its recordings (the Manuel
+«Par Ici 5-6», 148 PDF pages) now reads that list: **243 recordings, the shift to the PDF's pages = +3, 241 of the 257
+marks of the body placed** (the 16 left are the pages that describe the book, not dialogues); 13 groups read in the book's own
+words (STATION PHONÉTIQUE, STATION 1 … STATION 10, ANNEXE – MORPHOLOGIE, ANNEXE – STRATÉGIES). The files of such a book are
+named by the page (`page 27 - piste 5.mp3`) or by the group (`Station 02 - piste 5.mp3`, or a folder `Station 02`); a mark then
+plays only the file of its own page or group, so the dialogue of another page never answers it. Before this, the marks of
+that book could not be matched at all (the numbers restart in every station).
+2026-11-07: the owner's own flow — choosing the folder(s) by hand — was broken in two places. (1) The book's own narration
+(the MP3 with the narration tag) was counted as a loose track, so the app asked «З якого диска ці файли?» for a folder that
+holds the book; the narration is now recognised before the question and never stored as a track (§4.1, §7). (2) When several
+narrations were picked at once, one narration of another book refused the whole batch, so the book's own narration was never
+connected; now the narration of another book is skipped and the others are imported. Measured on the owner's listening book
+(«Par Ici 5-6 Manuel», 148 pages, 500 marks): choosing the book's folder gives 122 tracks (disc 1: 53, disc 2: 43, five
+sections: 26) and the book's narration (8939 sentences), no question; the narration of the other book in the same folder
+(«livre 56», 203 pages) is skipped with the note «another book».
+
+2026-11-08: Generalised mark parsing, dialog deduplication, and slot disambiguation across language learning textbooks (PR #383).
+(1) `renderBookAudioDialog` suppresses duplicate messages when `message === text` (such as `t('baRestart')`), preventing duplicate
+identical paragraphs. (2) `BA_MARK_RE` accepts commas and slashes after `CD N` (`CD 1, piste 2`). (3) `baMarkBoxes` updates disc
+from preceding line headers in narrow columns. (4) `la piste N` is parsed while preserving article exclusion for «la plage» and «une piste».
+(5) `baAssignDiscs` requires duplicate files with a copy suffix (`copy > 0`) before assigning artificial CD numbers.
+(6) `baPickBestParsed` disambiguates duplicate slots by book token overlap, coverage of the open book's marks, explicit track names,
+and clean suffixes (vocal over `_vi`, main audio over short supplements).
 
 Still open:
 - A book whose audio lies outside its folder is found only by hand (§5.1), by design.

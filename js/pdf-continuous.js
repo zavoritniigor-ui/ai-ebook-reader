@@ -119,7 +119,7 @@ function pdfScaleForPage(natural) {
         const pad = parseFloat(getComputedStyle(els.container).paddingTop) || 0;
         return Math.min(1, (els.container.clientHeight - 2 * pad) / (natural.height * fitScale)) * fitScale;
     }
-    return fitScale * state.pdfScale;
+    return fitScale * (state.pdfFit === 'width' ? 1 : state.pdfScale);
 }
 
 function pdfWrapperEstimate(doc) {
@@ -151,7 +151,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
     pdfContinuousReady = false;
     pdfSuppressActiveTracking = false;
     state.activeSelectionAnchor = null;
-    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor();
+    if (typeof invalidatePendingPdfResizeAnchor === 'function') invalidatePendingPdfResizeAnchor(true);
     clearTimeout(bookmarkSaveTimer);
     pdfPagesWithActiveRenderTask().forEach(cancelPdfPageRenderTask);
     if (pdfPageObserver) { pdfPageObserver.disconnect(); pdfPageObserver = null; }
@@ -169,6 +169,7 @@ async function setupContinuousPdf(doc, startPage, bookmark) {
         state.pdfLabelToPhysical = new Map();
         state.pdfLabelsFullyScanned = false;
     }
+    if (state.pdfFit === 'width') state.pdfScale = 1;
     state.currentIndex = startPage; pdfActivePage = startPage;
     updatePdfWorkspaceLayout({ immediate: true, force: true });
 

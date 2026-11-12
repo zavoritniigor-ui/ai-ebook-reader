@@ -328,6 +328,12 @@ const GRAMMAR_LANG_CONFIG = {
             features: ['tense', 'mood', 'person', 'number', 'auxiliary', 'participle'],
             // "être" / "allé" alone beside "3e personne" do not say WHICH role they play in a compound tense.
             featureLabels: { auxiliary: 'auxiliaire', participle: 'participe' },
+            // Display order only: retain tenses[0] as the dictionary lookup default.
+            timeline: {
+                label: 'Passé ← Présent → Futur',
+                past: ['plus_que_parfait', 'indicatif_imparfait', 'indicatif_passe_compose'],
+                present: ['indicatif_present'], future: ['indicatif_futur']
+            },
             tenses: [
                 { id: 'indicatif_present', label: 'Présent' },
                 { id: 'indicatif_imparfait', label: 'Imparfait' },
@@ -1987,6 +1993,13 @@ Object.assign(I18N, {
     mShelfDesc: { uk: "Нещодавні й збережені на пристрої", en: "Recent and saved on this device", fr: "Récents et enregistrés sur l’appareil", ru: "Недавние и сохранённые на устройстве", zh: "最近阅读和保存在设备上的图书", ko: "최근 읽은 책과 기기에 저장된 책", hi: "हाल की और डिवाइस पर सहेजी गई", ga: "Le déanaí agus sábháilte ar an ngléas" },
     mLibrary: { uk: "Безкоштовна бібліотека", en: "Free library", fr: "Bibliothèque gratuite", ru: "Бесплатная библиотека", zh: "免费图书馆", ko: "무료 도서관", hi: "मुफ़्त पुस्तकालय", ga: "Leabharlann saor in aisce" },
     mLibraryDesc: { uk: "Gutenberg, Вікіджерела, Internet Archive", en: "Gutenberg, Wikisource and Internet Archive", fr: "Gutenberg, Wikisource et Internet Archive", ru: "Gutenberg, Викитека, Internet Archive", zh: "古腾堡、维基文库、互联网档案馆", ko: "구텐베르크, 위키문헌, 인터넷 아카이브", hi: "गुटेनबर्ग, विकिस्रोत, इंटरनेट आर्काइव", ga: "Gutenberg, Vicífhoinse agus Internet Archive" },
+    bookTitleLabel: { uk: "Поточна книга", en: "Current book", fr: "Livre actuel", ru: "Текущая книга", zh: "当前图书", ko: "현재 책", hi: "वर्तमान पुस्तक", ga: "Leabhar reatha" },
+    mShareApp: { uk: "Поділитися застосунком", en: "Share the app", fr: "Partager l’application", ru: "Поделиться приложением", zh: "分享应用", ko: "앱 공유", hi: "ऐप साझा करें", ga: "Roinn an aip" },
+    mShareAppDesc: { uk: "QR-код і адреса застосунку", en: "QR code and app address", fr: "Code QR et adresse de l’application", ru: "QR-код и адрес приложения", zh: "二维码和应用地址", ko: "QR 코드 및 앱 주소", hi: "QR код और ऐप का पता", ga: "Cód QR agus seoladh an aip" },
+    shareAppTitle: { uk: "Поділитися застосунком", en: "Share the app", fr: "Partager l’application", ru: "Поделиться приложением", zh: "分享应用", ko: "앱 공유", hi: "ऐप साझा करें", ga: "Roinn an aip" },
+    shareAppNow: { uk: "Поділитися", en: "Share", fr: "Partager", ru: "Поделиться", zh: "分享", ko: "공유", hi: "साझा करें", ga: "Roinn" },
+    shareAppCopy: { uk: "Скопіювати адресу", en: "Copy address", fr: "Copier l’adresse", ru: "Скопировать адрес", zh: "复制地址", ko: "주소 복사", hi: "पता कॉपी करें", ga: "Cóipeáil an seoladh" },
+    shareAppCopied: { uk: "Адресу скопійовано", en: "Address copied", fr: "Adresse copiée", ru: "Адрес скопирован", zh: "地址已复制", ko: "주소가 복사되었습니다", hi: "पता कॉपी हो गया", ga: "Seoladh cóipeáilte" },
     mToc: { uk: "Зміст", en: "Contents", fr: "Sommaire", ru: "Оглавление", zh: "目录", ko: "목차", hi: "विषय-सूची", ga: "Clár ábhair" },
     mTocDesc: { uk: "Розділи та мініатюри сторінок", en: "Chapters and page thumbnails", fr: "Chapitres et miniatures des pages", ru: "Главы и миниатюры страниц", zh: "章节和页面缩略图", ko: "장과 페이지 미리보기", hi: "अध्याय और पृष्ठों के थंबनेल", ga: "Caibidlí agus mionsamhlacha leathanach" },
     mSecReading: { uk: "Читання", en: "Reading", fr: "Lecture", ru: "Чтение", zh: "阅读", ko: "읽기", hi: "पढ़ना", ga: "Léitheoireacht" },

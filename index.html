@@ -103,6 +103,27 @@
             font: inherit; text-align: left; white-space: normal; cursor: pointer; height: auto; justify-content: flex-start;
             -webkit-tap-highlight-color: transparent;
         }
+        #book-title-bar {
+            position: absolute; top: max(10px, env(safe-area-inset-top, 0px)); left: 50%; z-index: 20;
+            width: min(72%, 620px); transform: translateX(-50%); padding: 7px 14px;
+            border: 1px solid var(--border-color); border-radius: 999px; background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+            box-shadow: 0 4px 16px rgba(var(--shadow-color), .12); backdrop-filter: blur(10px);
+            color: var(--text-color); font-size: 13px; font-weight: 650; line-height: 1.25; text-align: center;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+        }
+        #book-title-bar[hidden] { display: none; }
+        #app-share-modal { position: fixed; inset: 0; z-index: 27000; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.42); }
+        #app-share-modal[hidden] { display: none; }
+        .app-share-box { width: min(420px, 100%); padding: 24px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--panel-bg); color: var(--text-color); box-shadow: 0 18px 60px rgba(0,0,0,.28); }
+        .app-share-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .app-share-head h2 { font-size: 20px; flex: 1; }
+        .app-share-close { width: 40px; height: 40px; padding: 0; border-radius: 50%; }
+        .app-share-qr { display: block; width: min(280px, 80vw); aspect-ratio: 1; margin: 8px auto 18px; image-rendering: pixelated; border: 8px solid #fff; border-radius: 4px; }
+        .app-share-url { display: block; width: 100%; padding: 11px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-color); font: inherit; text-align: center; overflow-wrap: anywhere; }
+        .app-share-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+        .app-share-status { min-height: 1.3em; margin-top: 10px; color: var(--text-muted); text-align: center; font-size: 13px; }
+        @media (max-width: 640px) { #book-title-bar { width: calc(100% - 100px); } .app-share-box { padding: 20px 16px; } }
+
         button.menu-row:hover, button.menu-row-main:hover, .menu-row-select:hover, .menu-cta:hover { background: var(--hover-color); }
         button.menu-row:active, button.menu-row-main:active, .menu-cta:active { transform: none; background: var(--hover-color); }
         .menu-row > svg.mi, .menu-row-main > svg.mi { color: var(--accent-color); }
@@ -952,7 +973,7 @@
             /* flex:1 + min-height:0 замість height:100%: у flex-рядку з автоматичною висотою
                відсоткова висота нема від чого рахувати, тому блок не обмежувався й не
                прокручувався — саме через це скролінг і не працював. */
-            flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overflow-x: hidden;
+            flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overflow-x: hidden; align-self: stretch; white-space: pre-wrap;
             overscroll-behavior: contain; min-height: 0;
             -webkit-overflow-scrolling: touch;      /* плавна інерційна прокрутка на дотик */
             touch-action: pan-y;                    /* палець і перо прокручують вертикально */
@@ -1573,6 +1594,9 @@
         #library-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index: 30000; justify-content: center; align-items: center; padding: 12px; }
         #library-modal.open { display: flex; }
         .library-box { position: relative; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 14px; width: min(640px, 100%); max-height: min(88vh, 100%); display: flex; flex-direction: column; padding: 14px; gap: 10px; }
+        @media (min-width: 641px) {
+            .library-box { width: min(760px, 100%); }
+        }
         .library-head { display: flex; align-items: center; justify-content: space-between; }
         .library-head h3 { margin: 0; font-size: 17px; }
         .library-head .close-panel-btn { position: static; }
@@ -1581,12 +1605,26 @@
         .library-tools select { padding: 8px; font-size: 14px; }
         .library-tools .library-source-select { display: none; }
         /* Вікно бібліотеки — колонка з обмеженою висотою: без flex-shrink: 0 довгий список стискав рядок кнопок (з прокруткою вбік) майже до нуля. */
-        .library-chips, .library-tools, .library-adv-toggle, .library-adv, .library-head, #library-status, #library-more, .library-source { flex-shrink: 0; }
-        .library-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; margin: 0 -2px; -webkit-overflow-scrolling: touch; }
+        .library-chips-wrap, .library-chips, .library-tools, .library-adv-toggle, .library-adv, .library-head, #library-status, #library-more, .library-source { flex-shrink: 0; }
+        .library-chips-wrap { position: relative; display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; }
+        .library-chips { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; margin: 0 -2px; -webkit-overflow-scrolling: touch; cursor: grab; user-select: none; }
+        .library-chips.grabbing { cursor: grabbing; scroll-behavior: auto; }
         .library-chips::-webkit-scrollbar { display: none; }
-        .library-chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 12px 4px 6px; border-radius: 19px; font-size: 13px; white-space: nowrap; }
-        .library-chip img { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; background: #fff; }
-        .library-chip-emoji { font-size: 16px; line-height: 1; }
+        @media (hover: hover) and (pointer: fine) {
+            .library-chips { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent-color) 40%, transparent) transparent; }
+            .library-chips::-webkit-scrollbar { display: block; height: 4px; }
+            .library-chips::-webkit-scrollbar-track { background: transparent; }
+            .library-chips::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent-color) 35%, transparent); border-radius: 4px; }
+            .library-chips::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+        }
+        .library-chips-nav { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; min-width: 30px; padding: 0; border-radius: 50%; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); box-shadow: 0 1px 4px rgba(0,0,0,0.12); cursor: pointer; flex-shrink: 0; transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease; }
+        .library-chips-nav:hover:not(:disabled) { background: color-mix(in srgb, var(--accent-color) 15%, var(--panel-bg)); border-color: var(--accent-color); }
+        .library-chips-nav:active:not(:disabled) { transform: scale(0.92); }
+        .library-chips-nav:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+        .library-chips-nav[hidden] { display: none; }
+        .library-chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 12px 4px 6px; border-radius: 19px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+        .library-chip img { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; background: #fff; pointer-events: none; }
+        .library-chip-emoji { font-size: 16px; line-height: 1; pointer-events: none; }
         .library-chip img + .library-chip-emoji { margin-left: -12px; margin-top: 12px; font-size: 12px; }
         .library-chip.active { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 18%, transparent); font-weight: 650; }
         .library-adv-toggle { align-self: center; min-height: 36px; padding: 2px 10px; font-size: 13px; background: none; border: none; color: var(--accent-color); }
@@ -1599,6 +1637,16 @@
         .library-years-note { font-size: 12px; color: var(--text-muted); }
         #library-status { font-size: 13px; color: var(--text-muted); min-height: 1em; }
         #library-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+        #library-batch { flex-shrink: 0; min-height: 40px; margin: 8px 0; }
+        #library-downloads { flex: 0 0 auto; max-height: 26vh; overflow-y: auto; overscroll-behavior: contain; }
+        .library-download { padding: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px solid var(--border-color); }
+        .library-download strong { flex: 1 1 160px; overflow-wrap: anywhere; }
+        .library-download-status { font-size: 13px; }
+        .library-download progress { flex-basis: 100%; width: 100%; }
+        .library-select { flex-shrink: 0; min-width: 24px; min-height: 24px; }
+        .library-files { width: 100%; }
+        .library-file { display: flex; align-items: center; gap: 8px; padding: 5px; overflow-wrap: anywhere; }
+        .library-card:has(.library-files) { flex-wrap: wrap; }
         /* «Мої книги» у вікні бібліотеки: обкладинки й той самий барабан, що на стартовому екрані (js/book-shelf.js). */
         #library-list.shelf-drum { scrollbar-width: none; --fade-top: 0px; --fade-bottom: 0px;
             -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%);
@@ -1981,6 +2029,7 @@
         <symbol id="i-struct" viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="5" rx="1.2"/><rect x="13.5" y="4" width="7" height="5" rx="1.2"/><rect x="8.5" y="15" width="7" height="5" rx="1.2"/><path d="M7 9v2.5h10V9M12 11.5V15"/></symbol>
         <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10.5" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></symbol>
         <symbol id="i-send" viewBox="0 0 24 24"><path d="M21.5 2.5 10.5 13.5"/><path d="M21.5 2.5 14.5 21.5l-4-8-8-4z"/></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
         <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
         <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
         <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2v.1"/></symbol>
@@ -2008,6 +2057,7 @@
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown,.cbz">
                 <button type="button" class="menu-row my-books-btn" id="btn-my-books" aria-labelledby="mr-shelf-t" aria-describedby="mr-shelf-d"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span class="mr-text"><span class="mr-title" id="mr-shelf-t" data-i18n="mShelf">Мої книги</span><span class="mr-desc" id="mr-shelf-d" data-i18n="mShelfDesc">Нещодавні й збережені на пристрої</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-free-library" aria-labelledby="mr-lib-t" aria-describedby="mr-lib-d"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span class="mr-text"><span class="mr-title" id="mr-lib-t" data-i18n="mLibrary">Безкоштовна бібліотека</span><span class="mr-desc" id="mr-lib-d" data-i18n="mLibraryDesc">Gutenberg, Вікіджерела, Internet Archive</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-share-app" aria-labelledby="mr-share-t" aria-describedby="mr-share-d"><svg class="mi" aria-hidden="true"><use href="#i-share"/></svg><span class="mr-text"><span class="mr-title" id="mr-share-t" data-i18n="mShareApp">Поділитися застосунком</span><span class="mr-desc" id="mr-share-d" data-i18n="mShareAppDesc">QR-код і адреса застосунку</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="toggle-toc-desktop" aria-labelledby="mr-toc-t" aria-describedby="mr-toc-d"><svg class="mi book-nav-icon" aria-hidden="true"><use href="#i-toc"/></svg><span class="mr-text"><span class="mr-title" id="mr-toc-t" data-i18n="mToc">Зміст</span><span class="mr-desc" id="mr-toc-d" data-i18n="mTocDesc">Розділи та мініатюри сторінок</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-book-audio" data-only="pdf" aria-labelledby="mr-audio-t" aria-describedby="mr-audio-d"><svg class="mi" aria-hidden="true"><use href="#i-audio"/></svg><span class="mr-text"><span class="mr-title" id="mr-audio-t" data-i18n="mAudio">Аудіо до книги</span><span class="mr-desc" id="mr-audio-d" data-i18n="mAudioDesc">Діалоги й записи до підручника: тап на позначку в книзі вмикає запис</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
             </section>
@@ -2156,7 +2206,7 @@
         </nav>
 
         <main id="main-area">
-            <div id="reader-container"><div id="reader-pages">
+            <div id="reader-container"><div id="book-title-bar" hidden role="status" aria-live="polite"></div><div id="reader-pages">
                 <!-- Стартовий екран (книгу ще не відкрито): головні дії великими кнопками й останні книги. Меню на старті закрите. -->
                 <section class="home" id="home-screen">
                     <div class="home-brand"><img class="home-logo" src="icons/icon-192.png" alt="" width="40" height="40"><h1 class="home-title">AI E-book Reader</h1></div>
@@ -2347,6 +2397,16 @@
         <button type="button" id="page-arrow-next" class="page-arrow" data-i18n-aria="next" data-i18n-title="next" aria-label="Вперед ▶" title="Вперед ▶">›</button>
     </div>
 
+    <div id="app-share-modal" hidden role="dialog" aria-modal="true" aria-labelledby="app-share-title">
+        <div class="app-share-box">
+            <div class="app-share-head"><h2 id="app-share-title" data-i18n="shareAppTitle">Поділитися застосунком</h2><button type="button" class="app-share-close" id="app-share-close" data-i18n-title="tClose" data-i18n-aria="tClose"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+            <img class="app-share-qr" id="app-share-qr" src="ai-ebook-reader-qr.png" alt="QR-код AI Ebook Reader">
+            <div class="app-share-url" id="app-share-url" role="textbox" aria-readonly="true">https://ai-ebook-reader.uk</div>
+            <div class="app-share-actions"><button type="button" class="btn-primary" id="app-share-native" data-i18n="shareAppNow">Поділитися</button><button type="button" class="btn-secondary" id="app-share-copy" data-i18n="shareAppCopy">Скопіювати адресу</button></div>
+            <p class="app-share-status" id="app-share-status" role="status" aria-live="polite"></p>
+        </div>
+    </div>
+
     <div id="settings-modal">
         <div class="modal-content">
             <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" data-close-settings data-i18n="close" data-i18n-title="tClose">✕</button>
@@ -2386,30 +2446,30 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=281021281c18"></script>
+    <script src="js/core.js?v=ee36ed3849fb"></script>
     <script src="js/lang-detect.js?v=5690558f59cc"></script>
-    <script src="js/local-speech.js?v=338f138ee734"></script>
-    <script src="js/tts.js?v=ed91c72615f3"></script>
-    <script src="js/selection.js?v=6a45bc305fb1"></script>
+    <script src="js/local-speech.js?v=3c6738acab5e"></script>
+    <script src="js/tts.js?v=24e28a57806a"></script>
+    <script src="js/selection.js?v=84c1930c64d4"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
     <script src="js/book-marks.js?v=6447147d7e80"></script>
-    <script src="js/navigation.js?v=c9d54288e58a"></script>
-    <script src="js/pdf-zoom-pan.js?v=c2233b957e5a"></script>
+    <script src="js/navigation.js?v=5f25aecc7aad"></script>
+    <script src="js/pdf-zoom-pan.js?v=a0ac5c1632ed"></script>
     <script src="js/ui-tooltip.js?v=456649d2a3d0"></script>
-    <script src="js/translation.js?v=25665b976831"></script>
+    <script src="js/translation.js?v=2925232e7629"></script>
     <script src="js/dictionaries.js?v=a8f7f2bcfc69"></script>
     <script src="js/sentence-structure.js?v=31a33b681f25"></script>
-    <script src="js/grammar-svo.js?v=d480e2202ddf"></script>
+    <script src="js/grammar-svo.js?v=cca5ba0e66aa"></script>
     <script src="js/grammar-rules-data-fr.js?v=ae6134e753ea"></script>
     <script src="js/grammar-rules-data-en.js?v=dbb11fd2db9a"></script>
     <script src="js/grammar-rules-details-fr.js?v=1bbe7a3b07e7"></script>
     <script src="js/grammar-rules-details-en.js?v=4aa5b172a0df"></script>
     <script src="js/grammar-rules.js?v=cdddc9a470fc"></script>
-    <script src="js/ai-client.js?v=e8e166c33d46"></script>
+    <script src="js/ai-client.js?v=9452e4cd46e2"></script>
     <script src="js/practice-session.js?v=276c4226546f"></script>
-    <script src="js/practice-worksheet.js?v=cca1a85581f5"></script>
+    <script src="js/practice-worksheet.js?v=8f514e294034"></script>
     <script src="js/dictation.js?v=f8b1e587d988"></script>
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-dict-catalog.js?v=16288e0c6804"></script>
@@ -2419,25 +2479,27 @@
     <script src="js/device-llm.js?v=9b6f20f6d2d6"></script>
     <script src="js/pdf-ink.js?v=0b9c9e47c2e9"></script>
     <script src="js/text-ink.js?v=4ba7df76e282"></script>
-    <script src="js/pdf-crop.js?v=ef01b312aeee"></script>
+    <script src="js/pdf-crop.js?v=478d28ec89bb"></script>
     <script src="js/pdf-outline.js?v=718bf4433abd"></script>
     <script src="js/pdf-thumbnails.js?v=5c9a45b6ee93"></script>
-    <script src="js/pdf-continuous.js?v=830d31caa82b"></script>
+    <script src="js/pdf-continuous.js?v=785031e6f077"></script>
     <script src="js/pdf-contrast.js?v=b98318b19203"></script>
-    <script src="js/pdf-render.js?v=1ea77bfd4182"></script>
-    <script src="js/book-audio.js?v=89bbf93c6ec1"></script>
-    <script src="js/book-speech.js?v=19520aac33ff"></script>
+    <script src="js/publication-files.js?v=fc9d7045fe37"></script>
+    <script src="js/pdf-render.js?v=ff46a3606dc9"></script>
+    <script src="js/book-audio.js?v=b8af6790a42c"></script>
+    <script src="js/book-speech.js?v=d745dd4b6dc8"></script>
     <script src="js/formats.js?v=17d78fa0f7d6"></script>
     <script src="js/comics.js?v=1eb2341da9af"></script>
     <script src="js/onboarding.js?v=30c9f576755e"></script>
-    <script src="js/library.js?v=2daa015f41b4"></script>
-    <script src="js/book-shelf.js?v=e2c7895176e5"></script>
+    <script src="js/library-queue.js?v=6ce14022aee1"></script>
+    <script src="js/library.js?v=470439275805"></script>
+    <script src="js/book-shelf.js?v=81d40fa40727"></script>
     <script src="js/scanner.js?v=1cfd10be8932"></script>
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
     <script src="js/developer.js?v=67c700255062"></script>
-    <script src="js/main.js?v=c306090ed69f"></script>
+    <script src="js/main.js?v=06c0272e7463"></script>
     <script src="js/pwa-lifecycle.js?v=d2987066ddd8"></script>
-    <script src="js/i18n-es.js?v=6ad60eb19271"></script>
+    <script src="js/i18n-es.js?v=36d0a596c921"></script>
 </body>
 </html>

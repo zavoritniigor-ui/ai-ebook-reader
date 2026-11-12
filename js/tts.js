@@ -216,10 +216,10 @@ function speakText(text, side, offset, onEnd) {
     const gen = state.ttsGen;
     cancelSpeech();
     const { lang, voice } = voiceForText(text);
-    const browserSpeak = () => {
-        const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
+    const browserSpeak = (fromOffset = offset) => {
+        const u = new SpeechSynthesisUtterance(fromOffset ? text.slice(fromOffset) : text);
         setUtteranceVoice(u, lang, voice); u.rate = 0.95;
-        bindUtterance(u, side, text, offset, onEnd);
+        bindUtterance(u, side, text, fromOffset, onEnd);
         // Одразу, якщо синтезатор вільний; після справжнього cancel() — лише залишок TTS_CANCEL_SPEAK_DELAY_MS.
         // Перевірка gen: якщо за цей час фразу вже скасували (ще один tap, stopTooltipSpeech) — не озвучуємо.
         startUtterance(u, gen);
@@ -235,8 +235,8 @@ function speakInLang(text, langCode, side, offset, onEnd) {
     state.ttsGen++;
     const gen = state.ttsGen;
     cancelSpeech();
-    const browserSpeak = () => {
-        const u = new SpeechSynthesisUtterance(offset ? text.slice(offset) : text);
+    const browserSpeak = (fromOffset = offset) => {
+        const u = new SpeechSynthesisUtterance(fromOffset ? text.slice(fromOffset) : text);
         const voice = voices.find(v => v.voiceURI === state.selectedVoiceURIByLang[langCode]) || pickBestVoice(langCode, voices);
         // Голосів у системі багато, а цієї мови немає (ірландська майже скрізь, хінді/корейська без мовного пакета):
         // синтезатор прочитав би текст ЧУЖИМ голосом — звучить жахливо. Краще чесно сказати, що голос треба встановити.
@@ -248,7 +248,7 @@ function speakInLang(text, langCode, side, offset, onEnd) {
         }
         setUtteranceVoice(u, LANG_TAGS[langCode] || langCode, voice);
         u.rate = 0.95;
-        bindUtterance(u, side, text, offset, onEnd);
+        bindUtterance(u, side, text, fromOffset, onEnd);
         startUtterance(u, gen);
     };
     // Локальний голос (js/local-speech.js) для en/fr, якщо увімкнений; інакше браузерний.

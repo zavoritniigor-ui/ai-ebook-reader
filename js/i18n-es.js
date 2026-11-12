@@ -3,6 +3,7 @@
 // (fallback de t()); tests/menu_labels_browser.py comprueba que no quede ninguna.
 const I18N_ES = {
     toc: '☰ Índice', open: '📂 Abrir libro', loading: 'Cargando...', read: '🔊 Leer en voz alta', pause: '⏸ Pausa', resume: '▶ Reanudar',
+    mShareApp: 'Compartir la aplicación', mShareAppDesc: 'Código QR y dirección de la aplicación', shareAppTitle: 'Compartir la aplicación', shareAppNow: 'Compartir', shareAppCopy: 'Copiar dirección', shareAppCopied: 'Dirección copiada', bookTitleLabel: 'Libro actual',
     altVoicesOn: '👥 Dos voces: SÍ', altVoicesOff: '👥 Dos voces: NO', learnOn: '🔮 Estudio de palabras: SÍ', learnOff: '🔮 Estudio de palabras: NO',
     themeLight: 'Claro', themeSepia: 'Sepia', themeDark: 'Oscuro', aiKey: '🔑 Clave de IA', noBook: 'Ningún libro cargado',
     welcome: 'Pulsa «Abrir» para cargar un libro (EPUB, PDF, DOCX, FB2, TXT, MD, HTML o RTF).',
@@ -156,7 +157,12 @@ const I18N_ES = {
     libAdvanced: '⚙ Autor y años', libAuthor: 'Autor', libYearFrom: 'Año desde', libYearTo: 'hasta',
     libYearsLife: 'Años: cuándo vivió el autor.', libYearsPub: 'Años: año de publicación.',
     libSourceSe: 'Standard Ebooks (inglés)', libSeSource: 'Libros de Standard Ebooks: clásicos ingleses de dominio público, ediciones revisadas con esmero.',
-    libDownloading: 'Descargando el libro: {n} de {total} MB…', libTooBig: 'El libro es demasiado grande para la aplicación ({n} MB, máximo 300 MB).',
+    libDownloading: 'Descargando el libro: {n} de {total} MB…',
+    publicationStorageFull: 'No hay suficiente espacio para guardar esta publicación. Libera espacio e inténtalo de nuevo.',
+    publicationIncomplete: 'La descarga se interrumpió o está incompleta. Vuelve a intentar este archivo.',
+    libBatch: 'Descargar la selección a Mis libros', libQueue: 'Descargas', libQueued: 'En espera',
+    libDownloadingOne: 'Descargando…', libSavedShelf: 'Guardado en Mis libros', libRetry: 'Reintentar',
+    libFiles: 'Números / volúmenes / archivos', libSelect: 'Seleccionar publicación',
     genAll: 'Todos los géneros', genFiction: 'Ficción', genAdventure: 'Aventuras', genDetective: 'Policíaca', genScifi: 'Ciencia ficción', genLove: 'Romántica',
     genPoetry: 'Poesía', genDrama: 'Teatro', genChildren: 'Infantil', genPhilosophy: 'Filosofía', genHistory: 'Historia', genHistorical: 'Novela histórica',
     genStories: 'Cuentos', genBiography: 'Biografías y memorias', genMyth: 'Mitos y leyendas', genTravel: 'Viajes', genHumor: 'Humor',
@@ -245,7 +251,8 @@ const I18N_ES = {
     dlLoading: 'Iniciando el modelo (la primera vez, hasta un minuto)…', dlUnsupported: 'Este navegador no puede ejecutar la IA en el dispositivo: hace falta un Chrome reciente con WebGPU.',
     dlNoGpu: 'El chip gráfico de este dispositivo no puede ejecutar el modelo ({why}).', dlNoGpuShort: 'El chip gráfico de este dispositivo no puede ejecutar el modelo.',
     dlErrQuota: 'No hay espacio suficiente: hacen falta ~2,1 GB libres. Libera espacio y vuelve a intentarlo; lo descargado se conserva.',
-    dlMark: '📱 en el dispositivo', dlTooLong: 'El fragmento es demasiado largo para la IA del dispositivo. Selecciona uno más corto.'
+    dlMark: '📱 en el dispositivo', dlTooLong: 'El fragmento es demasiado largo para la IA del dispositivo. Selecciona uno más corto.',
+    libChipsPrev: 'Bibliotecas anteriores', libChipsNext: 'Siguientes bibliotecas'
 };
 for (const [key, value] of Object.entries(I18N_ES)) if (I18N[key]) I18N[key].es = value;
 // El menú ya se pintó en main.js (antes de este archivo): con el español elegido se vuelve a pintar.

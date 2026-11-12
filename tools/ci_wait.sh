@@ -44,31 +44,33 @@ while true; do
             echo "FAILED JOBS:"
             JOBS_JSON=$(gh run view "$RUN_ID" --json jobs 2>/dev/null || true)
             # Find failed jobs and print their names and log tails
-            python3 -c '
+            python3 - "$JOBS_JSON" << 'EOF'
 import sys, json, subprocess
-raw = sys.stdin.read()
-if not raw: sys.exit(0)
+if len(sys.argv) < 2 or not sys.argv[1]:
+    sys.exit(0)
 try:
-    data = json.loads(raw)
+    data = json.loads(sys.argv[1])
 except Exception:
     sys.exit(0)
 for job in data.get("jobs", []):
     if job.get("conclusion") == "failure":
-        print(f"\n--- FAILED JOB: {job.get(\"name\")} (ID: {job.get(\"databaseId\")}) ---")
-        job_id = job.get("databaseId")
-        if job_id:
+        jname = job.get("name")
+        jid = job.get("databaseId")
+        print(f"\n--- FAILED JOB: {jname} (ID: {jid}) ---")
+        if jid:
             try:
-                proc = subprocess.run(["gh", "run", "view", "--job", str(job_id), "--log-failed"], capture_output=True, text=True, timeout=30)
+                proc = subprocess.run(["gh", "run", "view", "--job", str(jid), "--log-failed"], capture_output=True, text=True, timeout=30)
                 out = proc.stdout.strip()
                 if not out:
-                    proc = subprocess.run(["gh", "api", f"repos/{job.get(\"url\",\"/\").split(\"/repos/\")[-1].split(\"/actions\")[0]}/actions/jobs/{job_id}/logs"], capture_output=True, text=True, timeout=30)
+                    repo_path = job.get("url", "/").split("/repos/")[-1].split("/actions")[0]
+                    proc = subprocess.run(["gh", "api", f"repos/{repo_path}/actions/jobs/{jid}/logs"], capture_output=True, text=True, timeout=30)
                     out = proc.stdout.strip()
                 lines = out.splitlines()
                 tail = "\n".join(lines[-60:]) if len(lines) > 60 else "\n".join(lines)
                 print(tail)
             except Exception as e:
-                print(f"Could not retrieve logs for job {job_id}: {e}")
-' <<< "$JOBS_JSON"
+                print(f"Could not retrieve logs for job {jid}: {e}")
+EOF
             exit 1
         fi
     fi

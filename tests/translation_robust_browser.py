@@ -56,4 +56,9 @@ check('7 a link of the whole sentence is dropped, word links are kept', """(() =
   const whole = validateAlignment(src, tr, [{ source: [src], target: tr, confidence: 'high' }]);
   const words = validateAlignment(src, tr, [{ source: ['êtes émus'], target: 'зворушені', confidence: 'high' }, { source: ['des images'], target: 'зображення', confidence: 'high' }]);
   return whole.length === 0 && words.length === 2; })()""")
+c.js(STUB + "1")
+check('8 long page selection (>450 chars) scales timeoutMs beyond 3s and increases token budget', f"""(async () => {{
+  __replies = ['Повний переклад великої сторінки без обрізання на половині.'];
+  const r = await aiTranslateText({LONG!r}, 'fr', null, 'uk', '', false);
+  return r === 'Повний переклад великої сторінки без обрізання на половині.' && __calls[0].options.timeoutMs > 6000 && __calls[0].options.maxOutputTokens >= 1000 || JSON.stringify(__calls); }})()""")
 print('ALL PASS')

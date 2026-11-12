@@ -1,8 +1,8 @@
 """(1) Opening/closing the main menu in a text book changes the visible text ONCE (the repagination after the transition), not on
 every frame: the container height animates for 0.3 s and the page columns used to reflow on each frame while the page offset
 stayed put, so different passages flashed by («chaotic redraw»). The reading place stays on screen afterwards.
-(2) «✂️ Region» works in text books (EPUB/FB2/TXT/HTML/MD…): the drawn frame becomes a PNG crop, without selecting text or
-opening a translation popup. No external network."""
+(2) «✂️ Region» works in text books (EPUB/FB2/TXT/HTML/MD…): the text inside the drawn frame becomes the selection and the
+translation popup opens; words outside the frame are not taken. Before, it only said «works in PDF». No network."""
 import json, os, time
 from browser_cdp import CDP
 
@@ -48,9 +48,9 @@ c.call('Page.navigate', url=URL); c.wait(READY, timeout=30)
 c.js("localStorage.clear(); localStorage.setItem('reader_onboarding_done','1'); 1"); c.call('Page.reload'); c.wait(READY, timeout=30); time.sleep(0.5)
 c.js("window.__ok = 0; openBookFile(new File([%s], 'region.md', {lastModified: 7})).then(() => { window.__ok = 1; }); 1" % json.dumps(BOOK))
 c.wait("window.__ok === 1", timeout=30); time.sleep(2)
-c.js("state.translateMode = true; window.__asked = []; aiAvailable = () => false; speakText = () => {}; selectRangeAndTranslate = () => { __asked.push('translation'); return true; }; 1")
+c.js("state.translateMode = true; window.__asked = []; aiAvailable = () => false; speakText = () => {}; 1")
 c.js("document.getElementById('btn-region').click(); 1"); time.sleep(0.4)
-check('region mode opens in a text book with the screenshot hint', "document.body.classList.contains('region-mode') && document.getElementById('region-hint').textContent === t('regionCaptureHint')")
+check('region mode opens in a text book with a text hint (not «works in PDF»)', "document.body.classList.contains('region-mode') && document.getElementById('region-hint').textContent === t('regionHintText')")
 # five consecutive words on ONE visible line of the current page
 box = json.loads(c.js("""JSON.stringify((() => { const c = els.container.getBoundingClientRect(); const it = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT); let n;
   while ((n = it.nextNode())) { const re = /word\\d+x\\d+/g; let m, line = [];
@@ -64,6 +64,6 @@ c.call('Input.dispatchMouseEvent', type='mouseMoved', x=box['x0'], y=box['y0'])
 c.call('Input.dispatchMouseEvent', type='mousePressed', x=box['x0'], y=box['y0'], button='left', buttons=1, clickCount=1)
 for i in range(1, 8): c.call('Input.dispatchMouseEvent', type='mouseMoved', x=box['x0'] + (box['x1'] - box['x0']) * i / 7, y=box['y0'] + (box['y1'] - box['y0']) * i / 7, button='left', buttons=1); time.sleep(0.03)
 c.call('Input.dispatchMouseEvent', type='mouseReleased', x=box['x1'], y=box['y1'], button='left', buttons=0, clickCount=1)
-check('the framed text becomes an image, without starting translation', "cropDialog.open && document.getElementById('crop-preview').naturalWidth > 0 && !document.body.classList.contains('region-mode')", timeout=20)
-check('the translation popup stays closed and no translation was requested', "els.tooltip.style.display !== 'flex' && __asked.length === 0 && !window.getSelection().toString()")
+check('the text inside the frame becomes the selection and the translation popup opens', "els.tooltip.style.display === 'flex' && !document.body.classList.contains('region-mode')", timeout=3)
+check('... exactly the five framed words, nothing outside', "(() => { const s = els.ttOriginal.textContent.trim(); return s.startsWith(%s) && s.endsWith(%s) && s.split(/\\s+/).length === 5; })() || els.ttOriginal.textContent" % (json.dumps(box['first']), json.dumps(box['last'])))
 print('ALL PASS')

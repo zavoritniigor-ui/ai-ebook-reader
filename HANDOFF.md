@@ -9,27 +9,81 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex, cloud | `feat/iridescent-bottom-bar` | `index.html` (bottom reading capsule CSS only); generated shell hash | working | 2026-11-03 |
-| Codex, cloud | `fix/crop-image-handoff` | `js/pdf-crop.js`, crop/menu-region browser tests, new region screenshot test, `tests/learning_stats_languages_grammar_browser.py` load diagnostics, CI invocation/failure diagnostics, vendor/html2canvas-1.4.1 assets, sw.js asset entry; generated hashes | screenshot reflow books without translation; Google search in current window | 2026-11-05 |
+| Codex, local delivery | `feat/iridescent-bottom-bar` | bottom reading capsule CSS; generated hashes | PR #374 integration and validation | 2026-11-12 |
+| Codex, local | `fix/pdf-sidebar-reflow` | `js/navigation.js`, `js/pdf-continuous.js`, `js/pdf-zoom-pan.js`, `tests/large_publications_browser.py`; generated hashes | PR #390; implementation complete, CI scheduling blocked | 2026-11-11 |
+| Antigravity | `fix/ba-restart-single-track` | `js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
+| Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
 | Codex, cloud | `feat/separate-scans-shelf` | `js/book-shelf.js`, `js/scanner.js`, `tests/book_shelf_browser.py`, `tests/scanner_browser.py`, `ARCHITECTURE.md`; shelf CSS and generated hashes | working | current session |
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 
-## Codex — cropped image to Google search
-- Worktree `/workspace/wt-crop-image-handoff`, branch `fix/crop-image-handoff`, PR #372; base main `032dea655645aeb81572e41d9112b2a6fd7f15f0`. No production delivery yet; current exact-head CI must pass before normal merge.
-- Replaced the old text-book Region path (which deliberately translated a text range) with local PNG capture, using vendored MIT html2canvas1.4.1. PDF canvas/ink capture retained. Capture-only style hides menus/panel tabs; stale/cancel guards prevent reopening a discarded image. No library layout, storage or credentials changed.
-- Google replaces legacy Gemini at runtime, including cached HTML. An explicit click posts the exact PNG as `encoded_image` through the native Lens multipart form, target `_self`. No popup, clipboard or public image hosting. Google cannot be embedded in an iframe. Native submission is verified in Chromium and WebKitGTK with production CSP to a slow local receiver; actual Google results remain UNVERIFIED because Google is unavailable from this environment.
-- Important owner evidence: latest screenshot shows **old “Запитати Gemini”**, so the reported “nothing opens” cannot establish a regression in the unmerged Search Google code. EPUB framing is also reported broken in the published version. Added a real ZIP/OPF/spine EPUB with inline formatting/archive images to the touch screenshot regression (not merely a renamed TXT). Desktop Markdown and real touch EPUB capture both match independent browser pixels on later pages; no translation/page change, cancellation and menu restoration pass.
-- Local validation: crop Google/native multipart, production-CSP crop, PDF crop AI/share, menu-region, quick-wheel, PDF UX, learning UX and locale/stream audit PASS. All app/worker syntax, generated shell hashes and all149 CI suite invocations pass. Expanded EPUB test passes in Google Chrome157. Temporary evidence `/tmp/epub-region-regression.log`, `/tmp/crop-locale-restored.log`, `/tmp/crop-csp-check.log`.
-- CI diagnostics preserve every test and failure exit status. Earlier exact-head runs exposed an intermittent missing selection module and one missing crop preview, neither reproduced locally; observation-only diagnostics added without speculative app changes. Run42061832921 passed those suites and exposed a confirmed regression: `shareFailed` translations were accidentally removed in the Google i18n edit. Restored all eight original translations; locale audit and all four focused crop suites now pass. Push this fix and require NEW exact-head CI; previous failed checks do not authorize merge.
-- Custom-domain source remains unverified: allowed Pages.dev production is main032, but ai-ebook-reader.uk is inaccessible from the cloud policy. The old Gemini screenshot is consistent with an unmerged feature, not proof of DNS/cache failure. Do not clear books/storage or change DNS speculatively. No cloud environment configuration publishing.
+## Codex — Practice selection and French tense timeline (2026-11-10)
+- Branch `feat/practice-selection-tense-timeline`, worktree `../wt-practice-timeline`; PR [#388](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/388). Implementation and local validation complete; no further source edits planned.
+- Practice mouse/pen drags select generated words across clickable targets and sentence/story rows; plain target clicks still focus Grammar. Translation and highlights exclude sentence action icons and expanded translations. Native target selection retains handles; pen touch events are blocked only while selecting.
+- French controls: past forms left, Présent centered initially/on resize and after the lookup presenter’s two consecutive renders, Futur simple right; moods stay separate. Soft theme-aware shades deepen away from the center, all labels meet AA in the three themes. Default tense lookup and other languages are preserved.
+- Final local PASS: Practice selection, timeline, panel translation, sentence actions, AI contract (including the real PDF acceptance), PDF UX and learning UX; syntax, app-shell and CI coverage. Related Practice reading, Grammar redesign/French/lookup and legacy Practice also passed. Existing label checks compare the complete French set without imposing the old visual order; the speech test now uses `original` and asserts the exact spoken word.
+- Delivery and CI are tracked in PR #388. No uncommitted work is planned after the handoff commit. Next owner check: Practice selection with the physical Android stylus and the French tense strip in the preferred theme.
+
+## Claude Code — the book's own list of its recordings (2026-11-07) — MERGED (PR #379, main `ed3063f`)
+- Rules §6.4 of `docs/agents/book_audio_rules.md`; the code is in `js/book-audio.js`; the test is `tests/book_audio_annex_browser.py`
+  (10 checks, in CI). The branch `feat/ba-annex-list` (worktree `/home/igor/Projects/wt-ba-stations`) is merged; nothing is pending on it.
+- The owner's question: «can the audio be attached by hand so that it works for ALL the dialogues of the book?» — **yes**, for a book
+  that prints its own list of its recordings.
+- The Manuel «Par Ici 5-6 Manuel» prints that list at the end: **243 entries** «i Piste N, page M» under 13 headings (STATION 1 … STATION 10,
+  STATION PHONÉTIQUE, ANNEXE – MORPHOLOGIE, ANNEXE – STRATÉGIES). The app reads it in the order a reader reads it (the sideways headings
+  in the margin are left out), measures the shift to the PDF's pages (**+3**), and every mark then knows its page and its group.
+- Measured on the owner's **real** Manuel (148 PDF pages, 500 marks): 243 entries read, 13 groups, **241 of the 257** body marks placed
+  (the 16 left are on pages 4/9/10 — the pages that describe the book, not dialogues), **243 of 243** list marks placed; the body mark
+  and the list mark of one dialogue resolve to the same recording. End to end with the real file: `page 16 - piste 1.mp3` plays on the
+  body mark **and** on the list's mark of that dialogue; `Station 1 - piste 2.mp3` plays on station 1's piste 2 only; the piste 1 of
+  another page does not pick it up.
+- How to attach by hand: name the files by the book's printed page (`page 27 - piste 5.mp3`) or by the book's own group heading
+  (`Station 02 - piste 5.mp3`, or a folder `Station 02`). A plain `piste 5.mp3` stays undecided — the numbers restart in every station.
+- **Still missing:** the Manuel's own 236 pistes are not on the disk (page 3 of the PDF: «Accédez au matériel audio et vidéo du manuel au
+  www.methode-parici.com»). The CD «audio CD 56» (96 tracks) belongs to the textbook `livre 56.pdf`; the folder `audio 56` (26 FLS2 files)
+  is not the Manuel's audio.
+
+## Claude Code — book audio: choosing the folders by hand (2026-11-07)
+
+**Where to start tomorrow (nothing else is pending on this side):**
+1. PR #378 (`fix/ba-narration-disc-ask`) is **merged** (main `089f9da`): the narration no longer asks which disc and one foreign narration no longer blocks the batch. PR #379 (the book's own list of its recordings) is **merged** too (main `ed3063f`) — see the section above.
+2. The Manuel's own 236 pistes are still missing — they are on www.methode-parici.com (§ above); once the owner downloads them and names them by page or by station, every dialogue of the Manuel plays. Nothing to code until then.
+
+### What PR #378 changes (owner: «я просто вручну вказати папку… може бути не одна папка, а дві»)
+- The owner's manual flow was broken in two places, both on the **real** book folder `~/Books/Par Ici 5-6`:
+  1. the app asked **«З якого диска ці файли?»** for the folder that holds the book, because the book's own narration MP3
+     (an MP3 with the narration tag, rules §4.1) was counted as a loose track. Now `baNarrationFiles()` recognises it
+     **before** the question (§4.1, §7); it is never stored as a track.
+  2. the folder holds **two narrations**: the book's own (148 pages) and «livre 56» (203 pages). The second one made
+     `bsImport` refuse the **whole batch**, so the book's own narration was never connected. Now a narration of another
+     book is **skipped** (noted in the 📋 report) and the others are imported.
+- Measured on the owner's book (clean Chrome profile, 8767 server, choosing the book folder): **122 tracks** (disc 1: 53,
+  disc 2: 43, five sections: 26) + the book's narration (**8939 sentences**), **no question**; the other book's narration is
+  skipped. Two folders picked one after another keep both sets side by side (§6.4) — nothing is overwritten.
+- Tests: `book_audio_browser.py` **14o** (new: the narration raises no question and is no track), 14d now awaits the
+  async call; `book_speech_browser.py` **13h** (new: a batch with a foreign narration keeps this book's one).
+  Suites `book_audio_browser.py`, `book_folder_browser.py`, `book_speech_browser.py` pass locally; `app_shell_versions.py`
+  and `ci_suite_coverage.py` pass.
+- Note for the next run: a browser keeps the **old** JS until the new service worker is active — reload the page two or
+  three times after `tools/version_app_shell.py`, or the suite silently tests the previous build.
+
+## Claude Code — book audio: a wrong dialogue (2026-11-06)
+- Owner's report (tablet screenshot): the Par Ici 5-6 Manuel played **another page's dialogue**; the dialog said «Грають усі позначки книги: 500». Checked on the owner's computer with the real PDF and the real folder: the same thing — **not a device bug**.
+- Cause: rules §6.2 (numbers that restart per section must not play) could not see this book. The restart test only counted the tracks of a **disc**, so a **section set** (`FLS2_EP01_P1 …`) was invisible to it, and its second condition («the highest piste is at most half of that disc's tracks») cannot fire when the files are fewer than the book has dialogues (26 files ↔ 236 pistes).
+- Fix (PR #376, merged as `667e77c`): the restart is now also read from the book alone — the same number printed on **three or more pages** (a mark that names its page — a transcript — does not count). Such marks are blocked, the dialog says so in amber, no other dialogue plays.
+- Measured on the owner's real books (marks that play / found): 1-2 258/258, 3-4 187/189 (track table), 7-8 157/157 — unchanged; the Manuel with 500 marks and 26 section files: **0/500, amber** (before 500/500 green, every mark wrong). New browser check `14n`; rules §6.2, §8, §9 updated.
+- The Manuel itself: it prints «STATION N» and numbers its 236 pistes **again in every station** and has no piste table at the end, so its dialogues cannot be matched by number at all. The folder «audio 56» (26 files `FLS2_EPxx_Pyy`, ~1 min each) is **not** the Manuel's audio (its stations hold 12–26 pistes each); the method's own dialogues are the disc set «audio CD 56» of `livre 56.pdf`.
+- Next: the Manuel's dialogues play only with its own files named so the station is visible («STATION 09 - piste 5.mp3») and a new rule that matches (station, piste); needs the owner's files or the publisher's table. Nothing to do until then.
+- Also done before: the rollback of PR #372 (PR #375, merge `f6a9584`) restores the 2026-11-04 green tree; main CI `42332434339` is green.
 
 ## Codex — server speech and selected words
-- Fully delivered in PR370/371. Final feature head7f0d1a4188bf8c9dcf16883e9f2c08bb4770330c passed CI41912579650; normal merge032dea655645aeb81572e41d9112b2a6fd7f15f0 passed final mainCI41940731493 and Cloudflare production. Feature/merge trees match.
-- French/English page, selected-phrase and clicked-word speech use the server; Ukrainian uses system voice only. Fixed whole-word language matching, exact reflow occurrence context and soft-hyphen word boundaries. Existing imported book narration retains priority; no narration slicing or credentials changed.
-- Production smoke `/tmp/server-page-production-smoke.py` / `/tmp/server-word-final-production.log` verified exact six sources, real French page, English selection and French/English clicked-word WAV responses with no system fallback. Ukrainian makes zero server calls with uk-UA system routing; headless Ukrainian synthesis callbacks were mocked, physical playback unverified. Final local speech/word/context/format/book-speech/PDF/learning regressions passed.
-- Earlier mainCI41905049078 attempt1 failed with only an exit1 annotation (logs denied at Actions log host); identical feature/merge tree and diagnostic attempt2 SUCCESS. Do not claim the original failure's cause known or ask the owner for those logs again. Worktree and refs retained; only unrelated local HANDOFF notes may remain. No further speech code work needed absent a new report.
+- Worktree `/workspace/wt-server-page-speech`, branch `fix/server-page-speech`. PR #370 merged as `1759723eda10d7c2ec7337c127d0f726cb9404aa` after exact-head CI `41899329848` and Cloudflare preview success. Production HTML/JS/worker match; French page and English selection played real server WAV with no system fallback.
+- Final owner rule: server speech only French/English; Ukrainian uses system speech. Follow-up PR #371 also keeps the existing Cyrillic detector for correct system locale. Superseded Ukrainian-server CI `41906464814` was cancelled after this clarification; new head CI pending after push.
+- Word audit confirmed wrong-language substring matches (car inside cartoon, est inside test, on inside conversation), ambiguity between repeated words in mixed-language text, and partial selection at hidden soft hyphens. Fix: whole-word context matching, exact reflow occurrence from the clicked range, retain soft hyphens in source offsets but ignore them for language scoring/server pronunciation. No narration slicing, credentials or server configuration changes.
+- Verified: 31 local-speech assertions plus eight real-pointer word scenarios; contextual/parenthetical languages, PDF word taps/split words, formats, book speech, first-tap/double-voice, PDF UX and learning UX. Syntax, app-shell versions, CI coverage and diff checks pass. Real backend chat(fr/en) produces different WAV hashes; no language-cache conflation observed.
+- Main CI `41905049078` attempt1 failed in browser tests; logs blocked at results-receiver.actions.githubusercontent.com, annotations only exit1. Green PR and merge trees identical (`52f3d31113afb66716807286e637e02161054548`); one diagnostic rerun attempt2 running. Cause unconfirmed. Async owner question requests failed-test name/log tail; do not repeat unnecessarily.
+- Next: push final word/routing changes, update PR371 title/body, exact-head CI, main gate, normal merge and final main CI. Update `/tmp/server-page-production-smoke.py` for real en/fr pages + clicked words and Ukrainian system routing (headless mock only); then run against deployed exact source files. Retain branch refs; preserve unrelated root-worktree HANDOFF edits.
 
 ## Codex — separate saved scans and fifteen books
 - Branch: `feat/separate-scans-shelf`; owner requested separate scan/book lists and a fifteen-book limit.
@@ -53,17 +107,18 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 - **Current state:** PR open; exact-final-head GitHub CI, merge and production verification are pending. This commit changes handoff documentation only; no unrelated working-tree changes.
 - **Next:** monitor PR #367's current head with `tools/ci_wait.sh <sha>`; resolve any failures before normal merge. Then verify main CI and production and remove this Claims row. The owner's original blurred book and physical tablet still need a visual check.
 
-## Codex — iridescent bottom reading bar
-- Branch: `feat/iridescent-bottom-bar`; base `89a289d05b4aa770515676b1193b5ad28d5ed6e1`.
-- Owner's request: smoothly changing translucent colours in the bottom button panel.
-- Changed only the reading capsule CSS: blue/mint/violet/pink gradient over the theme-aware glass base, 18-second loop, static gradient for reduced motion. Controls, hit targets and layout stay intact; offline shell identity regenerated.
-- Validation: application/worker syntax, app-shell versions, all 148 suites' CI coverage, `reading_bottom_row_browser.py` and `page_arrows_browser.py` PASS. Browser visual smoke PASS in light/dark/sepia, gradient position changes over time, reduced motion is static. Screenshots and smoke helper are outside the checkout.
-- Delivery: GitHub API currently returns proxy Forbidden; PR creation, CI verification, merge and production delivery remain unverified. Never bypass these gates.
-
 ## Active Agent Worktrees & Tasks
-- **Antigravity** (Branch: `chore/agent-setup`, worktree `../wt-agent-setup`):
-  - Task: Token optimization (compact rules, docs archiving, .vscode search exclusions) and Antigravity workflow definitions.
-  - Status: In progress.
+- **Codex — PDF and large publications (2026-11-11)** (follow-up branch `fix/pdf-sidebar-reflow`, worktree `../wt-pdf-sidebar-reflow`; [PR #390](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/390)):
+  - Initial delivery [PR #389](https://github.com/zavoritniigor-ui/ai-ebook-reader/pull/389) merged as `6786f13`; exact-head CI [43040075800](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43040075800) and main CI [43046161806](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43046161806) passed. Large PDF streaming/range opening, complete translations/selections and independent series downloads are deployed.
+  - Final production visual QA on the real Par Ici revealed a remaining sidebar race: navigation/scroll cancelled the entire delayed resize, leaving an 800px stack in a 480px workspace. The follow-up invalidates only the stale reading anchor; explicit setup/relayout owns cancellation, and the queued resize captures the newer reading position.
+  - The new regression fails on main with the oversized stack and passes after the fix. Isolated Chromium at 800x1280 also confirms the owner's real Par Ici page 69 is entirely between x=320 and x=800, with a 480px stack, wrapper and canvas. Screenshot: `/tmp/pdf-sidebar-reflow/tablet-original-book-sidebar.png` (not committed).
+  - Local follow-up gates PASS on stable source in isolated Chrome (debug port 9333): PDF UX, learning UX, workspace, workspace regressions, visited drags, large publications and strict real-book edge checks; all-JS syntax, shell versions and CI coverage. Earlier default-port probes were interrupted by browser/page closure; their cause remains unconfirmed.
+  - Delivery blocker: source `9f8832b` is pushed in PR #390; [CI run 43096544958](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43096544958) remained queued with zero jobs for over 35 minutes. Both normal and force-cancel REST requests returned HTTP 409, “Cannot cancel a workflow run that has not been queued yet”; no retry/cancellation was accepted. Full local and exact-head hosted-preview large-file/strict real-book checks pass. A separate library workflow is also queued; underlying GitHub scheduling cause is unconfirmed.
+  - This checkpoint changes HANDOFF only; all functional work is committed. Next: require current PR-head CI green, final review/normal merge, main CI green and production edge/width verification. No further functional edits are planned before CI. Existing EPUB/DOCX archive safety limits remain enforced; the physical tablet still needs the owner's visual check.
+- **Antigravity** (Branch: `fix/multi-device-page-speech`, worktree `../wt-ba-general-rules`; previous `fix/ba-general-rules` PR #381 merged `5ffd5c5`, main CI `42510962711` green):
+  - Task: Multi-device parallel full-page local speech & translation (`js/local-speech.js`, `js/tts.js`, `js/translation.js`, `js/ai-client.js`, plus local `/home/igor/tools/tts-server/server.py`): split long selected passages (> 260 chars) into sentence chunks with background prefetching in `speakViaLocal`, avoid disabling local speech on HTTP 400, disable word-alignment JSON overhead for selections > 450 chars, scale Groq translation timeout and token budget for full-page selections, and raise local server `MAX_CHARS` (5000), `RATE_MAX` (240/min per Wi-Fi IP), and GPU synthesis lock.
+  - Verified locally: `tests/local_speech_browser.py`, `tests/translation_robust_browser.py`, `tests/bilingual_selection_browser.py`, `tests/groq_limit_browser.py`, `tests/ai_groq_first_own_keys_browser.py`, `tests/pdf_ux_browser.py`, `tests/learning_ux_browser.py`, syntax and app-shell version gates PASS.
+  - Status: Opening PR and awaiting exact-head CI before merge.
 - **Claude Code** (2026-10-26 evening; merge chain running unattended):
   - Merged + in production today: #288 #289 #291 #292 #293 #294 #295 #296 #297 #298 #299 #300 #301 #302 #303
     (CBZ, narration text rules, free dictionaries, Persian + flags, word-level alignment, folder narration import,
@@ -141,3 +196,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 ## Release / Verification Target
 - Production URL: `https://ai-ebook-reader.pages.dev`
 - Main CI: Verify green on `main` before closing tasks.
+
+## Codex — iridescent bottom reading bar delivery (2026-11-12)
+- Continuing existing PR #374 in `../wt-deliver-374` at the owner’s request. Latest main integrated; CSS gradient and reduced-motion behavior retained.
+- Local PASS: `reading_bottom_row_browser.py`, `page_arrows_browser.py`, application/worker syntax, app-shell hashes, all 154 CI suite invocations. Next: exact-head CI, final review, normal merge, main CI and production smoke.

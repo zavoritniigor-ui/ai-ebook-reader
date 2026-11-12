@@ -20,9 +20,11 @@ const LOCAL_SPEECH_LANGS = new Set(['en', 'fr']);
 const LOCAL_SPEECH_HEALTH_TTL_MS = 30000;
 const LOCAL_SPEECH_HEALTH_TIMEOUT_MS = 1500;
 const LOCAL_SPEECH_REQUEST_TIMEOUT_MS = 20000;
+const LOCAL_SPEECH_CHUNK_MAX = 260;
 
 let localSpeechHealth = { at: 0, ok: false };
 let localSpeechInFlight = null;   // AbortController запиту, що ще чекає на аудіо
+let localSpeechPrefetch = null;   // AbortController фонового передзавантаження наступного уривка
 let localSpeechAudio = null;      // поточний <audio>, що програється
 let localSpeechAudioUrl = null;   // його blob: URL, звільняється при зупинці
 
@@ -55,6 +57,7 @@ function localSpeechReady(langCode) {
 // тож усі існуючі місця зупинки (stopTooltipSpeech, startTTS тощо) зупиняють і локальний голос.
 function stopLocalSpeech() {
     if (localSpeechInFlight) { localSpeechInFlight.abort(); localSpeechInFlight = null; }
+    if (localSpeechPrefetch) { localSpeechPrefetch.abort(); localSpeechPrefetch = null; }
     if (localSpeechAudio) {
         localSpeechAudio.onended = null;
         localSpeechAudio.onerror = null;
@@ -62,6 +65,92 @@ function stopLocalSpeech() {
         localSpeechAudio = null;
     }
     if (localSpeechAudioUrl) { URL.revokeObjectURL(localSpeechAudioUrl); localSpeechAudioUrl = null; }
+}
+
+// Розбиває довгий виділений фрагмент (абзац або цілу сторінку) на речення/частини до LOCAL_SPEECH_CHUNK_MAX символів,
+// щоб перше речення звучало вже за ~0.25 с, а наступні підвантажувалися фоново під час програвання без перевищення
+// ліміту символів чи 20-секундного таймауту при паралельних запитах із кількох гаджетів.
+function splitLocalSpeechChunks(spoken) {
+    if (!spoken || spoken.length <= LOCAL_SPEECH_CHUNK_MAX) return [{ text: spoken, offset: 0 }];
+    const cuts = typeof sentenceCuts === 'function' ? sentenceCuts(spoken) : [];
+    const raw = [];
+    let prev = 0;
+    for (const c of cuts) {
+        if (c > prev) raw.push({ text: spoken.slice(prev, c), offset: prev });
+        prev = c;
+    }
+    if (prev < spoken.length) raw.push({ text: spoken.slice(prev), offset: prev });
+    const pieces = [];
+    for (const seg of raw) {
+        let s = seg.text, base = seg.offset;
+        while (s.length > LOCAL_SPEECH_CHUNK_MAX) {
+            const slice = s.slice(0, LOCAL_SPEECH_CHUNK_MAX);
+            let cut = Math.max(slice.lastIndexOf(', '), slice.lastIndexOf('; '), slice.lastIndexOf(': '), slice.lastIndexOf(' — '), slice.lastIndexOf(' – '));
+            if (cut >= 80) cut += 1;
+            else {
+                cut = slice.lastIndexOf(' ');
+                if (cut < 60) cut = LOCAL_SPEECH_CHUNK_MAX;
+            }
+            const head = s.slice(0, cut).trim();
+            if (head) pieces.push({ text: head, offset: base });
+            const adv = cut < s.length && s[cut] === ' ' ? cut + 1 : cut;
+            s = s.slice(adv);
+            base += adv;
+        }
+        const tail = s.trim();
+        if (tail) pieces.push({ text: tail, offset: base });
+    }
+    if (!pieces.length) return [{ text: spoken, offset: 0 }];
+    const merged = [pieces[0]];
+    for (let i = 1; i < pieces.length; i++) {
+        const last = merged[merged.length - 1];
+        if (merged.length > 1 && last.text.length + 1 + pieces[i].text.length <= LOCAL_SPEECH_CHUNK_MAX) {
+            last.text += ' ' + pieces[i].text;
+        } else {
+            merged.push({ text: pieces[i].text, offset: pieces[i].offset });
+        }
+    }
+    return merged;
+}
+
+function fetchLocalSpeechChunk(chunkText, langCode, isPrefetch) {
+    const controller = new AbortController();
+    if (isPrefetch) localSpeechPrefetch = controller;
+    else localSpeechInFlight = controller;
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, LOCAL_SPEECH_REQUEST_TIMEOUT_MS);
+    const promise = fetch(LOCAL_SPEECH_URL + '/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: chunkText, lang: langCode }),
+        signal: controller.signal
+    })
+        .then(r => {
+            if (!r.ok) {
+                const err = new Error('local speech HTTP ' + r.status);
+                err.httpStatus = r.status;
+                throw err;
+            }
+            return r.blob();
+        })
+        .then(blob => {
+            clearTimeout(timeout);
+            if (isPrefetch) { if (localSpeechPrefetch === controller) localSpeechPrefetch = null; }
+            else { if (localSpeechInFlight === controller) localSpeechInFlight = null; }
+            return blob;
+        })
+        .catch(err => {
+            clearTimeout(timeout);
+            if (isPrefetch) { if (localSpeechPrefetch === controller) localSpeechPrefetch = null; }
+            else { if (localSpeechInFlight === controller) localSpeechInFlight = null; }
+            if (controller.signal.aborted && !timedOut) {
+                const abortErr = new Error('cancelled');
+                abortErr.cancelled = true;
+                throw abortErr;
+            }
+            throw err;
+        });
+    return { controller, promise };
 }
 
 // Озвучує фразу локально. Повертає false, якщо локальний шлях недоступний (тоді викликач
@@ -73,35 +162,83 @@ function speakViaLocal(text, langCode, side, offset, onEnd, gen, fallback) {
     // Soft hyphens are layout hints, not pronunciation or word boundaries.
     // Keep source DOM/selection offsets intact and remove them only from server input.
     const spoken = (offset ? text.slice(offset) : text).replace(/\u00ad/g, '');
-    const controller = new AbortController();
-    localSpeechInFlight = controller;
-    let timedOut = false;
-    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, LOCAL_SPEECH_REQUEST_TIMEOUT_MS);
-    fetch(LOCAL_SPEECH_URL + '/speak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: spoken, lang: langCode }),
-        signal: controller.signal
-    })
-        .then(r => {
-            if (!r.ok) throw new Error('local speech HTTP ' + r.status);
-            return r.blob();
-        })
-        .then(blob => {
-            clearTimeout(timeout);
-            if (controller.signal.aborted || state.ttsGen !== gen) return;
-            localSpeechInFlight = null;
-            localSpeechHealth = { at: Date.now(), ok: true };
-            playLocalBlob(blob, side, text, offset, onEnd, gen, fallback);
-        })
-        .catch(err => {
-            clearTimeout(timeout);
-            if ((controller.signal.aborted && !timedOut) || state.ttsGen !== gen) return;
-            localSpeechInFlight = null;
-            localSpeechHealth = { at: Date.now(), ok: false, failed: true };
-            console.warn('Local speech unavailable, using browser voice:', err);
-            fallback();
-        });
+    const chunks = splitLocalSpeechChunks(spoken);
+    if (chunks.length <= 1) {
+        const { controller, promise } = fetchLocalSpeechChunk(spoken, langCode, false);
+        promise
+            .then(blob => {
+                if (controller.signal.aborted || state.ttsGen !== gen) return;
+                localSpeechHealth = { at: Date.now(), ok: true };
+                playLocalBlob(blob, side, text, offset, onEnd, gen, fallback);
+            })
+            .catch(err => {
+                if (err.cancelled || state.ttsGen !== gen) return;
+                if (err.httpStatus !== 400) localSpeechHealth = { at: Date.now(), ok: false, failed: true };
+                console.warn('Local speech unavailable, using browser voice:', err);
+                fallback();
+            });
+        return true;
+    }
+
+    // Багатореченнєвий виділений фрагмент (абзац або сторінка): програємо частинами з фоновим передзавантаженням.
+    const u = {};
+    let bound = false;
+    let prefetched = null;
+    const playChunkAt = (idx, blobPromise) => {
+        blobPromise
+            .then(blob => {
+                if (state.ttsGen !== gen) return;
+                localSpeechHealth = { at: Date.now(), ok: true };
+                stopLocalSpeech();
+                if (!bound) {
+                    bound = true;
+                    if (side) bindUtterance(u, side, text, offset, onEnd);
+                    else u.onend = onEnd;
+                }
+                if (u.onboundary) u.onboundary({ charIndex: chunks[idx].offset });
+                if (typeof pauseBookAudio === 'function') pauseBookAudio();
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                localSpeechAudio = audio;
+                localSpeechAudioUrl = url;
+                if (idx + 1 < chunks.length) {
+                    prefetched = fetchLocalSpeechChunk(chunks[idx + 1].text, langCode, true);
+                } else {
+                    prefetched = null;
+                }
+                let settled = false;
+                const current = () => !settled && state.ttsGen === gen && localSpeechAudio === audio;
+                audio.onended = () => {
+                    if (!current()) return;
+                    settled = true;
+                    if (idx + 1 < chunks.length) {
+                        const nextPromise = prefetched ? prefetched.promise : fetchLocalSpeechChunk(chunks[idx + 1].text, langCode, false).promise;
+                        prefetched = null;
+                        playChunkAt(idx + 1, nextPromise);
+                    } else {
+                        stopLocalSpeech();
+                        if (u.onend) u.onend();
+                    }
+                };
+                const playbackFailed = err => {
+                    if (!current()) return;
+                    settled = true;
+                    stopLocalSpeech();
+                    console.warn('Local speech playback failed, using browser voice:', err);
+                    fallback((offset || 0) + chunks[idx].offset);
+                };
+                audio.onerror = playbackFailed;
+                audio.play().catch(playbackFailed);
+            })
+            .catch(err => {
+                if (err.cancelled || state.ttsGen !== gen) return;
+                stopLocalSpeech();
+                if (err.httpStatus !== 400) localSpeechHealth = { at: Date.now(), ok: false, failed: true };
+                console.warn('Local speech unavailable, using browser voice:', err);
+                fallback((offset || 0) + chunks[idx].offset);
+            });
+    };
+    playChunkAt(0, fetchLocalSpeechChunk(chunks[0].text, langCode, false).promise);
     return true;
 }
 

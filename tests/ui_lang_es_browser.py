@@ -23,6 +23,7 @@ check('1 a Spanish system starts with the Spanish menu', "state.uiLang === 'es' 
 # Same as the English text on purpose: brand names, icons and words spelled the same in both languages.
 SAME = "['close', 'tocIcon', 'page', 'error', 'themeSepia', 'voicesHi', 'libSourceGutenberg', 'libSourceWikisource', 'libChipWikisource', 'libSourceArchive', 'genHumor', 'offUnitMb', 'scanPdfA4', 'scanFilterOrig']"
 check('2 every interface string has its own Spanish text', "Object.keys(I18N).every(k => I18N[k].es && (I18N[k].es !== I18N[k].en || %s.includes(k)))" % SAME)
+check('2b download controls and the accessible queue name start in Spanish', "document.getElementById('library-batch').textContent === I18N_ES.libBatch && document.getElementById('library-downloads').getAttribute('aria-label') === I18N_ES.libQueue")
 check('3 the menu is shown in Spanish', "t('open') === '📂 Abrir libro' && [...document.querySelectorAll('[data-i18n=\"wheelOpen\"]')].every(e => e.textContent.includes('Abrir libro'))")
 c.js("els.uiLang.value = 'fr'; els.uiLang.dispatchEvent(new Event('change')); 1"); time.sleep(0.3)
 check('4 switching to another menu language and back works', "state.uiLang === 'fr' && t('open') !== '📂 Abrir libro'")

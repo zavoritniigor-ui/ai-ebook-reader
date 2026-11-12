@@ -812,6 +812,12 @@ async function requestAIOnce(prompt, dataUrl, signal, task = 'default', onDelta,
 // а доповнює його переліком значень, тому лишається навіть коли зверху стане AI.
 async function machineTranslate(text, srcCode, isMultiWord, signal, targetLang = state.targetLang) {
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
+    const chunks = translationChunks(text, 800);
+    if (chunks.length > 1) {
+        const parts = [];
+        for (const chunk of chunks) parts.push((await machineTranslate(chunk, srcCode, true, signal, targetLang)).plain);
+        const plain = parts.join('\n\n'); return { plain, html: escapeHtml(plain), extras: '' };
+    }
     let local = null;
     try { local = await waitForResult(translateLocally(text, srcCode, targetLang), signal, 20000); }
     catch (err) { if (err.name === 'AbortError') throw err; }
@@ -837,11 +843,39 @@ async function machineTranslate(text, srcCode, isMultiWord, signal, targetLang =
     return { html: html + extras, plain: translation, extras };
 }
 
+// Keep each request within a provider's output/URL budget, without losing any
+// source characters. Prefer paragraph/sentence/word boundaries; surrogate pairs
+// are never split. Requests run serially so a long selection stays bounded.
+function translationChunks(text, limit = 1600) {
+    const chunks = [];
+    while (text.length > limit) {
+        let end = limit;
+        const head = text.slice(0, limit + 1);
+        const stops = [...head.matchAll(/(?:[.!?]\s+|\n\s*\n)/g)];
+        if (stops.length && stops[stops.length - 1].index > limit / 2) end = stops[stops.length - 1].index + stops[stops.length - 1][0].length;
+        else { const space = head.lastIndexOf(' '); if (space > limit / 2) end = space + 1; }
+        if (/[\uD800-\uDBFF]/.test(text[end - 1])) end--;
+        chunks.push(text.slice(0, end)); text = text.slice(end);
+    }
+    if (text) chunks.push(text);
+    return chunks;
+}
 // Переклад через вибраний AI-провайдер. Повертає лише сам переклад.
 // info (optional): receives { provider } -- the provider that REALLY answered (a refused shared Groq key is repeated on the shared OpenAI inside callAI, so the
 // caller cannot assume it is the one it asked).
 async function aiTranslateText(text, srcCode, signal, targetLang = state.targetLang, contextSentence = state.ctxSentence, withAlignment = false, provider = null, info = null) {
     if (!(provider ? aiEffectiveKey(provider) : aiAvailable()) || !navigator.onLine) return null;
+    const chunks = translationChunks(text);
+    if (chunks.length > 1) {
+        const results = [];
+        for (const chunk of chunks) {
+            if (signal?.aborted) return null;
+            const result = await aiTranslateText(chunk, srcCode, signal, targetLang, contextSentence, false, provider, info);
+            if (!result) return null; // never cache/show a leading subset as the complete translation
+            results.push(typeof result === 'string' ? result : result.translation);
+        }
+        return results.join('\n\n');
+    }
     const langName = LANG_NAMES[targetLang] || 'українською';
     const isWord = text.trim().split(/\s+/).length === 1;
     // Речення обов'язкове й для ОКРЕМОГО слова: без нього "fait" у "a fait de
@@ -867,16 +901,28 @@ Example: "Le chat noir dort." → "Чорний кіт спить." gives [{"sou
 Align meaning, never word positions. Group articles, pronouns, auxiliaries and compound tenses as needed. Allow multiple source spans for separated phrasal verbs. One translated word can align to several source words. Target phrases must not overlap. Do not invent an equivalent for an omitted article. Return at most 40 confident links.`;
     // Бюджет відповіді — за довжиною тексту. Раніше переклад мав фіксовані 128 (OpenAI) / 256 (Groq) токенів: речення разом
     // із JSON-розміткою відповідності слів туди не вміщувалось, відповідь обривалась, і читач бачив «AI не зміг перекласти».
-    const budget = isWord ? 300 : Math.min(6000, Math.ceil(text.length * (withAlignment ? 1.6 : 0.8)) + (withAlignment ? 500 : 300));
+    const budget = isWord ? 300 : Math.min(8000, Math.ceil(text.length * (withAlignment ? 1.8 : 1.2)) + (withAlignment ? 500 : 400));
     const options = { maxOutputTokens: budget };
+    if (!isWord && text.length > 250) options.timeoutMs = Math.min(25000, 3000 + Math.ceil(text.length * 6));
     if (provider) options.provider = provider;
     try {
         let out;
         options.meta = {};
         try { out = await callAI(prompt, signal, 'translation', undefined, options); if (info) { info.provider = options.meta.provider; info.model = options.meta.model; } }
         catch (err) {
-            // Обірвана відповідь: з того, що встигло прийти, ще можна взяти готовий переклад.
-            if (err && err.reason === 'truncated' && err.partial) out = err.partial; else throw err;
+            // A truncated reply is incomplete. Retry smaller complete source pieces.
+            if (withAlignment && err?.reason === 'truncated' && /"translation"\s*:\s*"(?:[^"\\]|\\.)*"/.test(err.partial || '')) out = err.partial;
+            else if (err && err.reason === 'truncated' && text.length > 120) {
+                const halves = translationChunks(text, Math.ceil(text.length / 2));
+                const translated = [];
+                for (const half of halves) {
+                    const result = await aiTranslateText(half, srcCode, signal, targetLang, contextSentence, false, provider, info);
+                    if (!result) return null;
+                    translated.push(typeof result === 'string' ? result : result.translation);
+                }
+                return translated.join('\n\n');
+            }
+            else throw err;
         }
         if (withAlignment) {
             const parsed = parseAiJson(out);
@@ -894,8 +940,12 @@ Align meaning, never word positions. Group articles, pronouns, auxiliaries and c
             if (!translation) return null;
             return typeof parsed === 'string' ? translation : { ...parsed, translation };
         }
-        // Уламок JSON («{broken», обірвана розмітка) — не переклад; показувати його як текст не можна.
-        if (/^\s*(?:```|[\[{])/.test(String(out || ''))) return null;
+        // Якщо модель або стаб усе ж обгорнули простий переклад у {"translation": "..."}, дістаємо рядок перед перевіркою.
+        if (/^\s*(?:```|[\[{])/.test(String(out || ''))) {
+            const parsed = parseAiJson(out);
+            const tr = parsed.ok && parsed.value && typeof parsed.value.translation === 'string' ? parsed.value.translation : null;
+            return tr ? normalizeTranslation(tr, targetLang, false) : null;
+        }
         return normalizeTranslation(out, targetLang, false);
     } catch (e) { return null; }
 }

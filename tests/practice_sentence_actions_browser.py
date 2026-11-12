@@ -396,9 +396,9 @@ c.call('Emulation.setDeviceMetricsOverride', width=1000, height=1100, deviceScal
 c.call('Emulation.setTouchEmulationEnabled', enabled=False)
 c.js("""(() => {
     // Reproduce the exact bug setup: Ukrainian translation expanded inside .practice-sentence, Ukrainian rule note present,
-    // page sourceLang defaulting to en-US, and speakSide='orig' so tapping a word speaks it immediately via speakText().
+    // page sourceLang defaulting to en-US, and speakSide='original' so tapping a word speaks it immediately via speakText().
     state.sourceLang = 'en-US';
-    state.speakSide = 'orig';
+    setSpeakSide('original');
     state.selectedVoiceURIByLang.fr = 'fr-fr';
     state.selectedVoiceURIByLang.uk = 'uk-ua';
     state.selectedVoiceURIByLang.en = 'en-us';
@@ -433,7 +433,7 @@ mouse_click(word_pt['x'], word_pt['y'])
 check("10a: tapping a French word in Practice (even with Ukrainian sentence translation expanded below it) keeps ctxSentence pure French without Cyrillic",
       "!/[а-яёіїєґ]/i.test(state.ctxSentence) && state.ctxPanelLang === 'fr'", timeout=5)
 check("10b: the tapped French word is voiced with the French voice (fr-FR), NEVER the Ukrainian voice (uk-UA)",
-      "window.__ttsSpeakCalls.length >= 1 && window.__ttsSpeakCalls.at(-1).lang === 'fr-FR' && window.__ttsSpeakCalls.at(-1).voice && window.__ttsSpeakCalls.at(-1).voice.voiceURI === 'fr-fr'", timeout=5)
+      "window.__ttsSpeakCalls.length >= 1 && window.__ttsSpeakCalls.at(-1).text === %s && window.__ttsSpeakCalls.at(-1).lang === 'fr-FR' && window.__ttsSpeakCalls.at(-1).voice && window.__ttsSpeakCalls.at(-1).voice.voiceURI === 'fr-fr'" % json.dumps(word_pt['word']), timeout=5)
 check("10c: fragmentLangInContext on a Latin French word inside a mixed French+Ukrainian context never returns uk-UA",
       "fragmentLangInContext('parle', 'Je parle français (Я розмовляю французькою мовою).') === 'fr' && voiceForText('parle').lang === 'fr-FR'")
 
