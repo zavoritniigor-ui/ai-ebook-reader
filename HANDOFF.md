@@ -9,6 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
+| Codex, local delivery | `feat/iridescent-bottom-bar` | bottom reading capsule CSS; generated hashes | PR #374 integration and validation | 2026-11-12 |
 | Codex, local | `fix/pdf-sidebar-reflow` | `js/navigation.js`, `js/pdf-continuous.js`, `js/pdf-zoom-pan.js`, `tests/large_publications_browser.py`; generated hashes | PR #390; implementation complete, CI scheduling blocked | 2026-11-11 |
 | Antigravity | `fix/ba-restart-single-track` | `js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
@@ -195,3 +196,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 ## Release / Verification Target
 - Production URL: `https://ai-ebook-reader.pages.dev`
 - Main CI: Verify green on `main` before closing tasks.
+
+## Codex — iridescent bottom reading bar delivery (2026-11-12)
+- Continuing existing PR #374 in `../wt-deliver-374` at the owner’s request. Latest main integrated; CSS gradient and reduced-motion behavior retained.
+- Local PASS: `reading_bottom_row_browser.py`, `page_arrows_browser.py`, application/worker syntax, app-shell hashes, all 154 CI suite invocations. Next: exact-head CI, final review, normal merge, main CI and production smoke.
