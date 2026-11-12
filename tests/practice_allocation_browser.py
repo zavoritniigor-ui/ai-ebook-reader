@@ -109,6 +109,10 @@ def close_ui():
     # can never bleed into a SUBSEQUENT real drag's own tooltip/selection logic.
     c.js("els.tooltip.style.display='none'; els.grammarPanel.classList.remove('expanded'); if (typeof closePractice==='function') closePractice(); grammarAnalysisCache.clear(); __calls.length=0; state.lastTapPoint=null; state.lastSelectedRange=null")
     time.sleep(0.3)
+    # Closing the drawers queues a PDF relayout/scroll that dismisses a popup.
+    # A new synthetic selection must start after that real layout completes.
+    c.wait("resizeTimer===null&&!pdfSuppressActiveTracking", timeout=8)
+    c.js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))")
 
 
 def select_between(first_text, last_text, first_nth=0, last_nth=0, attempts=3):
