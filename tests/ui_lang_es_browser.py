@@ -21,7 +21,7 @@ def check(name, expression):
 
 check('1 a Spanish system starts with the Spanish menu', "state.uiLang === 'es' && document.getElementById('ui-lang').value === 'es'")
 # Same as the English text on purpose: brand names, icons and words spelled the same in both languages.
-SAME = "['close', 'tocIcon', 'page', 'error', 'themeSepia', 'voicesHi', 'libSourceGutenberg', 'libSourceWikisource', 'libChipWikisource', 'libSourceArchive', 'genHumor', 'offUnitMb', 'scanPdfA4', 'scanFilterOrig']"
+SAME = "['close', 'tocIcon', 'page', 'error', 'themeSepia', 'voicesHi', 'libSourceGutenberg', 'libSourceWikisource', 'libChipWikisource', 'libSourceArchive', 'genHumor', 'offUnitMb', 'scanPdfA4', 'scanFilterOrig', 'demoTitle']"
 check('2 every interface string has its own Spanish text', "Object.keys(I18N).every(k => I18N[k].es && (I18N[k].es !== I18N[k].en || %s.includes(k)))" % SAME)
 check('2b download controls and the accessible queue name start in Spanish', "document.getElementById('library-batch').textContent === I18N_ES.libBatch && document.getElementById('library-downloads').getAttribute('aria-label') === I18N_ES.libQueue")
 check('3 the menu is shown in Spanish', "t('open') === '📂 Abrir libro' && [...document.querySelectorAll('[data-i18n=\"wheelOpen\"]')].every(e => e.textContent.includes('Abrir libro'))")

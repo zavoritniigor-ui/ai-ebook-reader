@@ -210,6 +210,10 @@ const MAX_BOOK_FILE_BYTES = 300 * 1024 * 1024;
 // type=file> нижче.
 async function openBookFile(file) {
     if (!file) return;
+    const isDemo = !!file.__readerDemo;
+    if (!isDemo && document.getElementById('demo-tour')?.hidden === false &&
+        typeof closeDemoTextbook === 'function') closeDemoTextbook();
+    state.demoMode = isDemo;
     stopDictation(); stopOnboarding();
     if (file.size > MAX_BOOK_FILE_BYTES && !/\.pdf$/i.test(file.name || '')) { showReaderError(new Error(t('fileTooLarge'))); return; }
     const epoch = ++readerEpoch.book; ++readerEpoch.render;
@@ -275,7 +279,7 @@ async function openBookFile(file) {
         }
         else throw new Error(t('unsupportedFormat'));
         if (epoch === readerEpoch.book) { state.bookOpening = false; saveBookmark(); }
-        if (epoch === readerEpoch.book) { setPageArrows(true); scheduleShelveBook(file); }   // «Мої книги» (js/book-shelf.js): книга не губиться після закриття
+        if (epoch === readerEpoch.book) { setPageArrows(true); if (!isDemo) scheduleShelveBook(file); }   // демо не потрапляє до «Мої книги»
         // The book is open: its narration is taken from the remembered books folder, when it has one (js/book-speech.js).
         if (epoch === readerEpoch.book && typeof bfAutoImportFromFolder === 'function') bfAutoImportFromFolder();
     } catch (err) {

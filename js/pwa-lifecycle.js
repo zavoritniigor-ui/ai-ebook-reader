@@ -55,6 +55,7 @@ function stopBackgroundActivity() {
     if (isSpeakingGlobal) stopGlobalTTS();
     stopTooltipSpeech();
     if (typeof pauseBookAudio === 'function') pauseBookAudio();
+    document.getElementById('demo-tour-player')?.pause();
     stopDictation(); clearAlignment(); stopOnboarding();
     cancelAsyncTasks();
     pdfTasks.render?.cancel(); pdfTasks.render = null;
@@ -242,6 +243,7 @@ if (document.getElementById('btn-exit-app')) {
 // від найвищого шару (модалка) до найглибшого (бічна панель зі змістом книги).
 const OVERLAY_LAYERS = [
     { name: 'scanner', test: () => typeof scanIsOpen === 'function' && scanIsOpen() },
+    { name: 'demo', test: () => !document.getElementById('demo-tour')?.hidden },
     { name: 'library', test: () => !!document.getElementById('library-modal')?.classList.contains('open') },
     { name: 'quickMenu', test: () => !document.getElementById('quick-menu').hidden },
     { name: 'bookAudio', test: () => !!document.getElementById('book-audio-dialog')?.open },
@@ -262,6 +264,7 @@ function countOpenOverlays() { return OVERLAY_LAYERS.reduce((n, l) => n + (l.tes
 function closeTopOverlay(name) {
     switch (name) {
         case 'scanner': if (scanState.edit) scanCloseEditor(false); else closeScanner(); break;
+        case 'demo': closeDemoTextbook?.(); break;
         case 'library': closeLibrary(); break;
         case 'quickMenu': quickMenu.close(); break;
         case 'bookAudio': document.getElementById('book-audio-dialog')?.close(); break;
@@ -310,7 +313,7 @@ window.addEventListener('popstate', () => {
 });
 try {
     const overlayObserver = new MutationObserver(syncOverlayHistory);
-    [document.getElementById('quick-menu'), document.getElementById('book-audio-dialog'), cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, document.getElementById('rules-panel'), els.sidebar, document.getElementById('settings-modal'), document.getElementById('library-modal')]
+    [document.getElementById('quick-menu'), document.getElementById('book-audio-dialog'), cropDialog, document.body, els.tooltip, els.askPanel, els.grammarPanel, document.getElementById('rules-panel'), document.getElementById('demo-tour'), els.sidebar, document.getElementById('settings-modal'), document.getElementById('library-modal')]
         .forEach((el) => el && overlayObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] }));
 } catch (e) {}
 

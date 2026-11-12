@@ -139,6 +139,10 @@ def drag(a, b, steps=14):
 def close_ui():
     c.js("els.tooltip.style.display='none'; els.grammarPanel.classList.remove('expanded'); if (typeof closePractice==='function') closePractice(); grammarAnalysisCache.clear(); __calls.length=0")
     time.sleep(0.3)
+    # Closing the grammar drawer resizes and reanchors the PDF. Let its queued
+    # scroll finish before beginning a new selection (scroll dismisses a popup).
+    c.wait("resizeTimer===null&&!pdfSuppressActiveTracking",timeout=8)
+    c.js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))")
 
 
 def select_between(first_text, last_text, first_nth=0, last_nth=0):

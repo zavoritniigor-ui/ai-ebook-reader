@@ -1593,6 +1593,21 @@
         /* Безкоштовна бібліотека */
         #library-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index: 30000; justify-content: center; align-items: center; padding: 12px; }
         #library-modal.open { display: flex; }
+        #demo-tour { position: fixed; inset: 0; z-index: 32000; display: grid; place-items: center; padding: 18px; background: rgba(10,16,28,.46); backdrop-filter: blur(3px); }
+        #demo-tour[hidden] { display: none; }
+        #demo-tour.demo-active { place-items: start end; background: transparent; backdrop-filter: none; pointer-events: none; }
+        #demo-tour.demo-active .demo-tour-box { pointer-events: auto; margin: 0; padding: 14px; width: min(420px, 100%); max-height: 35dvh; }
+        #demo-tour.demo-active :is(.demo-tour-kicker, h2, .demo-tour-status, .demo-tour-attribution) { display: none; }
+        #demo-tour.demo-active .demo-tour-actions { margin-top: 10px; }
+        .demo-tour-box { width: min(480px, 100%); max-height: min(86dvh, 680px); overflow: auto; padding: 22px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--panel-bg); color: var(--text-color); box-shadow: 0 22px 70px rgba(0,0,0,.32); }
+        .demo-tour-box h2 { margin: 0 0 8px; font-size: 21px; }
+        .demo-tour-kicker { color: var(--accent-color); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+        .demo-tour-copy { margin: 0; color: var(--text-muted); line-height: 1.5; }
+        .demo-tour-status { min-height: 1.4em; margin: 14px 0 0; line-height: 1.4; }
+        .demo-tour-attribution { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+        .demo-tour-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+        .demo-tour-target { outline: 4px solid color-mix(in srgb, var(--accent-color) 70%, transparent) !important; outline-offset: 4px; border-radius: 4px; animation: demo-target-pulse 1.2s ease-in-out infinite alternate; }
+        @keyframes demo-target-pulse { from { filter: brightness(1); } to { filter: brightness(1.12); } }
         .library-box { position: relative; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 14px; width: min(640px, 100%); max-height: min(88vh, 100%); display: flex; flex-direction: column; padding: 14px; gap: 10px; }
         @media (min-width: 641px) {
             .library-box { width: min(760px, 100%); }
@@ -2057,6 +2072,7 @@
                 <input type="file" id="file-upload" accept=".epub,.pdf,.txt,.docx,.fb2,.fb2.zip,.html,.htm,.rtf,.md,.markdown,.cbz">
                 <button type="button" class="menu-row my-books-btn" id="btn-my-books" aria-labelledby="mr-shelf-t" aria-describedby="mr-shelf-d"><svg class="mi" aria-hidden="true"><use href="#i-shelf"/></svg><span class="mr-text"><span class="mr-title" id="mr-shelf-t" data-i18n="mShelf">Мої книги</span><span class="mr-desc" id="mr-shelf-d" data-i18n="mShelfDesc">Нещодавні й збережені на пристрої</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-free-library" aria-labelledby="mr-lib-t" aria-describedby="mr-lib-d"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span class="mr-text"><span class="mr-title" id="mr-lib-t" data-i18n="mLibrary">Безкоштовна бібліотека</span><span class="mr-desc" id="mr-lib-d" data-i18n="mLibraryDesc">Gutenberg, Вікіджерела, Internet Archive</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <button type="button" class="menu-row" id="btn-demo-textbook" aria-labelledby="mr-demo-t" aria-describedby="mr-demo-d"><svg class="mi" aria-hidden="true"><use href="#i-library"/></svg><span class="mr-text"><span class="mr-title" id="mr-demo-t" data-i18n="mDemoTextbook">Демо-підручник</span><span class="mr-desc" id="mr-demo-d" data-i18n="mDemoTextbookDesc">Справжній PDF: переклад, озвучка, граматика, практика</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-share-app" aria-labelledby="mr-share-t" aria-describedby="mr-share-d"><svg class="mi" aria-hidden="true"><use href="#i-share"/></svg><span class="mr-text"><span class="mr-title" id="mr-share-t" data-i18n="mShareApp">Поділитися застосунком</span><span class="mr-desc" id="mr-share-d" data-i18n="mShareAppDesc">QR-код і адреса застосунку</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="toggle-toc-desktop" aria-labelledby="mr-toc-t" aria-describedby="mr-toc-d"><svg class="mi book-nav-icon" aria-hidden="true"><use href="#i-toc"/></svg><span class="mr-text"><span class="mr-title" id="mr-toc-t" data-i18n="mToc">Зміст</span><span class="mr-desc" id="mr-toc-d" data-i18n="mTocDesc">Розділи та мініатюри сторінок</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
                 <button type="button" class="menu-row" id="btn-book-audio" data-only="pdf" aria-labelledby="mr-audio-t" aria-describedby="mr-audio-d"><svg class="mi" aria-hidden="true"><use href="#i-audio"/></svg><span class="mr-text"><span class="mr-title" id="mr-audio-t" data-i18n="mAudio">Аудіо до книги</span><span class="mr-desc" id="mr-audio-d" data-i18n="mAudioDesc">Діалоги й записи до підручника: тап на позначку в книзі вмикає запис</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
@@ -2407,6 +2423,22 @@
         </div>
     </div>
 
+    <div id="demo-tour" hidden role="dialog" aria-modal="true" aria-labelledby="demo-tour-title">
+        <div class="demo-tour-box">
+            <div class="demo-tour-kicker" data-i18n="demoKicker">Демонстрація</div>
+            <h2 id="demo-tour-title" data-i18n="demoTitle">Français interactif</h2>
+            <p class="demo-tour-copy" id="demo-tour-copy"></p>
+            <p class="demo-tour-status" id="demo-tour-status" role="status" aria-live="polite"></p>
+            <p class="demo-tour-attribution" data-i18n="demoAttribution">Відкритий матеріал COERLL, CC BY 4.0. Це демо показує роботу рідера на реальному підручнику.</p>
+            <div class="demo-tour-actions">
+                <button type="button" class="btn-secondary" id="demo-tour-exit" data-i18n="demoExit">Вийти</button>
+                <button type="button" class="btn-secondary" id="demo-tour-audio" data-i18n="demoAudio">▶ Діалог</button>
+                <button type="button" class="btn-primary" id="demo-tour-next" data-i18n="demoStart">Почати демо</button>
+            </div>
+            <audio id="demo-tour-player" preload="metadata"></audio>
+        </div>
+    </div>
+
     <div id="settings-modal">
         <div class="modal-content">
             <button class="close-panel-btn" style="position:absolute; top:10px; right:10px;" data-close-settings data-i18n="close" data-i18n-title="tClose">✕</button>
@@ -2446,11 +2478,11 @@
         </div>
     </div>
 
-    <script src="js/core.js?v=ee36ed3849fb"></script>
+    <script src="js/core.js?v=922c967bffff"></script>
     <script src="js/lang-detect.js?v=5690558f59cc"></script>
     <script src="js/local-speech.js?v=3c6738acab5e"></script>
     <script src="js/tts.js?v=24e28a57806a"></script>
-    <script src="js/selection.js?v=84c1930c64d4"></script>
+    <script src="js/selection.js?v=be541ec901af"></script>
     <script src="js/cefr-lexicon-data.js?v=17c09dfb6210"></script>
     <script src="js/learning-stats.js?v=41e30411b9fd"></script>
     <script src="js/reading-ribbon.js?v=28c1139d880c"></script>
@@ -2498,8 +2530,9 @@
     <script src="js/sync.js?v=95d40bd128da"></script>
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
     <script src="js/developer.js?v=67c700255062"></script>
-    <script src="js/main.js?v=06c0272e7463"></script>
-    <script src="js/pwa-lifecycle.js?v=d2987066ddd8"></script>
+    <script src="js/main.js?v=80af175846e8"></script>
+    <script src="js/demo-textbook.js?v=5a75e151a95e"></script>
+    <script src="js/pwa-lifecycle.js?v=2b6b60bd8b4a"></script>
     <script src="js/i18n-es.js?v=36d0a596c921"></script>
 </body>
 </html>
