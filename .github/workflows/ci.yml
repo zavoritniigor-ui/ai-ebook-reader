@@ -252,6 +252,7 @@ jobs:
           python3 -u tests/quick_wheel_actions_browser.py
 
           python3 -u tests/migration_audit_browser.py
+          python3 -u tests/demo_textbook_browser.py
 
           python3 -u tests/formats_browser.py
 

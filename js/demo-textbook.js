@@ -49,14 +49,19 @@ const demoTour = {
     previousTarget: null,
     previousTranslate: false,
     step: 0,
-    busy: false
+    busy: false,
+    generation: 0
 };
 
 function demoSetCopy(text, { status = '' } = {}) {
     if (demoTour.copy) demoTour.copy.textContent = text;
     if (demoTour.status) demoTour.status.textContent = status;
 }
-function demoSleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function demoSleep(ms) {
+    const generation = demoTour.generation;
+    return new Promise((resolve, reject) => setTimeout(() => generation === demoTour.generation
+        ? resolve() : reject(new DOMException('Demo closed', 'AbortError')), ms));
+}
 async function demoWaitFor(predicate, timeout = 9000, interval = 100) {
     const until = Date.now() + timeout;
     while (Date.now() < until) {
@@ -98,17 +103,16 @@ function demoShowDone() {
     demoTour.next.hidden = true; demoTour.audio.hidden = false; demoTour.exit.hidden = false;
 }
 function demoVisibleTextTarget() {
-    const spans = [...document.querySelectorAll('#pages .pdf-text-layer span')].filter(span => {
+    const spans = [...els.pages.querySelectorAll('.pdf-text-layer span')].filter(span => {
         const text = span.textContent.trim(); if (text.length < 3) return false;
         const r = span.getBoundingClientRect(); return r.width > 2 && r.height > 2 && r.bottom > 0 && r.top < innerHeight;
     });
-    return spans.find(s => /bonjour|salut|comment|monsieur|madame/i.test(s.textContent)) || spans[0] || null;
+    return spans.find(s => /C[’']est une salle de classe/i.test(s.textContent)) ||
+        spans.find(s => /bonjour|comment|monsieur|madame/i.test(s.textContent)) || spans[0] || null;
 }
 function demoRealTap(target) {
     const r = target.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
     const init = { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, button: 0, buttons: 1, view: window };
-    try { target.dispatchEvent(new PointerEvent('pointerdown', { ...init, pointerId: 1, pointerType: 'touch' })); } catch (e) {}
-    try { target.dispatchEvent(new PointerEvent('pointerup', { ...init, pointerId: 1, pointerType: 'touch', buttons: 0 })); } catch (e) {}
     target.dispatchEvent(new MouseEvent('click', init));
 }
 function demoSetStep(text, { next = true } = {}) {
@@ -124,45 +128,43 @@ function demoSetPage(page) {
     range.value = String(Math.max(1, Math.min(Number(range.max) || page, page)));
     range.dispatchEvent(new Event('input', { bubbles: true }));
 }
-function demoSentenceDrag() {
-    const spans = [...document.querySelectorAll('#pages .pdf-text-layer span')].filter(s => {
-        const r = s.getBoundingClientRect(); return s.textContent.trim() && r.width > 2 && r.height > 2 && r.top > 0 && r.bottom < innerHeight;
-    });
-    const start = demoTour.target, index = spans.indexOf(start), end = index >= 0 ? spans[Math.min(spans.length - 1, index + 4)] : null;
-    if (!start || !end) return false;
-    const a = start.getBoundingClientRect(), b = end.getBoundingClientRect();
-    const init = { bubbles: true, cancelable: true, composed: true, pointerId: 21, pointerType: 'mouse', button: 0, buttons: 1, view: window };
-    start.dispatchEvent(new PointerEvent('pointerdown', { ...init, clientX: a.left + 2, clientY: a.top + a.height / 2 }));
-    document.dispatchEvent(new PointerEvent('pointermove', { ...init, clientX: b.right - 2, clientY: b.top + b.height / 2 }));
-    document.dispatchEvent(new PointerEvent('pointerup', { ...init, clientX: b.right - 2, clientY: b.top + b.height / 2, buttons: 0 }));
-    return true;
-}
 function demoDrawInk() {
-    const ink = document.querySelector('.pdf-page-wrapper .ink-layer');
+    const ink = [...els.pages.querySelectorAll('.ink-layer')].find(layer => {
+        const r = layer.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight && r.bottom > 80;
+    });
     if (!ink) return;
-    const r = ink.getBoundingClientRect(), x = r.left + Math.min(80, r.width / 3), y = r.top + Math.min(90, r.height / 3);
-    const init = { bubbles: true, cancelable: true, composed: true, pointerId: 17, pointerType: 'pen', clientX: x, clientY: y, buttons: 1, view: window };
-    ink.dispatchEvent(new PointerEvent('pointerdown', init));
-    ink.dispatchEvent(new PointerEvent('pointermove', { ...init, clientX: x + 42, clientY: y + 18 }));
-    ink.dispatchEvent(new PointerEvent('pointerup', { ...init, clientX: x + 42, clientY: y + 18, buttons: 0 }));
+    const page = Number(ink.dataset.page), r = ink.getBoundingClientRect();
+    if (!r.width || inkOwner !== state.bookKey) return;
+    // Use the reader's stroke renderer/history. Synthetic pen events cannot
+    // acquire browser pointer capture because no physical pen is active.
+    ensureInkCanvas(ink);
+    inkActivePage = page;
+    const stroke = { c: state.inkColor, w: Number(inkWidth.value) / r.width,
+        p: [[.12, .12], [.17, .14], [.23, .12]] };
+    inkStrokes(page).push(stroke);
+    inkPushHistory(page, { type: 'draw', stroke, owner: inkOwner });
+    getInkRedoStack(page).length = 0;
+    redrawInk(ink, page); saveInk(page); updateInkTools();
 }
 async function demoRunRoute() {
     if (demoTour.busy) return;
     demoTour.busy = true;
+    const generation = demoTour.generation;
     try {
         if (!state.translateMode) els.translateBtn?.click();
         if (demoTour.step === 0) {
             demoTour.step = 1; demoSetStep(t('demoStepCover')); return;
         }
         if (demoTour.step === 1) {
-            demoSetPage(2); await demoSleep(500);
-            document.querySelector('.pdf-page-wrapper[data-page="2"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            demoSetPage(3); await demoSleep(500);
+            document.querySelector('.pdf-page-wrapper[data-page="3"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
             await demoSleep(1300); demoTour.step = 2; demoSetStep(t('demoStepPage')); return;
         }
         if (demoTour.step === 2) {
             const target = await demoWaitFor(demoVisibleTextTarget, 12000);
             if (!target) { demoSetCopy(t('demoNoTarget')); return; }
             demoClearTarget(); demoTour.target = target; target.classList.add('demo-tour-target'); target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            await demoSleep(800);
             demoTour.step = 3; demoSetStep(t('demoStepWord')); return;
         }
         if (demoTour.step === 3) {
@@ -170,16 +172,21 @@ async function demoRunRoute() {
             demoTour.step = 4; demoSetStep(t('demoStepWordResult')); return;
         }
         if (demoTour.step === 4) {
-            demoSentenceDrag(); await demoSleep(700);
-            if (els.tooltip.style.display !== 'flex') document.getElementById('tt-expand-btn')?.click();
+            // The normal expand action goes word → sentence end → whole sentence.
+            els.ttExpandBtn.click(); await demoSleep(150);
+            els.ttExpandBtn.click(); await demoSleep(700);
             document.getElementById('tt-replay-btn')?.click();
             await demoSleep(900); demoTour.step = 5; demoSetStep(t('demoStepSentence')); return;
         }
         if (demoTour.step === 5) {
-            document.getElementById('tt-ai-btn')?.click(); await demoSleep(1200); demoTour.step = 6; demoSetStep(t('demoStepGrammar')); return;
+            document.getElementById('tt-ai-btn')?.click(); await demoSleep(1200);
+            if (!els.grammarPanel.classList.contains('expanded')) els.grammarTab.click();
+            demoTour.step = 6; demoSetStep(t('demoStepGrammar')); return;
         }
         if (demoTour.step === 6) {
-            els.grammarPanel?.classList.remove('expanded'); document.getElementById('tt-ask-btn')?.click(); await demoSleep(700); demoTour.step = 7; demoSetStep(t('demoStepAsk')); return;
+            els.grammarPanel?.classList.remove('expanded'); document.getElementById('tt-ask-btn')?.click(); await demoSleep(700);
+            if (!els.askPanel.classList.contains('expanded')) els.askTab.click();
+            demoTour.step = 7; demoSetStep(t('demoStepAsk')); return;
         }
         if (demoTour.step === 7) {
             els.askPanel?.classList.remove('expanded'); document.getElementById('btn-rules')?.click(); await demoSleep(900);
@@ -187,7 +194,7 @@ async function demoRunRoute() {
             await demoSleep(700); demoTour.step = 8; demoSetStep(t('demoStepRules')); return;
         }
         if (demoTour.step === 8) {
-            (document.getElementById('rules-practice') || document.querySelector('.grammar-practice-btn'))?.click(); await demoSleep(900); demoTour.step = 9; demoSetStep(t('demoStepPractice')); return;
+            (document.getElementById('rules-practice') || document.querySelector('.rules-section-practice, .grammar-practice-btn'))?.click(); await demoSleep(900); demoTour.step = 9; demoSetStep(t('demoStepPractice')); return;
         }
         if (demoTour.step === 9) {
             closeRulesPanel?.(); document.getElementById('btn-ink')?.click(); await demoWaitFor(() => document.querySelector('.pdf-page-wrapper .ink-layer'), 3000); demoDrawInk(); await demoSleep(500); demoTour.step = 10; demoSetStep(t('demoStepInk')); return;
@@ -196,35 +203,49 @@ async function demoRunRoute() {
             document.getElementById('ink-done')?.click(); demoTour.player.src = DEMO_TEXTBOOK_AUDIO; demoTour.player.play().catch(() => {}); await demoSleep(3500); demoTour.step = 11; demoSetStep(t('demoStepAudio')); return;
         }
         demoTour.player.pause(); demoTour.player.currentTime = 0; demoTour.busy = false; demoShowDone();
+    } catch (error) {
+        if (error.name !== 'AbortError') throw error;
     } finally {
-        demoTour.busy = false;
+        if (generation === demoTour.generation) demoTour.busy = false;
     }
 }
 async function openDemoTextbook() {
     if (demoTour.busy) return;
+    const generation = ++demoTour.generation;
+    demoTour.previousTranslate = state.translateMode;
     try {
         closeFullMenu?.();
         demoTour.busy = true; demoTour.step = 0; demoTour.root.classList.remove('demo-active'); demoTour.root.hidden = false; demoTour.next.hidden = true; demoTour.audio.hidden = true; demoTour.exit.hidden = false;
         demoSetCopy(t('demoWelcome'), { status: t('demoLoading') });
         const response = await fetch(DEMO_TEXTBOOK_PDF, { credentials: 'same-origin', cache: 'force-cache' });
+        if (generation !== demoTour.generation) return;
         if (!response.ok) throw new Error('demo PDF HTTP ' + response.status);
         const file = new File([await response.blob()], 'Français interactif - Démo.pdf', { type: 'application/pdf', lastModified: 2019 });
+        if (generation !== demoTour.generation) return;
         Object.defineProperty(file, '__readerDemo', { value: true });
-        demoTour.previousTranslate = state.translateMode;
         demoSetTargetLanguage();
         await openBookFile(file);
+        if (generation !== demoTour.generation) return;
         await demoWaitFor(() => state.pdfDoc && state.format === 'pdf', 12000);
         demoTour.busy = false; demoShowWelcome();
     } catch (error) {
+        if (generation !== demoTour.generation) return;
         demoTour.busy = false; demoTour.next.hidden = false; demoTour.audio.hidden = true;
         demoSetCopy(t('demoNoTarget'), { status: error.message || String(error) });
     }
 }
 function closeDemoTextbook() {
+    demoTour.generation++; demoTour.busy = false;
     demoClearTarget(); demoTour.root.classList.remove('demo-active'); demoTour.root.hidden = true; demoTour.player.pause(); demoTour.player.currentTime = 0; demoTour.step = 0;
     stopTooltipSpeech?.(); stopGlobalTTS?.(); closeRulesPanel?.();
+    if (state.inkMode) document.getElementById('ink-done')?.click();
+    els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.remove('expanded');
+    dismissReaderPopup();
     demoRestoreSettings();
 }
+// Tour controls must not bubble into the reader's outside-popup dismissal.
+demoTour.root.addEventListener('click', e => e.stopPropagation());
+demoTour.root.addEventListener('pointerdown', e => e.stopPropagation());
 demoTour.next.addEventListener('click', demoRunRoute);
 demoTour.exit.addEventListener('click', closeDemoTextbook);
 demoTour.audio.addEventListener('click', () => {

@@ -9,7 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex, local | `feat/demo-textbook` (`/home/igor/Projects/wt-demo-textbook`) | paced step-by-step guided demo with smooth cover-to-text scroll: `index.html`, `js/demo-textbook.js`, PDF/MP3 assets, `js/main.js`, `js/core.js`, `js/pwa-lifecycle.js`, `sw.js`, migration and Spanish UI audits | PR #391, head `a170ca9`; local syntax/app-shell/PDF/library/migration/Spanish UI PASS; prior CI failure was the intentional brand title missing from Spanish audit allowlist, fixed and CI rerun pending | 2026-11-11 |
+| Codex, local delivery | `feat/demo-textbook` (`../wt-demo-textbook`) | guided demo, real PDF/MP3, reader/PWA integration, `tests/demo_textbook_browser.py`, CI invocation; generated hashes | PR #391; local route and regression gates PASS; exact-head CI next | 2026-11-12 |
 | Codex, local | `fix/pdf-sidebar-reflow` | `js/navigation.js`, `js/pdf-continuous.js`, `js/pdf-zoom-pan.js`, `tests/large_publications_browser.py`; generated hashes | PR #390; implementation complete, CI scheduling blocked | 2026-11-11 |
 | Antigravity | `fix/ba-restart-single-track` | `js/book-audio.js`, `tests/book_audio_browser.py`, `docs/agents/book_audio_rules.md`; generated shell hashes | working | 2026-11-08 |
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
@@ -196,3 +196,10 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 ## Release / Verification Target
 - Production URL: `https://ai-ebook-reader.pages.dev`
 - Main CI: Verify green on `main` before closing tasks.
+
+## Codex — demo delivery verification (2026-11-12)
+- Continuing PR #391 in `../wt-demo-textbook` at the owner’s request. Reproduced/fixed nonexistent text-container selectors, popup dismissal during smooth scroll/tour controls, synthetic pen capture failure, unavailable catalogue Practice target, hidden Grammar/Ask panels, and pending transitions reopening the tour after Exit.
+- The demo now uses the real sentence expansion and shared ink renderer/history (including Undo/Redo), shows a complete French example on page 3, and cancels closed runs. Normal imported books retain their shelf behavior.
+- Added `tests/demo_textbook_browser.py` to CI: real bundled PDF, physical Next clicks through all eleven steps, visible word/sentence/panels, Practice no-key path, visible undoable ink, playable audio, no shelving, restored settings and exit during transition.
+- Local PASS: demo route, PDF UX, learning UX, migration/script order, Spanish UI, PDF ink ownership/storage, PWA online/offline redirect recovery; all application/worker syntax, shell hashes and all 155 CI-suite invocations.
+- Next: exact-head CI, final review, normal merge, main CI and production smoke. Physical tablet/iPhone validation remains the owner’s device check.
