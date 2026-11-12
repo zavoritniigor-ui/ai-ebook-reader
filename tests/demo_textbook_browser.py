@@ -47,6 +47,7 @@ for step in range(1, 12):
         check('text target belongs to the real reader', 'demoTour.target.isConnected&&els.pages.contains(demoTour.target)')
     elif step == 4:
         check('word result remains open', "els.tooltip.style.display==='flex'&&els.ttOriginal.textContent==='salle'&&els.ttTranslation.textContent.includes('переклад')")
+        check('tour card leaves the word result visible', "(()=>{const r=els.tooltip.getBoundingClientRect();return !!document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('#word-tooltip');})()")
     elif step == 5:
         check('whole sentence uses normal reader expansion', "els.tooltip.style.display==='flex'&&els.ttOriginal.textContent==='C’est une salle de classe.'")
     elif step == 6:
@@ -66,6 +67,8 @@ for step in range(1, 12):
     elif step == 11:
         c.wait('demoTour.player.readyState>=2', timeout=15)
         check('bundled dialogue audio is playable', 'Number.isFinite(demoTour.player.duration)&&demoTour.player.duration>0')
+        c.js('stopBackgroundActivity();true')
+        check('PWA background/exit switch pauses demo audio', 'demoTour.player.paused')
 
 c.js('demoTour.next.click();true')
 c.wait('!demoTour.busy', timeout=10)

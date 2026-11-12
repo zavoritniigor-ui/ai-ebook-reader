@@ -55,6 +55,7 @@ function stopBackgroundActivity() {
     if (isSpeakingGlobal) stopGlobalTTS();
     stopTooltipSpeech();
     if (typeof pauseBookAudio === 'function') pauseBookAudio();
+    document.getElementById('demo-tour-player')?.pause();
     stopDictation(); clearAlignment(); stopOnboarding();
     cancelAsyncTasks();
     pdfTasks.render?.cancel(); pdfTasks.render = null;

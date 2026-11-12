@@ -1584,8 +1584,10 @@
         #library-modal.open { display: flex; }
         #demo-tour { position: fixed; inset: 0; z-index: 32000; display: grid; place-items: center; padding: 18px; background: rgba(10,16,28,.46); backdrop-filter: blur(3px); }
         #demo-tour[hidden] { display: none; }
-        #demo-tour.demo-active { place-items: end; background: transparent; backdrop-filter: none; pointer-events: none; }
-        #demo-tour.demo-active .demo-tour-box { pointer-events: auto; margin: 0 18px 18px auto; }
+        #demo-tour.demo-active { place-items: start end; background: transparent; backdrop-filter: none; pointer-events: none; }
+        #demo-tour.demo-active .demo-tour-box { pointer-events: auto; margin: 0; padding: 14px; width: min(420px, 100%); max-height: 35dvh; }
+        #demo-tour.demo-active :is(.demo-tour-kicker, h2, .demo-tour-status, .demo-tour-attribution) { display: none; }
+        #demo-tour.demo-active .demo-tour-actions { margin-top: 10px; }
         .demo-tour-box { width: min(480px, 100%); max-height: min(86dvh, 680px); overflow: auto; padding: 22px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--panel-bg); color: var(--text-color); box-shadow: 0 22px 70px rgba(0,0,0,.32); }
         .demo-tour-box h2 { margin: 0 0 8px; font-size: 21px; }
         .demo-tour-kicker { color: var(--accent-color); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -2519,7 +2521,7 @@
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=d35f0b330206"></script>
     <script src="js/demo-textbook.js?v=5a75e151a95e"></script>
-    <script src="js/pwa-lifecycle.js?v=29ec24a94f68"></script>
+    <script src="js/pwa-lifecycle.js?v=2b6b60bd8b4a"></script>
     <script src="js/i18n-es.js?v=36d0a596c921"></script>
 </body>
 </html>
