@@ -270,15 +270,20 @@ function demoCleanupTransientTools({ keep = [] } = {}) {
     if (!keep.includes('tooltip')) dismissReaderPopup?.();
 }
 
-function demoVisibleInkCanvas() {
+function demoVisibleInkCanvas(preferredPage = 3) {
+    const preferred = document.querySelector(`.pdf-page-wrapper[data-page="${preferredPage}"] .ink-layer`);
+    if (preferred) {
+        const r = preferred.getBoundingClientRect();
+        if (r.width > 40 && r.height > 40 && r.bottom > 80 && r.top < innerHeight) return preferred;
+    }
     return [...els.pages.querySelectorAll('.ink-layer')].find(layer => {
         const r = layer.getBoundingClientRect();
-        return r.width > 40 && r.height > 40 && r.bottom > 80 && r.top < innerHeight;
+        return r.width > 40 && r.height > 40 && r.top >= 0 && r.bottom > 80 && r.top < innerHeight;
     }) || null;
 }
 
-function demoDrawInk() {
-    const ink = demoVisibleInkCanvas();
+function demoDrawInk(preferredPage = 3) {
+    const ink = demoVisibleInkCanvas(preferredPage);
     if (!ink) return false;
     const page = Number(ink.dataset.page), r = ink.getBoundingClientRect();
     if (!r.width || inkOwner !== state.bookKey) return false;
@@ -488,9 +493,13 @@ const DEMO_STEPS = [
             if (practicePanel && !practicePanel.hidden && typeof closePractice === 'function') closePractice();
             const inkBtn = document.getElementById('btn-ink');
             if (inkBtn) demoRealTap(inkBtn);
-            const ready = await demoWaitFor(() => state.inkMode && inkOwner === state.bookKey && demoVisibleInkCanvas(), 5000);
+            const ready = await demoWaitFor(() => state.inkMode && inkOwner === state.bookKey && demoVisibleInkCanvas(3), 5000);
             if (!ready) return { error: t('demoNoTarget') };
-            demoDrawInk();
+            if (ready.getBoundingClientRect().top < 0) {
+                ready.closest('.pdf-page-wrapper')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+                await demoSleep(80);
+            }
+            demoDrawInk(3);
             const undoBtn = document.getElementById('ink-undo');
             const redoBtn = document.getElementById('ink-redo');
             if (undoBtn && redoBtn) {
