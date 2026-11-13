@@ -1596,10 +1596,26 @@
         #demo-tour { position: fixed; inset: 0; z-index: 32000; display: grid; place-items: center; padding: 18px; background: rgba(10,16,28,.46); backdrop-filter: blur(3px); }
         #demo-tour[hidden] { display: none; }
         #demo-tour.demo-active { place-items: start end; background: transparent; backdrop-filter: none; pointer-events: none; }
-        #demo-tour.demo-active .demo-tour-box { pointer-events: auto; margin: 0; padding: 14px; width: min(420px, 100%); max-height: 35dvh; }
-        #demo-tour.demo-active :is(.demo-tour-kicker, h2, .demo-tour-status, .demo-tour-attribution) { display: none; }
+        #demo-tour.demo-active.demo-pos-tl { place-items: start start; }
+        #demo-tour.demo-active.demo-pos-tr { place-items: start end; }
+        #demo-tour.demo-active.demo-pos-bl { place-items: end start; }
+        #demo-tour.demo-active.demo-pos-br { place-items: end end; }
+        #demo-tour.demo-active .demo-tour-box { pointer-events: auto; margin: 0; padding: 12px 14px; width: min(440px, 100%); max-height: 44dvh; }
+        #demo-tour.demo-active :is(.demo-tour-kicker, h2, .demo-tour-attribution) { display: none; }
+        #demo-tour.demo-active .demo-tour-status:empty { display: none; }
+        #demo-tour.demo-active .demo-tour-status { margin-top: 8px; font-size: 12.5px; color: var(--accent-color); }
         #demo-tour.demo-active .demo-tour-actions { margin-top: 10px; }
+        @media (max-width: 640px) {
+            #demo-tour.demo-active { padding: 8px; }
+            #demo-tour.demo-active .demo-tour-box { width: 100%; max-height: 42dvh; }
+        }
         .demo-tour-box { width: min(480px, 100%); max-height: min(86dvh, 680px); overflow: auto; padding: 22px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--panel-bg); color: var(--text-color); box-shadow: 0 22px 70px rgba(0,0,0,.32); }
+        .demo-tour-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+        .demo-tour-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent-color) 16%, transparent); color: var(--accent-color); }
+        .demo-tour-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; scrollbar-width: thin; }
+        .demo-tour-nav[hidden] { display: none; }
+        .demo-tour-chip { flex: 0 0 auto; font-size: 11.5px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--surface-2); color: var(--text-color); cursor: pointer; white-space: nowrap; }
+        .demo-tour-chip.active { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 18%, transparent); color: var(--accent-color); font-weight: 700; }
         .demo-tour-box h2 { margin: 0 0 8px; font-size: 21px; }
         .demo-tour-kicker { color: var(--accent-color); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
         .demo-tour-copy { margin: 0; color: var(--text-muted); line-height: 1.5; }
@@ -2427,14 +2443,21 @@
 
     <div id="demo-tour" hidden role="dialog" aria-modal="true" aria-labelledby="demo-tour-title">
         <div class="demo-tour-box">
-            <div class="demo-tour-kicker" data-i18n="demoKicker">Демонстрація</div>
+            <div class="demo-tour-head">
+                <div class="demo-tour-kicker" data-i18n="demoKicker">Демонстрація</div>
+                <span class="demo-tour-badge" id="demo-tour-badge" hidden></span>
+            </div>
             <h2 id="demo-tour-title" data-i18n="demoTitle">Français interactif</h2>
+            <div class="demo-tour-nav" id="demo-tour-nav" hidden></div>
             <p class="demo-tour-copy" id="demo-tour-copy"></p>
             <p class="demo-tour-status" id="demo-tour-status" role="status" aria-live="polite"></p>
             <p class="demo-tour-attribution" data-i18n="demoAttribution">Відкритий матеріал COERLL, CC BY 4.0. Це демо показує роботу рідера на реальному підручнику.</p>
             <div class="demo-tour-actions">
-                <button type="button" class="btn-secondary" id="demo-tour-exit" data-i18n="demoExit">Вийти</button>
+                <button type="button" class="btn-secondary" id="demo-tour-exit" data-i18n="demoExit">Завершити</button>
+                <button type="button" class="btn-secondary" id="demo-tour-voice" aria-pressed="false" hidden>🔇</button>
                 <button type="button" class="btn-secondary" id="demo-tour-audio" data-i18n="demoAudio">▶ Діалог</button>
+                <button type="button" class="btn-secondary" id="demo-tour-replay" data-i18n="demoReplay" hidden>Показати ще раз</button>
+                <button type="button" class="btn-secondary" id="demo-tour-try" data-i18n="demoTry" hidden>Спробувати</button>
                 <button type="button" class="btn-secondary" id="demo-tour-pause" data-i18n="demoPause" hidden>Пауза</button>
                 <button type="button" class="btn-primary" id="demo-tour-next" data-i18n="demoStart">Почати демо</button>
             </div>
@@ -2534,7 +2557,7 @@
     <script src="js/quick-wheel.js?v=0d2eb5fa17d0"></script>
     <script src="js/developer.js?v=67c700255062"></script>
     <script src="js/main.js?v=80af175846e8"></script>
-    <script src="js/demo-textbook.js?v=17eefebeb109"></script>
+    <script src="js/demo-textbook.js?v=10d017229cf1"></script>
     <script src="js/pwa-lifecycle.js?v=2b6b60bd8b4a"></script>
     <script src="js/i18n-es.js?v=36d0a596c921"></script>
 </body>
