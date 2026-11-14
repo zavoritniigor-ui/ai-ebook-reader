@@ -6,8 +6,12 @@ Sources (downloaded on every run, nothing else is stored in the repo):
 - French: FLELex TT Beacco (François et al. 2014, Pintard & François 2020; CENTAL, UCLouvain; CC BY-NC-SA 4.0).
 A word listed under several parts of speech keeps its lowest (easiest) level. Multi-word entries are skipped.
 """
-import csv, io, json, urllib.request
+import csv, io, json
 from pathlib import Path
+
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))   # tools/, also when loaded from tests/
+from safe_http import open_https   # https only: no file:// (tools/safe_http.py)  # noqa: E402
 
 LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 OLP = 'https://raw.githubusercontent.com/openlanguageprofiles/olp-en-cefrj/master/'
@@ -15,7 +19,7 @@ FLELEX = 'https://cental.uclouvain.be/cefrlex/static/resources/fr/FleLex_TT_Beac
 
 
 def fetch(url):
-    with urllib.request.urlopen(url, timeout=60) as res:
+    with open_https(url, timeout=60) as res:
         return res.read().decode('utf-8-sig')
 
 

@@ -11,18 +11,19 @@ it automatically spins up an ephemeral server and headless Chrome.
 import os
 import sys
 import time
-import urllib.request
+import urllib.parse
 import subprocess
 import tempfile
 import shutil
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from safe_http import local_http_status   # no urllib: tools/safe_http.py
+
+
 def is_service_ready(url, timeout=1.0):
-    try:
-        req = urllib.request.Request(url)
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status in (200, 204)
-    except Exception:
-        return False
+    parts = urllib.parse.urlsplit(url)   # only the local test server and Chrome (http://127.0.0.1:<port>/…)
+    assert parts.scheme == 'http' and parts.hostname == '127.0.0.1', url
+    return local_http_status(parts.port, parts.path or '/', timeout) in (200, 204)
 
 def ensure_browser_environment():
     server_url = "http://127.0.0.1:8765/"

@@ -400,9 +400,9 @@ async function offlineDictWord(word, sentence, src, tgt, result, picked) {
         if (!main && !picked && entries.length === 1) { chosen = entries[0].meanings[0]; main = chosen.uk; how = 'dictionary'; }   // a verb: both aspects
         const senses = [];
         for (const e of (entries.length ? [...entries, ...all.filter(x => !entries.includes(x))] : all))
-            senses.push({ lemma: e.lemma, pos: e.pos, gender: e.gender, note: lemmaNote(e), meanings: e.meanings.filter(m => m !== chosen).map(m => m.uk.replace('|', ' / ')) });
+            senses.push({ lemma: e.lemma, pos: e.pos, gender: e.gender, note: lemmaNote(e), meanings: e.meanings.filter(m => m !== chosen).map(m => m.uk.replaceAll('|', ' / ')) });   // every alternative, not only the first
         offlineDictLast = { kind: 'word', how: how || 'engine-kept', senses: senses.length, at: Date.now() };
-        const text = main ? offlineTrCase(main.replace('|', ' / '), word) : result.text;
+        const text = main ? offlineTrCase(main.replaceAll('|', ' / '), word) : result.text;
         if (!main) note = '';
         const lemmaOf = !hit && (chosen ? pool.find(e => e.meanings.includes(chosen)) : pool[0]);
         if (!note && lemmaOf && lemmaNote(lemmaOf)) note = lemmaOf.lemma;

@@ -287,7 +287,8 @@ function aiRateDetails(bodyText, retryAfterHeader) {
         } else if (j && j.error && typeof j.error.message === 'string') message = j.error.message;
     } catch (e) { /* not JSON: the text itself */ }
     const limit = /\b(RPM|RPD|TPM|TPD)\)?:\s*Limit (\d+),\s*Used (\d+),\s*Requested (\d+)/.exec(message);
-    if (limit) Object.assign(rate, { kind: limit[1], limit: Number(limit[2]), used: Number(limit[3]), requested: Number(limit[4]) });
+    // Four known fields set one by one (no Object.assign of anything derived from the parsed reply into `rate`).
+    if (limit) { rate.kind = limit[1]; rate.limit = Number(limit[2]); rate.used = Number(limit[3]); rate.requested = Number(limit[4]); }
     const wait = /try again in ((?:\d+h)?(?:\d+m(?!s))?(?:\d+(?:\.\d+)?s)?(?:\d+(?:\.\d+)?ms)?)/i.exec(message);
     if (wait && wait[1]) rate.retryAfterSec = Math.round([...wait[1].matchAll(/(\d+(?:\.\d+)?)(ms|h|m|s)/g)].reduce((sum, [, n, unit]) => sum + Number(n) * { h: 3600, m: 60, s: 1, ms: 0.001 }[unit], 0) * 100) / 100;
     const header = retryAfterHeader == null ? NaN : Number(retryAfterHeader);

@@ -22,7 +22,6 @@ word exactly only with aligned times.
 """
 import argparse
 import asyncio
-import hashlib
 import json
 import os
 import re
@@ -30,6 +29,7 @@ import subprocess
 import sys
 from collections import Counter
 
+from cache_names import adopt_legacy
 from columns import page_items
 from engines import synthesize as engine_synthesize
 
@@ -109,8 +109,9 @@ def sentence_lang(text):
     return ''
 
 
-def cache_key(voice, rate, text):
-    return hashlib.sha1(f'{voice}|{rate}|{text}'.encode('utf-8')).hexdigest()
+def cache_key(voice, rate, text, cache_dir=None):
+    # SHA-256 name; a clip cached under its pre-2026-11-14 SHA-1 name is renamed to it (tools/book_tts/cache_names.py).
+    return adopt_legacy(cache_dir, voice, rate, text, ('.mp3', '.json'))
 
 
 async def synthesize(text, voice, rate):
@@ -192,7 +193,7 @@ async def fill_cache(sentences, cache_dir, concurrency):
 
     async def one(sentence):
         voice, rate = sentence['voice'], sentence['rate']
-        key = cache_key(voice, rate, sentence['text'])
+        key = cache_key(voice, rate, sentence['text'], cache_dir)
         path = os.path.join(cache_dir, key + '.json')
         if os.path.exists(path):
             return
@@ -227,7 +228,7 @@ def assemble(sentences, cache_dir, out_dir, name, mixed=False):
     total_misses = 0
     with open(mp3_path, 'wb') as out:
         for sentence in sentences:
-            key = cache_key(sentence['voice'], sentence['rate'], sentence['text'])
+            key = cache_key(sentence['voice'], sentence['rate'], sentence['text'], cache_dir)
             with open(os.path.join(cache_dir, key + '.mp3'), 'rb') as f:
                 data = f.read()
             with open(os.path.join(cache_dir, key + '.json'), encoding='utf-8') as f:

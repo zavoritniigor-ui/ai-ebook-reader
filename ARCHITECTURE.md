@@ -21,9 +21,11 @@ commit message and the PR.
 Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.js`. Then, in this order:
 
 `welcome` → `core` → `core-text-layout` → `core-languages` → `core-state` → `core-voices` → `core-i18n` →
-`core-text` → `lang-detect` → `local-speech` → `tts` → `selection` → `cefr-lexicon-data` → `learning-stats` →
+`core-text` → `lang-detect` → `local-speech` → `tts` → `selection` → `selection-pdf-order` → `selection-highlight` →
+`selection-drag` → `cefr-lexicon-data` → `learning-stats` →
 `reading-ribbon` → `book-marks` → `navigation` → `pdf-zoom-pan` → `ui-tooltip` → `translation` → `dictionaries` →
-`sentence-structure` → `grammar-svo` → `grammar-rules-data-fr/en` → `grammar-rules-details-fr/en` → `grammar-rules` →
+`sentence-structure` → `grammar-svo` → `grammar-analysis` → `grammar-prompts` → `grammar-panel` → `grammar-lookup` →
+`grammar-run` → `grammar-rules-data-fr/en` → `grammar-rules-details-fr/en` → `grammar-rules` →
 `ai-client` → `practice-session` → `practice-worksheet` → `dictation` → `offline-catalog` → `offline-dict-catalog` →
 `offline-translate` → `offline-dict` → `device-llm-catalog` → `device-llm` → `pdf-ink` → `text-ink` → `pdf-crop` →
 `pdf-outline` → `pdf-thumbnails` → `pdf-continuous` → `pdf-contrast` → `publication-files` → `pdf-render` →
@@ -33,7 +35,8 @@ Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.
 `tests/migration_audit_browser.py` pins this list. Load-bearing positions:
 - the one inline line after `lang-detect.js` (`if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }`)
   must stay there: `loadVoices()` (core-voices) reaches `pageLang()` (lang-detect);
-- the `core*.js` files load together, in the order above: they were one file, cut into consecutive pieces;
+- `core*.js`, `selection*.js` and `grammar-svo.js` … `grammar-run.js` each load together, in the order above: each group
+  was one file, cut into consecutive pieces (2026-11-14);
 - `main.js` near the end: its startup calls into tts/navigation/dictation;
 - `pwa-lifecycle.js` after `pdf-crop.js` (top-level reference to `cropDialog`); it lifts `document.body.inert` on `load`;
 - `i18n-es.js` last: it covers every `I18N` key added by the other files.
@@ -60,7 +63,10 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | File | Responsibility |
 |---|---|
 | `navigation.js` | pagination of text books (CSS columns), page turns, progress |
-| `selection.js` | word/sentence/paragraph under a tap, drag selection, PDF text-layer hit-testing |
+| `selection.js` | caret and paragraph under a point |
+| `selection-pdf-order.js` | PDF text in visual order (columns, rotation, word joining), `resolveCanonicalPdfSelection`, `sentenceRangeAt` |
+| `selection-highlight.js` | highlight of the selected fragment, PDF selection anchors, `selectWordAtPoint`, `selectRangeAndTranslate` |
+| `selection-drag.js` | drag selection by words (finger, stylus, mouse), `handleReadingClick` |
 | `ui-tooltip.js` | translation popup and footer submenu, «tap elsewhere» dismissal |
 | `reading-ribbon.js`, `book-marks.js` | reading-place ribbon; highlights and notes in text books |
 | `learning-stats.js`, `cefr-lexicon-data.js` | page understanding statistics; CEFR word levels (generated) |
@@ -87,7 +93,9 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `offline-translate.js`, `offline-dict.js` (+ generated `*-catalog.js`) | translation without internet (Mozilla models), French→Ukrainian dictionary |
 | `device-llm.js` (+ `device-llm-catalog.js`) | on-device AI model |
 | `ai-client.js` | provider routing (Groq first, OpenAI backup), streaming, quotas, request log |
-| `grammar-svo.js` | Ask AI / Grammar / Language level panels, `startAiTask` |
+| `grammar-svo.js` | Ask AI / Language level tasks, `startAiTask`, `flattenRange` |
+| `grammar-analysis.js`, `grammar-prompts.js` | Grammar analysis (prompt, `normalizeGrammarAnalysis`, verb endings); Ask AI and level prompts |
+| `grammar-panel.js`, `grammar-lookup.js`, `grammar-run.js` | Grammar panel rendering and `focusGrammarItem`; «your own word» lookup; `runGrammarAnalysis`, Practice button |
 | `sentence-structure.js` | sentence parts coloured in the text |
 | `grammar-rules.js` (+ `grammar-rules-data-*`, `grammar-rules-details-*`) | Rules panel: catalog and rules found on the page |
 | `practice-session.js`, `practice-worksheet.js` | Practice: generated readings and the workspace |
@@ -122,6 +130,9 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
   `book-…`). Do not widen it without a test.
 - ZIP-based formats pass `archive-guard.worker.js` (size, ratio, paths) before JSZip/Mammoth.
 - Functions never act as open proxies: they build upstream URLs themselves from validated parameters.
+- Maintenance tools fetch only through `tools/safe_http.py` (HTTPS only, no `file://`; local checks via `http.client`);
+  caches are JSON, never pickle. The Security Gate (`.github/workflows/security-gate.yml`: gitleaks, Semgrep pinned,
+  Trivy, OSV) must be green on every PR; fix a finding in the code rather than silencing it.
 
 ## Versioning
 
@@ -134,6 +145,8 @@ conflict in those hashes take either side and re-run the tool.
 - Browser suites: `tests/*_browser.py` (Chrome over CDP, `tests/browser_cdp.py`); listed in `tests/ci_browser_suites.txt`
   and run by CI in 6 parallel shards (`tests/ci_run_browser.sh`). Each suite's docstring says what it covers.
 - Unit tests: `tests/*_test.mjs` (Pages Functions with mocked upstreams), `tests/*.py` without `_browser`.
+- `tools/module_graph.mjs` (run by `tests/module_graph_browser.py`) fails on a top-level name declared twice or a
+  top-level use of a later-loading file; `node tools/module_graph.mjs --report` prints sizes and dependencies.
 - Find the suite for a feature: `grep -l "<function or element id>" tests/*_browser.py`.
 - How to test and deliver: `docs/agents/testing_and_versioning.md`, `docs/agents/delivery_lifecycle.md`.
 

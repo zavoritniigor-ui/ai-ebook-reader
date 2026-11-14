@@ -7,8 +7,12 @@ Needs the network. The app never reads Mozilla's records itself: every file it m
 in the generated catalog, so a download is verified byte for byte and a changed upstream cannot alter what the app installs.
 Per language pair the highest STABLE version that has a complete file set is taken (alpha/beta versions are skipped).
 """
-import hashlib, json, re, sys, urllib.request
+import hashlib, json, re, sys
 from pathlib import Path
+
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))   # tools/, also when loaded from tests/
+from safe_http import open_https   # https only: no file:// (tools/safe_http.py)  # noqa: E402
 
 root = Path(__file__).resolve().parents[1]
 RECORDS = 'https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/%s/records?_limit=2000'
@@ -23,7 +27,7 @@ LANGS = {'en', 'fr', 'es', 'de', 'it', 'pt', 'nl', 'pl', 'uk', 'ru', 'zh-Hans', 
 
 
 def get(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers={'user-agent': 'ai-ebook-reader-catalog'}), timeout=60) as r:
+    with open_https(url, {'user-agent': 'ai-ebook-reader-catalog'}, timeout=60) as r:
         return r.read()
 
 

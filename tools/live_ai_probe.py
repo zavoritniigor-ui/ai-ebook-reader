@@ -23,12 +23,13 @@ back fully OK, a replay-ready <scenario>.json (see tests/live_responses/README.m
 --stub replaces the network with a canned provider (harness self-test only; the report then says LIVE AI TESTED: NO).
 Exit code: 0 all scenarios accepted, 1 at least one scenario failed, 2 the probe could not run.
 """
-import argparse, base64, functools, http.server, json, os, shutil, socket, subprocess, sys, tempfile, threading, time, urllib.request
+import argparse, base64, functools, http.server, json, os, shutil, socket, subprocess, sys, tempfile, threading, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, 'tests'))
 from browser_cdp import CDP                     # noqa: E402
+from safe_http import local_http_status         # noqa: E402  (no urllib: tools/safe_http.py)
 import ai_contract_fixtures as F                # noqa: E402
 import practice_fixtures as PF                  # noqa: E402
 
@@ -75,11 +76,9 @@ def start_chrome():
     proc = subprocess.Popen([binary, '--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=%d' % port, '--user-data-dir=' + profile,
                              '--window-size=1000,1100', 'about:blank'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
-        try:
-            urllib.request.urlopen('http://127.0.0.1:%d/json/version' % port, timeout=1).read()
+        if local_http_status(port, '/json/version', timeout=1) == 200:
             break
-        except Exception:
-            time.sleep(0.1)
+        time.sleep(0.1)
     else:
         proc.kill(); die('Chrome did not start')
     os.environ['READER_CDP_PORT'] = str(port)

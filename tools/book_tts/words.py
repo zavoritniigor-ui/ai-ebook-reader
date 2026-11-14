@@ -19,12 +19,13 @@ Needs: edge-tts or kokoro, numpy; ffmpeg.
 import argparse
 import asyncio
 import collections
-import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+
+from cache_names import adopt_legacy
 
 import numpy as np
 
@@ -130,7 +131,8 @@ def voices_of(meta):
 
 
 def clip_path(cache_dir, voice, rate, form):
-    return os.path.join(cache_dir, hashlib.sha1(f'{voice}|{rate}|{form}'.encode()).hexdigest() + '.mp3')
+    # SHA-256 name; a clip cached under its pre-2026-11-14 SHA-1 name is renamed to it (tools/book_tts/cache_names.py).
+    return os.path.join(cache_dir, adopt_legacy(cache_dir, voice, rate, form, ('.mp3',)) + '.mp3')
 
 
 def build(path, concurrency):

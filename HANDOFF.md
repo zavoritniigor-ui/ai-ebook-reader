@@ -9,7 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | CI in parallel shards (`.github/workflows/ci.yml`, `tests/ci_*`), docs clean-up (`ARCHITECTURE.md`, `HANDOFF.md`, `docs/agents/*`) | PR #396 | 2026-11-14 |
+| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | PR #397: grammar/selection split + module graph guard + Security Gate findings fixed (`tools/*`, `js/ai-client.js`, `js/navigation.js`, `js/offline-*.js`, `.github/workflows/*`) — needs the owner's merge (touches `.github/`) | PR #397 | 2026-11-14 |
 | Claude Code on the owner's computer | — | «Analects» OCR highlight offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 
 New browser suites go into `tests/ci_browser_suites.txt` (one line), not into `ci.yml`.

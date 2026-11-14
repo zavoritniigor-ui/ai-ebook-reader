@@ -262,7 +262,7 @@ function updateTextScrubber() {
 function previewTextScrub(value) {
     const preview = document.getElementById('pdf-page-preview');
     if (preview) preview.value = textScrubLabel(value);
-    document.getElementById('pdf-page-range')?.setAttribute('aria-valuetext', textScrubLabel(value).replace('\n', ' '));
+    document.getElementById('pdf-page-range')?.setAttribute('aria-valuetext', textScrubLabel(value).replace(/\n/g, ' '));
 }
 let textScrubToken = 0;
 async function commitTextScrub(value) {
