@@ -647,7 +647,7 @@ async function translateLocally(text, src, tgt) {
 // ключ AI й мережа, aiTranslateText() завжди встигає першим, і machineTranslate/
 // translateLocally узагалі не доходили до виконання — а самé завантаження
 // моделі теж потребує мережі, тому "перший офлайн-переклад" завжди програвав.
-// Викликається з updateSourceLang() (js/lang-detect.js, щоразу коли визначається
+// Викликається після updateSourceLang() (js/lang-detect.js, onSourceLangSet нижче; щоразу коли визначається
 // мова книги/розділу) і зі зміни цільової мови (js/main.js) — двох єдиних місць,
 // де відомі ОБИДВІ мови пари заздалегідь. Fire-and-forget: результат не потрібен,
 // важливо лише дати старт завантаженню якомога раніше.
@@ -988,3 +988,6 @@ document.addEventListener('selectionchange', () => {
 Object.assign(I18N, {
     aiNoteGroqLimit: { uk: 'ліміт Groq', en: 'Groq limit', fr: 'limite Groq', ru: 'лимит Groq', zh: 'Groq 限额', ko: 'Groq 한도', hi: 'Groq सीमा', ga: 'teorainn Groq' }
 });
+
+// Every time the page/chapter language is known (js/lang-detect.js), warm the local translator for the pair.
+onSourceLangSet(lang => warmLocalTranslator(lang, state.targetLang));

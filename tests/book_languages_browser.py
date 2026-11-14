@@ -10,7 +10,7 @@ from browser_cdp import CDP
 
 URL = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html')
 c = CDP(); c.sock.settimeout(60)
-c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
+c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable'); c.call('Network.setCacheDisabled', cacheDisabled=True); c.call('Network.setBypassServiceWorker', bypass=True)   # always the code on disk
 c.call('Page.navigate', url=URL)
 c.wait("document.readyState==='complete' && !document.body.inert && typeof detectLang==='function'", timeout=30)
 
@@ -77,7 +77,9 @@ c.js("localStorage.clear(); openBookFile(new File([Uint8Array.from(atob(%s),ch=>
 c.wait("state.format === 'epub' && els.pages.textContent.includes('Hola')", timeout=20); time.sleep(0.5)
 check('12 an EPUB with dc:language=es is read as Spanish even when its text is too short to tell', "state.bookLangMeta === 'es' && pageLang() === 'es-ES' || [state.bookLangMeta, pageLang()].join()")
 check('12b the side panel shows «Мова книги: Автоматично (Español)»', "(s => !s.disabled && s.value === '' && s.options[0].textContent.includes('Español'))(document.getElementById('book-lang-select'))")
+c.js("window.__stops = 0; window.__warm = []; const realStop = stopGlobalTTS; stopGlobalTTS = (...a) => { __stops++; return realStop(...a); }; warmLocalTranslator = (s, t) => __warm.push(s + '>' + t); isSpeakingGlobal = true; 1")
 c.js("const s = document.getElementById('book-lang-select'); s.value = 'de'; s.dispatchEvent(new Event('change')); 1")
+check('13a choosing the language while the book is read aloud stops the reading, and warms the translator for the new pair', "__stops === 1 && !isSpeakingGlobal && __warm.some(x => x.startsWith('de-DE>')) || JSON.stringify([__stops, isSpeakingGlobal, __warm])")
 check('13 choosing a language by hand overrides it at once (reading, translation, voice)', "pageLang() === 'de-DE' && buildLanguageSegments('Hola, gracias.', pageLang().slice(0, 2)).map(x => x.lang).join() === 'de'")
 c.js("openBookFile(new File([Uint8Array.from(atob(%s),ch=>ch.charCodeAt(0))],'other.epub',{lastModified:12})); 1" % json.dumps(epub('it')))
 c.wait("state.format === 'epub' && state.bookLangMeta === 'it' && els.pages.textContent.includes('Hola')", timeout=20); time.sleep(0.3)
