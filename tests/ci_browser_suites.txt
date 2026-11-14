@@ -169,3 +169,4 @@ tests/target_lang_fa_browser.py
 tests/developer_browser.py
 tests/welcome_browser.py
 tests/sidebar_hide_on_reading_browser.py
+tests/module_graph_browser.py
