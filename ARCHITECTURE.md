@@ -128,6 +128,10 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 - CSP in `_headers`: `script-src 'self'` (+ `wasm-unsafe-eval`), no inline scripts or handlers (CI checks `index.html`).
 - All book HTML goes through `safeHtml` (tags, attributes and a short list of style properties; ids/links rewritten to
   `book-…`). Do not widen it without a test.
+- Every place that puts HTML into the page (36 `innerHTML`/`insertAdjacentHTML` sites, reviewed 2026-11-14) takes either
+  constant markup, `escapeHtml`'d text, or `safeHtml` output; parsing of untrusted markup happens only in inert
+  `<template>`/`DOMParser` documents. `tests/hostile_book_browser.py` opens a hostile book in EPUB/FB2/HTML/MD/TXT/RTF
+  and fails if anything runs, survives, leaves the app or trips the CSP (it fails when `safeHtml` is disabled).
 - ZIP-based formats pass `archive-guard.worker.js` (size, ratio, paths) before JSZip/Mammoth.
 - Functions never act as open proxies: they build upstream URLs themselves from validated parameters.
 - Maintenance tools fetch only through `tools/safe_http.py` (HTTPS only, no `file://`; local checks via `http.client`);
