@@ -130,6 +130,9 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
   `book-…`). Do not widen it without a test.
 - ZIP-based formats pass `archive-guard.worker.js` (size, ratio, paths) before JSZip/Mammoth.
 - Functions never act as open proxies: they build upstream URLs themselves from validated parameters.
+- Maintenance tools fetch only through `tools/safe_http.py` (HTTPS only, no `file://`; local checks via `http.client`);
+  caches are JSON, never pickle. The Security Gate (`.github/workflows/security-gate.yml`: gitleaks, Semgrep pinned,
+  Trivy, OSV) must be green on every PR; fix a finding in the code rather than silencing it.
 
 ## Versioning
 

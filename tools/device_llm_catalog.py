@@ -8,8 +8,12 @@ a commit) and the engine binary (MediaPipe LLM Inference, @mediapipe/tasks-genai
 /api/device-llm, and every 64 MiB part of the model and the engine binary are checked against the SHA-256 written here. The
 small engine files the page loads as scripts (the ES module and the wasm loader) go into vendor/, inside the app shell.
 """
-import argparse, hashlib, json, urllib.request
+import argparse, hashlib, json
 from pathlib import Path
+
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))   # tools/, also when loaded from tests/
+from safe_http import open_https   # https only: no file:// (tools/safe_http.py)  # noqa: E402
 
 root = Path(__file__).resolve().parents[1]
 GENAI_VERSION = '0.10.29'
@@ -21,7 +25,7 @@ PART = 64 * 1024 * 1024
 
 
 def get(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers={'user-agent': 'ai-ebook-reader-catalog'}), timeout=600) as r:
+    with open_https(url, {'user-agent': 'ai-ebook-reader-catalog'}, timeout=600) as r:
         return r.read()
 
 

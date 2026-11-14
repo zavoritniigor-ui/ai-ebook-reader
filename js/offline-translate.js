@@ -378,12 +378,20 @@ function offlineTrJob(text, src, tgt, signal, html) {
 const offlineTrEscape = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const offlineTrUnescape = s => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 // The sentence with the first whole-word occurrence of the word marked, as HTML; null when the word is not in it.
+// A plain case-insensitive search, not a RegExp built from the word (no pattern made of data: Semgrep
+// detect-non-literal-regexp): an occurrence counts when no letter or digit touches it on either side.
+const OFFLINE_TR_WORD_CHAR = /[\p{L}\p{N}]/u;
 function offlineTrMarked(word, sentence) {
-    const esc = String(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const m = String(sentence || '').match(new RegExp('(^|[^\\p{L}\\p{N}])(' + esc + ')(?![\\p{L}\\p{N}])', 'iu'));
-    if (!m) return null;
-    const at = m.index + m[1].length, s = String(sentence);
-    return offlineTrEscape(s.slice(0, at)) + '<b>' + offlineTrEscape(m[2]) + '</b>' + offlineTrEscape(s.slice(at + m[2].length));
+    const w = String(word), s = String(sentence || ''), lw = w.toLowerCase();
+    if (!w) return null;
+    const touches = ch => !!ch && OFFLINE_TR_WORD_CHAR.test(ch);
+    for (let at = 0; at + w.length <= s.length; at++) {
+        if (s.slice(at, at + w.length).toLowerCase() !== lw) continue;
+        const before = Array.from(s.slice(Math.max(0, at - 2), at)).pop(), after = Array.from(s.slice(at + w.length, at + w.length + 2))[0];
+        if (touches(before) || touches(after)) continue;
+        return offlineTrEscape(s.slice(0, at)) + '<b>' + offlineTrEscape(s.slice(at, at + w.length)) + '</b>' + offlineTrEscape(s.slice(at + w.length));
+    }
+    return null;
 }
 // What the mark landed on in the translated sentence, cleaned; null when it is lost, empty, a scrap or most of the sentence.
 function offlineTrPicked(translated, word) {

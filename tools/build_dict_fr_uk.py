@@ -33,8 +33,12 @@ Output, read by js/offline-dict.js and pinned (size + SHA-256) in js/offline-dic
     alias    a form written in a meaning → its lemma («гарна» → гарний)
     guess    verb endings → slot, for words of a translation that are not in `uk` (only endings VESUM reads one way)
 """
-import argparse, bz2, pickle, collections, gzip, hashlib, html, io, json, math, re, sys, unicodedata, urllib.request, zipfile
+import argparse, bz2, collections, gzip, hashlib, html, io, json, math, re, sys, unicodedata, zipfile
 from pathlib import Path
+
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))   # tools/, also when loaded from tests/
+from safe_http import open_https   # https only: no file:// (tools/safe_http.py)  # noqa: E402
 
 root = Path(__file__).resolve().parents[1]
 OUT = root / 'dict' / 'fr-uk.json'
@@ -85,6 +89,39 @@ def log(*a):
     print(*a, file=sys.stderr)
 
 
+# ========== PARSED-SOURCES CACHE ==========
+# The parsed sources are cached as gzip'd JSON, not pickle: loading a pickle runs whatever code the file names, so a
+# cache file that someone else wrote (or that was swapped on disk) would run code on the next build. JSON only builds
+# data. dict (also with tuple keys), tuple and set are tagged so they come back as the same types.
+def cache_encode(x):
+    if isinstance(x, dict):
+        return {'__dict__': [[cache_encode(k), cache_encode(v)] for k, v in x.items()]}
+    if isinstance(x, tuple):
+        return {'__tuple__': [cache_encode(v) for v in x]}
+    if isinstance(x, (set, frozenset)):
+        return {'__set__': [cache_encode(v) for v in x]}
+    if isinstance(x, list):
+        return [cache_encode(v) for v in x]
+    if x is None or isinstance(x, (str, int, float, bool)):
+        return x
+    raise TypeError('not cacheable: ' + type(x).__name__)
+
+
+def cache_decode(x):
+    if isinstance(x, list):
+        return [cache_decode(v) for v in x]
+    if isinstance(x, dict):
+        (tag, items), = x.items()
+        if tag == '__dict__':
+            return {cache_decode(k): cache_decode(v) for k, v in items}
+        if tag == '__tuple__':
+            return tuple(cache_decode(v) for v in items)
+        if tag == '__set__':
+            return {cache_decode(v) for v in items}
+        raise ValueError('unknown cache tag ' + tag)
+    return x
+
+
 # ========== DOWNLOADS ==========
 def fetch(name, cache):
     """The first reachable source of `name`, verified (SHA-256 or the publisher's MD5) and kept in `cache`."""
@@ -94,8 +131,7 @@ def fetch(name, cache):
         if not path.exists():
             try:
                 log('downloading', src['url'])
-                req = urllib.request.Request(src['url'], headers={'user-agent': 'ai-ebook-reader-dict'})
-                with urllib.request.urlopen(req, timeout=120) as r, open(str(path) + '.part', 'wb') as f:
+                with open_https(src['url'], {'user-agent': 'ai-ebook-reader-dict'}, timeout=120) as r, open(str(path) + '.part', 'wb') as f:
                     while True:
                         chunk = r.read(1 << 20)
                         if not chunk:
@@ -439,9 +475,11 @@ def main():
     cache.mkdir(parents=True, exist_ok=True)
 
     # The parsed sources are kept next to the downloads (keyed by this file's parsers): a rebuild after editing dict/src takes seconds.
-    parsed = cache / ('parsed-' + hashlib.sha256(Path(__file__).read_bytes().split(b'# ========== BUILD')[0]).hexdigest()[:16] + '.pickle')
+    parsed = cache / ('parsed-' + hashlib.sha256(Path(__file__).read_bytes().split(b'# ========== BUILD')[0]).hexdigest()[:16] + '.json.gz')
     if parsed.exists():
-        lexique, wikt, vesum, uk_good, trans = pickle.loads(parsed.read_bytes())
+        with gzip.open(parsed, 'rt', encoding='utf-8') as f:
+            lexique, wikt, vesum, uk_good, trans = cache_decode(json.load(f))
+        vesum, trans = collections.defaultdict(list, vesum), collections.defaultdict(list, trans)   # as load_vesum / load_conceptnet_fr_uk return them
     else:
         log('reading Lexique 3.83 …')
         lexique = load_lexique(fetch('lexique', cache))
@@ -451,7 +489,9 @@ def main():
         vesum, uk_good = load_vesum(fetch('vesum', cache))
         log('reading Wiktionary translations (ConceptNet) …')
         trans = load_conceptnet_fr_uk(fetch('conceptnet', cache))
-        parsed.write_bytes(pickle.dumps((lexique, wikt, vesum, uk_good, trans), protocol=pickle.HIGHEST_PROTOCOL))
+        with gzip.open(str(parsed) + '.part', 'wt', encoding='utf-8') as f:
+            json.dump(cache_encode((lexique, wikt, vesum, uk_good, trans)), f, ensure_ascii=False, separators=(',', ':'))
+        Path(str(parsed) + '.part').replace(parsed)
     if args.kaikki:
         log('reading wiktextract extracts …')
         write_wiktionary_tsv(*load_kaikki(args.kaikki))
