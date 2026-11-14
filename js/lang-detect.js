@@ -597,3 +597,4 @@ function debugLanguageSegments(text, priorLang2) {
 // Перший виклик loadVoices() (js/core.js) — тут, у кінці lang-detect.js: усередині він доходить до pageLang(), визначеної
 // вище в цьому файлі (у core.js її ще немає). Раніше це був вбудований <script> в index.html — CSP тепер такі забороняє.
 if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }
+onI18nApplied(syncBookLangSelect);   // написи після зміни мови (applyI18n, js/core-i18n.js)

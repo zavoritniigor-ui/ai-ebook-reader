@@ -27,11 +27,24 @@ window.__demoSettings={target:state.targetLang,translate:state.translateMode};
 document.getElementById('btn-demo-textbook').click(); true
 """)
 c.wait('!demoTour.busy&&state.pdfDoc&&state.demoMode&&!demoTour.root.hidden', timeout=35)
+# What closed the word popup, if a step finds it closed (a CI-only failure of the notes step, 2026-11-14): every path
+# that hides it is recorded with the time and the caller, and the failure message shows the last ones.
+c.js("""
+window.__hides = [];
+const __note = (what) => __hides.push([Math.round(performance.now()), what, els.tooltip.style.display, (new Error().stack || '').split('\\n').slice(2, 5).map(l => l.trim()).join(' < ')]);
+for (const name of ['invalidateSelection', 'dismissReaderPopup', 'scheduleTooltipHide']) {
+    const real = window[name];
+    window[name] = function (...args) { __note(name); return real.apply(this, args); };
+}
+document.addEventListener('pointerdown', e => __note('pointerdown on ' + (e.target.id || e.target.className || e.target.localName)), true);
+els.container.addEventListener('scroll', () => __note('scroll'), { passive: true });
+true
+""")
 
 
 def check(name, expression):
     result = c.js(expression)
-    assert result is True, (name, result, c.js('[demoTour.step, demoTour.status?.textContent, els.tooltip?.style.display, els.ttOriginal?.textContent, els.ttTranslation?.textContent, __demoErrors]'))
+    assert result is True, (name, result, c.js('[demoTour.step, demoTour.status?.textContent, els.tooltip?.style.display, els.ttOriginal?.textContent, els.ttTranslation?.textContent, __demoErrors, Math.round(performance.now()), (window.__hides || []).slice(-12)]'))
     print('PASS', name, flush=True)
 
 

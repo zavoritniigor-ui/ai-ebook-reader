@@ -350,3 +350,19 @@ function aiUpdateKeyButton() {
     return button;
 }
 function isAiAuthError(err) { return !!err && (err.status === 401 || err.status === 403); }
+// (2026-11-14 перенесено з js/core-i18n.js — поруч із isAiAuthError/aiUpdateKeyButton, які воно використовує.)
+// Помилка у вікні AI чи Граматики: значок, текст і кнопка «Повторити» (+ «Оновити ключ AI» при 401/403). Повертає елемент .ai-error.
+function aiErrorView(message, retry, err) {
+    const box = document.createElement('div'); box.className = 'ai-error';
+    const row = document.createElement('div'); row.className = 'ai-error-row';
+    const text = document.createElement('p'); text.className = 'ai-error-text'; text.textContent = message;
+    row.append(iconSvg('alert'), text);
+    box.appendChild(row);
+    if (retry) {
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-primary ai-retry-btn'; btn.textContent = t('retry');
+        btn.onclick = retry;
+        box.appendChild(btn);
+    }
+    if (err && isAiAuthError(err)) box.appendChild(aiUpdateKeyButton());
+    return box;
+}

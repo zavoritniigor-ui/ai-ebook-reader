@@ -1443,3 +1443,4 @@ function openBookAudioDialog(message) {
 }
 const baBtn = document.getElementById('btn-book-audio');
 if (baBtn) baBtn.onclick = () => openBookAudioDialog('');
+onI18nApplied(() => { labelBookAudioDialog(); syncAudioMenuRow(); syncAudioPlayer(); syncAudioMarkers(); });   // написи після зміни мови (applyI18n, js/core-i18n.js)
