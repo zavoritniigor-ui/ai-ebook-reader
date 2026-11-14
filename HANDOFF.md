@@ -17,7 +17,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Codex, cloud | `fix/server-page-speech` | `js/tts.js`, `js/local-speech.js`, `js/lang-detect.js`, `js/selection.js`, `tests/local_speech_browser.py`, `tests/language_context_browser.py`; generated hashes | follow-up: en/fr server only; selected-word speech audit | 2026-11-04 |
 | Codex, cloud | `feat/separate-scans-shelf` | `js/book-shelf.js`, `js/scanner.js`, `tests/book_shelf_browser.py`, `tests/scanner_browser.py`, `ARCHITECTURE.md`; shelf CSS and generated hashes | working | current session |
 | Codex, local | `fix/blurred-scan-sharpness` | `js/pdf-contrast.js`, `tests/pdf_contrast_browser.py`; generated shell hashes | PR #367 open; local gates PASS; exact-head CI pending | 2026-11-02 |
-| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | library window layout on phones — `index.html` (library CSS), `js/library.js`, `tests/library_browser.py` (#365 merged: scanner, ✦ test, library) | PR open | 2026-11-01 |
+| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | CI in parallel shards — `.github/workflows/ci.yml`, `tests/ci_browser_suites.txt` (new: the suite list), `tests/ci_browser_shard.py`, `tests/ci_run_browser.sh`, `tests/ci_suite_coverage.py`, `docs/agents/*`. **Open PRs that add a line to ci.yml: after this merges, add it to `tests/ci_browser_suites.txt` instead.** | PR open | 2026-11-14 |
 | Claude Code on the owner's computer | — | «Analects» OCR offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 
 ## Codex — Practice selection and French tense timeline (2026-11-10)

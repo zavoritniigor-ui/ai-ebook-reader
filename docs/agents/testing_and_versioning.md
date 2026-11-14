@@ -16,6 +16,11 @@ python3 tools/run_tests.py tests/practice_browser.py tests/learning_ux_browser.p
 ```
 Do not weaken valid tests merely to obtain green CI. Behavioral requirements must be tested behaviorally.
 
+A new `tests/*_browser.py` is added to `tests/ci_browser_suites.txt` (one line), not to `.github/workflows/ci.yml`:
+CI runs the suites in 6 parallel shards (`tests/ci_run_browser.sh`, split by `tests/ci_browser_shard.py`), and the
+`test` check is green only when every shard is. `tests/ci_suite_coverage.py` fails if a suite is missing from the list.
+To rerun one shard locally exactly as CI does: `bash tests/ci_run_browser.sh <shard> 6` (needs `google-chrome`).
+
 ## 3. App-Shell Versioning Gate
 If production JS, `index.html`, service worker app-shell content, or versioned assets change:
 ```bash

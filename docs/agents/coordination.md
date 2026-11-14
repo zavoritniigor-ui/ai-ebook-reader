@@ -21,7 +21,8 @@ other's working trees. This page is how they avoid editing the same files and ho
 
 Files that every change touches are not claimed: the generated version hashes in `index.html` and `sw.js` are rewritten by
 `tools/version_app_shell.py`, so a conflict there is resolved by taking either side and re-running the tool. The same goes
-for adding a line to `.github/workflows/ci.yml` or `tests/ci_suite_coverage.py` lists — merge both lines.
+for adding a line to `tests/ci_browser_suites.txt` (the list of browser suites CI runs; since 2026-11-14 it replaces the
+list that was inside `.github/workflows/ci.yml`) — merge both lines.
 
 ## 2. Before you merge
 
