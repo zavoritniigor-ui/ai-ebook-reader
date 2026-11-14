@@ -141,11 +141,9 @@ function goToPageInChapter(p, animate = true, anchor = null) {
     els.pages.style.transform = `translate3d(${-(p * columnStep())}px, 0, 0)`;
     state.bookTextOffset = Number.isInteger(anchor) && pageForBookTextOffset(anchor) === p ? anchor : bookTextOffsetAtPage();
     updateProgressText();
-    refreshReadingStats();
     saveBookmark();
-    if (typeof renderReadingRibbon === 'function') renderReadingRibbon();
-    if (typeof paintBookMarks === 'function') paintBookMarks();   // виділення й нотатки (js/book-marks.js)
-    if (typeof layoutTextInk === 'function') layoutTextInk();     // письмо від руки на цій сторінці (js/text-ink.js)
+    // Reading statistics, the reading ribbon, highlights and notes, handwriting on this page (they register themselves).
+    for (const listener of TEXT_PAGE_SHOWN) listener();
 }
 // ========== СТОРІНКИ ВСІЄЇ КНИГИ (оцінка) ==========
 // Розкладено лише поточний розділ, тож сторінки інших оцінюємо: літери розділу / літери на сторінку + ілюстрації (≈ пів

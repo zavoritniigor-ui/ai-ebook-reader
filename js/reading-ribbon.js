@@ -111,3 +111,6 @@ function renderReadingRibbon() {
     el.style.height = `${Math.max(12, bottom - top)}px`;
     el.hidden = false;
 }
+
+// The ribbon follows every page turn in a text book (js/navigation.js).
+onTextPageShown(() => renderReadingRibbon());
