@@ -9,6 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
+| Codex, cloud preview | `preview/guided-demo-review` | `preview-demo.html`, `preview-demo.css`, `js/demo-preview-host.js`, `js/demo-preview-driver.js`, `tests/demo_preview_browser.py`, CI invocation | isolated review prototype; no main merge | 2026-11-12 |
 | Codex, local delivery | `fix/iphone-word-tap` | selection merge; iPhone/bilingual/print/Practice regression fixtures, CI lists; generated hashes | PR #373; printer/layout fixtures stabilized, focused gates PASS, exact-head CI next | 2026-11-12 |
 | Codex, local delivery | `feat/demo-textbook` (`../wt-demo-textbook`) | guided demo, real PDF/MP3, reader/PWA integration, `tests/demo_textbook_browser.py`, CI invocation; generated hashes | PR #391; local route and regression gates PASS; exact-head CI next | 2026-11-12 |
 
@@ -217,3 +218,9 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 ## Codex — iridescent bottom reading bar delivery (2026-11-12)
 - PR #374 merged as `364d940a83e1234403d439cb4ebee7139b013885` after exact-head CI [43219553679](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43219553679) passed. Main CI [43225399563](https://github.com/zavoritniigor-ui/ai-ebook-reader/actions/runs/43225399563) passed. Production HTML was rechecked after CI and matches the merge; three-theme/reduced-motion smoke passed. The clean task worktree and merged local/remote branch were safely removed; preserve the merged CSS when integrating other work.
 - Local PASS: `reading_bottom_row_browser.py`, `page_arrows_browser.py`, application/worker syntax, app-shell hashes, all 154 CI suite invocations. Next: exact-head CI, final review, normal merge, main CI and production smoke.
+
+## Codex — isolated guided demo preview
+- Owner authorized a separate preview branch only: `preview/guided-demo-review`, worktree `/workspace/wt-guided-demo-preview`, based on main d102023. Do not merge to main; owner reviews the appearance first.
+- Existing parallel demo PR392/branch feat/demo-autoplay and its files remain untouched. This branch adds a snapshot page `preview-demo.html` (original main reader markup), its scoped CSS, separate host/driver JS and new preview browser suite/CI invocation. Original index, demo-textbook, book-audio and sw sources unchanged. No iframe or weaker security headers.
+- Prototype uses existing real PDF/actions, grouped chapters with automatic show then optional free exploration; repeat/next/exit, cancellation, closes Practice before ink. Imports bundled MP3 using normal book-audio import and shows the normal player. Text guidance only; narrated guidance and actual audio-marker-to-dialogue mapping are NOT yet implemented. This limitation is visible in audio chapter. AI is real in the shipped page; test providers are mocked only in the test.
+- Full local preview under actual production CSP/X-Frame-Options PASS: real word/sentence, all10 chapters, pre-opened Practice closed before writing, actual imported audio/player, next/exit and cancel during start, phone control bounds. Isolated-browser preview, original demo, PDF UX and learning UX PASS together; syntax/version/157-suite coverage PASS. Final CSP replay also checks explanation hit testing and normal player closure between chapters. Next commit/push and draft PR for Cloudflare preview only. No production delivery/merge.
