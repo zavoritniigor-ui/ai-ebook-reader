@@ -575,3 +575,6 @@ Object.assign(I18N, {
     noVoiceForLang: { uk: 'На цьому пристрої немає голосу для мови «{lang}». Встановіть його в системних налаштуваннях синтезу мовлення.', en: 'This device has no voice for «{lang}». Install one in the system text-to-speech settings.', fr: 'Cet appareil n’a pas de voix pour «{lang}». Installez-en une dans les réglages de synthèse vocale du système.', ru: 'На этом устройстве нет голоса для языка «{lang}». Установите его в системных настройках синтеза речи.', zh: '此设备没有“{lang}”的语音。请在系统的文字转语音设置中安装。', ko: '이 기기에는 «{lang}» 음성이 없습니다. 시스템 텍스트 음성 변환 설정에서 설치하세요.', hi: 'इस डिवाइस पर «{lang}» की आवाज़ नहीं है। सिस्टम की टेक्स्ट-टू-स्पीच सेटिंग में इसे इंस्टॉल करें।', ga: 'Níl guth don teanga «{lang}» ar an ngléas seo. Suiteáil ceann i socruithe téacs-go-caint an chórais.' }
 });
 onI18nApplied(() => { updateAltVoicesBtn(); updateTtsButtons(); });   // написи після зміни мови (applyI18n, js/core-i18n.js)
+
+// The reader picked another language for the book (js/lang-detect.js): reading on in the old voice would be wrong.
+onBookLangChosen(() => { if (isSpeakingGlobal) stopGlobalTTS(); });

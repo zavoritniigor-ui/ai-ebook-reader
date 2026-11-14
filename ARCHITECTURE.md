@@ -53,7 +53,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `core-i18n.js` | `I18N`, `t()`, `applyI18n` (modules register their label refreshers with `onI18nApplied`), `showToast`, small menu/panel UI helpers |
 | `core-languages.js` | `LANGUAGE_CONFIG`, grammar language config, tolerant JSON parsing of AI replies, language choice |
 | `core-voices.js`, `core-text-layout.js`, `core-text.js` | voices and `loadVoices`; text look settings; `escapeHtml`, sentence boundaries |
-| `lang-detect.js` | language of a text fragment (bilingual books, mixed sentences), `pageLang()` |
+| `lang-detect.js` | language of a text fragment (bilingual books, mixed sentences), `pageLang()`; features react to it through `onSourceLangSet` / `onBookLangChosen` |
 | `main.js` | settings wiring and app bootstrap not owned by a feature module |
 | `pwa-lifecycle.js` | background activity switch-off, overlay/back-button stack, update banner, toasts, install button |
 | `i18n-es.js` | Spanish UI strings |

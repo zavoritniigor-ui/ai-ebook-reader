@@ -464,7 +464,7 @@ document.getElementById('book-lang-select')?.addEventListener('change', (e) => {
     if (!state.bookKey) return;
     state.bookLangManual = normalizeBookLang(e.target.value);
     try { if (state.bookLangManual) writeStored(BOOK_LANG_STORE + state.bookKey, state.bookLangManual); else localStorage.removeItem(BOOK_LANG_STORE + state.bookKey); } catch (err) {}
-    if (typeof isSpeakingGlobal !== 'undefined' && isSpeakingGlobal) stopGlobalTTS();
+    for (const listener of BOOK_LANG_CHOSEN) listener();   // e.g. js/tts.js stops reading in the old language
     if (state.format && state.format !== 'pdf') updateSourceLang(); else state.sourceLang = null;
     state.translationCache = {};
     syncBookLangSelect();
@@ -477,6 +477,12 @@ function chapterLangSample(text) {
     for (const f of [0.08, 0.3, 0.5, 0.7, 0.92]) { const at = Math.floor((text.length - win) * f); parts.push(text.slice(at, at + win)); }
     return parts.join('\n');
 }
+// Language detection is below the features that react to it: they register here instead of being called from here
+// (2026-11-14). onSourceLangSet(fn): fn(lang) after every page/chapter language is set; onBookLangChosen(fn): after the
+// reader picks the book's language in the side panel.
+const SOURCE_LANG_SET = [], BOOK_LANG_CHOSEN = [];
+function onSourceLangSet(listener) { SOURCE_LANG_SET.push(listener); }
+function onBookLangChosen(listener) { BOOK_LANG_CHOSEN.push(listener); }
 function updateSourceLang() {
     const text = els.pages.innerText || '';
     const book = explicitBookLang();
@@ -485,13 +491,7 @@ function updateSourceLang() {
     // Атрибут lang потрібен для автоматичних переносів: браузер переносить слова
     // за правилами конкретної мови й без нього не переносить узагалі.
     els.pages.lang = state.sourceLang.slice(0, 2);
-    // Заздалегідь "розігріваємо" локальний перекладач Chrome (js/translation.js,
-    // завантажується пізніше — forward-виклик безпечний, бо викликається лише
-    // зсередини цієї функції, а не одразу під час завантаження скрипта, той самий
-    // механізм, що й у pdf-render.js для pdfAnchor). Саме тут, а не лише коли AI
-    // недоступний: якщо чекати першої СПРАВЖНЬОЇ потреби в офлайн-перекладі,
-    // користувач уже сидітиме без інтернету, і мовний пакет завантажити ніде.
-    warmLocalTranslator(state.sourceLang, state.targetLang);
+    for (const listener of SOURCE_LANG_SET) listener(state.sourceLang);   // e.g. js/translation.js warms the local translator
 }
 function pageLang() { return state.sourceLang || (explicitBookLang() && LATIN_LANG_LOCALES[explicitBookLang()]) || 'en-US'; }
 // Мова КОНКРЕТНОГО фрагмента в межах ЯВНО переданого контексту (речення чи ширше):
