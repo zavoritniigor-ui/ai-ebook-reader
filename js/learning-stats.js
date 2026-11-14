@@ -538,3 +538,4 @@ document.addEventListener('pointerdown', event => {
 });
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeReadingStats(); });
 refreshReadingStats();
+onI18nApplied(refreshReadingStats);   // написи після зміни мови (applyI18n, js/core-i18n.js)

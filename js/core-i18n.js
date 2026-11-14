@@ -1071,6 +1071,15 @@ Object.assign(I18N, {
 });
 // Головне меню: перемикач показує стан повзунком (role="switch" + aria-checked), а не словами «УВІМК/ВИМК» у назві;
 // рядок-дія міняє лише свою назву (.mr-title), не чіпаючи значок і пояснення.
+// Коротке повідомлення внизу екрана (2026-11-14 перенесено сюди з js/pwa-lifecycle.js: ним користуються майже всі модулі).
+function showToast(msg) {
+    let toast = document.getElementById('reader-toast');
+    if (!toast) { toast = document.createElement('div'); toast.id = 'reader-toast'; document.body.appendChild(toast); }
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 3500);
+}
 function setMenuSwitch(btn, on) {
     if (!btn) return;
     btn.setAttribute('aria-checked', String(!!on));
@@ -1115,21 +1124,6 @@ function aiLoadingHtml(label, contextText) {
     const chip = ctx ? `<span class="ai-context-chip">${escapeHtml(ctx.length > 40 ? ctx.substring(0, 40) + '...' : ctx)}</span>` : '';
     return `<div class="ai-loading"><div class="spinner-large"></div><p class="ai-loading-label">${escapeHtml(label)}</p>${chip}<div class="ai-skeleton"><i></i><i></i><i></i><i></i></div></div>`;
 }
-// Помилка у вікні AI чи Граматики: значок, текст і кнопка «Повторити» (+ «Оновити ключ AI» при 401/403). Повертає елемент .ai-error.
-function aiErrorView(message, retry, err) {
-    const box = document.createElement('div'); box.className = 'ai-error';
-    const row = document.createElement('div'); row.className = 'ai-error-row';
-    const text = document.createElement('p'); text.className = 'ai-error-text'; text.textContent = message;
-    row.append(iconSvg('alert'), text);
-    box.appendChild(row);
-    if (retry) {
-        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-primary ai-retry-btn'; btn.textContent = t('retry');
-        btn.onclick = retry;
-        box.appendChild(btn);
-    }
-    if (err && typeof isAiAuthError === 'function' && isAiAuthError(err) && typeof aiUpdateKeyButton === 'function') box.appendChild(aiUpdateKeyButton());
-    return box;
-}
 // Рядок під заголовком панелі — що саме зараз розбирається ('' ховає його).
 function setPanelSubtitle(id, text) {
     const el = document.getElementById(id);
@@ -1138,21 +1132,20 @@ function setPanelSubtitle(id, text) {
     el.textContent = value.length > 90 ? value.slice(0, 89) + '…' : value;
     el.hidden = !value;
 }
+// Модулі, чиї написи залежать від стану (кнопки озвучки, лічильник сторінок, мікрофон…), реєструють тут свою функцію
+// оновлення (onI18nApplied), і applyI18n() викликає їх після зміни мови. Раніше applyI18n сама викликала функції
+// пізніших модулів — фундамент залежав від надбудови (2026-11-14: розплутування залежностей між файлами).
+const I18N_REFRESHERS = [];
+function onI18nApplied(refresh) { I18N_REFRESHERS.push(refresh); }
 function applyI18n() {
     document.querySelectorAll('[data-i18n]').forEach(el => { const text = t(el.dataset.i18n); el.textContent = el.hasAttribute('data-i18n-plain') ? plainLabel(text) : text; });
     document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
     document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
     document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
     // Написи, що залежать від стану
-    updateAltVoicesBtn();
-    updateTtsButtons();
     setMenuSwitch(els.translateBtn, state.translateMode);
-    updateProgressText();
-    updateDictationUI();
     els.askTab.setAttribute('aria-label', t('tAskPanel'));
     els.grammarTab.setAttribute('aria-label', t('tGrammarPanel'));
-    if (typeof renderGrammarLookupLabels === 'function') renderGrammarLookupLabels();
-    if (typeof syncBookLangSelect === 'function') syncBookLangSelect();
     const practiceRestore = document.getElementById('practice-restore');
     if (practiceRestore) {
         const span = practiceRestore.querySelector('span');
@@ -1161,11 +1154,7 @@ function applyI18n() {
         practiceRestore.setAttribute('aria-label', t('tRestorePractice'));
     }
     if (typeof loadVoices === 'function') loadVoices();   // назви груп голосів
-    if (typeof refreshReadingStats === 'function') refreshReadingStats();
-    if (typeof labelBookAudioDialog === 'function') labelBookAudioDialog();
-    if (typeof syncAudioMenuRow === 'function') syncAudioMenuRow();
-    if (typeof syncAudioPlayer === 'function') syncAudioPlayer();
-    if (typeof syncAudioMarkers === 'function') syncAudioMarkers();
+    for (const refresh of I18N_REFRESHERS) refresh();   // написи модулів (порядок — порядок їх завантаження)
 }
 
 

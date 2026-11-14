@@ -167,3 +167,4 @@ document.getElementById('grammar-lookup')?.addEventListener('submit', e => {
     runGrammarLookup(document.getElementById('grammar-lookup-input').value);
 });
 renderGrammarLookupLabels();
+onI18nApplied(renderGrammarLookupLabels);   // написи після зміни мови (applyI18n, js/core-i18n.js)

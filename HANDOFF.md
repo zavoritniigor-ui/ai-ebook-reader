@@ -9,7 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | vendored libraries in the Security Gate (`vendor/package-lock.json`), ReDoS guard; `tests/ci_browser_suites.txt` | PR open | 2026-11-14 |
+| Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | untangling module cycles: `core-i18n.js`, `pwa-lifecycle.js`, `ui-tooltip.js`, label refreshers in `tts`/`navigation`/`dictation`/`learning-stats`/`lang-detect`/`grammar-lookup`/`book-audio` | PR open | 2026-11-14 |
 | Claude Code on the owner's computer | — | «Analects» OCR highlight offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
 
 New browser suites go into `tests/ci_browser_suites.txt` (one line), not into `ci.yml`.

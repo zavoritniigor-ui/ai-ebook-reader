@@ -508,3 +508,4 @@ containerResizeObserver.observe(els.container);
 function buildToc(count, prefix, callback) {
     els.toc.innerHTML = ""; for (let i = 0; i < count; i++) { const li = document.createElement("li"); li.textContent = `${prefix} ${i + 1}`; li.onclick = () => callback(i); els.toc.appendChild(li); }
 }
+onI18nApplied(updateProgressText);   // написи після зміни мови (applyI18n, js/core-i18n.js)
