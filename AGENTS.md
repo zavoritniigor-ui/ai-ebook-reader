@@ -54,7 +54,7 @@ Agents operate FAIL-CLOSED: if any required gate fails, do not advance. Diagnose
 - `python3 tools/version_app_shell.py`: Updates app-shell versions after editing JS, HTML, or service worker assets.
 
 ## 8. Handoff & Status Reporting
-- Update `HANDOFF.md` before stopping: replace your own section with current state (branch, uncommitted work, PR #, next action); never append historical dumps.
+- Before stopping, keep your Claims row in `HANDOFF.md` current in one line (branch, PR #, state, next action) and remove it after your merge. Details go in the commit message and the PR — never into `HANDOFF.md` or `ARCHITECTURE.md` (that file keeps one line per module; add or change a line only when a module appears or its job changes).
 - Report only confirmed facts with file path, line number, or CI log URL; mark interpretations as INFERRED.
 - Definition of Done: `CODE -> FOCUSED TESTS -> REGRESSION TESTS -> SYNTAX GATE -> APP-SHELL VERSIONING -> FINAL DIFF REVIEW -> COMMIT -> PUSH -> EXACT-SHA PR CI GREEN -> FINAL PR REVIEW -> MERGE -> MAIN CI GREEN -> PRODUCTION VERIFIED -> SAFE CLEANUP`.
 

@@ -367,7 +367,7 @@ for f_ in ['js/practice-session.js', 'js/practice-worksheet.js']:
 print("PASS L: the shipped Practice scripts contain no exercise / hint / answer / grading identifiers at all (removed, not hidden)", flush=True)
 html = urllib.request.urlopen(URL).read().decode()
 assert not re.search(r'practice[-_](?:hint|answer|exercise|check|quiz)', html, re.I) and 'class="exercise' not in html
-core = urllib.request.urlopen(base + '/js/core.js').read().decode()
+core = ''.join(urllib.request.urlopen(base + '/js/' + f_).read().decode() for f_ in ['core.js', 'core-languages.js', 'core-state.js', 'core-i18n.js'])   # core.js was split on 2026-11-14
 assert not re.search(r"practiceExercises|practiceCheck|practicePrevious|practiceNext|practicePage|practiceComingSoon", core)
 print("PASS L: index.html has no exercise markup and core.js no exercise-era strings", flush=True)
 check("L: the old worksheet functions do not exist in the running app",

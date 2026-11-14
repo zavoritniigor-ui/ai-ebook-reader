@@ -21,7 +21,8 @@ other's working trees. This page is how they avoid editing the same files and ho
 
 Files that every change touches are not claimed: the generated version hashes in `index.html` and `sw.js` are rewritten by
 `tools/version_app_shell.py`, so a conflict there is resolved by taking either side and re-running the tool. The same goes
-for adding a line to `.github/workflows/ci.yml` or `tests/ci_suite_coverage.py` lists — merge both lines.
+for adding a line to `tests/ci_browser_suites.txt` (the list of browser suites CI runs; since 2026-11-14 it replaces the
+list that was inside `.github/workflows/ci.yml`) — merge both lines.
 
 ## 2. Before you merge
 
@@ -33,8 +34,8 @@ for adding a line to `.github/workflows/ci.yml` or `tests/ci_suite_coverage.py` 
 
 ## 3. Talking to another agent
 
-- **Through the repository, always available.** The Claims table and your `HANDOFF.md` section. A note there reaches every
-  agent that reads `HANDOFF.md` before starting, which section 1 requires.
+- **Through the repository, always available.** The Claims table in `HANDOFF.md` (one line per agent) and the PR description.
+  A note there reaches every agent that reads `HANDOFF.md` before starting, which section 1 requires.
 - **Through a message between sessions.** Claude Code sessions of the owner's account can message each other: a session
   lists the others (`list_sessions`, or `ListAgents` for local ones) and sends with `send_message`. A message from a cloud
   session into a session on the owner's computer needs the owner's one-time approval on a trusted device; after that it is
