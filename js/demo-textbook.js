@@ -100,6 +100,25 @@ function demoSleep(ms) {
         ? resolve() : reject(new DOMException('Demo closed', 'AbortError')), ms));
 }
 
+// Any scroll of the PDF closes the word popup (js/pdf-zoom-pan.js: the popup would point at text that moved). The tour
+// scrolls the page into view and closes panels before it taps a word; on a slow machine the scroll event of that move
+// arrives after the tap and closed the popup the tour had just opened (seen on CI, 2026-11-14: the popup opened, 16 ms
+// later a scroll event hid it). So the tour taps only once the reading area has had no scroll for a few frames.
+async function demoScrollSettled(quietMs = 160, timeout = 2000) {
+    let last = performance.now();
+    const onScroll = () => { last = performance.now(); };
+    els.container.addEventListener('scroll', onScroll, { passive: true });
+    try {
+        const until = last + timeout;
+        while (performance.now() < until) {
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            await demoSleep(40);
+            if (performance.now() - last >= quietMs) return true;
+        }
+        return false;
+    } finally { els.container.removeEventListener('scroll', onScroll); }
+}
+
 async function demoWaitFor(predicate, timeout = 9000, interval = 80) {
     const generation = demoTour.generation;
     const until = Date.now() + timeout;
@@ -249,8 +268,10 @@ async function demoEnsureWordTooltip() {
     if (!state.translateMode) els.translateBtn?.click();
     await demoEnsurePageReady(3);
     if (els.tooltip.style.display === 'flex') return true;
-    const target = await demoWaitFor(demoVisibleTextTarget, 10000);
+    let target = await demoWaitFor(demoVisibleTextTarget, 10000);
     if (!target) return false;
+    await demoScrollSettled();
+    target = demoVisibleTextTarget() || target;   // the settled layout may have replaced the span
     demoSetTarget(target);
     demoRealTap(target);
     const opened = await demoWaitFor(() => els.tooltip.style.display === 'flex' && els.ttOriginal.textContent.trim().length > 0, 10000);
@@ -387,6 +408,7 @@ const DEMO_STEPS = [
             demoSetTarget(target);
             demoPlaceCard(target);
             await demoSleep(250);
+            await demoScrollSettled();
             demoRealTap(target);
             const opened = await demoWaitFor(() => els.tooltip.style.display === 'flex'
                 && els.ttOriginal.textContent.trim().length > 0

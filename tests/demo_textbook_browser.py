@@ -63,6 +63,10 @@ def next_step(step):
 check('real PDF stays out of My Books', 'state.pdfDoc.numPages>3&&__demoShelved===0')
 check('the tour shows its textbook fitted to the width, whatever zoom the reader uses', "state.pdfFit==='width'&&state.pdfScale===1&&localStorage.getItem('reader_pdf_scale')==='3'")
 for step in range(1, 15):
+    if step == 14:
+        # A late scroll event of the reading area, as on a slow CI machine after the tour moved the page: the tour must
+        # tap only once scrolling has settled, or the event closes the popup it just opened (2026-11-14).
+        c.js("setTimeout(() => els.container.dispatchEvent(new Event('scroll')), 60); true")
     next_step(step)
     if step == 1:
         check('word result remains open', "els.tooltip.style.display==='flex'&&els.ttOriginal.textContent==='salle'&&els.ttTranslation.textContent.includes('переклад')")
