@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(here, '..', 'js', 'book-speech.js'), 'utf8');
-const ctx = createContext({ I18N: {}, console });
+const ctx = createContext({ I18N: {}, onBookOpened: () => {}, console });   // the foundation (js/core*.js) it builds on
 runInContext(source, ctx);
 
 // The JSON format of tools/book_tts/generate.py, for two sentences on page 20 and one on page 21.
