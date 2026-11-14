@@ -171,3 +171,5 @@ tests/welcome_browser.py
 tests/sidebar_hide_on_reading_browser.py
 tests/module_graph_browser.py
 tests/hostile_book_browser.py
+tests/vendor_lock_browser.py
+tests/regex_timing_browser.py
