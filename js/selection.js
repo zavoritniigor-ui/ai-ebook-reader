@@ -161,3 +161,18 @@ function paragraphRangeAt(clientX, clientY) {
     r.selectNodeContents(block);
     return r;
 }
+
+// Forget the current selection and everything built on it (the lookup, its sentence structure, the popup, the
+// highlight): a new page, chapter, book, zoom or scroll makes them point at text that is no longer there.
+// Lived in core.js until 2026-11-14; it belongs to the selection, and the foundation no longer calls the features.
+function invalidateSelection() {
+    cancelDragSelection();
+    state.lookupToken++;
+    structToken++;
+    cancelAsyncTasks(['lookup', 'structure', 'structureDeep']);
+    cancelTooltipHide();
+    els.tooltip.style.display = 'none';
+    clearSelectionHighlight();
+    state.lastSelectedRange = null; state.ctxSentenceRange = null;
+    state.lastTapPoint = null; state.lastWordNode = null; state.ctxSentence = '';
+}

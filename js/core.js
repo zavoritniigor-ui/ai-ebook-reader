@@ -130,17 +130,6 @@ function beginAsyncTask(key) {
 function cancelAsyncTasks(keys = Array.from(asyncTasks.keys())) {
     for (const key of keys) { asyncTasks.get(key)?.controller.abort(); asyncTasks.delete(key); }
 }
-function invalidateSelection() {
-    cancelDragSelection();
-    state.lookupToken++;
-    structToken++;
-    cancelAsyncTasks(['lookup', 'structure', 'structureDeep']);
-    cancelTooltipHide();
-    els.tooltip.style.display = 'none';
-    clearSelectionHighlight();
-    state.lastSelectedRange = null; state.ctxSentenceRange = null;
-    state.lastTapPoint = null; state.lastWordNode = null; state.ctxSentence = '';
-}
 function showReaderError(err) {
     els.pages.textContent = 'Помилка відкриття документа: ' + (err.message || String(err));
     els.progress.textContent = t('error');
@@ -181,9 +170,4 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 45000) {
 async function readResponseJson(response) {
     try { return await response.json(); }
     catch (err) { throw new Error('Сервер повернув некоректну відповідь. Спробуйте ще раз.'); }
-}
-function aiText(value) {
-    const text = sanitizeAI(value);
-    if (!text) throw new Error('AI повернув порожню відповідь. Спробуйте ще раз.');
-    return text;
 }

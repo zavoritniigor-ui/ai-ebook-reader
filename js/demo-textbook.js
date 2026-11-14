@@ -100,6 +100,25 @@ function demoSleep(ms) {
         ? resolve() : reject(new DOMException('Demo closed', 'AbortError')), ms));
 }
 
+// Any scroll of the PDF closes the word popup (js/pdf-zoom-pan.js: the popup would point at text that moved). The tour
+// scrolls the page into view and closes panels before it taps a word; on a slow machine the scroll event of that move
+// arrives after the tap and closed the popup the tour had just opened (seen on CI, 2026-11-14: the popup opened, 16 ms
+// later a scroll event hid it). So the tour taps only once the reading area has had no scroll for a few frames.
+async function demoScrollSettled(quietMs = 160, timeout = 2000) {
+    let last = performance.now();
+    const onScroll = () => { last = performance.now(); };
+    els.container.addEventListener('scroll', onScroll, { passive: true });
+    try {
+        const until = last + timeout;
+        while (performance.now() < until) {
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            await demoSleep(40);
+            if (performance.now() - last >= quietMs) return true;
+        }
+        return false;
+    } finally { els.container.removeEventListener('scroll', onScroll); }
+}
+
 async function demoWaitFor(predicate, timeout = 9000, interval = 80) {
     const generation = demoTour.generation;
     const until = Date.now() + timeout;
@@ -176,13 +195,34 @@ function demoSetTargetLanguage() {
     if (wanted !== state.targetLang) { select.value = wanted; select.dispatchEvent(new Event('change', { bubbles: true })); }
 }
 
+// The tour shows its textbook fitted to the width, whatever zoom the reader's own PDFs use: zoomed in (a stored
+// «free» ×3, say) the word the tour taps lies outside the screen and every step that taps the text fails («Не знайшов
+// текстовий шар сторінки», found 2026-11-14). The reader's zoom is kept aside, never stored over while the tour runs
+// (persistPdfZoom and the page-hide save skip the demo), and comes back when the tour closes.
+function demoFitTextbook() {
+    if (!demoTour.previousZoom) demoTour.previousZoom = { fit: state.pdfFit, scale: state.pdfScale };
+    state.pdfFit = 'width'; state.pdfScale = 1;
+    const fit = document.getElementById('pdf-fit'); if (fit) fit.value = 'width';
+}
+function demoRestoreZoom() {
+    const zoom = demoTour.previousZoom;
+    demoTour.previousZoom = null;
+    if (!zoom) return;
+    state.pdfFit = zoom.fit; state.pdfScale = zoom.scale;
+    const fit = document.getElementById('pdf-fit'); if (fit) fit.value = zoom.fit;
+}
+
 function demoRestoreSettings() {
     if (demoTour.previousTarget && els.targetLang && demoTour.previousTarget !== state.targetLang) {
         els.targetLang.value = demoTour.previousTarget; els.targetLang.dispatchEvent(new Event('change', { bubbles: true }));
     }
     demoTour.previousTarget = null;
     if (state.translateMode !== demoTour.previousTranslate) els.translateBtn?.click();
+    const wasDemo = state.demoMode;
     state.demoMode = false;
+    demoRestoreZoom();
+    // The textbook stays open when there is no earlier book to go back to: lay it out at the reader's zoom again.
+    if (wasDemo && state.format === 'pdf' && !demoTour.previousBook && typeof relayoutContinuousPdfAtScale === 'function') relayoutContinuousPdfAtScale();
 }
 
 function demoSetPage(page) {
@@ -228,8 +268,10 @@ async function demoEnsureWordTooltip() {
     if (!state.translateMode) els.translateBtn?.click();
     await demoEnsurePageReady(3);
     if (els.tooltip.style.display === 'flex') return true;
-    const target = await demoWaitFor(demoVisibleTextTarget, 10000);
+    let target = await demoWaitFor(demoVisibleTextTarget, 10000);
     if (!target) return false;
+    await demoScrollSettled();
+    target = demoVisibleTextTarget() || target;   // the settled layout may have replaced the span
     demoSetTarget(target);
     demoRealTap(target);
     const opened = await demoWaitFor(() => els.tooltip.style.display === 'flex' && els.ttOriginal.textContent.trim().length > 0, 10000);
@@ -282,6 +324,11 @@ function demoVisibleInkCanvas(preferredPage = 3) {
     }) || null;
 }
 
+const DEMO_INK_POINTS = [[.14, .16], [.20, .18], [.27, .15]];
+function demoIsTourStroke(stroke) {
+    return Array.isArray(stroke?.p) && stroke.p.length === DEMO_INK_POINTS.length
+        && stroke.p.every((pt, i) => Math.abs(pt[0] - DEMO_INK_POINTS[i][0]) < 1e-3 && Math.abs(pt[1] - DEMO_INK_POINTS[i][1]) < 1e-3);
+}
 function demoDrawInk(preferredPage = 3) {
     const ink = demoVisibleInkCanvas(preferredPage);
     if (!ink) return false;
@@ -289,8 +336,12 @@ function demoDrawInk(preferredPage = 3) {
     if (!r.width || inkOwner !== state.bookKey) return false;
     ensureInkCanvas(ink);
     inkActivePage = page;
-    const stroke = { c: state.inkColor, w: Number(inkWidth.value) / r.width, p: [[.14, .16], [.20, .18], [.27, .15]] };
-    inkStrokes(page).push(stroke);
+    // The demo book's ink is stored like any book's, so the stroke the tour drew last time is still there: replace it,
+    // or every pass of the tour adds one more identical stroke (found 2026-11-14: four after four passes).
+    const strokes = inkStrokes(page);
+    for (let i = strokes.length - 1; i >= 0; i--) if (demoIsTourStroke(strokes[i])) strokes.splice(i, 1);
+    const stroke = { c: state.inkColor, w: Number(inkWidth.value) / r.width, p: DEMO_INK_POINTS.map(pt => pt.slice()) };
+    strokes.push(stroke);
     inkPushHistory(page, { type: 'draw', stroke, owner: inkOwner });
     getInkRedoStack(page).length = 0;
     redrawInk(ink, page); saveInk(page); updateInkTools();
@@ -357,6 +408,7 @@ const DEMO_STEPS = [
             demoSetTarget(target);
             demoPlaceCard(target);
             await demoSleep(250);
+            await demoScrollSettled();
             demoRealTap(target);
             const opened = await demoWaitFor(() => els.tooltip.style.display === 'flex'
                 && els.ttOriginal.textContent.trim().length > 0
@@ -727,6 +779,7 @@ async function openDemoTextbook() {
         if (generation !== demoTour.generation) return;
         Object.defineProperty(file, '__readerDemo', { value: true });
         demoSetTargetLanguage();
+        demoFitTextbook();
         await openBookFile(file);
         if (generation !== demoTour.generation) return;
         await demoWaitFor(() => state.pdfDoc && state.format === 'pdf', 12000);
