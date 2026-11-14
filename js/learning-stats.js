@@ -61,7 +61,6 @@ function loadLearningStatsForBook() {
     const value = key ? readLearningJson(key, null) : null;
     learningStatsBook = value && value.version === LEARNING_STATS_VERSION && value.scopes && typeof value.scopes === 'object'
         ? value : { version: LEARNING_STATS_VERSION, scopes: {} };
-    if (typeof lastReaderHelpContext !== 'undefined') lastReaderHelpContext = null;
     closeReadingStats();
     refreshReadingStats();
 }
@@ -539,3 +538,6 @@ document.addEventListener('pointerdown', event => {
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeReadingStats(); });
 refreshReadingStats();
 onI18nApplied(refreshReadingStats);   // написи після зміни мови (applyI18n, js/core-i18n.js)
+
+// Every page turn in a text book refreshes the statistics of what is on it (js/navigation.js).
+onTextPageShown(() => refreshReadingStats());

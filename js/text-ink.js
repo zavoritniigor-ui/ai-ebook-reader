@@ -270,3 +270,6 @@ function textInkSwipe(dx, dy) {
 }
 document.getElementById('ink-prev').onclick = () => goPrev();
 document.getElementById('ink-next').onclick = () => goNext();
+
+// The handwriting of the page shown in a text book is laid out again (js/navigation.js).
+onTextPageShown(() => layoutTextInk());

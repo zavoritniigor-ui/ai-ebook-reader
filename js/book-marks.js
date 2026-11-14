@@ -218,3 +218,6 @@ function buildBookMarksSection() {
         close.before(btn);
     }
 })();
+
+// Highlights and notes are painted on every page shown in a text book (js/navigation.js).
+onTextPageShown(() => paintBookMarks());

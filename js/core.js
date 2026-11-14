@@ -123,6 +123,9 @@ const pdfTasks = { render: null, loading: null, text: null };
 const BOOK_OPENING = [], BOOK_OPENED = [];
 function onBookOpening(listener) { BOOK_OPENING.push(listener); }
 function onBookOpened(listener) { BOOK_OPENED.push(listener); }
+// A page of a text book is shown (js/navigation.js goToPageInChapter): what is drawn over or about that page follows.
+const TEXT_PAGE_SHOWN = [];
+function onTextPageShown(listener) { TEXT_PAGE_SHOWN.push(listener); }
 const asyncTasks = new Map();
 function beginAsyncTask(key) {
     asyncTasks.get(key)?.controller.abort();

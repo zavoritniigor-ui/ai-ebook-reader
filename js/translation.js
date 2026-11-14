@@ -991,3 +991,6 @@ Object.assign(I18N, {
 
 // Every time the page/chapter language is known (js/lang-detect.js), warm the local translator for the pair.
 onSourceLangSet(lang => warmLocalTranslator(lang, state.targetLang));
+
+// The help the reader last asked for belongs to the book it was asked in: a new book starts without it.
+onBookOpening(() => { lastReaderHelpContext = null; });
