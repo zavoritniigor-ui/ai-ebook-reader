@@ -34,8 +34,8 @@ list that was inside `.github/workflows/ci.yml`) — merge both lines.
 
 ## 3. Talking to another agent
 
-- **Through the repository, always available.** The Claims table and your `HANDOFF.md` section. A note there reaches every
-  agent that reads `HANDOFF.md` before starting, which section 1 requires.
+- **Through the repository, always available.** The Claims table in `HANDOFF.md` (one line per agent) and the PR description.
+  A note there reaches every agent that reads `HANDOFF.md` before starting, which section 1 requires.
 - **Through a message between sessions.** Claude Code sessions of the owner's account can message each other: a session
   lists the others (`list_sessions`, or `ListAgents` for local ones) and sends with `send_message`. A message from a cloud
   session into a session on the owner's computer needs the owner's one-time approval on a trusted device; after that it is
