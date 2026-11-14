@@ -56,12 +56,20 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
-      - name: OSV-Scanner dependency vulnerability check
-        uses: google/osv-scanner-action@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
-        with:
-          scan-args: |-
-            -r
-            .
+      - name: OSV-Scanner dependency vulnerability check (pinned CLI, SHA256-verified)
+        env:
+          OSV_VERSION: "2.7.1"
+          OSV_SHA256: "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8"
+        run: |
+          # osv-scanner exits 128 when no lockfile exists; skip explicitly instead of failing.
+          if [ -z "$(find . -path ./.git -prune -o \( -name 'package-lock.json' -o -name 'yarn.lock' -o -name 'pnpm-lock.yaml' -o -name 'requirements*.txt' -o -name 'Pipfile.lock' -o -name 'poetry.lock' -o -name 'go.sum' -o -name 'Cargo.lock' \) -print)" ]; then
+            echo "::notice::No lockfiles in repo; OSV-Scanner skipped. Vendored JS in vendor/ is not covered by this step."
+            exit 0
+          fi
+          curl -fsSL -o osv-scanner "https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  osv-scanner" | sha256sum -c -
+          chmod +x osv-scanner
+          ./osv-scanner scan source -r .
 
       - name: Verify npm lockfile & block hidden install scripts (if package.json present)
         if: hashFiles('package.json') != ''
