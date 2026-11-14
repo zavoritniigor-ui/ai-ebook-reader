@@ -132,6 +132,9 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
   constant markup, `escapeHtml`'d text, or `safeHtml` output; parsing of untrusted markup happens only in inert
   `<template>`/`DOMParser` documents. `tests/hostile_book_browser.py` opens a hostile book in EPUB/FB2/HTML/MD/TXT/RTF
   and fails if anything runs, survives, leaves the app or trips the CSP (it fails when `safeHtml` is disabled).
+- `vendor/` is copied in by hand; `vendor/package-lock.json` declares its npm libraries so the Security Gate's Trivy and
+  OSV check them for known vulnerabilities (`tests/vendor_lock_browser.py` keeps it in step with the files). Regexes
+  that read outside data are timed on worst cases by `tests/regex_timing_browser.py`.
 - ZIP-based formats pass `archive-guard.worker.js` (size, ratio, paths) before JSZip/Mammoth.
 - Functions never act as open proxies: they build upstream URLs themselves from validated parameters.
 - Maintenance tools fetch only through `tools/safe_http.py` (HTTPS only, no `file://`; local checks via `http.client`);
