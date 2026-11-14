@@ -19,6 +19,8 @@ import shutil
 def is_service_ready(url, timeout=1.0):
     try:
         req = urllib.request.Request(url)
+        # URLs are local test-server addresses built by this script.
+        # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status in (200, 204)
     except Exception:

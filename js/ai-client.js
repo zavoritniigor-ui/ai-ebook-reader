@@ -287,6 +287,8 @@ function aiRateDetails(bodyText, retryAfterHeader) {
         } else if (j && j.error && typeof j.error.message === 'string') message = j.error.message;
     } catch (e) { /* not JSON: the text itself */ }
     const limit = /\b(RPM|RPD|TPM|TPD)\)?:\s*Limit (\d+),\s*Used (\d+),\s*Requested (\d+)/.exec(message);
+    // Keys are fixed literals and values are Number() of regex captures; no user-controlled keys.
+    // nosemgrep: javascript.lang.security.insecure-object-assign.insecure-object-assign
     if (limit) Object.assign(rate, { kind: limit[1], limit: Number(limit[2]), used: Number(limit[3]), requested: Number(limit[4]) });
     const wait = /try again in ((?:\d+h)?(?:\d+m(?!s))?(?:\d+(?:\.\d+)?s)?(?:\d+(?:\.\d+)?ms)?)/i.exec(message);
     if (wait && wait[1]) rate.retryAfterSec = Math.round([...wait[1].matchAll(/(\d+(?:\.\d+)?)(ms|h|m|s)/g)].reduce((sum, [, n, unit]) => sum + Number(n) * { h: 3600, m: 60, s: 1, ms: 0.001 }[unit], 0) * 100) / 100;

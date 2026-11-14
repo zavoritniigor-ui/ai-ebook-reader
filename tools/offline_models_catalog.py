@@ -23,6 +23,8 @@ LANGS = {'en', 'fr', 'es', 'de', 'it', 'pt', 'nl', 'pl', 'uk', 'ru', 'zh-Hans', 
 
 
 def get(url):
+    # Every URL starts with an https constant (RECORDS, CDN, GLUE_URL), so file:// is unreachable.
+    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
     with urllib.request.urlopen(urllib.request.Request(url, headers={'user-agent': 'ai-ebook-reader-catalog'}), timeout=60) as r:
         return r.read()
 

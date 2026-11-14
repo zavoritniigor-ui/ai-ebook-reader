@@ -130,6 +130,8 @@ def voices_of(meta):
 
 
 def clip_path(cache_dir, voice, rate, form):
+    # Cache file key, not a security boundary. SHA-256 would orphan existing cached audio.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     return os.path.join(cache_dir, hashlib.sha1(f'{voice}|{rate}|{form}'.encode()).hexdigest() + '.mp3')
 
 

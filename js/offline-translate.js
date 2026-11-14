@@ -380,6 +380,8 @@ const offlineTrUnescape = s => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, 
 // The sentence with the first whole-word occurrence of the word marked, as HTML; null when the word is not in it.
 function offlineTrMarked(word, sentence) {
     const esc = String(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // esc escapes every regex metacharacter (line above), so the word is matched literally.
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
     const m = String(sentence || '').match(new RegExp('(^|[^\\p{L}\\p{N}])(' + esc + ')(?![\\p{L}\\p{N}])', 'iu'));
     if (!m) return null;
     const at = m.index + m[1].length, s = String(sentence);
