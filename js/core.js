@@ -117,6 +117,12 @@ const readerEpoch = { book: 0, render: 0 };
 // переприсвоювались із трьох різних логічних ділянок коду (рендер PDF,
 // скасування zoom/pan-взаємодії, фонове призупинення застосунку).
 const pdfTasks = { render: null, loading: null, text: null };
+// A book is about to open / has opened (js/main.js openBookFile). Features that react register here instead of being
+// called by name from openBookFile (2026-11-14): onBookOpening(fn): fn(file) before anything is torn down;
+// onBookOpened(fn): fn(file) once the book is shown and still the current one.
+const BOOK_OPENING = [], BOOK_OPENED = [];
+function onBookOpening(listener) { BOOK_OPENING.push(listener); }
+function onBookOpened(listener) { BOOK_OPENED.push(listener); }
 const asyncTasks = new Map();
 function beginAsyncTask(key) {
     asyncTasks.get(key)?.controller.abort();

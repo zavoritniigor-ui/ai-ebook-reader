@@ -827,3 +827,6 @@ demoTour.audio.addEventListener('click', () => {
 document.getElementById('btn-demo-textbook')?.addEventListener('click', openDemoTextbook);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !demoTour.root.hidden) closeDemoTextbook(); });
 applyI18n();
+
+// Opening any other book ends a running tour first, so the tour never acts on that book (js/main.js openBookFile).
+onBookOpening(file => { if (!file.__readerDemo && !demoTour.root.hidden) closeDemoTextbook(); });

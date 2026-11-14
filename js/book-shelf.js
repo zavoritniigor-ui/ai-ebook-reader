@@ -318,3 +318,6 @@ renderRecentBooks();
 // «📖 Мої книги» в меню: бібліотека одразу на збережених книгах, без перемикання джерела.
 // Дві кнопки: рядок меню (розділ «Книга») і кнопка стартового екрана.
 document.querySelectorAll('.my-books-btn').forEach(b => b.addEventListener('click', () => openLibrary('shelf')));
+
+// Every opened book goes to «Мої книги» — except the demo textbook (js/main.js openBookFile, onBookOpened).
+onBookOpened(file => { if (!file.__readerDemo) scheduleShelveBook(file); });
