@@ -12,7 +12,7 @@ commit message and the PR.
 - **Classic scripts, shared globals.** Every module declares top-level functions and `let`/`const` as globals; there
   are no ES modules (PDF.js is the only `type="module"` script). A top-level statement may only call names from files
   loaded *earlier*; calls inside functions and handlers may reach any module ("deferred references").
-- **One state object.** `state` and `els` (cached elements) live in `core.js`; persistence is `localStorage`
+- **One state object.** `state` and `els` (cached elements) live in `core-state.js`; persistence is `localStorage`
   (`reader_*` keys, via `core.js` helpers) and IndexedDB for books, handwriting and audio.
 - **Offline.** `sw.js` precaches the app shell under a content-derived cache name and serves navigations network-first.
 
@@ -20,7 +20,8 @@ commit message and the PR.
 
 Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.js`. Then, in this order:
 
-`welcome` → `core` → `lang-detect` → `local-speech` → `tts` → `selection` → `cefr-lexicon-data` → `learning-stats` →
+`welcome` → `core` → `core-text-layout` → `core-languages` → `core-state` → `core-voices` → `core-i18n` →
+`core-text` → `lang-detect` → `local-speech` → `tts` → `selection` → `cefr-lexicon-data` → `learning-stats` →
 `reading-ribbon` → `book-marks` → `navigation` → `pdf-zoom-pan` → `ui-tooltip` → `translation` → `dictionaries` →
 `sentence-structure` → `grammar-svo` → `grammar-rules-data-fr/en` → `grammar-rules-details-fr/en` → `grammar-rules` →
 `ai-client` → `practice-session` → `practice-worksheet` → `dictation` → `offline-catalog` → `offline-dict-catalog` →
@@ -31,7 +32,8 @@ Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.
 
 `tests/migration_audit_browser.py` pins this list. Load-bearing positions:
 - the one inline line after `lang-detect.js` (`if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }`)
-  must stay there: `loadVoices()` (core) reaches `pageLang()` (lang-detect);
+  must stay there: `loadVoices()` (core-voices) reaches `pageLang()` (lang-detect);
+- the `core*.js` files load together, in the order above: they were one file, cut into consecutive pieces;
 - `main.js` near the end: its startup calls into tts/navigation/dictation;
 - `pwa-lifecycle.js` after `pdf-crop.js` (top-level reference to `cropDialog`); it lifts `document.body.inert` on `load`;
 - `i18n-es.js` last: it covers every `I18N` key added by the other files.
@@ -43,7 +45,11 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 **Foundation**
 | File | Responsibility |
 |---|---|
-| `core.js` | `state`, `els`, `I18N`/`t()`/`applyI18n`, safe localStorage, `safeHtml`/`escapeHtml` (allow-list sanitizer for all book HTML), async task epochs, voices list, text layout settings |
+| `core.js` | safe localStorage, `safeHtml` (allow-list sanitizer for all book HTML), async task epochs, network helpers |
+| `core-state.js` | `state`, `els`, contents sidebar toggling |
+| `core-i18n.js` | `I18N`, `t()`, `applyI18n`, small menu/panel UI helpers |
+| `core-languages.js` | `LANGUAGE_CONFIG`, grammar language config, tolerant JSON parsing of AI replies, language choice |
+| `core-voices.js`, `core-text-layout.js`, `core-text.js` | voices and `loadVoices`; text look settings; `escapeHtml`, sentence boundaries |
 | `lang-detect.js` | language of a text fragment (bilingual books, mixed sentences), `pageLang()` |
 | `main.js` | settings wiring and app bootstrap not owned by a feature module |
 | `pwa-lifecycle.js` | background activity switch-off, overlay/back-button stack, update banner, toasts, install button |
