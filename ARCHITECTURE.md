@@ -63,7 +63,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | File | Responsibility |
 |---|---|
 | `navigation.js` | pagination of text books (CSS columns), page turns, progress |
-| `selection.js` | caret and paragraph under a point |
+| `selection.js` | caret and paragraph under a point, `invalidateSelection` |
 | `selection-pdf-order.js` | PDF text in visual order (columns, rotation, word joining), `resolveCanonicalPdfSelection`, `sentenceRangeAt` |
 | `selection-highlight.js` | highlight of the selected fragment, PDF selection anchors, `selectWordAtPoint`, `selectRangeAndTranslate` |
 | `selection-drag.js` | drag selection by words (finger, stylus, mouse), `handleReadingClick` |
@@ -152,8 +152,9 @@ conflict in those hashes take either side and re-run the tool.
 - Browser suites: `tests/*_browser.py` (Chrome over CDP, `tests/browser_cdp.py`); listed in `tests/ci_browser_suites.txt`
   and run by CI in 6 parallel shards (`tests/ci_run_browser.sh`). Each suite's docstring says what it covers.
 - Unit tests: `tests/*_test.mjs` (Pages Functions with mocked upstreams), `tests/*.py` without `_browser`.
-- `tools/module_graph.mjs` (run by `tests/module_graph_browser.py`) fails on a top-level name declared twice or a
-  top-level use of a later-loading file; `node tools/module_graph.mjs --report` prints sizes and dependencies.
+- `tools/module_graph.mjs` (run by `tests/module_graph_browser.py`) fails on a top-level name declared twice, a
+  top-level use of a later-loading file, or the foundation (`core*.js`) using any feature name — features build on the
+  foundation, never the reverse; `node tools/module_graph.mjs --report` prints sizes and dependencies.
 - Find the suite for a feature: `grep -l "<function or element id>" tests/*_browser.py`.
 - How to test and deliver: `docs/agents/testing_and_versioning.md`, `docs/agents/delivery_lifecycle.md`.
 

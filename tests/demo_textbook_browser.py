@@ -24,6 +24,9 @@ startRulePractice=(...args)=>{
     return realRulePractice(...args);
 };
 window.__demoSettings={target:state.targetLang,translate:state.translateMode};
+// The reader's own PDFs are zoomed in (a stored «free» ×3): the tour must still show its textbook fitted to the width
+// (zoomed in, the words it taps lie off screen), and leave the reader's zoom as it was (found 2026-11-14).
+state.pdfFit='free'; state.pdfScale=3; localStorage.setItem('reader_pdf_fit','free'); localStorage.setItem('reader_pdf_scale','3');
 document.getElementById('btn-demo-textbook').click(); true
 """)
 c.wait('!demoTour.busy&&state.pdfDoc&&state.demoMode&&!demoTour.root.hidden', timeout=35)
@@ -58,6 +61,7 @@ def next_step(step):
 
 
 check('real PDF stays out of My Books', 'state.pdfDoc.numPages>3&&__demoShelved===0')
+check('the tour shows its textbook fitted to the width, whatever zoom the reader uses', "state.pdfFit==='width'&&state.pdfScale===1&&localStorage.getItem('reader_pdf_scale')==='3'")
 for step in range(1, 15):
     next_step(step)
     if step == 1:
@@ -82,7 +86,7 @@ for step in range(1, 15):
         # User changes page during Try it yourself before next step
         c.js("demoSetPage(1);true")
     elif step == 8:
-        check('Ink restores target page, closes Practice/Audio, and shows visible canvas', "state.inkMode&&document.getElementById('practice-panel').hidden&&document.getElementById('audio-player').hidden&&inkStrokes(activeInkPage()).length===1&&activeInkCanvas().getBoundingClientRect().top>=0")
+        check('Ink restores target page, closes Practice/Audio, and shows visible canvas', "state.inkMode&&document.getElementById('practice-panel').hidden&&document.getElementById('audio-player').hidden&&inkStrokes(activeInkPage()).length===1&&activeInkCanvas().getBoundingClientRect().top>-1")   # a scroll to the page can stop a fraction of a pixel short
         c.js("document.getElementById('ink-undo').click();true")
         check('demo stroke supports normal Undo', 'inkStrokes(activeInkPage()).length===0')
         c.js("document.getElementById('ink-redo').click();true")
@@ -90,7 +94,7 @@ for step in range(1, 15):
         # Replay step should not duplicate strokes
         c.js("demoTour.replay.click();true")
         c.wait('!demoTour.busy', timeout=20)
-        check('replay ink does not crash and keeps ink active', 'state.inkMode&&inkStrokes(activeInkPage()).length>=1')
+        check('replay ink keeps ink active and replaces the tour stroke instead of adding a second one', 'state.inkMode&&inkStrokes(activeInkPage()).length===1')
     elif step == 9:
         check('Quick wheel opens', "!!document.getElementById('quick-menu-dock')")
     elif step == 10:
@@ -115,6 +119,8 @@ c.wait('!demoTour.busy', timeout=10)
 check('tour completes', 'demoTour.next.hidden')
 c.js('demoTour.exit.click();true')
 check('exit restores settings and closes demo tools', "demoTour.root.hidden&&!state.demoMode&&!state.inkMode&&state.targetLang===__demoSettings.target&&state.translateMode===__demoSettings.translate&&!els.grammarPanel.classList.contains('expanded')&&!els.askPanel.classList.contains('expanded')&&document.getElementById('practice-panel').hidden&&document.getElementById('audio-player').hidden")
+c.js("persistCriticalState();true")   # what the app stores when it is hidden or closed
+check("exit gives the reader's zoom back, and the tour never stored its own", "state.pdfFit==='free'&&state.pdfScale===3&&localStorage.getItem('reader_pdf_fit')==='free'&&localStorage.getItem('reader_pdf_scale')==='3'")
 
 # Exit while step 1 is running
 c.js('openDemoTextbook();true')

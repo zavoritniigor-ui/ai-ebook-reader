@@ -4,7 +4,10 @@
 // Checks, because every js/*.js shares one global scope (ARCHITECTURE.md):
 //   1. no top-level name is declared by two files (a later `function x` silently replaces an earlier one);
 //   2. no top-level statement (outside any function) uses a name declared by a file that loads LATER — it would throw
-//      a ReferenceError on page load (the Step 1–3 production incident).
+//      a ReferenceError on page load (the Step 1–3 production incident);
+//   3. the foundation (js/core*.js) uses no name of a feature file, not even inside a function: features build on the
+//      foundation, never the other way round (2026-11-14; a feature that must react to a foundation event registers
+//      itself, e.g. onI18nApplied in core-i18n.js).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +37,7 @@ for (const f of files) {
 }
 for (const [name, fs] of owners) if (fs.length > 1) problems.push(`«${name}» is declared at top level in ${fs.join(' and ')}`);
 
+const isCore = f => /^js\/core(?:-[\w-]+)?\.js$/.test(f);
 const order = Object.fromEntries(files.map((f, i) => [f, i])), fanOut = {}, fanIn = {};
 for (const f of files) {
     if (!parsed[f]) continue;
@@ -48,6 +52,7 @@ for (const f of files) {
         used.add(owner);
         const deferred = ancestors.some(a => a.type === 'FunctionDeclaration' || a.type === 'FunctionExpression' || a.type === 'ArrowFunctionExpression');
         if (!deferred && order[owner] > order[f]) problems.push(`${f}: top-level use of «${node.name}» from ${owner}, which loads later`);
+        if (isCore(f) && !isCore(owner)) problems.push(`${f}: the foundation uses «${node.name}» from the feature file ${owner}`);
     });
     fanOut[f] = used.size;
     for (const o of used) fanIn[o] = (fanIn[o] || 0) + 1;
@@ -58,4 +63,4 @@ if (process.argv.includes('--report')) {
     for (const f of files) if (parsed[f]) console.log(`${f}\t${parsed[f].lines}\t${parsed[f].names.length}\t${fanOut[f] || 0}\t${fanIn[f] || 0}`);
 }
 if (problems.length) { console.error(problems.map(p => 'FAIL ' + p).join('\n')); process.exit(1); }
-console.log(`PASS module graph: ${files.length} scripts, ${owners.size} top-level names, no duplicate and no top-level forward reference`);
+console.log(`PASS module graph: ${files.length} scripts, ${owners.size} top-level names, no duplicate, no top-level forward reference, the foundation uses no feature`);

@@ -176,13 +176,34 @@ function demoSetTargetLanguage() {
     if (wanted !== state.targetLang) { select.value = wanted; select.dispatchEvent(new Event('change', { bubbles: true })); }
 }
 
+// The tour shows its textbook fitted to the width, whatever zoom the reader's own PDFs use: zoomed in (a stored
+// «free» ×3, say) the word the tour taps lies outside the screen and every step that taps the text fails («Не знайшов
+// текстовий шар сторінки», found 2026-11-14). The reader's zoom is kept aside, never stored over while the tour runs
+// (persistPdfZoom and the page-hide save skip the demo), and comes back when the tour closes.
+function demoFitTextbook() {
+    if (!demoTour.previousZoom) demoTour.previousZoom = { fit: state.pdfFit, scale: state.pdfScale };
+    state.pdfFit = 'width'; state.pdfScale = 1;
+    const fit = document.getElementById('pdf-fit'); if (fit) fit.value = 'width';
+}
+function demoRestoreZoom() {
+    const zoom = demoTour.previousZoom;
+    demoTour.previousZoom = null;
+    if (!zoom) return;
+    state.pdfFit = zoom.fit; state.pdfScale = zoom.scale;
+    const fit = document.getElementById('pdf-fit'); if (fit) fit.value = zoom.fit;
+}
+
 function demoRestoreSettings() {
     if (demoTour.previousTarget && els.targetLang && demoTour.previousTarget !== state.targetLang) {
         els.targetLang.value = demoTour.previousTarget; els.targetLang.dispatchEvent(new Event('change', { bubbles: true }));
     }
     demoTour.previousTarget = null;
     if (state.translateMode !== demoTour.previousTranslate) els.translateBtn?.click();
+    const wasDemo = state.demoMode;
     state.demoMode = false;
+    demoRestoreZoom();
+    // The textbook stays open when there is no earlier book to go back to: lay it out at the reader's zoom again.
+    if (wasDemo && state.format === 'pdf' && !demoTour.previousBook && typeof relayoutContinuousPdfAtScale === 'function') relayoutContinuousPdfAtScale();
 }
 
 function demoSetPage(page) {
@@ -282,6 +303,11 @@ function demoVisibleInkCanvas(preferredPage = 3) {
     }) || null;
 }
 
+const DEMO_INK_POINTS = [[.14, .16], [.20, .18], [.27, .15]];
+function demoIsTourStroke(stroke) {
+    return Array.isArray(stroke?.p) && stroke.p.length === DEMO_INK_POINTS.length
+        && stroke.p.every((pt, i) => Math.abs(pt[0] - DEMO_INK_POINTS[i][0]) < 1e-3 && Math.abs(pt[1] - DEMO_INK_POINTS[i][1]) < 1e-3);
+}
 function demoDrawInk(preferredPage = 3) {
     const ink = demoVisibleInkCanvas(preferredPage);
     if (!ink) return false;
@@ -289,8 +315,12 @@ function demoDrawInk(preferredPage = 3) {
     if (!r.width || inkOwner !== state.bookKey) return false;
     ensureInkCanvas(ink);
     inkActivePage = page;
-    const stroke = { c: state.inkColor, w: Number(inkWidth.value) / r.width, p: [[.14, .16], [.20, .18], [.27, .15]] };
-    inkStrokes(page).push(stroke);
+    // The demo book's ink is stored like any book's, so the stroke the tour drew last time is still there: replace it,
+    // or every pass of the tour adds one more identical stroke (found 2026-11-14: four after four passes).
+    const strokes = inkStrokes(page);
+    for (let i = strokes.length - 1; i >= 0; i--) if (demoIsTourStroke(strokes[i])) strokes.splice(i, 1);
+    const stroke = { c: state.inkColor, w: Number(inkWidth.value) / r.width, p: DEMO_INK_POINTS.map(pt => pt.slice()) };
+    strokes.push(stroke);
     inkPushHistory(page, { type: 'draw', stroke, owner: inkOwner });
     getInkRedoStack(page).length = 0;
     redrawInk(ink, page); saveInk(page); updateInkTools();
@@ -727,6 +757,7 @@ async function openDemoTextbook() {
         if (generation !== demoTour.generation) return;
         Object.defineProperty(file, '__readerDemo', { value: true });
         demoSetTargetLanguage();
+        demoFitTextbook();
         await openBookFile(file);
         if (generation !== demoTour.generation) return;
         await demoWaitFor(() => state.pdfDoc && state.format === 'pdf', 12000);

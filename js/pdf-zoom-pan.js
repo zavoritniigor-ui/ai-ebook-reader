@@ -176,9 +176,10 @@ function applyPdfZoom(zoom, x, y) {
     layoutPdfZoom(zoom); restorePdfZoomAnchor(anchor);
 }
 function persistPdfZoom() {
+    document.getElementById('pdf-fit').value = state.pdfFit;
+    if (state.demoMode) return;   // the tour's textbook has its own zoom; the reader's stays as stored (js/demo-textbook.js)
     writeStored('reader_pdf_scale', state.pdfScale);
     writeStored('reader_pdf_fit', state.pdfFit);
-    document.getElementById('pdf-fit').value = state.pdfFit;
 }
 function setPdfScale(scale) {
     cancelPdfInteraction();
