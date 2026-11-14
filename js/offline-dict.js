@@ -400,8 +400,12 @@ async function offlineDictWord(word, sentence, src, tgt, result, picked) {
         if (!main && !picked && entries.length === 1) { chosen = entries[0].meanings[0]; main = chosen.uk; how = 'dictionary'; }   // a verb: both aspects
         const senses = [];
         for (const e of (entries.length ? [...entries, ...all.filter(x => !entries.includes(x))] : all))
+            // Replace of the '|' separator in bundled dictionary data; not a sanitizer.
+            // nosemgrep: javascript.lang.security.audit.incomplete-sanitization.incomplete-sanitization
             senses.push({ lemma: e.lemma, pos: e.pos, gender: e.gender, note: lemmaNote(e), meanings: e.meanings.filter(m => m !== chosen).map(m => m.uk.replace('|', ' / ')) });
         offlineDictLast = { kind: 'word', how: how || 'engine-kept', senses: senses.length, at: Date.now() };
+        // Replace of the '|' separator in bundled dictionary data; not a sanitizer.
+        // nosemgrep: javascript.lang.security.audit.incomplete-sanitization.incomplete-sanitization
         const text = main ? offlineTrCase(main.replace('|', ' / '), word) : result.text;
         if (!main) note = '';
         const lemmaOf = !hit && (chosen ? pool.find(e => e.meanings.includes(chosen)) : pool[0]);

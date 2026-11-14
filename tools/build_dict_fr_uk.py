@@ -95,6 +95,8 @@ def fetch(name, cache):
             try:
                 log('downloading', src['url'])
                 req = urllib.request.Request(src['url'], headers={'user-agent': 'ai-ebook-reader-dict'})
+                # src['url'] comes from the SOURCES constant (https); the download is verified by SHA-256/MD5.
+                # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                 with urllib.request.urlopen(req, timeout=120) as r, open(str(path) + '.part', 'wb') as f:
                     while True:
                         chunk = r.read(1 << 20)
@@ -441,6 +443,8 @@ def main():
     # The parsed sources are kept next to the downloads (keyed by this file's parsers): a rebuild after editing dict/src takes seconds.
     parsed = cache / ('parsed-' + hashlib.sha256(Path(__file__).read_bytes().split(b'# ========== BUILD')[0]).hexdigest()[:16] + '.pickle')
     if parsed.exists():
+        # Cache written and read only by this script in the local --cache dir; not network input.
+        # nosemgrep: python.lang.security.deserialization.pickle.avoid-pickle
         lexique, wikt, vesum, uk_good, trans = pickle.loads(parsed.read_bytes())
     else:
         log('reading Lexique 3.83 …')
@@ -451,6 +455,8 @@ def main():
         vesum, uk_good = load_vesum(fetch('vesum', cache))
         log('reading Wiktionary translations (ConceptNet) …')
         trans = load_conceptnet_fr_uk(fetch('conceptnet', cache))
+        # Cache written and read only by this script in the local --cache dir; not network input.
+        # nosemgrep: python.lang.security.deserialization.pickle.avoid-pickle
         parsed.write_bytes(pickle.dumps((lexique, wikt, vesum, uk_good, trans), protocol=pickle.HIGHEST_PROTOCOL))
     if args.kaikki:
         log('reading wiktextract extracts …')

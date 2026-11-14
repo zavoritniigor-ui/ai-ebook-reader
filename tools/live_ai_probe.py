@@ -76,6 +76,8 @@ def start_chrome():
                              '--window-size=1000,1100', 'about:blank'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
         try:
+            # Fixed loopback URL for the local Chrome DevTools port.
+            # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
             urllib.request.urlopen('http://127.0.0.1:%d/json/version' % port, timeout=1).read()
             break
         except Exception:

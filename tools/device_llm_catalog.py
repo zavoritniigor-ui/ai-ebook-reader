@@ -21,6 +21,8 @@ PART = 64 * 1024 * 1024
 
 
 def get(url):
+    # get() is called only with https URLs built from constants (model_url).
+    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
     with urllib.request.urlopen(urllib.request.Request(url, headers={'user-agent': 'ai-ebook-reader-catalog'}), timeout=600) as r:
         return r.read()
 

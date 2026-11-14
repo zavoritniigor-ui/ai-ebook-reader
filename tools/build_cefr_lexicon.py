@@ -15,6 +15,8 @@ FLELEX = 'https://cental.uclouvain.be/cefrlex/static/resources/fr/FleLex_TT_Beac
 
 
 def fetch(url):
+    # fetch() is called only with the https constants OLP and FLELEX in this file.
+    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
     with urllib.request.urlopen(url, timeout=60) as res:
         return res.read().decode('utf-8-sig')
 

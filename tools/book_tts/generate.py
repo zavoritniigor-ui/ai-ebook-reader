@@ -110,6 +110,8 @@ def sentence_lang(text):
 
 
 def cache_key(voice, rate, text):
+    # Cache file key, not a security boundary. SHA-256 would orphan existing cached audio.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     return hashlib.sha1(f'{voice}|{rate}|{text}'.encode('utf-8')).hexdigest()
 
 
