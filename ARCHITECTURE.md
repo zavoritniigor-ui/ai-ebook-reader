@@ -93,6 +93,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `offline-translate.js`, `offline-dict.js` (+ generated `*-catalog.js`) | translation without internet (Mozilla models), French→Ukrainian dictionary |
 | `device-llm.js` (+ `device-llm-catalog.js`) | on-device AI model |
 | `ai-client.js` | provider routing (Groq first, OpenAI backup), streaming, quotas, request log |
+| `translation-ai.js` | the two translation paths (machine / AI with word alignment), request chunks, cleanup of model output |
 | `grammar-svo.js` | Ask AI / Language level tasks, `startAiTask`, `flattenRange` |
 | `grammar-analysis.js`, `grammar-prompts.js` | Grammar analysis (prompt, `normalizeGrammarAnalysis`, verb endings); Ask AI and level prompts |
 | `grammar-panel.js`, `grammar-lookup.js`, `grammar-run.js` | Grammar panel rendering and `focusGrammarItem`; «your own word» lookup; `runGrammarAnalysis`, Practice button |

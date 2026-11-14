@@ -4,7 +4,7 @@ Manual production acceptance found Practice missing two per-sentence actions the
 everywhere else: translating one specific sentence, and hearing it read aloud. This closes that gap by
 REUSING the existing infrastructure, never a second engine:
   - Translation: the same two-step engine the reader's own translation tooltip uses
-    (aiTranslateText, then machineTranslate as its own existing fallback -- js/ai-client.js), called
+    (aiTranslateText, then machineTranslate as its own existing fallback -- js/translation-ai.js), called
     with the exact Practice sentence as input, source language = the reading's OWN validated language
     (never re-detected), target language = the reader's existing state.targetLang.
   - TTS: the same speakInLang (js/tts.js) the tooltip's own translation speaker uses, extended with one
