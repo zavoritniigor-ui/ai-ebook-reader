@@ -934,3 +934,6 @@ async function bsRemoveFromDialog() {
     await bsRefresh();
     renderBookAudioDialog('');
 }
+
+// The book is open: its narration is taken from the remembered books folder, when it has one (js/main.js, onBookOpened).
+onBookOpened(() => bfAutoImportFromFolder());

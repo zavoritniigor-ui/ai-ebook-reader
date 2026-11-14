@@ -401,3 +401,7 @@ window.addEventListener('load', () => { setTimeout(receiveSharedContent, 0); }, 
 // Classic files expose callbacks before later files/module PDF.js finish.
 // Enable input only after the entire application has initialized.
 window.addEventListener('load', () => { document.body.inert = false; }, { once: true });
+
+// The menu's «Оновити» and «Вийти» (moved from js/main.js, 2026-11-14: the actions live here).
+document.getElementById('btn-update-app').addEventListener('click', () => updateApp());
+document.getElementById('btn-exit-app').addEventListener('click', () => exitApp());

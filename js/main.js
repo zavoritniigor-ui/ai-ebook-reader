@@ -211,8 +211,7 @@ const MAX_BOOK_FILE_BYTES = 300 * 1024 * 1024;
 async function openBookFile(file) {
     if (!file) return;
     const isDemo = !!file.__readerDemo;
-    if (!isDemo && document.getElementById('demo-tour')?.hidden === false &&
-        typeof closeDemoTextbook === 'function') closeDemoTextbook();
+    for (const listener of BOOK_OPENING) listener(file);   // e.g. js/demo-textbook.js ends a running tour
     state.demoMode = isDemo;
     stopDictation(); stopOnboarding();
     if (file.size > MAX_BOOK_FILE_BYTES && !/\.pdf$/i.test(file.name || '')) { showReaderError(new Error(t('fileTooLarge'))); return; }
@@ -279,9 +278,10 @@ async function openBookFile(file) {
         }
         else throw new Error(t('unsupportedFormat'));
         if (epoch === readerEpoch.book) { state.bookOpening = false; saveBookmark(); }
-        if (epoch === readerEpoch.book) { setPageArrows(true); if (!isDemo) scheduleShelveBook(file); }   // демо не потрапляє до «Мої книги»
-        // The book is open: its narration is taken from the remembered books folder, when it has one (js/book-speech.js).
-        if (epoch === readerEpoch.book && typeof bfAutoImportFromFolder === 'function') bfAutoImportFromFolder();
+        if (epoch === readerEpoch.book) {
+            setPageArrows(true);
+            for (const listener of BOOK_OPENED) { if (epoch !== readerEpoch.book) break; listener(file); }   // «Мої книги», the book's narration
+        }
     } catch (err) {
         if (epoch !== readerEpoch.book) return;
         state.bookOpening = false;
@@ -388,10 +388,8 @@ applyI18n();
 
 // Обробники кнопок, що раніше стояли атрибутами onclick/onsubmit в index.html: CSP забороняє вбудовані скрипти
 // ('unsafe-inline'), тож навіть помилка в очищенні HTML не дасть виконати чужий onclick. Функції шукаються в момент
-// натискання (updateApp/exitApp визначає js/pwa-lifecycle.js, що завантажується пізніше).
+// натискання. «Оновити» й «Вийти» підключає js/pwa-lifecycle.js, де ці дії живуть.
 document.getElementById('btn-ai-key').addEventListener('click', () => openKeySettings());
-document.getElementById('btn-update-app').addEventListener('click', () => updateApp());
-document.getElementById('btn-exit-app').addEventListener('click', () => exitApp());
 document.querySelectorAll('[data-close-panel]').forEach(btn => btn.addEventListener('click', () => document.getElementById(btn.dataset.closePanel).classList.remove('expanded')));
 document.getElementById('ask-chat-form').addEventListener('submit', e => { e.preventDefault(); els.askSendBtn.click(); });
 document.getElementById('settings-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeKeySettings(); });
