@@ -2,7 +2,7 @@
 
 All js/*.js share one global scope (ARCHITECTURE.md). tools/module_graph.mjs parses every script of index.html with acorn
 and fails when a top-level name is declared by two files, or when a top-level statement uses a name from a file that
-loads later (a ReferenceError on page load), or when the foundation (js/core*.js) uses a name of a feature file. Added 2026-11-14 with the split of core.js, grammar-svo.js and selection.js.
+loads later (a ReferenceError on page load), or when the foundation (js/core*.js) uses a name of a feature file, or when two files that did not use each other start to (tools/module_graph_cycles.txt). Added 2026-11-14 with the split of core.js, grammar-svo.js and selection.js.
 """
 import subprocess, sys
 from pathlib import Path
@@ -31,7 +31,24 @@ with tempfile.TemporaryDirectory() as tmp:
     (t / 'js/core.js').write_text('function base() {}\n')
     (t / 'js/core-i18n.js').write_text('function applyI18n() { base(); refreshFeature(); }\n')
     (t / 'js/feature.js').write_text('function refreshFeature() { base(); applyI18n(); }\n')
+    (t / 'tools').mkdir(); (t / 'tools/module_graph_cycles.txt').write_text('js/core-i18n.js js/feature.js\n')   # only check 3 here
     bad = subprocess.run(['node', str(root / 'tools/module_graph.mjs'), '--root', str(t)], capture_output=True, text=True)
     assert bad.returncode == 1 and bad.stderr.strip() == 'FAIL js/core-i18n.js: the foundation uses «refreshFeature» from the feature file js/feature.js', bad.stderr
 print('PASS the guard fails when the foundation calls a feature (and not when a feature calls the foundation)', flush=True)
+# ...and on a new pair of files that use each other, and on a listed pair that no longer does: the list only shrinks.
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp); (t / 'js').mkdir(); (t / 'tools').mkdir()
+    (t / 'index.html').write_text(''.join(f'<script src="js/{n}.js?v=1"></script>' for n in 'abcd'))
+    (t / 'js/a.js').write_text('function a() { b(); }\n')
+    (t / 'js/b.js').write_text('function b() { a(); }\n')
+    (t / 'js/c.js').write_text('function c() { d(); }\n')
+    (t / 'js/d.js').write_text('function d() {}\n')
+    (t / 'tools/module_graph_cycles.txt').write_text('# known\njs/c.js js/d.js\n')
+    bad = subprocess.run(['node', str(root / 'tools/module_graph.mjs'), '--root', str(t)], capture_output=True, text=True)
+    assert bad.returncode == 1 and 'js/a.js and js/b.js now use each other' in bad.stderr \
+        and 'js/c.js and js/d.js no longer use each other: remove that line' in bad.stderr, bad.stderr
+    (t / 'tools/module_graph_cycles.txt').write_text('js/a.js js/b.js\n')
+    ok = subprocess.run(['node', str(root / 'tools/module_graph.mjs'), '--root', str(t)], capture_output=True, text=True)
+    assert ok.returncode == 0 and '1 known mutual pairs and no new one' in ok.stdout, (ok.stdout, ok.stderr)
+print('PASS the guard fails on a new mutual pair and on a listed pair that is gone (the list only shrinks)', flush=True)
 print('ALL MODULE GRAPH CHECKS PASSED')

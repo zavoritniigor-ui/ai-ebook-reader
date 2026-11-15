@@ -156,7 +156,8 @@ conflict in those hashes take either side and re-run the tool.
 - Unit tests: `tests/*_test.mjs` (Pages Functions with mocked upstreams), `tests/*.py` without `_browser`.
 - `tools/module_graph.mjs` (run by `tests/module_graph_browser.py`) fails on a top-level name declared twice, a
   top-level use of a later-loading file, or the foundation (`core*.js`) using any feature name — features build on the
-  foundation, never the reverse; `node tools/module_graph.mjs --report` prints sizes and dependencies.
+  foundation, never the reverse; or two files that start to use each other (the pairs that still do are in
+  `tools/module_graph_cycles.txt`, a list that only shrinks); `node tools/module_graph.mjs --report` prints sizes and dependencies.
 - Find the suite for a feature: `grep -l "<function or element id>" tests/*_browser.py`.
 - How to test and deliver: `docs/agents/testing_and_versioning.md`, `docs/agents/delivery_lifecycle.md`.
 
