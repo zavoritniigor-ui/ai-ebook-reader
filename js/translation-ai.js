@@ -93,7 +93,9 @@ async function aiTranslateText(text, srcCode, signal, targetLang = state.targetL
     // en. «pain» біль; chat, coin, main, sale, four), and without a sentence around it (a heading) the model had to guess
     // (linguistic review, 2026-11-15: srcCode reached this function but never the prompt).
     const srcName = translationSourceLangName(srcCode);
-    const src = (srcName ? `\nМова оригіналу — ${srcName}.` : '') + (languageNormNote(targetLang) ? '\n' + languageNormNote(targetLang).trim() : '');
+    // «Likely»: the language is detected, and a short quote can still be detected wrong — the model must not be pushed
+    // into reading German as English (linguistic review, stage 4).
+    const src = (srcName ? `\nЙмовірна мова оригіналу — ${srcName} (визначено автоматично; якщо текст явно іншою мовою, перекладай з неї).` : '') + (languageNormNote(targetLang) ? '\n' + languageNormNote(targetLang).trim() : '');
     let prompt = isWord
         ? `Слово "${text}".${src}${ctx}
 Дай переклад ${langName} САМЕ ЦЬОГО СЛОВА — не фрази й не речення навколо нього. Речення потрібне лише для того, щоб обрати правильне значення багатозначного слова (bank — банк чи берег) і правильну форму: якщо це форма дієслова — перекладай дієслово, а не однокорінний іменник; зберігай час/особу чи рід/число, де це природно.

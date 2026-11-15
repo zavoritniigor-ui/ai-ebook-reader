@@ -18,11 +18,13 @@ function escapeHtml(s) {
 // CJK-знаки «。！？» завершують речення й без пробілу. Мови без регістру (китайська, корейська, гінді) різати не заважає:
 // там немає малих літер. Повертає множину індексів символів, ПІСЛЯ яких закінчується речення.
 const SENTENCE_TITLES = new Set(['mr', 'mrs', 'ms', 'mx', 'dr', 'prof', 'st', 'rev', 'hon', 'gen', 'col', 'capt', 'lt', 'sgt', 'maj', 'messrs',
-    'mme', 'mlle', 'mmes', 'mlles', 'mgr', 'ste', 'hr', 'hrn', 'frl', 'sra', 'srta', 'dña', 'dott', 'sig', 'pan', 'пан', 'пані', 'ім', 'св', 'акад',
+    'mme', 'mlle', 'mmes', 'mlles', 'mgr', 'ste', 'hr', 'hrn', 'frl', 'sra', 'srta', 'dña', 'dott', 'sig', 'pan', 'sr', 'sres', 'пан', 'пані', 'ім', 'св', 'акад',
     'проф', 'доц', 'тов', 'вул', 'пров', 'просп', 'ул', 'им', 'гр', 'г-н', 'г-жа']);
 // Скорочення, після яких іде номер («p. 12», «ст. 5», «vol. 2»): лише після них цифра не починає нового речення.
 const SENTENCE_NUM_ABBR = new Set(['p', 'pp', 'vol', 'no', 'nr', 'ch', 'chap', 'fig', 'art', 'sec', 'para', 's', 'ss', 'bd', 'n', 'nº', 'núm', 'pág', 'págs',
     'cap', 't', 'tome', 'éd', 'ст', 'стор', 'с', 'сс', 'т', 'тт', 'р', 'рр', 'гл', 'ч', 'розд', 'рис', 'табл', 'п', 'пп', 'вип', 'стр', 'см']);
+// A unit written after a number that can end a sentence («народився 1814 р. Він…», «il est 10 h. Le train…»).
+const SENTENCE_UNIT_AFTER_NUMBER = new Set(['р', 'рр', 'г', 'h']);
 const SENTENCE_TERM = /[.!?…]/, SENTENCE_CJK_TERM = /[。！？]/, SENTENCE_CLOSER = /["'»”’)\]]/, SENTENCE_OPENER = /["'«“‘(\[—–-]/;
 function sentenceCuts(str) {
     const cuts = new Set();
@@ -57,7 +59,15 @@ function sentenceCuts(str) {
             let b = dot; while (b > 0 && /[\p{L}\p{M}º-]/u.test(str[b - 1])) b--;
             const token = str.slice(b, dot);
             if (n < str.length && /\p{N}/u.test(str[n]) && SENTENCE_NUM_ABBR.has(token.toLowerCase())) continue;
-            if (token.length === 1 && /\p{L}/u.test(token)) continue;   // ініціал
+            const before = str.slice(0, b);
+            const capitalNext = n < str.length && /\p{Lu}/u.test(str[n]);
+            // Not initials, though a single letter before the dot: a lower-case dotted abbreviation (5 p.m. He…, a.m.,
+            // i.e.), «і т. д.» / «т. п.», a unit after a number (1814 р., 10 h.) — before a capital they end the sentence.
+            const endsAbbreviation = capitalNext && (
+                (/^\p{Ll}$/u.test(token) && /(?:^|[\s(])\p{Ll}\.$/u.test(before))
+                || (/^[дп]$/i.test(token) && /(?:^|\s)т\.\s?$/i.test(before))
+                || (SENTENCE_UNIT_AFTER_NUMBER.has(token.toLowerCase()) && /\d\s?$/.test(before)));
+            if (!endsAbbreviation && token.length === 1 && /\p{L}/u.test(token)) continue;   // ініціал
             if (n < str.length && SENTENCE_TITLES.has(token.toLowerCase()) && /\p{Lu}/u.test(str[n])) continue;
         }
         cuts.add(i);
