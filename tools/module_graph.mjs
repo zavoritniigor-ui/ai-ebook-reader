@@ -7,8 +7,10 @@
 //      a ReferenceError on page load (the Step 1–3 production incident);
 //   3. the foundation (js/core*.js) uses no name of a feature file, not even inside a function: features build on the
 //      foundation, never the other way round (2026-11-14; a feature that must react to a foundation event registers
-//      itself, e.g. onI18nApplied in core-i18n.js).
-import { readFileSync } from 'node:fs';
+//      itself, e.g. onI18nApplied in core-i18n.js);
+//   4. no NEW pair of files that use each other: the pairs that still do are listed in tools/module_graph_cycles.txt,
+//      and the list only shrinks — a new pair fails, and so does a listed pair that no longer exists (remove its line).
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as acorn from './vendor/acorn-8.15.0/acorn.mjs';
@@ -38,7 +40,7 @@ for (const f of files) {
 for (const [name, fs] of owners) if (fs.length > 1) problems.push(`«${name}» is declared at top level in ${fs.join(' and ')}`);
 
 const isCore = f => /^js\/core(?:-[\w-]+)?\.js$/.test(f);
-const order = Object.fromEntries(files.map((f, i) => [f, i])), fanOut = {}, fanIn = {};
+const order = Object.fromEntries(files.map((f, i) => [f, i])), fanOut = {}, fanIn = {}, usesOf = {};
 for (const f of files) {
     if (!parsed[f]) continue;
     const used = new Set();
@@ -54,13 +56,20 @@ for (const f of files) {
         if (!deferred && order[owner] > order[f]) problems.push(`${f}: top-level use of «${node.name}» from ${owner}, which loads later`);
         if (isCore(f) && !isCore(owner)) problems.push(`${f}: the foundation uses «${node.name}» from the feature file ${owner}`);
     });
-    fanOut[f] = used.size;
+    fanOut[f] = used.size; usesOf[f] = used;
     for (const o of used) fanIn[o] = (fanIn[o] || 0) + 1;
 }
 
+const cyclesFile = join(root, 'tools/module_graph_cycles.txt');
+const allowed = new Set(existsSync(cyclesFile) ? readFileSync(cyclesFile, 'utf8').split('\n').map(l => l.replace(/#.*/, '').trim()).filter(Boolean) : []);
+const cycles = [];
+for (const a of files) for (const b of usesOf[a] || []) if (a < b && usesOf[b]?.has(a)) cycles.push(`${a} ${b}`);
+for (const pair of cycles) if (!allowed.has(pair)) problems.push(`${pair.replace(' ', ' and ')} now use each other: make one of them stop (a registration hook, or move the shared code), do not add the pair to tools/module_graph_cycles.txt`);
+for (const pair of allowed) if (!cycles.includes(pair)) problems.push(`${pair.replace(' ', ' and ')} no longer use each other: remove that line from tools/module_graph_cycles.txt`);
+if (process.argv.includes('--cycles')) console.log(cycles.sort().join('\n'));
 if (process.argv.includes('--report')) {
     console.log('file\tlines\tglobals\tuses\tused-by');
     for (const f of files) if (parsed[f]) console.log(`${f}\t${parsed[f].lines}\t${parsed[f].names.length}\t${fanOut[f] || 0}\t${fanIn[f] || 0}`);
 }
 if (problems.length) { console.error(problems.map(p => 'FAIL ' + p).join('\n')); process.exit(1); }
-console.log(`PASS module graph: ${files.length} scripts, ${owners.size} top-level names, no duplicate, no top-level forward reference, the foundation uses no feature`);
+console.log(`PASS module graph: ${files.length} scripts, ${owners.size} top-level names, no duplicate, no top-level forward reference, the foundation uses no feature, ${cycles.length} known mutual pairs and no new one`);
