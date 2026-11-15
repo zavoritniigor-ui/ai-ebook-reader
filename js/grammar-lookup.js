@@ -50,7 +50,7 @@ Rules:
 - "forms": ${verbForms}; ${adjForms}. Every value is the real written ${sourceName} form.
 - "features" describe the dictionary form ITSELF (the infinitive, the masculine singular) and may ONLY use these keys -- ${featureKeys}. Omit any key not genuinely marked on that form -- never invent a value, never include a key outside the list. Write each value as a short human-readable label a learner can read on its own (e.g. "infinitive", "masculine", "singular") -- never a bare digit.
 - "stemBreakdown": ONLY for a verb whose infinitive follows a genuinely regular, teachable pattern where stem+ending reconstructs "lemma" exactly (e.g. {"stem":"parl","ending":"er"} for "parler"); null for irregular verbs, reflexive or multi-word lemmas, and for adjectives -- never force a fake split.
-- "explanation": ONE short learner-friendly sentence (under 25 words) in ${explainLangName()} about THIS word: its pattern or irregularity, the auxiliary it takes, how it agrees, a common trap -- not a dictionary definition.
+- "explanation": ONE short learner-friendly sentence (under 25 words) in ${explainLangName()} about THIS word: its pattern or irregularity, the auxiliary it takes, how it agrees, a common trap -- not a dictionary definition.${languageNormNote(explainLangName())}
 - If the typed text is not a verb or an adjective in any language, reply exactly {"language":"${langCode}","pos":null,"lemma":null}.`;
 }
 // -> { item } or { error: 'not_found' | 'invalid' }

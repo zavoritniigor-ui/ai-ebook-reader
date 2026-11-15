@@ -306,6 +306,17 @@ const GRAMMAR_LANG_CONFIG = {
     }
 };
 const DEFAULT_GRAMMAR_LANG = 'en';
+// The written norm a model must keep when it writes in this language. Models write Ukrainian full of Russianisms and
+// calques from Russian; every prompt whose output is Ukrainian (translations, explanations, answers) carries this note
+// (linguistic review, 2026-11-15). Takes a code ('uk') or the name a prompt uses ('українською'); '' for other languages.
+const LANGUAGE_NORM_NOTES = {
+    uk: 'Пиши сучасною літературною українською мовою: без русизмів і калькувань з російської (брати участь — не «приймати участь», протягом — не «на протязі», наступний — не «слідуючий», мені здається — не «мені кажеться», вибачте — не «вибачаюсь»); лапки «».'
+};
+function languageNormNote(langOrName) {
+    const key = String(langOrName || '');
+    const code = LANGUAGE_NORM_NOTES[key] ? key : Object.keys(LANGUAGE_CONFIG).find(c => LANGUAGE_CONFIG[c].aiName === key) || '';
+    return LANGUAGE_NORM_NOTES[code] ? ' ' + LANGUAGE_NORM_NOTES[code] : '';
+}
 function grammarConfigFor(langCode) {
     return GRAMMAR_LANG_CONFIG[langCode] || GRAMMAR_LANG_CONFIG[DEFAULT_GRAMMAR_LANG];
 }

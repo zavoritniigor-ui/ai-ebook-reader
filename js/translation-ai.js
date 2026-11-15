@@ -93,7 +93,7 @@ async function aiTranslateText(text, srcCode, signal, targetLang = state.targetL
     // en. «pain» біль; chat, coin, main, sale, four), and without a sentence around it (a heading) the model had to guess
     // (linguistic review, 2026-11-15: srcCode reached this function but never the prompt).
     const srcName = translationSourceLangName(srcCode);
-    const src = srcName ? `\nМова оригіналу — ${srcName}.` : '';
+    const src = (srcName ? `\nМова оригіналу — ${srcName}.` : '') + (languageNormNote(targetLang) ? '\n' + languageNormNote(targetLang).trim() : '');
     let prompt = isWord
         ? `Слово "${text}".${src}${ctx}
 Дай переклад ${langName} САМЕ ЦЬОГО СЛОВА — не фрази й не речення навколо нього. Речення потрібне лише для того, щоб обрати правильне значення багатозначного слова (bank — банк чи берег) і правильну форму: якщо це форма дієслова — перекладай дієслово, а не однокорінний іменник; зберігай час/особу чи рід/число, де це природно.
@@ -102,7 +102,7 @@ async function aiTranslateText(text, srcCode, signal, targetLang = state.targetL
 Якщо в цьому реченні слово є частиною звороту, ідіоми чи фразового дієслова і його значення тут справді інше або ширше, ніж пряме, коротко поясни це в полі "context" (мовою перекладу, напр. «у цьому контексті: керувати компанією» або «у "take care": піклуватися»). Якщо пряме значення вже все пояснює — "context": null. Власні назви не перекладай, якщо в мові перекладу немає усталеної форми.
 Відповідь — ЛИШЕ JSON: {"direct":"переклад слова (1–3 слова)","context":null або "коротке уточнення"}`
         : `Переклади ${langName} цей фрагмент: "${text}"${src}${ctx ? `
-Фрагмент — частина речення: "${contextSentence}". Речення дане лише для того, щоб обрати правильні значення й форми; перекладай ТІЛЬКИ фрагмент, без слів з решти речення.` : ''}
+Фрагмент — частина речення: "${contextSentence}". Речення подано лише для того, щоб обрати правильні значення й форми; перекладай ТІЛЬКИ фрагмент, без слів з решти речення.` : ''}
 Зроби природний, зв'язний переклад із правильним порядком слів, а не дослівний підрядник. Нічого не додавай і нічого не пропускай. У відповіді — лише переклад, без лапок і пояснень.`;
     if (withAlignment) prompt = prompt.replace('У відповіді — лише переклад, без лапок і пояснень.', '') + `
 Return ONLY a JSON object: {"translation":"natural translation", "alignment":[{"source":["exact source phrase"],"target":"exact translated phrase","confidence":"high"}]}.
