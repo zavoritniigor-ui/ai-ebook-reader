@@ -650,6 +650,8 @@ function handleReadingClick(e) {
     const rect = els.mainArea.getBoundingClientRect(); const x = e.clientX - rect.left;
     if (x < rect.width * 0.20) goPrev(); 
     else if (x > rect.width * 0.80) goNext();
-    // The middle of the page shows the «◀ page ▶» bar for a few seconds (as in other readers); the menu has its ☰ button.
-    else openFooterMenu();
+    // The middle of the page used to show the «◀ page ▶» bar for a few seconds; since the bottom row (‹ ☰ ✦ page ›)
+    // is always there it only replaced that row with an older one — owner, 2026-11-15: «дивний екран при тапу поза
+    // словом, зникає внизу панель з кнопками». Without the row (no book layout yet) it still shows.
+    else if (document.getElementById('page-arrows')?.hidden !== false) openFooterMenu();
 }
