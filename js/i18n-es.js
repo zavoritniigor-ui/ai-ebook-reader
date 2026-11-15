@@ -35,7 +35,7 @@ const I18N_ES = {
     inkEraseWhole: 'Borrador: borra el trazo entero. Otra vez 🧽: solo lo que está debajo.',
     inkPenFound: 'Lápiz detectado: ahora solo escribe el lápiz, el dedo desplaza la página. ☝️ para escribir también con el dedo.',
     btnRegion: '✂️ Zona', regionHint: 'Selecciona una zona del PDF', regionPdfOnly: 'La captura de zona funciona en PDF.', regionFail: 'No se pudo capturar esa zona.',
-    checking: 'Comprobando el ejercicio…', btnExplain: '📖 Explicar', btnTranslatePanel: '🌐 Traducir', btnLangLevel: '📘 Análisis lingüístico',
+    checking: 'Comprobando el ejercicio…', btnExplain: '📖 Explicar', btnWebSearch: '🔎 Buscar en la web', tWebSearch: 'Abrir una búsqueda de Google de este texto en el navegador', webSearchNothing: 'Selecciona un texto del libro para buscarlo', btnTranslatePanel: '🌐 Traducir', btnLangLevel: '📘 Análisis lingüístico',
     selectFirst: 'Primero toca una palabra o selecciona una frase en el texto.', keyFaster: '(más rápido)',
     keyNote: 'Guarda tus claves y elige el proveedor para todas las peticiones de IA. El proveedor nunca cambia automáticamente.',
     errKey400: 'comprueba que la clave está bien pegada.', errKey403: 'la clave no es válida o el acceso está denegado.', errKey404: 'modelo no encontrado.',

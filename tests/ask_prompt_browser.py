@@ -150,5 +150,15 @@ check('5 ... as the PRIMARY request, with the preserved selection as material, n
       "&& !(__calls.at(-1).prompt).includes(%s)" % json.dumps(EXPLAIN_MARKER))
 check('5 ... dictation is fully stopped and the field cleared', "!dictation.wanted && els.askInput.value === ''")
 
+# ===================== 6. «Пошук в інтернеті»: a browser search for what the panel was asked about (owner, 2026-11-15) =====================
+c.js("""window.__opened = []; window.open = (url, target, features) => { __opened.push({ url, target, features }); return null; };
+  startAiTask('Le Tartuffe, ou l’Imposteur — comédie de Molière', 'explain'); 1""")
+check('6 the Ask AI panel has a «Пошук в інтернеті» button', "!!document.querySelector('#ask-panel .panel-actions #btn-web-search') && document.getElementById('btn-web-search').textContent.includes(t('btnWebSearch').replace(/^\\S+\\s/, ''))")
+c.js("document.getElementById('btn-web-search').click(); 1")
+check('6 a tap opens a Google search for exactly that text in a new tab, without a referrer',
+      "__opened.length === 1 && __opened[0].url === 'https://www.google.com/search?q=' + encodeURIComponent('Le Tartuffe, ou l’Imposteur — comédie de Molière') && __opened[0].target === '_blank' && /noopener/.test(__opened[0].features) && /noreferrer/.test(__opened[0].features) || JSON.stringify(__opened)")
+check('6 a long text is cut at a word to at most 300 characters',
+      "(q => q.length <= 300 && !q.endsWith('wor') && q.endsWith('word'))(webSearchQuery('word '.repeat(100)))")
+check('6 the texts exist in every menu language', "['btnWebSearch', 'tWebSearch', 'webSearchNothing'].every(k => ['uk','en','fr','ru','zh','ko','hi','ga'].every(l => I18N[k][l]))")
 check('no application errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL ASK PROMPT CHECKS PASSED')
