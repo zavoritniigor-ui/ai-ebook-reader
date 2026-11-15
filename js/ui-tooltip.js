@@ -157,7 +157,15 @@ function positionTooltip(clientX, clientY, anchorRect) {
     let x = (r.left+r.right)/2, y = r.bottom+gap;
     const above = r.top-gap-h >= top+margin;
     els.tooltip.classList.toggle('tooltip-above', above);
-    if (width <= 600) { x = left+(width-tabClearance)/2; y = top+height-h-margin; }
+    if (width <= 600) {
+        // Phones dock the popup at the bottom — unless the word is down there: then at the top, so the popup never lies
+        // on the word it translates (owner's screenshot, 2026-11-15: «L'ENVOYÉ» low on the page, under the popup). When
+        // both sides would cover it (a very tall popup), the side that covers less.
+        x = left+(width-tabClearance)/2;
+        const bottomY = top+height-h-margin, topY = top+margin;
+        const overlap = y0 => Math.max(0, Math.min(r.bottom, y0+h) - Math.max(r.top, y0));
+        y = overlap(bottomY) > 0 && overlap(topY) < overlap(bottomY) ? topY : bottomY;
+    }
     else if (above) y = r.top-gap-h;
     else if (y+h > top+height-margin && r.right+gap+w < left+width-margin) {
         x = r.right+gap+w/2; y = r.top;

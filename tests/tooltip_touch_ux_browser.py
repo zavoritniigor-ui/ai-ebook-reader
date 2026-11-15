@@ -101,5 +101,11 @@ c.call('Page.navigate', url=URL)
 c.wait("document.readyState==='complete' && !document.body.inert && typeof setSpeakSide==='function'", timeout=30)
 check('speak side: a translation side stored by an older version starts as the book\'s language', "state.speakSide === 'original'")
 
+load(412, 915, True)
+check('phone: the popup never lies on the word it translates — a word low on the page gets the popup at the top, a word high up keeps it at the bottom (owner\'s screenshot, 2026-11-15)',
+      """(() => { const t = els.tooltip.getBoundingClientRect(); const lay = (top) => { const a = { left: 150, right: 260, top, bottom: top + 30 }; positionTooltip(205, top + 15, a);
+           const p = els.tooltip.getBoundingClientRect(); return { cover: Math.max(0, Math.min(a.bottom, p.bottom) - Math.max(a.top, p.top)), top: Math.round(p.top) }; };
+         const low = lay(innerHeight - 160), high = lay(120);
+         return low.cover === 0 && high.cover === 0 && low.top < 100 && high.top > innerHeight / 3 || JSON.stringify({ low, high, h: Math.round(t.height) }); })()""")
 check('no application errors', "!window.__errors || window.__errors.length === 0")
 print('ALL TOOLTIP TOUCH UX CHECKS PASSED')
