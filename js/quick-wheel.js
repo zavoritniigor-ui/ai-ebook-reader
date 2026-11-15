@@ -486,6 +486,40 @@ const quickMenu = (() => {
     return { open, close };
 })();
 
+// The Range of the text page on screen: from the first character in the current column to the first character in the
+// next one (or the end of the chapter). The same character-exact search as bookTextOffsetAtPage (js/navigation.js).
+function currentTextPageRange() {
+    const left = els.pages.getBoundingClientRect().left;
+    const step = columnStep(), target = state.pageInChapter * step;
+    const boundaryAt = (x) => {
+        const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT);
+        const r = document.createRange();
+        let node;
+        while ((node = walker.nextNode())) {
+            if (!node.length) continue;
+            r.selectNodeContents(node);
+            if (!Array.from(r.getClientRects()).some(rect => rect.width && rect.left - left >= x - 1)) continue;
+            let lo = 0, hi = node.length - 1;
+            while (lo < hi) {
+                const mid = Math.floor((lo + hi) / 2);
+                r.setStart(node, mid); r.setEnd(node, mid + 1);
+                if (r.getBoundingClientRect().left - left < x - 1) lo = mid + 1; else hi = mid;
+            }
+            r.setStart(node, lo); r.setEnd(node, lo + 1);
+            if (r.getBoundingClientRect().left - left < x - 1) continue;   // only a later rect of this node was past x
+            return { node, offset: lo };
+        }
+        return null;
+    };
+    const from = boundaryAt(target);
+    if (!from) return null;
+    const to = boundaryAt(target + step);
+    const range = document.createRange();
+    range.setStart(from.node, from.offset);
+    if (to) range.setEnd(to.node, to.offset); else range.setEnd(els.pages, els.pages.childNodes.length);
+    return range.toString().trim() ? range : null;
+}
+
 // Print current page: PDF renders current page, text formats render current logical page
 function printCurrentReaderPage() {
     try {
@@ -576,25 +610,31 @@ function printCurrentReaderPage() {
                 frame.remove();
             });
         } else {
-            // Text formats: render current logical column only
-            const container = doc.createElement('div');
-            container.style.cssText = 'width:100%;height:100%;overflow:hidden;white-space:pre-wrap;word-wrap:break-word;padding:20px';
-            const columnStart = state.pageInChapter * columnStep?.() ?? state.pageInChapter * 400;
-            const columnWidth = els.pages.clientWidth || 400;
-            let content = '';
-            const walker = document.createTreeWalker(els.pages, NodeFilter.SHOW_TEXT, null, false);
-            let textNode;
-            while ((textNode = walker.nextNode())) {
-                if (!textNode.data.trim().length) continue;
-                const rect = textNode.parentElement.getBoundingClientRect();
-                const relLeft = rect.left + window.scrollX - els.pages.getBoundingClientRect().left;
-                if (relLeft >= columnStart && relLeft < columnStart + columnWidth) {
-                    content += textNode.data;
-                }
-            }
-            container.textContent = content.trim();
-            doc.body.append(container);
-            triggerPrint();
+            // Text formats: exactly the page on screen, with its structure (headings, paragraphs, italics, images).
+            // Before, the text of every node whose PARENT started in this column was glued together: paragraphs and
+            // headings ran into one line, a paragraph coming over from the previous page was lost and one going on to
+            // the next page was printed whole (owner, 2026-11-15: «перевірити функцію друку»).
+            const range = currentTextPageRange();
+            if (!range) throw new Error('Empty page');
+            const style = doc.createElement('style');
+            style.textContent = `@page{size:auto;margin:16mm 18mm}
+                body{font:12pt/1.5 Georgia,'Times New Roman',serif;color:#000;text-align:justify;hyphens:auto;-webkit-hyphens:auto;padding:0}
+                h1,h2,h3,h4,h5,h6{font-family:inherit;line-height:1.25;text-align:left;margin:.2em 0 .6em;break-after:avoid}
+                h1{font-size:20pt}h2{font-size:16pt}h3{font-size:14pt}h4,h5,h6{font-size:12pt}
+                p{margin:0 0 .6em;orphans:2;widows:2}blockquote{margin:.6em 1.5em}
+                img{display:block;max-width:100%;height:auto;margin:.6em auto;break-inside:avoid}
+                a{color:inherit;text-decoration:none}table{border-collapse:collapse}td,th{border:1px solid #999;padding:2px 6px}`;
+            doc.head.append(style);
+            doc.documentElement.lang = els.pages.lang || '';
+            const page = doc.createElement('div');
+            page.className = 'print-page';
+            page.append(doc.importNode(range.cloneContents(), true));
+            // Reader-only additions (highlights' ink layers, buttons, audio markers) do not belong on paper.
+            page.querySelectorAll('canvas, button, input, .ink-layer, .pdf-audio-marker, .book-mark-note-btn').forEach(el => el.remove());
+            doc.body.append(page);
+            const images = [...doc.images];
+            Promise.all(images.map(img => img.complete ? null : new Promise(done => { img.onload = img.onerror = done; })))
+                .then(triggerPrint);
         }
     } catch (err) {
         showToast(t('printError'));

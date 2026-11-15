@@ -17,6 +17,7 @@ tests/pdf_split_word_browser.py
 tests/pdf_tilted_sentence_browser.py
 tests/pdf_page_identity_browser.py
 tests/pdf_print_browser.py
+tests/text_print_browser.py
 tests/pdf_crop_ai_share_browser.py
 tests/pdf_ink_ownership_browser.py
 tests/pdf_drag_line_hold_browser.py
