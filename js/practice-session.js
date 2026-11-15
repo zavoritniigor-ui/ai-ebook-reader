@@ -686,7 +686,7 @@ function buildPracticeReadingPrompt(session, lemmas, langName) {
 
     return `You are a language-learning content writer. Write READING MATERIAL made of NEW, natural example sentences and short connected paragraphs in ${sourceName} (language code "${safeSourceLang}") that show real grammar forms in context. This is NOT a quiz and NOT an exercise: the learner only reads, and never answers, fills in, chooses, reveals or submits anything.
 
-Explanation language (for each target's "explanation" field ONLY): ${safeLangName}
+Explanation language (for each target's "explanation" field ONLY): ${safeLangName}${languageNormNote(session.targetLanguage)}
 Learner level: ${safeLevel}
 ${lemmaLine}
 ${topicLine ? topicLine + '\n' : ''}${sourceLine}
@@ -760,7 +760,7 @@ FIRST write one section of kind "examples" whose "heading" is ${JSON.stringify(e
     const total = practiceRuleExampleCount(rule);
     return `You are a language-learning content writer. Write READING MATERIAL in ${sourceName} (language code "${lang}") that shows a grammar rule at work: NEW, natural example sentences and short connected paragraphs. This is NOT a quiz and NOT an exercise: the learner only reads, and never answers, fills in, chooses, reveals or submits anything.
 
-Explanation language (for each target's "explanation" field ONLY): ${safeLangName}
+Explanation language (for each target's "explanation" field ONLY): ${safeLangName}${languageNormNote(session.targetLanguage)}
 Learner level: ${safeLevel}
 Grammar rule(s) to demonstrate — for each, one section of kind "examples" whose "heading" is the rule's name, with EXACTLY the number of sentences listed:
 ${topicLines}
