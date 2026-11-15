@@ -295,6 +295,14 @@ function clearTtsHighlight() {
     if (ttsHighlightSupported()) CSS.highlights.delete(TTS_HL_NAME);
 }
 
+const TTS_BLOCK_TAGS = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'DT', 'DD', 'BLOCKQUOTE', 'PRE', 'TD', 'TH', 'CAPTION', 'FIGCAPTION']);
+// Containers (div, section) are not boundaries: a PDF page is one div, and a sentence goes on across pages.
+// The nearest block element around a text node (within the read range's root): two text nodes in different blocks never
+// share a sentence.
+function ttsBlockOf(node, root) {
+    for (let el = node.parentElement; el && el !== root; el = el.parentElement) if (TTS_BLOCK_TAGS.has(el.tagName)) return el;
+    return root;
+}
 // Розбиває довільний Range на послідовність речень, кожне зі своїм Range —
 // без жодної мутації DOM (ніяких обгорток/розрізання текстових вузлів).
 function buildSentenceRanges(range) {
@@ -315,7 +323,20 @@ function buildSentenceRanges(range) {
         const to = (node === range.endContainer) ? range.endOffset : node.nodeValue.length;
         if (to > from) parts.push({ node, from, to });
     }
-    const cuts = sentenceCuts(parts.map(p => p.node.nodeValue.slice(p.from, p.to)).join(''));
+    const joined = parts.map(p => p.node.nodeValue.slice(p.from, p.to)).join('');
+    const cuts = sentenceCuts(joined);
+    // The end of a block (heading, paragraph, list item, table cell) ends the sentence even without a full stop: a chapter
+    // heading «II» was read together with the paragraph after it as one «sentence» («II I think that…», one highlight
+    // over both — owner's screenshot, 2026-11-15).
+    let offset = 0, prevBlock = null;
+    for (const part of parts) {
+        const block = ttsBlockOf(part.node, root);
+        if (prevBlock && block !== prevBlock) {
+            let k = offset - 1; while (k >= 0 && /\s/.test(joined[k])) k--;
+            if (k >= 0) cuts.add(k);
+        }
+        offset += part.to - part.from; prevBlock = block;
+    }
     const sentences = [];
     let buffer = '', startNode = null, startOffset = 0, lastNode = null, lastOffset = 0, pos = 0;
     for (const { node, from, to } of parts) {
