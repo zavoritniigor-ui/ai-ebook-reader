@@ -96,6 +96,7 @@ tests/rules_tap_translate_browser.py
 tests/translation_robust_browser.py
 tests/sentence_ai_only_browser.py
 tests/page_edges_browser.py
+tests/swipe_edges_browser.py
 tests/library_browser.py
 tests/exit_update_browser.py
 tests/pdf_scrubber_collapse_browser.py

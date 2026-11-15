@@ -342,10 +342,12 @@ function goPrev() {
 }
 
 // ========== ЖЕСТИ ДЛЯ ТЕЛЕФОНА/ПЛАНШЕТА ==========
-// Свайп вліво/вправо АБО вгору/вниз гортає сторінку; протягування пальцем вниз від
-// самого верху екрана відкриває сховане меню (без потреби тапати саме по порожньому місцю,
-// що конфліктує з тапом по слову в режимі вивчення).
-let touchStartX = 0, touchStartY = 0, touchStartTime = 0, touchFromTopEdge = false;
+// Свайп вліво/вправо АБО вгору/вниз гортає сторінку. Краї екрана належать системі (owner, 2026-11-15: «при проведенні
+// пальцем з гори екрану вниз застосунок видає чорний екран та перегортає сторінку»): згори — рядок стану й вихід із
+// повного екрана, знизу — системні кнопки, з боків — жест «Назад». Свайп, що починається біля краю, нічого не гортає.
+// (Раніше свайп від самого верху відкривав меню-шухляду над затемненим тлом; меню тепер — ☰ у нижньому ряду.)
+const SYSTEM_EDGE_TOP_BOTTOM = 64, SYSTEM_EDGE_SIDE = 24;
+let touchStartX = 0, touchStartY = 0, touchStartTime = 0, touchFromSystemEdge = false;
 let longPressTimer = null;
 function clearLongPress() { if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; } }
 els.mainArea.addEventListener('touchstart', (e) => {
@@ -355,7 +357,8 @@ els.mainArea.addEventListener('touchstart', (e) => {
     if (e.target.closest('#word-tooltip') || e.target.closest('.side-panel') || e.target.closest('nav') || e.target.closest('#tts-controls')) return;
     const t = e.touches[0];
     touchStartX = t.clientX; touchStartY = t.clientY; touchStartTime = Date.now();
-    touchFromTopEdge = t.clientY < 28;
+    touchFromSystemEdge = { vertical: t.clientY < SYSTEM_EDGE_TOP_BOTTOM || t.clientY > innerHeight - SYSTEM_EDGE_TOP_BOTTOM,
+        side: t.clientX < SYSTEM_EDGE_SIDE || t.clientX > innerWidth - SYSTEM_EDGE_SIDE };
 
     // Власне довге утримання прибрано: цей самий жест тепер запускає системне
     // виділення Chrome з маркерами, і два виділення конфліктували б між собою.
@@ -387,9 +390,9 @@ els.mainArea.addEventListener('touchend', (e) => {
     const adx = Math.abs(dx), ady = Math.abs(dy);
     const dt = Date.now() - touchStartTime;
 
-    if (touchFromTopEdge && dy > 40 && ady > adx) {
-        document.body.classList.remove('immersive-mode');
-        state.suppressNextClick = true;
+    // A system gesture from an edge (status bar / full screen, system buttons, Back) is not a page turn.
+    if ((touchFromSystemEdge.vertical && ady > adx) || (touchFromSystemEdge.side && adx > ady)) {
+        if (adx > 10 || ady > 10) state.suppressNextClick = true;
         return;
     }
     if (dt > 700) return; // задовге торкання — не свайп
