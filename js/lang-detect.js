@@ -419,11 +419,38 @@ function cyrillicLang(text) {
     if (cyr < 2 || cyr <= lat) return null;
     return /[іїєґ]/i.test(text) ? 'uk-UA' : 'ru-RU';
 }
+// A short quote in another Latin-script language (1–6 words) inside an English or French book: the stopword classifier
+// (identifyLatinLanguage) needs five words, so «Was ist das?», «Muchas gracias» were read as the book's language.
+// Only safe cues count: letters one language has alone, and common words that are neither English nor French words
+// («dove», «die», «mille», «come», «tag», «gut» are left out for that reason). Exactly one language must match (linguistic review, 2026-11-15).
+const SHORT_LATIN_LETTERS = { de: /ß/, es: /[ñ¿¡]/, pt: /[ãõ]/, pl: /[ąćęłńśźż]/ };
+const SHORT_LATIN_WORDS = {
+    de: new Set('ist das auf nicht und ich wo danke bitte schön wiedersehen guten morgen nacht bahnhof sehr nein heißt'.split(' ')),
+    es: new Set('está estás qué dónde gracias muchas hola señor usted buenos buenas días noches estación cómo sí'.split(' ')),
+    it: new Set('grazie sei ieri sono buongiorno buonasera ciao perché andato stazione stai prego'.split(' ')),
+    pt: new Set('obrigado obrigada você não fica onde olá bom dia estação'.split(' ')),
+    nl: new Set('het niet waar dank alstublieft goedemorgen hoe gaat ik ben jij'.split(' ')),
+    pl: new Set('jest gdzie dziękuję dzień dobry nie tak proszę jak dworzec'.split(' '))
+};
+function shortLatinCue(text) {
+    const lower = String(text || '').toLocaleLowerCase();
+    const words = lower.match(/[\p{L}]+/gu) || [];
+    if (!words.length || words.length > 6) return null;
+    const hits = Object.keys(SHORT_LATIN_WORDS).filter(lang =>
+        SHORT_LATIN_LETTERS[lang]?.test(lower) || words.some(w => SHORT_LATIN_WORDS[lang].has(w)));
+    if (hits.length !== 1) return null;
+    // One short word is not enough («sei», «tag», «het» could be a name or a typo): a letter of that language alone, two
+    // of its words, or one long one (grazie, gracias, wiedersehen).
+    const lang = hits[0], own = words.filter(w => SHORT_LATIN_WORDS[lang].has(w));
+    return SHORT_LATIN_LETTERS[lang]?.test(lower) || own.length >= 2 || own.some(w => w.length >= 6) ? lang : null;
+}
 function detectLang(text) {
     const special = specialLanguage(text);
     if (special) return special;
     const cyr = cyrillicLang(text);
     if (cyr) return cyr;
+    const shortCue = shortLatinCue(text);
+    if (shortCue) return LATIN_LANG_LOCALES[shortCue];
     const prior = (state.ctxPanelLang && LATIN_LANG_LOCALES[state.ctxPanelLang]) ? state.ctxPanelLang : pageLang().slice(0, 2);
     const segs = buildLanguageSegments(text, prior);
     const tally = {};

@@ -94,7 +94,7 @@ check('6 conjugated form: the selected form is sent with its sentence and its tr
 check('6c Ukrainian output keeps the literary norm: the translation prompt and a grammar prompt in Ukrainian ask for no Russianisms or calques; an English explanation does not',
       "(p => p.includes('без русизмів') && p.includes('брати участь'))(%s) && buildSentenceStructurePrompt('Il mange.', 'fr', 'українською').includes('без русизмів') && !buildSentenceStructurePrompt('Il mange.', 'fr', 'англійською').includes('русизм') && languageNormNote('uk') === languageNormNote('українською') && languageNormNote('fr') === '' || %s" % (LAST_PROMPT, LAST_PROMPT))
 check('6b the prompt names the source language: the same spelling is a different word in another language (fr. pain / en. pain)',
-      "(p => p.includes('Мова оригіналу — англійська.'))(%s) || %s" % (LAST_PROMPT, LAST_PROMPT))
+      "(p => p.includes('Ймовірна мова оригіналу — англійська (визначено автоматично;'))(%s) || %s" % (LAST_PROMPT, LAST_PROMPT))
 
 # robustness: a reply that ignores the JSON contract is still shown as the translation
 tap('river', 'річка')
