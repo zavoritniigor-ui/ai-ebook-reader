@@ -83,6 +83,10 @@ c.js("""(()=>{ aiAvailable=()=>true; showToast=()=>{}; window.__calls=[]; window
 c.js("document.getElementById('btn-rules').click()"); time.sleep(0.5)
 check("3 the header button opens the panel; it lists the French sections as foldable groups with topic buttons",
       "document.getElementById('rules-panel').classList.contains('expanded') && document.querySelectorAll('#rules-content .rules-section').length >= 7 && document.querySelectorAll('#rules-content .rules-topic').length >= 6")
+check("3b every topic of both catalogues has a CEFR level, and the topic list shows it as a coloured badge (passé composé A2, subjonctif présent B1)",
+      """(() => { const all = ['fr', 'en'].flatMap(l => GRAMMAR_RULES[l].sections.flatMap(s => s.topics)); const badge = id => document.querySelector('#rules-content .rules-topic[data-topic="' + id + '"] .rules-level');
+         return all.every(tp => /^[ABC][12]$/.test(tp.level)) && badge('passe-compose')?.textContent === 'A2' && badge('passe-compose').classList.contains('cefr-a2') && !!badge('passe-compose').title
+           && GRAMMAR_RULES.fr.sections.flatMap(s => s.topics).find(tp => tp.id === 'subjonctif-present').level === 'B1' || all.filter(tp => !/^[ABC][12]$/.test(tp.level)).map(tp => tp.id).join(); })()""")
 check("4 the language of the page (fr) is preselected; no topic search field; a 'Search the selection' button and a hint to select a sentence",
       "document.querySelector('#rules-content .rules-lang').value === 'fr' && !document.querySelector('#rules-content .rules-search') && document.getElementById('rules-scan').textContent.includes('Пошук у виділеному') && document.getElementById('rules-scan-status').textContent === t('rulesScanHint')")
 c.js("__calls.length = 0; rulesScan = null; state.lastSelectedRange = null; state.ctxSentenceRange = null; document.getElementById('rules-scan').click(); 1"); time.sleep(0.3)

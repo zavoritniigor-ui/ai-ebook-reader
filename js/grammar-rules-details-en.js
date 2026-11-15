@@ -125,7 +125,7 @@ Exceptions:
 • У третьому conditional та після wish про минуле: if I had known…; I wish I had gone.
 Винятки:
 • Якщо послідовність очевидна (after, before, as soon as), часто достатньо past simple: after he left, I called.
-• Had не скорочується з not в одному слові так само, як інші: hadn’t; ’d може означати had або would.
+• ’d може означати had або would — розрізняйте за формою після нього: she’d left (had), she’d leave (would).
 • Для довготривалості до моменту в минулому — past perfect continuous.`,
 `Rules:
 • Had + past participle: I had finished, she had left.
@@ -133,7 +133,7 @@ Exceptions:
 • In the third conditional and after wish about the past: if I had known…; I wish I had gone.
 Exceptions:
 • When the order is obvious (after, before, as soon as) the past simple is often enough: after he left, I called.
-• ’d can mean had or would — decide by the form that follows.
+• ’d can mean had or would — decide by the form that follows: she’d left (had), she’d leave (would).
 • For duration up to a past moment use the past perfect continuous.`);
 
     D('past-perfect-continuous',
@@ -173,14 +173,14 @@ Exceptions:
 • Am/is/are going to + основа: we are going to buy a house.
 • Наміри й попередні плани; прогноз за очевидними ознаками (look at the clouds — it’s going to rain).
 Винятки:
-• З going і come часто вживають present continuous: I’m going to the shop (не I’m going to go).
+• З go і come частіше просто present continuous: I’m going to the shop (I’m going to go to the shop — теж правильно, лише довше).
 • Не використовується з ситуаціями, що вирішені в момент мовлення — там will.
 • В розмові: gonna (не пишуть у формальному тексті).`,
 `Rules:
 • Am/is/are going to + base verb: we are going to buy a house.
 • Intentions and prior plans; a prediction based on evidence (look at the clouds — it’s going to rain).
 Exceptions:
-• With go and come the present continuous is usually used: I’m going to the shop (not I’m going to go).
+• With go and come the present continuous is more usual: I’m going to the shop (I’m going to go to the shop is also correct, just longer).
 • Not for decisions made at the moment of speaking — use will.
 • Spoken: gonna (not written in formal text).`);
 
@@ -562,7 +562,7 @@ Exceptions:
 • Неправильні: man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • Незмінні: sheep, fish, deer, series, species.
 • -o: potatoes, tomatoes, heroes (але photos, pianos).
-• Лише множина: scissors, trousers, glasses, clothes; -ics (news, mathematics) — однина.`,
+• Лише множина: scissors, trousers, glasses, clothes; news і слова на -ics (mathematics, physics) — з дієсловом в однині.`,
 `Rules:
 • Usually +s: book → books.
 • -s, -x, -ch, -sh, -z → +es: box → boxes, watch → watches.
@@ -572,7 +572,7 @@ Exceptions:
 • Irregular: man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • Unchanged: sheep, fish, deer, series, species.
 • -o: potatoes, tomatoes, heroes (but photos, pianos).
-• Plural only: scissors, trousers, glasses, clothes; -ics words (news, mathematics) are singular.`);
+• Plural only: scissors, trousers, glasses, clothes; news and -ics words (mathematics, physics) take a singular verb.`);
 
     D('possessives',
 `Правила:
@@ -603,7 +603,7 @@ Exceptions:
 • This у телефонних розмовах: this is Anna (я), is that John? (ви).
 • That/those як заміна повтореного іменника: the weather here is better than that in Spain.
 • Those who = ті, хто: those who wait.
-• This/that перед ім’ям не змінюються в множині.`,
+• This/that перед one/ones: I like this one, those ones (розм.).`,
 `Rules:
 • This/these — near in space, time or mind; that/those — far.
 • This/that — singular; these/those — plural.
@@ -612,7 +612,7 @@ Exceptions:
 • This on the phone: this is Anna (I am), is that John? (you).
 • That/those replacing a repeated noun: the weather here is better than that in Spain.
 • Those who = people who: those who wait.
-• This/that do not change before a name in the plural.`);
+• This/that before one/ones: I like this one, those ones (informal).`);
 
     D('comparatives',
 `Правила:
@@ -927,7 +927,7 @@ Exceptions:
 • However також значить «як би не» (however hard he tries) — це не зв’язка.
 • Therefore, however можуть стояти у середині в комах: it was late; we, however, continued.
 • But/and/so — сполучники, не зв’язки: перед ними крапка не потрібна.
-• Not only … but also — парний зв’язок з інверсією.`,
+• Not only … but also — парний зв’язок; інверсія лише тоді, коли not only стоїть на початку: not only did he lie, but he also left.`,
 `Rules:
 • Contrast: however, nevertheless, on the other hand, in contrast, whereas.
 • Result: therefore, consequently, as a result, thus, so.
@@ -938,7 +938,7 @@ Exceptions:
 • However also means "no matter how" (however hard he tries) — not a connector then.
 • Therefore, however can sit in the middle between commas: it was late; we, however, continued.
 • But/and/so are conjunctions, not connectors: no full stop before them.
-• Not only … but also — a paired connector with inversion.`);
+• Not only … but also — a paired connector; inversion only when not only opens the sentence: not only did he lie, but he also left.`);
 
     D('cleft',
 `Правила:
@@ -1030,7 +1030,7 @@ Exceptions:
 Винятки:
 • Already/yet: already у ствердженнях, yet у запереченнях і питаннях (але still — «все ще»).
 • Just: present perfect (I have just left) або past simple (амер. I just left).
-• Ago — тільки з past simple, і завжди ПІСЛЯ періоду: two years ago.
+• Ago — з минулими часами (найчастіше past simple), ніколи з present perfect, і завжди ПІСЛЯ періоду: two years ago.
 • For vs since: for + тривалість, since + початок.`,
 `Rules:
 • Past simple: yesterday, last week, ago, in 2010, then, when.
@@ -1041,7 +1041,7 @@ Exceptions:
 Exceptions:
 • Already/yet: already in positives, yet in negatives and questions (still = "still").
 • Just: present perfect (I have just left) or past simple (American I just left).
-• Ago — only with the past simple, and always AFTER the period: two years ago.
+• Ago — with past tenses (mostly the past simple), never with the present perfect, and always AFTER the period: two years ago.
 • For vs since: for + duration, since + starting point.`);
 
     D('for-since-ago-during',

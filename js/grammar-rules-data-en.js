@@ -316,6 +316,22 @@
         ]),
     ];
 
+    // The CEFR level at which each topic is usually taught (English Profile syllabi): approximate, shown as a badge so the
+    // catalogue reads from simple to hard; to be confirmed by a teacher (linguistic review, 2026-11-15).
+    const LEVELS = {
+        'present-simple': 'A1', 'present-continuous': 'A1', 'present-perfect': 'A2', 'present-perfect-continuous': 'B1', 'past-simple': 'A2', 'past-continuous': 'A2',
+        'past-perfect': 'B1', 'past-perfect-continuous': 'B2', 'future-will': 'A2', 'going-to': 'A2', 'future-continuous-perfect': 'B2', 'used-to-would': 'B1',
+        'modal-verbs': 'A2', 'conditional-zero-first': 'B1', 'conditional-second': 'B1', 'conditional-third': 'B2', 'wishes': 'B2', 'subjunctive': 'C1',
+        'infinitive-gerund': 'B1', 'passive-voice': 'B1', 'causative': 'B2', 'reported-speech': 'B1', 'question-tags': 'B1', 'phrasal-verbs': 'B1',
+        'articles-a-an': 'A1', 'article-the': 'A1', 'zero-article': 'A2', 'countable-uncountable': 'A1', 'quantifiers': 'A2', 'plurals': 'A1',
+        'possessives': 'A1', 'demonstratives': 'A1', 'comparatives': 'A2', 'superlatives': 'A2', 'as-as-too-enough': 'A2', 'adjective-order': 'B1',
+        'adverbs-manner': 'A2', 'adverbs-frequency': 'A1', 'personal-pronouns': 'A1', 'reflexive-pronouns': 'A2', 'relative-pronouns': 'B1', 'defining-non-defining': 'B2',
+        'indefinite-pronouns': 'A2', 'there-is-it': 'A1', 'negatives': 'A1', 'questions': 'A1', 'conjunctions': 'A2', 'linking-words': 'B1',
+        'cleft': 'C1', 'inversion': 'C1', 'participle-clauses': 'B2', 'so-neither': 'B1', 'time-markers': 'A2', 'for-since-ago-during': 'A2',
+        'prepositions-time': 'A1', 'prepositions-place': 'A1', 'verb-preposition': 'B1', 'purpose-cause-result': 'B1'
+    };
+    for (const section of sections) for (const topic of section.topics) topic.level = LEVELS[topic.id] || null;
+
     const catalogue = window.GRAMMAR_RULES || (window.GRAMMAR_RULES = {});
     catalogue.en = { language: 'en', sections };
 })();

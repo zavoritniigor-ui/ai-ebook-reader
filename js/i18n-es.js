@@ -70,7 +70,7 @@ const I18N_ES = {
     rulesScanHint: 'Selecciona una o dos frases del libro y abre Reglas: aquí aparecen todas las reglas que contienen',
     rulesCatalogueSoon: 'El catálogo de este idioma llegará en la próxima actualización.', rulesNoTopics: 'No se encontró nada.',
     rulesBack: 'Todos los temas', rulesTheory: 'Teoría', rulesFind: 'Buscar en esta página', rulesClear: 'Quitar el resaltado',
-    rulesRunning: 'Buscando en el texto de la página…', rulesFound: 'Encontrado en esta página: {n}',
+    rulesRunning: 'Buscando en el texto de la página…', rulesFound: 'Encontrado en esta página: {n}', rulesLevelHint: 'Nivel MCER en el que se suele estudiar este tema (aproximado)',
     rulesNone: 'No hay nada de este tipo en la parte visible de la página.', rulesFailed: 'Algo salió mal. Inténtalo de nuevo.',
     rulesNoText: 'No hay texto en pantalla para buscar.', rulesChanged: 'La página cambió: vuelve a buscar.', rulesExplain: 'Explicar según la teoría',
     rulesAskPlaceholder: 'Pregunta a la IA sobre esto…', rulesAskBtn: 'Preguntar',

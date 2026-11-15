@@ -28,9 +28,17 @@ Object.assign(I18N, {
     rulesPractice: { uk: 'Практика', en: 'Practice', fr: 'Pratique', ru: 'Практика', zh: '练习', ko: '연습', hi: 'अभ्यास', ga: 'Cleachtadh' },
     rulesPracticeSection: { uk: 'Практика всього розділу', en: 'Practise the whole section', fr: 'Pratiquer toute la section', ru: 'Практика всего раздела', zh: '练习整个章节', ko: '이 단원 전체 연습', hi: 'पूरे खंड का अभ्यास', ga: 'Cleacht an chuid ar fad' },
     rulesPracticeExample: { uk: 'Практика на цьому прикладі', en: 'Practise with this example', fr: 'Pratiquer avec cet exemple', ru: 'Практика на этом примере', zh: '用这个例子练习', ko: '이 예문으로 연습', hi: 'इस उदाहरण से अभ्यास', ga: 'Cleacht leis an sampla seo' },
+    rulesLevelHint: { uk: 'Рівень CEFR, на якому цю тему зазвичай вивчають (орієнтовно)', en: 'CEFR level at which this topic is usually taught (approximate)', fr: 'Niveau CECRL auquel ce thème est habituellement étudié (indicatif)', ru: 'Уровень CEFR, на котором эту тему обычно изучают (ориентировочно)', zh: '通常学习此主题的 CEFR 级别（参考）', ko: '이 주제를 보통 배우는 CEFR 수준(참고)', hi: 'वह CEFR स्तर जिस पर यह विषय आमतौर पर पढ़ाया जाता है (अनुमानित)', ga: 'An leibhéal CEFR ag a múintear an t-ábhar seo de ghnáth (garbh-mheastachán)' },
     practiceRuleMeta: { uk: 'Правило:', en: 'Rule:', fr: 'Règle :', ru: 'Правило:', zh: '规则：', ko: '규칙:', hi: 'नियम:', ga: 'Riail:' },
     practiceRuleNoNote: { uk: 'тут працює це правило.', en: 'the rule is at work here.', fr: 'la règle s’applique ici.', ru: 'здесь работает это правило.', zh: '这里用到了这条规则。', ko: '여기에 이 규칙이 쓰였습니다.', hi: 'यहाँ यह नियम लागू है।', ga: 'tá an riail i bhfeidhm anseo.' }
 });
+// The topic's CEFR badge (grammar-rules-data-*.js LEVELS), in the colours of the reading statistics; none when unknown.
+function ruleLevelBadge(topic) {
+    if (!/^[ABC][12]$/.test(topic.level || '')) return null;
+    const badge = ruleEl('span', 'rules-level cefr-' + topic.level.toLowerCase(), topic.level);
+    badge.title = t('rulesLevelHint');
+    return badge;
+}
 function rulesPick(obj) { return (obj && (obj[state.uiLang] || obj.en || obj.uk || obj.fr)) || ''; }
 // The topic's own name in the language of the rules (French: title.fr, English: title.en); the UI-language name goes under it.
 function ruleTitle(topic, lang = rulesState.lang) { return topic.title[lang] || topic.title.fr || topic.title.en || rulesPick(topic.title); }
@@ -553,7 +561,12 @@ function renderRulesTree() {
             const b = ruleEl('button', 'rules-topic');
             b.type = 'button';
             b.dataset.topic = tp.id;
-            b.append(ruleEl('b', '', ruleTitle(tp)), ruleEl('span', 'rules-topic-sub', rulesPick(tp.title)));
+            // The badge sits beside the title, not inside it: the title stays plain text (what a screen reader reads first).
+            const head = ruleEl('span', 'rules-topic-head');
+            head.appendChild(ruleEl('b', '', ruleTitle(tp)));
+            const level = ruleLevelBadge(tp);
+            if (level) head.appendChild(level);
+            b.append(head, ruleEl('span', 'rules-topic-sub', rulesPick(tp.title)));
             const hit = scan && scan.found.get(tp.id);
             if (hit) {
                 b.classList.add('rules-topic-found');
@@ -729,6 +742,8 @@ function renderRuleTopic() {
     back.onclick = () => { rulesState.token++; rulesState.topic = null; rulesState.matches = []; rulesState.status = 'idle'; clearRuleHighlights(); renderRulesTree(); updateRulesTab(); };
     content.appendChild(back);
     content.appendChild(ruleEl('h4', 'rules-title', ruleTitle(topic)));
+    const level = ruleLevelBadge(topic);
+    if (level) content.appendChild(level);
     if (rulesPick(topic.title) !== ruleTitle(topic)) content.appendChild(ruleEl('p', 'rules-subtitle', rulesPick(topic.title)));
 
     const theory = document.createElement('details');
