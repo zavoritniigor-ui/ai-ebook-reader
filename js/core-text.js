@@ -54,18 +54,6 @@ function sentenceCuts(str) {
         // у PDF списки часто без розділових знаків, і без цього всі пункти злипались в одне «речення».
         let d = dot; while (d > 0 && /\d/.test(str[d - 1])) d--;
         const listNumber = single && dot - d >= 1 && dot - d <= 3 && (d === 0 || /\s/.test(str[d - 1]));
-        // The number belongs to the item it opens: the cut goes BEFORE it (the previous item ends), not after it —
-        // otherwise «1.» became a sentence of its own (linguistic review, 2026-11-15).
-        // A list marker stands at the start, on a new line or after the end of the previous sentence («texte. 2. Répondez»);
-        // a number after a word ends its own sentence as before («le chapitre 2. Puis…»).
-        if (listNumber) {
-            let k = d - 1; while (k >= 0 && /\s/.test(str[k])) k--;
-            // …after a full stop only when it really ended a sentence («vol. 2. He left» — «vol.» did not).
-            if (k < 0 || cuts.has(k) || /[!?:;…]/.test(str[k]) || str.slice(k + 1, d).includes('\n')) {
-                if (k >= 0) cuts.add(k);
-                continue;
-            }
-        }
         if (!listNumber && n < str.length && /\p{Ll}/u.test(str[n])) continue;   // далі мала літера — речення триває
         if (single && !listNumber) {
             let b = dot; while (b > 0 && /[\p{L}\p{M}º-]/u.test(str[b - 1])) b--;
