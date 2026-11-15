@@ -43,67 +43,6 @@ async function measurePdfPage(doc, pageNum) {
     return metadata[pageNum];
 }
 
-// ===================== CENTRAL PDF WORKSPACE GEOMETRY =====================
-// Canonical measurement function for the visible central workspace between side surfaces:
-// availableLeft  = max(mainArea.left, visible nav.right, visible askPanel.right)
-// availableRight = min(mainArea.right, visible grammarPanel.left)   (Practice overlays this gap; see below)
-// availableWidth = max(1, availableRight - availableLeft)
-// availableHeight = max(1, mainArea.bottom - mainArea.top)
-function getReaderWorkspaceRect() {
-    const mainEl = els.mainArea || document.getElementById('main-area');
-    const mainRect = mainEl ? mainEl.getBoundingClientRect() : {
-        left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight,
-        width: window.innerWidth, height: window.innerHeight
-    };
-
-    let availableLeft = mainRect.left;
-    let availableRight = mainRect.right;
-    const availableTop = mainRect.top;
-    const availableBottom = mainRect.bottom;
-
-    // 1. Left sidebar (nav#sidebar for thumbnails/contents, or #ask-panel)
-    const nav = document.getElementById('sidebar');
-    if (nav && !nav.classList.contains('collapsed')) {
-        const w = nav.offsetWidth || nav.getBoundingClientRect().width;
-        if (w > 0) {
-            availableLeft = Math.max(availableLeft, mainRect.left + w);
-        }
-    }
-    const ask = document.getElementById('ask-panel');
-    if (ask && ask.classList.contains('expanded')) {
-        const w = ask.offsetWidth || ask.getBoundingClientRect().width;
-        if (w > 0) {
-            availableLeft = Math.max(availableLeft, mainRect.left + w);
-        }
-    }
-
-    // 2. Right panel (#grammar-panel)
-    const grammar = document.getElementById('grammar-panel');
-    if (grammar && grammar.classList.contains('expanded')) {
-        const w = grammar.offsetWidth || grammar.getBoundingClientRect().width;
-        if (w > 0) {
-            availableRight = Math.min(availableRight, mainRect.right - w);
-        }
-    }
-    // #practice-panel is deliberately NOT a reserve: layoutPracticeWorkspace (practice-worksheet.js)
-    // always lays the expanded worksheet OVER this same central gap (start = max(nav, ask),
-    // end = innerWidth - Grammar), never beside it. Clamping to its left edge collapsed the book
-    // underneath to ~0px — a full relayout of every page at zero width plus a reading anchor taken
-    // from that collapsed stack — and its collapsed/bookmark tab must never reserve width either.
-
-    const availableWidth = Math.max(1, availableRight - availableLeft);
-    const availableHeight = Math.max(1, availableBottom - availableTop);
-
-    return {
-        left: availableLeft,
-        right: availableRight,
-        top: availableTop,
-        bottom: availableBottom,
-        width: availableWidth,
-        height: availableHeight
-    };
-}
-
 function pdfContainerAvailWidth() {
     const pad = parseFloat(getComputedStyle(els.container).paddingLeft) || 0;
     return Math.max(1, els.container.clientWidth - 2 * pad);
@@ -513,7 +452,7 @@ function updatePdfWorkspaceLayout(options = {}) {
             // containerResizeObserver re-lays the continuous stack out ONCE (debounced), with the reading
             // anchor measured at the pre-resize size -- the same split main has always used. Relaying out here
             // as well meant two back-to-back relayouts per panel toggle, each cancelling/restarting the page
-            if (typeof repositionTooltip === 'function') repositionTooltip();
+            notifyReaderWorkspaceChanged();   // e.g. the word popup moves with the book (js/ui-tooltip.js)
         }
     };
 
