@@ -58,6 +58,14 @@ function translationChunks(text, limit = 1600) {
     if (text) chunks.push(text);
     return chunks;
 }
+// The source language as the Ukrainian prompt names it («французька»); the English name when the browser has no Ukrainian
+// one; '' for no or an unknown code (the prompt then says nothing rather than something wrong).
+function translationSourceLangName(code) {
+    const c = String(code || '').slice(0, 2).toLowerCase();
+    if (!/^[a-z]{2}$/.test(c)) return '';
+    try { const name = new Intl.DisplayNames(['uk'], { type: 'language' }).of(c); if (name && name.toLowerCase() !== c) return name; } catch (e) {}
+    return LANGUAGE_CONFIG[c]?.promptName || '';
+}
 // Переклад через вибраний AI-провайдер. Повертає лише сам переклад.
 // info (optional): receives { provider } -- the provider that REALLY answered (a refused shared Groq key is repeated on the shared OpenAI inside callAI, so the
 // caller cannot assume it is the one it asked).
@@ -81,14 +89,19 @@ async function aiTranslateText(text, srcCode, signal, targetLang = state.targetL
     // дієслова faire. Саме тому граматичний розбір був правильний, а переклад — ні.
     const ctx = (contextSentence && contextSentence !== text)
         ? `\nРечення, у якому воно вжите: "${contextSentence}"` : '';
+    // The source language is named: the same spelling means different words in different languages (fr. «pain» хліб —
+    // en. «pain» біль; chat, coin, main, sale, four), and without a sentence around it (a heading) the model had to guess
+    // (linguistic review, 2026-11-15: srcCode reached this function but never the prompt).
+    const srcName = translationSourceLangName(srcCode);
+    const src = srcName ? `\nМова оригіналу — ${srcName}.` : '';
     let prompt = isWord
-        ? `Слово "${text}".${ctx}
+        ? `Слово "${text}".${src}${ctx}
 Дай переклад ${langName} САМЕ ЦЬОГО СЛОВА — не фрази й не речення навколо нього. Речення потрібне лише для того, щоб обрати правильне значення багатозначного слова (bank — банк чи берег) і правильну форму: якщо це форма дієслова — перекладай дієслово, а не однокорінний іменник; зберігай час/особу чи рід/число, де це природно.
 Обирай НАЙТОЧНІШИЙ відповідник, а не найзагальніший. Якщо мова оригіналу має близькі слова, які мовою перекладу звучать по-різному, переклад має їх розрізняти: фр. "sentier" — вузька «стежка», "chemin" — «дорога» або «шлях»; "maison" — «будинок», "foyer" — «домівка, вогнище». Не віддавай два різні слова одним і тим самим загальним словом, якщо є точніше.
 Не замінюй слово перекладом словосполучення, у якому воно стоїть: для "run" у "run the company" пряме значення — "керувати", а не "керувати компанією".
 Якщо в цьому реченні слово є частиною звороту, ідіоми чи фразового дієслова і його значення тут справді інше або ширше, ніж пряме, коротко поясни це в полі "context" (мовою перекладу, напр. «у цьому контексті: керувати компанією» або «у "take care": піклуватися»). Якщо пряме значення вже все пояснює — "context": null. Власні назви не перекладай, якщо в мові перекладу немає усталеної форми.
 Відповідь — ЛИШЕ JSON: {"direct":"переклад слова (1–3 слова)","context":null або "коротке уточнення"}`
-        : `Переклади ${langName} цей фрагмент: "${text}"${ctx ? `
+        : `Переклади ${langName} цей фрагмент: "${text}"${src}${ctx ? `
 Фрагмент — частина речення: "${contextSentence}". Речення дане лише для того, щоб обрати правильні значення й форми; перекладай ТІЛЬКИ фрагмент, без слів з решти речення.` : ''}
 Зроби природний, зв'язний переклад із правильним порядком слів, а не дослівний підрядник. Нічого не додавай і нічого не пропускай. У відповіді — лише переклад, без лапок і пояснень.`;
     if (withAlignment) prompt = prompt.replace('У відповіді — лише переклад, без лапок і пояснень.', '') + `

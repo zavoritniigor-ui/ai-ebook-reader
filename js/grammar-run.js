@@ -90,7 +90,7 @@ function maybeShowPracticeButton() {
             mode,
             lemmas: Array.from(new Set([...focused, ...items].map(it => it.lemma))),
             seenForms: [...focused, ...items].slice(0, 12).map(it => ({ surface: it.surface, lemma: it.lemma })),
-            level: null,
+            level: currentPageCefrLevel(),
             topic: topicInput.value
         };
         try { localStorage.setItem(PRACTICE_TOPIC_STORAGE_KEY, sanitizePracticeTopic(topicInput.value)); } catch (e) { /* not remembered */ }

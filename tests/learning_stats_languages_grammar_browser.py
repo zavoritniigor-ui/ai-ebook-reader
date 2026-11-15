@@ -70,7 +70,16 @@ check('tokenization handles punctuation, compounds, contractions, and OCR noise'
 })()""")
 check('known and unknown CEFR values remain conservative', "cachedCefrLevel('cat','en')==='A1'&&cachedCefrLevel('xylophonic','en')==='unknown'")
 check('the big CEFR lexicon is loaded (CEFR-J / FLELex) and inflected / elided forms reach their lemma', "Object.keys(CEFR_WORDS.en).length>8000&&Object.keys(CEFR_WORDS.fr).length>12000&&lexiconCefrLevel('children','en')==='A1'&&lexiconCefrLevel('went','en')==='A1'&&lexiconCefrLevel('parlons','fr')==='A1'&&lexiconCefrLevel(\"l'amour\",'fr')===lexiconCefrLevel('amour','fr')&&lexiconCefrLevel('amour','fr')!=='unknown'&&lexiconCefrLevel('maisons','fr')==='A1'")
+check('a derived word the lexicon lists keeps its own level (lately B1, not late A1; hardly A2), a verb ending on a listed word is no match (shed is not she), while a plural still reaches its noun (times A1)',
+      "[lexiconCefrLevel('lately','en'),lexiconCefrLevel('shortly','en'),lexiconCefrLevel('hardly','en'),lexiconCefrLevel('shed','en'),lexiconCefrLevel('times','en'),lexiconCefrLevel('bonne','fr')].join()==='B1,B1,A2,B2,A1,A1'||[lexiconCefrLevel('lately','en'),lexiconCefrLevel('shortly','en'),lexiconCefrLevel('hardly','en'),lexiconCefrLevel('shed','en'),lexiconCefrLevel('times','en'),lexiconCefrLevel('bonne','fr')].join()")
 check('simple inflections find the lexicon level (cats -> cat, books -> book), unknown words stay unknown', "lexiconCefrLevel('cats','en')==='A1'&&lexiconCefrLevel('books','en')==='A1'&&lexiconCefrLevel('xylophonics','en')==='unknown'")
+check('practice is pitched at the level of the page: the lowest CEFR level covering 95 % of its words (32 A1 words -> A1; 20 A1 + 12 B2 -> B2; too few words -> no estimate)', """(()=>{
+ const page = words => { state.currentIndex=9; els.pages.innerHTML='<div class="pdf-text-layer"><span>'+words.join(' ')+'</span></div>'; delete learningStatsBook.scopes['pdf:9']; return currentPageCefrLevel(); };
+ const a1 = ['banana', 'band', 'bank', 'baseball', 'bath', 'bathroom', 'beach', 'bean', 'bear', 'because', 'become', 'bedroom', 'beef', 'before', 'begin', 'behind', 'believe', 'bell', 'below', 'beside', 'best', 'better', 'between', 'bicycle', 'bike', 'bird', 'birth', 'birthday', 'biscuit', 'black', 'blank', 'block'], b2 = ['anguish', 'animate', 'arch', 'arctic', 'arena', 'armful', 'arouse', 'arrogant', 'artery', 'artistry', 'aspire', 'assault'];
+ const got = [page(a1), page(a1.slice(0, 20).concat(b2)), page(a1.slice(0, 10))];
+ const line = practiceLevelLine('B2'), fallback = practiceLevelLine(null);
+ return got.join()==='A1,B2,' && line.startsWith('B2 (the CEFR level of the book page') && fallback.startsWith('A2-B1') || JSON.stringify([got, line, fallback]);
+})()""")
 check('understanding by level: every page word is counted under its level, help lowers that level only', """(()=>{
  state.currentIndex=9;els.pages.innerHTML='<div class="pdf-text-layer"><span>cat book cats although ubiquitous xylophonic</span></div>';
  delete learningStatsBook.scopes['pdf:9'];
