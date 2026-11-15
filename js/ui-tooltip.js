@@ -137,7 +137,7 @@ function positionTooltip(clientX, clientY, anchorRect) {
     const margin = 10, gap = 12;
 
     let left = viewLeft, top = viewTop, width = viewWidth, height = viewHeight;
-    if (typeof getReaderWorkspaceRect === 'function' && state.format === 'pdf' && viewWidth > 600) {
+    if (state.format === 'pdf' && viewWidth > 600) {
         const ws = getReaderWorkspaceRect();
         if (ws && ws.width >= 320) {
             left = ws.left;
@@ -366,3 +366,6 @@ function aiErrorView(message, retry, err) {
     if (err && isAiAuthError(err)) box.appendChild(aiUpdateKeyButton());
     return box;
 }
+
+// A side panel opened or closed and the book moved (js/reader-workspace.js): the popup follows it.
+onReaderWorkspaceChanged(() => repositionTooltip());
