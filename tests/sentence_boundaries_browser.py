@@ -53,6 +53,10 @@ check('a tap on «she» takes the quoted sentence with its quotes («"Go." she s
 check('the read-aloud queue for the paragraph has four sentences, not six',
       """(() => { const p = [...els.pages.querySelectorAll('p')].find(e => e.textContent.includes('Smith')); const r = document.createRange(); r.selectNodeContents(p);
          const s = buildSentenceRanges(r).map(x => x.text); return s.length === 4 && s[0].startsWith('Mr. Smith') && s[1] === 'He prayed there for an hour.' || JSON.stringify(s); })()""")
+check('the read-aloud queue ends a sentence at the end of a heading without a full stop (chapter «II» was read and highlighted together with the first sentence — owner, 2026-11-15)',
+      """(() => { const box = document.createElement('div'); box.innerHTML = '<h2>II</h2>\\n<p>I think that at that time none of us quite believed in the Time Machine. The fact is, the Time Traveller was clever.</p><ul><li>one item</li><li>another item</li></ul>';
+         document.body.append(box); const r = document.createRange(); r.selectNodeContents(box); const s = buildSentenceRanges(r).map(x => x.text); box.remove();
+         return JSON.stringify(s) === JSON.stringify(['II', 'I think that at that time none of us quite believed in the Time Machine.', 'The fact is, the Time Traveller was clever.', 'one item', 'another item']) || JSON.stringify(s); })()""")
 check('PDF text layer: sentences from spans keep «M. Dupont» together',
       """(() => { const layer = document.createElement('div'); layer.className = 'pdf-text-layer'; layer.style.cssText = 'position:fixed;left:0;top:0;width:600px;height:40px;';
          ['Voici M.', ' Dupont qui', ' arrive. Il', ' dort.'].forEach((t, i) => { const s = document.createElement('span'); s.textContent = t; s.style.cssText = 'position:absolute;top:10px;font:16px sans-serif;left:' + (i * 110) + 'px'; layer.append(s); });

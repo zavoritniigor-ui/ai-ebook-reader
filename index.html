@@ -720,7 +720,7 @@
            під час читання. Кружечок: пауза/продовження. Стрілки: попереднє/наступне
            речення (переносять підсвітку навіть на паузі, без озвучення). */
         #tts-controls {
-            position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+            position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
             display: none; align-items: center; gap: 26px; z-index: 10600;
             pointer-events: none;
         }
@@ -735,6 +735,10 @@
         }
         #tts-controls button:active { background: rgba(30,30,30,0.6); }
         #tts-toggle { width: 66px; height: 66px; font-size: 20px; }
+        /* Над нижнім рядом, коли він видимий: рядок — капсула 56px на висоті 6px від низу, і пульт (bottom: 26px) лягав
+           на неї, закриваючи номер сторінки й кнопку ✦ (скриншот власника, 2026-11-15). */
+        body.immersive-mode:not(.footer-open):not(.ink-mode):not(.region-mode):has(#page-arrows:not([hidden])) #tts-controls {
+            bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
 
         /* PDF на планшеті й десктопі використовує всю ширину вікна: обмеження 900px і великі
            відступи потрібні для тексту, що переливається, але для сторінки PDF вони лише
@@ -2517,7 +2521,7 @@
     <script src="js/reader-workspace.js?v=8a02f94e18f9"></script>
     <script src="js/lang-detect.js?v=3768a72c132f"></script>
     <script src="js/local-speech.js?v=3c6738acab5e"></script>
-    <script src="js/tts.js?v=3ba445b3ce82"></script>
+    <script src="js/tts.js?v=fdaa91035e21"></script>
     <script src="js/selection.js?v=14c6bb8e9f40"></script>
     <script src="js/selection-pdf-order.js?v=b62369a8164e"></script>
     <script src="js/selection-highlight.js?v=346124f74521"></script>
