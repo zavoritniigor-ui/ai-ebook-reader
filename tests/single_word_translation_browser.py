@@ -91,6 +91,8 @@ check('5 redundant contextual note is omitted', "(%s === 'красивий' && %
 tap('ran', '{"direct":"побіг","context":null}')
 check('6 conjugated form: the selected form is sent with its sentence and its translation is shown',
       "((p => p.includes('Слово \"ran\"') && p.includes('Yesterday he ran to the station'))(%s) && %s === 'побіг') || %s" % (LAST_PROMPT, PRIMARY, PRIMARY))
+check('6b the prompt names the source language: the same spelling is a different word in another language (fr. pain / en. pain)',
+      "(p => p.includes('Мова оригіналу — англійська.'))(%s) || %s" % (LAST_PROMPT, LAST_PROMPT))
 
 # robustness: a reply that ignores the JSON contract is still shown as the translation
 tap('river', 'річка')

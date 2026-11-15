@@ -625,9 +625,15 @@ async function generatePracticeReading(context) {
 // tense / gender / number / structure, as this language actually inflects) plus a few connected
 // paragraphs. The learner's selection only tells us WHICH words to demonstrate — it is often a book
 // exercise, and its layout (blanks, cue verbs in parentheses, numbering) must never be reproduced.
+// What the model is told about the learner's level: the CEFR level of the page being read (js/learning-stats.js), or the
+// old intermediate default when there is none.
+function practiceLevelLine(level) {
+    return /^[ABC][12]$/.test(level || '') ? `${level} (the CEFR level of the book page the learner is reading, by its vocabulary; keep the material at this level)`
+        : 'A2-B1 (assume an intermediate learner unless told otherwise)';
+}
 function buildPracticeReadingPrompt(session, lemmas, langName) {
     const safeLangName = langName || '[unknown language]';
-    const safeLevel = session.level || 'A2-B1 (assume an intermediate learner unless told otherwise)';
+    const safeLevel = practiceLevelLine(session.level);
     const safeSourceLang = session.sourceLanguage || 'unknown';
     // A selection that IS a book exercise is not shown to the model at all: the words and forms above carry
     // everything it needs, and quoting a blank/cue line invites it to imitate that layout.
@@ -741,7 +747,7 @@ function buildRulePracticePrompt(session, langName) {
     const rule = session.rule;
     const lang = session.sourceLanguage || 'unknown';
     const sourceName = LANGUAGE_CONFIG[lang]?.promptName || lang;
-    const safeLevel = session.level || 'A2-B1 (assume an intermediate learner unless told otherwise)';
+    const safeLevel = practiceLevelLine(session.level);
     const per = practiceRulePerTopic(rule);
     const topicLines = rule.topics.map(tp => `- id ${JSON.stringify(tp.id)}, rule ${JSON.stringify(tp.title)}: ${per} example sentences.
   Theory (ground truth): ${JSON.stringify(tp.theory)}${tp.find ? `\n  What counts as this rule in a text: ${JSON.stringify(tp.find)}` : ''}`).join('\n');

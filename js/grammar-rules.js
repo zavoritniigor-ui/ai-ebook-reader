@@ -889,7 +889,7 @@ function startRulePractice(rule, btn) {
     if (inFlight && inFlight.status === 'generating') { minimizeRulesPanel(); displayPracticeSession(inFlight); return; }
     const label = btn.textContent;
     btn.disabled = true; btn.textContent = t('generating');
-    const generating = generatePracticeReading({ sourceLanguage: rulesState.lang, targetLanguage: state.targetLang, bookId: state.bookKey, mode: 'rule', rule, level: null });
+    const generating = generatePracticeReading({ sourceLanguage: rulesState.lang, targetLanguage: state.targetLang, bookId: state.bookKey, mode: 'rule', rule, level: currentPageCefrLevel() });
     minimizeRulesPanel();
     const session = getCurrentPracticeSession();
     if (session) displayPracticeSession(session);

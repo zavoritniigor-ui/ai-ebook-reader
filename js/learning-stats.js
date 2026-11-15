@@ -277,6 +277,11 @@ const CEFR_SUFFIXES = {
         ['ées', 'er'], ['és', 'er'], ['ée', 'er'], ['é', 'er'], ['es', 'er'], ['e', 'er'], ['ent', 're'], ['it', 'ir'], ['is', 'ir'], ['ie', 'ir'],
         ['aux', 'al'], ['euses', 'eux'], ['euse', 'eux'], ['ives', 'if'], ['ive', 'if'], ['ères', 'er'], ['ère', 'er'], ['es', ''], ['s', ''], ['x', ''], ['e', '']]
 };
+// Rules («ending>replacement») that only inflect a noun or adjective (number, gender): the form is the same word as its base.
+const CEFR_SAME_WORD_ENDINGS = {
+    en: new Set(["'s>", 'ies>y', 'ves>f', 'ves>fe', 'es>', 's>']),
+    fr: new Set(['aux>al', 'euses>eux', 'euse>eux', 'ives>if', 'ive>if', 'ères>er', 'ère>er', 'es>', 's>', 'x>', 'e>'])
+};
 const CEFR_IRREGULAR = { en: { children: 'child', men: 'man', women: 'woman', people: 'person', feet: 'foot', teeth: 'tooth', mice: 'mouse',
     was: 'be', were: 'be', is: 'be', are: 'be', am: 'be', been: 'be', has: 'have', had: 'have', did: 'do', does: 'do', went: 'go', gone: 'go',
     said: 'say', made: 'make', took: 'take', taken: 'take', came: 'come', saw: 'see', seen: 'see', knew: 'know', known: 'know', got: 'get',
@@ -308,9 +313,15 @@ function lexiconCefrLevel(normalized, lang) {
         if (m && m[1]) return lexiconCefrLevel(m[1], lang);
     }
     const found = [lexicon[normalized]];
+    const listed = !!lexicon[normalized];
     const irregular = CEFR_IRREGULAR[lang]?.[plain];
     if (irregular) found.push(lexicon[irregular] || (irregular === 'œil' ? lexicon.oeil : undefined));
     else for (const [suffix, repl] of CEFR_SUFFIXES[lang] || []) {
+        // A form the lexicon lists itself keeps its own level, except for a plural / feminine ending (times → time,
+        // maisons → maison: the same word). A derivation is another word with its own level (lately B1, not late A1;
+        // hardly, shortly), and a verb ending on a listed word is mostly a false match (shed → she, seed → see,
+        // former → form) — linguistic review, 2026-11-15.
+        if (listed && !CEFR_SAME_WORD_ENDINGS[lang]?.has(suffix + '>' + repl)) continue;
         if (normalized.length > suffix.length + 1 && normalized.endsWith(suffix)) {
             const base = normalized.slice(0, -suffix.length) + repl;
             if (lexicon[base]) { found.push(lexicon[base]); break; }
@@ -437,6 +448,22 @@ function recordHelpForSpan(span, sourceType = 'phrase_translation') {
 function calculateCurrentPageStats() {
     const page = currentPageVocabulary();
     return statsForOccurrenceIds(page.scope, page.words.map(word => word.id));
+}
+// The CEFR level of the page being read, by lexical coverage: the lowest level such that the words up to it make at least
+// 95 % of the page's words of known level (the coverage at which a text is read with understanding — Laufer 1989, Nation
+// 2006). null with too few levelled words to tell. Practice material is pitched at it (it used to be A2–B1 for everyone,
+// linguistic review 2026-11-15).
+const PAGE_LEVEL_COVERAGE = 0.95, PAGE_LEVEL_MIN_WORDS = 30;
+function currentPageCefrLevel() {
+    try {
+        const levels = calculateCurrentPageStats().levels;
+        const order = CEFR_LEVELS.filter(level => level !== 'unknown');
+        const total = order.reduce((sum, level) => sum + levels[level].total, 0);
+        if (total < PAGE_LEVEL_MIN_WORDS) return null;
+        let covered = 0;
+        for (const level of order) { covered += levels[level].total; if (covered >= total * PAGE_LEVEL_COVERAGE) return level; }
+        return order[order.length - 1];
+    } catch (e) { return null; }   // no book or page laid out yet: no estimate, practice keeps its default
 }
 
 Object.assign(I18N, {
