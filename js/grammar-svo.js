@@ -171,6 +171,7 @@ async function startAiTask(contextText, mode, userPrompt = "") {
 
     panel.classList.remove('ready'); panel.classList.add('loading'); // Вмикаємо червоний неон
     setPanelSubtitle('ask-subtitle', contextText || userPrompt);
+    askSearchText = contextText || userPrompt || askSearchText;
     content.replaceChildren(askRequestView(requestId, aiLoadingHtml(t('generating'), contextText || userPrompt)));
 
     const langName = explainLangName();
@@ -279,3 +280,27 @@ function rangeForSlice(flat, start, end) {
     r.setStart(sN, sO); r.setEnd(eN, eO);
     return r;
 }
+
+// ---- «Пошук в інтернеті» in the Ask AI panel (owner, 2026-11-15: reading old, technical or curious books, a link straight
+// to the browser's search for what caught the reader's interest) ----
+// The query is what the panel was asked about (the selected text or the typed question), else the current selection;
+// at most 300 characters, cut at a word. It opens Google search in a new tab: the system's browser on a phone or tablet
+// (Chrome, Safari…), a new tab on a computer. The text leaves the app only on this tap.
+let askSearchText = '';
+const WEB_SEARCH_MAX = 300;
+function webSearchQuery(text) {
+    let q = String(text || '').replace(/\s+/g, ' ').trim();
+    if (q.length > WEB_SEARCH_MAX) q = q.slice(0, WEB_SEARCH_MAX).replace(/\s+\S*$/, '');
+    return q;
+}
+function webSearchUrl(text) { return 'https://www.google.com/search?q=' + encodeURIComponent(webSearchQuery(text)); }
+document.getElementById('btn-web-search')?.addEventListener('click', () => {
+    const query = webSearchQuery(askSearchText || state.lastSelectedRange?.toString() || '');
+    if (!query) { showToast(t('webSearchNothing')); return; }
+    window.open(webSearchUrl(query), '_blank', 'noopener,noreferrer');
+});
+Object.assign(I18N, {
+    btnWebSearch: { uk: '🔎 Пошук в інтернеті', en: '🔎 Search the web', fr: '🔎 Rechercher sur le web', ru: '🔎 Поиск в интернете', zh: '🔎 网络搜索', ko: '🔎 웹 검색', hi: '🔎 वेब पर खोजें', ga: '🔎 Cuardaigh an gréasán' },
+    tWebSearch: { uk: 'Відкрити пошук Google у браузері за цим текстом', en: 'Open a Google search for this text in the browser', fr: 'Ouvrir une recherche Google sur ce texte dans le navigateur', ru: 'Открыть поиск Google по этому тексту в браузере', zh: '在浏览器中用 Google 搜索这段文字', ko: '브라우저에서 이 텍스트로 Google 검색 열기', hi: 'ब्राउज़र में इस पाठ के लिए Google खोज खोलें', ga: 'Oscail cuardach Google ar an téacs seo sa bhrabhsálaí' },
+    webSearchNothing: { uk: 'Виділіть текст у книзі — його й шукатимемо', en: 'Select some text in the book to search for it', fr: 'Sélectionnez un texte du livre pour le rechercher', ru: 'Выделите текст в книге — его и будем искать', zh: '请先在书中选中要搜索的文字', ko: '검색할 텍스트를 책에서 선택하세요', hi: 'खोजने के लिए किताब में पाठ चुनें', ga: 'Roghnaigh téacs sa leabhar chun é a chuardach' }
+});
