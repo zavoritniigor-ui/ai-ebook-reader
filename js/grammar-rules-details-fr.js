@@ -15,7 +15,8 @@
 Винятки:
 • Неправильні дієслова: être (je suis, nous sommes, ils sont), avoir (j’ai, nous avons, ils ont), aller (je vais, ils vont), faire (vous faites, ils font), dire (vous dites), venir, pouvoir, vouloir, savoir тощо — форми треба вчити.
 • Орфографічні зміни в -er: manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
-• У tu-формі -er дієслів завжди -es (tu parles), але в наказовому способі -s відпадає (parle !).`,
+• У tu-формі -er дієслів завжди -es (tu parles), але в наказовому способі -s відпадає (parle !).
+• Не всі дієслова на -ir відмінюються як finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (без -iss-); ouvrir, offrir, souffrir, cueillir — як -er (j’ouvre, tu ouvres).`,
 `Rules:
 • -er verbs (group 1, the majority): je parle, tu parles, il parle, nous parlons, vous parlez, ils parlent.
 • -ir verbs (finir): je finis, tu finis, il finit, nous finissons, vous finissez, ils finissent.
@@ -24,27 +25,28 @@
 Exceptions:
 • Irregular verbs: être (je suis, nous sommes, ils sont), avoir (j’ai, nous avons, ils ont), aller (je vais, ils vont), faire (vous faites, ils font), dire (vous dites), venir, pouvoir, vouloir, savoir etc. — the forms must be learned.
 • Spelling changes in -er verbs: manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
-• -er verbs take -es in the tu-form but drop the -s in the imperative (parle !).`);
+• -er verbs take -es in the tu-form but drop the -s in the imperative (parle !).
+• Not every -ir verb goes like finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (no -iss-); ouvrir, offrir, souffrir, cueillir go like -er (j’ouvre, tu ouvres).`);
 
     D('passe-compose',
 `Правила:
 • Утворення: avoir (présent) + participe passé: j’ai parlé, tu as fini, il a vendu.
-• З être — дієслова руху й стану (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, devenir, retourner) і ВСІ зворотні дієслова: elle est allée, nous nous sommes levés.
+• З être — лише закритий список дієслів руху й зміни стану (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner) та їхні похідні (devenir, revenir, rentrer, repartir…) і ВСІ зворотні дієслова: elle est allée, nous nous sommes levés. Інші дієслова руху беруть avoir: j’ai couru, il a marché, nous avons voyagé.
 • Participe passé: -er → -é, -ir → -i, -re → -u (parlé, fini, vendu).
 • Заперечення охоплює допоміжне: je n’ai pas parlé.
 Винятки:
 • Неправильні participes: avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • Деякі дієслова руху беруть avoir, коли мають прямий додаток: j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier (але: elle est sortie).
-• Узгодження participe: з être — з підметом (elles sont parties); з avoir — лише з COD перед дієсловом (les lettres qu’il a écrites).`,
+• Узгодження participe: з être — з підметом (elles sont parties); з avoir — лише з COD перед дієсловом (les lettres qu’il a écrites); у зворотних — з COD, коли він перед дієсловом: elle s’est lavée, але elle s’est lavé les mains, ils se sont parlé.`,
 `Rules:
 • Formation: avoir (present) + past participle: j’ai parlé, tu as fini, il a vendu.
-• With être — verbs of motion and state (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, devenir, retourner) and ALL reflexive verbs: elle est allée, nous nous sommes levés.
+• With être — only a closed list of verbs of motion and change of state (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner) and their derivatives (devenir, revenir, rentrer, repartir…) and ALL reflexive verbs: elle est allée, nous nous sommes levés. Other motion verbs take avoir: j’ai couru, il a marché, nous avons voyagé.
 • Participles: -er → -é, -ir → -i, -re → -u (parlé, fini, vendu).
 • The negation wraps the auxiliary: je n’ai pas parlé.
 Exceptions:
 • Irregular participles: avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • Some motion verbs take avoir when they have a direct object: j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier (but: elle est sortie).
-• Agreement: with être the participle agrees with the subject (elles sont parties); with avoir only with a direct object placed BEFORE the verb (les lettres qu’il a écrites).`);
+• Agreement: with être the participle agrees with the subject (elles sont parties); with avoir only with a direct object placed BEFORE the verb (les lettres qu’il a écrites); in reflexives with the direct object when it comes before the verb: elle s’est lavée, but elle s’est lavé les mains, ils se sont parlé.`);
 
     D('imparfait',
 `Правила:
@@ -54,7 +56,7 @@ Exceptions:
 Винятки:
 • Єдине неправильне дієслово — être: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
 • Дієслова на -ger/-cer: nous mangions (але je mangeais), nous commencions (але je commençais) — для збереження вимови.
-• Дієслова на -ier: у nous/vous два i (nous étudiions, vous riiez).
+• Дієслова, основа яких закінчується на -i (étudier, rire): у nous/vous два i (nous étudiions, vous riiez).
 • Не плутайте з conditionnel: закінчення схожі, але в conditionnel є -r- перед ними.`,
 `Rules:
 • Stem = the nous-form of the présent without -ons; endings: -ais, -ais, -ait, -ions, -iez, -aient (nous parlons → je parlais).
@@ -63,7 +65,7 @@ Exceptions:
 Exceptions:
 • The only irregular stem is être: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
 • Verbs in -ger/-cer: nous mangions (but je mangeais), nous commencions (but je commençais) — to keep the pronunciation.
-• Verbs in -ier: two i’s in nous/vous (nous étudiions, vous riiez).
+• Verbs whose stem ends in -i (étudier, rire): two i’s in nous/vous (nous étudiions, vous riiez).
 • Do not confuse with the conditional: the endings are similar, but the conditional has an -r- before them.`);
 
     D('plus-que-parfait',
@@ -102,7 +104,7 @@ Exceptions:
 `Правила:
 • Інфінітив (у -re без -e) + -ai, -as, -a, -ons, -ez, -ont: je parlerai, nous finirons, il vendra.
 • Вживається для майбутньої дії, прогнозів і ввічливих наказів (tu feras attention).
-• Після quand/lorsque/dès que, якщо головне в futur, підрядне також у futur (quand tu arriveras, je partirai) — на відміну від української.
+• Після quand/lorsque/dès que, якщо головне в futur, підрядне також у futur (quand tu arriveras, je partirai) — як і в українській («коли приїдеш, я піду»), але на відміну від англійської (when you arrive).
 Винятки (особливі основи):
 • être → je serai; avoir → j’aurai; aller → j’irai; faire → je ferai; pouvoir → je pourrai; vouloir → je voudrai; savoir → je saurai; voir → je verrai; venir → je viendrai; envoyer → j’enverrai; devoir → je devrai.
 • Після si — не futur, а présent (si tu viens, nous partirons).`,
@@ -137,19 +139,19 @@ Exceptions:
 • Заперечення — навколо aller: je ne vais pas partir.
 Винятки:
 • Не плутати з aller як повноцінним дієсловом руху (je vais à Paris).
-• З дієсловом aller сам futur proche зазвичай не утворюють (краще j’irai ou je vais aller).`,
+• Je vais aller — розмовне й правильне; у письмі частіше простий futur: j’irai.`,
 `Rules:
 • Aller (present) + infinitive: je vais partir, il va pleuvoir, nous allons manger.
 • For imminent or planned events and predictions based on evidence; in speech it often replaces the futur simple.
 • Negation wraps aller: je ne vais pas partir.
 Exceptions:
 • Do not confuse with aller as a full verb of motion (je vais à Paris).
-• With aller itself the futur proche is usually avoided (prefer j’irai or je vais aller).`);
+• Je vais aller is colloquial and correct; in writing the simple future is more usual: j’irai.`);
 
     D('passe-recent',
 `Правила:
 • Venir de (présent) + інфінітив: il vient d’arriver, nous venons de manger.
-• Для дії, яка відбулася щойно; в minulому — venait de + інфінітив (il venait de partir).
+• Для дії, яка відбулася щойно; у минулому — venait de + інфінітив (il venait de partir).
 Винятки:
 • Venir de + іменник/місце означає «приходити з» (je viens de Paris) — це не passé récent.
 • Заперечення зазвичай не вживається; кажуть il n’est pas encore arrivé.`,
@@ -181,7 +183,7 @@ Exceptions:
 • Після si — imparfait, а в головному реченні conditionnel présent.
 Винятки:
 • Ті самі особливі основи, що й у futur: être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
-• Після si ніколи не вживається conditionnel (si j’avais…, а не si j’aurais…).
+• Після si у значенні «якщо» conditionnel не вживається (si j’avais…, а не si j’aurais…); після si = «чи» в непрямому питанні — можна (je me demande s’il viendrait).
 • Для непідтвердженої новини в пресі (le ministre aurait démissionné — нібито).`,
 `Rules:
 • Futur stem + imparfait endings: je parlerais, tu finirais, il serait, nous irions.
@@ -189,7 +191,7 @@ Exceptions:
 • After si — imparfait, with the conditional in the main clause.
 Exceptions:
 • Same irregular stems as the future: être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
-• Never the conditional right after si (si j’avais…, not si j’aurais…).
+• Never the conditional after si meaning «if» (si j’avais…, not si j’aurais…); after si meaning «whether» it is fine (je me demande s’il viendrait).
 • In the press for unconfirmed news (le ministre aurait démissionné — allegedly).`);
 
     D('conditionnel-passe',
@@ -448,7 +450,7 @@ Exceptions:
 Винятки:
 • Подвоєння: bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • Особливі: beau → belle (bel перед голосним), nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
-• Множина: -al → -aux (national → nationaux), beau/nouveau → +x.
+• Множина: -al → -aux (national → nationaux; але banal, final, fatal, naval → -als), beau/nouveau → +x.
 • Незмінні: кольори від іменників (orange, marron), compounds (bleu foncé), demi/nu перед іменником.`,
 `Rules:
 • Feminine is usually +e (petit → petite), plural +s (petits, petites); -s/-x plurals are unchanged (gris, heureux).
@@ -457,7 +459,7 @@ Exceptions:
 Exceptions:
 • Doubling: bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • Special: beau → belle (bel before a vowel), nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
-• Plurals: -al → -aux (national → nationaux), beau/nouveau → +x.
+• Plurals: -al → -aux (national → nationaux; but banal, final, fatal, naval → -als), beau/nouveau → +x.
 • Invariable: colours from nouns (orange, marron), compounds (bleu foncé), demi/nu before the noun.`);
 
     D('place-adjectif',
@@ -484,7 +486,7 @@ Exceptions (meaning changes):
 Винятки:
 • -ail → -ails (des détails), але des travaux, des vitraux, des coraux.
 • Неправильні: un œil → des yeux, monsieur → messieurs, madame → mesdames.
-• Винятки на -al: bal, carnaval, festival, récital — +s; на -ou: bijou, caillou, chou, genou, hibou, joujou, pou — +x.`,
+• Винятки на -al: bal, carnaval, festival, récital — +s; на -eu: pneu, bleu — +s; на -ou: bijou, caillou, chou, genou, hibou, joujou, pou — +x.`,
 `Rules:
 • Usually +s: un livre → des livres; nouns in -s, -x, -z are unchanged: un fils → des fils.
 • -al → -aux (un journal → des journaux); -eau, -eu → +x (un cadeau → des cadeaux, un jeu → des jeux).
@@ -492,11 +494,11 @@ Exceptions (meaning changes):
 Exceptions:
 • -ail → -ails (des détails), but des travaux, des vitraux, des coraux.
 • Irregular: un œil → des yeux, monsieur → messieurs, madame → mesdames.
-• -al exceptions: bal, carnaval, festival, récital — +s; -ou exceptions: bijou, caillou, chou, genou, hibou, joujou, pou — +x.`);
+• -al exceptions: bal, carnaval, festival, récital — +s; -eu exceptions: pneu, bleu — +s; -ou exceptions: bijou, caillou, chou, genou, hibou, joujou, pou — +x.`);
 
     D('genre-noms',
 `Правила:
-• Жіночий: -tion, -sion, -té, -ée (крім musée, lycée), -ure, -ance, -ence, -ie, -ette, -eur (абстрактні: la peur).
+• Жіночий: -tion, -sion, -té, -ée (крім musée, lycée), -ure, -ance, -ence, -ie, -ette, -eur (абстрактні: la peur; але le bonheur, le malheur, l’honneur — чоловічого).
 • Чоловічий: -ment, -age, -eau, -isme, -ier, -oir, -eur (особи: le docteur), назви днів, мов, дерев, металів.
 • Рід треба запам’ятовувати разом із артиклем.
 Винятки:
@@ -505,7 +507,7 @@ Exceptions:
 • Рід змінює значення: le livre (книга) / la livre (фунт), le tour / la tour, le poste / la poste, le mode / la mode.
 • Підступні слова: amour, orgue, délice — чоловічого роду в однині, але жіночого в множині.`,
 `Rules:
-• Feminine: -tion, -sion, -té, -ée (except musée, lycée), -ure, -ance, -ence, -ie, -ette, -eur (abstract: la peur).
+• Feminine: -tion, -sion, -té, -ée (except musée, lycée), -ure, -ance, -ence, -ie, -ette, -eur (abstract: la peur; but le bonheur, le malheur, l’honneur are masculine).
 • Masculine: -ment, -age, -eau, -isme, -ier, -oir, -eur (persons: le docteur), days, languages, trees, metals.
 • Learn the gender with the article.
 Exceptions:
@@ -612,7 +614,7 @@ Exceptions:
 Винятки:
 • Cet — лише перед голосним: cet homme, cet été; але ce héros (h aspiré).
 • У розмові -là часто заміняє -ci взагалі.
-• Ce — також частина c’est/ce sont (займенник), не плутати з ознакою.`,
+• Ce — також частина c’est/ce sont (займенник), не плутати з вказівним прикметником.`,
 `Rules:
 • Ce (masc.), cet (masc. before a vowel/mute h), cette (fem.), ces (plural).
 • For pointing at something in the situation or text; -ci (near) and -là (far) specify: ce livre-ci, cette femme-là.
@@ -628,7 +630,7 @@ Exceptions:
 • Plusieurs, quelques, chaque, certains, divers — без de; chaque тільки в однині.
 • La plupart des, bien des, la moitié de + множина з артиклем: la plupart des gens.
 Винятки:
-• Encore du/de la, un peu de + партитив: un peu de sel.
+• Encore + частковий артикль (encore du pain), але un peu de — без артикля (un peu de sel).
 • Bien du/de la (багато) з партитивом: bien du plaisir.
 • Дієслово після la plupart des, une foule de, un grand nombre de — у множині.
 • Quelques ≠ quelque (одн., «якийсь»): quelque chose, quelque temps.`,
@@ -637,7 +639,7 @@ Exceptions:
 • Plusieurs, quelques, chaque, certains, divers — without de; chaque only in the singular.
 • La plupart des, bien des, la moitié de + plural with article: la plupart des gens.
 Exceptions:
-• Encore du/de la, un peu de + partitive: un peu de sel.
+• Encore + partitive article (encore du pain), but un peu de takes no article (un peu de sel).
 • Bien du/de la (much) with the partitive: bien du plaisir.
 • The verb after la plupart des, une foule de, un grand nombre de — plural.
 • Quelques ≠ quelque (sing. "some"): quelque chose, quelque temps.`);
@@ -687,7 +689,8 @@ Exceptions:
 • -ant → -amment, -ent → -emment: constant → constamment, évident → évidemment.
 Винятки:
 • Неправильні: gentil → gentiment, bref → brièvement, précis → précisément, énorme → énormément, profond → profondément.
-• Bon → bien, mauvais → mal, meilleur → mieux, petit → peu — окремі прислівники.
+• Bon → bien, mauvais → mal, meilleur → mieux — окремі прислівники.
+• Lent → lentement, présent → présentement — не -emment, хоч прикметник на -ent.
 • Деякі прикметники функціонують як прислівники: parler bas, coûter cher, travailler dur.`,
 `Rules:
 • Feminine form of the adjective + -ment: lent → lente → lentement; doux → douce → doucement.
@@ -695,7 +698,8 @@ Exceptions:
 • -ant → -amment, -ent → -emment: constant → constamment, évident → évidemment.
 Exceptions:
 • Irregular: gentil → gentiment, bref → brièvement, précis → précisément, énorme → énormément, profond → profondément.
-• Bon → bien, mauvais → mal, meilleur → mieux, petit → peu — separate adverbs.
+• Bon → bien, mauvais → mal, meilleur → mieux — separate adverbs.
+• Lent → lentement, présent → présentement — not -emment, though the adjective ends in -ent.
 • Some adjectives function as adverbs: parler bas, coûter cher, travailler dur.`);
 
     D('adverbes-places',
@@ -967,7 +971,7 @@ Exceptions:
 Винятки:
 • Mais не ставиться з pourtant у тому ж значенні одночасно.
 • Donc може стояти всередині: je pense donc je suis.
-• Or — «а втім», вводить нову обставину, не «або».
+• Or — «а між тим», «проте»: вводить нову обставину в міркування; це не «або».
 • Car — сурядний сполучник: зазвичай стоїть між двома частинами речення, а не на його початку.`,
 `Rules:
 • Contrast: mais, pourtant, cependant, toutefois, en revanche, au contraire.
@@ -1052,7 +1056,7 @@ Exceptions:
 • Dans + закрите місце (dans la boîte), sur, sous, devant, derrière, entre, chez + особа (chez moi).
 • De/du/des/d’ — звідки: je viens de France, du Canada, des États-Unis, de Paris.
 Винятки:
-• Країни на -e жіночого роду; винятки: le Mexique, le Zaïre, le Cambodge — чоловічі.
+• Країни на -e жіночого роду; винятки: le Mexique, le Mozambique, le Cambodge — чоловічі.
 • Острови: à Cuba, à Malte, en Corse, à Tahiti.
 • Перед голосним: en Iran, en Israël, en Afghanistan (навіть чол. рід).
 • Chez для осіб і закладів: chez le médecin.`,
@@ -1061,7 +1065,7 @@ Exceptions:
 • Dans + enclosed place (dans la boîte), sur, sous, devant, derrière, entre, chez + person (chez moi).
 • De/du/des/d’ — from: je viens de France, du Canada, des États-Unis, de Paris.
 Exceptions:
-• Countries in -e are feminine; exceptions: le Mexique, le Zaïre, le Cambodge — masculine.
+• Countries in -e are feminine; exceptions: le Mexique, le Mozambique, le Cambodge — masculine.
 • Islands: à Cuba, à Malte, en Corse, à Tahiti.
 • Before a vowel: en Iran, en Israël, en Afghanistan (even masculine).
 • Chez for persons and shops: chez le médecin.`);
@@ -1111,7 +1115,7 @@ Exceptions:
 • Артикль зберігається (не змінюється на de), бо це не заперечення.
 Винятки:
 • Seulement/uniquement — синоніми, без ne.
-• У складених часах que — перед обмеженим елементом, не після auxiliary: il n’a mangé que du pain.
+• У складених часах que — перед обмеженим елементом, не одразу після допоміжного дієслова: il n’a mangé que du pain.
 • Ne … pas que — «не тільки»: il n’y a pas que moi.
 • Не плутати з ne … pas: ne … que ствердне за змістом.`,
 `Rules:

@@ -17,8 +17,8 @@
                 ['Je parle français.', 'Nous finissons à six heures.', 'Il fait beau.'],
                 'Highlight every finite verb form conjugated in the present indicative (e.g. "parle", "finissons", "est", "fait"). Include the whole verb for reflexive forms only if contiguous. Do NOT highlight infinitives, participles or verbs in other tenses.'),
             T('passe-compose', 'Le passé composé', 'Складений минулий час (passé composé)', 'Passé composé',
-                'Завершена дія в минулому: avoir або être у présent + participe passé. З être — дієслова руху (aller, venir, partir…) і всі зворотні; participe узгоджується з підметом.',
-                'A completed past action: avoir or être in the present + past participle. With être — verbs of motion (aller, venir, partir…) and all reflexives; the participle agrees with the subject.',
+                'Завершена дія в минулому: avoir або être у présent + participe passé. З être — невеликий закритий список дієслів руху й зміни стану (aller, venir, arriver, partir, naître, mourir, rester, tomber…) і всі зворотні; з être participe зазвичай узгоджується з підметом (у зворотних — за COD, див. зворотні дієслова).',
+                'A completed past action: avoir or être in the present + past participle. With être — a small closed list of verbs of motion and change of state (aller, venir, arriver, partir, naître, mourir, rester, tomber…) and all reflexives; with être the participle usually agrees with the subject (reflexives follow the direct object, see pronominal verbs).',
                 ['Elle a mangé une pomme.', 'Ils sont arrivés hier.', 'Nous nous sommes levés tôt.'],
                 'Highlight each passé composé verb group as ONE contiguous fragment: the auxiliary (avoir/être, present tense) plus the past participle, including a reflexive pronoun and a negation or adverb ONLY if they sit inside the contiguous words (otherwise just auxiliary+participle when adjacent). Skip plus-que-parfait, futur antérieur and passive-voice groups.'),
             T('imparfait', 'L’imparfait', 'Недоконаний минулий (imparfait)', 'Imparfait',
@@ -183,7 +183,7 @@
                 ['Je vais au cinéma.', 'Il parle des enfants.'],
                 'Highlight each contracted article form "au", "aux", "du" (= de+le) or "des" (= de+les) with its noun when they act as contractions of a preposition + article. Skip partitive "du" and indefinite "des".'),
             T('possessifs', 'Les adjectifs possessifs', 'Присвійні прикметники (mon, ma, mes…)', 'Possessive adjectives',
-                'Узгоджуються з ВОЛОДІЄМ (іменником): mon/ma/mes, ton/ta/tes, son/sa/ses, notre/nos, votre/vos, leur/leurs. Перед жіночим словом на голосний — mon (mon amie).',
+                'Узгоджуються з ПРЕДМЕТОМ володіння (іменником), а не з власником: mon/ma/mes, ton/ta/tes, son/sa/ses, notre/nos, votre/vos, leur/leurs. Перед жіночим словом на голосний — mon (mon amie).',
                 'They agree with the thing POSSESSED: mon/ma/mes, ton/ta/tes, son/sa/ses, notre/nos, votre/vos, leur/leurs. Before a feminine word starting with a vowel — mon (mon amie).',
                 ['Ma sœur et son frère.', 'Nos amis.'],
                 'Highlight each possessive adjective with its noun as one fragment.'),
@@ -327,6 +327,22 @@
                 'Highlight each "ne … que" restriction (from "ne/n’" through "que/qu’" and its complement) as one fragment.'),
         ]),
     ];
+
+    // The CEFR level at which each topic is usually taught (CEFR / DELF syllabi): approximate, shown as a badge so the
+    // catalogue reads from simple to hard; to be confirmed by a teacher (linguistic review, 2026-11-15).
+    const LEVELS = {
+        'present': 'A1', 'passe-compose': 'A2', 'imparfait': 'A2', 'plus-que-parfait': 'B1', 'passe-simple': 'B2', 'futur-simple': 'A2',
+        'futur-anterieur': 'B2', 'futur-proche': 'A1', 'passe-recent': 'A2', 'en-train-de': 'A2', 'conditionnel-present': 'B1', 'conditionnel-passe': 'B2',
+        'hypothese-si': 'B1', 'subjonctif-present': 'B1', 'subjonctif-passe': 'B2', 'imperatif': 'A1', 'infinitif': 'A2', 'participe-present-gerondif': 'B1',
+        'voix-passive': 'B1', 'verbes-pronominaux': 'A2', 'verbes-modaux': 'A1', 'concordance-temps': 'B2', 'discours-indirect': 'B1', 'accord-participe-etre': 'A2',
+        'accord-participe-avoir': 'B1', 'accord-adjectif': 'A1', 'place-adjectif': 'A1', 'pluriel-noms': 'A1', 'genre-noms': 'A1', 'article-defini': 'A1',
+        'article-indefini': 'A1', 'article-partitif': 'A1', 'contractions': 'A1', 'possessifs': 'A1', 'demonstratifs': 'A1', 'quantite': 'A1',
+        'comparatif': 'A2', 'superlatif': 'A2', 'adverbes-ment': 'A2', 'adverbes-places': 'B1', 'pronoms-sujets': 'A1', 'pronoms-cod': 'A2',
+        'pronoms-coi': 'A2', 'pronoms-y-en': 'B1', 'pronoms-relatifs': 'A2', 'pronoms-toniques': 'A1', 'double-pronoms': 'B1', 'pronoms-interrogatifs': 'A1',
+        'negation': 'A1', 'interrogation': 'A1', 'mise-en-relief': 'B1', 'conjonctions-subordination': 'B1', 'connecteurs-logiques': 'B1', 'proposition-relative': 'B1',
+        'depuis-il-y-a-pendant': 'A2', 'marqueurs-temps': 'A1', 'prepositions-lieu': 'A1', 'a-de-en': 'A2', 'expressions-cause-but': 'B1', 'ne-que-restriction': 'A2'
+    };
+    for (const section of sections) for (const topic of section.topics) topic.level = LEVELS[topic.id] || null;
 
     const catalogue = window.GRAMMAR_RULES || (window.GRAMMAR_RULES = {});
     catalogue.fr = { language: 'fr', sections };
