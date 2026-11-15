@@ -207,7 +207,7 @@ const I18N_ES = {
     mMarginNarrow: "Estrechos", mMarginNormal: "Normales", mMarginWide: "Anchos",
     mAlign: "Alineación", mAlignDesc: "Un borde derecho uniforme o natural",
     mAlignJustify: "Justificada", mAlignLeft: "A la izquierda",
-    mHyphens: "División de palabras", mHyphensDesc: "Divide las palabras largas para que no queden huecos en las líneas",
+    mFullscreen: "Pantalla completa", mFullscreenDesc: "Sin barra de estado ni botones del sistema; desliza desde el borde para verlos", mHyphens: "División de palabras", mHyphensDesc: "Divide las palabras largas para que no queden huecos en las líneas",
     mFontSizeDesc: "Más pequeño o más grande: texto y páginas PDF",
     mPdfFit: "Ajuste de página PDF",
     mPdfFitDesc: "Cómo se ajusta la página a la pantalla",

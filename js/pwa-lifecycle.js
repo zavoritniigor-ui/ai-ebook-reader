@@ -405,3 +405,51 @@ window.addEventListener('load', () => { document.body.inert = false; }, { once: 
 // The menu's «Оновити» and «Вийти» (moved from js/main.js, 2026-11-14: the actions live here).
 document.getElementById('btn-update-app').addEventListener('click', () => updateApp());
 document.getElementById('btn-exit-app').addEventListener('click', () => exitApp());
+
+// ---------- Full screen on phones and tablets (owner, 2026-11-15: «відкривався на весь екран … при цьому легко переходив
+// в режим з доступними системними кнопками») ----------
+// The menu switch «На весь екран» is the reader's wish, remembered; on a touch device it is on by default. A browser
+// enters full screen only from a gesture, so a wished-for full screen starts at the first tap (and again at the first tap
+// after the system took it away — the Back gesture, a file picker). The system bars stay one swipe away: Android shows
+// them over the page for a moment on a swipe from the edge. The switch off keeps them for good. iPhone Safari cannot
+// hide them at all: no switch there.
+const FULLSCREEN_KEY = 'reader_fullscreen';
+const fullscreenBtn = document.getElementById('btn-fullscreen');
+const fullscreenRoot = document.documentElement;
+const fullscreenSupported = !!(fullscreenRoot.requestFullscreen || fullscreenRoot.webkitRequestFullscreen);
+function fullscreenActive() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function fullscreenWanted() {
+    const stored = readStored(FULLSCREEN_KEY);
+    return stored === null ? matchMedia('(pointer: coarse)').matches : stored === '1';
+}
+function enterFullscreen() {
+    const request = fullscreenRoot.requestFullscreen || fullscreenRoot.webkitRequestFullscreen;
+    try { const pending = request.call(fullscreenRoot, { navigationUI: 'hide' }); pending?.catch?.(() => {}); } catch (e) {}
+}
+function exitFullscreen() {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    try { const pending = exit?.call(document); pending?.catch?.(() => {}); } catch (e) {}
+}
+function syncFullscreenSwitch() { setMenuSwitch(fullscreenBtn, fullscreenActive() || (fullscreenSupported && fullscreenWanted())); }
+if (fullscreenBtn) fullscreenBtn.hidden = !fullscreenSupported;
+// The first tap after launch (or after the system left full screen) enters it when the reader wants it.
+// click: it carries the user's gesture on every device (a mouse's gesture is its press, a finger's its lift).
+document.addEventListener('click', (e) => {
+    if (!fullscreenSupported || fullscreenActive() || !fullscreenWanted()) return;
+    if (e.target.closest?.('#btn-fullscreen')) return;   // the switch decides for itself
+    enterFullscreen();
+}, { capture: true });
+fullscreenBtn?.addEventListener('click', () => {
+    const on = !(fullscreenActive() || fullscreenWanted());
+    writeStored(FULLSCREEN_KEY, on ? '1' : '0');
+    if (on) enterFullscreen(); else exitFullscreen();
+    syncFullscreenSwitch();
+});
+document.addEventListener('fullscreenchange', syncFullscreenSwitch);
+document.addEventListener('webkitfullscreenchange', syncFullscreenSwitch);
+syncFullscreenSwitch();
+Object.assign(I18N, {
+    mFullscreen: { uk: 'На весь екран', en: 'Full screen', fr: 'Plein écran', ru: 'На весь экран', zh: '全屏', ko: '전체 화면', hi: 'पूर्ण स्क्रीन', ga: 'Lánscáileán' },
+    mFullscreenDesc: { uk: 'Без рядка стану й системних кнопок; вони з’являються, якщо провести пальцем від краю', en: 'No status bar or system buttons; swipe from the edge to show them', fr: 'Sans barre d’état ni boutons système ; balayez depuis le bord pour les afficher', ru: 'Без строки состояния и системных кнопок; они появляются, если провести пальцем от края', zh: '隐藏状态栏和系统按钮；从屏幕边缘滑动即可显示', ko: '상태 표시줄과 시스템 버튼 없이; 가장자리에서 밀면 나타납니다', hi: 'स्टेटस बार और सिस्टम बटन के बिना; किनारे से स्वाइप करने पर दिखते हैं', ga: 'Gan barra stádais ná cnaipí córais; svaidhpeáil ón imeall chun iad a thaispeáint' }
+});
+applyI18n();
