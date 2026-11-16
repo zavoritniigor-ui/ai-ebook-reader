@@ -135,7 +135,7 @@ function grammarRuleFromFeatures(pos, lang, features) {
     const f = features || {}, alias = GRAMMAR_RULE_ALIASES[lang] || {};
     const slug = v => stripGrammarAccents(String(v || '')).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     // mood + tense first: «subjonctif» + «présent» is the subjunctive's topic, not the present indicative's.
-    const tries = pos === 'verb' ? [slug((f.mood || '') + ' ' + (f.tense || '')), slug(f.tense), slug(f.mood)] : [slug(f.degree), lang === 'fr' ? 'accord-adjectif' : ''];
+    const tries = pos === 'verb' ? [slug((f.mood || '') + ' ' + (f.tense || '')), slug(f.tense), slug(f.mood)] : pos === 'adjective' ? [slug(f.degree), lang === 'fr' ? 'accord-adjectif' : ''] : pos === 'noun' && lang === 'fr' ? ['genre-noms'] : [];
     for (const id of tries) {
         const hit = id && (grammarRuleTopic(lang, id) || grammarRuleTopic(lang, alias[id]));
         if (hit) return hit.id;

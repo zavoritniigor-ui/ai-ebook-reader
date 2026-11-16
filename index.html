@@ -1446,6 +1446,9 @@
         .grammar-mode-bar { --sel-bg: color-mix(in srgb, var(--accent-color) 14%, transparent); --sel-ring: color-mix(in srgb, var(--accent-color) 50%, transparent);
             display: flex; gap: 2px; margin: 14px 16px 0; padding: 3px; flex-shrink: 0; background: var(--surface-2); border: 1px solid var(--border-color); border-radius: 12px; }
         .grammar-mode-btn { flex: 1; height: 36px; padding: 0 10px; background: transparent; color: var(--text-muted); border: 0; border-radius: 9px; font-size: 14px; font-weight: 650; cursor: pointer; }
+        .grammar-mode-btn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .grammar-words-heading { margin: 14px 2px 6px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+        .grammar-words-heading:first-child { margin-top: 2px; }
         .grammar-mode-btn:hover { color: var(--text-color); background: var(--hover-color); }
         .grammar-mode-btn.active { background: var(--panel-bg); color: var(--accent-color); box-shadow: 0 1px 3px rgba(var(--shadow-color),0.14), 0 0 0 1px var(--sel-ring); }
         .grammar-controls-bar { flex-shrink: 0; display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 16px 0; }
@@ -2363,6 +2366,7 @@
                      interface language — see GRAMMAR_LANG_CONFIG in js/core-languages.js. -->
                 <button type="button" id="grammar-mode-verbs" class="grammar-mode-btn active">Verbs</button>
                 <button type="button" id="grammar-mode-adjectives" class="grammar-mode-btn">Adjectives</button>
+                <button type="button" id="grammar-mode-words" class="grammar-mode-btn">…</button>
             </div>
             <!-- A verb/adjective typed by the learner (usually in their own language) -> its paradigm in the studied
                  language (grammar-svo.js runGrammarLookup). Placeholder/labels set by renderGrammarLookupLabels(). -->
@@ -2518,7 +2522,7 @@
 
     <script src="js/core.js?v=3e90670108a2"></script>
     <script src="js/core-text-layout.js?v=df6f05d756f5"></script>
-    <script src="js/core-languages.js?v=4442bef3476d"></script>
+    <script src="js/core-languages.js?v=646363efe954"></script>
     <script src="js/core-state.js?v=07d3c684b7e7"></script>
     <script src="js/core-voices.js?v=9aaa5ed7c1be"></script>
     <script src="js/core-i18n.js?v=5d98b07e2135"></script>
@@ -2542,17 +2546,18 @@
     <script src="js/dictionaries.js?v=a8f7f2bcfc69"></script>
     <script src="js/sentence-structure.js?v=0298d4936b94"></script>
     <script src="js/grammar-svo.js?v=71e2933fa6dd"></script>
-    <script src="js/grammar-analysis.js?v=319c7950932c"></script>
+    <script src="js/grammar-analysis.js?v=13c549d9d4a9"></script>
     <script src="js/grammar-prompts.js?v=b8ce940557e3"></script>
-    <script src="js/grammar-panel.js?v=c717d5cde144"></script>
+    <script src="js/grammar-panel.js?v=ea7ff558df12"></script>
     <script src="js/grammar-lookup.js?v=4e4c66f5ac2d"></script>
     <script src="js/grammar-run.js?v=ea4f7c56455d"></script>
+    <script src="js/grammar-words.js?v=01969adc179b"></script>
     <script src="js/grammar-rules-data-fr.js?v=e4eef924c451"></script>
     <script src="js/grammar-rules-data-en.js?v=a4a30c2f7c9b"></script>
     <script src="js/grammar-rules-details-fr.js?v=bd68edade9ea"></script>
     <script src="js/grammar-rules-details-en.js?v=157ba2d913ac"></script>
     <script src="js/grammar-rules.js?v=f16ff792506a"></script>
-    <script src="js/ai-client.js?v=40d14c25edbd"></script>
+    <script src="js/ai-client.js?v=56701a7e0da7"></script>
     <script src="js/translation-ai.js?v=f0bd91a04d26"></script>
     <script src="js/practice-session.js?v=e02299a74183"></script>
     <script src="js/practice-worksheet.js?v=2a1703c1bec7"></script>
@@ -2587,6 +2592,6 @@
     <script src="js/main.js?v=91979c8ab197"></script>
     <script src="js/demo-textbook.js?v=80989cb9621d"></script>
     <script src="js/pwa-lifecycle.js?v=12a15e74c19a"></script>
-    <script src="js/i18n-es.js?v=2c89a9f406b2"></script>
+    <script src="js/i18n-es.js?v=19aa2db0758d"></script>
 </body>
 </html>

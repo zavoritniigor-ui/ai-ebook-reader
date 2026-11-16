@@ -91,7 +91,7 @@ const I18N_ES = {
     rulesBgStarted: 'Buscando reglas en la selección… Cuando el botón Reglas se ponga verde, tócalo otra vez.',
     rulesBgWait: 'Todavía buscando: espera a que el botón Reglas se ponga verde.', rulesPillRunning: 'Buscando…', rulesPillReady: 'Encontrado: {n}',
     rulesPillFailed: 'Error', rulesDetails: 'En detalle: reglas y excepciones', rulesException: 'Excepción', rulesExceptionsCount: 'excepciones: {n}',
-    wheelRules: 'Reglas', grammarWhy: 'Por qué', grammarRuleOpen: 'Abrir la regla', grammarAbout: 'Sobre la palabra', grammarAgreesWith: 'Concuerda con', grammarNoParadigm: 'no hay tabla de formas disponible',
+    wheelRules: 'Reglas', grammarWhy: 'Por qué', grammarEmptyWords: 'No se encontraron palabras de este tipo en esta selección.', grammarRelatesTo: 'Va con', grammarNounLearn: '«{word}» es {gender}. El género se aprende con el artículo: {article} {word}.', grammarNounEnding: '«{word}» es {gender}: los sustantivos en -{ending} suelen serlo.', grammarWordsHint: 'Sustantivos y su género, artículos, pronombres, preposiciones', grammarRuleOpen: 'Abrir la regla', grammarAbout: 'Sobre la palabra', grammarAgreesWith: 'Concuerda con', grammarNoParadigm: 'no hay tabla de formas disponible',
     grammarUnsupportedLanguage: 'El análisis gramatical todavía no está disponible para este idioma.',
     aiTruncated: 'La respuesta de la IA se cortó. Selecciona menos texto e inténtalo de nuevo.',
     grammarPartial: 'Análisis parcial: la respuesta de la IA se cortó. Selecciona menos texto para un análisis completo.',
