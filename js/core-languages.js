@@ -51,7 +51,7 @@ const TARGET_LANGUAGE_CODES = Object.keys(LANGUAGE_CONFIG);
 // categories check hasGrammarConfig() first.
 const GRAMMAR_LANG_CONFIG = {
     en: {
-        labels: { verbs: 'Verbs', adjectives: 'Adjectives' },
+        labels: { verbs: 'Verbs', adjectives: 'Adjectives', words: 'Other words' },
         verb: {
             features: ['tense', 'aspect', 'person', 'number', 'auxiliary'],
             // Features whose bare value is not self-explanatory on a chip ("has" alone could be anything):
@@ -88,7 +88,7 @@ const GRAMMAR_LANG_CONFIG = {
         // Dictionary forms are lower case, but headings in books are ALL CAPS ("PRÉPARER LES TRAVAUX"): a model echoing
         // the capitals as the lemma must not create a second card next to "préparer".
         lemmaCase: 'lower',
-        labels: { verbs: 'Verbes', adjectives: 'Adjectifs' },
+        labels: { verbs: 'Verbes', adjectives: 'Adjectifs', words: 'Autres mots' },
         verb: {
             features: ['tense', 'mood', 'person', 'number', 'auxiliary', 'participle'],
             // "être" / "allé" alone beside "3e personne" do not say WHICH role they play in a compound tense.
@@ -183,7 +183,7 @@ const GRAMMAR_LANG_CONFIG = {
         }
     },
     uk: {
-        labels: { verbs: 'Дієслова', adjectives: 'Прикметники' },
+        labels: { verbs: 'Дієслова', adjectives: 'Прикметники', words: 'Інші слова' },
         verb: {
             features: ['aspect', 'tense', 'mood', 'person', 'number', 'gender'],
             tenses: [
@@ -204,7 +204,7 @@ const GRAMMAR_LANG_CONFIG = {
         }
     },
     ru: {
-        labels: { verbs: 'Глаголы', adjectives: 'Прилагательные' },
+        labels: { verbs: 'Глаголы', adjectives: 'Прилагательные', words: 'Другие слова' },
         verb: {
             features: ['aspect', 'tense', 'mood', 'person', 'number', 'gender'],
             tenses: [
@@ -225,7 +225,7 @@ const GRAMMAR_LANG_CONFIG = {
         }
     },
     zh: {
-        labels: { verbs: '动词', adjectives: '形容词' },
+        labels: { verbs: '动词', adjectives: '形容词', words: '其他词' },
         verb: {
             features: ['aspect'],
             tenses: [
@@ -237,7 +237,7 @@ const GRAMMAR_LANG_CONFIG = {
         adjective: { features: ['degree'], forms: [] }
     },
     ko: {
-        labels: { verbs: '동사', adjectives: '형용사' },
+        labels: { verbs: '동사', adjectives: '형용사', words: '그 밖의 말' },
         verb: {
             features: ['tense', 'honorific'],
             tenses: [
@@ -248,7 +248,7 @@ const GRAMMAR_LANG_CONFIG = {
         adjective: { features: ['tense', 'honorific'], forms: [] }
     },
     hi: {
-        labels: { verbs: 'क्रिया', adjectives: 'विशेषण' },
+        labels: { verbs: 'क्रिया', adjectives: 'विशेषण', words: 'अन्य शब्द' },
         verb: {
             features: ['tense', 'aspect', 'gender', 'number', 'person'],
             tenses: [
@@ -266,7 +266,7 @@ const GRAMMAR_LANG_CONFIG = {
     },
     es: {
         lemmaCase: 'lower',
-        labels: { verbs: 'Verbos', adjectives: 'Adjetivos' },
+        labels: { verbs: 'Verbos', adjectives: 'Adjetivos', words: 'Otras palabras' },
         verb: {
             features: ['tense', 'mood', 'person', 'number'],
             tenses: [
@@ -287,7 +287,7 @@ const GRAMMAR_LANG_CONFIG = {
         }
     },
     ga: {
-        labels: { verbs: 'Briathra', adjectives: 'Aidiachtaí' },
+        labels: { verbs: 'Briathra', adjectives: 'Aidiachtaí', words: 'Focail eile' },
         verb: {
             features: ['tense', 'mood', 'person', 'number'],
             tenses: [

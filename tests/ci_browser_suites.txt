@@ -128,6 +128,7 @@ tests/grammar_rules_browser.py
 tests/rules_practice_browser.py
 tests/grammar_rule_link_browser.py
 tests/grammar_labels_browser.py
+tests/grammar_words_browser.py
 tests/verb_endings_browser.py
 tests/grammar_person_highlight_browser.py
 tests/sentence_structure_languages_browser.py
