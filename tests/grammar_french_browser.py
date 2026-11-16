@@ -788,7 +788,7 @@ c.js(r"""(()=>{
     return true;})()""")
 c.js("window.__sess=generatePracticeReading({sourceText:%s,sourceLanguage:'fr',targetLanguage:'en',mode:'verbs',bookId:'fr-acceptance',lemmas:['être','chanter']})" % json.dumps(S2, ensure_ascii=False))
 check("Practice generation completes and the session is ready", "getCurrentPracticeSession()?.status==='ready'", timeout=6)
-pr = c.js("__calls.at(-1).prompt")
+pr = c.js("__calls.find(x=>x.task==='practice_reading').prompt")   # the reading request; a proofreading request follows it
 assert 'language code "fr"' in pr and '"occurrence": 1' in pr and 'never mark a word of any other part of speech' in pr and json.dumps(S2, ensure_ascii=False) in pr
 print('PASS the Practice prompt states the language by name+code, asks for occurrence, forbids other parts of speech, and quotes the source as data')
 c.js("displayPracticeSession(getCurrentPracticeSession())")

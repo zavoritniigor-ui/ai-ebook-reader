@@ -233,13 +233,16 @@ close_ui()
 select_between(FR[0], EN[-1])
 press_grammar()
 install_grammar_and_practice(delay_ms=500)   # a realistic network delay so both clicks land while still 'generating'
-n0 = c.js("__calls.length")
+READS = "__calls.filter(x=>x.task==='practice_reading').length"   # one reading request; its proofreading request is counted apart
+n0 = c.js(READS)
 c.js("document.querySelector('.grammar-practice-btn').scrollIntoView({block:'center'}); 1"); time.sleep(0.3)   # a long card list: scroll to the button first
 b = c.js("(()=>{const e=document.querySelector('.grammar-practice-btn'); const r=e.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}})()")
 mouse('mousePressed', b['x'], b['y'], 1); mouse('mouseReleased', b['x'], b['y'])
 mouse('mousePressed', b['x'], b['y'], 1); mouse('mouseReleased', b['x'], b['y'])   # immediate second click
 c.wait("getCurrentPracticeSession()?.status==='ready'", timeout=10)
-assert c.js("__calls.length") - n0 == 1, ('a fast double-click must fire exactly ONE provider request, not two', c.js("__calls.length") - n0)
+assert c.js(READS) - n0 == 1, ('a fast double-click must fire exactly ONE reading request, not two', c.js(READS) - n0)
+assert c.js("__calls.filter(x=>x.task==='practice_review').length") <= c.js(READS), 'never more than one proofreading request per reading'
+
 print("PASS 1c: a duplicate click while Practice is already generating starts NO second provider request", flush=True)
 install_grammar_and_practice()   # restore the no-delay mock for the rest of the suite
 
