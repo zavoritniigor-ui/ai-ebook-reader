@@ -7,7 +7,7 @@ commit message and the PR.
 
 ## Shape
 
-- **No build step.** `index.html` (markup + CSS) loads the vendor scripts and ~59 classic `<script src="js/…?v=hash">`
+- **No build step.** `index.html` (markup + CSS) loads the vendor scripts and ~58 classic `<script src="js/…?v=hash">`
   files in a fixed order. Static hosting on Cloudflare Pages; a few Pages Functions in `functions/api/`.
 - **Classic scripts, shared globals.** Every module declares top-level functions and `let`/`const` as globals; there
   are no ES modules (PDF.js is the only `type="module"` script). A top-level statement may only call names from files
@@ -25,7 +25,7 @@ Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.
 `selection-drag` → `cefr-lexicon-data` → `learning-stats` →
 `reading-ribbon` → `book-marks` → `navigation` → `pdf-zoom-pan` → `ui-tooltip` → `translation` → `dictionaries` →
 `sentence-structure` → `grammar-svo` → `grammar-analysis` → `grammar-prompts` → `grammar-panel` → `grammar-lookup` →
-`grammar-run` → `grammar-words` → `grammar-rules-data-fr/en` → `grammar-rules-details-fr/en` → `grammar-rules` →
+`grammar-run` → `grammar-rules-data-fr/en` → `grammar-rules-details-fr/en` → `grammar-rules` →
 `ai-client` → `practice-session` → `practice-worksheet` → `dictation` → `offline-catalog` → `offline-dict-catalog` →
 `offline-translate` → `offline-dict` → `device-llm-catalog` → `device-llm` → `pdf-ink` → `text-ink` → `pdf-crop` →
 `pdf-outline` → `pdf-thumbnails` → `pdf-continuous` → `pdf-contrast` → `publication-files` → `pdf-render` →
@@ -98,7 +98,6 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `grammar-svo.js` | Ask AI / Language level tasks, `startAiTask`, `flattenRange` |
 | `grammar-analysis.js`, `grammar-prompts.js` | Grammar analysis (prompt, `normalizeGrammarAnalysis`, verb endings); Ask AI and level prompts |
 | `grammar-panel.js`, `grammar-lookup.js`, `grammar-run.js` | Grammar panel rendering and `focusGrammarItem`; «your own word» lookup; `runGrammarAnalysis`, Practice button |
-| `grammar-words.js` | Grammar panel, third tab: nouns (gender), determiners, pronouns and prepositions of the sentence |
 | `sentence-structure.js` | sentence parts coloured in the text |
 | `grammar-rules.js` (+ `grammar-rules-data-*`, `grammar-rules-details-*`) | Rules panel: catalog and rules found on the page |
 | `practice-session.js`, `practice-worksheet.js` | Practice: generated readings and the workspace |

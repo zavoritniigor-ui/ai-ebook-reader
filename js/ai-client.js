@@ -63,8 +63,6 @@ const OPENAI_TASK_PROFILES = {
     grammar_paradigm: { reasoning: 'none', max_output_tokens: 250, stream: false },
     // Grammar lookup: a verb/adjective typed by the learner (usually in their own language) -> its lemma + one paradigm.
     grammar_lookup: { reasoning: 'none', max_output_tokens: 500, stream: false },
-    // Grammar, third tab (js/grammar-words.js): nouns, determiners, pronouns and prepositions of the sentence.
-    grammar_words: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     // Grammar rules panel (js/grammar-rules.js): find a rule's occurrences in the visible page text; explain one by theory.
     rules_search: { reasoning: 'low', max_output_tokens: 3000, stream: false },
     rules_explain: { reasoning: 'low', max_output_tokens: 900, stream: false },
@@ -235,7 +233,7 @@ function aiCanAnswer() { return aiAvailable() || (typeof deviceLlmReady === 'fun
 // every request was too slow.
 // No usable Groq key at all: the request goes where it went before -- OpenAI for the deeper tasks below, else the ACTIVE provider.
 // Routing 'off': the single active provider, no fallback.
-const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'grammar_lookup', 'grammar_words', 'practice_reading', 'practice_review', 'sentence_structure', 'structure_deep',
+const AI_ROUTE_OPENAI_TASKS = new Set(['grammar', 'grammar_analysis', 'grammar_paradigm', 'grammar_lookup', 'practice_reading', 'practice_review', 'sentence_structure', 'structure_deep',
     'rules_search', 'rules_explain', 'language_level', 'ask']);
 function aiProviderForTask(task) {
     const active = state.activeAiProvider;
@@ -579,7 +577,7 @@ function groqNoteLimit(err) {
 const groqCoolingDown = () => Date.now() < groqCooldownUntil;
 const groqLimitedRecently = () => Date.now() - groqLimitedAt < 60000;   // for the note beside the backup's mark
 // With OpenAI as a backup, Groq is not waited for as long as a slow provider would be: past this it counts as "not answering".
-const GROQ_FIRST_TIMEOUT_MS = { translation: 3000, practice_reading: 60000, practice_review: 20000, rules_search: 30000, grammar_analysis: 30000, grammar_words: 30000, sentence_structure: 30000 };
+const GROQ_FIRST_TIMEOUT_MS = { translation: 3000, practice_reading: 60000, practice_review: 20000, rules_search: 30000, grammar_analysis: 30000, sentence_structure: 30000 };
 function groqFirstTimeout(task) { return GROQ_FIRST_TIMEOUT_MS[task] || 20000; }
 
 // Groq streams like OpenAI for the reading tasks that show their answer as it is written (Ask AI, language level: the task's
