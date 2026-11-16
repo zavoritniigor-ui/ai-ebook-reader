@@ -251,6 +251,30 @@ function grammarFormLabel(pos, langCode, formId) {
     return match ? match.label : formId;
 }
 
+// A feature badge in ONE language -- the language being studied, as its own grammars name things. The model answers
+// «3e personne» beside «singular» in one card; person, number, gender and mood are closed sets, so they are named here,
+// whatever spelling arrived. Anything else (a tense, an unknown value, a language without a table) is shown as it came.
+const GRAMMAR_VALUE_LABELS = {
+    fr: { person: ['1re personne', '2e personne', '3e personne'], sing: 'singulier', plur: 'pluriel', masc: 'masculin', fem: 'féminin', ofNumber: n => ' du ' + n,
+        mood: [[/^indica/i, 'indicatif'], [/^subj/i, 'subjonctif'], [/^condi/i, 'conditionnel'], [/^imp[ée]rat/i, 'impératif'], [/^infini/i, 'infinitif'], [/^partici/i, 'participe']] },
+    en: { person: ['1st person', '2nd person', '3rd person'], sing: 'singular', plur: 'plural', masc: 'masculine', fem: 'feminine', ofNumber: n => ' ' + n,
+        mood: [[/^indica/i, 'indicative'], [/^subj/i, 'subjunctive'], [/^condi/i, 'conditional'], [/^imp[ée]rat/i, 'imperative'], [/^infini/i, 'infinitive'], [/^partici/i, 'participle']] }
+};
+function grammarFeatureLabel(key, value, langCode, features) {
+    const L = GRAMMAR_VALUE_LABELS[langCode], v = String(value == null ? '' : value).trim();
+    if (!L || !v) return v;
+    const number = /^(?:s\b|sing)/i.test(v) || /\bsing/i.test(v) ? L.sing : /^(?:p\b|pl\b|plur)/i.test(v) || /\bplur/i.test(v) ? L.plur : '';
+    if (key === 'person') {
+        const n = v.match(/[123]/);
+        if (!n) return v;
+        return L.person[Number(n[0]) - 1] + (number && !(features && features.number) ? L.ofNumber(number) : '');   // the number only when no badge of its own carries it
+    }
+    if (key === 'number') return number || v;
+    if (key === 'gender') return /^(?:m\b|masc)/i.test(v) ? L.masc : /^(?:f\b|f[ée]m)/i.test(v) ? L.fem : v;
+    if (key === 'mood') { const hit = L.mood.find(([re]) => re.test(v)); return hit ? hit[1] : v; }
+    return v;
+}
+
 // Renders the detail card for ONE focused occurrence: surface/lemma, its feature
 // badges, a stem/ending pattern when linguistically valid, a form/paradigm grid
 // (the row matching THIS form highlighted, derived transformations shown), the source
@@ -306,7 +330,8 @@ function renderGrammarFocusDetail(item, langCode) {
             badge.className = 'grammar-badge';
             badge.title = key;
             badge.dataset.feature = key;
-            badge.textContent = featureLabels[key] ? featureLabels[key] + ': ' + value : String(value);
+            const shown = grammarFeatureLabel(key, value, langCode, item.features);
+            badge.textContent = featureLabels[key] ? featureLabels[key] + ': ' + shown : shown;
             badges.appendChild(badge);
         }
         detail.appendChild(badges);
@@ -353,13 +378,23 @@ function renderGrammarFocusDetail(item, langCode) {
         }
         const grid = document.createElement('div');
         grid.className = 'grammar-focus-grid';
-        for (const [id, formValue] of Object.entries(item.forms)) {
+        // One table, one way of writing a row: when some rows carry their subject («j'avais téléphoné») and others do not
+        // («avait téléphoné»), the missing ones get it. An imperative has no subject, and a table without any is left alone.
+        const cells = Object.values(item.forms).map(v => String(v || ''));
+        const addSubject = item.pos === 'verb' && cells.some(v => GRAMMAR_SUBJECT_RE.test(v.trim())) && cells.some(v => v.trim() && !GRAMMAR_SUBJECT_RE.test(v.trim()))
+            && !/imp[ée]rat/i.test((item.paradigmLabel || '') + ' ' + ((item.features && (item.features.tense + ' ' + item.features.mood)) || ''));
+        for (const [id, rawValue] of Object.entries(item.forms)) {
+            const raw = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+            const withSubject = addSubject && typeof raw === 'string' ? grammarRowPhrase(id, raw, langCode) : raw;
+            const shift = typeof raw === 'string' && withSubject !== raw && withSubject.endsWith(raw) ? withSubject.length - raw.length : 0;
+            const formValue = shift ? withSubject : rawValue;
+            const marks = shift && endings[id] ? endings[id].map(([from, to]) => [from + shift, to + shift]) : endings[id];
             const row = document.createElement('div'); row.className = 'grammar-grid-row';
             if (current.includes(id)) { row.classList.add('current'); row.setAttribute('aria-current', 'true'); }
             else if (personRows.includes(id)) { row.classList.add('person'); row.setAttribute('aria-current', 'true'); }
             const label = document.createElement('span'); label.className = 'grammar-grid-label'; label.textContent = grammarFormLabel(item.pos, langCode, id);
             const val = document.createElement('span'); val.className = 'grammar-grid-value';
-            appendMarkedForm(val, formValue, endings[id]);
+            appendMarkedForm(val, formValue, marks);
             row.append(label, val);
             if (item.pos === 'verb') {
                 // one tap on a person's row: that row said as one phrase («tu reçois»), no window (js/book-speech.js, else the system voice)
