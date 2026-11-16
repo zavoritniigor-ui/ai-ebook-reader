@@ -2,17 +2,6 @@
  * verb paradigms, focusGrammarItem (shared with js/practice-worksheet.js). Split out of grammar-svo.js on 2026-11-14 without changes. */
 // ========== ГРАМАТИКА: РЕНДЕР ПАНЕЛІ (Verbs/Adjectives cards + focus detail) ==========
 
-// Further tabs register themselves here (js/grammar-words.js), so this file never names them:
-// mode -> { pos: [parts of speech it shows], render(content), owns(item), relatesKey, hintKey, forTappedWord }.
-const grammarExtraModes = new Map();
-function registerGrammarMode(mode, def) { grammarExtraModes.set(mode, def); }
-// Which tab of the panel shows an occurrence of this part of speech.
-function grammarModeForPos(pos) {
-    if (pos === 'adjective') return 'adjectives';
-    for (const [mode, def] of grammarExtraModes) if (def.pos.includes(pos)) return mode;
-    return 'verbs';
-}
-
 function renderGrammarModeBar(langCode) {
     const cfg = grammarConfigFor(langCode);
     const verbsBtn = document.getElementById('grammar-mode-verbs');
@@ -20,13 +9,8 @@ function renderGrammarModeBar(langCode) {
     if (!verbsBtn || !adjBtn) return;
     verbsBtn.textContent = cfg.labels.verbs;
     adjBtn.textContent = cfg.labels.adjectives;
-    const mode = grammarContext.mode === 'adjectives' || grammarExtraModes.has(grammarContext.mode) ? grammarContext.mode : 'verbs';
-    verbsBtn.classList.toggle('active', mode === 'verbs');
-    adjBtn.classList.toggle('active', mode === 'adjectives');
-    for (const [extra, def] of grammarExtraModes) {
-        const btn = document.getElementById('grammar-mode-' + extra);
-        if (btn) { btn.textContent = cfg.labels[extra] || '…'; btn.title = t(def.hintKey); btn.classList.toggle('active', mode === extra); }
-    }
+    verbsBtn.classList.toggle('active', grammarContext.mode !== 'adjectives');
+    adjBtn.classList.toggle('active', grammarContext.mode === 'adjectives');
     setPanelSubtitle('grammar-subtitle', grammarContext.selectedText);
     if (typeof renderGrammarLookupLabels === 'function') renderGrammarLookupLabels();
 }
@@ -66,7 +50,7 @@ function renderGrammarControlsBar(langCode, { preserveScroll = false } = {}) {
     bar.replaceChildren();
     bar.classList.remove('has-timeline');
     delete bar.dataset.timelineLang;
-    if (grammarContext.mode === 'adjectives' || grammarExtraModes.has(grammarContext.mode)) return;
+    if (grammarContext.mode === 'adjectives') return;
     if (!grammarContext.analysis && !grammarContext.focused) return;
     const cfg = grammarConfigFor(langCode);
     function makeButton(tense) {
@@ -134,9 +118,6 @@ function renderGrammarControlsBar(langCode, { preserveScroll = false } = {}) {
 function renderGrammarPanel() {
     const content = els.grammarContent;
     content.innerHTML = '';
-    // A registered tab has its own request and its own list; it needs the sentence, not the verb analysis.
-    const extraMode = grammarExtraModes.get(grammarContext.mode);
-    if (extraMode) { extraMode.render(content); return; }
     const analysis = grammarContext.analysis;
     if (!analysis) return;
     const wantPos = grammarContext.mode === 'adjectives' ? 'adjective' : 'verb';
@@ -383,8 +364,7 @@ function renderGrammarFocusDetail(item, langCode) {
         const agrees = document.createElement('p');
         agrees.className = 'grammar-focus-agrees';
         const label = document.createElement('b');
-        const ownMode = grammarExtraModes.get(grammarModeForPos(item.pos));
-        label.textContent = t(ownMode ? ownMode.relatesKey : 'grammarAgreesWith') + ': ';
+        label.textContent = t('grammarAgreesWith') + ': ';
         agrees.append(label, document.createTextNode(item.agreesWith));
         detail.appendChild(agrees);
     }
@@ -519,13 +499,12 @@ function focusGrammarItem(item, langCode, { reveal = true } = {}) {
     // A tense chip belongs to the focus it was pressed on: the detail below now shows THIS item's own
     // forms, so a chip left lit from a previous verb would label the wrong conjugation.
     grammarContext.activeTenseId = null;
-    grammarContext.mode = grammarModeForPos(item.pos);
+    grammarContext.mode = item.pos === 'adjective' ? 'adjectives' : 'verbs';
     renderGrammarModeBar(langCode);
     renderGrammarControlsBar(langCode);
     // The lemma cards list THIS analysis' selection. An occurrence that is not part of it (a Practice
     // target, from a passage the model wrote) must not sit above unrelated cards from the book text.
-    const ownMode = grammarExtraModes.get(grammarContext.mode);
-    if ((grammarContext.analysis && grammarContext.analysis.items.includes(item)) || (ownMode && ownMode.owns(item))) renderGrammarPanel();
+    if (grammarContext.analysis && grammarContext.analysis.items.includes(item)) renderGrammarPanel();
     else els.grammarContent.replaceChildren();
     renderGrammarFocusDetail(item, langCode);
     if (!reveal) return;
@@ -597,12 +576,6 @@ function presentGrammarAnalysis(analysis, langCode) {
     const tapped = analysis.items.filter(it => it.tapped);
     if (tapped.length === 1) { focusGrammarItem(tapped[0], langCode, { reveal: false }); return; }
     if (tapped.length) grammarContext.mode = tapped[0].pos === 'adjective' ? 'adjectives' : 'verbs';
-    // The learner tapped ONE word and it is neither a verb nor an adjective (a pronoun, an article, a preposition, a noun):
-    // the tab that explains such words opens by itself.
-    else if (grammarContext.selectedText && grammarContext.selectedText !== grammarContext.sentence && !/\s/.test(grammarContext.selectedText.trim())) {
-        const other = [...grammarExtraModes].find(([, def]) => def.forTappedWord);
-        if (other) grammarContext.mode = other[0];
-    }
     renderGrammarModeBar(langCode);
     renderGrammarControlsBar(langCode);
     renderGrammarPanel();
@@ -664,9 +637,9 @@ function switchGrammarMode(mode) {
     // A focused occurrence of the OTHER part of speech no longer belongs on screen (and its
     // verb-only tense controls must not be able to act on it); one that fits stays visible.
     const focused = grammarContext.focused;
-    if (focused && grammarModeForPos(focused.pos) !== mode) grammarContext.focused = null;
+    if (focused && (focused.pos === 'adjective') !== (mode === 'adjectives')) grammarContext.focused = null;
     renderGrammarModeBar(langCode);
     renderGrammarControlsBar(langCode);
-    if (grammarContext.analysis || grammarContext.focused || grammarExtraModes.has(mode)) renderGrammarPanel();
+    if (grammarContext.analysis || grammarContext.focused) renderGrammarPanel();
     if (grammarContext.focused) renderGrammarFocusDetail(grammarContext.focused, langCode);
 }
