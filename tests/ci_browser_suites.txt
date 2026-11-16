@@ -63,6 +63,7 @@ tests/practice_selection_browser.py
 tests/practice_allocation_browser.py
 tests/practice_sentence_actions_browser.py
 tests/practice_save_failure_browser.py
+tests/practice_recall_browser.py
 tests/grammar_language_isolation_browser.py
 tests/grammar_redesign_browser.py
 tests/grammar_timeline_browser.py

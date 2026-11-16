@@ -170,7 +170,7 @@ check("1: the actions are visually secondary (reduced opacity until hovered/focu
 check("1: no exercise/answer/check controls were reintroduced by the new actions",
       "document.querySelectorAll('#practice-panel input, #practice-panel textarea, #practice-panel [class*=answer i], #practice-panel [class*=check i], #practice-panel [class*=hint i]').length===0")
 check("1: every button in Practice is still only a target, a listen/translate action, or a workspace control",
-      "[...document.querySelectorAll('#practice-panel button')].every(b=>b.classList.contains('practice-target')||b.classList.contains('practice-action-btn')||['practice-close','practice-collapse','practice-bookmark','practice-retry','practice-regenerate'].includes(b.id))")
+      "[...document.querySelectorAll('#practice-panel button')].every(b=>b.classList.contains('practice-target')||b.classList.contains('practice-action-btn')||['practice-close','practice-collapse','practice-bookmark','practice-retry','practice-regenerate','practice-recall'].includes(b.id))")
 
 # =====================================================================================================================
 print("\n=== SECTION 2: translation -- exact sentence, correct languages, no Grammar call, no regenerate ===")

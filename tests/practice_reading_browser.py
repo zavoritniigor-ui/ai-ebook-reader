@@ -214,7 +214,7 @@ check("D: no input, textarea, select, contenteditable, form or radio/checkbox an
 check("D: no answer / check / submit / score / grade / correct / quiz / exercise element (class, id or role)",
       "document.querySelectorAll('#practice-panel [class*=answer i], #practice-panel [id*=answer i], #practice-panel [class*=check i], #practice-panel [id*=check i], #practice-panel [class*=submit i], #practice-panel [class*=score i], #practice-panel [class*=grade i], #practice-panel [class*=correct i], #practice-panel [class*=quiz i], #practice-panel [class*=exercise i], #practice-panel [class*=feedback i]').length===0")
 check("D: every button is a target form, a sentence-level listen/translate action, a workspace control, or Retry/Regenerate -- nothing to submit",
-      "[...document.querySelectorAll('#practice-panel button')].every(b=>b.classList.contains('practice-target')||b.classList.contains('practice-action-btn')||['practice-close','practice-collapse','practice-bookmark','practice-retry','practice-regenerate'].includes(b.id))")
+      "[...document.querySelectorAll('#practice-panel button')].every(b=>b.classList.contains('practice-target')||b.classList.contains('practice-action-btn')||['practice-close','practice-collapse','practice-bookmark','practice-retry','practice-regenerate','practice-recall'].includes(b.id))")
 assert not re.search(r"(?i)\b(choose|complete|fill in|check|submit|score|correct answer|choisissez|complétez|vérifier|виберіть|заповніть|перевір|выберите)\b", text), text[:400]
 print("PASS D: no quiz instruction text (choose / complete / fill in / check / submit / score) anywhere in the panel", flush=True)
 if os.environ.get('PRACTICE_SHOT_DIR'):   # optional: keep a screenshot for manual review
