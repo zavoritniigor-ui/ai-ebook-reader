@@ -275,7 +275,10 @@ function displayPracticeReady(panel, session) {
         panel.appendChild(meta);
     }
 
-    panel.appendChild(renderPracticeReading(reading));
+    const recall = practiceRecallFor === session.id && practiceCanRecall(reading);
+    if (practiceCanRecall(reading)) panel.appendChild(buildPracticeRecallBar(session, recall));
+    panel.appendChild(renderPracticeReading(reading, recall));
+    if (recall) updatePracticeRecallCount(panel);
 
     const actions = document.createElement('div');
     actions.className = 'practice-actions';
@@ -317,9 +320,9 @@ function syncPracticeSaveWarning() {
 // per line) or its connected paragraphs, with every target form highlighted and clickable. Built with
 // createElement/textContent throughout — the AI response is untrusted input and is NEVER assigned via
 // innerHTML. There is no numbering and nothing to fill in.
-function renderPracticeReading(reading) {
+function renderPracticeReading(reading, recall = false) {
     const wrap = document.createElement('div');
-    wrap.className = 'practice-reading';
+    wrap.className = 'practice-reading' + (recall ? ' practice-recall' : '');
 
     const targetsByParagraph = new Map();
     (reading.targets || []).forEach(target => {
@@ -337,7 +340,7 @@ function renderPracticeReading(reading) {
             block.appendChild(h);
         }
         for (let idx = section.start; idx < section.end; idx++) {
-            block.appendChild(buildPracticeSentenceRow(idx, reading.paragraphs[idx], targetsByParagraph.get(idx) || [], reading.language, section.kind));
+            block.appendChild(buildPracticeSentenceRow(idx, reading.paragraphs[idx], targetsByParagraph.get(idx) || [], reading.language, section.kind, recall));
         }
         wrap.appendChild(block);
     });
@@ -352,14 +355,14 @@ function renderPracticeReading(reading) {
 // EXISTING TTS system (speakInLang, js/tts.js) and the EXISTING translation engine (aiTranslateText /
 // machineTranslate, js/ai-client.js) exactly as the reader's own translation tooltip does — never a
 // second implementation of either, and neither action calls Grammar or regenerates the session.
-function buildPracticeSentenceRow(idx, text, targets, langCode, kind) {
+function buildPracticeSentenceRow(idx, text, targets, langCode, kind, recall = false) {
     const row = document.createElement('div');
     row.className = kind === 'story' ? 'practice-paragraph' : 'practice-sentence';
     row.dataset.paragraph = String(idx);
 
     const textSpan = document.createElement('span');
     textSpan.className = 'practice-sentence-text';
-    renderParagraphWithTargets(textSpan, text, targets, langCode);
+    renderParagraphWithTargets(textSpan, text, targets, langCode, recall);
     row.appendChild(textSpan);
 
     const actions = document.createElement('span');
@@ -462,7 +465,7 @@ async function fetchPracticeTranslation(text, srcLang) {
 // the paragraph as text nodes with a clickable <button> wrapped around ONLY that exact occurrence,
 // never every occurrence of the word, since each target's explanation is tied to one specific
 // sentence (task section 12/13).
-function renderParagraphWithTargets(container, text, targets, langCode) {
+function renderParagraphWithTargets(container, text, targets, langCode, recall = false) {
     const positioned = [];
     for (const target of targets) {
         let start = Number.isInteger(target.start) && target.start >= 0 && text.startsWith(target.surface, target.start) ? target.start : -1;
@@ -502,10 +505,106 @@ function renderParagraphWithTargets(container, text, targets, langCode) {
                 transformations: target.transformations || null, irregularForms: target.irregularForms || null
             }, langCode);
         };
-        container.appendChild(btn);
+        container.appendChild(recall ? buildPracticeGap(target, btn) : btn);
         cursor = end;
     }
     if (cursor < text.length) container.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+// ---- «З пам'яті»: the second step after reading --------------------------------------------------------------------
+// Reading shows a form; remembering it is what keeps it. The same reading, with every verb/adjective form replaced by a
+// small field: the learner types the form (the dictionary word is the cue in the field), Enter compares it with what
+// was there. Right -> the form comes back as the usual clickable target; two misses -> the form is shown, marked as
+// «shown», so the learner always ends with the right form in front of them. Nothing is sent anywhere and nothing new is
+// generated: the data is the reading already on screen. Rule readings (whole fragments, not single forms) have no such step.
+let practiceRecallFor = null;   // id of the session shown in this mode; any other session opens as plain reading
+Object.assign(I18N, {
+    practiceRecallOn: { uk: '✍️ З пам’яті', en: '✍️ From memory', fr: '✍️ De mémoire', ru: '✍️ По памяти', zh: '✍️ 凭记忆', ko: '✍️ 기억으로', hi: '✍️ याद से', ga: '✍️ Ó chuimhne' },
+    practiceRecallOff: { uk: '📖 Читати', en: '📖 Read', fr: '📖 Lire', ru: '📖 Читать', zh: '📖 阅读', ko: '📖 읽기', hi: '📖 पढ़ें', ga: '📖 Léigh' },
+    practiceRecallTip: { uk: 'Форми сховано. Впишіть кожну й натисніть Enter.', en: 'The forms are hidden. Type each one and press Enter.', fr: 'Les formes sont cachées. Écrivez chacune, puis Entrée.', ru: 'Формы скрыты. Впишите каждую и нажмите Enter.', zh: '词形已隐藏。逐个输入并按回车。', ko: '형태가 가려졌습니다. 하나씩 쓰고 Enter를 누르세요.', hi: 'रूप छिपे हैं। हर एक लिखें और Enter दबाएँ।', ga: 'Tá na foirmeacha i bhfolach. Scríobh gach ceann agus brúigh Enter.' },
+    practiceRecallAgain: { uk: 'Не так — спробуйте ще раз.', en: 'Not quite — try once more.', fr: 'Pas tout à fait — encore un essai.', ru: 'Не так — попробуйте ещё раз.', zh: '不对——再试一次。', ko: '아니에요 — 한 번 더 해 보세요.', hi: 'ऐसा नहीं — एक बार और।', ga: 'Ní hea — bain triail eile as.' },
+    practiceRecallAccents: { uk: 'Майже: перевірте надрядкові знаки.', en: 'Almost: look at the accents.', fr: 'Presque : regardez les accents.', ru: 'Почти: посмотрите на надстрочные знаки.', zh: '差一点：注意重音符号。', ko: '거의 맞았어요: 악센트를 보세요.', hi: 'लगभग: मात्रा-चिह्न देखें।', ga: 'Beagnach: féach ar na síntí.' },
+    practiceRecallShown: { uk: 'Ось ця форма: {form}', en: 'Here is the form: {form}', fr: 'Voici la forme : {form}', ru: 'Вот эта форма: {form}', zh: '正确词形：{form}', ko: '이 형태입니다: {form}', hi: 'यह रूप है: {form}', ga: 'Seo an fhoirm: {form}' },
+    practiceRecallDone: { uk: 'Готово! З пам’яті: {n} з {total}.', en: 'Done! From memory: {n} of {total}.', fr: 'Terminé ! De mémoire : {n} sur {total}.', ru: 'Готово! По памяти: {n} из {total}.', zh: '完成！凭记忆：{n}/{total}。', ko: '끝! 기억으로: {total}개 중 {n}개.', hi: 'हो गया! याद से: {total} में से {n}।', ga: 'Déanta! Ó chuimhne: {n} as {total}.' },
+    practiceRecallGap: { uk: 'Форма слова {word}', en: 'The form of {word}', fr: 'La forme de {word}', ru: 'Форма слова {word}', zh: '{word} 的词形', ko: '{word}의 형태', hi: '{word} का रूप', ga: 'Foirm an fhocail {word}' }
+});
+function practiceCanRecall(reading) { return (reading.targets || []).some(x => x.pos !== 'rule'); }
+function practiceRecallText(key, vars) { return t(key).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m)); }
+// What is compared: case, the kind of apostrophe and the amount of space do not matter; accents do.
+function practiceRecallNorm(value) { return String(value || '').normalize('NFC').toLowerCase().replace(/[’ʼ`´]/g, "'").replace(/\s+/g, ' ').trim(); }
+function buildPracticeRecallBar(session, recall) {
+    const bar = document.createElement('div');
+    bar.className = 'practice-recall-bar';
+    const toggle = document.createElement('button');
+    toggle.type = 'button'; toggle.id = 'practice-recall';
+    toggle.textContent = t(recall ? 'practiceRecallOff' : 'practiceRecallOn');
+    toggle.setAttribute('aria-pressed', String(recall));
+    toggle.onclick = () => {
+        practiceRecallFor = recall ? null : session.id;
+        // After this click has finished bubbling: rebuilding the panel now would detach the pressed button, and the
+        // reader's own click handler would then take the click for a tap on a word.
+        setTimeout(() => {
+            if (currentPracticeSession !== session) return;
+            displayPracticeReady(getPracticePanel(), session);
+            if (!recall) document.querySelector('#practice-panel .practice-gap')?.focus({ preventScroll: true });
+        }, 0);
+    };
+    bar.appendChild(toggle);
+    if (recall) {
+        const count = document.createElement('span'); count.className = 'practice-recall-count';
+        const note = document.createElement('span'); note.className = 'practice-recall-note'; note.setAttribute('role', 'status');
+        note.textContent = t('practiceRecallTip');
+        bar.append(count, note);
+    }
+    return bar;
+}
+function updatePracticeRecallCount(panel, message) {
+    const left = panel.querySelectorAll('.practice-gap').length;
+    const own = panel.querySelectorAll('.practice-recalled').length, shown = panel.querySelectorAll('.practice-revealed').length;
+    const total = left + own + shown;
+    const count = panel.querySelector('.practice-recall-count'), note = panel.querySelector('.practice-recall-note');
+    if (count) count.textContent = own + ' / ' + total;
+    if (note) note.textContent = left ? (message || note.textContent) : practiceRecallText('practiceRecallDone', { n: own, total });
+}
+// The field that stands where a form was. `btn` is the finished clickable target: it takes the field's place when the
+// form is typed right (or shown after the second miss), so Grammar opens from it exactly as in plain reading.
+function buildPracticeGap(target, btn) {
+    const input = document.createElement('input');
+    input.type = 'text'; input.className = 'practice-gap';
+    input.autocomplete = 'off'; input.spellcheck = false;
+    input.setAttribute('autocapitalize', 'none'); input.setAttribute('autocorrect', 'off'); input.setAttribute('enterkeyhint', 'done');
+    input.placeholder = target.lemma;
+    input.setAttribute('aria-label', practiceRecallText('practiceRecallGap', { word: target.lemma }));
+    input.style.width = (Math.max(target.surface.length, target.lemma.length) + 2) + 'ch';
+    let misses = 0, judged = '';
+    const settle = (cls, message) => {
+        const panel = input.closest('#practice-panel');
+        const gaps = panel ? [...panel.querySelectorAll('.practice-gap')] : [];
+        const next = gaps[gaps.indexOf(input) + 1] || gaps.find(g => g !== input);
+        const hadFocus = document.activeElement === input;
+        btn.classList.add(cls);
+        input.replaceWith(btn);
+        if (panel) updatePracticeRecallCount(panel, message);
+        if (hadFocus && next) next.focus({ preventScroll: false });
+    };
+    const judge = () => {
+        const typed = practiceRecallNorm(input.value);
+        if (!typed || typed === judged || !input.isConnected) return;
+        judged = typed;
+        const wanted = practiceRecallNorm(target.surface);
+        if (typed === wanted) { settle('practice-recalled', t('practiceRecallTip')); return; }
+        misses++;
+        if (misses >= 2) { settle('practice-revealed', practiceRecallText('practiceRecallShown', { form: target.surface })); return; }
+        input.classList.add('practice-gap-off');
+        const near = typeof stripGrammarAccents === 'function' && stripGrammarAccents(typed) === stripGrammarAccents(wanted);
+        const panel = input.closest('#practice-panel');
+        if (panel) updatePracticeRecallCount(panel, t(near ? 'practiceRecallAccents' : 'practiceRecallAgain'));
+        input.select();
+    };
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); judge(); } });
+    input.addEventListener('change', judge);
+    input.addEventListener('input', () => input.classList.remove('practice-gap-off'));
+    return input;
 }
 
 function togglePracticeRuleNote(btn, target) {
@@ -883,6 +982,28 @@ const practiceStyles = `
 .practice-target-adjective {
     border-bottom-color: #0d6efd;
 }
+.practice-recall-bar {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+    padding: 8px 12px; background: var(--panel-bg); border-bottom: 1px solid var(--border-color);
+}
+#practice-recall {
+    min-height: 40px; padding: 6px 14px; border-radius: 20px; cursor: pointer; font: inherit; font-weight: 600;
+    color: #fff; border: none; background: linear-gradient(135deg, #10a37f, #0d6efd);
+}
+#practice-recall[aria-pressed="true"] { color: var(--text-color); background: color-mix(in srgb, #10a37f 18%, var(--panel-bg)); }
+.practice-recall-count { font-weight: 700; font-variant-numeric: tabular-nums; }
+.practice-recall-note { flex: 1 1 160px; font-size: 13px; opacity: .85; }
+.practice-gap {
+    font: inherit; font-weight: 600; color: inherit; max-width: 100%; box-sizing: border-box;
+    padding: 1px 6px; margin: 1px 2px; border-radius: 6px; text-align: center;
+    border: 1.5px solid #10a37f; background: color-mix(in srgb, #10a37f 10%, var(--panel-bg));
+}
+.practice-gap::placeholder { font-weight: 400; font-style: italic; opacity: .6; }
+.practice-gap:focus { outline: 2px solid #0d6efd; outline-offset: 1px; }
+.practice-gap-off { border-color: #d97706; background: color-mix(in srgb, #d97706 14%, var(--panel-bg)); }
+.practice-recalled { background: color-mix(in srgb, #10a37f 22%, transparent); border-radius: 4px; }
+.practice-revealed { background: color-mix(in srgb, #d97706 22%, transparent); border-bottom-color: #d97706; border-radius: 4px; }
 
 .practice-target-rule {
     border-bottom-color: var(--accent-color);

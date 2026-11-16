@@ -58,6 +58,7 @@ const I18N_ES = {
     statsNoHelp: 'Todavía no has pedido ayuda',
     practiceSource: 'Fuente:', practiceFocus: 'Palabras:', practiceTopicLabel: 'Tema de las frases', practiceTopicPlaceholder: 'Tu tema…', grammarLookupPlaceholder: 'Un verbo o adjetivo en tu idioma → {lang}', grammarLookupLabel: 'Buscar las formas de tu palabra', grammarLookupBtn: 'Buscar', grammarLookupEmpty: 'Escribe un verbo o un adjetivo.', grammarLookupNotFound: 'No parece un verbo ni un adjetivo. Prueba otra palabra.', grammarLookupAlso: 'También: ', practiceTopicMeta: 'Tema:',
     practiceRegenerate: 'Generar de nuevo', practiceSpeakSentence: 'Escuchar la frase', practiceTranslateSentence: 'Traducir la frase',
+    practiceRecallOn: '✍️ De memoria', practiceRecallOff: '📖 Leer', practiceRecallTip: 'Las formas están ocultas. Escribe cada una y pulsa Intro.', practiceRecallAgain: 'No es eso: inténtalo otra vez.', practiceRecallAccents: 'Casi: mira los acentos.', practiceRecallShown: 'Esta es la forma: {form}', practiceRecallDone: '¡Listo! De memoria: {n} de {total}.', practiceRecallGap: 'La forma de {word}',
     practiceError: 'Error de la práctica', practiceUnknownError: 'Error desconocido',
     practiceSaveFailed: 'No se pudo guardar la práctica en este dispositivo: se perderá al recargar. Libera espacio e inténtalo de nuevo.',
     practiceSaveRetry: 'Volver a guardar', hint: 'Pista', grammarEmptyVerbs: 'No se encontraron verbos en esta selección.',
