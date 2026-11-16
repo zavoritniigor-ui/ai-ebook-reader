@@ -426,9 +426,24 @@ function renderGrammarFocusDetail(item, langCode) {
         detail.appendChild(why);
     }
 
+    // The Rules topic behind this form: one tap opens its theory, exceptions and the examples on the page.
+    const ruleTopic = !item.lookup && typeof openRuleTopic === 'function' ? grammarItemRule(item, langCode) : null;
+    if (ruleTopic) {
+        const link = document.createElement('button');
+        link.type = 'button'; link.className = 'grammar-rule-link';
+        link.dataset.rule = ruleTopic.id;
+        link.textContent = '📚 ' + (ruleTopic.title[langCode] || ruleTopic.title.en || ruleTopic.title.fr);
+        link.title = t('grammarRuleOpen'); link.setAttribute('aria-label', t('grammarRuleOpen') + ': ' + link.textContent);
+        link.onclick = () => { openRulesPanel(); rulesState.lang = langCode; openRuleTopic(ruleTopic); };
+        detail.appendChild(link);
+    }
+
     content.prepend(detail);
     content.scrollTop = 0;
 }
+Object.assign(I18N, {
+    grammarRuleOpen: { uk: 'Відкрити правило', en: 'Open the rule', fr: 'Ouvrir la règle', ru: 'Открыть правило', zh: '打开规则', ko: '규칙 열기', hi: 'नियम खोलें', ga: 'Oscail an riail' }
+});
 
 // Shared cross-panel entry point (task section 13/14/15): called both from a
 // Grammar-panel lemma/form chip AND from a clicked highlighted word inside
