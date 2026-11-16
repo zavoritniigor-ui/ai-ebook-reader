@@ -171,7 +171,11 @@ function pdfLineSegments(spans, rects, layerWidth, columnStarts, narrowStarts = 
             // edge other rows confirm -- e.g. the real "tu es  you are (familiar)  vous êtes  you are" row,
             // whose long gloss narrows the gutter to ~2 line heights and used to fuse into the left column.
             // A narrow gutter (pdfNarrowGutterStarts) is only ~1 line height wide, so it is taken from 0.8 of one.
-            const near = xs => xs.some(x => Math.abs(r.left - x) <= Math.max(4, r.height * 0.5));
+            // The first line of a paragraph is INDENTED: it resumes up to ~3 line heights to the right of the column's edge, and
+            // the text before it ends before that edge -- the gap holds the whole gutter. (It used to fuse into the line of the
+            // column on its left, and a sentence there was selected together with words of the next columns.)
+            const near = xs => xs.some(x => Math.abs(r.left - x) <= Math.max(4, r.height * 0.5)
+                || (seg && r.left > x && r.left - x <= r.height * 3 && seg.right <= x - r.height * 0.3));
             const atColumnEdge = seg && gap <= columnGapThreshold &&
                 ((gap >= r.height * 1.2 && near(columnStarts)) || (gap >= r.height * 0.8 && near(narrowStarts))) &&
                 !isExerciseBlankContinuation(seg.indices.map(k => spans[k].textContent).join(' ').trim(), spans[i].textContent.trim());

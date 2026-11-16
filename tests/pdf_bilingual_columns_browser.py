@@ -309,6 +309,31 @@ third = c.js(LAYOUT_JS.replace('pdfVisualGroup(container, row[0])', 'pdfVisualGr
      [(t, x, 264) for t, x in zip(('grand lac au sud-ouest', 'en bateau, au printemps.', 'male. Cela dit, certaines personnes'), COLS)]], ensure_ascii=False))
 assert 'Il est conseillé de réserver à tout moment de l’année une place opti- male.' in third[0]['sentences'], third
 print('PASS a three-column article with a 21px gutter: each column reads its own sentences', flush=True)
+# The first line of a PARAGRAPH is indented: in the 2nd and 3rd column it starts ~1 line height to the right of the column's
+# edge, so it was not recognised «at the column edge» and fused into the 1st column's line beside it (a magazine page with a
+# three-column Q&A: a sentence of column 1 was selected together with «I get a lot of emails from» and «You might have also»
+# from columns 2 and 3, and the translation mixed all three). The texts here are the test's own.
+indented = layout([[(text, x + dx, 264 - dx) for (text, dx), x in zip(row, COLS)] for row in [
+    (('Le fleuve est très ancien. Princi-', 0), ('des plus belles routes de la région', 0), ('Il est conseillé de réserver à tout', 0)),
+    (('palement alimenté par les lacs du', 0), ('est de suivre le fleuve en bateau.', 0), ('moment de l’année une place.', 0)),
+    (('nord du continent américain, ce fleuve', 0), ('Je reçois beaucoup de lettres de', 18), ('Vous auriez aussi pu écrire', 18)),
+    (('traverse aussi des villes et des', 0), ('lecteurs qui demandent pourquoi', 0), ('à votre banque pour ouvrir un', 0)),
+    (('forêts immenses.', 0), ('on passe par une agence.', 0), ('dossier de remboursement.', 0)),
+]])
+assert not any(r['joined'] for r in indented), indented
+assert 'Princi- palement alimenté par les lacs du nord du continent américain, ce fleuve traverse aussi des villes et des forêts immenses.' in indented[0]['sentences'], indented[0]
+assert not any('lettres' in t or 'auriez' in t for t in indented[0]['sentences']), indented[0]
+second = c.js(LAYOUT_JS.replace('pdfVisualGroup(container, row[0])', 'pdfVisualGroup(container, row[1])') % json.dumps(
+    [[(text, x + dx, 264 - dx) for (text, dx), x in zip(row, COLS)] for row in [
+    (('Le fleuve est très ancien. Princi-', 0), ('des plus belles routes de la région', 0), ('Il est conseillé de réserver à tout', 0)),
+    (('palement alimenté par les lacs du', 0), ('est de suivre le fleuve en bateau.', 0), ('moment de l’année une place.', 0)),
+    (('nord du continent américain, ce fleuve', 0), ('Je reçois beaucoup de lettres de', 18), ('Vous auriez aussi pu écrire', 18)),
+    (('traverse aussi des villes et des', 0), ('lecteurs qui demandent pourquoi', 0), ('à votre banque pour ouvrir un', 0)),
+    (('forêts immenses.', 0), ('on passe par une agence.', 0), ('dossier de remboursement.', 0)),
+]], ensure_ascii=False))
+assert 'Je reçois beaucoup de lettres de lecteurs qui demandent pourquoi on passe par une agence.' in second[2]['sentences'], second[2]
+assert not any('continent' in t or 'auriez' in t for t in second[2]['sentences']), second[2]
+print('PASS an indented paragraph line of the 2nd / 3rd column stays in its own column', flush=True)
 # A drag over a few words of one column reads exactly those words, not their whole lines: three words were translated and
 # narrated as their whole line (each PDF item of that page is a whole line). The texts here are the test's own.
 drags = c.js('''(rows => {
