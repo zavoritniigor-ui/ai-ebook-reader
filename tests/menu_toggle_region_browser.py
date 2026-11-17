@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """(1) Opening/closing the main menu in a text book changes the visible text ONCE (the repagination after the transition), not on
 every frame: the container height animates for 0.3 s and the page columns used to reflow on each frame while the page offset

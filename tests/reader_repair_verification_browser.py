@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Comprehensive verification suite for P1-4, P1-5, P1-6, P1-7:
 - P1-4: Print preview tofu / square glyphs elimination & ink rendering in printCurrentReaderPage()

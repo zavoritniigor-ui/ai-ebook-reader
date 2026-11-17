@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """The generated offline dictionary (dict/fr-uk.json, dict/uk-forms.json; tools/build_dict_fr_uk.py): schema, size, pinned catalog,
 every form leads to an existing lemma, no empty meanings, every Ukrainian word of a meaning has its forms, the licences are stated."""

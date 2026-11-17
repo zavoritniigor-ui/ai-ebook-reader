@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Shared AI key (functions/api/ai.js + js/ai-client.js SHARED_AI_KEY): a visitor without an own key uses the key the site keeps
 as a Cloudflare secret. The browser never sees that key: requests go to /api/ai?provider=… WITHOUT an Authorization header and the

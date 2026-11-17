@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* book-marks.js — виділення й нотатки в текстових книгах (EPUB/FB2/DOCX/TXT/MD/HTML/RTF; у PDF є власне письмо поверх
  * сторінки, js/pdf-ink.js). Кнопка «📝» у вікні перекладу виділяє вибраний фрагмент (або речення натиснутого слова) і

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """AI explanations follow the MENU language; translations keep the TRANSLATION language. Bug (user, Russian phone): «Запитай AI»
 answered in Ukrainian because explanations were asked in the translation language, which defaulted to Ukrainian for everyone.

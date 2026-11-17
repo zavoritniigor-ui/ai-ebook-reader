@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """TTS first tap / clipped start. Every tap used to send one or two speechSynthesis.cancel() (Android:
 TextToSpeech.stop()) and then speak() from an 80 ms timer, even with nothing playing -- the first request

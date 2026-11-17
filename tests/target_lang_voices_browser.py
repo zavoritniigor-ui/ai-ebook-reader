@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Every translation language has a flag and is spoken with the best voice OF THAT LANGUAGE: Chrome's real voice list
 (Google voices) gives ru/zh/ko/hi their own voice, Simplified Chinese never gets the Cantonese zh-HK voice, an Android

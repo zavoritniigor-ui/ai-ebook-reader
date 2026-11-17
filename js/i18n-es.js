@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 // Español como idioma del menú. Se carga el ÚLTIMO (después de todos los archivos que añaden textos a I18N),
 // así cubre también las claves definidas fuera de core.js. Una clave nueva sin traducción aquí muestra el inglés

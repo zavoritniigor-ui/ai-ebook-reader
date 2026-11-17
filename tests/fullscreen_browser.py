@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Full screen on phones and tablets (owner, 2026-11-15: «щоб застосунок відкривався на весь екран на телефоні і планшеті
 при цьому легко переходив в режим з доступними системними кнопками»; js/pwa-lifecycle.js, the «На весь екран» switch).

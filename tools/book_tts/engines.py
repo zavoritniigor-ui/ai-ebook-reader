@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """The speech engines of the book narration: edge-tts (a Microsoft neural voice, e.g. «fr-CA-SylvieNeural») or Kokoro
 run on this computer («kokoro:ff_siwis»). Both give MP3 bytes the reader can decode slice by slice.

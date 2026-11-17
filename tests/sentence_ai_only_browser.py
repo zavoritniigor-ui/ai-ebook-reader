@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Online, sentences/phrases are translated by AI only (never by the context-blind machine translator); with no AI (offline / no key / AI
 failed) the on-device Chrome translator answers (⌂), and only without it does the popup say why; a single word still falls back to the

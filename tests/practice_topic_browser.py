@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Practice topic: the learner can say what the generated sentences should be ABOUT ("одяг", "здоров'я", "renting a flat").
 An optional topic field sits above the Practice button in the Grammar panel (typed or dictated with its own 🎤 -- no preset topics; remembered between

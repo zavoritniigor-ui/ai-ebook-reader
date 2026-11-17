@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* reader-workspace.js — geometry of the reading area between the side panels, shared by the PDF layout
  * (js/pdf-continuous.js) and the word popup (js/ui-tooltip.js); and the «workspace changed» signal.

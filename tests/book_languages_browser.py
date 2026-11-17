@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Books in other Latin-script languages are read with their own voice: the old heuristic only knew English vs French, so a
 German book was spoken with a French (or English) voice. Covers detection of de/es/it/pt/nl/pl, the book language, a tapped

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* book-audio.js — the audio that comes with a book (a French textbook: «CD1 - piste 33»): tap the mark in the PDF, hear the track.
  *

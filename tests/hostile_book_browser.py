@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """A hostile book in every text format: nothing in it may run, leave the app or reach the network (owner, 2026-11-14:
 «головне безпека» — a security review of every place the app puts HTML into the page).

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Phone: the open menu must scroll. User report 2026-10-18 (screenshot of a 412x915 phone): «I cannot reach the key button» -- the
 fixed header grew taller than the screen (Settings is the last group, 🔑 its last row) and nothing scrolled, so every control

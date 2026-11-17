@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """No edge of the previous/next page is visible beside the current one: the gap between page columns was 48px while the
 reader's side padding is 56px on a landscape tablet, so cut-off lines of the neighbouring pages showed in the margins

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 // Cloudflare Pages Function: /api/speech/health и /api/speech/speak — проксі до локального мовного сервера на ПК власника
 // (tts-server, 127.0.0.1:8880), щоб телефон і планшет могли озвучувати через нього.

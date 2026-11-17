@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Sentence breakdown across ALL 8 supported languages (uk, en, fr, ru, zh, ko, hi, ga), with hand-authored GOLD replies.
 

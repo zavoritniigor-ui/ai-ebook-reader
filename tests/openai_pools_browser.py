@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """OpenAI requests use the models of OpenAI's FREE daily token pools: gpt-5.4 (250K tokens a day) first, gpt-5.4-mini (2.5M a day) once this device has
 used the whole big pool today (UTC) -- the owner's choice: switch at 100%. OpenAI does not refuse when a pool is used up -- it bills -- so the app counts the usage OpenAI reports with every

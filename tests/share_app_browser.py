@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Тести для функцій «Поділитися застосунком» (модалка, QR-код, копіювання посилання)
 та «Назва книги» (плашка book-title-bar)."""

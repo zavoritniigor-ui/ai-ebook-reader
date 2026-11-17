@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """The Contents panel hides by itself once the reader works with the book again (owner, 2026-10-26): after a page is
 chosen in it, the first tap on a word, a zoom (wheel / pinch) or a scroll of the book closes it. The book scrolled by the

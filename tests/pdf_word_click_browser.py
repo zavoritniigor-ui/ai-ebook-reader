@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """PDF single-word click/tap regression tests — verify word lookup works on continuous scroll.
 Start a local server on 8765 and Chrome with --remote-debugging-port=9222.

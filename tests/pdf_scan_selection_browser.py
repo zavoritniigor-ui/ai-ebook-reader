@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """A long selection in a SCANNED PDF must highlight every word between its two ends (user report: "when selecting it skips
 words, for one or two sentences it works fine", with a screenshot of an Internet Archive book).

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 // Cloudflare Pages Function: /api/ai — спільний ключ AI для тих, хто не ввів власного (js/ai-client.js, SHARED_AI_KEY).
 // Ключі лежать ЛИШЕ в секретах Cloudflare Pages (Settings → Variables and Secrets: GROQ_API_KEY, OPENAI_API_KEY) і ніколи

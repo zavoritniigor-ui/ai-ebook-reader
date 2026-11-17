@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Astra audit A10: the reader font size (text formats) has ONE range -- READER_FONT_MIN..READER_FONT_MAX in
 js/core.js -- for A-/A+ and for restoring the saved preference. A+ used to grow without limit (58 px observed)
