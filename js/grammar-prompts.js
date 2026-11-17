@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* grammar-prompts.js — the prompts of the Ask AI panel and of Language level (buildAskPrompt, buildLanguageLevelPrompt).
  * Split out of grammar-svo.js on 2026-11-14 without changes. */

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Finished translations survive a restart (IndexedDB «reader-translations», js/translation.js): the same word in the same
 sentence after a reload is answered from the device without a new request; another sentence is a new request; a machine

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Menu language defaults to the system language on first launch: the first of navigator.languages that the app
 supports wins, otherwise English; a language the user already chose is never overridden. No network."""

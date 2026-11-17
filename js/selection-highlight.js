@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* selection-highlight.js — highlighting the selected fragment (PDF span pieces, wrap/unwrap), PDF selection anchors,
  * word-to-sentence ranges, selectRangeAndTranslate, selectWordAtPoint. Split out of selection.js on 2026-11-14 without changes. */

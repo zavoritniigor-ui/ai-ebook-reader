@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Every action of the ✦ wheel does something visible when tapped (owner, 2026-11-01: «перевірити в меню прокрутки
 (сонечко), чи усі кнопки при кліку виводять інформацію або виклик функції»).

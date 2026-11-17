@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """The menu closes by itself 10 s after the last interaction (each row now has a description to read; it was 4 s for the old
 toolbar); interaction postpones it; it never closes with no book open, while a menu field has focus, or when the user switched it

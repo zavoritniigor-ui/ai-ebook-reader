@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* local-speech.js — озвучення через ЛОКАЛЬНИЙ мовний сервер (Kokoro для
  * англійської/французької), сервер на 127.0.0.1:8880. Українська — системним голосом.

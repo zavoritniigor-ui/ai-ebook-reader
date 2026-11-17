@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 // Module graph of the app's classic scripts (index.html load order), parsed with acorn (tools/vendor/acorn-8.15.0, MIT).
 //   node tools/module_graph.mjs            # checks; exit 1 on a problem

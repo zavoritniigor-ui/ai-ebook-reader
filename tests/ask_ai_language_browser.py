@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """'Запитай AI' -> 'Мовний розбір' (js/grammar-svo.js buildLanguageLevelPrompt) must
 simplify the TAPPED/SELECTED fragment in ITS OWN language, not the language of a

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Printing a page of a TEXT book (EPUB/FB2/MD/TXT… — printCurrentReaderPage in js/quick-wheel.js, the menu's 🖨 and Ctrl+P).
 

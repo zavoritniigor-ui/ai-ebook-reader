@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 // ========== ВІД РОЗРОБНИКА (owner, 2026-10-26) ==========
 // A row in the main menu's Settings opens #developer-dialog: the app is free, it runs on AI keys the developer provides,

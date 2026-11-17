@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Browser tests for the book's own list of its recordings (js/book-audio.js, rules §6.4): a book that numbers its pistes
 anew in every station and prints, at the end, the list of its own recordings («i Piste 5, page 27» under «STATION 2») —

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Audit fixes (2026-10-11). Streaming Ask/Level (OpenAI Responses SSE): a stream that stalls AFTER its headers ends with a
 retryable timeout instead of a spinner forever; an "incomplete" (token cap) or "failed" stream is an error, not a complete

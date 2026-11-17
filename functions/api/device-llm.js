@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 // Cloudflare Pages Function: GET /api/device-llm?f=model|wasm — the files of the on-device AI (js/device-llm.js): the Gemma 4 E2B web
 // model (Hugging Face, Apache-2.0, pinned to a commit) and the MediaPipe LLM Inference engine binary (npm via jsDelivr, Apache-2.0).

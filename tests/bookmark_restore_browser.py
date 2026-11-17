@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """Reopening a book lands where the reader stopped, even when the page is repaginated WHILE the book is still opening.
 Bug: a big library EPUB (Pride and Prejudice, 25 MB) takes seconds to unpack; meanwhile the tablet hides the menu → resize →

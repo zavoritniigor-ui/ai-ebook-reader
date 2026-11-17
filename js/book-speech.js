@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* book-speech.js — the narration of a book made offline (tools/book_tts/generate.py, edge-tts): tap a word in a PDF and
  * hear that word from the chapter's audio; select a sentence and hear the sentence. The two files of one voice (the MP3 and

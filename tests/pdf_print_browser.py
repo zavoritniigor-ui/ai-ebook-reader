@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """PDF Print (Quick Wheel 🖨 / Ctrl+P -> printCurrentReaderPage): prints the intended PHYSICAL page, one page on
 one sheet, in the page's own size/orientation, with its ink, independent of viewer zoom/virtualization.

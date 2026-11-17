@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* practice-worksheet.js — Practice reading rendering and Practice workspace UI.
  * Renders the generated reading — per-word example sentences and connected paragraphs — safely

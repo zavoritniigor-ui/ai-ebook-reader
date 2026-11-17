@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """The look of the book text (owner: «Moon+ and KOReader have a font, line spacing, margins, alignment and hyphenation»).
 Until now only the size (A-/A+) and the theme could be changed; the typeface, the interline, the page margins, the

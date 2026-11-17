@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 # Copying, modification, distribution or commercial use without written permission is prohibited.
 """The production Content-Security-Policy (from _headers) forbids inline scripts: no 'unsafe-inline' and no blob: in
 script-src, so even a bug in the HTML sanitizer could not run an injected onclick/onerror or <script>. This test serves the

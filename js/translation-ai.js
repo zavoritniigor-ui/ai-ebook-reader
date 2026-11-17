@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 /* translation-ai.js — the two ways a selection is translated (machine: Chrome's local model or the network translator;
  * AI: the selected provider, with word alignment), request chunking and the cleanup of what a model returns.

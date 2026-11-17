@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copyright (c) 2026 Zavoritnii Ihor. All rights reserved. Proprietary software, see LICENSE.
 // Copying, modification, distribution or commercial use without written permission is prohibited.
 // Cloudflare Pages Function: /api/sync — сховище синхронізації між пристроями (js/sync.js).
 // Потрібне KV-сховище, прив'язане до сайту під іменем SYNC (Cloudflare → Pages → Settings → Bindings). Без нього — 501.
