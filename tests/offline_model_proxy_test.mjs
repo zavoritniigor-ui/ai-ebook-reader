@@ -73,4 +73,6 @@ ok(`all ${files} catalog files of ${Object.keys(catalog.models).length} models a
 const burst = { 'sec-fetch-site': 'same-origin', 'cf-connecting-ip': '9.9.9.9' };
 let last; for (let i = 0; i < 45; i++) last = await onRequestGet({ request: req(FILE, burst) });
 ok('more than 40 requests a minute from one IP -> 429', last.status === 429);
+r = await onRequestGet({ request: new Request('https://pirate.example/api/offline-model?f=' + encodeURIComponent(FILE), { headers: { 'sec-fetch-site': 'same-origin' } }) });
+ok('a copied deployment on a foreign host is refused even with same-origin', r.status === 403);
 console.log('ALL OFFLINE MODEL PROXY CHECKS PASSED');

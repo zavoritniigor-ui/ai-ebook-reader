@@ -20,6 +20,8 @@ let r = await onRequestGet({ request: req({}) });
 ok('no Sec-Fetch-Site, Origin or Referer (a script, not the app) -> 403, nothing fetched', r.status === 403 && sent === 0);
 r = await onRequestGet({ request: req({ origin: 'https://evil.example' }) });
 ok('a foreign Origin -> 403', r.status === 403 && sent === 0);
+r = await onRequestGet({ request: new Request('https://pirate.example/api/library?op=cover&id=1342', { headers: { 'sec-fetch-site': 'same-origin' } }) });
+ok('a copied deployment on a foreign host -> 403, nothing fetched', r.status === 403 && sent === 0);
 r = await onRequestGet({ request: req({ referer: 'https://evil.example/page' }) });
 ok('a foreign Referer -> 403', r.status === 403 && sent === 0);
 r = await onRequestGet({ request: req({ 'sec-fetch-site': 'cross-site', referer: 'https://evil.example/' }) });
