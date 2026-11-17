@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """A grey tapped word must not widen subsequent PDF drags.
 Real PDF.js text items, mouse/pen input, both directions and one/two columns.
 """

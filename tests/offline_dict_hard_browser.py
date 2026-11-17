@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The REAL offline French -> Ukrainian dictionary (dict/fr-uk.json, dict/uk-forms.json, read by js/offline-dict.js) on 100 unusual
 sentences written for this project (dict/test_sentences_hard.tsv): rare tenses and moods, homographs, elision and hyphens, inversion,
 set expressions in other tenses, with negation and other possessives, traps (the words of an expression meant literally), invented

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Grammar panel: the learner types a verb or an adjective -- usually in their OWN language ("їсти", "червоний") -- and gets the
 studied-language lemma with its paradigm (js/grammar-svo.js runGrammarLookup). The AI is mocked; real typing and clicks.
 Checks: the prompt (the typed word as data, the studied language from the open French book, the persons / adjective slots), the

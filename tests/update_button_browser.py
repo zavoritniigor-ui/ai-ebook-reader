@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """🔄 update button (js/pwa-lifecycle.js updateApp / activatePendingSwUpdate). Bug: the whole check waited only 8 s, but a new version
 is ~50 files (~6 MB); on a phone the download took longer, so 🔄 said «you have the latest version» while the update was still
 downloading (it then installed by itself a minute later — «не завжди спрацьовує»). Now: up to 15 s for the check itself, up to 2 min

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """tools/run_tests.py <tests...>
 
 Runs specified Python test suites, printing exactly one PASS/FAIL line per test.

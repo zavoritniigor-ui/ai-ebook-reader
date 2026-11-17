@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* practice-session.js — Practice: a READING / EXAMPLES surface, never an exercise.
  *
  * Practice turns the verbs/adjectives that the Grammar panel detected in the learner's selection

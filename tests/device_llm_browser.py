@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """On-device AI (js/device-llm.js): install from Settings, then translation and explanations with no cloud AI. The app is served by a
 small server of this test with the production Content-Security-Policy from _headers; it stands in for the Pages Function /api/device-llm
 (unit-tested by tests/device_llm_proxy_test.mjs) with a SMALL stand-in model and engine binary whose sizes and SHA-256 the page's catalog

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* Validate EPUB/DOCX before any application parser sees the archive.
  * Fixed local JSZip; this worker is terminated on timeout or book replacement.
  */

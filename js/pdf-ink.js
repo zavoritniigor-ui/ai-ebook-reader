@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* pdf-ink.js — письмо поверх сторінки PDF: canvas-шар ПЕР сторінка (клас
  * .ink-layer + data-page, а не єдиний #ink-layer — continuous-scroll рендерить
  * кілька сторінок одночасно), штрихи у ВІДНОСНИХ координатах (0..1, не в

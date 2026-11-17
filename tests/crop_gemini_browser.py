@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """«Запитати Gemini» in the page-crop dialog (owner, 2026-10-31: «потрібно скріншоти в застосунку мати можливість слати
 в Гугл джеміні в браузері для запитань щодо вмісту»).
 

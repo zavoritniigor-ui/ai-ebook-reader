@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Sentence breakdown painted IN THE BOOK TEXT (tooltip "🧩 Розбір" action button) + deep breakdown of one part.
 
 A real tap on a word opens the tooltip; its 🧩 button asks the model (mocked with a

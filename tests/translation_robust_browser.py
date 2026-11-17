@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """AI sentence translation must not fail on ordinary replies: the answer budget scales with the text (it was a fixed
 128/256 tokens, so a sentence + word-alignment JSON was cut off and the popup said "the AI could not translate"); fenced or
 wrapped JSON is accepted; a cut-off reply still yields its translation; a reply without usable JSON falls back to one plain

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """PDF Page Identity & Book Label Mapping regression checks.
 Validates:
 1. Strict separation of physicalPdfPage (1..N) and bookPageLabel.

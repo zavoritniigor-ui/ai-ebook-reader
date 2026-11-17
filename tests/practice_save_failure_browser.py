@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """A Practice save that fails is visible and recoverable (Phase A, P1).
 
 Before the fix persistPracticeSession() swallowed a storage error (quota exceeded, storage blocked) with

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Independent reader interactions and offline imports for all 11 extensions.
 
 Real fixture bytes go through openBookFile for every row. Only external AI/

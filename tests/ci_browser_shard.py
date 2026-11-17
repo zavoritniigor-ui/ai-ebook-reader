@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Which browser suites one CI shard runs.
 
     python3 tests/ci_browser_shard.py <shard> <total>   # prints the suites of shard <shard> (1-based) of <total>, one per line

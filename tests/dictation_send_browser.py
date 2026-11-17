@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Astra audit A11: Send while dictation is still running must not drop the last spoken words.
 
 The words being spoken live as INTERIM results (shown in the dictation status, not yet in the field). Send used to

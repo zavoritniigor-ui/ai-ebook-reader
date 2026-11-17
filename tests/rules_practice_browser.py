@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Verb endings in their own colour + Practice for a grammar rule (Rules panel).
 
 1. Conjugation tables colour each verb ending: the Grammar grid (parl|ons, fin|issons, work|ed) and the Rules detail

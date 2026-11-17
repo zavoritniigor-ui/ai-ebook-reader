@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* core-voices.js — speech synthesis voices: quality scoring, gender, best voice per language, loadVoices().
  * Split out of core.js on 2026-11-14 without changes; loadVoices() is first called after lang-detect.js (inline line). */
 // TTS

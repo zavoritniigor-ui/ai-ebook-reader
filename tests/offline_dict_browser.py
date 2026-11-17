@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The offline French -> Ukrainian dictionary (js/offline-dict.js) with the offline translator, on a SMALL INVENTED dictionary built
 by this test with the encoders of tools/build_dict_fr_uk.py (the same front-coded index and Ukrainian paradigms as dict/fr-uk.json and
 dict/uk-forms.json). The Bergamot engine is replaced by a table of answers (what it says for each text, marked or not), so every case

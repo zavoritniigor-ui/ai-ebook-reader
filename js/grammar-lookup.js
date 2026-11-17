@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* grammar-lookup.js — «your own word»: the learner types a verb or adjective and gets its forms (runGrammarLookup).
  * Split out of grammar-svo.js on 2026-11-14 without changes. */
 // ========== ГРАМАТИКА: ВЛАСНЕ СЛОВО (дієслово чи прикметник своєю мовою -> відмінювання мовою, яку вивчають) ==========

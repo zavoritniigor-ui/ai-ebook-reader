@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* grammar-run.js — the Practice button after an analysis, AI debug/error views, sentence recovery from the tap point,
  * runGrammarAnalysis (the startAiTask('grammar') entry point). Split out of grammar-svo.js on 2026-11-14 without changes. */
 // Adds the "Practice" button after a successful analysis, grounding the reading-

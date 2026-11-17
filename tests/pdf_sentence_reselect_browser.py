@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """User-reported bug: tap the FIRST word of a PDF sentence, then press the
 translation popup's "select" button (word -> end of sentence -> whole sentence
 -> whole paragraph, cycling through js/main.js/translation.js's ttExpandBtn) —

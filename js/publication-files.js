@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* Bounded publication I/O. Download streams go to origin-private disk where
  * supported; Response.blob is the browser-managed fallback, never a JS chunk list.
  * These files are temporary staging files; the shelf owns the durable copy. */

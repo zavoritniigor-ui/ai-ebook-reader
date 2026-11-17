@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Format compatibility audit: DOCX, TXT, HTML/HTM and RTF had ZERO automated
 regression coverage before this suite (only FB2/FB2.ZIP/EPUB/Markdown were
 covered by tests/formats_browser.py, and PDF by the pdf_*_browser.py suites) —

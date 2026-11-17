@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* pdf-outline.js — PDF outline (Contents sidebar), page-label mapping, and
  * native PDF link annotations. Three related but distinct pieces of the spec:
  *

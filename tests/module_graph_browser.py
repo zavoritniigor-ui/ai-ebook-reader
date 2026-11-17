@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Module graph guard (no browser needed; listed with the browser suites so CI runs it — tests/ci_browser_suites.txt).
 
 All js/*.js share one global scope (ARCHITECTURE.md). tools/module_graph.mjs parses every script of index.html with acorn

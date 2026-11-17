@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* pdf-continuous.js — continuous vertical PDF scrolling: builds one placeholder
  * wrapper per page up front (correct scroll height from the start, even for a
  * 657-page book), virtualizes actual rendering to a small window around the

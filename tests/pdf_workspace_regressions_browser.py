@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """PDF workspace / selection regressions found on the real a bilingual French/English grammar workbook (PR #122), each driven
 through the real controls and real input events:
 

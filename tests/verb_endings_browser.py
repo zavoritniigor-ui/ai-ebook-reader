@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Verb endings in conjugation tables: the ENDING of every form has its own colour (.verb-ending), for regular AND irregular verbs.
 
 Owner (2026-10-19, twice): "endings must necessarily have a different colour". Before, only verbs whose forms start with the lemma's stem

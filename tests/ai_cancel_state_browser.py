@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """A3 / audit §12-2: a cancelled Ask AI request must not leave the panel "generating" forever -- and a cancelled
 (old) request must never overwrite a newer loading state, answer, error or crop request.
 

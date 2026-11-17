@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* pdf-contrast.js — автоматичний контраст сторінки сканованої книги (власник, 2026-10-31:
  * «для таких книг потрібно автоматично підганяти контраст»).
  *

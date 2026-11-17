@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """User-reported bug: after installing the PWA from Chrome ("Install app"), the
 resulting desktop/home-screen shortcut later opens a dead address.
 

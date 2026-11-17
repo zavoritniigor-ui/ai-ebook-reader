@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Highlights and notes in text books (js/book-marks.js): a real tap on a word, then 📝 in the translation popup highlights the
 word's sentence (CSS Custom Highlight, the book DOM is untouched) and opens a note field; the note is kept per book and survives
 reopening the book; tapping inside a highlight opens its note again; an explicit selection is highlighted as selected; the

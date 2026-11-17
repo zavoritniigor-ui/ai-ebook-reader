@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Rules button with a selected sentence/paragraph: the FIRST tap only starts the search in the background (the window does not open, an
 open translation popup is not interrupted); when the search is done the button/bookmark is green; the SECOND tap opens the window.
 Without a selection the button simply opens the window. Gold model replies; no network."""

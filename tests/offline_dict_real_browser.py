@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The offline French -> Ukrainian dictionary with the REAL Bergamot engine and the REAL Mozilla models (fr>en, en>uk; downloaded
 once, SHA-256 checked, cached like tests/offline_translation_browser.py) and the REAL generated dictionary (dict/fr-uk.json,
 dict/uk-forms.json). The direction is installed from the app's own code; then every sentence of dict/review_sentences.tsv is

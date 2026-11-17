@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* sentence-structure.js — розбір побудови речення (члени речення з ролями, маркери часу),
  * розфарбований прямо в тексті книги, і глибокий розбір окремої частини.
  *

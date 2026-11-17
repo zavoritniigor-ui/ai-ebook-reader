@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """«Мої книги»: an opened book (from the library or the device) is kept on the device (IndexedDB), so it is not lost when
 Android unloads the app or it is closed — before, only the reading position survived and a library book had to be found and
 downloaded again. After a reload the start screen lists it; one tap reopens it at the same page. The library window has a

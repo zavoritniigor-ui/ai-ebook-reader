@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Checks how a book's text is cut into narration units BEFORE any audio is made (docs/agents/narration_text_rules.md).
 
 A unit must be one whole sentence of the book. This prints, for some pages: the number of units, their median length in

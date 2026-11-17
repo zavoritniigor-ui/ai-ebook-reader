@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Re-synthesizes the sentences whose audio came back cut short, and appends the new audio to the narration MP3.
 
 Now and then edge-tts returns 0.4 s for a whole sentence, and Kokoro stops after ~25 s of a long run without

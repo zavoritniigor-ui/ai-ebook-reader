@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """EPUB chapters are XHTML, but the reader parses them as HTML. Project Gutenberg books (Les Misérables, library id 17489)
 contain «<pre/>» and «<a id="Chapitre_XII"/>»: as HTML those OPEN a <pre> / <a> that swallows the rest of the chapter, so
 on a phone every line stopped wrapping (a 58 000 px wide block) and pieces of the neighbouring pages showed on the page.

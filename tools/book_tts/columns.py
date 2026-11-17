@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The text of a PDF page for the narration, cut into the book's own sentences (generate.py).
 
 A sentence of the book is one unit for the narration, from its first word to its full stop, so that a selection of exactly

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* formats.js — завантажувачі форматів книги: перевірка ZIP-архіва (EPUB/DOCX) у
  * окремому Worker'і (runArchiveGuard) ДО того, як його побачить JSZip/Mammoth на
  * головному потоці, EPUB (initEpub/loadEpubChapter), DOCX/ODT/інші rich-документи

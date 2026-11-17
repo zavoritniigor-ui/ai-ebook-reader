@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Actual image codecs, rendered pixels, text failure isolation and PDF lifecycle.
 
 Start the usual server at 8765 and Chrome CDP at READER_CDP_PORT (default 9222).

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The PDF page slider collapses by itself into an oval page-number button after a few idle seconds (so an accidental
 touch cannot scrub far ahead); a tap on the oval expands it; using the slider keeps it open; it re-collapses. No network."""
 import os, time

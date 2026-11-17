@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* grammar-rules.js — панель «Правила»: каталог правил граматики (js/grammar-rules-data-<lang>.js) і пошук
  * цих правил у ВИДИМОМУ тексті відкритої сторінки з підсвіткою саме тих слів, що їм відповідають.
  *

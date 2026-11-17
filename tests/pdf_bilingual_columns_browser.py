@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """User-reported bug: a real (text-based) PDF bilingual textbook page — French in
 a left column, its English translation printed in the row-aligned right column,
 several sentences carrying an inline bold marker word mid-sentence ("Premierement,"

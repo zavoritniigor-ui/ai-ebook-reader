@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """«Share → AI Reader» (Web Share Target): the manifest declares a POST share_target with text and book files; the service
 worker receives the POST, keeps the shared file/text in the «reader-share» cache and opens the app with ?shared=1; the app
 opens the shared book at once (and forgets it: cache deleted, address cleaned) or shows the shared text in the translation
