@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The exit (door) button first checks for an app update: with a new version it restarts straight into it; without one it saves
 state and tries to close the window. No network."""
 import os, time

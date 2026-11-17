@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Fast page scrolling for EPUB/FB2/DOCX/TXT/MD/HTML (the PDF slider now also covers text books, positioned over the whole
 book) and the reading-place ribbon: a coloured mark on the left margin next to the sentence where the reader stopped (last
 tapped word's sentence / read-aloud sentence), remembered per book, shown only on its page, also in PDF. No network."""

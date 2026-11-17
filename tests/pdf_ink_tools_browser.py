@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Handwriting tools on PDF pages (js/pdf-ink.js): marker, colours, Redo, the partial eraser.
 
 Owner (2026-10-30): «Функція писати потрібно удосконалити до рівня проф» — tools part. Before: no marker, four colours,

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Menu / panel-handle discoverability on a phone: the two side-panel handles show what they open (AI + voice on the
 left, grammar on the right) and every icon-only header button has a localized accessible name. No network."""
 import os

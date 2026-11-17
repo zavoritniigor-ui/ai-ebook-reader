@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 // Español como idioma del menú. Se carga el ÚLTIMO (después de todos los archivos que añaden textos a I18N),
 // así cubre también las claves definidas fuera de core.js. Una clave nueva sin traducción aquí muestra el inglés
 // (fallback de t()); tests/menu_labels_browser.py comprueba que no quede ninguna.

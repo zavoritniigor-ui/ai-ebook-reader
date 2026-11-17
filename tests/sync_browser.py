@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Sync between devices by a code (js/sync.js + functions/api/sync.js). Two «devices» are two localStorage snapshots of the same
 page; /api/sync is a fake in-page server with the same rules as the Pages Function (auth per id, version check → 409).
 Device A creates a code: its reading place, highlights and theme are uploaded ENCRYPTED; device B enters the code: the theme is

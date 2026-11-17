@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """PDF ink undo is owned by the document it was created in (Phase A, P0).
 
 Reproduced data loss before the fix: book A page 1 had ink, the user cleared it (an undoable 'clear'),

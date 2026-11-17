@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Grammar language isolation and Practice UX behavioral tests.
 
 Redesign note (grammar-redesign branch): the original version of this suite tested

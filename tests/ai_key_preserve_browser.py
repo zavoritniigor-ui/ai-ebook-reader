@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Astra audit P1-3: with no AI configured, Explain and Level must not destroy or change the reader's work.
 
 Before the fix both handlers (js/grammar-svo.js) recorded "help requested" for the span and cleared the typed Ask

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Shared fixtures for tests/ai_contract_browser.py -- the REAL-model contract of Grammar and Practice.
 
 PROVENANCE (be precise about what this is):

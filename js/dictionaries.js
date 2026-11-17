@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 // ========== FREE DICTIONARIES (Wiktionary, Wikipedia) ==========
 // Owner, 2026-10-26: free dictionaries that work by themselves, no switch and no key. After a word's translation is shown,
 // the word popup gets the Wiktionary entry of the word in the book's language (part of speech and its first meanings;

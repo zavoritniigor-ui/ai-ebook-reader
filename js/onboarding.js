@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* onboarding.js — discovery-підказки для кнопок "Запитай AI"/"Граматика"/зміст:
  * ONBOARDING_KEY/onboardingState зберігають, які підказки вже показані (раз на
  * профіль/контрол, а не щоразу), onboardingGroups мапить ключ на DOM-елементи,

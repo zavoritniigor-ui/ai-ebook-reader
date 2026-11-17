@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Grammar/Practice redesign — contextual Verbs/Adjectives Grammar panel and
 contextual-reading Practice. Covers the product behaviors introduced by the
 redesign that tests/grammar_language_isolation_browser.py and

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* dictation.js — розпізнавання мовлення для панелі "Запитай AI":
  * updateDictationUI малює стан мікрофона (запис/іконка/aria), stopDictation
  * фіналізує накопичений розпізнаний текст рівно один раз (interim-текст живе

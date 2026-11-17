@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* core-languages.js — LANGUAGE_CONFIG and flags, grammar language config, tolerant JSON parsing of AI replies,
  * stored/system language choice. Split out of core.js on 2026-11-14 without changes. */
 // One registry drives selectors, translation/AI language names and TTS locales.

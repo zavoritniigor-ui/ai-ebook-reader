@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Italics, bold and centring that an EPUB sets through its own CSS classes reach the page (js/formats.js, applyEpubBookStyles).
 
 Owner (2026-10-30): «Чи епуб відображається правильно». A real Bibliothèque numérique romande book marks every italic word as

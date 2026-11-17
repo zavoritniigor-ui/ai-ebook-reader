@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Regenerate js/device-llm-catalog.js and vendor/mediapipe-genai-<version>/: the pinned files of the on-device AI (js/device-llm.js).
 
     python3 tools/device_llm_catalog.py                     # downloads the model (2 GB) and the engine, hashes them

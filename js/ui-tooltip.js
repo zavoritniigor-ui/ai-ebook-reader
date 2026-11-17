@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* ui-tooltip.js — спливаюча підказка перекладу й підменю нижньої ручки: закриття
  * "тапом деінде" (одна pointerdown-функція закриває і підказку, і футер-меню —
  * вони обидва транзитні оверлеї з тим самим "зникають при тапі повз" правилом,

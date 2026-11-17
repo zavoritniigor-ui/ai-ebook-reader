@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """French-first (then English) acceptance for the contextual Grammar + Practice engine.
 
 No live AI key is available to CI, so every model reply here is a hand-authored GOLD

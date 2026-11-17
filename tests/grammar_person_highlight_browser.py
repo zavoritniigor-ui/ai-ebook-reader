@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Grammar grid: the row of the form the SENTENCE used is highlighted -- also in another tense, and for the gender an adjective had.
 
 Owner, 2026-10-19: "return the highlight of that form of the verb or adjective for the person that was indicated in the sentence".

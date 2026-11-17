@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Translation popup auto-close timer: the countdown for a single word starts when the translation is ON SCREEN,
 never while it is still loading (AI/network latency must not eat the reader's time). Multi-word / sentence
 popups keep their existing "stays open until dismissed" behaviour. No real AI provider is called: the AI and

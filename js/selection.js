@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* selection.js — виділення тексту й пошук меж слова/речення/абзаца під тапом чи
  * курсором: caret hit-testing (caretRangeAt/anchorCaret/blockAncestorOf),
  * видимий порядок фрагментів PDF-текстового шару (pdfNearestSpan/pdfVisualGroup —

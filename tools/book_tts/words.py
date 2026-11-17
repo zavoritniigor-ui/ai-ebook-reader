@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Every word of a narration spoken on its own, as if there were no other text (the voice of a tap on a word).
 
 A word cut out of a sentence carries its neighbours: the liaison, the enchaînement, the melody of the sentence. The reader

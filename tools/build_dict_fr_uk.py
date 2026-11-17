@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Build the offline French → Ukrainian dictionary (dict/fr-uk.json) and its pinned catalog (js/offline-dict-catalog.js).
 
     python3 tools/build_dict_fr_uk.py                 # download the sources once (cached), build, print statistics

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Synthetic, redistributable format fixtures; real import/ZIP guard/DOM/layout."""
 import base64, io, json, os, zipfile
 from browser_cdp import CDP

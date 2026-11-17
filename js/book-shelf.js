@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* «Мої книги»: кожна відкрита книга (з бібліотеки чи з пристрою) зберігається на пристрої в IndexedDB, щоб не губитися,
  * коли Android вивантажує застосунок із фону чи його закривають: раніше зберігалась лише позиція читання, а сам файл жив
  * у пам'яті сторінки — книгу з бібліотеки доводилося шукати й завантажувати знову. Ключ запису = state.bookKey (назва +

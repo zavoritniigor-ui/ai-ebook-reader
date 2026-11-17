@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """A tilted frame on a PDF page (a textbook «Mémo» box printed at 3.5°): the «sentence» of a tapped word is its own
 sentence, whole. Before, the screen boxes of the rotated lines were so tall that neighbouring lines fused into one
 «line»: the sentence skipped a line or ran on into the next. Fixture: tests/fixtures/pdf/tilted-memo.pdf (straight

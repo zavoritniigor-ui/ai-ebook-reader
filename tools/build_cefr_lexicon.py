@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Build js/cefr-lexicon-data.js: CEFR levels of English and French words for the reading statistics.
 
 Sources (downloaded on every run, nothing else is stored in the repo):

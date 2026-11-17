@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* Shared AI client: one explicitly selected BYOK provider for text and images.
  * Existing features keep callAI/callAIVision and their task/epoch protections.
  * No retries through another provider. No credentials or raw errors are logged.

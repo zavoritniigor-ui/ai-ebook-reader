@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Names of cached narration audio (generate.py: whole sentences, words.py: words said alone).
 
 A clip is named by SHA-256 of «voice|rate|text». Caches made before 2026-11-14 named clips by SHA-1 (flagged by the

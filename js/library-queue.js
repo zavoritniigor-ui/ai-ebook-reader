@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* One network download at a time: bounded staging/memory on tablets. A failed
  * publication stays in the queue with its own retry; it never cancels its peers. */
 Object.assign(I18N, {

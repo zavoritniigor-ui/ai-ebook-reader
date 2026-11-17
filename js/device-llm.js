@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* device-llm.js — AI на самому пристрої: переклад і пояснення, коли інтернету немає.
  *
  * Модель — Gemma 4 E2B для веба (Google, Apache-2.0, ~2 ГБ), рушій — MediaPipe LLM Inference (@mediapipe/tasks-genai) на WebGPU.

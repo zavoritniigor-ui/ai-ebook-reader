@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* offline-dict.js — the offline dictionary of a direction (French → Ukrainian), working TOGETHER with the offline translator.
  *
  * The models of js/offline-translate.js translate French through English, so a word with several English senses comes out in the

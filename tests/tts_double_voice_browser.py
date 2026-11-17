@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """User-reported bug (esp. noticeable in French): TTS "sounds like the same voice
 plays twice with a millisecond delay". Root cause: several places in js/tts.js
 (and one in js/main.js) called speechSynthesis.speak() immediately after

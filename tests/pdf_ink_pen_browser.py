@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Handwriting with a stylus on PDF pages (js/pdf-ink.js): pressure, smooth lines, finger and palm.
 
 Owner (2026-10-30): «Функція писати потрібно удосконалити до рівня проф». Before: one width for the whole stroke, a

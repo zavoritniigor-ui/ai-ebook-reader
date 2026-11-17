@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Long / scanned PDFs: memory is given back and the page the reader jumps to comes first (2026-10-16).
 
 User: a scanned Internet Archive book (JPEG 2000 / JBIG2 page images) drew slowly in the page overview and, opening

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """BYOK providers, REST normalization and cancellation. All AI HTTP is mocked.
 No real credentials or paid requests are used. Request records omit auth values.
 """

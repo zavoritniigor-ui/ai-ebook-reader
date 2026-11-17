@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Prevent browser regression suites from existing without a CI invocation.
 
 Since 2026-11-14 CI runs the suites listed in tests/ci_browser_suites.txt (in parallel shards, tests/ci_run_browser.sh);

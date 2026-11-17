@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Actual Practice mouse/pen drags cross clickable targets without opening Grammar."""
 import json, os, time
 from browser_cdp import CDP

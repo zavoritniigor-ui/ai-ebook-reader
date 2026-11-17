@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Tapping a word in a BIG chapter (library books: Pride and Prejudice has a 130k-character chapter) must not freeze the
 page: the reading statistics used to re-read the whole chapter and measure every word's position on each tap and page
 turn (0.5 s on a desktop before the translation popup appeared, seconds on a tablet). The fast page-word detection must

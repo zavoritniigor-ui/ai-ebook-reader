@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Groq streams Ask AI and Language level (2026-10-31: «як щодо швидкості відповіді від AI»).
 
 Every request starts on Groq (routing 'auto'), but only OpenAI streamed, so for Ask AI the reader stared at a spinner until

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Regular expressions that read outside data stay linear (no ReDoS). No browser needed; listed with the browser suites so
 CI runs it (tests/ci_browser_suites.txt).
 

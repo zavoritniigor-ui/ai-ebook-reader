@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """A single tap/click on a word inside the open Rules window (theory, conjugation table) opens the translation popup, and the
 Rules window stays open; its own controls (topic buttons, back) still work. No network."""
 import base64, json, os, time

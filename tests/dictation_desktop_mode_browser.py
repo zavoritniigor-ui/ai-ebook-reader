@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Dictation on an Android phone in Chrome's «Desktop site» mode must not type every word several times.
 
 CONFIRMED from the owner's phone (📋 diagnostics, 2026-10-18): the user agent said «X11; Linux x86_64», so the app took the

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* reading-ribbon.js — закладка-стрічка «місце читання»: кольорова риска на лівому полі навпроти речення, на якому
  * читач зупинився (останнє натиснуте слово або речення, до якого дійшло читання вголос). Запам'ятовується для кожної
  * книги окремо й показується знову після відкриття книги, гортання чи зміни розміру шрифту.

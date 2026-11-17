@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """French tense chronology, present centering and quiet theme-aware tinting."""
 import os,time,base64
 from pathlib import Path

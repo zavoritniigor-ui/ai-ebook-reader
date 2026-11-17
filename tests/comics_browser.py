@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Browser test: a CBZ comic or magazine archive opens and turns pages. Each page is one image; the pages go in the natural
 order of their file names (2.png before 10.png); files that are not images are skipped."""
 import base64, io, os, time, zipfile

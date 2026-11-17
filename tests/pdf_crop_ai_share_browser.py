@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """PDF crop dialog: Save PNG / Share / Copy image / Send to AI.
 
 Send to AI used to fire a fixed "check the exercise" vision request while the modal crop dialog stayed open (it

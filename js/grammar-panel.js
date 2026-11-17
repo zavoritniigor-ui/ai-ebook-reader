@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* grammar-panel.js — rendering of the Grammar panel: mode and controls bars, cards, focus detail, adjective forms,
  * verb paradigms, focusGrammarItem (shared with js/practice-worksheet.js). Split out of grammar-svo.js on 2026-11-14 without changes. */
 // ========== ГРАМАТИКА: РЕНДЕР ПАНЕЛІ (Verbs/Adjectives cards + focus detail) ==========

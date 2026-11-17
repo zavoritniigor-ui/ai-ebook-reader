@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* pwa-lifecycle.js — життєвий цикл встановленого PWA: фонова активність
  * (stopBackgroundActivity — один рубильник для TTS/озвучення/мікрофона/AI-
  * запитів/рендеру PDF, викликається і з подій видимості, і з кнопки "Вийти"),

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Ask AI dictation (speech-to-text): one utterance must land in the Ask input once.
 
 Android's (and iOS's) recognizer is a single-utterance engine. Chrome's emulated `continuous` mode there re-emits

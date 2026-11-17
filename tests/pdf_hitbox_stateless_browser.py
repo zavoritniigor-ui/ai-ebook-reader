@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """User-reported bug: in the PDF reader, tapping/clicking blank white space near a
 word does nothing — UNTIL that word has been tapped once (selected). After that,
 the SAME blank spot (and any blank space within a large radius — reported as
