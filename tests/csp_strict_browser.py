@@ -11,6 +11,10 @@ from browser_cdp import CDP
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CSP = next(line.split(':', 1)[1].strip() for line in open(os.path.join(ROOT, '_headers')) if line.strip().startswith('Content-Security-Policy'))
 assert "'unsafe-inline'" not in CSP.split('script-src', 1)[1].split(';', 1)[0], 'script-src must not allow inline scripts'
+# Cloudflare Web Analytics (visit statistics, no cookies): Pages injects its beacon script, which then reports to
+# cloudflareinsights.com. Without these two hosts the CSP silently blocks it and the dashboard shows no visits.
+assert 'https://static.cloudflareinsights.com' in CSP.split('script-src', 1)[1].split(';', 1)[0], 'script-src must allow the Web Analytics beacon'
+assert 'https://cloudflareinsights.com' in CSP.split('connect-src', 1)[1].split(';', 1)[0], 'connect-src must allow Web Analytics reports'
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
