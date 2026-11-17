@@ -27,8 +27,66 @@ const LOCAL_SPEECH_CHUNK_MAX = 260;
 let localSpeechHealth = { at: 0, ok: false };
 let localSpeechInFlight = null;   // AbortController запиту, що ще чекає на аудіо
 let localSpeechPrefetch = null;   // AbortController фонового передзавантаження наступного уривка
-let localSpeechAudio = null;      // поточний <audio>, що програється
+let localSpeechAudio = null;      // поточний <audio>, що програється (запасний шлях)
 let localSpeechAudioUrl = null;   // його blob: URL, звільняється при зупинці
+let localSpeechNode = null;       // поточний AudioBufferSourceNode гучного шляху
+let localSpeechToken = null;      // ідентифікатор поточного відтворення: зупинка обнуляє його
+
+// Гучність локального (Kokoro) голосу. Сервер нормалізує Kokoro до ~−16 dBFS, і на багатьох машинах це тихо, а <audio>
+// не вміє грати гучніше за джерело. Тому кліп декодується і програється через підсилювач: LOCAL_SPEECH_GAIN разів
+// гучніше (4 ≈ +12 dB), з лімітером, щоб гучний пік усе одно не захрипів. Декодування ще й пускає звук із першого
+// семпла, тож перше слово не губиться на затримці запуску <audio>. Щоб зробити голос гучнішим — підніміть це число.
+const LOCAL_SPEECH_GAIN = 4;
+let localSpeechCtx = null;        // один спільний AudioContext, «прогрівається» на дотику, що запускає озвучку
+
+function localSpeechAudioCtx() {
+    if (!localSpeechCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        try { localSpeechCtx = new Ctx(); } catch (err) { return null; }
+    }
+    if (localSpeechCtx.state === 'suspended') { try { localSpeechCtx.resume(); } catch (err) {} }
+    return localSpeechCtx;
+}
+
+// Програє один кліп гучно й із першого семпла. Викликає handlers.onEnded() у кінці та handlers.onFailed(err), якщо
+// навіть запасний <audio> не зміг програти. handlers.isCurrent() має бути true, поки цей кліп ще актуальний (його не
+// змінив новіший тап і не зупинив stopLocalSpeech). Створює й зберігає blob:URL, який звільнить stopLocalSpeech.
+function playLocalClip(blob, handlers) {
+    const url = URL.createObjectURL(blob);
+    localSpeechAudioUrl = url;
+    let done = false;
+    const once = fn => (...args) => { if (done || !handlers.isCurrent()) return; done = true; fn(...args); };
+    const endWith = once(handlers.onEnded);
+    const failWith = once(handlers.onFailed);
+    const playElement = () => {
+        if (done || !handlers.isCurrent()) return;
+        const audio = new Audio(url);
+        localSpeechAudio = audio;
+        audio.onended = () => endWith();
+        audio.onerror = err => failWith(err);
+        audio.play().catch(err => failWith(err));
+    };
+    const ctx = localSpeechAudioCtx();
+    if (!ctx || !ctx.decodeAudioData) { playElement(); return; }
+    blob.arrayBuffer()
+        .then(buf => ctx.decodeAudioData(buf))
+        .then(buffer => {
+            if (done || !handlers.isCurrent()) return;
+            const src = ctx.createBufferSource();
+            src.buffer = buffer;
+            const gain = ctx.createGain();
+            gain.gain.value = LOCAL_SPEECH_GAIN;
+            const limiter = ctx.createDynamicsCompressor();   // ловить піки, щоб підсилення не захрипіло
+            limiter.threshold.value = -6; limiter.knee.value = 0; limiter.ratio.value = 20;
+            limiter.attack.value = 0.003; limiter.release.value = 0.1;
+            src.connect(gain); gain.connect(limiter); limiter.connect(ctx.destination);
+            localSpeechNode = src;
+            src.onended = () => { if (localSpeechNode === src) localSpeechNode = null; endWith(); };
+            try { src.start(); } catch (err) { playElement(); }
+        })
+        .catch(() => playElement());   // не вдалося декодувати (інший формат) — звичайний <audio>, той самий голос
+}
 
 function localSpeechEnabled() {
     try { return localStorage.getItem('reader_local_speech') === '1'; }
@@ -60,6 +118,12 @@ function localSpeechReady(langCode) {
 function stopLocalSpeech() {
     if (localSpeechInFlight) { localSpeechInFlight.abort(); localSpeechInFlight = null; }
     if (localSpeechPrefetch) { localSpeechPrefetch.abort(); localSpeechPrefetch = null; }
+    localSpeechToken = null;   // будь-який кліп, що ще чекає на декодування, стане неактуальним
+    if (localSpeechNode) {
+        localSpeechNode.onended = null;
+        try { localSpeechNode.stop(); } catch (err) {}
+        localSpeechNode = null;
+    }
     if (localSpeechAudio) {
         localSpeechAudio.onended = null;
         localSpeechAudio.onerror = null;
@@ -161,6 +225,7 @@ function fetchLocalSpeechChunk(chunkText, langCode, isPrefetch) {
 // якщо за час запиту фразу скасували (новий тап, stopTooltipSpeech), аудіо не програється.
 function speakViaLocal(text, langCode, side, offset, onEnd, gen, fallback) {
     if (!localSpeechReady(langCode)) return false;
+    localSpeechAudioCtx();   // прогріти звуковий контекст у межах дотику, щоб перший кліп стартував одразу
     // Soft hyphens are layout hints, not pronunciation or word boundaries.
     // Keep source DOM/selection offsets intact and remove them only from server input.
     const spoken = (offset ? text.slice(offset) : text).replace(/\u00ad/g, '');
@@ -199,38 +264,35 @@ function speakViaLocal(text, langCode, side, offset, onEnd, gen, fallback) {
                 }
                 if (u.onboundary) u.onboundary({ charIndex: chunks[idx].offset });
                 if (typeof pauseBookAudio === 'function') pauseBookAudio();
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                localSpeechAudio = audio;
-                localSpeechAudioUrl = url;
+                const token = {};
+                localSpeechToken = token;
                 if (idx + 1 < chunks.length) {
                     prefetched = fetchLocalSpeechChunk(chunks[idx + 1].text, langCode, true);
                 } else {
                     prefetched = null;
                 }
                 let settled = false;
-                const current = () => !settled && state.ttsGen === gen && localSpeechAudio === audio;
-                audio.onended = () => {
-                    if (!current()) return;
-                    settled = true;
-                    if (idx + 1 < chunks.length) {
-                        const nextPromise = prefetched ? prefetched.promise : fetchLocalSpeechChunk(chunks[idx + 1].text, langCode, false).promise;
-                        prefetched = null;
-                        playChunkAt(idx + 1, nextPromise);
-                    } else {
+                const current = () => !settled && state.ttsGen === gen && localSpeechToken === token;
+                playLocalClip(blob, {
+                    isCurrent: current,
+                    onEnded: () => {
+                        settled = true;
+                        if (idx + 1 < chunks.length) {
+                            const nextPromise = prefetched ? prefetched.promise : fetchLocalSpeechChunk(chunks[idx + 1].text, langCode, false).promise;
+                            prefetched = null;
+                            playChunkAt(idx + 1, nextPromise);
+                        } else {
+                            stopLocalSpeech();
+                            if (u.onend) u.onend();
+                        }
+                    },
+                    onFailed: err => {
+                        settled = true;
                         stopLocalSpeech();
-                        if (u.onend) u.onend();
+                        console.warn('Local speech playback failed, using browser voice:', err);
+                        fallback((offset || 0) + chunks[idx].offset);
                     }
-                };
-                const playbackFailed = err => {
-                    if (!current()) return;
-                    settled = true;
-                    stopLocalSpeech();
-                    console.warn('Local speech playback failed, using browser voice:', err);
-                    fallback((offset || 0) + chunks[idx].offset);
-                };
-                audio.onerror = playbackFailed;
-                audio.play().catch(playbackFailed);
+                });
             })
             .catch(err => {
                 if (err.cancelled || state.ttsGen !== gen) return;
@@ -248,32 +310,29 @@ function speakViaLocal(text, langCode, side, offset, onEnd, gen, fallback) {
 // тож іконка «стоп», кнопки і onEnd працюють однаково для обох рушіїв.
 function playLocalBlob(blob, side, text, offset, onEnd, gen, fallback) {
     stopLocalSpeech();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
+    const token = {};
+    localSpeechToken = token;
     const u = {};   // bindUtterance лише вішає onboundary/onend/onerror на цей об'єкт
     if (side) bindUtterance(u, side, text, offset, onEnd);
     else u.onend = onEnd;  // page/selection queue, without changing popup speaker state
     if (typeof pauseBookAudio === 'function') pauseBookAudio();
-    localSpeechAudio = audio;
-    localSpeechAudioUrl = url;
     let settled = false;
-    const current = () => !settled && state.ttsGen === gen && localSpeechAudio === audio;
-    audio.onended = () => {
-        if (!current()) return;
-        settled = true;
-        stopLocalSpeech();
-        if (u.onend) u.onend();
-    };
-    const playbackFailed = err => {
-        if (!current()) return;
-        settled = true;
-        stopLocalSpeech();
-        // Finish only after the fallback speaks; advancing here would skip this segment.
-        console.warn('Local speech playback failed, using browser voice:', err);
-        fallback();
-    };
-    audio.onerror = playbackFailed;
-    audio.play().catch(playbackFailed);
+    const current = () => !settled && state.ttsGen === gen && localSpeechToken === token;
+    playLocalClip(blob, {
+        isCurrent: current,
+        onEnded: () => {
+            settled = true;
+            stopLocalSpeech();
+            if (u.onend) u.onend();
+        },
+        onFailed: err => {
+            settled = true;
+            stopLocalSpeech();
+            // Finish only after the fallback speaks; advancing here would skip this segment.
+            console.warn('Local speech playback failed, using browser voice:', err);
+            fallback();
+        }
+    });
 }
 
 // Перемикач у «Налаштуваннях» (index.html, #btn-local-speech) — той самий прапорець reader_local_speech, що й раніше.
