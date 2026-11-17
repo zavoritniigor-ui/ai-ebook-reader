@@ -1240,21 +1240,28 @@
         .reading-ribbon.pdf { left: 3px; z-index: 6; }
         .reading-ribbon[hidden] { display: none; }
         body.rules-inset #reader-pages { padding-bottom: calc(var(--rules-inset, 0px) + 24px); }
-        /* Закладка «Правила»: прямокутна кнопка на ЛІВОМУ краю екрана, довгою стороною вздовж краю, на рівні колеса ✦ (праворуч лежать повзунок сторінок, ✦ і язичок Граматики). Колір =
-           стан пошуку: зелений — знайдено, червоний — іде пошук / не вдалося, нейтральний — ще нічого не шукали. Позицію (висота колеса ✦, а якщо там зайнято —
-           найближчий вільний проміжок між шапкою, кнопкою ☰, язичком «Запитай AI» та шторкою) рахує layoutRulesPanel(). */
-        .rules-tab { position: fixed; left: 0; top: var(--rules-tab-top, 40vh); z-index: 10004; width: 40px; height: 112px; padding: 8px 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
-            border: 1px solid var(--border-color); border-left: 0; border-right: 4px solid var(--accent-color); border-radius: 4px; background: var(--panel-bg); color: var(--text-color); box-shadow: 2px 2px 8px rgba(0,0,0,.2);
-            font-size: 13px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: top .4s cubic-bezier(.4,0,.2,1), background-color .5s; }
+        /* Закладка «Правила»: «скляна» пів-капсула на ЛІВОМУ краю екрана (той самий вигляд, що в капсули нижнього ряду: напівпрозоре тло
+           з кольоровим відливом, розмиття, тонка рамка, м'яка тінь), довгою стороною вздовж краю, на рівні колеса ✦. Колір = стан пошуку:
+           зелений — знайдено, червоний — іде пошук / не вдалося, без стану — відлив нижнього ряду. Позицію (висота колеса ✦, а якщо там
+           зайнято — найближчий вільний проміжок між кнопкою ☰, язичком «Запитай AI» та шторкою) рахує layoutRulesPanel(). */
+        .rules-tab { position: fixed; left: 0; top: var(--rules-tab-top, 40vh); z-index: 10004; box-sizing: border-box; width: 40px; height: 112px; padding: 6px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+            border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent); border-left: 0; border-radius: 0 20px 20px 0; overflow: hidden;
+            background-color: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+            background-image: linear-gradient(170deg, rgba(68,158,255,.26), rgba(79,218,185,.22), rgba(170,124,255,.26));
+            backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+            color: var(--text-color); box-shadow: 0 12px 32px -12px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.08);
+            font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent;
+            transition: top .4s cubic-bezier(.4,0,.2,1), background-color .5s, filter .15s; }
         .rules-tab[hidden] { display: none; }
-        .rules-tab { overflow: hidden; }
-        .rules-tab:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
-        .rules-tab-icon { font-size: 18px; line-height: 1; }
-        .rules-tab-text { white-space: nowrap; letter-spacing: .02em; writing-mode: vertical-rl; }
-        .rules-tab-count { min-width: 22px; padding: 1px 5px; border-radius: 10px; background: #198754; color: #fff; font-size: 11px; text-align: center; }
+        .rules-tab:active { filter: brightness(.94); }
+        @media (hover: hover) { .rules-tab:hover { filter: brightness(1.04) saturate(1.15); } }
+        .rules-tab:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -3px; }
+        .rules-tab-icon { font-size: 17px; line-height: 1; }
+        .rules-tab-text { white-space: nowrap; letter-spacing: .03em; writing-mode: vertical-rl; }
+        .rules-tab-count { min-width: 20px; box-sizing: border-box; padding: 1px 5px; border-radius: 10px; background: #198754; color: #fff; font-size: 10.5px; line-height: 1.35; text-align: center; }
         .rules-tab-count[hidden] { display: none; }
-        .rules-tab[data-state="ready"] { background: rgba(25,135,84,.22); border-color: rgba(25,135,84,.65); border-right-color: #198754; }
-        .rules-tab[data-state="running"], .rules-tab[data-state="failed"] { background: rgba(220,53,69,.18); border-color: rgba(220,53,69,.65); border-right-color: #dc3545; }
+        .rules-tab[data-state="ready"] { background-image: none; background-color: rgba(25,135,84,.22); border-color: rgba(25,135,84,.5); }
+        .rules-tab[data-state="running"], .rules-tab[data-state="failed"] { background-image: none; background-color: rgba(220,53,69,.18); border-color: rgba(220,53,69,.5); }
         #btn-rules[data-state="ready"] { background: rgba(25,135,84,.22); border-color: rgba(25,135,84,.65); }
         #btn-rules[data-state="running"] { animation: rules-blink 1s ease-in-out infinite; }
         @keyframes rules-blink { 50% { opacity: .45; } }
