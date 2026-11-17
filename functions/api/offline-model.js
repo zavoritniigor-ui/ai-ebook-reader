@@ -14,12 +14,19 @@ function json(body, status) {
     return new Response(JSON.stringify(body), { status, headers: {
         'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
 }
+const ALLOWED_HOSTS = ['ai-ebook-reader.uk', 'ai-ebook-reader.pages.dev'];
+// The app's own hosts. The backend refuses to serve any other deployment (a copied site), so a pirated copy has no
+// working AI / dictionaries / models even on its own Cloudflare. Add a host here if the app gets a new domain.
+function allowedHost(h) {
+    return !!h && (ALLOWED_HOSTS.includes(h) || h.endsWith('.ai-ebook-reader.pages.dev') || h === 'localhost' || h === '127.0.0.1');
+}
 function sameOrigin(request, url) {
+    if (!allowedHost(url.hostname)) return false;   // this deployment must be one of the app's own hosts
     if (request.headers.get('sec-fetch-site') === 'same-origin') return true;
     const origin = request.headers.get('origin');
-    if (origin) return origin === url.origin;
+    if (origin) { try { return allowedHost(new URL(origin).hostname); } catch (e) { return false; } }
     const referer = request.headers.get('referer');
-    try { return !!referer && new URL(referer).origin === url.origin; } catch (e) { return false; }
+    try { return !!referer && allowedHost(new URL(referer).hostname); } catch (e) { return false; }
 }
 function rateLimited(ip) {
     const now = Date.now();

@@ -58,4 +58,6 @@ for (const [status, expected] of [[404, 404], [500, 502], [403, 502], [200, 502]
     const text = await r.text();
     ok(`upstream ${status} for a range -> ${expected}, upstream body not shown`, r.status === expected && !text.includes('account details'));
 }
+r = await onRequestGet({ request: new Request('https://pirate.example/api/device-llm?f=model', { headers: { 'sec-fetch-site': 'same-origin', range: 'bytes=0-3' } }) });
+ok('a copied deployment on a foreign host is refused even with same-origin', r.status === 403);
 console.log('ALL DEVICE LLM PROXY CHECKS PASSED');

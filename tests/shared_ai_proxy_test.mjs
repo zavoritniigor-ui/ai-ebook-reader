@@ -83,4 +83,7 @@ ok('a code or param that does not look like one is dropped', oe.status === 400 &
 globalThis.fetch = async () => new Response('{}');
 let last; for (let i = 0; i < 45; i++) last = await onRequestPost({ request: req('?provider=groq', { model: 'openai/gpt-oss-120b' }, { origin: O, 'cf-connecting-ip': '9.9.9.9' }), env });
 ok('more than 40 requests a minute from one IP -> 429', last.status === 429);
+sent = null; globalThis.fetch = async (url, opt) => { sent = { url }; return new Response('{}'); };
+r = await onRequestPost({ request: new Request('https://pirate.example/api/ai?provider=groq', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://pirate.example', 'sec-fetch-site': 'same-origin' }, body: JSON.stringify({ model: 'openai/gpt-oss-120b' }) }), env });
+ok('a copied deployment on a foreign host is refused (the shared key never reaches a pirate copy)', r.status === 403 && !sent);
 console.log('ALL SHARED AI PROXY CHECKS PASSED');

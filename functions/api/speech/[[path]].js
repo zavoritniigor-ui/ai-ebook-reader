@@ -9,11 +9,17 @@
 const ALLOWED = new Set(['health', 'speak']);
 const MAX_BODY_BYTES = 16 * 1024;   // фраза для озвучки коротка; сервер і так обмежує MAX_CHARS
 
+const ALLOWED_HOSTS = ['ai-ebook-reader.uk', 'ai-ebook-reader.pages.dev'];
+// The app's own hosts. The backend refuses to serve any other deployment (a copied site). Add a host here for a new domain.
+function allowedHost(h) {
+    return !!h && (ALLOWED_HOSTS.includes(h) || h.endsWith('.ai-ebook-reader.pages.dev') || h === 'localhost' || h === '127.0.0.1');
+}
 function sameOrigin(request, url) {
+    if (!allowedHost(url.hostname)) return false;   // this deployment must be one of the app's own hosts
     const origin = request.headers.get('origin');
-    if (origin) return origin === url.origin;
+    if (origin) { try { return allowedHost(new URL(origin).hostname); } catch (e) { return false; } }
     const referer = request.headers.get('referer');
-    try { return !!referer && new URL(referer).origin === url.origin; } catch (e) { return false; }
+    try { return !!referer && allowedHost(new URL(referer).hostname); } catch (e) { return false; }
 }
 
 export async function onRequest({ request, env, params }) {
