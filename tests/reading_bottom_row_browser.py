@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The bottom reading row «‹ · ☰ · ✦ · 3/553 · ›» (index.html, js/quick-wheel.js place()).
 
 Owner (2026-10-30): «кнопки потрібно переносити в низ екрану із збереженням функціоналу, єдине потрібен грамотний дизайн» and

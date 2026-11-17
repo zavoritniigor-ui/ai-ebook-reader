@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* grammar-analysis.js — the Grammar panel's analysis: prompt budget and windows, buildGrammarAnalysisPrompt,
  * normalizeGrammarAnalysis (structured JSON from the AI, validated), verb stems and endings, form slots.
  * Split out of grammar-svo.js on 2026-11-14 without changes; loads right after it. */

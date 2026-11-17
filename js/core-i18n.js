@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* core-i18n.js — every interface string (I18N), t(), applyI18n() and small menu/panel UI helpers.
  * Split out of core.js on 2026-11-14 without changes. */
 // ========== МОВА ІНТЕРФЕЙСУ ==========

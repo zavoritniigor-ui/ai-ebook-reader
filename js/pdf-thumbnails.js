@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* pdf-thumbnails.js — left sidebar thumbnail list: one placeholder per page
  * built immediately (correct sidebar scroll height from the start), low-resolution
  * canvases generated via a bounded predictive prefetch queue [currentIndex - 10 ... currentIndex + 10]

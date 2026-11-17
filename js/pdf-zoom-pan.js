@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* pdf-zoom-pan.js — керування масштабом/панорамуванням PDF: колесо+Ctrl і pinch
  * (двома пальцями) міняють масштаб відносно точки курсора/центру жесту, ліва
  * кнопка миші панорамує зображення, рендер у повній роздільності повертається

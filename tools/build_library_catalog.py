@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Build library-catalog.json (the reader's built-in free-library index) from Project Gutenberg's official catalog.
 
     curl -L -o pg_catalog.csv https://gutenberg.pglaf.org/cache/epub/feeds/pg_catalog.csv

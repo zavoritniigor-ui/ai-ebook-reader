@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* lang-detect.js — евристика визначення мови для тексту читача.
  * Книга може бути двомовною, і навіть ОДНЕ речення може мішати англійську з
  * французькою — тому мова визначається не для сторінки чи речення в цілому,

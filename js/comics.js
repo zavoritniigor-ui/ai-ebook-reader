@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* comics.js — CBZ: комікси й журнали-архіви (ZIP із зображеннями сторінок).
  * Кожна сторінка книги — одне зображення, розпаковане через JSZip (vendor/jszip-3.10.1.min.js) під час показу.
  * Тексту в коміксів немає, тож переклад слів і озвучка тут не працюють. Порядок сторінок — за номерами в іменах файлів

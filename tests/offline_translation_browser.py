@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Offline translation end to end (js/offline-translate.js): a language pack is installed from Settings, then words and sentences are
 translated with no network at all by the REAL Bergamot engine and REAL Mozilla models (downloaded once, SHA-256 checked against the
 pinned catalog, and kept in $READER_OFFLINE_MODEL_CACHE or the temp dir). The app is served by a small server of this test that adds

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Live-provider acceptance probe for the Grammar and Practice AI contract.
 
 Why this exists: every automated test stubs the network, so none of them can say whether a REAL model's reply is accepted. This

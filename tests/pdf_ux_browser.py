@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """PDF UX regression checks via a disposable Chrome CDP session (Python stdlib only).
 Start a local server on 8765 and Chrome with --remote-debugging-port=9222.
 No AI request or real credentials are used. Share/clipboard OS dialogs are mocked.

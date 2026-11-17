@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Regenerate js/offline-catalog.js: the pinned list of Mozilla's translation models the offline translator may download.
 
     python3 tools/offline_models_catalog.py            # rewrite js/offline-catalog.js from Mozilla's current records

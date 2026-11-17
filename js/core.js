@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* core.js — спільний фундамент застосунку: безпечне збереження в localStorage, санітизація HTML (safeHtml),
  * керування async-задачами (beginAsyncTask/cancelAsyncTasks), мережеві хелпери (fetchWithTimeout тощо),
  * мутовні контейнери епох/PDF-задач (readerEpoch/pdfTasks).

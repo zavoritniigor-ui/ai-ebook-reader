@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* grammar-rules-details-fr.js — розгорнуті пояснення правил і ВИНЯТКІВ для тем французького каталогу
  * (js/grammar-rules-data-fr.js). Ключ — id теми; текст uk/en. Рядок, що закінчується на «:», — підзаголовок
  * («Правила:», «Винятки:»), рядок з «• » — пункт списку. Показується в панелі «Правила» під короткою теорією

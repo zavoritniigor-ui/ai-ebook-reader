@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Optional fixture regeneration; CI reads the committed files, no dependencies.
 
 Run with python-docx==1.2.0 and Pillow==12.3.0 installed. These are original,

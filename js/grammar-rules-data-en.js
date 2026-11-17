@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* grammar-rules-data-en.js — каталог правил англійської граматики для панелі «Правила» (js/grammar-rules.js).
  *
  * Той самий формат, що й js/grammar-rules-data-fr.js: статичні дані (теорія однакова для всіх і не коштує запитів).

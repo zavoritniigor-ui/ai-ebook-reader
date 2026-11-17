@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Free library window: the header button opens it, a search request carries the query/language/genre, results are listed with a
 Read button, Read downloads the EPUB through /api/library and opens it in the reader; Wikisource and Internet Archive (PDF/EPUB) as
 further sources. The network is mocked. No network."""

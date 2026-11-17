@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Re-synthesizes the sentences that hold a word broken at a line end («contri- buer»), said whole this time.
 
 The PDF text keeps the line-end hyphen and the line break, so generate.py gave the voice «contri- buer» and it said two

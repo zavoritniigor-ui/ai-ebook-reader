@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* main.js — фінальне складання: усе, що лишилось після Кроків 1-17 і не належить
  * жодному окремому фіче-модулю. Загальні налаштування читалки (мова інтерфейсу/
  * тема/цільова мова перекладу/вибір голосу — відновлення збереженого стану й

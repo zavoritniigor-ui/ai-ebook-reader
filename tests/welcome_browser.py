@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The welcome video (js/welcome.js, owner 2026-10-28): it plays over the whole screen when the app is opened for the first time
 or after a long time unused (30 minutes), then gets out of the way. Put aside and brought back sooner — a new start of the page
 or a return from the background — it does not play. A tap skips it; with «reduce motion» or without the video file the app is

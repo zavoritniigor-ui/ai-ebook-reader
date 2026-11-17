@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Sentence-level learning actions in Practice: translate + listen on EVERY generated sentence.
 
 Manual production acceptance found Practice missing two per-sentence actions the reader already offers

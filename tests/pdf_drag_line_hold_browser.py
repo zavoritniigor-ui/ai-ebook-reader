@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """A finger drag in a PDF on a phone holds on to its line (js/selection.js, dragLine).
 
 Owner (2026-10-30): «Проблеми з виділенням, виділяє більше чим потрібно» (PDF, long press and drag). On a phone a page fitted

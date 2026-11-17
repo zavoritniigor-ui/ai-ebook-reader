@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Hand-authored GOLD Practice readings (schema v2) shared by the Practice/Grammar browser suites.
 
 Practice is a READING / EXAMPLES surface: per-word example sentences plus connected paragraphs, every

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* Lower-right Quick Menu: a curved scrollable wheel with 14 real actions,
  * inertia, detent snapping, and synchronized roulette ticking sound.
  * Thumb-reachable on tablets, expands inward/leftward from launcher.

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* learning-stats.js — compact current-page reading/vocabulary statistics.
  *
  * The source model is deliberately position-based rather than DOM-wrapper-based:

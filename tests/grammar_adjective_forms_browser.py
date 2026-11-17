@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Grammar: an adjective's agreement table is asked for when its card is opened.
 
 A long selection is analysed under the LITE contract (no conjugation table, no stem split, so the reply is not cut off): an

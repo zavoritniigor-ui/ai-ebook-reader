@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Deterministic, redistributable EPUB/FB2 corpus builders (stdlib only).
 
 These produce actual ZIP/XML/image files; no reader/parser functions are mocked.

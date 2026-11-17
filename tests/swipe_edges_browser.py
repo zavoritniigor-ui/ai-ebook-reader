@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Swipes and the screen edges (js/navigation.js touch handlers).
 
 Owner, 2026-11-15: «при проведенні пальцем з гори екрану вниз застосунок видає чорний екран та перегортає сторінку». A swipe

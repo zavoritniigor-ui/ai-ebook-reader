@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """The REAL-model contract: provider envelope -> JSON extraction -> validation -> Grammar / Practice UI.
 
 A live-AI acceptance run failed with "The AI response was invalid or incomplete" while every mocked test passed, because the mocks

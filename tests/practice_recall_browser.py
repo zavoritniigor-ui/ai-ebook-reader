@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Practice, second step «З пам'яті» (from memory): the same reading with every verb/adjective form replaced by a field.
 
 Reading shows a form; having to produce it is what keeps it. The step is opt-in (one button over the reading), uses

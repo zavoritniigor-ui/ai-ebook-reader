@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Translation popup touch UX: on a touch screen (pointer: coarse) every popup button has a >=44px hit area that
 does not overlap its neighbours, the header wraps instead of squeezing the word, the action buttons stay inside the
 popup, and the speaker buttons expose their state (aria-pressed) and a localized accessible name. With a fine

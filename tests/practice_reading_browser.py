@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Practice is a READING / EXAMPLES surface -- acceptance through the real UI.
 
 The learner selects text in a French book (here even a textbook EXERCISE line, "Ils (plaindre) le pauvre

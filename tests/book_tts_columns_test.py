@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Checks tools/book_tts/columns.py on made-up lines (no PDF): a two-column table is read cell by cell, a wrapped cell goes
 on in the same sentence, a cell of several sentences is split, a heading is a unit of its own, and a paragraph goes on
 across blocks only while a sentence is open. A book in one voice (a French textbook) has no tables: its boxes are running text in

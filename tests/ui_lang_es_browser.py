@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Spanish is a menu (UI) language: the menu-language select offers it, a stored choice is kept, a Spanish system gets it on
 first start, EVERY interface string has its own Spanish text (also those defined after core.js), the menu really switches, and
 Spanish text gets a grammar configuration of its own. No network."""

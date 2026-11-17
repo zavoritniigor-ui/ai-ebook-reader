@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Grammar rules panel (French catalogue): menu of topics, search of the chosen rule in the VISIBLE page text, highlighting of
 exactly the matching words, match list + detail card, theory-based explanation, tap on a highlighted word.
 

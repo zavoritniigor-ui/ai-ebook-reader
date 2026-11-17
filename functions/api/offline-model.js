@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 // Cloudflare Pages Function: GET /api/offline-model?f=<path> — language-model files for the on-device translator (js/offline-translate.js).
 // The files are Mozilla's public translation models (MPL-2.0). Their storage sends no CORS headers, so a page cannot fetch them
 // itself; this function streams a file from there. NOT an open proxy: one fixed host, a strict path pattern (translation-model files

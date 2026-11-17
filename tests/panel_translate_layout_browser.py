@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Panels + breakdown tooltip UX (tablet portrait): the Grammar / Ask AI panels fit the screen (the main menu is a side drawer over
 the book since 2026-10-18, no bar on top to keep clear); in the breakdown popup the legend sits above the translation, which keeps the popup's full width and scrolls with it;
 selecting a word, sentence or paragraph INSIDE the Grammar, Ask AI and Practice panels opens the same translation popup as in the

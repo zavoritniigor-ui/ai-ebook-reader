@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Context-aware EN/FR mixed-language segmentation WITHOUT parentheses
 (js/lang-detect.js). Language-learning sentences routinely embed a local
 French word/phrase inside an English sentence (or vice versa) with no

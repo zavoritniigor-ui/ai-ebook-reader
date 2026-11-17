@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* offline-translate.js — переклад слів і речень БЕЗ інтернету, силами самого пристрою.
  *
  * Рушій — Bergamot (Marian NMT, зібраний у WebAssembly; той самий, що в перекладачі Firefox) у Web Worker. Мовні моделі читач

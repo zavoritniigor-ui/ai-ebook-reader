@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* pdf-crop.js — виділення області сторінки PDF (пером/мишею/пальцем) і перевірка
  * вправи через AI vision: regionStart/regionBox — стан обведення (region-mode),
  * exitRegionMode виходить без захоплення, cropPdfRegion вирізає саме обведену

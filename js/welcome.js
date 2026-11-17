@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 // ========== ПРИВІТАЛЬНЕ ВІДЕО ПРИ ВІДКРИТТІ ЗАСТОСУНКУ (owner, 2026-10-28) ==========
 // A 4.5 s welcome video plays over the whole screen when the app is opened for the first time, or after it has not been used for
 // a long time (WELCOME_IDLE_MS), then the app shows through. Put aside for a while (a look at the files, a YouTube video) and

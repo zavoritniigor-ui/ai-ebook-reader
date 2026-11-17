@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Multi-verb selections from a bilingual French/English PDF (real report: physical page 349 of a bilingual French/English grammar workbook).
 
 The learner drags across a side-by-side table -- French forms on the left, their English translation on the right --

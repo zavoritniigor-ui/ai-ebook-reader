@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """WHY Groq did not answer: a 429 now says which limit was hit, its numbers and when to come back (js/ai-client.js aiRateDetails, functions/api/ai.js).
 
 User report: «most of my translations come from OpenAI, the Groq priority does not work». Measured on the production site: every request DID start on

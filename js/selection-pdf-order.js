@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* selection-pdf-order.js — PDF text in visual order: spans, rotation, line bands, columns and gutters, word joining,
  * sentence ranges from spans, resolveCanonicalPdfSelection, sentenceRangeAt.
  * Split out of selection.js on 2026-11-14 without changes; loads right after it. */

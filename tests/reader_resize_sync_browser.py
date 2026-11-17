@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Fixes the documented pagination/resize-synchronization bug (HANDOFF.md):
 '#reader-pages { height: 100% }' means the browser's own CSS multi-column
 layout silently re-flows content across columns whenever '#reader-container'

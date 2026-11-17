@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """🔊 Voice test in the 🩺 diagnostics (owner, 2026-10-18: «add a sound test so I can send you from the phone how the voice works»).
 
 The trace alone cannot say what the reader HEARD (the phone's report showed speak → start → end while the reader said the

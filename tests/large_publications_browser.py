@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """800x1280 tablet: >300 MiB streamed files, serial batch/failure/retry,
 byte-range PDF opening, saved-file reopening, sidebar scale, full translation.
 Synthetic PDFs have a large unreferenced stream (not a compressed/bomb fixture).

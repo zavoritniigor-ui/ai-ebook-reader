@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Grammar -> Practice: the Practice button, balanced multi-target allocation, and coverage validation.
 
 Real report: after Grammar was fixed to detect all 8 verbs in a bilingual selection (ayant vu -> voir,

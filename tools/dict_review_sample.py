@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """Write dict/REVIEW_SAMPLE.md: the owner's review sample of the offline French → Ukrainian dictionary.
 
     python3 tools/dict_review_sample.py [REVIEW-LOG]

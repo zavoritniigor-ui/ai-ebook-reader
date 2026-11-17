@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+// Copying, modification, distribution or commercial use without written permission is prohibited.
 /* core-text.js — escapeHtml and sentence boundaries (sentenceCuts / sentenceSpans).
  * Split out of core.js on 2026-11-14 without changes. */
 // escapeHtml перенесено сюди з мовно-нейтральної секції нижче в основному

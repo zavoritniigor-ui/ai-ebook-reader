@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Ihor. All rights reserved. Proprietary software, see LICENSE.
+# Copying, modification, distribution or commercial use without written permission is prohibited.
 """A tapped PDF word that the file cuts into several text items is ONE word (owner 2026-10-29: a conjugation book prints a
 verb's stem in another font, so «étudier» is «é» + «tudier», «gagner» «ga» + «gner»; a tap gave «tudier»). Items that touch on
 one line are joined (pdfSpansContinueWord, the rule the sentences use); a real gap still separates two words."""
