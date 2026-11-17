@@ -163,7 +163,7 @@ function getPracticePanel() {
         restore.id = 'practice-restore';
         restore.className = 'side-panel practice-restore';
         restore.type = 'button';
-        restore.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 6v15M3 3h4a5 5 0 0 1 5 3 5 5 0 0 1 5-3h4v15h-4a5 5 0 0 0-5 3 5 5 0 0 0-5-3H3Z"/></svg><span data-i18n="practiceTabLabel">' + t('practiceTabLabel') + '</span>';
+        restore.innerHTML = '<svg class="mi" aria-hidden="true"><use href="#i-practice"/></svg><span data-i18n="practiceTabLabel">' + t('practiceTabLabel') + '</span>';
         restore.title = 'Restore Practice workspace';
         restore.setAttribute('aria-label', 'Restore Practice workspace');
         restore.setAttribute('aria-controls', 'practice-panel');
@@ -780,14 +780,22 @@ const practiceStyles = `
     background: var(--panel-bg); color: var(--text-color);
     border: 1px solid var(--border-color); border-radius: 6px; font-size: 22px;
 }
+/* The collapsed Practice tab is the same glass capsule as the bottom reading row and the «Правила» bookmark
+   (index.html .rules-tab): translucent tinted panel colour, blur, hairline border, soft shadow. */
 #practice-restore {
-    position: fixed; height: 44px; min-height: 44px;
+    position: fixed; height: 44px; min-height: 44px; box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
     visibility: visible; transform: none; z-index: 20001;
-    background: var(--panel-bg); color: var(--text-color);
-    border: 1px solid var(--border-color); border-radius: 8px 8px 0 0;
-    cursor: pointer; box-shadow: 0 -2px 10px #0002;
+    color: var(--text-color); font: inherit; font-size: 14px;
+    background-color: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+    background-image: linear-gradient(110deg, rgba(68,158,255,.26), rgba(79,218,185,.22), rgba(170,124,255,.26));
+    backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent); border-bottom: 0; border-radius: 20px 20px 0 0;
+    cursor: pointer; box-shadow: 0 -8px 28px -12px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.08);
+    -webkit-tap-highlight-color: transparent; transition: filter .15s;
 }
+#practice-restore svg.mi { width: 20px; height: 20px; flex: 0 0 20px; color: var(--accent-color); pointer-events: none; }
+#practice-restore:active { filter: brightness(.94); }
 #practice-restore { flex-direction: row; gap: 8px; font-weight: 600; }
 /* Reserve a slim outside rail for the bookmark tab. Grammar stays position:fixed (.side-panel), which is
    already the tab's positioning context: position:relative here dropped the drawer into .workspace's flex
@@ -797,41 +805,23 @@ const practiceStyles = `
 }
 #practice-restore[data-mode="bookmark"] {
     position: absolute; height: auto; width: 44px; min-height: 100px; max-height: 120px;
-    flex-direction: column; gap: 4px; padding: 8px 4px;
-    background: var(--panel-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    border-left: 3px solid var(--accent-color);
-    border-radius: 0;
-    box-shadow: 2px 2px 6px #0002;
-    font-size: 10px;
-    font-weight: 600;
-    justify-content: flex-start;
+    flex-direction: column; gap: 6px; padding: 10px 0;
+    border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent); border-right: 0;
+    border-radius: 20px 0 0 20px;
+    box-shadow: 0 12px 32px -12px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.08);
+    font-size: 12.5px; font-weight: 600; letter-spacing: .03em;
 }
-#practice-restore[data-mode="bookmark"] svg {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-}
-#practice-restore[data-mode="bookmark"] span {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    word-break: break-word;
-    text-align: center;
-    flex: 1;
-}
-#practice-restore[data-mode="bookmark"]:hover {
-    background: var(--surface-2);
-    border-left-color: var(--accent-color);
-}
-#practice-restore:focus-visible { outline: 2px solid #6383e8; outline-offset: -3px; }
+#practice-restore[data-mode="bookmark"] svg.mi { width: 18px; height: 18px; flex-basis: 18px; }
+#practice-restore[data-mode="bookmark"] span { writing-mode: vertical-rl; white-space: nowrap; }
+@media (hover: hover) { #practice-restore:hover { filter: brightness(1.04) saturate(1.15); } }
+#practice-restore:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -3px; }
 /* Same green/red convention as the Grammar/Ask panel tabs (.side-panel.ready/.loading .panel-tab in
    index.html) -- ready = a session is generated and waiting to be read; loading = generating; error =
    the last attempt failed. A default so the state is visible even before any richer tab styling exists;
    easy to override, since it is plain class + data-status, not inline style. */
-#practice-restore.ready { background: rgba(25, 135, 84, 0.14); border-color: rgba(25, 135, 84, 0.5); }
-#practice-restore.loading { background: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
-#practice-restore.error { background: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
+#practice-restore.ready { background-image: none; background-color: rgba(25, 135, 84, 0.14); border-color: rgba(25, 135, 84, 0.5); }
+#practice-restore.loading { background-image: none; background-color: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
+#practice-restore.error { background-image: none; background-color: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, 0.5); }
 @media (prefers-reduced-motion: reduce) {
     #practice-panel { transition: none; }
 }

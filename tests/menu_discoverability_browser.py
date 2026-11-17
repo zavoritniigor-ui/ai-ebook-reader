@@ -23,8 +23,8 @@ def check(name, expression):
     print('PASS', name, flush=True)
 
 
-check('left handle shows AI + microphone icons', "(() => { const v = getComputedStyle(els.askTab, '::before').content; return v.includes('🤖') && v.includes('🎤'); })()")
-check('right handle shows the grammar icon', "getComputedStyle(els.grammarTab, '::before').content.includes('✨')")
+check('left handle shows AI + microphone icons', "(() => { const v = [...els.askTab.querySelectorAll('svg use')].map(u => u.getAttribute('href')); return v.join() === '#i-ai-color,#i-mic' && els.askTab.querySelector('svg').getBoundingClientRect().width >= 20; })()")
+check('right handle shows the grammar icon', "els.grammarTab.querySelector('svg use').getAttribute('href') === '#i-grammar-color' && els.grammarTab.querySelector('svg').getBoundingClientRect().width >= 20")
 check('handles are still 44px wide on screen and not hidden', "[els.askTab, els.grammarTab].every(b => { const r = b.getBoundingClientRect(); return r.width >= 41 && r.height >= 90 && getComputedStyle(b).visibility === 'visible'; })")
 check('handles are no longer nearly invisible (background alpha >= 0.15)',
       "[els.askTab, els.grammarTab].every(b => { const m = getComputedStyle(b).backgroundColor.match(/[\\d.]+/g); return parseFloat(m[3]) >= 0.15; })")

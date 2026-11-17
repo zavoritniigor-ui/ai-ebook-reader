@@ -1256,7 +1256,7 @@
         .rules-tab:active { filter: brightness(.94); }
         @media (hover: hover) { .rules-tab:hover { filter: brightness(1.04) saturate(1.15); } }
         .rules-tab:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -3px; }
-        .rules-tab-icon { font-size: 17px; line-height: 1; }
+        .rules-tab svg.rules-tab-icon { width: 18px; height: 18px; flex-basis: 18px; color: var(--accent-color); pointer-events: none; }
         .rules-tab-text { white-space: nowrap; letter-spacing: .03em; writing-mode: vertical-rl; }
         .rules-tab-count { min-width: 20px; box-sizing: border-box; padding: 1px 5px; border-radius: 10px; background: #198754; color: #fff; font-size: 10.5px; line-height: 1.35; text-align: center; }
         .rules-tab-count[hidden] { display: none; }
@@ -1345,9 +1345,6 @@
         /* The handles stay quiet but must say what they open: AI + voice on the left, grammar on the right.
            The icons are decorative (the buttons carry aria-labels). */
         .panel-tab { display: flex; align-items: center; justify-content: center; text-align: center; white-space: pre; font-size: 17px; line-height: 1.7; background: rgba(128,128,128,0.16); }
-        .panel-tab::before { opacity: .8; }
-        #ask-tab::before { content: '🤖\A🎤'; }
-        #grammar-tab::before { content: '✨'; }
 
         /* Статус запиту — єдине, що робить ручку помітною: ледь відчутний перехід у червоний
            (іде запит) або зелений (відповідь готова), і нічого більше. */
@@ -1939,6 +1936,19 @@
         #grammar-content { cursor: text; }
         .panel-tab { width: 44px; border: 0; padding: 0; }
         #grammar-tab { left: -44px; } #ask-tab { right: -44px; }
+        /* Язички «Запитай AI» і «Граматика» — та сама «скляна» пів-капсула, що й закладка «Правила»; значки — з набору меню
+           (репліка з іскрою + мікрофон: запит до AI текстом чи голосом; літера з рядками: граматичний розбір), кольору акценту. */
+        .panel-tab { box-sizing: border-box; flex-direction: column; gap: 10px; border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+            background-color: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+            background-image: linear-gradient(170deg, rgba(68,158,255,.26), rgba(79,218,185,.22), rgba(170,124,255,.26));
+            backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+            box-shadow: 0 12px 32px -12px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.08); -webkit-tap-highlight-color: transparent; }
+        #grammar-tab { border-right: 0; border-radius: 20px 0 0 20px; }
+        #ask-tab { border-left: 0; border-radius: 0 20px 20px 0; }
+        .panel-tab svg.mi { color: var(--accent-color); pointer-events: none; }
+        .panel-tab svg.ci, .row-tab svg.ci { width: 26px; height: 26px; flex: 0 0 26px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(40,60,140,.25)); }
+        .side-panel.loading .panel-tab { background-image: none; background-color: rgba(220, 53, 69, 0.14); border-color: rgba(220, 53, 69, .5); }
+        .side-panel.ready .panel-tab { background-image: none; background-color: rgba(25, 135, 84, 0.14); border-color: rgba(25, 135, 84, .5); }
         /* Раніше тут випадково опинилось ДВА @keyframes discover-control з однаковою назвою
            (друге, помітніше, тихо перемагало перше й зайвий раз дублювалось усередині
            prefers-reduced-motion, де анімація й так вимкнена animation:none) — лишаємо
@@ -2084,7 +2094,13 @@
         <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
         <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2v.1"/></symbol>
         <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m11 3.5 1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="m18.5 15.5.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
-        <symbol id="i-practice" viewBox="0 0 24 24"><path d="M12 6v14M3 4.5h5.5A3.5 3.5 0 0 1 12 8a3.5 3.5 0 0 1 3.5-3.5H21V18h-5.5A3.5 3.5 0 0 0 12 21.5 3.5 3.5 0 0 0 8.5 18H3z"/></symbol>
+        <!-- Кольорові значки «Запитай AI» і «Граматика» (нижній ряд і бічні язички): AI — репліка-хмаринка з іскрою (питання до
+             штучного інтелекту), Граматика — плитка «Aa» з рядком-розбором. Градієнти — у <defs> поруч. -->
+        <linearGradient id="g-ai" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f8cff"/><stop offset="1" stop-color="#9a5cff"/></linearGradient>
+        <linearGradient id="g-gram" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#2f80ed"/></linearGradient>
+        <symbol id="i-ai-color" viewBox="0 0 24 24"><path d="M5.5 3h13A2.5 2.5 0 0 1 21 5.5v9a2.5 2.5 0 0 1-2.5 2.5H11l-4.6 3.8c-.5.4-1.2 0-1.2-.6V17h.3A2.5 2.5 0 0 1 3 14.5v-9A2.5 2.5 0 0 1 5.5 3z" fill="url(#g-ai)"/><path d="M12 5.6l1.15 3.05L16.2 9.8l-3.05 1.15L12 14l-1.15-3.05L7.8 9.8l3.05-1.15z" fill="#fff"/><circle cx="16.6" cy="6.4" r="1" fill="#fff" opacity=".85"/></symbol>
+        <symbol id="i-grammar-color" viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5" fill="url(#g-gram)"/><path d="M5.6 15.6 8.6 7.4l3 8.2M6.7 12.8h3.8" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.9 11.3v4.3M17.9 12.9a1.9 1.9 0 1 0 0 1.1" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.6 18.4h12.8" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity=".7"/></symbol>
+        <symbol id="i-practice" viewBox="0 0 24 24"><path d="M3.5 5.5h11M3.5 10.5h6.5M3.5 19.5h6"/><path d="M18.4 8.4a1.9 1.9 0 0 1 2.7 2.7l-7.6 7.6-3.5.8.8-3.5z"/><path d="m17 9.8 2.7 2.7"/></symbol>
         <symbol id="i-audio" viewBox="0 0 24 24"><path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></symbol>
         <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5.5" width="4" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="13.5" y="5.5" width="4" height="13" rx="1" fill="currentColor" stroke="none"/></symbol>
@@ -2304,7 +2320,7 @@
         
         <!-- ЛІВА ПАНЕЛЬ (Запитай AI) -->
         <div id="ask-panel" class="side-panel">
-            <button type="button" id="ask-tab" class="panel-tab" aria-label="Запитай AI" data-i18n-title="tAskPanel"></button>
+            <button type="button" id="ask-tab" class="panel-tab" aria-label="Запитай AI" data-i18n-title="tAskPanel"><svg class="ci" aria-hidden="true"><use href="#i-ai-color"/></svg><svg class="mi" aria-hidden="true"><use href="#i-mic"/></svg></button>
             <div class="panel-header">
                 <span class="pn-icon" aria-hidden="true"><svg class="mi"><use href="#i-ask"/></svg></span>
                 <div class="pn-titles">
@@ -2350,11 +2366,11 @@
             </div>
             <div class="panel-content" id="rules-content"></div>
         </div>
-        <button type="button" id="rules-tab" class="rules-tab" data-state="idle" aria-controls="rules-panel" aria-expanded="false"><span class="rules-tab-icon" aria-hidden="true">📚</span><span id="rules-tab-text" class="rules-tab-text" data-i18n="wheelRules">Правила</span><span id="rules-tab-count" class="rules-tab-count" hidden></span></button>
+        <button type="button" id="rules-tab" class="rules-tab" data-state="idle" aria-controls="rules-panel" aria-expanded="false"><svg class="mi rules-tab-icon" aria-hidden="true"><use href="#i-rules"/></svg><span id="rules-tab-text" class="rules-tab-text" data-i18n="wheelRules">Правила</span><span id="rules-tab-count" class="rules-tab-count" hidden></span></button>
 
         <!-- ПРАВА ПАНЕЛЬ (Граматика: контекстна панель Verbs/Adjectives) -->
         <div id="grammar-panel" class="side-panel">
-            <button type="button" id="grammar-tab" class="panel-tab" aria-label="Граматика" data-i18n-title="tGrammarPanel"></button>
+            <button type="button" id="grammar-tab" class="panel-tab" aria-label="Граматика" data-i18n-title="tGrammarPanel"><svg class="ci" aria-hidden="true"><use href="#i-grammar-color"/></svg></button>
             <div class="panel-header">
                 <span class="pn-icon" aria-hidden="true"><svg class="mi"><use href="#i-grammar"/></svg></span>
                 <div class="pn-titles">
@@ -2444,8 +2460,8 @@
         </div>
     </footer>
     <div id="page-arrows" hidden>
-        <button type="button" id="row-ask" class="row-tab" data-i18n-aria="tAskPanel" data-i18n-title="tAskPanel" aria-label="AI Помічник" title="AI Помічник">🤖</button>
-        <button type="button" id="row-grammar" class="row-tab" data-i18n-aria="tGrammarPanel" data-i18n-title="tGrammarPanel" aria-label="Граматика" title="Граматика">✨</button>
+        <button type="button" id="row-ask" class="row-tab" data-i18n-aria="tAskPanel" data-i18n-title="tAskPanel" aria-label="AI Помічник" title="AI Помічник"><svg class="ci" aria-hidden="true"><use href="#i-ai-color"/></svg></button>
+        <button type="button" id="row-grammar" class="row-tab" data-i18n-aria="tGrammarPanel" data-i18n-title="tGrammarPanel" aria-label="Граматика" title="Граматика"><svg class="ci" aria-hidden="true"><use href="#i-grammar-color"/></svg></button>
         <button type="button" id="page-arrow-prev" class="page-arrow" data-i18n-aria="prev" data-i18n-title="prev" aria-label="◀ Назад" title="◀ Назад">‹</button>
         <button type="button" id="page-arrow-next" class="page-arrow" data-i18n-aria="next" data-i18n-title="next" aria-label="Вперед ▶" title="Вперед ▶">›</button>
     </div>
@@ -2562,7 +2578,7 @@
     <script src="js/ai-client.js?v=40d14c25edbd"></script>
     <script src="js/translation-ai.js?v=f0bd91a04d26"></script>
     <script src="js/practice-session.js?v=e02299a74183"></script>
-    <script src="js/practice-worksheet.js?v=2a1703c1bec7"></script>
+    <script src="js/practice-worksheet.js?v=d4c50b93005d"></script>
     <script src="js/dictation.js?v=b433bd3445a4"></script>
     <script src="js/offline-catalog.js?v=54e6010ccbac"></script>
     <script src="js/offline-dict-catalog.js?v=16288e0c6804"></script>
