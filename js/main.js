@@ -217,12 +217,13 @@ async function openBookFile(file) {
     state.demoMode = isDemo;
     stopDictation(); stopOnboarding();
     if (file.size > MAX_BOOK_FILE_BYTES && !/\.pdf$/i.test(file.name || '')) { showReaderError(new Error(t('fileTooLarge'))); return; }
+    let bundleError = null;   // розпакування архіву не вдалося: помилку покаже звичайний шлях нижче, після скидання стану читання
     if (!isDemo) {
         try {
             const inner = await resolveBookBundle(file);
             if (inner === false) return;
             if (inner) file = inner;
-        } catch (err) { showReaderError(err); return; }
+        } catch (err) { bundleError = err; }
     }
     const epoch = ++readerEpoch.book; ++readerEpoch.render;
     clearTimeout(wheelZoomTimer); clearTimeout(resizeTimer);
@@ -276,6 +277,7 @@ async function openBookFile(file) {
     const ext = /\.fb2\.zip$/i.test(file.name) ? 'fb2.zip' : file.name.split('.').pop().toLowerCase();
     state.bookOpening = true;   // saveBookmark мовчить, доки місце читання не відновлено (js/navigation.js)
     try {
+        if (bundleError) throw bundleError;
         if (ext === 'epub') { state.format = 'epub'; document.body.classList.remove('pdf-mode'); await initEpub(file, epoch); }
         else if (ext === 'pdf') { state.format = 'pdf'; document.body.classList.add('pdf-mode'); await initPdf(file, epoch); }
         else if (ext === 'txt') { state.format = 'txt'; document.body.classList.remove('pdf-mode'); await initTxt(file, epoch); }

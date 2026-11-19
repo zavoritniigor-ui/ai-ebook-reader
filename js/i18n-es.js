@@ -29,7 +29,7 @@ const I18N_ES = {
     tExpand: 'Ampliar: hasta el final de la frase → frase entera → párrafo', tSvo: 'Mostrar sujeto, verbo y complemento',
     tSpeakTr: 'Leer la traducción', tSpeakOrig: 'Leer el original', tAskPanel: 'Asistente de IA', tGrammarPanel: 'Gramática',
     tPrevSent: 'Frase anterior', tPlayPause: 'Pausa / reanudar', tNextSent: 'Frase siguiente', tFooter: 'Capítulo · página · atrás/adelante',
-    tStop: 'Detener la lectura', unsupportedFormat: 'Formato no compatible.', fileTooLarge: 'El archivo es demasiado grande (máximo 300 MB). Prueba con otro archivo.',
+    tStop: 'Detener la lectura', unsupportedFormat: 'Formato no compatible.', pickBookInArchive: 'El archivo contiene varios ficheros: elige cuál abrir:', fileTooLarge: 'El archivo es demasiado grande (máximo 300 MB). Prueba con otro archivo.',
     emptyDoc: 'No se encontró texto en el archivo.', imageUnavailable: 'No se pudo cargar la imagen de este documento y no contiene otro texto.',
     pickVerb: 'Primero elige un verbo en el análisis.', btnInk: '✏️ Escribir', done: 'Hecho', clearPageAsk: '¿Borrar todo lo escrito en esta página?',
     inkNeedsBook: 'Abre primero un libro (PDF o de texto).',
