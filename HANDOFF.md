@@ -12,7 +12,6 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | untangling module cycles: `core-i18n.js`, `pwa-lifecycle.js`, `ui-tooltip.js`, label refreshers in `tts`/`navigation`/`dictation`/`learning-stats`/`lang-detect`/`grammar-lookup`/`book-audio` | PR open | 2026-11-14 |
 | Claude Code on the owner's computer (setup session) | `claude-code-setup` | `.claude/settings.json` (deny rules, syntax hook), `.claude/hooks/`, `.claude/skills/ship/` | PR open, waits for the owner's review | 2026-11-16 |
 | Claude Code on the owner's computer | — | «Analects» OCR highlight offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
-| Claude Code on the owner's computer | `pdf-reading-flow` | PDF tapped sentence / drag from the content-stream flow: new `js/pdf-flow.js`, `js/selection-pdf-order.js` (`sentenceRangeAt`, `resolveCanonicalPdfSelection`), font tag in `js/pdf-render.js` | PR open | 2026-11-18 |
 | Claude Code on the owner's computer | `harden-proxy-domain-binding` | `functions/api/{ai,device-llm,library,offline-model,speech/[[path]]}.js` + their `tests/*_proxy_test.mjs`: bind the API proxies to the app's own hosts | PR open | 2026-11-17 |
 
 New browser suites go into `tests/ci_browser_suites.txt` (one line), not into `ci.yml`.
