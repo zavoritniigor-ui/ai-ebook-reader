@@ -21,7 +21,7 @@ commit message and the PR.
 Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.js`. Then, in this order:
 
 `welcome` → `core` → `core-text-layout` → `core-languages` → `core-state` → `core-voices` → `core-i18n` →
-`core-text` → `lang-detect` → `local-speech` → `tts` → `selection` → `selection-pdf-order` → `selection-highlight` →
+`core-text` → `lang-detect` → `local-speech` → `tts` → `selection` → `selection-pdf-order` → `pdf-flow` → `selection-highlight` →
 `selection-drag` → `cefr-lexicon-data` → `learning-stats` →
 `reading-ribbon` → `book-marks` → `navigation` → `pdf-zoom-pan` → `ui-tooltip` → `translation` → `dictionaries` →
 `sentence-structure` → `grammar-svo` → `grammar-analysis` → `grammar-prompts` → `grammar-panel` → `grammar-lookup` →
@@ -66,6 +66,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `navigation.js` | pagination of text books (CSS columns), page turns, progress |
 | `selection.js` | caret and paragraph under a point, `invalidateSelection` |
 | `selection-pdf-order.js` | PDF text in visual order (columns, rotation, word joining), `resolveCanonicalPdfSelection`, `sentenceRangeAt` |
+| `pdf-flow.js` | a PDF page's paragraphs from its content-stream order checked by geometry and fonts: the tapped sentence and a drag inside one column |
 | `selection-highlight.js` | highlight of the selected fragment, PDF selection anchors, `selectWordAtPoint`, `selectRangeAndTranslate` |
 | `selection-drag.js` | drag selection by words (finger, stylus, mouse), `handleReadingClick` |
 | `ui-tooltip.js` | translation popup and footer submenu, «tap elsewhere» dismissal |

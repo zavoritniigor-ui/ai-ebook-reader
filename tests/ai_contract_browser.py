@@ -723,11 +723,15 @@ else:
         c.wait("__stub.requests.filter(r=>r.kind==='grammar').length>=1", timeout=20)
         return c.js("__stub.requests.filter(r=>r.kind==='grammar').at(-1)")
 
-    # the body line the user tapped
-    r1 = real_tap('effectuer')
-    assert r1['text'].startswith('Établir un diagnostic du travail à effectuer') and r1['promptHasTapped'], r1['text'][:120]
-    assert 300 < r1['chars'] < 600 and r1['lite'] is True and r1['maxTokens'] >= 3500, r1
-    print("PASS 10: tapping 'effectuer' on the real page sends the whole unpunctuated bullet run (%d chars, lite contract, %d-token budget; the old code sent 1400)" % (r1['chars'], r1['maxTokens']), flush=True)
+    # the bold heading the user tapped is a unit of its own (js/pdf-flow.js): before, it ran on into the whole list under it
+    r0 = real_tap('effectuer')
+    assert r0['text'].startswith('Établir un diagnostic du travail à effectuer') and r0['chars'] < 80 and 'Observation' not in r0['text'] and r0['promptHasTapped'], r0['text'][:120]
+    print("PASS 10: tapping 'effectuer' in the bold heading sends the heading alone (%d chars), not the list under it" % r0['chars'], flush=True)
+    # a word of the unpunctuated «¡» list under it: the whole list, and nothing else
+    r1 = real_tap('olfactive')
+    assert 'Observation visuelle et olfactive' in r1['text'][:45] and 'Établir un diagnostic' not in r1['text'] and r1['promptHasTapped'], r1['text'][:120]
+    assert 250 < r1['chars'] < 600 and r1['lite'] is True and r1['maxTokens'] >= 3500, r1
+    print("PASS 10: tapping 'olfactive' on the real page sends the whole unpunctuated bullet run (%d chars, lite contract, %d-token budget; the old code sent 1400)" % (r1['chars'], r1['maxTokens']), flush=True)
     # words the PDF splits into several text items reach the model WHOLE (they used to arrive as "a ppliquer", "a ssurer")
     r2 = real_tap('ppliquer')
     assert r2['text'].startswith('appliquer les mesures sécuritaires liées au travail à effectuer') and 'a ppliquer' not in r2['text'], r2['text'][:120]
@@ -738,12 +742,10 @@ else:
     print("PASS 10: 'appliquer', 'assurer' and the small-caps heading reach the model as whole words (were 'a ppliquer', 'a ssurer', 'Pr ÉP ar E r LES trava U x')", flush=True)
 
     # a realistic reply for the real request: a model that lower-cases the capitalised heading word, names the language in full and fences its JSON must still be accepted
-    RUN = r1['text']
+    RUN = r0['text']
     def on_run(pos, lemma, surface, **kw):
         return dict(dict(pos=pos, lemma=lemma, surface=surface, sentence=RUN, occurrence=1, agreesWith=None, features={}, explanation="Пояснення.", stemBreakdown=None, forms=None), **kw)
-    live_like = dict(language='French', items=[on_run('verb', 'effectuer', 'effectuer', features={'mood': 'infinitif'}), on_run('verb', 'établir', 'établir', features={'mood': 'infinitif'}),
-                                                on_run('adjective', 'visuel', 'visuelle', agreesWith='Observation', features={'gender': 'féminin', 'number': 'singulier'}),
-                                                on_run('adjective', 'justifié', 'justifiée', features={'gender': 'féminin', 'number': 'singulier'})])
+    live_like = dict(language='French', items=[on_run('verb', 'effectuer', 'effectuer', features={'mood': 'infinitif'}), on_run('verb', 'établir', 'établir', features={'mood': 'infinitif'})])
     c.js("els.tooltip.style.display='none'; grammarAnalysisCache.clear(); __stub.plan.length=0; __stub.requests.length=0; __stub.plan.push(%s)" % json.dumps(dict(mode='raw', text='Voici l’analyse demandée :\n```json\n' + json.dumps(live_like, ensure_ascii=False, indent=2) + '\n```\nN’hésitez pas si vous avez besoin d’autre chose.'), ensure_ascii=False))
     time.sleep(0.4)
     tap_pdf_word('effectuer', page=PG)
@@ -752,10 +754,10 @@ else:
         adjusted:grammarContext.analysis.adjusted.map(a=>a.reason), notes:grammarContext.analysis.notes, lang:grammarContext.sourceLanguage, focused:grammarContext.focused&&grammarContext.focused.surface, mode:grammarContext.mode,
         chips:[...document.querySelectorAll('#grammar-controls-bar button')].map(b=>b.textContent), banner:!!document.querySelector('#grammar-content .ai-error-text')})""")
     assert st['ok'] is True and st['lang'] == 'fr' and st['mode'] == 'verbs' and not st['banner'], st
-    assert st['n'] == 4, ('all four items of the fenced reply must be accepted on the real page', st)
+    assert st['n'] == 2 and not st['rejected'], ('both items of the fenced reply must be accepted on the real page', st)
     assert st['focused'] == 'effectuer', ("the tapped word's own occurrence is focused", st)
     assert sorted(st['chips']) == sorted(c.js("GRAMMAR_LANG_CONFIG.fr.verb.tenses.map(t=>t.label)")), ('French tense controls only', st['chips'])
-    print("PASS 10: a fenced reply that names the language 'French' and lower-cases 'Établir' is accepted on the real page (4 items, recovered: %s), the tapped 'effectuer' is focused, Verbes mode, French controls only" % st['notes'], flush=True)
+    print("PASS 10: a fenced reply that names the language 'French' and lower-cases 'Établir' is accepted on the real page (both verbs of the heading, recovered: %s), the tapped 'effectuer' is focused, Verbes mode, French controls only" % st['notes'], flush=True)
     assert any(i['surface'] == 'Établir' for i in c.js("grammarContext.analysis.items")), "the displayed surface must be the SOURCE text's own spelling"
     print("PASS 10: the surface shown for the lower-cased 'établir' is the page's own 'Établir'", flush=True)
 
