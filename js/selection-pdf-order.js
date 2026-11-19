@@ -521,8 +521,15 @@ function resolveCanonicalPdfSelection(range, options = {}) {
     // order than they are read, the stanzas of two columns interleaved -- is read by where its words are ON THE PAGE; a DOM range
     // from the first to the last word then held a fraction of what the reader selected (a long selection «skipped words»).
     const sameColumn = !!(startSpan && endSpan && startCol >= 0 && (pageCols.columnCount <= 1 || startCol === endCol));
-    let selectedSpans = null, layerInOrder = false;
-    if (sameColumn) {
+    let selectedSpans = null, layerInOrder = false, fromFlow = false;
+    // Inside one column, the page's own reading flow (pdf-flow.js) knows which words lie between the two ends: a table
+    // printed beside the paragraph, the next exercise items, a heading belong to other paragraphs. Only where the stream
+    // jumps around does the column's geometry decide, as below.
+    if (sameColumn && PDF_FLOW.selection) {
+        const flowSpans = PDF_FLOW.selection(layer, startSpan, endSpan);
+        if (flowSpans && flowSpans.length) { selectedSpans = flowSpans; fromFlow = true; }
+    }
+    if (sameColumn && !fromFlow) {
         const colIdx = pageSpans.map((_, i) => i).filter(i => pageCols.segColumn[pageCols.spanSeg[i]] === startCol);   // DOM order
         const p1 = colIdx.indexOf(pageSpans.indexOf(startSpan)), p2 = colIdx.indexOf(pageSpans.indexOf(endSpan));
         const run = colIdx.slice(Math.min(p1, p2), Math.max(p1, p2) + 1);
@@ -539,7 +546,7 @@ function resolveCanonicalPdfSelection(range, options = {}) {
 
     // CASE A: a drag inside ONE column of a multi-column page, or inside a one-column page whose layer lists its words out of order.
     // A one-column page whose layer is in order is the plain DOM range (CASE B below), exactly as before.
-    if (selectedSpans && !(layerInOrder && pageCols.columnCount <= 1)) {
+    if (selectedSpans && (fromFlow || !(layerInOrder && pageCols.columnCount <= 1))) {
         // A drag can go upwards: the range's start node is then the LAST span in reading order.
         const firstSpan = selectedSpans[0], lastSpan = selectedSpans[selectedSpans.length - 1];
         const rangeStartsFirst = selectedSpans.indexOf(startSpan) <= selectedSpans.indexOf(endSpan);
@@ -637,6 +644,9 @@ function resolveCanonicalPdfSelection(range, options = {}) {
     state.canonicalSelection = canonical;
     return canonical;
 }
+// The page's own reading flow (js/pdf-flow.js, which loads after this file and fills these in): the paragraph of a tapped
+// item, and the items a drag inside one column selects. While they are null (or return null) the visual columns decide.
+const PDF_FLOW = { group: null, selection: null };
 function sentenceRangeAt(clientX, clientY) {
     const caret = anchorCaret(clientX, clientY);
     if (!caret) return null;
@@ -648,7 +658,8 @@ function sentenceRangeAt(clientX, clientY) {
         let targetSpan = pdfTextSpans(block).find(s => s === startEl || s.contains(startEl));
         if (!targetSpan) targetSpan = pdfNearestSpan(block, clientX, clientY);
         if (!targetSpan) return null;
-        const group = pdfVisualGroup(block, targetSpan);
+        // The paragraph from the page's own reading flow (pdf-flow.js); the visual column only where the stream jumps around.
+        const group = (PDF_FLOW.group && PDF_FLOW.group(block, targetSpan)) || pdfVisualGroup(block, targetSpan);
         const sentences = buildSentenceRangesFromSpans(group);
         const hitNode = caret.startContainer.nodeType === Node.TEXT_NODE ? caret.startContainer : targetSpan.firstChild;
         for (const s of sentences) {

@@ -178,6 +178,12 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
             textTask = textLayer; activeTask.current = textLayer;
             try { await textLayer.render(); } finally { if (textTask === textLayer) textTask = null; if (activeTask.current === textLayer) activeTask.current = null; }
             if (!isWanted()) return false;
+            // Each item's font on its span (pdf-flow.js tells a bold heading or instruction from the text under it).
+            // TextLayer keeps one span per item that has a string, in the order of the items.
+            try {
+                const divs = textLayer.textDivs, strItems = textContent.items.filter(item => item.str !== undefined);
+                if (divs && divs.length === strItems.length) divs.forEach((d, k) => { if (strItems[k].fontName) d.dataset.font = strItems[k].fontName; });
+            } catch (e) { /* fonts are a hint; the flow works without them */ }
             tl.style.width = `${vp.rotation % 180 === 0 ? vp.width : vp.height}px`;
             tl.style.height = `${vp.rotation % 180 === 0 ? vp.height : vp.width}px`;
         } catch (err) {
