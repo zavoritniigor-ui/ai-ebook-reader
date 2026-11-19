@@ -217,6 +217,13 @@ async function openBookFile(file) {
     state.demoMode = isDemo;
     stopDictation(); stopOnboarding();
     if (file.size > MAX_BOOK_FILE_BYTES && !/\.pdf$/i.test(file.name || '')) { showReaderError(new Error(t('fileTooLarge'))); return; }
+    if (!isDemo) {
+        try {
+            const inner = await resolveBookBundle(file);
+            if (inner === false) return;
+            if (inner) file = inner;
+        } catch (err) { showReaderError(err); return; }
+    }
     const epoch = ++readerEpoch.book; ++readerEpoch.render;
     clearTimeout(wheelZoomTimer); clearTimeout(resizeTimer);
     clearLongPress(); clearTimeout(touchSelTimer);

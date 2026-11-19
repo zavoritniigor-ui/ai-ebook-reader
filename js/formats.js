@@ -661,6 +661,51 @@ function expandSelfClosingTags(markup) {
 // ========== ІНШІ ФОРМАТИ КНИЖОК ==========
 // Усі вони зводяться до одного: отримати HTML і показати його сторінками так само,
 // як розділ EPUB. Тому далі працює вже наявна пагінація, переклад і озвучення.
+// Архів із книгами (ZIP, або ZIP, що назвали .docx): шукаємо всередині файли підтримуваних форматів
+// і відкриваємо один — якщо їх кілька, користувач обирає. Справжній DOCX (є word/document.xml),
+// EPUB та FB2.ZIP сюди не потрапляють. Повертає File, null (не архів — відкривати як є) або false (скасовано).
+const BUNDLE_BOOK_RE = /\.(pdf|epub|docx|fb2\.zip|fb2|txt|md|markdown|html?|rtf|cbz)$/i;
+async function resolveBookBundle(file) {
+    const name = file.name || '';
+    if (!/\.(zip|docx)$/i.test(name) || /\.fb2\.zip$/i.test(name)) return null;
+    const verified = await runArchiveGuard(file, readerEpoch.book);
+    let zip;
+    try { zip = await JSZip.loadAsync(verified || file); } catch (e) { return null; }
+    if (zip.file('word/document.xml')) return null;
+    const rank = (n) => (/\.pdf$/i.test(n) ? 0 : 1);
+    const entries = Object.values(zip.files)
+        .filter(e => !e.dir && BUNDLE_BOOK_RE.test(e.name) && !/(^|\/)(__MACOSX\/|\.)/.test(e.name))
+        .sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
+    if (!entries.length) return null;
+    const entry = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries);
+    if (!entry) return false;
+    return new File([await entry.async('blob')], entry.name.split('/').pop());
+}
+function chooseBundleEntry(entries) {
+    return new Promise((resolve) => {
+        const dialog = document.createElement('dialog');
+        dialog.setAttribute('aria-label', t('pickBookInArchive'));
+        dialog.style.cssText = 'background:Canvas;color:CanvasText;border:1px solid GrayText;border-radius:12px;padding:16px;max-width:92vw;width:460px';
+        const title = document.createElement('div');
+        title.textContent = t('pickBookInArchive'); title.style.cssText = 'font-weight:600;margin-bottom:10px';
+        dialog.append(title);
+        let chosen = null;
+        for (const entry of entries) {
+            const button = document.createElement('button');
+            button.type = 'button'; button.textContent = entry.name.split('/').pop();
+            button.style.cssText = 'display:block;width:100%;text-align:left;margin:4px 0;padding:10px;overflow-wrap:anywhere';
+            button.onclick = () => { chosen = entry; dialog.close(); };
+            dialog.append(button);
+        }
+        const cancel = document.createElement('button');
+        cancel.type = 'button'; cancel.textContent = t('cancel'); cancel.style.cssText = 'margin-top:8px;padding:8px 14px';
+        cancel.onclick = () => dialog.close();
+        dialog.append(cancel);
+        dialog.addEventListener('close', () => { dialog.remove(); resolve(chosen); });
+        document.body.append(dialog);
+        dialog.showModal();
+    });
+}
 async function initRichDoc(file, ext, epoch = readerEpoch.book) {
     let bodyHtml = '';
 
