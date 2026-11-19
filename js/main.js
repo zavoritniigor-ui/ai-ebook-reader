@@ -289,6 +289,7 @@ async function openBookFile(file) {
         if (epoch === readerEpoch.book) { state.bookOpening = false; saveBookmark(); }
         if (epoch === readerEpoch.book) {
             setPageArrows(true);
+            if (file.__bundleAudio && file.__bundleAudio.length && typeof importBookAudio === 'function') importBookAudio(file.__bundleAudio);   // аудіо з архіву
             for (const listener of BOOK_OPENED) { if (epoch !== readerEpoch.book) break; listener(file); }   // «Мої книги», the book's narration
         }
     } catch (err) {

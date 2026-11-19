@@ -665,6 +665,7 @@ function expandSelfClosingTags(markup) {
 // і відкриваємо один — якщо їх кілька, користувач обирає. Справжній DOCX (є word/document.xml),
 // EPUB та FB2.ZIP сюди не потрапляють. Повертає File, null (не архів — відкривати як є) або false (скасовано).
 const BUNDLE_BOOK_RE = /\.(pdf|epub|docx|fb2\.zip|fb2|txt|md|markdown|html?|rtf|cbz)$/i;
+const BUNDLE_AUDIO_RE = /\.(mp3|m4a|m4b|mp4|aac|wav|ogg|oga|opus|flac|aif|aiff)$/i;
 async function resolveBookBundle(file) {
     const name = file.name || '';
     if (!/\.(zip|docx)$/i.test(name) || /\.fb2\.zip$/i.test(name)) return null;
@@ -679,7 +680,16 @@ async function resolveBookBundle(file) {
     if (!entries.length) return null;
     const entry = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries);
     if (!entry) return false;
-    return new File([await entry.async('blob')], entry.name.split('/').pop());
+    const book = new File([await entry.async('blob')], entry.name.split('/').pop());
+    // Аудіо з того ж архіву (mp3, m4a…) стає доріжками відкритої книги — тими самими правилами, що й вибрана папка (js/book-audio.js).
+    const audio = Object.values(zip.files).filter(e => !e.dir && BUNDLE_AUDIO_RE.test(e.name) && !/(^|\/)(__MACOSX\/|\.)/.test(e.name));
+    book.__bundleAudio = [];
+    for (const e of audio) {
+        const f = new File([await e.async('blob')], e.name.split('/').pop());
+        Object.defineProperty(f, 'webkitRelativePath', { value: e.name });
+        book.__bundleAudio.push(f);
+    }
+    return book;
 }
 function chooseBundleEntry(entries) {
     return new Promise((resolve) => {
