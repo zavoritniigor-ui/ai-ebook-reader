@@ -678,9 +678,19 @@ async function resolveBookBundle(file) {
         .filter(e => !e.dir && BUNDLE_BOOK_RE.test(e.name) && !/(^|\/)(__MACOSX\/|\.)/.test(e.name))
         .sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
     if (!entries.length) return null;
-    const entry = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries);
-    if (!entry) return false;
-    const book = new File([await entry.async('blob')], entry.name.split('/').pop());
+    const date = (e) => (e.date instanceof Date && !isNaN(e.date) ? e.date.getTime() : 0);   // той самий файл → та сама закладка при повторному відкритті
+    const asFile = async (e) => new File([await e.async('blob')], e.name.split('/').pop(), { lastModified: date(e) });
+    const choice = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries, name.replace(/(\.zip)?(_\d+)?\.(zip|docx)$/i, '').replace(/\.zip$/i, ''));
+    if (!choice) return false;
+    if (choice.saveAll) {
+        // Весь комплект — у «Мої книги» однією папкою; відкривати нічого не треба, папка одразу видима.
+        const files = [];
+        for (const e of entries) files.push(await asFile(e));
+        if (typeof shelveBundle === 'function' && await shelveBundle(choice.folder, files) && typeof openLibrary === 'function') openLibrary('shelf');
+        return false;
+    }
+    const entry = choice;
+    const book = await asFile(entry);
     // Аудіо з того ж архіву (mp3, m4a…) стає доріжками відкритої книги — тими самими правилами, що й вибрана папка (js/book-audio.js).
     const audio = Object.values(zip.files).filter(e => !e.dir && BUNDLE_AUDIO_RE.test(e.name) && !/(^|\/)(__MACOSX\/|\.)/.test(e.name));
     book.__bundleAudio = [];
@@ -691,19 +701,28 @@ async function resolveBookBundle(file) {
     }
     return book;
 }
-function chooseBundleEntry(entries) {
+function chooseBundleEntry(entries, folderName = '') {
     return new Promise((resolve) => {
         const dialog = document.createElement('dialog');
         dialog.setAttribute('aria-label', t('pickBookInArchive'));
         dialog.style.cssText = 'background:Canvas;color:CanvasText;border:1px solid GrayText;border-radius:12px;padding:16px;max-width:92vw;width:460px';
+        const block = 'display:block;width:100%;box-sizing:border-box;margin:4px 0;padding:10px;';
         const title = document.createElement('div');
         title.textContent = t('pickBookInArchive'); title.style.cssText = 'font-weight:600;margin-bottom:10px';
-        dialog.append(title);
+        const folder = document.createElement('input');
+        folder.type = 'text'; folder.value = folderName || 'Archive'; folder.maxLength = 80;
+        folder.setAttribute('aria-label', t('shelfFolderName')); folder.placeholder = t('shelfFolderName'); folder.style.cssText = block + 'font:inherit';
+        const all = document.createElement('button');
+        all.type = 'button'; all.textContent = '📁 ' + t('shelfFolderSaveAll').replace('{n}', entries.length);
+        all.style.cssText = block + 'font-weight:600';
         let chosen = null;
+        all.onclick = () => { chosen = { saveAll: true, folder: folder.value.trim() || 'Archive' }; dialog.close(); };
+        const or = document.createElement('div'); or.textContent = t('shelfFolderOrOne'); or.style.cssText = 'margin:12px 0 4px;opacity:.7';
+        dialog.append(title, folder, all, or);
         for (const entry of entries) {
             const button = document.createElement('button');
             button.type = 'button'; button.textContent = entry.name.split('/').pop();
-            button.style.cssText = 'display:block;width:100%;text-align:left;margin:4px 0;padding:10px;overflow-wrap:anywhere';
+            button.style.cssText = block + 'text-align:left;overflow-wrap:anywhere';
             button.onclick = () => { chosen = entry; dialog.close(); };
             dialog.append(button);
         }

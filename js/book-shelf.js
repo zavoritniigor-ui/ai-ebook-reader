@@ -21,6 +21,14 @@ Object.assign(I18N, {
     shelfScans: { uk: 'Скани', en: 'Scans', fr: 'Numérisations', ru: 'Сканы', es: 'Escaneos', zh: '扫描件', ko: '스캔', hi: 'स्कैन', ga: 'Scananna' },
     shelfScansEmpty: { uk: 'Тут з’являться документи, які ви відкрили зі сканера.', en: 'Documents you open from the scanner will appear here.', fr: 'Les documents ouverts depuis le scanner apparaîtront ici.', ru: 'Здесь появятся документы, открытые из сканера.', es: 'Aquí aparecerán los documentos que abras desde el escáner.', zh: '从扫描仪打开的文档将显示在这里。', ko: '스캐너에서 연 문서가 여기에 표시됩니다.', hi: 'स्कैनर से खोले गए दस्तावेज़ यहाँ दिखेंगे।', ga: 'Beidh cáipéisí a osclaíonn tú ón scanóir anseo.' },
     shelfScansNote: { uk: 'Скани збережено окремо (до 600 МБ); найдавніші видаляються автоматично.', en: 'Scans are kept separately (up to 600 MB); the oldest are removed automatically.', fr: 'Les numérisations sont conservées séparément (600 Mo maximum) ; les plus anciennes sont supprimées automatiquement.', ru: 'Сканы хранятся отдельно (до 600 МБ); самые старые удаляются автоматически.', es: 'Los escaneos se guardan por separado (hasta 600 MB); los más antiguos se eliminan automáticamente.', zh: '扫描件单独保存（最多600 MB），最旧的会自动删除。', ko: '스캔은 별도로 최대 600MB까지 저장되며 오래된 항목부터 자동 삭제됩니다.', hi: 'स्कैन अलग रखे जाते हैं (600 MB तक); सबसे पुराने अपने आप हटा दिए जाते हैं।', ga: 'Coinnítear scananna ar leith (suas le 600 MB); baintear na cinn is sine go huathoibríoch.' },
+    shelfFolderSaveAll: { uk: 'Зберегти всі ({n}) в папку', en: 'Save all ({n}) to a folder', fr: 'Tout enregistrer ({n}) dans un dossier', ru: 'Сохранить все ({n}) в папку', es: 'Guardar todos ({n}) en una carpeta' },
+    shelfFolderName: { uk: 'Назва папки', en: 'Folder name', fr: 'Nom du dossier', ru: 'Название папки', es: 'Nombre de la carpeta' },
+    shelfFolderOrOne: { uk: 'Або відкрити один файл:', en: 'Or open one file:', fr: 'Ou ouvrir un seul fichier :', ru: 'Или открыть один файл:', es: 'O abrir un solo archivo:' },
+    shelfFolderFiles: { uk: '{n} файлів', en: '{n} files', fr: '{n} fichiers', ru: '{n} файлов', es: '{n} archivos' },
+    shelfFolderSaved: { uk: 'Збережено {n} файлів у папку «{name}».', en: 'Saved {n} files to the folder “{name}”.', fr: '{n} fichiers enregistrés dans le dossier « {name} ».', ru: 'Сохранено {n} файлов в папку «{name}».', es: 'Se guardaron {n} archivos en la carpeta «{name}».' },
+    shelfFolderBack: { uk: 'Назад до всіх книг', en: 'Back to all books', fr: 'Retour à tous les livres', ru: 'Назад ко всем книгам', es: 'Volver a todos los libros' },
+    shelfFolderOpen: { uk: 'Відкрити', en: 'Open', fr: 'Ouvrir', ru: 'Открыть', es: 'Abrir' },
+    shelfFolderRemove: { uk: 'Видалити папку з пристрою', en: 'Remove the folder from the device', fr: 'Supprimer le dossier de l’appareil', ru: 'Удалить папку с устройства', es: 'Quitar la carpeta del dispositivo' },
     shelfAll: { uk: 'Усі', en: 'All', fr: 'Tous', ru: 'Все', es: 'Todos' },
     shelfRemove: { uk: 'Видалити з пристрою', en: 'Remove from device', fr: 'Supprimer de l’appareil', ru: 'Удалить с устройства', es: 'Quitar del dispositivo' },
     shelfMissing: { uk: 'Цієї книги вже немає на пристрої.', en: 'This book is no longer on the device.', fr: 'Ce livre n’est plus sur l’appareil.', ru: 'Этой книги уже нет на устройстве.', es: 'Este libro ya no está en el dispositivo.' }
@@ -124,10 +132,10 @@ async function shelveBook(file, key = state.bookKey) {
         const cover = old && old.cover ? old.cover : (key === state.bookKey ? await makeShelfCover() : null);
         await shelfTx('readwrite', store => {
             store.put({ key, kind, name: file.name, type: file.type || '', size: file.size, lastModified: file.lastModified || 0,
-                series: old?.series || '', volume: old?.volume || '', issue: old?.issue || '', sourceId: old?.sourceId || '',
+                folder: old?.folder || '', series: old?.series || '', volume: old?.volume || '', issue: old?.issue || '', sourceId: old?.sourceId || '',
                 ...publicationMetadata.get(file), title: shelfTitle(file.name), openedAt: Date.now(), cover: cover || null, blob: old && old.blob && old.size === file.size ? old.blob : file });
         });
-        const books = await listShelfBooks(kind);
+        const books = (await listShelfBooks(kind)).filter(b => !b.folder);   // a folder's files are kept until the learner removes the folder
         let total = 0;
         const evict = books.filter((b, i) => { total += b.size; return (kind === 'book' && i >= SHELF_MAX_BOOKS) || (kind === 'scan' && i > 0 && total > SHELF_MAX_BYTES); });
         if (evict.length) await shelfTx('readwrite', store => { for (const b of evict) store.delete(b.key); });
@@ -157,6 +165,63 @@ async function openShelfBook(key) {
     await openBookFile(shelfKind(rec) === 'scan' ? markShelfScan(file) : file);
     return true;
 }
+// Папки: файли з одного архіву лежать разом (поле folder у записі). Порожнє folder — звичайна книга.
+let shelfFolder = null;
+// Зберегти всі файли архіву в папку й одразу показати її.
+async function shelveBundle(folder, files) {
+    const now = Date.now();
+    try {
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+        await shelfTx('readwrite', store => {
+            files.forEach((file, i) => store.put({ key: bookKeyFor(file), kind: 'book', folder, name: file.name, type: file.type || '', size: file.size,
+                lastModified: file.lastModified || 0, series: '', volume: '', issue: '', sourceId: '', title: shelfTitle(file.name),
+                openedAt: now - i, cover: null, blob: file }));
+        });
+    } catch (e) { showToast(t('publicationStorageFull')); return false; }
+    shelfView = 'book'; shelfFolder = folder;
+    renderRecentBooks();
+    showToast(t('shelfFolderSaved').replace('{n}', files.length).replace('{name}', folder));
+    return true;
+}
+async function removeShelfFolder(folder) {
+    try {
+        const all = await listShelfBooks(null);
+        await shelfTx('readwrite', store => { for (const b of all) if (b.folder === folder) store.delete(b.key); });
+    } catch (e) {}
+    if (shelfFolder === folder) shelfFolder = null;
+    renderRecentBooks();
+}
+// Що показати: усередині папки — її файли за назвою; нагорі — книги й по одній картці на папку.
+function shelfFolderView(books) {
+    if (shelfFolder) {
+        const inside = books.filter(b => b.folder === shelfFolder).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        if (inside.length) return { inFolder: true, items: inside.map(book => ({ book })) };
+        shelfFolder = null;
+    }
+    const items = [], seen = new Map();
+    for (const b of books) {
+        if (!b.folder) { items.push({ book: b }); continue; }
+        let f = seen.get(b.folder);
+        if (!f) { f = { folder: b.folder, books: [] }; seen.set(b.folder, f); items.push(f); }
+        f.books.push(b);
+    }
+    return { inFolder: false, items };
+}
+function shelfFolderCoverEl(item) {
+    const box = document.createElement('span'); box.className = 'recent-cover plain'; box.setAttribute('aria-hidden', 'true');
+    let h = 0; for (const ch of item.folder) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    box.style.setProperty('--cover-hue', h % 360);
+    const title = document.createElement('span'); title.textContent = item.folder;
+    const mark = document.createElement('i'); mark.textContent = '📁 ' + item.books.length;
+    box.append(title, mark);
+    return box;
+}
+const shelfBackButton = () => {
+    const back = document.createElement('button'); back.type = 'button'; back.className = 'recent-all';
+    back.textContent = '‹ ' + t('shelfFolderBack');
+    back.addEventListener('click', () => { shelfFolder = null; renderRecentBooks(); if (typeof libraryState !== 'undefined' && libraryState.source === 'shelf') runShelfList(); });
+    return back;
+};
 function shelfCardMeta(b) {
     const mb = b.size / 1048576;
     return [b.series, b.volume && 'Vol. ' + b.volume, b.issue && 'No. ' + b.issue, b.name.split('.').pop().toUpperCase(), (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + ' MB', new Date(b.openedAt).toLocaleDateString(state.uiLang)].filter(Boolean).join(' · ');
@@ -189,7 +254,7 @@ function shelfTabs(all) {
         btn.append(text, ' (' + all.filter(b => b.kind === kind).length + ')');
         btn.setAttribute('aria-pressed', String(shelfView === kind));
         btn.addEventListener('click', () => {
-            shelfView = kind; renderRecentBooks();
+            shelfView = kind; shelfFolder = null; renderRecentBooks();
             if (typeof libraryState !== 'undefined' && libraryState.source === 'shelf') runShelfList();
         });
         tabs.append(btn);
@@ -211,22 +276,32 @@ async function renderRecentBooks() {
         const empty = document.createElement('p'); empty.className = 'recent-empty'; empty.dataset.i18n = shelfView === 'scan' ? 'shelfScansEmpty' : 'shelfEmpty'; empty.textContent = t(empty.dataset.i18n);
         host.append(empty); return;
     }
+    const view = shelfFolderView(books);
     const head = document.createElement('div'); head.className = 'recent-head';
-    const h = document.createElement('h3'); h.dataset.i18n = shelfView === 'scan' ? 'shelfScans' : 'shelfRecent'; h.textContent = t(h.dataset.i18n);
+    const h = document.createElement('h3');
+    if (view.inFolder) h.textContent = '📁 ' + shelfFolder; else { h.dataset.i18n = shelfView === 'scan' ? 'shelfScans' : 'shelfRecent'; h.textContent = t(h.dataset.i18n); }
     head.append(h);
-    {
+    if (view.inFolder) head.append(shelfBackButton());
+    else {
         const all = document.createElement('button'); all.type = 'button'; all.className = 'recent-all'; all.id = 'home-my-books';
         all.textContent = t('shelfAll') + ' (' + books.length + ') ›';
         all.addEventListener('click', () => openLibrary('shelf'));
         head.append(all);
     }
     const grid = document.createElement('div'); grid.className = 'recent-list';
-    for (const b of books) {
+    for (const item of view.items) {
         const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'recent-book';
-        const name = document.createElement('b'); name.textContent = b.title || b.name;
-        const meta = document.createElement('small'); meta.textContent = shelfCardMeta(b);
-        btn.append(shelfCoverEl(b), name, meta);
-        btn.addEventListener('click', () => openShelfBook(b.key));
+        const name = document.createElement('b'), meta = document.createElement('small');
+        if (item.folder) {
+            name.textContent = item.folder; meta.textContent = t('shelfFolderFiles').replace('{n}', item.books.length);
+            btn.append(shelfFolderCoverEl(item), name, meta);
+            btn.addEventListener('click', () => { shelfFolder = item.folder; renderRecentBooks(); });
+        } else {
+            const b = item.book;
+            name.textContent = b.title || b.name; meta.textContent = shelfCardMeta(b);
+            btn.append(shelfCoverEl(b), name, meta);
+            btn.addEventListener('click', () => openShelfBook(b.key));
+        }
         grid.append(btn);
     }
     host.append(head, grid);
@@ -297,19 +372,30 @@ async function runShelfList() {
     const note = document.createElement('p'); note.className = 'shelf-note';
     note.textContent = shelfView === 'scan' ? t(books.length ? 'shelfScansNote' : 'shelfScansEmpty')
         : books.length ? t('shelfNote').replace('{n}', SHELF_MAX_BOOKS) : t('shelfEmpty');
-    status.replaceChildren(shelfTabs(all), note);
-    for (const b of books) {
+    const view = shelfFolderView(books);
+    status.replaceChildren(shelfTabs(all), ...(view.inFolder ? [shelfBackButton()] : []), note);
+    for (const item of view.items) {
         const card = document.createElement('div'); card.className = 'library-card';
         const info = document.createElement('div'); info.className = 'library-info';
-        const name = document.createElement('div'); name.className = 'library-name'; name.textContent = b.title || b.name;
-        card.append(shelfCoverEl(b));
-        const by = document.createElement('div'); by.className = 'library-author'; by.textContent = shelfCardMeta(b);
+        const name = document.createElement('div'); name.className = 'library-name';
+        const by = document.createElement('div'); by.className = 'library-author';
+        const read = document.createElement('button'); read.type = 'button'; read.className = 'btn-primary';
+        const del = document.createElement('button'); del.type = 'button'; del.className = 'library-save'; del.textContent = '🗑';
+        if (item.folder) {
+            name.textContent = '📁 ' + item.folder; by.textContent = t('shelfFolderFiles').replace('{n}', item.books.length);
+            card.append(shelfFolderCoverEl(item));
+            read.textContent = t('shelfFolderOpen'); read.addEventListener('click', () => { shelfFolder = item.folder; renderRecentBooks(); runShelfList(); });
+            del.title = t('shelfFolderRemove'); del.setAttribute('aria-label', t('shelfFolderRemove'));
+            del.addEventListener('click', async () => { await removeShelfFolder(item.folder); runShelfList(); });
+        } else {
+            const b = item.book;
+            name.textContent = b.title || b.name; by.textContent = shelfCardMeta(b);
+            card.append(shelfCoverEl(b));
+            read.textContent = t('libRead'); read.addEventListener('click', async () => { closeLibrary(); await openShelfBook(b.key); });
+            del.title = t('shelfRemove'); del.setAttribute('aria-label', t('shelfRemove'));
+            del.addEventListener('click', async () => { await removeShelfBook(b.key); runShelfList(); });
+        }
         info.append(name, by);
-        const read = document.createElement('button'); read.type = 'button'; read.className = 'btn-primary'; read.textContent = t('libRead');
-        read.addEventListener('click', async () => { closeLibrary(); await openShelfBook(b.key); });
-        const del = document.createElement('button'); del.type = 'button'; del.className = 'library-save'; del.textContent = '🗑'; del.title = t('shelfRemove');
-        del.setAttribute('aria-label', t('shelfRemove'));
-        del.addEventListener('click', async () => { await removeShelfBook(b.key); runShelfList(); });
         const actions = document.createElement('div'); actions.className = 'library-actions'; actions.append(read, del);
         card.append(info, actions);
         list.append(card);
