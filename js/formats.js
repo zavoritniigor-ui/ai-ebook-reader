@@ -666,6 +666,19 @@ function expandSelfClosingTags(markup) {
 // EPUB та FB2.ZIP сюди не потрапляють. Повертає File, null (не архів — відкривати як є), false (скасовано) або { saveAll, folder, files } (зберегти все в папку).
 const BUNDLE_BOOK_RE = /\.(pdf|epub|docx|fb2\.zip|fb2|txt|md|markdown|html?|rtf|cbz)$/i;
 const BUNDLE_AUDIO_RE = /\.(mp3|m4a|m4b|mp4|aac|wav|ogg|oga|opus|flac|aif|aiff)$/i;
+// Назва папки для комплекту: спільний початок імен файлів («lesson_one», «lesson_two» → «lesson»); імена архівів з сайтів часто
+// випадкові. Немає спільного початку — ім'я архіву без розширень і порядкового номера.
+function bundleFolderName(archiveName, entries) {
+    const names = entries.map(e => e.name.split('/').pop().replace(/\.[^.]+$/, ''));
+    let prefix = names[0] || '';
+    for (const n of names) { let i = 0; while (i < prefix.length && i < n.length && prefix[i].toLowerCase() === n[i].toLowerCase()) i++; prefix = prefix.slice(0, i); }
+    prefix = prefix.replace(/[\s._-]+$/, '');
+    // «lesson_on» (обрив посеред слова) → до останнього роздільника
+    if (names.some(n => n.length > prefix.length && !/[\s._-]/.test(n[prefix.length] || ''))) prefix = prefix.replace(/[\s._-]*[^\s._-]*$/, '').replace(/[\s._-]+$/, '');
+    const clean = (v) => v.replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (prefix.length >= 4) return clean(prefix);
+    return clean(archiveName.replace(/(\.zip)?(_\d+)?\.(zip|docx)$/i, '').replace(/\.zip$/i, '')) || 'Archive';
+}
 async function resolveBookBundle(file) {
     const name = file.name || '';
     if (!/\.(zip|docx)$/i.test(name) || /\.fb2\.zip$/i.test(name)) return null;
@@ -674,13 +687,17 @@ async function resolveBookBundle(file) {
     try { zip = await JSZip.loadAsync(verified || file); } catch (e) { return null; }
     if (zip.file('word/document.xml')) return null;
     const rank = (n) => (/\.pdf$/i.test(n) ? 0 : 1);
-    const entries = Object.values(zip.files)
+    const found = Object.values(zip.files)
         .filter(e => !e.dir && BUNDLE_BOOK_RE.test(e.name) && !/(^|\/)(__MACOSX\/|\.)/.test(e.name))
         .sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
+    // Той самий документ у двох форматах (a.pdf і a.docx): беремо PDF — він зберігає сторінки й малюнки, а з Word лишаються лише абзаци.
+    const baseOf = (n) => n.replace(/\.[^./]+$/, '').toLowerCase();
+    const pdfBases = new Set(found.filter(e => /\.pdf$/i.test(e.name)).map(e => baseOf(e.name)));
+    const entries = found.filter(e => /\.pdf$/i.test(e.name) || !pdfBases.has(baseOf(e.name)));
     if (!entries.length) return null;
     const date = (e) => (e.date instanceof Date && !isNaN(e.date) ? e.date.getTime() : 0);   // той самий файл → та сама закладка при повторному відкритті
     const asFile = async (e) => new File([await e.async('blob')], e.name.split('/').pop(), { lastModified: date(e) });
-    const choice = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries, name.replace(/(\.zip)?(_\d+)?\.(zip|docx)$/i, '').replace(/\.zip$/i, ''));
+    const choice = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries, bundleFolderName(name, entries));
     if (!choice) return false;
     if (choice.saveAll) {
         // Весь комплект — у «Мої книги» однією папкою; це робить main.js (formats.js не звертається до полиці).

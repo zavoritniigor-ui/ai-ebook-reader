@@ -47,6 +47,10 @@ check('save all: files are stored in one shelf folder, opened in order, with sta
 check('shelf lists the folder as one card at the top and its files by name inside', "(async()=>{const books=await listShelfBooks('book');shelfFolder=null;const top=shelfFolderView(books);shelfFolder='Passive voice';const inside=shelfFolderView(books);shelfFolder=null;return top.items.filter(x=>x.folder==='Passive voice').length===1 && top.items.filter(x=>x.book&&x.book.folder).length===0 && inside.inFolder && inside.items.map(x=>x.book.title).join()==='a,b'})()")
 shelfFolder='Passive voice'
 check('removing the folder removes its files', "(async()=>{await removeShelfFolder('Passive voice');return (await listShelfBooks('book')).every(x=>x.folder!=='Passive voice') && shelfFolder===null})()")
+c.js("(()=>{openBookFile(new File([Uint8Array.from(atob(%s),c=>c.charCodeAt(0))],'1f9e2c4a-0000.zip.docx'));return true})()" % json.dumps(base64.b64encode(archive({'lesson_one.pdf':b'%PDF-1.4', 'lesson_one.docx':b'x', 'lesson_two_memo.pdf':b'%PDF-1.4'})).decode()))
+c.wait("document.querySelectorAll('dialog[open] input').length===1")
+check('same document as PDF and DOCX lists the PDF only; folder named from the common file-name start', "document.querySelector('dialog[open] input').value==='lesson' && [...document.querySelectorAll('dialog[open] button')].map(b=>b.textContent).join('|').includes('lesson_one.pdf') && ![...document.querySelectorAll('dialog[open] button')].some(b=>/\\.docx$/.test(b.textContent)) && document.querySelectorAll('dialog[open] button').length===4")
+c.js("(()=>{[...document.querySelectorAll('dialog[open] button')].pop().click();return true})()")
 upload('audiobundle.zip', archive({'book.md':'# Audio book\n\nWith tracks.', 'CD1/Track 03.mp3':b'ID3\x03\x00\x00\x00\x00\x00\x00' + b'\xff\xfb\x90\x00' * 64}))
 c.wait("state.bookFileName==='book.md' && bookAudio.tracks.length===1")
 check('MP3 inside the archive becomes a track of the opened book', "bookAudio.tracks[0].cd===1 && bookAudio.tracks[0].track===3")
