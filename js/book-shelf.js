@@ -409,3 +409,4 @@ document.querySelectorAll('.my-books-btn').forEach(b => b.addEventListener('clic
 
 // Every opened book goes to «Мої книги» — except the demo textbook (js/main.js openBookFile, onBookOpened).
 onBookOpened(file => { if (!file.__readerDemo) scheduleShelveBook(file); });
+onBookBundleSave(async (folder, files) => { if (await shelveBundle(folder, files)) openLibrary('shelf'); });

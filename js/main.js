@@ -222,6 +222,7 @@ async function openBookFile(file) {
         try {
             const inner = await resolveBookBundle(file);
             if (inner === false) return;
+            if (inner && inner.saveAll) { for (const saver of BOOK_BUNDLE_SAVERS) await saver(inner.folder, inner.files); return; }
             if (inner) file = inner;
         } catch (err) { bundleError = err; }
     }

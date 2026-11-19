@@ -42,6 +42,7 @@ c.wait("document.querySelectorAll('dialog[open] input').length===1")
 check('dialog offers a folder name from the archive name', "document.querySelector('dialog[open] input').value==='abc123'")
 c.js("(()=>{document.querySelector('dialog[open] input').value='Passive voice';[...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.startsWith('📁')).click();return true})()")
 c.wait("typeof shelfFolder==='string' && shelfFolder==='Passive voice'")
+c.js("closeLibrary()")
 check('save all: files are stored in one shelf folder, opened in order, with stable keys', "(async()=>{const b=(await listShelfBooks('book')).filter(x=>x.folder==='Passive voice');return b.length===2 && b.every(x=>x.key===bookKeyFor({name:x.name,size:x.size,lastModified:x.lastModified}))})()")
 check('shelf lists the folder as one card at the top and its files by name inside', "(async()=>{const books=await listShelfBooks('book');shelfFolder=null;const top=shelfFolderView(books);shelfFolder='Passive voice';const inside=shelfFolderView(books);shelfFolder=null;return top.items.filter(x=>x.folder==='Passive voice').length===1 && top.items.filter(x=>x.book&&x.book.folder).length===0 && inside.inFolder && inside.items.map(x=>x.book.title).join()==='a,b'})()")
 shelfFolder='Passive voice'

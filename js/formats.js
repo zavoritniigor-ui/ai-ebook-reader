@@ -663,7 +663,7 @@ function expandSelfClosingTags(markup) {
 // як розділ EPUB. Тому далі працює вже наявна пагінація, переклад і озвучення.
 // Архів із книгами (ZIP, або ZIP, що назвали .docx): шукаємо всередині файли підтримуваних форматів
 // і відкриваємо один — якщо їх кілька, користувач обирає. Справжній DOCX (є word/document.xml),
-// EPUB та FB2.ZIP сюди не потрапляють. Повертає File, null (не архів — відкривати як є) або false (скасовано).
+// EPUB та FB2.ZIP сюди не потрапляють. Повертає File, null (не архів — відкривати як є), false (скасовано) або { saveAll, folder, files } (зберегти все в папку).
 const BUNDLE_BOOK_RE = /\.(pdf|epub|docx|fb2\.zip|fb2|txt|md|markdown|html?|rtf|cbz)$/i;
 const BUNDLE_AUDIO_RE = /\.(mp3|m4a|m4b|mp4|aac|wav|ogg|oga|opus|flac|aif|aiff)$/i;
 async function resolveBookBundle(file) {
@@ -683,11 +683,10 @@ async function resolveBookBundle(file) {
     const choice = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries, name.replace(/(\.zip)?(_\d+)?\.(zip|docx)$/i, '').replace(/\.zip$/i, ''));
     if (!choice) return false;
     if (choice.saveAll) {
-        // Весь комплект — у «Мої книги» однією папкою; відкривати нічого не треба, папка одразу видима.
+        // Весь комплект — у «Мої книги» однією папкою; це робить main.js (formats.js не звертається до полиці).
         const files = [];
         for (const e of entries) files.push(await asFile(e));
-        if (typeof shelveBundle === 'function' && await shelveBundle(choice.folder, files) && typeof openLibrary === 'function') openLibrary('shelf');
-        return false;
+        return { saveAll: true, folder: choice.folder, files };
     }
     const entry = choice;
     const book = await asFile(entry);
