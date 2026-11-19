@@ -125,6 +125,9 @@ const pdfTasks = { render: null, loading: null, text: null };
 const BOOK_OPENING = [], BOOK_OPENED = [];
 function onBookOpening(listener) { BOOK_OPENING.push(listener); }
 function onBookOpened(listener) { BOOK_OPENED.push(listener); }
+// The learner chose «save all» for an archive of books (js/formats.js resolveBookBundle): the shelf keeps them as a folder.
+const BOOK_BUNDLE_SAVERS = [];
+function onBookBundleSave(saver) { BOOK_BUNDLE_SAVERS.push(saver); }
 // A page of a text book is shown (js/navigation.js goToPageInChapter): what is drawn over or about that page follows.
 const TEXT_PAGE_SHOWN = [];
 function onTextPageShown(listener) { TEXT_PAGE_SHOWN.push(listener); }
