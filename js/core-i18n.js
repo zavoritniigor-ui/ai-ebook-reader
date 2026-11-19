@@ -113,7 +113,7 @@ const I18N = {
     tFooter:        { uk: 'Розділ · сторінка · вперед/назад', en: 'Chapter · page · back/forward', fr: 'Chapitre · page · précédent/suivant', ru: 'Глава · страница · назад/вперёд' },
     tStop:          { uk: 'Зупинити читання', en: 'Stop reading', fr: 'Arrêter la lecture', ru: 'Остановить чтение' },
     // Повідомлення
-    pickBookInArchive:{ uk: 'В архіві кілька файлів — оберіть, що відкрити:', en: 'The archive has several files — choose one to open:', fr: "L'archive contient plusieurs fichiers — choisissez lequel ouvrir :", ru: 'В архиве несколько файлов — выберите, что открыть:' },
+    pickBookInArchive:{ uk: 'В архіві кілька файлів', en: 'The archive has several files', fr: "L'archive contient plusieurs fichiers", ru: 'В архиве несколько файлов' },
     unsupportedFormat:{ uk: 'Формат не підтримується.', en: 'Format not supported.', fr: 'Format non pris en charge.', ru: 'Формат не поддерживается.' },
     fileTooLarge:   { uk: 'Файл завеликий (максимум 300 МБ). Спробуйте інший файл.',
                       en: 'File is too large (300 MB maximum). Try a different file.',

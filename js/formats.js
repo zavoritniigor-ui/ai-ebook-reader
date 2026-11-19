@@ -663,21 +663,24 @@ function expandSelfClosingTags(markup) {
 // як розділ EPUB. Тому далі працює вже наявна пагінація, переклад і озвучення.
 // Архів із книгами (ZIP, або ZIP, що назвали .docx): шукаємо всередині файли підтримуваних форматів
 // і відкриваємо один — якщо їх кілька, користувач обирає. Справжній DOCX (є word/document.xml),
-// EPUB та FB2.ZIP сюди не потрапляють. Повертає File, null (не архів — відкривати як є), false (скасовано) або { saveAll, folder, files } (зберегти все в папку).
+// EPUB та FB2.ZIP сюди не потрапляють. Повертає File, null (не архів — відкривати як є), false (скасовано) або { saveAll, folder, files, titles } (зберегти все в папку).
 const BUNDLE_BOOK_RE = /\.(pdf|epub|docx|fb2\.zip|fb2|txt|md|markdown|html?|rtf|cbz)$/i;
 const BUNDLE_AUDIO_RE = /\.(mp3|m4a|m4b|mp4|aac|wav|ogg|oga|opus|flac|aif|aiff)$/i;
-// Назва папки для комплекту: спільний початок імен файлів («lesson_one», «lesson_two» → «lesson»); імена архівів з сайтів часто
-// випадкові. Немає спільного початку — ім'я архіву без розширень і порядкового номера.
-function bundleFolderName(archiveName, entries) {
-    const names = entries.map(e => e.name.split('/').pop().replace(/\.[^.]+$/, ''));
-    let prefix = names[0] || '';
-    for (const n of names) { let i = 0; while (i < prefix.length && i < n.length && prefix[i].toLowerCase() === n[i].toLowerCase()) i++; prefix = prefix.slice(0, i); }
-    prefix = prefix.replace(/[\s._-]+$/, '');
-    // «lesson_on» (обрив посеред слова) → до останнього роздільника
-    if (names.some(n => n.length > prefix.length && !/[\s._-]/.test(n[prefix.length] || ''))) prefix = prefix.replace(/[\s._-]*[^\s._-]*$/, '').replace(/[\s._-]+$/, '');
-    const clean = (v) => v.replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
-    if (prefix.length >= 4) return clean(prefix);
-    return clean(archiveName.replace(/(\.zip)?(_\d+)?\.(zip|docx)$/i, '').replace(/\.zip$/i, '')) || 'Archive';
+// Назви комплекту з сайтів мають вигляд «код_дата_рівень_тема_тип» (fdlm467_20260816_b1_chats_noirs_apprenant). Слова, спільні для всіх
+// файлів, дають назву папки — «Chats noirs · B1» (код і дата відкидаються, рівень A1–C2 іде в кінець); у файлі лишається те, чим він
+// відрізняється («apprenant»). Спільних слів немає — ім'я архіву без розширень і порядкового номера.
+function bundleNameParts(archiveName, entries) {
+    const lists = entries.map(e => e.name.split('/').pop().replace(/\.[^.]+$/, '').split(/[\s._-]+/).filter(Boolean));
+    let n = 0;
+    while (lists.every(l => n < l.length - 1 && l[n].toLowerCase() === lists[0][n].toLowerCase())) n++;
+    let head = lists[0].slice(0, n), level = '';
+    const at = head.findIndex(w => /^[abc][12]$/i.test(w));
+    if (at >= 0) { level = head[at].toUpperCase(); head = head.slice(at + 1); }   // усе перед рівнем — код і дата видання
+    else head = head.filter(w => !/^\d{6,8}$/.test(w) && !/^[a-z]{1,6}\d+$/i.test(w));
+    const topic = head.join(' ');
+    const folder = [topic.charAt(0).toUpperCase() + topic.slice(1), level].filter(Boolean).join(' · ')
+        || archiveName.replace(/(\.zip)?(_\d+)?\.(zip|docx)$/i, '').replace(/\.zip$/i, '').replace(/_+/g, ' ').trim() || 'Archive';
+    return { folder, titles: n ? lists.map(l => l.slice(n).join(' ')) : [] };
 }
 async function resolveBookBundle(file) {
     const name = file.name || '';
@@ -697,13 +700,14 @@ async function resolveBookBundle(file) {
     if (!entries.length) return null;
     const date = (e) => (e.date instanceof Date && !isNaN(e.date) ? e.date.getTime() : 0);   // той самий файл → та сама закладка при повторному відкритті
     const asFile = async (e) => new File([await e.async('blob')], e.name.split('/').pop(), { lastModified: date(e) });
-    const choice = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries, bundleFolderName(name, entries));
+    const parts = entries.length > 1 ? bundleNameParts(name, entries) : null;
+    const choice = entries.length === 1 ? entries[0] : await chooseBundleEntry(entries, parts.folder);
     if (!choice) return false;
     if (choice.saveAll) {
         // Весь комплект — у «Мої книги» однією папкою; це робить main.js (formats.js не звертається до полиці).
         const files = [];
         for (const e of entries) files.push(await asFile(e));
-        return { saveAll: true, folder: choice.folder, files };
+        return { saveAll: true, folder: choice.folder, files, titles: parts.titles };
     }
     const entry = choice;
     const book = await asFile(entry);
@@ -721,7 +725,7 @@ function chooseBundleEntry(entries, folderName = '') {
     return new Promise((resolve) => {
         const dialog = document.createElement('dialog');
         dialog.setAttribute('aria-label', t('pickBookInArchive'));
-        dialog.style.cssText = 'background:Canvas;color:CanvasText;border:1px solid GrayText;border-radius:12px;padding:16px;max-width:92vw;width:460px';
+        dialog.style.cssText = 'margin:auto;background:Canvas;color:CanvasText;border:1px solid GrayText;border-radius:12px;padding:16px;max-width:92vw;width:460px';
         const block = 'display:block;width:100%;box-sizing:border-box;margin:4px 0;padding:10px;';
         const title = document.createElement('div');
         title.textContent = t('pickBookInArchive'); title.style.cssText = 'font-weight:600;margin-bottom:10px';

@@ -133,7 +133,7 @@ async function shelveBook(file, key = state.bookKey) {
         await shelfTx('readwrite', store => {
             store.put({ key, kind, name: file.name, type: file.type || '', size: file.size, lastModified: file.lastModified || 0,
                 folder: old?.folder || '', series: old?.series || '', volume: old?.volume || '', issue: old?.issue || '', sourceId: old?.sourceId || '',
-                ...publicationMetadata.get(file), title: shelfTitle(file.name), openedAt: Date.now(), cover: cover || null, blob: old && old.blob && old.size === file.size ? old.blob : file });
+                ...publicationMetadata.get(file), title: old && old.folder && old.title ? old.title : shelfTitle(file.name), openedAt: Date.now(), cover: cover || null, blob: old && old.blob && old.size === file.size ? old.blob : file });
         });
         const books = (await listShelfBooks(kind)).filter(b => !b.folder);   // a folder's files are kept until the learner removes the folder
         let total = 0;
@@ -168,13 +168,13 @@ async function openShelfBook(key) {
 // Папки: файли з одного архіву лежать разом (поле folder у записі). Порожнє folder — звичайна книга.
 let shelfFolder = null;
 // Зберегти всі файли архіву в папку й одразу показати її.
-async function shelveBundle(folder, files) {
+async function shelveBundle(folder, files, titles = []) {
     const now = Date.now();
     try {
         if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
         await shelfTx('readwrite', store => {
             files.forEach((file, i) => store.put({ key: bookKeyFor(file), kind: 'book', folder, name: file.name, type: file.type || '', size: file.size,
-                lastModified: file.lastModified || 0, series: '', volume: '', issue: '', sourceId: '', title: shelfTitle(file.name),
+                lastModified: file.lastModified || 0, series: '', volume: '', issue: '', sourceId: '', title: titles[i] || shelfTitle(file.name),
                 openedAt: now - i, cover: null, blob: file }));
         });
     } catch (e) { showToast(t('publicationStorageFull')); return false; }
@@ -373,7 +373,7 @@ async function runShelfList() {
     note.textContent = shelfView === 'scan' ? t(books.length ? 'shelfScansNote' : 'shelfScansEmpty')
         : books.length ? t('shelfNote').replace('{n}', SHELF_MAX_BOOKS) : t('shelfEmpty');
     const view = shelfFolderView(books);
-    status.replaceChildren(shelfTabs(all), ...(view.inFolder ? [shelfBackButton()] : []), note);
+    status.replaceChildren(shelfTabs(all), ...(view.inFolder ? [shelfBackButton()] : [note]));   // the «up to 15 books» note does not apply inside a folder
     for (const item of view.items) {
         const card = document.createElement('div'); card.className = 'library-card';
         const info = document.createElement('div'); info.className = 'library-info';
@@ -409,4 +409,4 @@ document.querySelectorAll('.my-books-btn').forEach(b => b.addEventListener('clic
 
 // Every opened book goes to «Мої книги» — except the demo textbook (js/main.js openBookFile, onBookOpened).
 onBookOpened(file => { if (!file.__readerDemo) scheduleShelveBook(file); });
-onBookBundleSave(async (folder, files) => { if (await shelveBundle(folder, files)) openLibrary('shelf'); });
+onBookBundleSave(async (folder, files, titles) => { if (await shelveBundle(folder, files, titles)) openLibrary('shelf'); });
