@@ -373,7 +373,7 @@ async function runShelfList() {
     note.textContent = shelfView === 'scan' ? t(books.length ? 'shelfScansNote' : 'shelfScansEmpty')
         : books.length ? t('shelfNote').replace('{n}', SHELF_MAX_BOOKS) : t('shelfEmpty');
     const view = shelfFolderView(books);
-    status.replaceChildren(shelfTabs(all), ...(view.inFolder ? [shelfBackButton()] : [note]));   // the «up to 15 books» note does not apply inside a folder
+    status.replaceChildren(shelfTabs(all), ...(view.inFolder ? [shelfBackButton(), Object.assign(document.createElement('p'), { className: 'shelf-note', textContent: '📁 ' + shelfFolder })] : [note]));   // the «up to 15 books» note does not apply inside a folder
     for (const item of view.items) {
         const card = document.createElement('div'); card.className = 'library-card';
         const info = document.createElement('div'); info.className = 'library-info';
