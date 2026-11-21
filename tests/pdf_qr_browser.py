@@ -178,6 +178,49 @@ check('4 after zooming, the frame is still over the code', f"""(a => {{ if (!a) 
     return Math.abs((r.left - w.left) / k - {BOX[0]}) < 8 && Math.abs(r.width / k - {BOX[2]}) < 14 || JSON.stringify([(r.left - w.left) / k, r.width / k]); }})({links(2)}[0])""", timeout=10)
 check('4b a page whose code was found is not read again on re-render (a page without one may be, on a bigger canvas)', "!__scans.includes('2') && !__scans.includes('3') || JSON.stringify(__scans)")
 
+# ---------------------------------------------------------------- only when the reader is still (owner, 2026-11-21)
+# «кюар код шукався тільки тоді коли немає гортання або прокрутки, наприклад через пів секунди після того як сторінка
+# промальована»: a drawn page waits half a second, every scroll / swipe / wheel / key pushes that back, a scroll during
+# the read stops it, and a page drawn off screen waits until it is scrolled to.
+c.js("goToPhysicalPage(2, {instant: true}); 1"); c.wait("state.currentIndex === 2", timeout=10); pause(1)
+c.js("""window.__qrLog = []; const d2 = detectPdfQrCodes;
+  detectPdfQrCodes = (cv, ...a) => { __qrLog.push({ page: Object.keys(pdfPageWrappers).find(n => pdfPageWrappers[n] === cv.parentNode), at: performance.now() }); return d2(cv, ...a); };
+  window.__redraw = n => { pdfQrCache.delete(n); pdfPageWrappers[n].querySelector(':scope > .pdf-qr-layer')?.remove();
+    attachPdfQrLayer(n, pdfPageWrappers[n], pdfPageWrappers[n].querySelector(':scope > canvas.pdf-canvas')); };
+  window.__log = n => __qrLog.filter(e => e.page === String(n)); 1""")
+
+c.js("__qrLog.length = 0; window.__t0 = performance.now(); __redraw(2); 1"); pause(.3)
+check('9 a page just drawn is not read at once', "__log(2).length === 0")
+check('9b it is read about half a second after it was drawn, and its frame comes back', f"__log(2).length === 1 && __log(2)[0].at - __t0 >= 500 && {links(2)}.length === 1 || JSON.stringify([__log(2), __t0])", timeout=5)
+
+# Scrolling for two seconds (scroll events every 100 ms): no read starts until half a second after the last one.
+c.js("""__qrLog.length = 0; __redraw(2); window.__lastScroll = 0;
+  window.__scrolling = setInterval(() => { document.dispatchEvent(new Event('scroll')); __lastScroll = performance.now(); }, 100);
+  setTimeout(() => clearInterval(__scrolling), 2000); 1""")
+pause(1.8)
+check('9c while the reader keeps scrolling, the page is not read', "__log(2).length === 0")
+check('9d the read starts only half a second after the scrolling stopped', f"__log(2).length === 1 && __log(2)[0].at - __lastScroll >= 500 && {links(2)}.length === 1 || JSON.stringify([__log(2), __lastScroll])", timeout=5)
+
+# A scroll that starts in the middle of a (jsQR) read stops it; the page is read again, whole, once it is quiet.
+c.js("""__qrLog.length = 0; window.__jsqrCalls = 0; const realJsQR = window.jsQR; window.__realJsQR = realJsQR;
+  window.jsQR = (...a) => { if (++__jsqrCalls === 1) { document.dispatchEvent(new Event('scroll')); } return realJsQR(...a); };
+  __redraw(2); 1""")
+check('9e a read interrupted by a scroll is dropped and done again later; the frame still comes', f"__log(2).length === 2 && __log(2)[1].at - __log(2)[0].at >= 500 && {links(2)}.length === 1 || JSON.stringify([__log(2), __jsqrCalls])", timeout=6)
+c.js("window.jsQR = __realJsQR; 1")
+if c.js("'BarcodeDetector' in window") is False:
+    check('9f the interrupted read stopped after its first pass (the rest was not computed)', "__jsqrCalls >= 2 && __jsqrCalls <= 12 || __jsqrCalls")
+
+# A page drawn while it is off screen waits until the reader goes to it.
+c.js("goToPhysicalPage(4, {instant: true}); 1"); c.wait("state.currentIndex === 4 && pdfPageWrappers[4]?.dataset.rendered === '1'", timeout=10); pause(1)
+c.js("goToPhysicalPage(2, {instant: true}); 1"); c.wait("state.currentIndex === 2", timeout=10); pause(1)
+if c.js("!!pdfPageWrappers[4]?.querySelector(':scope > canvas.pdf-canvas') && (r => r.top >= innerHeight || r.bottom <= 0)(pdfPageWrappers[4].getBoundingClientRect())"):
+    c.js("__qrLog.length = 0; __redraw(4); 1"); pause(1.5)
+    check('9g a page drawn off screen is not read while it stays off screen', "__log(4).length === 0")
+    c.js("goToPhysicalPage(4, {instant: true}); 1")
+    check('9h scrolled to, it is read half a second later', "__log(4).length === 1", timeout=5)
+else:
+    print('SKIP 9g/9h page 4 is not kept drawn off screen in this layout')
+
 # ---------------------------------------------------------------- the tab was reloaded while the reader was on the site
 c.js("goToPhysicalPage(2, {instant: true}); 1"); c.wait("state.currentIndex === 2", timeout=10)
 c.js(f"{links(2)}[0].click(); 1"); pause(.5)
