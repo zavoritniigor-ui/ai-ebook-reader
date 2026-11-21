@@ -12,9 +12,15 @@
  * (rememberReadingSpot, js/book-shelf.js): якщо, поки читач на сайті, браузер вивантажить вкладку, книга сама
  * відкриється на тій самій сторінці.
  *
+ * Коли шукати (власник, 2026-11-21: «кюар код шукався тільки тоді коли немає гортання або прокрутки, наприклад через
+ * пів секунди після того як сторінка промальована»): сторінку читаємо, лише коли вона намальована щонайменше
+ * PDF_QR_QUIET_MS тому, стільки ж не було прокрутки, коліщатка, дотиків, перетягування чи клавіш, і сторінку видно на
+ * екрані. Сторінки, намальовані наперед поза екраном, чекають, доки до них догорнуть. jsQR читає сторінку частинами
+ * (уся, потім чотири чверті); між частинами браузер вільний, і якщо читач знову гортає, читання кидається й
+ * починається спочатку, коли знову стане тихо.
+ *
  * Результат зберігається для сторінки в частках її розміру, тож масштабування й повторний рендер не сканують заново
- * (лише якщо на дрібнішому полотні нічого не знайшлося, а нове помітно більше). Сканування — по одній сторінці за раз і
- * лише для сторінок, які досі показано.
+ * (лише якщо на дрібнішому полотні нічого не знайшлося, а нове помітно більше).
  */
 Object.assign(I18N, {
     pdfQrOpen: { uk: 'QR-код: відкрити', en: 'QR code: open', fr: 'Code QR : ouvrir', ru: 'QR-код: открыть', zh: '二维码：打开', ko: 'QR 코드: 열기', hi: 'QR कोड: खोलें', ga: 'Cód QR: oscail', es: 'Código QR: abrir' },
@@ -27,6 +33,19 @@ const pdfQrCache = new Map();   // pageNum → { width, codes: [{ value, x, y, w
 let pdfQrCacheDoc = null;
 const pdfQrQueue = [];
 let pdfQrBusy = false;
+const PDF_QR_QUIET_MS = 500;    // after the page is drawn, and after the last scroll / swipe / wheel / key
+let pdfQrLastActivity = 0, pdfQrTimer = 0;
+const pdfQrNow = () => performance.now();
+const pdfQrQuiet = () => pdfQrNow() - pdfQrLastActivity >= PDF_QR_QUIET_MS;
+
+// Any sign of reading in motion postpones the scan. Capture + passive: seen for every scrolling element, never delays it.
+function notePdfQrActivity(e) {
+    if (e.type === 'pointermove' && !e.buttons) return;   // a mouse merely hovering is not scrolling
+    pdfQrLastActivity = pdfQrNow();
+    if (pdfQrQueue.length) schedulePdfQrPump();
+}
+for (const type of ['scroll', 'wheel', 'pointerdown', 'pointermove', 'touchstart', 'touchmove', 'keydown'])
+    document.addEventListener(type, notePdfQrActivity, { capture: true, passive: true });
 
 // A plain http(s) address is the link itself; anything else in the code is searched as text.
 function pdfQrLink(value) {
@@ -39,7 +58,8 @@ function pdfQrHref(value) {
     return !v ? '' : pdfQrLink(v) || (typeof webSearchUrl === 'function' ? webSearchUrl(v) : '');
 }
 
-async function detectPdfQrCodes(canvas) {
+// interrupted(): checked between jsQR passes; when it says yes the read is dropped (null) and the page queued again.
+async function detectPdfQrCodes(canvas, interrupted = () => false) {
     const W = canvas.width, H = canvas.height;
     if (!W || !H) return [];
     if ('BarcodeDetector' in window) {
@@ -78,11 +98,17 @@ async function detectPdfQrCodes(canvas) {
             codes.push(code);
         }
     };
-    scan(0, 0, 1, 1);
     // Two codes side by side confuse jsQR's finder-pattern search, and a small code is lost when the page is shrunk:
-    // overlapping quarters, each from the full-resolution canvas, unless the whole page already gave several codes.
-    if (codes.length < 2) for (const [fx, fy] of [[0, 0], [0.45, 0], [0, 0.45], [0.45, 0.45]]) scan(fx, fy, 0.55, 0.55);
-    return codes;
+    // after the whole page, overlapping quarters, each from the full-resolution canvas (unless several codes were found).
+    // Between passes the browser gets a turn (a scroll that starts now is seen) and the read stops if the reader moved.
+    const passes = [[0, 0, 1, 1], [0, 0, 0.55, 0.55], [0.45, 0, 0.55, 0.55], [0, 0.45, 0.55, 0.55], [0.45, 0.45, 0.55, 0.55]];
+    for (let i = 0; i < passes.length; i++) {
+        if (i === 1 && codes.length >= 2) break;
+        if (interrupted()) return null;
+        scan(...passes[i]);
+        await new Promise(r => setTimeout(r, 0));
+    }
+    return interrupted() ? null : codes;
 }
 
 function buildPdfQrLayer(codes, canvas) {
@@ -133,27 +159,48 @@ function attachPdfQrLayer(pageNum, wrapperEl, canvas) {
     }
     const doc = state.pdfDoc;
     for (let i = pdfQrQueue.length - 1; i >= 0; i--) if (pdfQrQueue[i].pageNum === pageNum) pdfQrQueue.splice(i, 1);
-    pdfQrQueue.push({ pageNum, wrapperEl, canvas, doc });
-    pumpPdfQrQueue();
+    pdfQrQueue.push({ pageNum, wrapperEl, canvas, doc, readyAt: pdfQrNow() + PDF_QR_QUIET_MS });
+    schedulePdfQrPump();
 }
 
-function pumpPdfQrQueue() {
+const pdfQrJobLive = job => job.doc === state.pdfDoc && job.canvas.isConnected && job.canvas.parentNode === job.wrapperEl;
+function pdfQrJobVisible(job) {
+    const r = job.wrapperEl.getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+}
+// Wake up when both the newest drawn page and the last movement are PDF_QR_QUIET_MS old.
+function schedulePdfQrPump() {
+    clearTimeout(pdfQrTimer);
     if (pdfQrBusy || !pdfQrQueue.length) return;
+    const now = pdfQrNow();
+    const ready = Math.min(...pdfQrQueue.map(j => j.readyAt));
+    const wait = Math.max(ready - now, pdfQrLastActivity + PDF_QR_QUIET_MS - now, 0);
+    pdfQrTimer = setTimeout(pumpPdfQrQueue, wait + 16);
+}
+
+async function pumpPdfQrQueue() {
+    if (pdfQrBusy) return;
+    for (let i = pdfQrQueue.length - 1; i >= 0; i--) if (!pdfQrJobLive(pdfQrQueue[i])) pdfQrQueue.splice(i, 1);   // re-rendered or gone
+    if (!pdfQrQueue.length) return;
+    if (!pdfQrQuiet()) { schedulePdfQrPump(); return; }
+    const now = pdfQrNow();
+    const index = pdfQrQueue.findIndex(j => j.readyAt <= now && pdfQrJobVisible(j));
+    if (index < 0) {
+        // Not yet half a second old: wait for it. Only pages off screen: the next scroll that stops brings them back here.
+        if (pdfQrQueue.some(j => j.readyAt > now)) schedulePdfQrPump();
+        return;
+    }
+    const [job] = pdfQrQueue.splice(index, 1);
     pdfQrBusy = true;
-    const idle = window.requestIdleCallback ? cb => requestIdleCallback(cb, { timeout: 1500 }) : cb => setTimeout(cb, 200);
-    idle(async () => {
-        const job = pdfQrQueue.shift();
-        try {
-            // Only a page still shown with this very canvas: a scrolled-away or re-rendered page is not worth reading.
-            if (job && job.doc === state.pdfDoc && job.canvas.isConnected && job.canvas.parentNode === job.wrapperEl) {
-                const codes = await detectPdfQrCodes(job.canvas);
-                if (job.doc === state.pdfDoc) {
-                    pdfQrCache.set(job.pageNum, { width: job.canvas.width, codes });
-                    if (job.canvas.isConnected && job.canvas.parentNode === job.wrapperEl) placePdfQrLayer(job.wrapperEl, job.canvas, codes);
-                }
-            }
-        } catch (e) { /* a QR code is a bonus: a failed read never touches the page */ }
-        pdfQrBusy = false;
-        pumpPdfQrQueue();
-    });
+    const startedAt = pdfQrNow();
+    try {
+        const codes = await detectPdfQrCodes(job.canvas, () => pdfQrLastActivity > startedAt || !pdfQrJobLive(job));
+        if (codes === null) { if (pdfQrJobLive(job)) pdfQrQueue.unshift(job); }   // the reader moved: read it again later
+        else if (job.doc === state.pdfDoc) {
+            pdfQrCache.set(job.pageNum, { width: job.canvas.width, codes });
+            if (pdfQrJobLive(job)) placePdfQrLayer(job.wrapperEl, job.canvas, codes);
+        }
+    } catch (e) { /* a QR code is a bonus: a failed read never touches the page */ }
+    pdfQrBusy = false;
+    schedulePdfQrPump();
 }
