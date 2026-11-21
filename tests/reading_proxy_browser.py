@@ -27,6 +27,10 @@ c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
 window.__errors = []; addEventListener('error', e => __errors.push(e.message));
 window.__asked = []; window.__tr = [];
 window.__dev = [];
+// Sound: Google Translate's voice is an <audio>; the device's voice is speechSynthesis. Both recorded, nothing plays.
+window.__plays = []; window.__sys = []; window.__audioFails = false;
+window.Audio = function (src) { return { src, play() { __plays.push(src); return __audioFails ? Promise.reject(new Error('NotAllowedError')) : Promise.resolve(); }, pause() {} }; };
+Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { speak(u) { __sys.push(u.text + '|' + u.lang); }, cancel() {}, resume() {}, getVoices: () => [] } });
 // Chrome on a computer has its own Translator API (CI's does, with no model): off, except where it is what is tested.
 try { delete window.Translator; } catch (e) {} window.Translator = undefined; delete window.Translator;
 if (sessionStorage.getItem('pp_test_on_device') === '1') window.Translator = {
@@ -183,5 +187,34 @@ c.js("window.Translator = { availability: async () => 'available', create: async
 tap_word('#q', 'chat')
 check('16b an on-device translator that never answers (model still downloading) falls back to Google within 1.5 s', f"{TR} === '[en] chat' && __tr.some(x => x.q === 'chat')", timeout=5)
 c.js("sessionStorage.removeItem('pp_test_on_device'); 1")
+# ---------------------------------------------------------------- speech, read at once (owner: «хочу щоб озвучення було автоматично»)
+c.js(f"(d => {{ if (d) d.shadowRoot.querySelector('.close').click(); }})({PANEL}); localStorage.removeItem('pp_autospeak'); __plays.length = 0; __sys.length = 0; 1")
+PLAYED = "__plays.map(u => new URL(u).searchParams.get('q') + '|' + new URL(u).searchParams.get('tl'))"
+tap_word('#q', 'chat')
+check('17 a tapped word is read at once, in Google Translate\'s French voice', f"JSON.stringify({PLAYED}) === JSON.stringify(['chat|fr']) && new URL(__plays[0]).pathname === '/translate_tts'", timeout=3)
+check('17a «Авто 🔊» is on by default', f"{PANEL}.shadowRoot.querySelector('.auto').getAttribute('aria-pressed') === 'true'")
+c.js(f"__plays.length = 0; {PANEL}.shadowRoot.querySelector('.sent').click(); 1")
+check('17b «Речення ⤢» reads the sentence', f"{PLAYED}[0] === 'Le chat dort.|fr'", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.auto').click(); {PANEL}.shadowRoot.querySelector('.close').click(); __plays.length = 0; 1")
+tap_word('#q', 'frère')
+check('17c «Авто 🔊» off: a tap translates silently, and it is remembered', f"{SHOWN} && __plays.length === 0 && localStorage.getItem('pp_autospeak') === '0'", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.speak').click(); 1")
+check('17d 🔊 still reads it', f"{PLAYED}[0] === 'frère|fr'", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.auto').click(); {PANEL}.shadowRoot.querySelector('.close').click(); __plays.length = 0; __audioFails = true; 1")
+tap_word('#q', 'vais')
+check("17e Google's voice refused (no network, or the browser blocks it): the device's own French voice reads it", "__sys.some(x => x === 'vais|fr-FR')", timeout=3)
+c.js("__audioFails = false; 1")
+
+# ---------------------------------------------------------------- words that a tap could not reach before
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); 1")
+tap_word('#ns', 'protégé')
+check('18 a word in text the page made unselectable is found under the finger', f"{SHOWN} && {PANEL}.shadowRoot.querySelector('.src').textContent === 'protégé'", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); 1")
+tap_word('#bigclick', 'cliquable')
+check('18b a big block drawn as clickable (a whole card of text) is not taken for a button', f"{SHOWN} && {PANEL}.shadowRoot.querySelector('.src').textContent === 'cliquable'", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); 1")
+pt = c.js("""(() => { const n = document.querySelector('#r').firstChild; const r = document.createRange(); r.setStart(n, 0); r.setEnd(n, 7); const b = r.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })()""")
+c.js(f"window.__cm = new MouseEvent('contextmenu', {{ bubbles: true, cancelable: true, clientX: {pt['x']}, clientY: {pt['y']} }}); document.querySelector('#r').dispatchEvent(__cm); 1")
+check('19 a long press on an answer translates its word (and no system menu), the answer is not chosen', f"__cm.defaultPrevented && {SHOWN} && {PANEL}.shadowRoot.querySelector('.src').textContent === 'Réponse'", timeout=3)
 check('8 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL PASS')
