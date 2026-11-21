@@ -18,7 +18,7 @@ declared = {k[len('node_modules/'):]: v['version'] for k, v in lock['packages'].
 assert lock['packages']['']['dependencies'] == declared, 'the root dependencies and the package entries differ'
 # vendor file/folder name prefix -> npm package(s) it is
 NAMES = {'jszip': ['jszip'], 'mammoth': ['mammoth'], 'marked': ['marked'], 'pdf': ['pdfjs-dist'], 'pdfjs': ['pdfjs-dist'],
-         'tesseract': ['tesseract.js', 'tesseract.js-core'], 'mediapipe-genai': ['@mediapipe/tasks-genai']}
+         'tesseract': ['tesseract.js', 'tesseract.js-core'], 'mediapipe-genai': ['@mediapipe/tasks-genai'], 'jsqr': ['jsqr']}
 seen = set()
 for entry in sorted((root / 'vendor').iterdir()):
     m = re.match(r'^([a-z-]+?)-(\d+\.\d+(?:\.\d+)?)(?:\.|$)', entry.name)
