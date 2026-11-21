@@ -297,7 +297,16 @@ function webSearchQuery(text) {
 }
 function webSearchUrl(text) { return 'https://www.google.com/search?q=' + encodeURIComponent(webSearchQuery(text)); }
 document.getElementById('btn-web-search')?.addEventListener('click', () => {
+    // A page crop attached in the panel is what the reader is looking at: search its text (or the image), js/pdf-crop.js.
+    if (typeof searchAskAttachment === 'function' && searchAskAttachment()) return;
     const query = webSearchQuery(askSearchText || state.lastSelectedRange?.toString() || '');
+    if (!query) { showToast(t('webSearchNothing')); return; }
+    window.open(webSearchUrl(query), '_blank', 'noopener,noreferrer');
+});
+// The same search from the translation popup (owner, 2026-11-20): the word or sentence the popup shows.
+document.getElementById('tt-web-search-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const query = webSearchQuery(els.ttOriginal?.textContent || state.lastSelectedRange?.toString() || '');
     if (!query) { showToast(t('webSearchNothing')); return; }
     window.open(webSearchUrl(query), '_blank', 'noopener,noreferrer');
 });
