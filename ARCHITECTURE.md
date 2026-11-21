@@ -127,6 +127,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `speech/[[path]].js` | proxy to the owner's local speech server (tunnel and token in Cloudflare secrets) |
 | `sync.js` | device sync storage (KV; the server sees only the encrypted blob) |
 | `../share-target.js` | «Share → AI Reader» before the service worker controls the page |
+| `../p/[[path]].js` + `proxy-assets/translate.js` | reading proxy `/p/<host>/…` for listed exercise sites (RFI, its H5P), with the selection-translation panel injected; only on `web.ai-ebook-reader.uk` and branch previews, never on the app's origins |
 
 ## Security model
 
