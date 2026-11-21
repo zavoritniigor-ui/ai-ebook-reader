@@ -231,6 +231,7 @@ async function renderPdfPageIntoImpl(pageNum, wrapperEl, scale, isWanted) {
         wrapperEl.classList.remove('pdf-placeholder');
         wrapperEl.dataset.rendered = '1';
         redrawInk(ink, pageNum); bindInkCanvas(ink, pageNum);
+        try { if (typeof attachPdfQrLayer === 'function') attachPdfQrLayer(pageNum, wrapperEl, c); } catch (e) { /* QR codes optional (js/pdf-qr.js) */ }
         if (typeof restorePdfSelection === 'function') {
             restorePdfSelection(pageNum, wrapperEl);
         }

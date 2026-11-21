@@ -27,7 +27,7 @@ Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.
 `sentence-structure` → `grammar-svo` → `grammar-analysis` → `grammar-prompts` → `grammar-panel` → `grammar-lookup` →
 `grammar-run` → `grammar-rules-data-fr/en` → `grammar-rules-details-fr/en` → `grammar-rules` →
 `ai-client` → `practice-session` → `practice-worksheet` → `dictation` → `offline-catalog` → `offline-dict-catalog` →
-`offline-translate` → `offline-dict` → `device-llm-catalog` → `device-llm` → `pdf-ink` → `text-ink` → `pdf-crop` →
+`offline-translate` → `offline-dict` → `device-llm-catalog` → `device-llm` → `pdf-ink` → `text-ink` → `pdf-crop` → `pdf-qr` →
 `pdf-outline` → `pdf-thumbnails` → `pdf-continuous` → `pdf-contrast` → `publication-files` → `pdf-render` →
 `book-audio` → `book-speech` → `formats` → `comics` → `onboarding` → `library-queue` → `library` → `book-shelf` →
 `scanner` → `sync` → `quick-wheel` → `developer` → `main` → `demo-textbook` → `pwa-lifecycle` → `i18n-es`
@@ -85,6 +85,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `pdf-contrast.js` | automatic contrast for faded scans |
 | `pdf-ink.js`, `text-ink.js` | handwriting over PDF pages / text books (IndexedDB) |
 | `pdf-crop.js` | region selection → AI vision, web search of the crop, text selection in text books |
+| `pdf-qr.js` | QR codes on rendered PDF pages: highlighted, one tap opens the link (or searches the text) |
 | `publication-files.js` | bounded download/storage of large publications |
 
 **Language, AI and speech**

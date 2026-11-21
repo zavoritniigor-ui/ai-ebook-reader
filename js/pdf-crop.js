@@ -248,6 +248,7 @@ function scanCropCode(blob) {
     return scan;
 }
 function openSearchTab(url) {
+    if (typeof rememberReadingSpot === 'function') rememberReadingSpot();   // back to this page even if the tab is reloaded (js/book-shelf.js)
     const tab = window.open(url, '_blank');
     if (tab) try { tab.opener = null; } catch (e) { /* cross-origin already: nothing to cut */ }
     return !!tab;
