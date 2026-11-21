@@ -490,6 +490,17 @@
         @keyframes pdf-qr-pulse { 0% { box-shadow: 0 0 0 3px #1a56db, 0 0 0 5px rgba(255,255,255,.9), 0 0 0 5px rgba(26,86,219,.5); }
             100% { box-shadow: 0 0 0 3px #1a56db, 0 0 0 5px rgba(255,255,255,.9), 0 0 0 18px rgba(26,86,219,0); } }
         @media (prefers-reduced-motion: reduce) { .pdf-qr-link { animation: none; } }
+        .pdf-qr-save { pointer-events: auto; transform: translateY(calc(-100% - 4px)); min-width: 32px; min-height: 28px; padding: 0 8px;
+            border: 0; border-radius: 999px; background: #1a56db; color: #fff; font: 600 16px/28px system-ui, sans-serif; cursor: pointer; }
+        .pdf-qr-save[aria-pressed="true"] { background: #c27a00; }
+        /* «Мої книги → Посилання» (js/saved-links.js) */
+        .saved-links-list { display: flex; flex-direction: column; gap: 8px; }
+        .links-add { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+        .links-add input { flex: 1 1 180px; min-width: 0; min-height: 40px; padding: 6px 10px; border: 1px solid var(--border-color);
+            border-radius: 10px; background: var(--panel-bg); color: var(--text-color); font: inherit; }
+        .links-add .btn-primary { flex: none; min-height: 40px; }
+        .saved-link-icon { flex: none; width: 44px; text-align: center; font-size: 24px; }
+        a.saved-link-open { display: inline-flex; align-items: center; text-decoration: none; }
 
         /* Book audio markers ("CD1 - piste 33" in PDF textbooks) + player + dialog (js/book-audio.js) */
         .pdf-audio-layer { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 6; }
@@ -2601,7 +2612,7 @@
     <script src="js/pdf-ink.js?v=00a04f241a55"></script>
     <script src="js/text-ink.js?v=33e254f9c673"></script>
     <script src="js/pdf-crop.js?v=157d3d5d5674"></script>
-    <script src="js/pdf-qr.js?v=69801227ddda"></script>
+    <script src="js/pdf-qr.js?v=7f0a2539f784"></script>
     <script src="js/pdf-outline.js?v=99a5a8928b2d"></script>
     <script src="js/pdf-thumbnails.js?v=bb626c9338da"></script>
     <script src="js/pdf-continuous.js?v=b9f4eb0959f8"></script>
@@ -2615,9 +2626,10 @@
     <script src="js/onboarding.js?v=f891fd83c9f2"></script>
     <script src="js/library-queue.js?v=3b86961dbe27"></script>
     <script src="js/library.js?v=4e66e0a48c82"></script>
-    <script src="js/book-shelf.js?v=541140293eef"></script>
+    <script src="js/book-shelf.js?v=9a62a3b747b8"></script>
+    <script src="js/saved-links.js?v=c46b48ae886f"></script>
     <script src="js/scanner.js?v=ad775efa00da"></script>
-    <script src="js/sync.js?v=12ec02a9289b"></script>
+    <script src="js/sync.js?v=01fd5d86deb6"></script>
     <script src="js/quick-wheel.js?v=8dbec94c3e2e"></script>
     <script src="js/developer.js?v=b5903ef00cab"></script>
     <script src="js/main.js?v=9434a890bdaa"></script>

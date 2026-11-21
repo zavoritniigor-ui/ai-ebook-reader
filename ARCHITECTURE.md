@@ -29,7 +29,7 @@ Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.
 `ai-client` → `practice-session` → `practice-worksheet` → `dictation` → `offline-catalog` → `offline-dict-catalog` →
 `offline-translate` → `offline-dict` → `device-llm-catalog` → `device-llm` → `pdf-ink` → `text-ink` → `pdf-crop` → `pdf-qr` →
 `pdf-outline` → `pdf-thumbnails` → `pdf-continuous` → `pdf-contrast` → `publication-files` → `pdf-render` →
-`book-audio` → `book-speech` → `formats` → `comics` → `onboarding` → `library-queue` → `library` → `book-shelf` →
+`book-audio` → `book-speech` → `formats` → `comics` → `onboarding` → `library-queue` → `library` → `book-shelf` → `saved-links` →
 `scanner` → `sync` → `quick-wheel` → `developer` → `main` → `demo-textbook` → `pwa-lifecycle` → `i18n-es`
 
 `tests/migration_audit_browser.py` pins this list. Load-bearing positions:
@@ -113,6 +113,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `library.js` | free library: Gutenberg (local `library-catalog.json`), Wikisource→EPUB, Internet Archive, Library of Congress, newspapers & magazines, BNR, Standard Ebooks; author/years search |
 | `library-queue.js` | one download at a time, retries |
 | `book-shelf.js` | «My books»: opened books kept in IndexedDB, start-screen drum |
+| `saved-links.js` | «Мої книги → Посилання»: saved QR codes and exercise pages, open / back to the book page |
 | `scanner.js` | document scanner: photos → frame (whole photo, editable) → filters → PDF/JPG/PNG, N pages per sheet, OCR (Tesseract) |
 | `sync.js` | sync between devices by code |
 
