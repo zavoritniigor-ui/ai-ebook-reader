@@ -187,6 +187,9 @@
     document.addEventListener('click', e => {
         const hit = tapTarget(e);
         if (!hit) return;
+        // The tap is ours: marking it handled keeps Chrome's own «Touch to Search» sheet (Android) from opening over the
+        // panel for the same word (owner's screenshot, 2026-11-21). Only plain text gets here, never a control of the page.
+        e.preventDefault();
         marked = hit; mark(hit.wordRange, 'pp-word');
         if (inFrame) window.top.postMessage({ pp: 'translate', text: hit.word, sentence: hit.sentence, frame: true }, ORIGIN);
         else show(hit.word, hit.sentence);
@@ -207,8 +210,8 @@
         Object.assign(panel.style, { position: 'fixed', left: '0', right: '0', bottom: '0', zIndex: '2147483647', display: 'none' });
         const root = panel.attachShadow({ mode: 'open' });   // open: styles stay isolated; tests can read it
         root.innerHTML = `<style>
-            .box { margin: 0 auto; max-width: 640px; background: #fff; color: #1c1d21; border-radius: 16px 16px 0 0;
-                box-shadow: 0 -8px 30px rgba(0,0,0,.25); padding: 12px 16px 16px; font: 16px/1.45 system-ui, sans-serif; }
+            .box { margin: 0 auto; max-width: 720px; background: #fff; color: #1c1d21; border-radius: 16px 16px 0 0;
+                box-shadow: 0 -8px 30px rgba(0,0,0,.25); padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); font: 16px/1.45 system-ui, sans-serif; }
             .top { display: flex; align-items: center; gap: 8px; }
             .src { flex: 1; font-weight: 650; overflow-wrap: anywhere; max-height: 7.5em; overflow: auto; }
             .tr { margin-top: 6px; font-size: 17px; color: #1a56db; overflow-wrap: anywhere; min-height: 1.4em; max-height: 9em; overflow: auto; }
@@ -299,7 +302,8 @@
             chip.type = 'button'; chip.setAttribute('data-pp', ''); chip.textContent = '⇄';
             const sync = () => { const on = tapOn(); chip.setAttribute('aria-pressed', String(on)); chip.title = on ? 'Переклад дотиком: увімкнено' : 'Переклад дотиком: вимкнено';
                 chip.setAttribute('aria-label', chip.title); chip.style.background = on ? '#1a56db' : '#9aa1ad'; };
-            Object.assign(chip.style, { position: 'fixed', right: '12px', bottom: 'calc(12px + env(safe-area-inset-bottom))', zIndex: '2147483646', width: '46px', height: '46px',
+            // Above the bottom bars sites put there (RFI: «Accueil … Menu»), not on them.
+            Object.assign(chip.style, { position: 'fixed', right: '12px', bottom: 'calc(88px + env(safe-area-inset-bottom))', zIndex: '2147483646', width: '46px', height: '46px',
                 borderRadius: '50%', border: '0', color: '#fff', font: '700 20px/46px system-ui, sans-serif', boxShadow: '0 4px 14px rgba(0,0,0,.25)', cursor: 'pointer', padding: '0' });
             sync();
             chip.addEventListener('click', e => { e.stopPropagation(); try { localStorage.setItem(TAP_KEY, tapOn() ? '0' : '1'); } catch (err) {} sync(); });

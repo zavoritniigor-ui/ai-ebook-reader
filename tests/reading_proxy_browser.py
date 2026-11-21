@@ -105,8 +105,10 @@ def tap_word(sel, word):
     pause(.6)
 
 
+c.js("window.__clicks = []; addEventListener('click', e => __clicks.push(e.defaultPrevented)); 1")
 tap_word('#q', 'frère')
 check('9 one tap on a word: the word is highlighted and translated, no long press', f"{SHOWN} && {PANEL}.shadowRoot.querySelector('.src').textContent === 'frère' && {TR} === '[en] frère' && CSS.highlights.has('pp-word')", timeout=3)
+check("9a the tap is marked handled (Chrome's own Touch to Search sheet stays closed)", "__clicks.length === 1 && __clicks[0] === true")
 check('9b «Речення ⤢» is offered for the sentence around it', f"!{PANEL}.shadowRoot.querySelector('.sent').hidden")
 c.js(f"{PANEL}.shadowRoot.querySelector('.sent').click(); 1")
 check('9c «Речення ⤢» translates exactly the sentence with the word, and marks it', f"{PANEL}.shadowRoot.querySelector('.src').textContent === \"Je vais à l'école aujourd'hui avec mon frère.\" && {TR}.startsWith('[en] Je vais') && CSS.highlights.has('pp-sentence') && {PANEL}.shadowRoot.querySelector('.sent').hidden", timeout=3)
@@ -118,7 +120,7 @@ c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); window.__tr.length = 
 check('10c ✕ also clears the highlight', "!CSS.highlights.has('pp-word') && !CSS.highlights.has('pp-sentence')")
 for sel, word, what in [('#r', 'Réponse', 'an answer of the exercise'), ('#b', 'Valider', 'a button'), ('#clickable', 'cliquable', 'something drawn as clickable')]:
     tap_word(sel, word)
-    check(f'11 a tap on {what} is left to the page: no translation', f"!{SHOWN} && __tr.length === 0")
+    check(f'11 a tap on {what} is left to the page: no translation, not marked handled', f"!{SHOWN} && __tr.length === 0 && __clicks[__clicks.length - 1] === false")
 c.js("(h => { const r = document.createRange(); r.selectNodeContents(h); const b = r.getBoundingClientRect(); window.__blank = { x: Math.min(innerWidth - 4, b.right + 40), y: b.top + b.height / 2 }; })(document.querySelector('#t')); 1")   # right of the heading's text, same line
 pt = c.js("__blank")
 c.call('Input.dispatchMouseEvent', type='mousePressed', x=pt['x'], y=pt['y'], button='left', clickCount=1)
