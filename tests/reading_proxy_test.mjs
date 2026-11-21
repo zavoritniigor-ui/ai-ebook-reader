@@ -86,6 +86,6 @@ ok('the app opens through the proxy exactly the sites the proxy serves', appHost
 const appOrigin = readFileSync(join(root, 'js', 'saved-links.js'), 'utf8').match(/READING_PROXY_ORIGIN = '([^']+)'/)[1];
 ok('the app sends them to the host the proxy serves on', proxyServedHere(new URL(appOrigin).hostname), appOrigin);
 const { createHash } = await import('node:crypto');
-const scriptHash = createHash('sha256').update(readFileSync(join(root, 'proxy-assets', 'translate.js'))).digest('hex').slice(0, 12);
-ok('the injected script address carries the version of proxy-assets/translate.js (update TRANSLATE_JS_VERSION after editing it)', TRANSLATE_JS_VERSION === scriptHash, TRANSLATE_JS_VERSION + ' != ' + scriptHash);
+const scriptHash = createHash('sha256').update(readFileSync(join(root, 'proxy-assets', 'translate.js'))).update(readFileSync(join(root, 'proxy-assets', 'dict-worker.js'))).digest('hex').slice(0, 12);
+ok('the injected script address carries the version of proxy-assets/translate.js + dict-worker.js (update TRANSLATE_JS_VERSION after editing them)', TRANSLATE_JS_VERSION === scriptHash, TRANSLATE_JS_VERSION + ' != ' + scriptHash);
 console.log('ALL PASS');
