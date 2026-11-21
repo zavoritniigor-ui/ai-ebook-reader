@@ -111,7 +111,7 @@ async function detectPdfQrCodes(canvas, interrupted = () => false) {
     return interrupted() ? null : codes;
 }
 
-function buildPdfQrLayer(codes, canvas) {
+function buildPdfQrLayer(codes, canvas, pageNum) {
     const layer = document.createElement('div');
     layer.className = 'pdf-link-layer pdf-qr-layer';
     // The page's CSS size, like the other layers: a pinch stretches them all by one transform (js/pdf-zoom-pan.js).
@@ -136,13 +136,33 @@ function buildPdfQrLayer(codes, canvas) {
             if (typeof rememberReadingSpot === 'function') rememberReadingSpot();
         });
         layer.appendChild(a);
+        if (typeof saveLink === 'function') layer.appendChild(pdfQrSaveButton(code, href, pageNum));
     }
     return layer.childElementCount ? layer : null;
 }
 
-function placePdfQrLayer(wrapperEl, canvas, codes) {
+// ☆ over the frame's top-left corner: keep this code in «Мої книги → Посилання» (js/saved-links.js) with this book and
+// page, so the exercise is one tap away later and «📖» there comes back to this very page. Tap again to remove.
+function pdfQrSaveButton(code, href, pageNum) {
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = 'pdf-link-annotation pdf-qr-save';   // a tap on it is not a word tap or a pan, like the frame
+    const pad = 0.006;
+    b.style.left = `${(code.x - pad) * 100}%`; b.style.top = `${(code.y - pad) * 100}%`;
+    const sync = () => { const on = isLinkSaved(href); b.textContent = on ? '★' : '☆'; b.setAttribute('aria-pressed', String(on)); };
+    b.title = t('linksSaveQr'); b.setAttribute('aria-label', t('linksSaveQr'));
+    sync();
+    b.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        if (isLinkSaved(href)) { removeSavedLink(href); showToast(t('linksUnsaved')); }
+        else if (saveLink({ url: href, title: pdfQrLink(code.value) ? '' : code.value, bookKey: state.bookKey, bookName: state.bookFileName, page: pageNum })) showToast(t('linksSaved'));
+        sync();
+    });
+    return b;
+}
+
+function placePdfQrLayer(wrapperEl, canvas, codes, pageNum) {
     wrapperEl.querySelector(':scope > .pdf-qr-layer')?.remove();
-    const layer = codes.length ? buildPdfQrLayer(codes, canvas) : null;
+    const layer = codes.length ? buildPdfQrLayer(codes, canvas, pageNum) : null;
     if (!layer) return;
     // Under the ink canvas (the pen still draws over the code), over the text and the PDF's own links.
     const ink = wrapperEl.querySelector(':scope > .ink-layer');
@@ -154,7 +174,7 @@ function attachPdfQrLayer(pageNum, wrapperEl, canvas) {
     if (pdfQrCacheDoc !== state.pdfDoc) { pdfQrCache.clear(); pdfQrQueue.length = 0; pdfQrCacheDoc = state.pdfDoc; }
     const known = pdfQrCache.get(pageNum);
     if (known) {
-        placePdfQrLayer(wrapperEl, canvas, known.codes);
+        placePdfQrLayer(wrapperEl, canvas, known.codes, pageNum);
         if (known.codes.length || canvas.width < known.width * 1.5) return;   // a bigger canvas may show a code a small one missed
     }
     const doc = state.pdfDoc;
@@ -198,7 +218,7 @@ async function pumpPdfQrQueue() {
         if (codes === null) { if (pdfQrJobLive(job)) pdfQrQueue.unshift(job); }   // the reader moved: read it again later
         else if (job.doc === state.pdfDoc) {
             pdfQrCache.set(job.pageNum, { width: job.canvas.width, codes });
-            if (pdfQrJobLive(job)) placePdfQrLayer(job.wrapperEl, job.canvas, codes);
+            if (pdfQrJobLive(job)) placePdfQrLayer(job.wrapperEl, job.canvas, codes, job.pageNum);
         }
     } catch (e) { /* a QR code is a bonus: a failed read never touches the page */ }
     pdfQrBusy = false;

@@ -274,10 +274,12 @@ function shelfCoverEl(b) {
 function shelfTabs(all) {
     const tabs = document.createElement('div'); tabs.className = 'shelf-tabs';
     tabs.setAttribute('role', 'group'); tabs.dataset.i18nAria = 'shelfCollections'; tabs.setAttribute('aria-label', t('shelfCollections'));
-    for (const [kind, label] of [['book', 'myBooksLabel'], ['scan', 'shelfScans']]) {
+    // «Посилання» — saved QR codes and exercise pages (js/saved-links.js), not files: counted from their own list.
+    for (const [kind, label] of [['book', 'myBooksLabel'], ['scan', 'shelfScans'], ['link', 'shelfLinks']]) {
         const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'shelf-tab'; btn.dataset.kind = kind;
         const text = document.createElement('span'); text.dataset.i18n = label; text.textContent = t(label);
-        btn.append(text, ' (' + all.filter(b => b.kind === kind).length + ')');
+        const count = kind === 'link' ? (typeof listSavedLinks === 'function' ? listSavedLinks().length : 0) : all.filter(b => b.kind === kind).length;
+        btn.append(text, ' (' + count + ')');
         btn.setAttribute('aria-pressed', String(shelfView === kind));
         btn.addEventListener('click', () => {
             shelfView = kind; shelfFolder = null; renderRecentBooks();
@@ -296,8 +298,15 @@ async function renderRecentBooks() {
     const books = all.filter(b => b.kind === shelfView);
     host.replaceChildren();
     for (const [key, url] of shelfCoverUrls) if (!all.some(b => b.key === key && b.cover)) { URL.revokeObjectURL(url); shelfCoverUrls.delete(key); }
-    if (!all.length) return;
+    if (!all.length && !(typeof listSavedLinks === 'function' && listSavedLinks().length)) return;
     host.append(shelfTabs(all));
+    if (shelfView === 'link') {
+        const note = document.createElement('p'); note.className = 'recent-empty';
+        const list = document.createElement('div'); list.className = 'saved-links-list';
+        host.append(note, savedLinkAddForm(), list);
+        renderSavedLinks(list, note);
+        return;
+    }
     if (!books.length) {
         const empty = document.createElement('p'); empty.className = 'recent-empty'; empty.dataset.i18n = shelfView === 'scan' ? 'shelfScansEmpty' : 'shelfEmpty'; empty.textContent = t(empty.dataset.i18n);
         host.append(empty); return;
@@ -394,6 +403,12 @@ async function runShelfList() {
     let all = [];
     try { all = await listShelfBooks(null); } catch (e) {}
     if (token !== shelfListToken || libraryState.source !== 'shelf') return;
+    if (shelfView === 'link') {
+        const note = document.createElement('p'); note.className = 'shelf-note';
+        status.replaceChildren(shelfTabs(all), note, savedLinkAddForm());
+        renderSavedLinks(list, note);
+        return;
+    }
     const books = all.filter(b => b.kind === shelfView);
     const note = document.createElement('p'); note.className = 'shelf-note';
     note.textContent = shelfView === 'scan' ? t(books.length ? 'shelfScansNote' : 'shelfScansEmpty')

@@ -128,9 +128,9 @@ check('10c2 changing the UI language translates collection labels without droppi
   state.uiLang=previous; applyI18n(); return ok;
 })()""")
 c.call('Emulation.setDeviceMetricsOverride', width=320, height=860, deviceScaleFactor=1, mobile=True)
-check('10c3 collection buttons fit a narrow phone and have usable tap targets', """(() => {
+check('10c3 the three collection buttons (books, scans, links) fit a narrow phone and have usable tap targets', """(() => {
   const tabs=[...document.querySelectorAll('#recent-books .shelf-tab')];
-  return tabs.length===2 && tabs.every(b=>{const r=b.getBoundingClientRect();return r.height>=44 && r.left>=0 && r.right<=innerWidth;});
+  return tabs.length===3 && tabs.every(b=>{const r=b.getBoundingClientRect();return r.height>=44 && r.left>=0 && r.right<=innerWidth;});
 })()""")
 c.call('Emulation.setDeviceMetricsOverride', width=412, height=860, deviceScaleFactor=1, mobile=True)
 if os.environ.get('SHELF_SCANS_SHOT'):

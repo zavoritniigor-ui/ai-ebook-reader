@@ -18,7 +18,9 @@ const SYNC_CODE_KEY = 'reader_sync_code', SYNC_META_KEY = 'reader_sync_meta', SY
 // Розмір шрифту НЕ переноситься: на телефоні й планшеті зручний розмір різний.
 const SYNC_SETTINGS = ['reader_theme', 'reader_ui_lang', 'reader_target_lang',
     // Вигляд книжкового тексту (js/core.js TEXT_LAYOUT): як і тема, застосовується одразу — читач налаштував його раз.
-    'reader_text_font', 'reader_line_height', 'reader_margin', 'reader_align', 'reader_hyphens', 'reader_pdf_contrast'];
+    'reader_text_font', 'reader_line_height', 'reader_margin', 'reader_align', 'reader_hyphens', 'reader_pdf_contrast',
+    // «Мої книги → Посилання» (js/saved-links.js): the whole list, the newer device's copy wins.
+    'reader_saved_links'];
 // Ключі книги: префікс локального ключа → коротка назва типу в синхронізації. Ключ закладки — сам bookKey.
 const SYNC_BOOK_TYPES = [['reader_marks_v1:', 'mk'], ['reader_readpos_v1:', 'rp'], ['reader_book_lang:', 'bl'], ['', 'bm']];
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
