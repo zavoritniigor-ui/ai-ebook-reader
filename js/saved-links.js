@@ -19,6 +19,7 @@ Object.assign(I18N, {
     linksPaste: { uk: 'Вставити', en: 'Paste', fr: 'Coller', ru: 'Вставить', zh: '粘贴', ko: '붙여넣기', hi: 'चिपकाएँ', ga: 'Greamaigh', es: 'Pegar' },
     linksSave: { uk: 'Зберегти', en: 'Save', fr: 'Enregistrer', ru: 'Сохранить', zh: '保存', ko: '저장', hi: 'सहेजें', ga: 'Sábháil', es: 'Guardar' },
     linksCancel: { uk: 'Скасувати', en: 'Cancel', fr: 'Annuler', ru: 'Отмена', zh: '取消', ko: '취소', hi: 'रद्द करें', ga: 'Cealaigh', es: 'Cancelar' },
+    linksTranslated: { uk: 'з перекладом', en: 'with translation', fr: 'avec traduction', ru: 'с переводом', zh: '可翻译', ko: '번역 포함', hi: 'अनुवाद के साथ', ga: 'le haistriúchán', es: 'con traducción' },
     linksAdd: { uk: '+ Додати', en: '+ Add', fr: '+ Ajouter', ru: '+ Добавить', zh: '+ 添加', ko: '+ 추가', hi: '+ जोड़ें', ga: '+ Cuir leis', es: '+ Añadir' },
     linksBadUrl: { uk: 'Потрібна адреса, що починається з https:// або http://', en: 'An address starting with https:// or http:// is needed', fr: 'Il faut une adresse commençant par https:// ou http://', ru: 'Нужен адрес, начинающийся с https:// или http://', zh: '需要以 https:// 或 http:// 开头的地址', ko: 'https:// 또는 http:// 로 시작하는 주소가 필요합니다', hi: 'https:// या http:// से शुरू होने वाला पता चाहिए', ga: 'Teastaíonn seoladh a thosaíonn le https:// nó http://', es: 'Hace falta una dirección que empiece por https:// o http://' },
     linksOpen: { uk: 'Відкрити ↗', en: 'Open ↗', fr: 'Ouvrir ↗', ru: 'Открыть ↗', zh: '打开 ↗', ko: '열기 ↗', hi: 'खोलें ↗', ga: 'Oscail ↗', es: 'Abrir ↗' },
@@ -30,6 +31,14 @@ Object.assign(I18N, {
 });
 
 const SAVED_LINKS_KEY = 'reader_saved_links', SAVED_LINKS_MAX = 300;
+// The reading proxy (functions/p/[[path]].js): exercise sites listed there open through it, so a selected word or
+// sentence on them is translated. The same hosts as PROXY_HOSTS there (tests/reading_proxy_test.mjs compares them).
+const READING_PROXY_ORIGIN = 'https://web.ai-ebook-reader.uk';
+const READING_PROXY_HOSTS = ['francaisfacile.rfi.fr', 's.francaisfacile.rfi.fr', 'fle-rfi.h5p.com'];
+function readingProxyUrl(url) {
+    try { const u = new URL(url); if (u.protocol === 'https:' && READING_PROXY_HOSTS.includes(u.host)) return `${READING_PROXY_ORIGIN}/p/${u.host}${u.pathname}${u.search}${u.hash}`; } catch (e) {}
+    return '';
+}
 
 function savedLinkUrl(value) {
     const v = String(value || '').trim();
@@ -168,14 +177,14 @@ function savedLinkCard(link, preview = false) {
     const card = document.createElement('div'); card.className = 'saved-link';
     const main = document.createElement(preview ? 'div' : 'a'); main.className = 'saved-link-main';
     if (!preview) {
-        main.href = link.url; main.target = '_blank'; main.rel = 'noopener noreferrer';
+        main.href = readingProxyUrl(link.url) || link.url; main.target = '_blank'; main.rel = 'noopener noreferrer';
         main.addEventListener('click', () => { if (typeof rememberReadingSpot === 'function') rememberReadingSpot(); });
     }
     const text = document.createElement('span'); text.className = 'saved-link-text';
     const name = document.createElement('b'); name.className = 'saved-link-title'; name.textContent = link.title;
     const sub = document.createElement('small'); sub.className = 'saved-link-host';
     let host = ''; try { host = new URL(link.url).hostname.replace(/^www\./, ''); } catch (e) {}
-    sub.textContent = host + (link.page ? ` · 📖 ${t('page')} ${link.page}` : '');
+    sub.textContent = host + (readingProxyUrl(link.url) ? ` · 🌐 ${t('linksTranslated')}` : '') + (link.page ? ` · 📖 ${t('page')} ${link.page}` : '');
     text.append(name, sub);
     const go = document.createElement('span'); go.className = 'saved-link-go'; go.setAttribute('aria-hidden', 'true'); go.textContent = '↗';
     main.append(savedLinkLogo(link.url, link.title), text, go);

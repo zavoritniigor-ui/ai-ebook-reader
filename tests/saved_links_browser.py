@@ -117,12 +117,17 @@ type_url('https://francaisfacile.rfi.fr/fr/exercices/passe-compose-2')
 check('6e a name the reader typed is kept when the address changes', "document.querySelector('#library-status .links-name').value === 'Passé composé'")
 click_at('#library-status .links-save')
 check('6f Save adds it on top and closes the form', """(cards => cards.length === 2 && cards[0].querySelector('.saved-link-title').textContent === 'Passé composé'
-   && cards[0].querySelector('.saved-link-main').href === 'https://francaisfacile.rfi.fr/fr/exercices/passe-compose-2' && !cards[0].querySelector('.saved-link-page')
-   && cards[0].querySelector('.saved-link-host').textContent === 'francaisfacile.rfi.fr'
+   && listSavedLinks()[0].url === 'https://francaisfacile.rfi.fr/fr/exercices/passe-compose-2' && !cards[0].querySelector('.saved-link-page')
    && document.querySelector('#library-status .links-form').hidden && __toasts.includes(t('linksSaved')))([...document.querySelectorAll('#library-list .saved-link')])""", timeout=5)
 check('6f2 every card, not only the first, is a link with its own 🗑 (and 📖 when it came from a book)', """[...document.querySelectorAll('#library-list .saved-link')].every(card => {
-   const l = listSavedLinks().find(x => x.url === card.querySelector('a.saved-link-main')?.href);
+   const href = card.querySelector('a.saved-link-main')?.href; const l = listSavedLinks().find(x => x.url === href || readingProxyUrl(x.url) === href);
    return !!l && !!card.querySelector('.saved-link-remove') && !!card.querySelector('.saved-link-page') === !!l.bookKey; })""")
+check('6f3 an exercise site of the reading proxy opens through it, «з перекладом»; other sites open as they are', """(cards => {
+   const rfi = cards.find(c => c.querySelector('.saved-link-title').textContent === 'Passé composé');
+   const other = cards.find(c => /example\\.com/.test(c.querySelector('.saved-link-host').textContent));
+   return rfi.querySelector('a.saved-link-main').href === 'https://web.ai-ebook-reader.uk/p/francaisfacile.rfi.fr/fr/exercices/passe-compose-2'
+     && rfi.querySelector('.saved-link-host').textContent === 'francaisfacile.rfi.fr · 🌐 ' + t('linksTranslated')
+     && other.querySelector('a.saved-link-main').href === 'https://example.com/qr-test?a=1' && !other.querySelector('.saved-link-host').textContent.includes('🌐'); })([...document.querySelectorAll('#library-list .saved-link')])""")
 click_at('#library-status .links-add-btn'); click_at('#library-status .links-cancel')
 check('6g Cancel closes the form without saving', "getComputedStyle(document.querySelector('#library-status .links-form')).display === 'none' && getComputedStyle(document.querySelector('#library-status .links-add-btn')).display !== 'none' && listSavedLinks().length === 2")
 check('6h names from addresses', """(() => { const cases = {
@@ -151,7 +156,7 @@ c.js("shelfView = 'link'; renderRecentBooks(); 1")
 check('9 the start screen shows the same tab with the saved links', "!!document.querySelector('#recent-books .shelf-tab[data-kind=\"link\"][aria-pressed=\"true\"]') && document.querySelectorAll('#recent-books .saved-link').length === 1 && !!document.querySelector('#recent-books .links-add-btn')", timeout=5)
 
 check('10 the new labels are localized in every menu language', """(() => { const bad = [];
-   for (const k of ['shelfLinks','linksEmpty','linksNewTitle','linksUrlLabel','linksNameLabel','linksPaste','linksSave','linksCancel','linksAdd','linksBadUrl','linksOpen','linksToBook','linksRemove','linksSaved','linksUnsaved','linksSaveQr'])
+   for (const k of ['shelfLinks','linksEmpty','linksNewTitle','linksUrlLabel','linksNameLabel','linksPaste','linksSave','linksCancel','linksAdd','linksBadUrl','linksOpen','linksToBook','linksRemove','linksSaved','linksUnsaved','linksSaveQr','linksTranslated'])
      for (const l of ['uk','en','fr','ru','zh','ko','hi','ga','es']) { const v = I18N[k] && I18N[k][l]; if (!v || v === k) bad.push(k + ':' + l); }
    return bad.length === 0 || JSON.stringify(bad); })()""")
 check('11 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")

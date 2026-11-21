@@ -80,4 +80,9 @@ rw.text(chunk('i.h5p.com\\/content\\/9\\/embed\\">"; var b = "https://fle-rfi.h5
 const done = outs.find(o => o[0] === 'replace')?.[1] || '';
 ok('inline scripts: an address split across chunks is rewritten (JSON-escaped and plain); other sites untouched',
     done.includes('\\/p\\/fle-rfi.h5p.com\\/content\\/9\\/embed') && done.includes('"/p/fle-rfi.h5p.com/js"') && done.includes('https://www.rfi.fr/x') && outs[0][0] === 'remove', done);
+// The app opens these hosts through the proxy (js/saved-links.js READING_PROXY_HOSTS): the two lists must be the same.
+const appHosts = JSON.parse(readFileSync(join(root, 'js', 'saved-links.js'), 'utf8').match(/READING_PROXY_HOSTS = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
+ok('the app opens through the proxy exactly the sites the proxy serves', appHosts.slice().sort().join(' ') === [...PROXY_HOSTS].sort().join(' '), appHosts.join(' '));
+const appOrigin = readFileSync(join(root, 'js', 'saved-links.js'), 'utf8').match(/READING_PROXY_ORIGIN = '([^']+)'/)[1];
+ok('the app sends them to the host the proxy serves on', proxyServedHere(new URL(appOrigin).hostname), appOrigin);
 console.log('ALL PASS');

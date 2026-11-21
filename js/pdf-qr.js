@@ -122,7 +122,8 @@ function buildPdfQrLayer(codes, canvas, pageNum) {
         const a = document.createElement('a');
         // pdf-link-annotation: a tap on it is a link, not a word tap or a pan (js/selection-drag.js, js/pdf-zoom-pan.js).
         a.className = 'pdf-link-annotation pdf-qr-link';
-        a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        // An exercise site the reading proxy serves opens through it: a selected word there is translated (js/saved-links.js).
+        a.href = (typeof readingProxyUrl === 'function' && readingProxyUrl(href)) || href; a.target = '_blank'; a.rel = 'noopener noreferrer';
         const pad = 0.006;
         a.style.left = `${(code.x - pad) * 100}%`; a.style.top = `${(code.y - pad) * 100}%`;
         a.style.width = `${(code.w + 2 * pad) * 100}%`; a.style.height = `${(code.h + 2 * pad) * 100}%`;
