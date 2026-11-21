@@ -182,3 +182,4 @@ tests/module_graph_browser.py
 tests/hostile_book_browser.py
 tests/vendor_lock_browser.py
 tests/regex_timing_browser.py
+tests/pdf_qr_browser.py

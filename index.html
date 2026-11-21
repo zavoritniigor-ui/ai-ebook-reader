@@ -480,6 +480,16 @@
         .pdf-link-layer { position: absolute; left: 0; top: 0; }
         .pdf-link-annotation { position: absolute; cursor: pointer; }
         .pdf-link-annotation:hover { background: rgba(26, 86, 219, 0.08); }
+        /* QR-код на сторінці PDF (js/pdf-qr.js): рамка, яку видно на будь-якому тлі, і позначка «QR ↗» — дотик відкриває */
+        .pdf-qr-layer { pointer-events: none; }
+        .pdf-qr-link { pointer-events: auto; border-radius: 6px; background: rgba(26, 86, 219, 0.10);
+            box-shadow: 0 0 0 3px #1a56db, 0 0 0 5px rgba(255, 255, 255, 0.9); animation: pdf-qr-pulse 1.6s ease-out 2; }
+        .pdf-qr-link:hover, .pdf-qr-link:focus-visible { background: rgba(26, 86, 219, 0.20); outline: none; }
+        .pdf-qr-badge { position: absolute; right: -3px; bottom: 100%; margin-bottom: 4px; padding: 2px 7px; border-radius: 999px;
+            background: #1a56db; color: #fff; font: 600 12px/1.4 system-ui, sans-serif; white-space: nowrap; pointer-events: none; }
+        @keyframes pdf-qr-pulse { 0% { box-shadow: 0 0 0 3px #1a56db, 0 0 0 5px rgba(255,255,255,.9), 0 0 0 5px rgba(26,86,219,.5); }
+            100% { box-shadow: 0 0 0 3px #1a56db, 0 0 0 5px rgba(255,255,255,.9), 0 0 0 18px rgba(26,86,219,0); } }
+        @media (prefers-reduced-motion: reduce) { .pdf-qr-link { animation: none; } }
 
         /* Book audio markers ("CD1 - piste 33" in PDF textbooks) + player + dialog (js/book-audio.js) */
         .pdf-audio-layer { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 6; }
@@ -2590,13 +2600,14 @@
     <script src="js/device-llm.js?v=326f0c80fa13"></script>
     <script src="js/pdf-ink.js?v=00a04f241a55"></script>
     <script src="js/text-ink.js?v=33e254f9c673"></script>
-    <script src="js/pdf-crop.js?v=2f2dc56bdfb7"></script>
+    <script src="js/pdf-crop.js?v=157d3d5d5674"></script>
+    <script src="js/pdf-qr.js?v=2a693a7096e9"></script>
     <script src="js/pdf-outline.js?v=99a5a8928b2d"></script>
     <script src="js/pdf-thumbnails.js?v=bb626c9338da"></script>
     <script src="js/pdf-continuous.js?v=b9f4eb0959f8"></script>
     <script src="js/pdf-contrast.js?v=5fa157a712be"></script>
     <script src="js/publication-files.js?v=724b3c68f574"></script>
-    <script src="js/pdf-render.js?v=bb7cf88d93c0"></script>
+    <script src="js/pdf-render.js?v=216c84201c69"></script>
     <script src="js/book-audio.js?v=e8ed630d51f6"></script>
     <script src="js/book-speech.js?v=4a4832ad347d"></script>
     <script src="js/formats.js?v=b80115b4ad03"></script>
@@ -2604,7 +2615,7 @@
     <script src="js/onboarding.js?v=f891fd83c9f2"></script>
     <script src="js/library-queue.js?v=3b86961dbe27"></script>
     <script src="js/library.js?v=4e66e0a48c82"></script>
-    <script src="js/book-shelf.js?v=dd502a264532"></script>
+    <script src="js/book-shelf.js?v=541140293eef"></script>
     <script src="js/scanner.js?v=ad775efa00da"></script>
     <script src="js/sync.js?v=12ec02a9289b"></script>
     <script src="js/quick-wheel.js?v=8dbec94c3e2e"></script>

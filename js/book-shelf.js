@@ -145,12 +145,38 @@ async function shelveBook(file, key = state.bookKey) {
 }
 // Запис великого файлу (PDF на десятки МБ) не має змагатися з першим відмальовуванням книги: зберігаємо за кілька секунд,
 // коли браузер вільний, і лише якщо ця книга досі відкрита.
-let shelfPendingKey = null;
+let shelfPendingKey = null, shelfPendingFile = null;
 function scheduleShelveBook(file) {
     const key = shelfPendingKey = state.bookKey;
-    const run = () => { if (shelfPendingKey === key && state.bookKey === key) { shelfPendingKey = null; shelveBook(file, key); } };
+    shelfPendingFile = file;
+    const run = () => { if (shelfPendingKey === key && state.bookKey === key) { shelfPendingKey = null; shelfPendingFile = null; shelveBook(file, key); } };
     setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(run, { timeout: 5000 }) : run()), 2500);
 }
+// Перед тим як читач піде за посиланням (QR-код на сторінці, пошук фрагмента) — js/pdf-qr.js, js/pdf-crop.js: місце
+// збережено, книга вже на полиці, а ключ книги лежить у sessionStorage цієї вкладки. Якщо, поки читач на сайті, браузер
+// вивантажить вкладку (Android робить так із фоновими), після повернення книга сама відкриється на тій самій сторінці.
+const READING_RETURN_KEY = 'reader_return_book', READING_RETURN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+function rememberReadingSpot() {
+    if (!state.bookKey || state.demoMode) return;
+    try { saveBookmark(); } catch (e) {}
+    if (shelfPendingKey === state.bookKey && shelfPendingFile) { const file = shelfPendingFile; shelfPendingKey = null; shelfPendingFile = null; shelveBook(file, state.bookKey); }
+    try { sessionStorage.setItem(READING_RETURN_KEY, JSON.stringify({ key: state.bookKey, at: Date.now() })); } catch (e) {}
+}
+function takeReadingReturn() {
+    try {
+        const raw = sessionStorage.getItem(READING_RETURN_KEY);
+        sessionStorage.removeItem(READING_RETURN_KEY);
+        const spot = raw && JSON.parse(raw);
+        return spot && spot.key && Date.now() - spot.at < READING_RETURN_MAX_AGE_MS ? spot.key : null;
+    } catch (e) { return null; }
+}
+// Повернулися без перезавантаження — книга й так на місці, позначка більше не потрібна.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.bookKey) try { sessionStorage.removeItem(READING_RETURN_KEY); } catch (e) {} });
+// Вкладку перезавантажено: відкрити ту саму книгу (місце читання відновлює її закладка).
+window.addEventListener('load', () => {
+    const key = takeReadingReturn();
+    if (key && !state.bookKey) openShelfBook(key).catch(() => {});
+});
 async function removeShelfBook(key) {
     if (shelfPendingKey === key) shelfPendingKey = null;   // щойно видалену книгу відкладене збереження не повертає
     try { await shelfTx('readwrite', store => { store.delete(key); }); } catch (e) {}
