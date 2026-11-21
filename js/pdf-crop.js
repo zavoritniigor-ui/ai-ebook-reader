@@ -149,18 +149,20 @@ Object.assign(I18N, {
     cropImageSearchPaste: { uk: 'У фрагменті немає тексту — шукаємо за зображенням. Його скопійовано: у вкладці Google вставте його (Ctrl+V).', en: 'The crop has no text, so we search by the image. It is copied: paste it in the Google tab (Ctrl+V).', fr: "L'extrait n'a pas de texte : recherche par l'image. Elle est copiée : collez-la dans l'onglet Google (Ctrl+V).", ru: 'Во фрагменте нет текста — ищем по изображению. Оно скопировано: во вкладке Google вставьте его (Ctrl+V).', zh: '片段中没有文字，改用图片搜索。图片已复制：在 Google 标签页中粘贴（Ctrl+V）。', ko: '조각에 텍스트가 없어 이미지로 검색합니다. 이미지를 복사했습니다: Google 탭에 붙여넣으세요 (Ctrl+V).', hi: 'अंश में पाठ नहीं है, इसलिए छवि से खोजेंगे। छवि कॉपी हो गई: Google टैब में चिपकाएँ (Ctrl+V)।', ga: 'Níl téacs sa bhlúire, mar sin cuardaítear leis an íomhá. Tá sí cóipeáilte: greamaigh sa chluaisín Google í (Ctrl+V).', es: 'El fragmento no tiene texto: se busca por la imagen. Está copiada: pégala en la pestaña de Google (Ctrl+V).' },
     cropImageSearchShare: { uk: 'У фрагменті немає тексту — шукаємо за зображенням. Відкриваємо «Поділитися»: виберіть у ньому Google або Google Lens.', en: 'The crop has no text, so we search by the image. Opening Share: choose Google or Google Lens there.', fr: "L'extrait n'a pas de texte : recherche par l'image. Ouverture du partage : choisissez Google ou Google Lens.", ru: 'Во фрагменте нет текста — ищем по изображению. Открываем «Поделиться»: выберите в нём Google или Google Lens.', zh: '片段中没有文字，改用图片搜索。正在打开分享：请选择 Google 或 Google 智能镜头。', ko: '조각에 텍스트가 없어 이미지로 검색합니다. 공유를 엽니다: Google 또는 Google 렌즈를 선택하세요.', hi: 'अंश में पाठ नहीं है, इसलिए छवि से खोजेंगे। शेयर खुल रहा है: वहाँ Google या Google Lens चुनें।', ga: 'Níl téacs sa bhlúire, mar sin cuardaítear leis an íomhá. Osclaítear Roinn: roghnaigh Google nó Google Lens ann.', es: 'El fragmento no tiene texto: se busca por la imagen. Se abre Compartir: elige Google o Google Lens.' },
     cropImageSearchNoClipboard: { uk: 'У фрагменті немає тексту, а цей браузер не копіює зображення. Збережіть PNG і завантажте його в Google Lens.', en: 'The crop has no text and this browser cannot copy an image. Save the PNG and upload it to Google Lens.', fr: "L'extrait n'a pas de texte et ce navigateur ne copie pas les images. Enregistrez le PNG et chargez-le dans Google Lens.", ru: 'Во фрагменте нет текста, а этот браузер не копирует изображения. Сохраните PNG и загрузите его в Google Lens.', zh: '片段中没有文字，且此浏览器无法复制图片。请保存 PNG 并上传到 Google 智能镜头。', ko: '조각에 텍스트가 없고 이 브라우저는 이미지를 복사하지 못합니다. PNG를 저장해 Google 렌즈에 올리세요.', hi: 'अंश में पाठ नहीं है और यह ब्राउज़र छवि कॉपी नहीं करता। PNG सहेजें और Google Lens में अपलोड करें।', ga: 'Níl téacs sa bhlúire agus ní féidir leis an mbrabhsálaí seo íomhá a chóipeáil. Sábháil an PNG agus uaslódáil go Google Lens é.', es: 'El fragmento no tiene texto y este navegador no copia imágenes. Guarda el PNG y súbelo a Google Lens.' },
+    cropQrFound: { uk: 'QR-код у фрагменті:', en: 'QR code in the crop:', fr: "Code QR dans l'extrait :", ru: 'QR-код во фрагменте:', zh: '片段中的二维码：', ko: '조각의 QR 코드:', hi: 'अंश में QR कोड:', ga: 'Cód QR sa bhlúire:', es: 'Código QR en el fragmento:' },
     webSearchBlocked: { uk: 'Браузер заблокував нову вкладку. Дозвольте спливні вікна для цього сайту.', en: 'The browser blocked the new tab. Allow pop-ups for this site.', fr: "Le navigateur a bloqué le nouvel onglet. Autorisez les pop-ups pour ce site.", ru: 'Браузер заблокировал новую вкладку. Разрешите всплывающие окна для этого сайта.', zh: '浏览器拦截了新标签页。请允许此网站的弹出窗口。', ko: '브라우저가 새 탭을 막았습니다. 이 사이트의 팝업을 허용하세요.', hi: 'ब्राउज़र ने नया टैब रोका। इस साइट के लिए पॉप-अप की अनुमति दें।', ga: 'Chuir an brabhsálaí bac ar an gcluaisín nua. Ceadaigh preabfhuinneoga don suíomh seo.', es: 'El navegador bloqueó la pestaña nueva. Permite las ventanas emergentes para este sitio.' },
     shareFailed: { uk: 'Не вдалося поділитися', en: 'Sharing failed', fr: 'Échec du partage', ru: 'Не удалось поделиться', zh: '分享失败', ko: '공유하지 못했습니다', hi: 'साझा नहीं हो सका', ga: 'Theip ar an gcomhroinnt' },
 });
-let cropData = null, cropBlob = null, cropText = '';
+let cropData = null, cropBlob = null, cropText = '', cropScan = null;
 function closeCropPreview() {
-    cropDialog.close(); cropData = null; cropBlob = null; cropText = '';
+    cropDialog.close(); cropData = null; cropBlob = null; cropText = ''; cropScan = null;
     document.getElementById('crop-preview').removeAttribute('src');
 }
 function openCropPreview(dataUrl, text = '') {
     cropData = dataUrl; cropText = text;
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     cropBlob = new Blob([bytes], { type: 'image/png' });
+    cropScan = scanCropCode(cropBlob);   // read a QR code in the background while the reader looks at the preview
     document.getElementById('crop-preview').src = dataUrl;
     document.getElementById('crop-status').textContent = '';
     cropDialog.showModal();
@@ -206,19 +208,71 @@ document.getElementById('crop-copy').onclick = async () => {
 // await браузер вважає її непроханою й блокує. Без 'noopener' у window.open: з ним виклик завжди повертає null і
 // заблоковану вкладку не відрізнити від відкритої; opener обнуляємо самі.
 const IMAGE_SEARCH_URL = 'https://www.google.com/';
+// QR-код у фрагменті (власник, 2026-11-20: «QR-код вирізав, а пошук за ним не відбувається»): читаємо його, щойно
+// відкрився попередній перегляд, щоб дотик до кнопки лишався синхронним. BarcodeDetector є в Chrome на Android,
+// ChromeOS і macOS; деінде — jsQR (vendor/, Apache-2.0), який підвантажується лише тут. Посилання http(s) з коду
+// відкриваємо, будь-який інший вміст шукаємо як текст; інші схеми (javascript:, intent:…) ніколи не відкриваються.
+const JSQR_SRC = 'vendor/jsqr-1.4.0.js';
+let jsqrLoading = null;
+function loadJsQr() {
+    if (window.jsQR) return Promise.resolve(window.jsQR);
+    return jsqrLoading ||= new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = JSQR_SRC; s.async = true;
+        s.onload = () => window.jsQR ? resolve(window.jsQR) : reject(new Error('jsQR missing'));
+        s.onerror = () => { jsqrLoading = null; reject(new Error('jsQR failed to load')); };
+        document.head.append(s);
+    });
+}
+async function readCropCode(blob) {
+    const bmp = await createImageBitmap(blob);
+    try {
+        if ('BarcodeDetector' in window) {
+            try {
+                const codes = await new BarcodeDetector({ formats: ['qr_code'] }).detect(bmp);
+                return codes.find(c => c.rawValue)?.rawValue || '';
+            } catch (e) { /* no QR support in this detector: jsQR below */ }
+        }
+        const jsQR = await loadJsQr();
+        const k = Math.min(1, 1400 / Math.max(bmp.width, bmp.height));
+        const w = Math.max(1, Math.round(bmp.width * k)), h = Math.max(1, Math.round(bmp.height * k));
+        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(bmp, 0, 0, w, h);
+        return jsQR(ctx.getImageData(0, 0, w, h).data, w, h)?.data || '';
+    } finally { bmp.close?.(); }
+}
+function scanCropCode(blob) {
+    const scan = { done: false, code: '' };
+    scan.promise = readCropCode(blob).catch(() => '').then(code => { scan.code = String(code || '').trim(); scan.done = true; });
+    return scan;
+}
 function openSearchTab(url) {
     const tab = window.open(url, '_blank');
     if (tab) try { tab.opener = null; } catch (e) { /* cross-origin already: nothing to cut */ }
     return !!tab;
 }
-function searchCropOnWeb(text, blob, say) {
+function searchCropOnWeb(text, blob, say, scan) {
+    // The code is read when the preview opens; a tap that comes first waits for it (well inside the tap's activation).
+    if (scan && !scan.done) { scan.promise.then(() => searchCropOnWeb(text, blob, say, scan)); return; }
+    const code = scan?.code || '';
+    if (code) {
+        const link = /^https?:\/\/\S+$/i.test(code) ? code : '';
+        say(`${t('cropQrFound')} ${code.length > 200 ? code.slice(0, 200) + '…' : code}`);
+        if (!openSearchTab(link || webSearchUrl(code))) say(t('webSearchBlocked'));
+        return;
+    }
     const query = webSearchQuery(text);
     if (query) { if (!openSearchTab(webSearchUrl(query))) say(t('webSearchBlocked')); return; }
     if (!blob) return;
+    // A phone or tablet has no «paste an image» on google.com, but its share sheet has Google Lens («Search image»):
+    // a touch screen goes there first (by the pointer, not the user agent — the owner's phone runs in desktop mode).
+    const files = [new File([blob], `pdf-page-${state.currentIndex}.png`, { type: 'image/png' })];
+    const canShareImage = window.isSecureContext && navigator.share && navigator.canShare?.({ files });
+    const touch = window.matchMedia?.('(pointer: coarse)').matches;
     const canCopy = window.isSecureContext && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined';
-    if (!canCopy) {
-        const files = [new File([blob], `pdf-page-${state.currentIndex}.png`, { type: 'image/png' })];
-        if (window.isSecureContext && navigator.share && navigator.canShare?.({ files })) {
+    if (!canCopy || (touch && canShareImage)) {
+        if (canShareImage) {
             say(t('cropImageSearchShare'));
             navigator.share({ files }).catch(e => { if (e.name !== 'AbortError') say(`${t('shareFailed')} (${e.name})`); });
             return;
@@ -235,12 +289,12 @@ document.getElementById('crop-web-search').onclick = () => {
     if (!cropBlob) return;
     const status = document.getElementById('crop-status');
     status.textContent = '';
-    searchCropOnWeb(cropText, cropBlob, msg => { status.textContent = msg; });
+    searchCropOnWeb(cropText, cropBlob, msg => { status.textContent = msg; }, cropScan);
 };
 // 🔎 у панелі «Запитай AI», поки там вкладено фрагмент: шукаємо його, а не попередній текст панелі.
 registerAskWebSearchSource(() => {
     if (!askAttachment) return false;
-    searchCropOnWeb(askAttachment.text, askAttachment.blob, showToast);
+    searchCropOnWeb(askAttachment.text, askAttachment.blob, showToast, askAttachment.scan);
     return true;
 });
 document.getElementById('crop-ai').onclick = () => {
@@ -256,7 +310,7 @@ document.getElementById('crop-ai').onclick = () => {
     // Attach, don't ask yet: the crop dialog is modal, so anything shown in Ask AI while it stays open (spinner,
     // errors) was invisible behind it. Close it, show the crop in Ask AI and let the reader ask their question.
     const data = canvas.toDataURL('image/jpeg', .85);
-    const extra = { text: cropText, blob: cropBlob };
+    const extra = { text: cropText, blob: cropBlob, scan: cropScan };
     closeCropPreview();
     attachToAsk(data, extra);
 };
@@ -273,8 +327,8 @@ function renderAskAttachment() {
     document.getElementById('ask-attachment-remove').setAttribute('aria-label', t('cropRemove'));
     els.askInput.placeholder = askAttachment ? t('cropAskPlaceholder') : t('ask');
 }
-function attachToAsk(dataUrl, { text = '', blob = null } = {}) {
-    askAttachment = { dataUrl, text, blob };
+function attachToAsk(dataUrl, { text = '', blob = null, scan = null } = {}) {
+    askAttachment = { dataUrl, text, blob, scan };
     renderAskAttachment();
     els.askPanel.classList.add('expanded');
     // A collapsed panel turns visible only once its slide-in (visibility transition) starts, a few frames later;

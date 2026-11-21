@@ -79,7 +79,7 @@ def crop(page, x0, top0, x1, top1):
     for i in range(1, 9):
         c.call('Input.dispatchMouseEvent', type='mouseMoved', x=ax + (bx - ax) * i / 8, y=ay + (by - ay) * i / 8, button='left', buttons=1)
     c.call('Input.dispatchMouseEvent', type='mouseReleased', x=bx, y=by, button='left', clickCount=1)
-    c.wait("document.getElementById('crop-dialog').open && document.getElementById('crop-preview').naturalWidth > 0", timeout=10)
+    c.wait("document.getElementById('crop-dialog').open && document.getElementById('crop-preview').naturalWidth > 0 && !!cropScan && cropScan.done", timeout=10)
 
 
 def press(sel):
@@ -104,7 +104,7 @@ check('1 the crop dialog offers «Search the web» where «Ask Gemini» was, and
          return ids.includes('crop-web-search') && !ids.includes('crop-gemini') && ids.indexOf('crop-web-search') > ids.indexOf('crop-copy')
            && ids.indexOf('crop-web-search') < ids.indexOf('crop-ai') && !/gemini/i.test(document.getElementById('crop-actions').textContent); })()""")
 check('1b its label is localized in every menu language', """(() => { const bad = [];
-   for (const k of ['cropWebSearch','cropImageSearchPaste','cropImageSearchShare','cropImageSearchNoClipboard','webSearchBlocked'])
+   for (const k of ['cropWebSearch','cropImageSearchPaste','cropImageSearchShare','cropImageSearchNoClipboard','webSearchBlocked','cropQrFound'])
      for (const l of ['uk','en','fr','ru','zh','ko','hi','ga','es']) { const v = I18N[k] && I18N[k][l]; if (!v || v === k) bad.push(k + ':' + l); }
    return (bad.length === 0 && document.getElementById('crop-web-search').textContent.trim() === t('cropWebSearch')) || JSON.stringify(bad); })()""")
 
@@ -147,6 +147,46 @@ check('5c a clipboard that refuses mid-write is reported', "document.getElementB
 stub(open='blocked'); press('#crop-web-search')
 check('5d a blocked tab is reported (the image is still copied)', "__copied.length === 1 && document.getElementById('crop-status').textContent === t('webSearchBlocked')", timeout=3)
 c.js("closeCropPreview(); 1")
+
+# ---------------------------------------------------------------- a QR code in the crop (owner, 2026-11-20)
+QR_URL = 'iVBORw0KGgoAAAANSUhEUgAAAN4AAADeAQAAAAB6HIMaAAABhUlEQVR42u2YMW4jMQxFn0IBW9LAHsBHoW8W5GbyUXKABegyAAc/heyk2m2XAUyoGIkNQXx9Ps0Qf43jhX/EM/lM/r8k0lZulMsyCiwBTKqW1ZqkDKBcBcrYh9Wz8bcxoXxZXk1rwhiX5jKxZJxi3i4/QtRjvBbgq/pWOwFc3Kjfb/Y+GNgftBONPcHya7X2hEcs0ypfX/umDpZhGcowCZck01Jjvy1fllG+2DPC1VcJiSWmZYl9b7tOB+I46+PEcYpjXMZZdx/r6QkuS4pQUr4gylfL3k5At2G+5j64vdYEoi2DmWQZe0wU+66tzlSDLyXKK1wnFFTf3q5dniRa63Y7WEgqX/uKQRRhrWcZ5dK2WcLUt7flS7s8Apdp4b0n737g5IPMG1PNDlxKthi6Tt5vvlWC3/GGxp5gD1uQ1nYDGjOYJXfElcoFtObbZDPtXhtx1ZVq7l+OJfZ+sbwe55zVl2q0e3v/sRBqqoQX4BhjnPiV17kh3N9m0xf6eP5tfiZ/YPITP1yMi1MTTI0AAAAASUVORK5CYII='   # https://example.com/qr-test?a=1
+QR_TXT = 'iVBORw0KGgoAAAANSUhEUgAAAMYAAADGAQAAAACh4MLwAAABOklEQVR42u2YsWrEQAxE357cy3AftPdnIX+29yn5gAO5DMhMijUXAkmTIlFhVV5PM2hnRrKb+L72Cz/ViZzIbxGkqbh+HAPApKzB2iQF6UMa0A+2/89tAdhWe7Bwy2sAbfaw0m0n3eJeSW/L88liXZLlUYybi40lx611QPNtjTvdW2srbC8WwL21VidDZiU9XfY81uBm0RVII32YhqJbGW6KI+KkYUFSiJsFCtIFWICrDjdcuBRYdHzgo1Tfki4pZwh7IS9MgU1uFpTywjGwNGd9Lb3NRln0nEor5QW6BekDF1DKC7Ogm2TSXOGy0t5rRwMPhlUyRFL0aVKTqJIhF4CtLQD9fWVvzeJeZ0f6Uq59JYvtvYu/mtivd3tbLavsb1NvktIFnUoz6/P71DXtUMOn7fxXcyJ/iHwAcBgdB2RvCAgAAAAASUVORK5CYII='   # Bonjour le monde
+
+
+def preview(b64):
+    c.js("openCropPreview('data:image/png;base64,%s'); 1" % b64)
+    c.wait("!!cropScan && cropScan.done", timeout=10)
+
+
+stub(); preview(QR_URL); press('#crop-web-search')
+check('12 a QR code with a link: the link itself is opened (jsQR, no BarcodeDetector here)',
+      "!('BarcodeDetector' in window) ? (__opened.length === 1 && __opened[0].url === 'https://example.com/qr-test?a=1' && __copied.length === 0 && document.getElementById('crop-status').textContent.includes('https://example.com/qr-test?a=1')) : true", timeout=3)
+stub(); preview(QR_TXT); press('#crop-web-search')
+check('12b a QR code with plain text: that text is searched', "__opened.length === 1 && __opened[0].url === webSearchUrl('Bonjour le monde')", timeout=3)
+c.js("closeCropPreview(); 1")
+# BarcodeDetector (Chrome on Android, the owner's phone): its answer is used; a non-http(s) code is never opened.
+c.js("window.__bdValue = 'javascript:alert(1)'; window.BarcodeDetector = class { constructor(o) { window.__bdFormats = o && o.formats; } async detect() { return [{rawValue: __bdValue}]; } }; 1")
+stub(); preview(QR_TXT); press('#crop-web-search')
+check('13 BarcodeDetector is asked for QR codes and its result used; a javascript: code is searched, never opened',
+      "JSON.stringify(__bdFormats) === '[\"qr_code\"]' && __opened.length === 1 && __opened[0].url === webSearchUrl('javascript:alert(1)')", timeout=3)
+c.js("window.__bdValue = 'https://example.org/bd'; 1")
+stub(); preview(QR_TXT); press('#crop-web-search')
+check('13b BarcodeDetector link opened', "__opened.length === 1 && __opened[0].url === 'https://example.org/bd'", timeout=3)
+c.js("closeCropPreview(); delete window.BarcodeDetector; 1")
+# A QR tapped before its reading finished still works: the tap waits for it.
+stub()
+c.js("openCropPreview('data:image/png;base64,%s'); document.getElementById('crop-web-search').click(); 1" % QR_URL)
+check('14 a tap before the code is read waits for it', "__opened.length === 1 && __opened[0].url === 'https://example.com/qr-test?a=1'", timeout=5)
+c.js("closeCropPreview(); 1")
+
+# ---------------------------------------------------------------- a picture on a phone: the share sheet (Google Lens)
+c.js("window.__realMM = window.matchMedia; window.matchMedia = q => (/pointer:\\s*coarse/.test(q) ? {matches: true} : __realMM.call(window, q)); 1")
+stub(can_share=True)
+crop(8, 60, 200, 260, 360)
+press('#crop-web-search')
+check('15 a textless crop on a touch screen goes to the share sheet (Google Lens there), no tab, nothing copied',
+      "__shared.length === 1 && __shared[0][0].type === 'image/png' && __opened.length === 0 && __copied.length === 0 && document.getElementById('crop-status').textContent === t('cropImageSearchShare')", timeout=3)
+c.js("closeCropPreview(); window.matchMedia = __realMM; 1")
 
 # ---------------------------------------------------------------- the crop attached in Ask AI
 c.js("state.activeAiProvider = 'gemini'; state.apiKey = 'test-key-not-real'; askSearchText = 'an older panel text'; 1")
