@@ -6,14 +6,17 @@
 set -euo pipefail
 
 TARGET="${1:-$(git rev-parse HEAD)}"
+# The required «test» check lives in ci.yml. A commit also gets the Security Gate run: picking «the first run of the
+# commit» could wait on that one and report green while the real CI failed (PR #447, 2026-11-21).
+WORKFLOW="${CI_WORKFLOW:-ci.yml}"
 
 echo "Finding GitHub Actions run for target: $TARGET"
 RUN_JSON=""
 for attempt in $(seq 1 12); do
     if [[ "$TARGET" =~ ^[0-9a-f]{7,40}$ ]]; then
-        RUN_JSON=$(gh run list --commit "$TARGET" --limit 1 --json databaseId,url,status,conclusion,headSha 2>/dev/null || true)
+        RUN_JSON=$(gh run list --workflow "$WORKFLOW" --commit "$TARGET" --limit 1 --json databaseId,url,status,conclusion,headSha 2>/dev/null || true)
     else
-        RUN_JSON=$(gh run list --branch "$TARGET" --limit 1 --json databaseId,url,status,conclusion,headSha 2>/dev/null || true)
+        RUN_JSON=$(gh run list --workflow "$WORKFLOW" --branch "$TARGET" --limit 1 --json databaseId,url,status,conclusion,headSha 2>/dev/null || true)
     fi
     RUN_ID=$(echo "$RUN_JSON" | grep -o '"databaseId":[0-9]*' | head -n1 | cut -d: -f2 || true)
     if [[ -n "$RUN_ID" && "$RUN_ID" != "0" ]]; then
