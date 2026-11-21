@@ -51,7 +51,7 @@ def check(name, expression, timeout=0):
     print('PASS', name, flush=True)
 
 
-PANEL = "document.querySelector('[data-pp]')"
+PANEL = "document.querySelector('div[data-pp]')"
 SHOWN = f"(p => !!p && p.style.display === 'block')({PANEL})"
 TR = f"({PANEL}?.shadowRoot.querySelector('.tr').textContent || '')"
 
@@ -90,5 +90,49 @@ c.js("getSelection().removeAllRanges(); window.postMessage({ pp: 'translate', te
 check('7 a selection sent up from an exercise frame shows the same panel', f"{SHOWN} && {TR} === '[en] Bonjour'", timeout=3)
 c.js("window.postMessage({ pp: 'translate', text: '1234 ...' }, location.origin); 1"); pause(.5)
 check('7b text without letters is ignored', f"{PANEL}.shadowRoot.querySelector('.src').textContent === 'Bonjour'")
+# ---------------------------------------------------------------- one tap on a word (owner: long press was too fiddly)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); getSelection().removeAllRanges(); 1")
+
+
+def tap_word(sel, word):
+    """A real tap (mouse press + release) in the middle of `word` inside the element `sel`."""
+    pt = c.js(f"""(() => {{ const el = document.querySelector({json.dumps(sel)}); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n;
+      while ((n = w.nextNode())) {{ const i = n.data.indexOf({json.dumps(word)}); if (i >= 0) {{ const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + {len(word)});
+        const b = r.getBoundingClientRect(); return {{ x: b.left + b.width / 2, y: b.top + b.height / 2 }}; }} }} return null; }})()""")
+    assert pt, ('no such word', sel, word)
+    c.call('Input.dispatchMouseEvent', type='mousePressed', x=pt['x'], y=pt['y'], button='left', clickCount=1)
+    c.call('Input.dispatchMouseEvent', type='mouseReleased', x=pt['x'], y=pt['y'], button='left', clickCount=1)
+    pause(.6)
+
+
+tap_word('#q', 'frère')
+check('9 one tap on a word: the word is highlighted and translated, no long press', f"{SHOWN} && {PANEL}.shadowRoot.querySelector('.src').textContent === 'frère' && {TR} === '[en] frère' && CSS.highlights.has('pp-word')", timeout=3)
+check('9b «Речення ⤢» is offered for the sentence around it', f"!{PANEL}.shadowRoot.querySelector('.sent').hidden")
+c.js(f"{PANEL}.shadowRoot.querySelector('.sent').click(); 1")
+check('9c «Речення ⤢» translates exactly the sentence with the word, and marks it', f"{PANEL}.shadowRoot.querySelector('.src').textContent === \"Je vais à l'école aujourd'hui avec mon frère.\" && {TR}.startsWith('[en] Je vais') && CSS.highlights.has('pp-sentence') && {PANEL}.shadowRoot.querySelector('.sent').hidden", timeout=3)
+tap_word('#q', 'école')
+check("10 «l'école»: the tap gives the word «école»", f"{PANEL}.shadowRoot.querySelector('.src').textContent === 'école'", timeout=3)
+tap_word('#q', "aujourd'hui")
+check("10b «aujourd'hui» stays one word", f"{PANEL}.shadowRoot.querySelector('.src').textContent === \"aujourd'hui\"", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); window.__tr.length = 0; 1")
+check('10c ✕ also clears the highlight', "!CSS.highlights.has('pp-word') && !CSS.highlights.has('pp-sentence')")
+for sel, word, what in [('#r', 'Réponse', 'an answer of the exercise'), ('#b', 'Valider', 'a button'), ('#clickable', 'cliquable', 'something drawn as clickable')]:
+    tap_word(sel, word)
+    check(f'11 a tap on {what} is left to the page: no translation', f"!{SHOWN} && __tr.length === 0")
+c.js("(h => { const r = document.createRange(); r.selectNodeContents(h); const b = r.getBoundingClientRect(); window.__blank = { x: Math.min(innerWidth - 4, b.right + 40), y: b.top + b.height / 2 }; })(document.querySelector('#t')); 1")   # right of the heading's text, same line
+pt = c.js("__blank")
+c.call('Input.dispatchMouseEvent', type='mousePressed', x=pt['x'], y=pt['y'], button='left', clickCount=1)
+c.call('Input.dispatchMouseEvent', type='mouseReleased', x=pt['x'], y=pt['y'], button='left', clickCount=1); pause(.6)
+check('11b a tap in empty space next to the text translates nothing', f"!{SHOWN} && __tr.length === 0")
+CHIP = "document.querySelector('button[data-pp]')"
+check('12 the «⇄» switch is in the corner, on', f"{CHIP}?.getAttribute('aria-pressed') === 'true'")
+c.js(f"{CHIP}.click(); 1")
+tap_word('#q', 'chat')
+check('12b switched off: a tap on a word does nothing, and it is remembered', f"!{SHOWN} && __tr.length === 0 && localStorage.getItem('pp_tap') === '0' && {CHIP}.getAttribute('aria-pressed') === 'false'")
+c.js(f"{CHIP}.click(); 1")
+tap_word('#q', 'chat')
+check('12c switched on again: the tap translates', f"{SHOWN} && {PANEL}.shadowRoot.querySelector('.src').textContent === 'chat'", timeout=3)
+c.js("window.postMessage({ pp: 'translate', text: 'dort', sentence: 'Le chat dort.', frame: true }, location.origin); 1")
+check('13 a word tapped inside an exercise frame comes with its sentence', f"{PANEL}.shadowRoot.querySelector('.src').textContent === 'dort' && !{PANEL}.shadowRoot.querySelector('.sent').hidden", timeout=3)
 check('8 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL PASS')
