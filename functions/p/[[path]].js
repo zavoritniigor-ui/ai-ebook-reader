@@ -14,7 +14,9 @@
 // - The site's own framing and CSP headers are dropped (the page is shown on our host), cookies are never set.
 // HTML gets its links to allowed hosts and its root-relative links rewritten to /p/<host>/…, and two scripts of ours:
 // proxy-assets/translate.js (select a word or a sentence → translation, 🔊) — injected first in <head>.
-export const PROXY_HOSTS = new Set(['francaisfacile.rfi.fr', 's.francaisfacile.rfi.fr', 'fle-rfi.h5p.com']);
+// The H5P CDNs too: their stylesheets name icon fonts the CDN gives only to H5P's own sites (CORS), so the exercise's
+// buttons lost their icons when the CSS came straight from the CDN.
+export const PROXY_HOSTS = new Set(['francaisfacile.rfi.fr', 's.francaisfacile.rfi.fr', 'fle-rfi.h5p.com', 'c.h5p.io', 'eu-west-1.cdn.h5p.com']);
 export const PROXY_SERVING_HOST = 'web.ai-ebook-reader.uk';
 export const proxyServedHere = hostname => hostname === PROXY_SERVING_HOST || /^[a-z0-9-]+\.ai-ebook-reader\.pages\.dev$/.test(hostname);
 const UA = 'AI-Ebook-Reader/1.0 (reading proxy; +https://ai-ebook-reader.pages.dev)';

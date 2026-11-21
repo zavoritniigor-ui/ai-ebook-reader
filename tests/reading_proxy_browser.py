@@ -69,6 +69,13 @@ c.js("""const f = document.createElement('iframe'); f.id = 'ex'; f.src = 'https:
   const g = document.createElement('iframe'); g.id = 'other'; g.src = 'about:blank'; document.body.append(g); 1""")
 check('2 an exercise frame added later is pointed at the proxy (so it gets this script too)', "document.getElementById('ex').getAttribute('src') === '/p/fle-rfi.h5p.com/content/1/embed' && document.getElementById('other').getAttribute('src') === 'about:blank'", timeout=2)
 
+c.js("""window.__s1 = document.createElement('script'); __s1.src = '/build/6517.chunk.js';
+  window.__s2 = document.createElement('script'); __s2.setAttribute('src', 'https://fle-rfi.h5p.com/js/a.js');
+  window.__s3 = document.createElement('img'); __s3.src = 'https://www.rfi.fr/logo.png'; 1""")
+check('2b an address the site sets on a new script (webpack chunks) is mapped before it loads, by property or setAttribute',
+      "__s1.getAttribute('src') === '/p/francaisfacile.rfi.fr/build/6517.chunk.js' && __s2.getAttribute('src') === '/p/fle-rfi.h5p.com/js/a.js' && __s3.getAttribute('src') === 'https://www.rfi.fr/logo.png'")
+check('2c the site cannot install its service worker over the proxy host', "navigator.serviceWorker.register('/sw.js').then(() => false, e => e.name === 'SecurityError')")
+
 # ---------------------------------------------------------------- selection → translation
 c.js("document.getElementById('b').click(); 1"); pause(.8)
 check('3 a plain tap opens nothing (the exercise keeps its taps)', f"!{SHOWN} && __tr.length === 0")
