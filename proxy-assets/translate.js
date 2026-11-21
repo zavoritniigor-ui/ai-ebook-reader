@@ -42,6 +42,25 @@
         };
         const open = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function (method, url, ...rest) { return open.call(this, method, map(url instanceof URL ? url.href : url), ...rest); };
+        // Addresses set by the site's scripts (webpack loads its chunks with script.src = '/build/…'): mapped at the moment
+        // they are set, before the browser starts loading — fixing them after insertion is too late for a script.
+        const wrapUrlProp = (proto, prop) => {
+            const d = proto && Object.getOwnPropertyDescriptor(proto, prop);
+            if (!d || !d.set) return;
+            Object.defineProperty(proto, prop, { ...d, set(v) { d.set.call(this, typeof v === 'string' ? map(v) : v); } });
+        };
+        for (const [ctor, prop] of [[window.HTMLScriptElement, 'src'], [window.HTMLIFrameElement, 'src'], [window.HTMLImageElement, 'src'],
+            [window.HTMLMediaElement, 'src'], [window.HTMLSourceElement, 'src'], [window.HTMLLinkElement, 'href'], [window.HTMLFormElement, 'action']]) wrapUrlProp(ctor?.prototype, prop);
+        const setAttr = Element.prototype.setAttribute;
+        Element.prototype.setAttribute = function (name, value) {
+            const n = String(name).toLowerCase();
+            if ((n === 'src' && /^(SCRIPT|IFRAME|IMG|AUDIO|VIDEO|SOURCE|TRACK)$/.test(this.tagName)) || (n === 'href' && this.tagName === 'LINK') || (n === 'action' && this.tagName === 'FORM')) value = map(String(value));
+            return setAttr.call(this, name, value);
+        };
+        // The site's service worker would install itself over this whole host: never through the proxy.
+        if (navigator.serviceWorker) {
+            try { Object.defineProperty(navigator.serviceWorker, 'register', { value: () => Promise.reject(new DOMException('Not through the reading proxy', 'SecurityError')) }); } catch (e) {}
+        }
         // Frames, scripts and images the page adds later with an allowed host or a root-relative address (an exercise
         // frame whose address the server could not see): pointed at /p/… as they arrive, so the frame gets this script too.
         const fix = el => {
