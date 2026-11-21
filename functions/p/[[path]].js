@@ -43,6 +43,23 @@ class AttrRewriter {
         if (out !== v) el.setAttribute(this.attr, out);
     }
 }
+// Inline scripts carry addresses as text, often JSON-escaped («https:\/\/fle-rfi.h5p.com\/content\/…»): RFI builds its H5P
+// exercise frame from such a string once cookies are accepted, and H5P keeps its own request URLs the same way. The text
+// is collected (it arrives in chunks) and allowed hosts are pointed at /p/<host>/ before the page ever sees them.
+class InlineScriptRewriter {
+    constructor() { this.buf = ''; }
+    element(el) { this.skip = el.hasAttribute('src'); this.buf = ''; }
+    text(t) {
+        if (this.skip) return;
+        this.buf += t.text;
+        if (!t.lastInTextNode) { t.remove(); return; }
+        let out = this.buf; this.buf = '';
+        for (const h of PROXY_HOSTS) {
+            out = out.split(`https:\\/\\/${h}\\/`).join(`\\/p\\/${h}\\/`).split(`https://${h}/`).join(`/p/${h}/`);
+        }
+        t.replace(out, { html: true });
+    }
+}
 class HeadInjector {
     constructor(host) { this.host = host; }
     element(el) {
@@ -82,7 +99,7 @@ export async function onRequest({ request, params }) {
     if (loc) out.set('location', proxiedUrl(new URL(loc, upstream).href, host));
     const type = res.headers.get('content-type') || '';
     if (/text\/html/i.test(type) && request.method !== 'HEAD') {
-        let rw = new HTMLRewriter().on('head', new HeadInjector(host));
+        let rw = new HTMLRewriter().on('head', new HeadInjector(host)).on('script', new InlineScriptRewriter());
         for (const [sel, attr] of [['a', 'href'], ['link', 'href'], ['script', 'src'], ['img', 'src'], ['img', 'srcset'], ['source', 'src'], ['source', 'srcset'],
             ['audio', 'src'], ['video', 'src'], ['video', 'poster'], ['iframe', 'src'], ['form', 'action'], ['track', 'src']]) rw = rw.on(`${sel}[${attr}]`, new AttrRewriter(host, attr));
         return rw.transform(new Response(res.body, { status: res.status, statusText: res.statusText, headers: out }));

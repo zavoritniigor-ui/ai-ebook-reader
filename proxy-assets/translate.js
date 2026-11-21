@@ -42,6 +42,22 @@
         };
         const open = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function (method, url, ...rest) { return open.call(this, method, map(url instanceof URL ? url.href : url), ...rest); };
+        // Frames, scripts and images the page adds later with an allowed host or a root-relative address (an exercise
+        // frame whose address the server could not see): pointed at /p/… as they arrive, so the frame gets this script too.
+        const fix = el => {
+            for (const attr of ['src', 'href']) {
+                if (!el.hasAttribute || !el.hasAttribute(attr) || (attr === 'href' && el.tagName !== 'LINK')) continue;
+                const v = el.getAttribute(attr), m = map(v);
+                if (m !== v) el.setAttribute(attr, m);
+            }
+        };
+        new MutationObserver(list => {
+            for (const rec of list) for (const n of rec.addedNodes) {
+                if (n.nodeType !== 1) continue;
+                if (/^(IFRAME|SCRIPT|IMG|LINK|AUDIO|VIDEO|SOURCE)$/.test(n.tagName)) fix(n);
+                if (n.querySelectorAll) n.querySelectorAll('iframe[src], script[src], img[src], link[href], audio[src], video[src], source[src]').forEach(fix);
+            }
+        }).observe(document.documentElement, { childList: true, subtree: true });
     }
 
     // ---------- 2–3. selection → translation ----------
