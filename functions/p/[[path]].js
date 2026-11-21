@@ -20,6 +20,9 @@ export const PROXY_HOSTS = new Set(['francaisfacile.rfi.fr', 's.francaisfacile.r
 export const PROXY_SERVING_HOST = 'web.ai-ebook-reader.uk';
 export const proxyServedHere = hostname => hostname === PROXY_SERVING_HOST || /^[a-z0-9-]+\.ai-ebook-reader\.pages\.dev$/.test(hostname);
 const UA = 'AI-Ebook-Reader/1.0 (reading proxy; +https://ai-ebook-reader.pages.dev)';
+// The first 12 hex of proxy-assets/translate.js's SHA-256, in its address: the domain's browser cache keeps static files
+// for hours, so without it a phone kept an old script (tests/reading_proxy_test.mjs checks it matches the file).
+export const TRANSLATE_JS_VERSION = '8328708b4ea8';
 const DROP_HEADERS = ['content-security-policy', 'content-security-policy-report-only', 'x-frame-options', 'set-cookie', 'clear-site-data',
     'cross-origin-embedder-policy', 'cross-origin-opener-policy', 'cross-origin-resource-policy', 'content-length', 'content-encoding',
     'strict-transport-security', 'report-to', 'nel', 'permissions-policy', 'alt-svc'];
@@ -68,7 +71,7 @@ class HeadInjector {
     constructor(host) { this.host = host; }
     element(el) {
         // First in <head>, not deferred: it must wrap fetch / XMLHttpRequest before the site's own scripts run.
-        el.prepend(`<script src="/proxy-assets/translate.js" data-host="${this.host}" data-hosts="${[...PROXY_HOSTS].join(' ')}"></script>`, { html: true });
+        el.prepend(`<script src="/proxy-assets/translate.js?v=${TRANSLATE_JS_VERSION}" data-host="${this.host}" data-hosts="${[...PROXY_HOSTS].join(' ')}"></script>`, { html: true });
     }
 }
 

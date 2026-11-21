@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const copy = join(mkdtempSync(join(tmpdir(), 'reading-proxy-')), 'proxy.mjs');
 writeFileSync(copy, readFileSync(join(root, 'functions', 'p', '[[path]].js')));
-const { onRequest, proxiedUrl, InlineScriptRewriter, PROXY_HOSTS, proxyServedHere } = await import(pathToFileURL(copy).href);
+const { onRequest, proxiedUrl, InlineScriptRewriter, PROXY_HOSTS, proxyServedHere, TRANSLATE_JS_VERSION } = await import(pathToFileURL(copy).href);
 function ok(name, cond, extra = '') { if (!cond) { console.error('FAIL', name, extra); process.exit(1); } console.log('PASS', name); }
 
 let asked = [], reply = () => new Response('ok', { headers: { 'content-type': 'text/plain' } });
@@ -85,4 +85,7 @@ const appHosts = JSON.parse(readFileSync(join(root, 'js', 'saved-links.js'), 'ut
 ok('the app opens through the proxy exactly the sites the proxy serves', appHosts.slice().sort().join(' ') === [...PROXY_HOSTS].sort().join(' '), appHosts.join(' '));
 const appOrigin = readFileSync(join(root, 'js', 'saved-links.js'), 'utf8').match(/READING_PROXY_ORIGIN = '([^']+)'/)[1];
 ok('the app sends them to the host the proxy serves on', proxyServedHere(new URL(appOrigin).hostname), appOrigin);
+const { createHash } = await import('node:crypto');
+const scriptHash = createHash('sha256').update(readFileSync(join(root, 'proxy-assets', 'translate.js'))).digest('hex').slice(0, 12);
+ok('the injected script address carries the version of proxy-assets/translate.js (update TRANSLATE_JS_VERSION after editing it)', TRANSLATE_JS_VERSION === scriptHash, TRANSLATE_JS_VERSION + ' != ' + scriptHash);
 console.log('ALL PASS');
