@@ -80,25 +80,64 @@ c.js("goToPhysicalPage(4, {instant: true}); openLibrary('shelf'); 1")
 c.wait("document.getElementById('library-modal').classList.contains('open') && !!document.querySelector('#library-status .shelf-tab[data-kind=\"link\"]')", timeout=10)
 check('3 «Мої книги» has a third tab «Посилання» with the count', "(b => b.textContent.startsWith(t('shelfLinks')) && b.textContent.endsWith('(1)'))(document.querySelector('#library-status .shelf-tab[data-kind=\"link\"]'))")
 click_at('#library-status .shelf-tab[data-kind="link"]')
-check('3b the tab lists the saved code: its address, its book and page', """(card => !!card && card.querySelector('.library-name').textContent === 'example.com/qr-test'
-   && card.querySelector('.library-author').textContent.includes('example.com') && card.querySelector('.library-author').textContent.includes('qr-book')
-   && card.querySelector('.library-author').textContent.includes(t('page') + ' 2'))(document.querySelector('#library-list .saved-link'))""", timeout=5)
-click_at('#library-list .saved-link .saved-link-open')
-check('4 «Відкрити ↗» opens the address in a new tab, and the reading place is kept', "__clicked.length === 1 && __clicked[0] === 'https://example.com/qr-test?a=1' && !!sessionStorage.getItem('reader_return_book')")
+check('3b the tab lists the saved code: a logo, a bold name, its site and page', """(card => !!card && card.querySelector('.saved-link-title').textContent === 'Example — Qr test'
+   && card.querySelector('.saved-link-host').textContent === 'example.com · 📖 ' + t('page') + ' 2'
+   && !!card.querySelector('.link-logo') && card.querySelector('.link-logo b').textContent === 'E'
+   && card.querySelector('.link-logo').dataset.logo === 'https://www.google.com/s2/favicons?domain=example.com&sz=64'
+   && card.querySelector('.saved-link-page').title.includes('qr-book'))(document.querySelector('#library-list .saved-link'))""", timeout=5)
+check('3c no logo (offline, unknown site): the coloured tile with the letter stays', """(box => { box.querySelector('img')?.dispatchEvent(new Event('error'));   // offline here already, or a forced failure
+   return !box.querySelector('img') && box.querySelector('b').textContent === 'E' && getComputedStyle(box).backgroundColor !== 'rgba(0, 0, 0, 0)'; })(document.querySelector('#library-list .saved-link .link-logo'))""")
+click_at('#library-list .saved-link .saved-link-main')
+check('4 a tap on the card opens the address in a new tab, and the reading place is kept', "__clicked.length === 1 && __clicked[0] === 'https://example.com/qr-test?a=1' && !!sessionStorage.getItem('reader_return_book')")
 c.js("__clicked.length = 0; 1")
 check('4b the book is on page 4 before going back', "state.currentIndex === 4", timeout=5)
 click_at('#library-list .saved-link .saved-link-page')
 check('5 «📖» closes the shelf and goes to the page with the code', "!document.getElementById('library-modal').classList.contains('open') && state.currentIndex === 2", timeout=10)
 
-# ---------------------------------------------------------------- an address pasted by hand
-c.js("openLibrary('shelf'); 1"); c.wait("!!document.querySelector('#library-status .links-add')", timeout=10)
-c.js("""(f => { f.querySelector('.links-url').value = 'javascript:alert(1)'; f.requestSubmit(); })(document.querySelector('#library-status .links-add')); 1""")
-check('6 a javascript: address is refused', "listSavedLinks().length === 1 && __toasts.includes(t('linksBadUrl'))")
-c.js("""(f => { f.querySelector('.links-url').value = 'https://example.org/exercices/1'; f.querySelector('.links-name').value = 'Exercice 1'; f.requestSubmit(); })(document.querySelector('#library-status .links-add')); 1""")
-check('6b a pasted https address with a name goes to the top of the list', """(cards => cards.length === 2 && cards[0].querySelector('.library-name').textContent === 'Exercice 1'
-   && cards[0].querySelector('.saved-link-open').href === 'https://example.org/exercices/1' && !cards[0].querySelector('.saved-link-page'))([...document.querySelectorAll('#library-list .saved-link')])""", timeout=5)
+# ---------------------------------------------------------------- one «+ Додати» button, then the form
+c.js("openLibrary('shelf'); 1"); c.wait("!!document.querySelector('#library-status .links-add-btn')", timeout=10)
+check('6 there is one «+ Додати» button and the form is closed', "document.querySelectorAll('#library-status .links-add-btn').length === 1 && document.querySelector('#library-status .links-form').hidden && document.querySelectorAll('#library-status input').length === 2")
+click_at('#library-status .links-add-btn')
+check('6a the button opens the form (and is itself no longer shown): address, name, Save / Cancel', "(f => getComputedStyle(f).display !== 'none' && document.activeElement === f.querySelector('.links-url') && f.querySelector('.links-save').disabled && getComputedStyle(document.querySelector('#library-status .links-add-btn')).display === 'none')(document.querySelector('#library-status .links-form'))")
+
+def type_url(value):
+    c.js(f"(i => {{ i.value = {json.dumps(value)}; i.dispatchEvent(new Event('input')); }})(document.querySelector('#library-status .links-url')); 1")
+
+type_url('javascript:alert(1)')
+check('6b a javascript: address cannot be saved', "document.querySelector('#library-status .links-save').disabled && document.querySelector('#library-status .links-name').value === ''")
+c.js("document.querySelector('#library-status .links-form').requestSubmit(); 1")
+check('6c submitted anyway, it is refused', "listSavedLinks().length === 1 && __toasts.includes(t('linksBadUrl'))")
+type_url('https://francaisfacile.rfi.fr/fr/exercices/passe-compose')
+check('6d the name is filled in from the address, and the preview shows the card with its logo', """(f => f.querySelector('.links-name').value === 'Francaisfacile RFI — Passe compose' && !f.querySelector('.links-save').disabled
+   && f.querySelector('.links-preview .saved-link-title').textContent === 'Francaisfacile RFI — Passe compose'
+   && f.querySelector('.links-preview .link-logo').dataset.logo.includes('domain=francaisfacile.rfi.fr')
+   && !f.querySelector('.links-preview a'))(document.querySelector('#library-status .links-form'))""")
+c.js("(i => { i.value = 'Passé composé'; i.dispatchEvent(new Event('input')); })(document.querySelector('#library-status .links-name')); 1")
+type_url('https://francaisfacile.rfi.fr/fr/exercices/passe-compose-2')
+check('6e a name the reader typed is kept when the address changes', "document.querySelector('#library-status .links-name').value === 'Passé composé'")
+click_at('#library-status .links-save')
+check('6f Save adds it on top and closes the form', """(cards => cards.length === 2 && cards[0].querySelector('.saved-link-title').textContent === 'Passé composé'
+   && cards[0].querySelector('.saved-link-main').href === 'https://francaisfacile.rfi.fr/fr/exercices/passe-compose-2' && !cards[0].querySelector('.saved-link-page')
+   && cards[0].querySelector('.saved-link-host').textContent === 'francaisfacile.rfi.fr'
+   && document.querySelector('#library-status .links-form').hidden && __toasts.includes(t('linksSaved')))([...document.querySelectorAll('#library-list .saved-link')])""", timeout=5)
+check('6f2 every card, not only the first, is a link with its own 🗑 (and 📖 when it came from a book)', """[...document.querySelectorAll('#library-list .saved-link')].every(card => {
+   const l = listSavedLinks().find(x => x.url === card.querySelector('a.saved-link-main')?.href);
+   return !!l && !!card.querySelector('.saved-link-remove') && !!card.querySelector('.saved-link-page') === !!l.bookKey; })""")
+click_at('#library-status .links-add-btn'); click_at('#library-status .links-cancel')
+check('6g Cancel closes the form without saving', "getComputedStyle(document.querySelector('#library-status .links-form')).display === 'none' && getComputedStyle(document.querySelector('#library-status .links-add-btn')).display !== 'none' && listSavedLinks().length === 2")
+check('6h names from addresses', """(() => { const cases = {
+     'https://francaisfacile.rfi.fr/fr/': 'Francaisfacile RFI',
+     'https://francaisfacile.rfi.fr/fr/transcription/articles/c55e4178-cc71-11f1-8e4a-b5165132482f/pdf': 'Francaisfacile RFI — Transcription',
+     'https://www.bbc.co.uk/learning/': 'BBC — Learning',
+     'https://www.tv5monde.com/': 'Tv5monde',
+     'https://apprendre.tv5monde.com/fr/exercices/a1-elementaire_le-verbe-etre.html': 'Apprendre Tv5monde — A1 elementaire le verbe etre' };
+   const bad = Object.entries(cases).filter(([u, want]) => savedLinkAutoTitle(u) !== want).map(([u]) => u + ' → ' + savedLinkAutoTitle(u));
+   return bad.length === 0 || JSON.stringify(bad); })()""")
 click_at('#library-list .saved-link .saved-link-remove')
 check('7 🗑 removes a link', "listSavedLinks().length === 1 && listSavedLinks()[0].url === 'https://example.com/qr-test?a=1' && document.querySelectorAll('#library-list .saved-link').length === 1", timeout=5)
+CSP = next(l for l in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_headers')) if 'Content-Security-Policy' in l)
+assert "https://www.google.com" in CSP.split('img-src')[1].split(';')[0] and "https://*.gstatic.com" in CSP.split('img-src')[1].split(';')[0], CSP
+print('PASS 7b the production CSP lets the logos load (img-src only)')
 
 # ---------------------------------------------------------------- what comes from storage (another device, hand edits)
 c.js("""localStorage.setItem('reader_saved_links', JSON.stringify([{url: 'javascript:alert(1)', title: 'x'}, {url: 'intent://x#Intent;end', title: 'y'}, ...listSavedLinks()])); runShelfList(); 1""")
@@ -109,10 +148,10 @@ c.js("closeLibrary(); sessionStorage.clear(); 1")   # no return mark (4 left one
 c.call('Page.reload')
 c.wait("document.readyState==='complete' && !document.body.inert && typeof saveLink==='function'", timeout=30); pause(1.5)
 c.js("shelfView = 'link'; renderRecentBooks(); 1")
-check('9 the start screen shows the same tab with the saved links', "!!document.querySelector('#recent-books .shelf-tab[data-kind=\"link\"][aria-pressed=\"true\"]') && document.querySelectorAll('#recent-books .saved-link').length === 1 && !!document.querySelector('#recent-books .links-add')", timeout=5)
+check('9 the start screen shows the same tab with the saved links', "!!document.querySelector('#recent-books .shelf-tab[data-kind=\"link\"][aria-pressed=\"true\"]') && document.querySelectorAll('#recent-books .saved-link').length === 1 && !!document.querySelector('#recent-books .links-add-btn')", timeout=5)
 
 check('10 the new labels are localized in every menu language', """(() => { const bad = [];
-   for (const k of ['shelfLinks','linksEmpty','linksUrlPlaceholder','linksNamePlaceholder','linksAdd','linksBadUrl','linksOpen','linksToBook','linksRemove','linksSaved','linksUnsaved','linksSaveQr','linksFromBook'])
+   for (const k of ['shelfLinks','linksEmpty','linksNewTitle','linksUrlLabel','linksNameLabel','linksPaste','linksSave','linksCancel','linksAdd','linksBadUrl','linksOpen','linksToBook','linksRemove','linksSaved','linksUnsaved','linksSaveQr'])
      for (const l of ['uk','en','fr','ru','zh','ko','hi','ga','es']) { const v = I18N[k] && I18N[k][l]; if (!v || v === k) bad.push(k + ':' + l); }
    return bad.length === 0 || JSON.stringify(bad); })()""")
 check('11 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
