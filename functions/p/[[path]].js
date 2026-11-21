@@ -58,8 +58,9 @@ export async function onRequest({ request, params }) {
     const parts = Array.isArray(params.path) ? params.path : String(params.path || '').split('/');
     const host = parts[0] || '';
     if (!PROXY_HOSTS.has(host)) return new Response('This site is not on the list', { status: 403 });
-    const upstream = new URL(`https://${host}/${parts.slice(1).map(encodeURIComponent).join('/')}${here.search}`);
-    if (here.pathname.endsWith('/') && !upstream.pathname.endsWith('/')) upstream.pathname += '/';
+    // The path exactly as the browser sent it (already percent-encoded: «actualit%C3%A9»); params.path is decoded, and
+    // encoding it again turned é into %25C3%25A9 — a 404 on every accented address.
+    const upstream = new URL(`https://${host}${here.pathname.slice(`/p/${host}`.length) || '/'}${here.search}`);
 
     const headers = new Headers({ 'user-agent': UA });
     for (const h of PASS_REQUEST_HEADERS) { const v = request.headers.get(h); if (v) headers.set(h, v); }
@@ -75,6 +76,8 @@ export async function onRequest({ request, params }) {
     for (const h of DROP_HEADERS) out.delete(h);
     out.set('x-robots-tag', 'noindex, nofollow');
     out.set('referrer-policy', 'same-origin');
+    const link = res.headers.get('link');
+    if (link) out.set('link', link.replace(/<([^>]+)>/g, (m, u) => `<${proxiedUrl(u, host)}>`));
     const loc = res.headers.get('location');
     if (loc) out.set('location', proxiedUrl(new URL(loc, upstream).href, host));
     const type = res.headers.get('content-type') || '';
