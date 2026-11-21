@@ -14,7 +14,7 @@
  *
  * Коли шукати (власник, 2026-11-21: «кюар код шукався тільки тоді коли немає гортання або прокрутки, наприклад через
  * пів секунди після того як сторінка промальована»): сторінку читаємо, лише коли вона намальована щонайменше
- * PDF_QR_QUIET_MS тому, стільки ж не було прокрутки, коліщатка, дотиків, перетягування чи клавіш, і сторінку видно на
+ * PDF_QR_QUIET_MS тому (1 с — власник: «можна ще збільшити час щоб напевно»), стільки ж не було прокрутки, коліщатка, дотиків, перетягування чи клавіш, і сторінку видно на
  * екрані. Сторінки, намальовані наперед поза екраном, чекають, доки до них догорнуть. jsQR читає сторінку частинами
  * (уся, потім чотири чверті); між частинами браузер вільний, і якщо читач знову гортає, читання кидається й
  * починається спочатку, коли знову стане тихо.
@@ -33,7 +33,7 @@ const pdfQrCache = new Map();   // pageNum → { width, codes: [{ value, x, y, w
 let pdfQrCacheDoc = null;
 const pdfQrQueue = [];
 let pdfQrBusy = false;
-const PDF_QR_QUIET_MS = 500;    // after the page is drawn, and after the last scroll / swipe / wheel / key
+const PDF_QR_QUIET_MS = 1000;   // after the page is drawn, and after the last scroll / swipe / wheel / key
 let pdfQrLastActivity = 0, pdfQrTimer = 0;
 const pdfQrNow = () => performance.now();
 const pdfQrQuiet = () => pdfQrNow() - pdfQrLastActivity >= PDF_QR_QUIET_MS;
@@ -186,7 +186,7 @@ async function pumpPdfQrQueue() {
     const now = pdfQrNow();
     const index = pdfQrQueue.findIndex(j => j.readyAt <= now && pdfQrJobVisible(j));
     if (index < 0) {
-        // Not yet half a second old: wait for it. Only pages off screen: the next scroll that stops brings them back here.
+        // Not yet PDF_QR_QUIET_MS old: wait for it. Only pages off screen: the next scroll that stops brings them back here.
         if (pdfQrQueue.some(j => j.readyAt > now)) schedulePdfQrPump();
         return;
     }
