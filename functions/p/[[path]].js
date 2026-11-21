@@ -5,8 +5,9 @@
 // відкривати через цей проксі сервер»).
 //
 // Safety rules (each one load-bearing):
-// - NEVER on the app's own origins (PROXY_OFF_HOSTS): a proxied site's scripts would run next to the reader's books, AI
-//   keys and sync code. It answers only on a separate host (a branch preview now, later its own subdomain).
+// - NEVER on the app's own origins: a proxied site's scripts would run next to the reader's books, AI keys and sync code.
+//   It answers only on hosts made for it (proxyServedHere): web.ai-ebook-reader.uk and branch previews
+//   (<branch>.ai-ebook-reader.pages.dev) — an allow-list, so a new domain of the app never gets it by accident.
 // - Only the hosts in PROXY_HOSTS: not an open proxy. Everything else on the page loads directly in the browser.
 // - An ordinary request with the app's honest User-Agent: no cookies are sent or kept, no browser disguise, nothing that
 //   gets around a site's protection. A site that refuses the server simply stays unavailable here.
@@ -14,7 +15,8 @@
 // HTML gets its links to allowed hosts and its root-relative links rewritten to /p/<host>/…, and two scripts of ours:
 // proxy-assets/translate.js (select a word or a sentence → translation, 🔊) — injected first in <head>.
 export const PROXY_HOSTS = new Set(['francaisfacile.rfi.fr', 's.francaisfacile.rfi.fr', 'fle-rfi.h5p.com']);
-export const PROXY_OFF_HOSTS = new Set(['ai-ebook-reader.pages.dev', 'ai-ebook-reader.uk', 'www.ai-ebook-reader.uk']);
+export const PROXY_SERVING_HOST = 'web.ai-ebook-reader.uk';
+export const proxyServedHere = hostname => hostname === PROXY_SERVING_HOST || /^[a-z0-9-]+\.ai-ebook-reader\.pages\.dev$/.test(hostname);
 const UA = 'AI-Ebook-Reader/1.0 (reading proxy; +https://ai-ebook-reader.pages.dev)';
 const DROP_HEADERS = ['content-security-policy', 'content-security-policy-report-only', 'x-frame-options', 'set-cookie', 'clear-site-data',
     'cross-origin-embedder-policy', 'cross-origin-opener-policy', 'cross-origin-resource-policy', 'content-length', 'content-encoding',
@@ -46,7 +48,7 @@ class AttrRewriter {
 // Inline scripts carry addresses as text, often JSON-escaped («https:\/\/fle-rfi.h5p.com\/content\/…»): RFI builds its H5P
 // exercise frame from such a string once cookies are accepted, and H5P keeps its own request URLs the same way. The text
 // is collected (it arrives in chunks) and allowed hosts are pointed at /p/<host>/ before the page ever sees them.
-class InlineScriptRewriter {
+export class InlineScriptRewriter {
     constructor() { this.buf = ''; }
     element(el) { this.skip = el.hasAttribute('src'); this.buf = ''; }
     text(t) {
@@ -70,7 +72,7 @@ class HeadInjector {
 
 export async function onRequest({ request, params }) {
     const here = new URL(request.url);
-    if (PROXY_OFF_HOSTS.has(here.hostname)) return new Response('Not here', { status: 404 });
+    if (!proxyServedHere(here.hostname)) return new Response('Not here', { status: 404 });
     if (!['GET', 'HEAD', 'POST'].includes(request.method)) return new Response('Method not allowed', { status: 405 });
     const parts = Array.isArray(params.path) ? params.path : String(params.path || '').split('/');
     const host = parts[0] || '';

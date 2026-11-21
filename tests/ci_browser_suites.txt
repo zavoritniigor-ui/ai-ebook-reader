@@ -184,3 +184,4 @@ tests/vendor_lock_browser.py
 tests/regex_timing_browser.py
 tests/pdf_qr_browser.py
 tests/saved_links_browser.py
+tests/reading_proxy_browser.py

@@ -92,7 +92,7 @@
         panel = document.createElement('div');
         panel.setAttribute('data-pp', '');
         Object.assign(panel.style, { position: 'fixed', left: '0', right: '0', bottom: '0', zIndex: '2147483647', display: 'none' });
-        const root = panel.attachShadow({ mode: 'closed' });
+        const root = panel.attachShadow({ mode: 'open' });   // open: styles stay isolated; tests can read it
         root.innerHTML = `<style>
             .box { margin: 0 auto; max-width: 640px; background: #fff; color: #1c1d21; border-radius: 16px 16px 0 0;
                 box-shadow: 0 -8px 30px rgba(0,0,0,.25); padding: 12px 16px 16px; font: 16px/1.45 system-ui, sans-serif; }
