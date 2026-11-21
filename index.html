@@ -493,14 +493,45 @@
         .pdf-qr-save { pointer-events: auto; transform: translateY(calc(-100% - 4px)); min-width: 32px; min-height: 28px; padding: 0 8px;
             border: 0; border-radius: 999px; background: #1a56db; color: #fff; font: 600 16px/28px system-ui, sans-serif; cursor: pointer; }
         .pdf-qr-save[aria-pressed="true"] { background: #c27a00; }
-        /* «Мої книги → Посилання» (js/saved-links.js) */
+        /* «Мої книги → Посилання» (js/saved-links.js): logo, a bold name and one short muted line; the card itself is the link */
         .saved-links-list { display: flex; flex-direction: column; gap: 8px; }
-        .links-add { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
-        .links-add input { flex: 1 1 180px; min-width: 0; min-height: 40px; padding: 6px 10px; border: 1px solid var(--border-color);
-            border-radius: 10px; background: var(--panel-bg); color: var(--text-color); font: inherit; }
-        .links-add .btn-primary { flex: none; min-height: 40px; }
-        .saved-link-icon { flex: none; width: 44px; text-align: center; font-size: 24px; }
-        a.saved-link-open { display: inline-flex; align-items: center; text-decoration: none; }
+        .links-adder { margin: 0 0 10px; }
+        .links-add-btn { width: 100%; min-height: 46px; border-radius: 12px; font-size: 15.5px; }
+        .links-add-btn[hidden] { display: none; }
+        .links-form { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--border-color); border-radius: 14px;
+            background: color-mix(in srgb, var(--accent-color) 5%, var(--panel-bg)); }
+        .links-form[hidden] { display: none; }
+        .links-form h4 { margin: 0; font-size: 16px; color: var(--text-color); }
+        .links-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-color); }
+        .links-row { display: flex; gap: 6px; }
+        .links-form input { flex: 1; min-width: 0; min-height: 44px; padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 10px;
+            background: var(--panel-bg); color: var(--text-color); font: inherit; font-size: 15px; font-weight: 400; }
+        .links-form input:focus { outline: 2px solid var(--accent-color); outline-offset: 0; }
+        .links-paste, .links-cancel { flex: none; min-height: 44px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 10px;
+            background: var(--panel-bg); color: var(--text-color); font: inherit; font-size: 14px; cursor: pointer; }
+        .links-paste[hidden] { display: none; }
+        .links-buttons { display: flex; gap: 8px; justify-content: flex-end; }
+        .links-save { min-height: 44px; min-width: 120px; }
+        .links-save:disabled { opacity: .45; cursor: default; }
+        .links-preview:empty { display: none; }
+        .saved-link { display: flex; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--border-color); border-radius: 14px;
+            background: var(--panel-bg); }
+        .saved-link-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 4px 6px; border-radius: 10px;
+            color: var(--text-color); text-decoration: none; }
+        a.saved-link-main:hover, a.saved-link-main:focus-visible { background: var(--hover-color); outline: none; }
+        .saved-link-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .saved-link-title { font-size: 15.5px; font-weight: 650; line-height: 1.3; color: var(--text-color); overflow-wrap: anywhere;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .saved-link-host { font-size: 12.5px; color: var(--accent-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .saved-link-go { flex: none; font-size: 18px; color: var(--accent-color); }
+        .saved-link-icon-btn { flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; font-size: 18px; cursor: pointer; }
+        .saved-link-icon-btn:hover, .saved-link-icon-btn:focus-visible { background: var(--hover-color); }
+        .link-logo { position: relative; flex: none; width: 44px; height: 44px; border-radius: 12px; overflow: hidden; display: grid; place-items: center;
+            background: hsl(var(--logo-hue, 210) 62% 46%); color: #fff; font: 700 20px/1 system-ui, sans-serif; }
+        .link-logo img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 7px; box-sizing: border-box; object-fit: contain;
+            background: #fff; opacity: 0; }
+        .link-logo.has-img img { opacity: 1; }
+        .link-logo.has-img { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
 
         /* Book audio markers ("CD1 - piste 33" in PDF textbooks) + player + dialog (js/book-audio.js) */
         .pdf-audio-layer { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 6; }
@@ -2627,7 +2658,7 @@
     <script src="js/library-queue.js?v=3b86961dbe27"></script>
     <script src="js/library.js?v=4e66e0a48c82"></script>
     <script src="js/book-shelf.js?v=a7d889069f6c"></script>
-    <script src="js/saved-links.js?v=29f4089a1d7a"></script>
+    <script src="js/saved-links.js?v=c120df3aad51"></script>
     <script src="js/scanner.js?v=ad775efa00da"></script>
     <script src="js/sync.js?v=01fd5d86deb6"></script>
     <script src="js/quick-wheel.js?v=8dbec94c3e2e"></script>
