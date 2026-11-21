@@ -238,11 +238,11 @@ document.getElementById('crop-web-search').onclick = () => {
     searchCropOnWeb(cropText, cropBlob, msg => { status.textContent = msg; });
 };
 // 🔎 у панелі «Запитай AI», поки там вкладено фрагмент: шукаємо його, а не попередній текст панелі.
-function searchAskAttachment() {
+registerAskWebSearchSource(() => {
     if (!askAttachment) return false;
     searchCropOnWeb(askAttachment.text, askAttachment.blob, showToast);
     return true;
-}
+});
 document.getElementById('crop-ai').onclick = () => {
     if (!cropData || document.hidden) return;
     // No key: say so here and keep the dialog (and the crop) instead of attaching something that cannot be sent.

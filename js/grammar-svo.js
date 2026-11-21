@@ -296,9 +296,12 @@ function webSearchQuery(text) {
     return q;
 }
 function webSearchUrl(text) { return 'https://www.google.com/search?q=' + encodeURIComponent(webSearchQuery(text)); }
+// Other modules may claim the tap first (js/pdf-crop.js: a page crop attached in the panel is what the reader is
+// looking at); a source returns true when it handled the search.
+const askWebSearchSources = [];
+function registerAskWebSearchSource(fn) { askWebSearchSources.push(fn); }
 document.getElementById('btn-web-search')?.addEventListener('click', () => {
-    // A page crop attached in the panel is what the reader is looking at: search its text (or the image), js/pdf-crop.js.
-    if (typeof searchAskAttachment === 'function' && searchAskAttachment()) return;
+    if (askWebSearchSources.some(fn => fn())) return;
     const query = webSearchQuery(askSearchText || state.lastSelectedRange?.toString() || '');
     if (!query) { showToast(t('webSearchNothing')); return; }
     window.open(webSearchUrl(query), '_blank', 'noopener,noreferrer');
