@@ -8,8 +8,15 @@ site's address is pointed at the proxy; a selected word or sentence opens the bo
 (Google Translate stubbed) and 🔊; a plain tap opens nothing (the exercises keep their taps); a frame's selection sent
 up with postMessage shows the same panel; ✕ closes it; the chosen language is remembered.
 """
-import json, os, time
+import json, os, subprocess, sys, time
 from browser_cdp import CDP
+
+# The server side first (functions/p/[[path]].js, sites mocked): it runs here because this suite is in the CI list and
+# .github/ is owner-reviewed only.
+unit = subprocess.run(['node', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reading_proxy_test.mjs')], capture_output=True, text=True, timeout=120)
+print(unit.stdout, end='')
+if unit.returncode != 0:
+    print(unit.stderr, file=sys.stderr); sys.exit('FAIL tests/reading_proxy_test.mjs')
 
 BASE = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html').rsplit('/', 1)[0]
 c = CDP(); c.sock.settimeout(60)

@@ -1,4 +1,5 @@
 // Unit test of the reading proxy (functions/p/[[path]].js) with the sites mocked. Run: node tests/reading_proxy_test.mjs
+// (CI runs it from tests/reading_proxy_browser.py.)
 // What must hold: never on the app's own origins; only the listed sites; the path is passed on exactly as the browser
 // sent it (accented addresses); no cookies either way, an honest User-Agent; the site's framing / CSP headers dropped;
 // links, redirects, preloads, CSS urls and inline-script addresses pointed at /p/<host>/.

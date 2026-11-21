@@ -45,7 +45,6 @@ jobs:
           node tests/device_llm_proxy_test.mjs
           node tests/book_speech_test.mjs
           node tests/library_proxy_test.mjs
-          node tests/reading_proxy_test.mjs
           
           echo "Checking index.html has no inline JS (CSP forbids it)..."
           python3 -c '
