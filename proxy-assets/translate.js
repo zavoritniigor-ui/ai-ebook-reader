@@ -90,12 +90,37 @@
     const clean = text => String(text || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     const worth = text => text.length > 0 && /\p{L}/u.test(text);
 
+    // Speed (owner, 2026-11-21: «чому швидкість перекладу така низька»; measured 0.7 s for the first word, 2.4 s for the
+    // first sentence): the connection to Google is opened as the page loads, translations are kept (memory + this
+    // site's storage, so a word seen before is instant), and a tapped word's sentence is translated in the background.
+    const TR_HOST = 'https://translate.googleapis.com';
+    try {
+        const pre = document.createElement('link'); pre.rel = 'preconnect'; pre.href = TR_HOST; pre.crossOrigin = 'anonymous';
+        (document.head || document.documentElement).appendChild(pre);
+    } catch (e) {}
+    const CACHE_KEY = 'pp_tr_cache', CACHE_MAX = 400;
+    let cache = null;
+    const loadCache = () => { if (cache) return cache; try { cache = new Map(Object.entries(JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'))); } catch (e) { cache = new Map(); } return cache; };
+    let saveTimer = 0;
+    const saveCache = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => {
+        try { const c = loadCache(); while (c.size > CACHE_MAX) c.delete(c.keys().next().value); localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(c))); } catch (e) {}
+    }, 300); };
+    const pending = new Map();   // the same text asked twice at once (a prefetch, then the tap) shares one request
     async function translate(text, tl) {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(text)}`;
-        const res = await fetch(url);   // not wrapped: another site
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        return { text: (data[0] || []).map(p => p[0]).join(''), from: data[2] || '' };
+        const key = tl + '|' + text, c = loadCache();
+        if (c.has(key)) { const hit = c.get(key); c.delete(key); c.set(key, hit); return hit; }
+        if (pending.has(key)) return pending.get(key);
+        const job = (async () => {
+            const url = `${TR_HOST}/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(text)}`;
+            const res = await fetch(url);   // not wrapped: another site
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            const out = { text: (data[0] || []).map(p => p[0]).join(''), from: data[2] || '' };
+            c.set(key, out); saveCache();
+            return out;
+        })();
+        pending.set(key, job);
+        try { return await job; } finally { pending.delete(key); }
     }
     function speak(text, lang) {
         try {
@@ -266,6 +291,7 @@
         panel.style.display = 'block';
         if (chip) chip.style.display = 'none';
         translateInto(text);
+        if (sentence) translate(sentence, view.tl.value).catch(() => {});   // ready before «Речення ⤢» is pressed
     }
     function hide() {
         if (panel) panel.style.display = 'none'; token++;
