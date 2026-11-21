@@ -106,10 +106,35 @@
         try { const c = loadCache(); while (c.size > CACHE_MAX) c.delete(c.keys().next().value); localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(c))); } catch (e) {}
     }, 300); };
     const pending = new Map();   // the same text asked twice at once (a prefetch, then the tap) shares one request
+    // Chrome's own on-device translator (Translator API: Chrome on computers and Chromebook Plus, not on Android yet):
+    // when it has the language pair, it translates here, at once, with nothing sent anywhere. A pair still to download
+    // is fetched in the background (a tap is the user activation it asks for); Google answers meanwhile.
+    const SRC = /^[a-z]{2}/.test(document.documentElement.lang || '') ? document.documentElement.lang.slice(0, 2) : 'fr';
+    const onDevice = new Map(), onDeviceReady = new Map();
+    function startOnDevice(tl) {
+        if (!('Translator' in self) || onDevice.has(tl) || tl === SRC) return;
+        const opts = { sourceLanguage: SRC, targetLanguage: tl };
+        onDevice.set(tl, (async () => {
+            const a = await self.Translator.availability(opts);
+            if (a === 'unavailable' || a === 'no') return null;
+            const t = await self.Translator.create(opts);
+            onDeviceReady.set(tl, t);
+            return t;
+        })().catch(() => { onDevice.delete(tl); return null; }));
+    }
+    // A pair already on the device needs no tap to start: set it up as the page opens (a download waits for a tap).
+    try { if ('Translator' in self) startOnDevice(readTl()); } catch (e) {}
     async function translate(text, tl) {
         const key = tl + '|' + text, c = loadCache();
         if (c.has(key)) { const hit = c.get(key); c.delete(key); c.set(key, hit); return hit; }
         if (pending.has(key)) return pending.get(key);
+        startOnDevice(tl);
+        // Still being set up (the page has just opened): a short wait beats a trip to Google.
+        if (!onDeviceReady.has(tl) && onDevice.has(tl)) await Promise.race([onDevice.get(tl), new Promise(r => setTimeout(r, 400))]);
+        const local = onDeviceReady.get(tl);
+        if (local) {
+            try { const out = { text: await local.translate(text), from: SRC, onDevice: true }; c.set(key, out); saveCache(); return out; } catch (e) { /* Google below */ }
+        }
         const job = (async () => {
             const url = `${TR_HOST}/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(text)}`;
             const res = await fetch(url);   // not wrapped: another site
@@ -227,6 +252,40 @@
     });
 
     // ---------- the panel ----------
+    // The offline dictionary (proxy-assets/dict-worker.js): a single word's lemma and meanings, before Google answers.
+    // French → Ukrainian only; loaded in the background a moment after the page, in the top page only.
+    let dictWorker = null, dictSeq = 0;
+    const dictWaiting = new Map();
+    function startDict() {
+        if (dictWorker || inFrame || !window.Worker) return;
+        try {
+            dictWorker = new Worker(`/proxy-assets/dict-worker.js${me && me.src.includes('?') ? me.src.slice(me.src.indexOf('?')) : ''}`);
+            dictWorker.onmessage = e => { const w = dictWaiting.get(e.data.id); if (w) { dictWaiting.delete(e.data.id); w(e.data.entries || []); } };
+            dictWorker.onerror = () => { dictWorker = null; };
+        } catch (e) { dictWorker = null; }
+    }
+    const lookupDict = word => new Promise(resolve => {
+        startDict();
+        if (!dictWorker) return resolve([]);
+        const id = ++dictSeq; dictWaiting.set(id, resolve); dictWorker.postMessage({ id, word });
+    });
+    if (!inFrame) {
+        const later = () => { if (readTl() === 'uk') startDict(); };
+        if (document.readyState === 'complete') setTimeout(later, 1500); else window.addEventListener('load', () => setTimeout(later, 1500));
+    }
+    const POS_UK = { N: 'ім.', V: 'дієсл.', A: 'прикм.', ADV: 'присл.', PRE: 'прийм.', CON: 'спол.', PRO: 'займ.', DET: 'детерм.', NUM: 'числ.', INTJ: 'вигук' };
+    function renderDict(entries) {
+        view.dict.replaceChildren();
+        for (const e of entries.slice(0, 2)) {
+            const row = document.createElement('div'); row.className = 'd';
+            const lem = document.createElement('b'); lem.textContent = e.lemma;
+            const pos = document.createElement('i'); pos.textContent = ' ' + (POS_UK[e.pos] || e.pos || '') + (e.gender ? ' ' + e.gender : '') + ' ';
+            const m = document.createElement('span'); m.textContent = e.meanings.slice(0, 4).join('; ');
+            row.append(lem, pos, m); view.dict.append(row);
+        }
+        view.dict.hidden = !view.dict.childElementCount;
+    }
+
     let panel = null, view = null, token = 0, chip = null, current = { sentence: '', fromFrame: false };
     function ensurePanel() {
         if (panel) return;
@@ -241,22 +300,27 @@
             .src { flex: 1; font-weight: 650; overflow-wrap: anywhere; max-height: 7.5em; overflow: auto; }
             .tr { margin-top: 6px; font-size: 17px; color: #1a56db; overflow-wrap: anywhere; min-height: 1.4em; max-height: 9em; overflow: auto; }
             .tr.err { color: #b42318; font-size: 14px; }
+            .dict { margin-top: 6px; font-size: 14.5px; line-height: 1.4; color: #374151; max-height: 6em; overflow: auto; }
+            .dict[hidden] { display: none; }
+            .dict .d + .d { margin-top: 2px; }
+            .dict i { color: #6b7280; font-size: 13px; }
             button, select { font: inherit; min-height: 40px; border: 1px solid #d7dbe3; border-radius: 10px; background: #fff; color: inherit; padding: 0 10px; }
             button.icon { width: 40px; padding: 0; font-size: 18px; flex: none; }
             button.sent { border-color: #1a56db; color: #1a56db; font-weight: 600; }
             button[hidden] { display: none; }
             .row { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
             .brand { margin-left: auto; font-size: 12px; color: #6b7280; }
-            @media (prefers-color-scheme: dark) { .box { background: #1f2024; color: #f1f2f4; } .tr { color: #8fb0ff; }
+            @media (prefers-color-scheme: dark) { .box { background: #1f2024; color: #f1f2f4; } .tr { color: #8fb0ff; } .dict { color: #d1d5db; } .dict i { color: #9ca3af; }
                 button, select { background: #2a2b30; border-color: #3a3c43; } button.sent { color: #8fb0ff; border-color: #8fb0ff; } }
         </style>
         <div class="box" role="dialog" aria-live="polite">
             <div class="top"><div class="src"></div><button class="icon speak" type="button" aria-label="Слухати">🔊</button><button class="icon close" type="button" aria-label="Закрити">✕</button></div>
             <div class="tr"></div>
+            <div class="dict" hidden></div>
             <div class="row"><button class="sent" type="button">Речення ⤢</button><select class="tl" aria-label="Мова перекладу">${LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('')}</select><span class="brand">AI E-book Reader</span></div>
         </div>`;
         view = { src: root.querySelector('.src'), tr: root.querySelector('.tr'), tl: root.querySelector('.tl'), speak: root.querySelector('.speak'),
-            close: root.querySelector('.close'), sent: root.querySelector('.sent'), lang: 'fr' };
+            close: root.querySelector('.close'), sent: root.querySelector('.sent'), dict: root.querySelector('.dict'), lang: 'fr' };
         view.tl.value = readTl();
         view.close.addEventListener('click', hide);
         view.speak.addEventListener('click', () => speak(view.src.textContent, view.lang));
@@ -275,6 +339,8 @@
     async function translateInto(text) {
         const my = ++token;
         view.src.textContent = text; view.tr.textContent = '…'; view.tr.classList.remove('err');
+        view.dict.hidden = true;
+        if (view.tl.value === 'uk' && !/\s/.test(text)) lookupDict(text).then(entries => { if (my === token) renderDict(entries); });
         try {
             const r = await translate(text, view.tl.value);
             if (my !== token) return;

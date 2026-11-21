@@ -26,6 +26,10 @@ c.call('Emulation.setDeviceMetricsOverride', width=412, height=860, deviceScaleF
 c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
 window.__errors = []; addEventListener('error', e => __errors.push(e.message));
 window.__asked = []; window.__tr = [];
+window.__dev = [];
+if (sessionStorage.getItem('pp_test_on_device') === '1') window.Translator = {
+  availability: async o => (__dev.push('availability:' + o.sourceLanguage + '>' + o.targetLanguage), 'available'),
+  create: async o => ({ translate: async t => (__dev.push(t), '[device ' + o.targetLanguage + '] ' + t) }) };
 const realFetch = window.fetch;
 // Every request leaves through here (after translate.js's own wrapper): record it; answer Google Translate with a stub.
 window.fetch = (input, init) => { const u = typeof input === 'string' ? input : input.url; __asked.push(u);
@@ -150,5 +154,26 @@ check('14d a word translated before comes from memory, no request', f"{TR} === '
 c.call('Page.reload'); c.wait("document.readyState === 'complete'", timeout=20); pause(.5)
 tap_word('#p', 'monde')
 check('14e ... and after the page is reloaded too (kept in this site\'s storage)', f"{TR} === '[en] monde' && __tr.length === 0", timeout=3)
+# ---------------------------------------------------------------- the offline dictionary (French → Ukrainian)
+c.js(f"(s => {{ s.value = 'uk'; s.dispatchEvent(new Event('change')); }})({PANEL}.shadowRoot.querySelector('.tl')); {PANEL}.shadowRoot.querySelector('.close').click(); 1")
+DICT = f"[...{PANEL}.shadowRoot.querySelectorAll('.dict .d')].map(d => d.textContent).join(' || ')"
+tap_word('#q', 'chat')
+check('15 a tapped word shows its dictionary entry: lemma, part of speech, meanings (dict/fr-uk.json, offline)', f"{DICT}.startsWith('chat ім. m кіт')", timeout=20)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); 1")
+tap_word('#q', 'école')
+check("15b «l'école» → the entry of «école»", f"{DICT}.startsWith('école ім. f школа')", timeout=5)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); 1")
+tap_word('#q', 'vais')
+check('15c a conjugated form gives its infinitive', f"/^aller дієсл\\./.test({DICT})", timeout=5)
+check('15d the dictionary file is kept in this site\'s cache (fetched once)', "caches.open('pp-dict-v1').then(c => c.match('/dict/fr-uk.json')).then(r => !!r)", timeout=5)
+c.js(f"(s => {{ s.value = 'en'; s.dispatchEvent(new Event('change')); }})({PANEL}.shadowRoot.querySelector('.tl')); 1")
+check('15e another target language: no Ukrainian dictionary lines', f"{PANEL}.shadowRoot.querySelector('.dict').hidden", timeout=3)
+
+# ---------------------------------------------------------------- Chrome's on-device translator, when the browser has it
+c.js("sessionStorage.setItem('pp_test_on_device', '1'); localStorage.removeItem('pp_tr_cache'); 1")
+c.call('Page.reload'); c.wait("document.readyState === 'complete'", timeout=20); pause(.5)
+tap_word('#q', 'frère')
+check('16 with the Translator API (Chrome on a computer) the word is translated on the device, nothing sent to Google', f"{TR} === '[device en] frère' && __tr.length === 0 && __dev.includes('availability:fr>en')", timeout=5)
+c.js("sessionStorage.removeItem('pp_test_on_device'); 1")
 check('8 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL PASS')
