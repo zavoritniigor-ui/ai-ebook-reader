@@ -152,15 +152,52 @@
         pending.set(key, job);
         try { return await job; } finally { pending.delete(key); }
     }
-    function speak(text, lang) {
+    // Speech (owner, 2026-11-21: «озвучення слова не працює … хочу щоб озвучення було автоматично»): the phone's own
+    // voices were silent when no French voice is installed, or when Chrome on Android left the engine stuck. Google
+    // Translate's voice is the first choice (an MP3 played here, the same for every device; ≤ 180 characters a piece,
+    // read in turn); the device's voice is the fallback (offline, or the audio refused). A tapped word is read at once
+    // while «Авто 🔊» is on (the default), a sentence when «Речення ⤢» is chosen; 🔊 reads again.
+    const SPEAK_KEY = 'pp_autospeak';
+    const autoSpeak = () => { try { return localStorage.getItem(SPEAK_KEY) !== '0'; } catch (e) { return true; } };
+    let player = null, speakSeq = 0;
+    function ttsChunks(text) {
+        const out = []; let rest = String(text).replace(/\s+/g, ' ').trim();
+        while (rest.length > 180) {
+            let cut = Math.max(rest.lastIndexOf('. ', 180), rest.lastIndexOf(', ', 180), rest.lastIndexOf('; ', 180));
+            if (cut < 60) cut = rest.lastIndexOf(' ', 180);
+            if (cut < 60) cut = 180;
+            out.push(rest.slice(0, cut + 1).trim()); rest = rest.slice(cut + 1).trim();
+        }
+        if (rest) out.push(rest);
+        return out;
+    }
+    function systemSpeak(text, lang) {
         try {
-            speechSynthesis.cancel();
+            speechSynthesis.cancel(); speechSynthesis.resume();   // resume(): Chrome on Android can be left paused
             const u = new SpeechSynthesisUtterance(text);
-            u.lang = lang && lang.length === 2 ? lang : 'fr-FR';
-            const v = speechSynthesis.getVoices().find(x => x.lang.toLowerCase().startsWith(u.lang.slice(0, 2)));
+            u.lang = lang === 'fr' ? 'fr-FR' : lang;
+            const v = speechSynthesis.getVoices().find(x => x.lang.toLowerCase().startsWith(lang.slice(0, 2)));
             if (v) u.voice = v;
+            window.__ppUtterance = u;   // kept referenced: Chrome may drop an utterance held only by its queue
             speechSynthesis.speak(u);
         } catch (e) {}
+    }
+    function speak(text, lang = SRC) {
+        const my = ++speakSeq, chunks = ttsChunks(text);
+        try { speechSynthesis.cancel(); } catch (e) {}
+        if (player) { try { player.pause(); } catch (e) {} player = null; }
+        let i = 0;
+        const fallback = () => { if (my === speakSeq) systemSpeak(chunks.slice(Math.max(0, i - 1)).join(' '), lang); };
+        const next = () => {
+            if (my !== speakSeq || i >= chunks.length) return;
+            const a = new Audio(`${TR_HOST}/translate_tts?ie=UTF-8&client=gtx&tl=${encodeURIComponent(lang)}&q=${encodeURIComponent(chunks[i++])}`);
+            player = a;
+            a.onended = next;
+            a.onerror = fallback;
+            const played = a.play();
+            if (played && played.catch) played.catch(fallback);
+        };
+        next();
     }
 
     // ---------- the word under a tap, its sentence, a highlight ----------
@@ -175,6 +212,32 @@
     function caretAt(x, y) {
         if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); return r && { node: r.startContainer, offset: r.startOffset }; }
         if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); return p && { node: p.offsetNode, offset: p.offset }; }
+        return null;
+    }
+    const onWord = (range, x, y) => [...range.getClientRects()].some(b => x >= b.left - 4 && x <= b.right + 4 && y >= b.top - 4 && y <= b.bottom + 4);
+    // The word under a point. The caret first; text the page made unselectable (exercise cards, answers) gives none, so
+    // then the text nodes under the finger are measured word by word.
+    function wordAtPoint(x, y, target) {
+        const c = caretAt(x, y);
+        if (c && c.node && c.node.nodeType === 3) {
+            const f = wordAround(c.node.data, c.offset);
+            if (f) { const r = document.createRange(); r.setStart(c.node, f.start); r.setEnd(c.node, f.end); if (onWord(r, x, y)) return { node: c.node, ...f, range: r }; }
+        }
+        const root = target instanceof Element ? target : null;
+        if (!root) return null;
+        const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let n, seen = 0;
+        while ((n = w.nextNode()) && seen++ < 300) {
+            const re = /[\p{L}\p{M}\p{N}'’-]+/gu; let m;
+            while ((m = re.exec(n.data))) {
+                const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+                if (!onWord(r, x, y)) continue;
+                for (let k = m.index; k < m.index + m[0].length; k++) {   // the part of «l'école» under the finger
+                    const cr = document.createRange(); cr.setStart(n, k); cr.setEnd(n, k + 1);
+                    if (onWord(cr, x, y)) { const f = wordAround(n.data, k); if (f) { const fr = document.createRange(); fr.setStart(n, f.start); fr.setEnd(n, f.end); return { node: n, ...f, range: fr }; } }
+                }
+            }
+        }
         return null;
     }
     // The word around offset in a text node. An apostrophe joins only a long left part (aujourd'hui), so «l'école» gives «école».
@@ -215,19 +278,21 @@
     function mark(range, name) {
         try { if (!window.CSS || !CSS.highlights) return; CSS.highlights.delete('pp-word'); CSS.highlights.delete('pp-sentence'); if (range) CSS.highlights.set(name, new Highlight(range)); } catch (e) {}
     }
-    function tapTarget(e) {
+    // anyControl: a long press translates even the words of buttons, answers and links (a tap there is the exercise's).
+    function tapTarget(e, anyControl = false) {
         if (!tapOn() || e.defaultPrevented || e.button > 0) return null;
-        const sel = getSelection(); if (sel && !sel.isCollapsed) return null;   // a selection is translated by itself
+        const sel = getSelection(); if (!anyControl && sel && !sel.isCollapsed) return null;   // a selection is translated by itself
         const t = e.target;
-        if (!(t instanceof Element) || t.closest(INTERACTIVE)) return null;
-        for (let el = t; el && el !== document.body; el = el.parentElement) if (getComputedStyle(el).cursor === 'pointer') return null;
-        const c = caretAt(e.clientX, e.clientY);
-        if (!c || !c.node || c.node.nodeType !== 3) return null;
-        const found = wordAround(c.node.data, c.offset);
-        if (!found) return null;
-        const wr = document.createRange(); wr.setStart(c.node, found.start); wr.setEnd(c.node, found.end);
-        // The caret is the nearest one even in empty space: the tap must be on the word itself.
-        if (![...wr.getClientRects()].some(b => e.clientX >= b.left - 4 && e.clientX <= b.right + 4 && e.clientY >= b.top - 4 && e.clientY <= b.bottom + 4)) return null;
+        if (!(t instanceof Element) || t.closest('[data-pp]')) return null;
+        if (!anyControl) {
+            if (t.closest(INTERACTIVE)) return null;
+            // Drawn as clickable: a small thing (a card, an answer) is the page's; a whole clickable column of text is not.
+            for (let el = t; el && el !== document.body; el = el.parentElement)
+                if (getComputedStyle(el).cursor === 'pointer' && el.getBoundingClientRect().height <= 160) return null;
+        }
+        const hit = wordAtPoint(e.clientX, e.clientY, t);
+        if (!hit) return null;
+        const c = { node: hit.node }, found = hit, wr = hit.range;
         const block = c.node.parentElement.closest(BLOCK) || c.node.parentElement;
         const bt = blockTexts(block);
         const p = bt.parts.find(x => x.node === c.node);
@@ -239,15 +304,27 @@
         }
         return { word: found.word, wordRange: wr, sentence: sentence !== found.word ? sentence : '', sentenceRange: sRange };
     }
+    function translateHit(hit) {
+        marked = hit; mark(hit.wordRange, 'pp-word');
+        if (autoSpeak()) speak(hit.word);   // here, in the frame that was touched: the tap allows the sound
+        if (inFrame) window.top.postMessage({ pp: 'translate', text: hit.word, sentence: hit.sentence, frame: true }, ORIGIN);
+        else show(hit.word, hit.sentence);
+    }
     document.addEventListener('click', e => {
         const hit = tapTarget(e);
         if (!hit) return;
         // The tap is ours: marking it handled keeps Chrome's own «Touch to Search» sheet (Android) from opening over the
         // panel for the same word (owner's screenshot, 2026-11-21). Only plain text gets here, never a control of the page.
         e.preventDefault();
-        marked = hit; mark(hit.wordRange, 'pp-word');
-        if (inFrame) window.top.postMessage({ pp: 'translate', text: hit.word, sentence: hit.sentence, frame: true }, ORIGIN);
-        else show(hit.word, hit.sentence);
+        translateHit(hit);
+    });
+    // A long press on a button, an answer or a link translates its word instead of the system menu; the exercise does
+    // not get a tap from it. (On plain text a long press selects, and the selection is translated below.)
+    document.addEventListener('contextmenu', e => {
+        const hit = tapTarget(e, true);
+        if (!hit) return;
+        e.preventDefault();
+        translateHit(hit);
     });
     // The top page asks a frame to mark its sentence when «Речення» is chosen there.
     window.addEventListener('message', e => {
@@ -312,6 +389,7 @@
             button, select { font: inherit; min-height: 40px; border: 1px solid #d7dbe3; border-radius: 10px; background: #fff; color: inherit; padding: 0 10px; }
             button.icon { width: 40px; padding: 0; font-size: 18px; flex: none; }
             button.sent { border-color: #1a56db; color: #1a56db; font-weight: 600; }
+            button.auto[aria-pressed="true"] { background: #1a56db; border-color: #1a56db; color: #fff; }
             button[hidden] { display: none; }
             .row { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
             .brand { margin-left: auto; font-size: 12px; color: #6b7280; }
@@ -322,13 +400,16 @@
             <div class="top"><div class="src"></div><button class="icon speak" type="button" aria-label="Слухати">🔊</button><button class="icon close" type="button" aria-label="Закрити">✕</button></div>
             <div class="tr"></div>
             <div class="dict" hidden></div>
-            <div class="row"><button class="sent" type="button">Речення ⤢</button><select class="tl" aria-label="Мова перекладу">${LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('')}</select><span class="brand">AI E-book Reader</span></div>
+            <div class="row"><button class="sent" type="button">Речення ⤢</button><button class="auto" type="button" aria-pressed="true">Авто 🔊</button><select class="tl" aria-label="Мова перекладу">${LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('')}</select><span class="brand">AI E-book Reader</span></div>
         </div>`;
         view = { src: root.querySelector('.src'), tr: root.querySelector('.tr'), tl: root.querySelector('.tl'), speak: root.querySelector('.speak'),
-            close: root.querySelector('.close'), sent: root.querySelector('.sent'), dict: root.querySelector('.dict'), lang: 'fr' };
+            close: root.querySelector('.close'), sent: root.querySelector('.sent'), dict: root.querySelector('.dict'), auto: root.querySelector('.auto'), lang: 'fr' };
+        const syncAuto = () => { const on = autoSpeak(); view.auto.setAttribute('aria-pressed', String(on)); view.auto.title = on ? 'Автоматичне озвучення: увімкнено' : 'Автоматичне озвучення: вимкнено'; };
+        syncAuto();
+        view.auto.addEventListener('click', () => { try { localStorage.setItem(SPEAK_KEY, autoSpeak() ? '0' : '1'); } catch (e) {} syncAuto(); });
         view.tl.value = readTl();
         view.close.addEventListener('click', hide);
-        view.speak.addEventListener('click', () => speak(view.src.textContent, view.lang));
+        view.speak.addEventListener('click', () => speak(view.src.textContent, view.lang || SRC));
         view.tl.addEventListener('change', () => { try { localStorage.setItem(TL_KEY, view.tl.value); } catch (e) {} translateInto(view.src.textContent); });
         view.sent.addEventListener('click', () => {
             const s = current.sentence; if (!s) return;
@@ -336,6 +417,7 @@
             if (current.fromFrame) for (const f of document.querySelectorAll('iframe')) { try { f.contentWindow.postMessage({ pp: 'mark-sentence' }, ORIGIN); } catch (e) {} }
             else if (marked) mark(marked.sentenceRange, 'pp-sentence');
             show(s, '', current.fromFrame);
+            if (autoSpeak()) speak(s);
         });
         // A tap inside the panel is ours, not the exercise's (and does not clear the selection that opened it).
         for (const type of ['pointerdown', 'mousedown', 'touchstart', 'click']) panel.addEventListener(type, e => e.stopPropagation());
@@ -380,6 +462,7 @@
             const text = clean(sel && !sel.isCollapsed ? sel.toString() : '');
             if (!worth(text) || text === last) return;
             last = text;
+            if (autoSpeak()) speak(text);
             if (inFrame) window.top.postMessage({ pp: 'translate', text }, ORIGIN);
             else show(text);
         }, 450);
