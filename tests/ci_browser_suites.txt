@@ -46,8 +46,8 @@ tests/reader_font_size_browser.py
 tests/text_layout_browser.py
 # pdf_contrast_browser.py: automatic contrast for faded scans
 tests/pdf_contrast_browser.py
-# crop_gemini_browser.py: sending a page crop to Gemini in the browser
-tests/crop_gemini_browser.py
+# crop_web_search_browser.py: «Пошук в інтернеті» for a page crop and for a crop attached in Ask AI
+tests/crop_web_search_browser.py
 # share_app_browser.py: app share and current book title
 tests/share_app_browser.py
 # epub_toc_browser.py: the real EPUB contents from nav.xhtml / toc.ncx

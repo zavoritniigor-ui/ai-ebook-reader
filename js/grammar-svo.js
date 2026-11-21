@@ -296,8 +296,20 @@ function webSearchQuery(text) {
     return q;
 }
 function webSearchUrl(text) { return 'https://www.google.com/search?q=' + encodeURIComponent(webSearchQuery(text)); }
+// Other modules may claim the tap first (js/pdf-crop.js: a page crop attached in the panel is what the reader is
+// looking at); a source returns true when it handled the search.
+const askWebSearchSources = [];
+function registerAskWebSearchSource(fn) { askWebSearchSources.push(fn); }
 document.getElementById('btn-web-search')?.addEventListener('click', () => {
+    if (askWebSearchSources.some(fn => fn())) return;
     const query = webSearchQuery(askSearchText || state.lastSelectedRange?.toString() || '');
+    if (!query) { showToast(t('webSearchNothing')); return; }
+    window.open(webSearchUrl(query), '_blank', 'noopener,noreferrer');
+});
+// The same search from the translation popup (owner, 2026-11-20): the word or sentence the popup shows.
+document.getElementById('tt-web-search-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const query = webSearchQuery(els.ttOriginal?.textContent || state.lastSelectedRange?.toString() || '');
     if (!query) { showToast(t('webSearchNothing')); return; }
     window.open(webSearchUrl(query), '_blank', 'noopener,noreferrer');
 });

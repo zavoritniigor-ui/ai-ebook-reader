@@ -84,7 +84,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `pdf-zoom-pan.js` | zoom, pinch, pan |
 | `pdf-contrast.js` | automatic contrast for faded scans |
 | `pdf-ink.js`, `text-ink.js` | handwriting over PDF pages / text books (IndexedDB) |
-| `pdf-crop.js` | region selection → AI vision, Gemini, text selection in text books |
+| `pdf-crop.js` | region selection → AI vision, web search of the crop, text selection in text books |
 | `publication-files.js` | bounded download/storage of large publications |
 
 **Language, AI and speech**
