@@ -111,9 +111,25 @@ function savedLinkCard(link) {
     card.append(icon, info, actions);
     return card;
 }
-// The «Посилання» tab of the shelf: on the start screen (host) and in the library window (status + list).
+// The «Посилання» tab of the shelf (js/book-shelf.js registerShelfTab): on the start screen and in the library window.
 function renderSavedLinks(list, note) {
     const links = listSavedLinks();
     if (note) note.textContent = links.length ? '' : t('linksEmpty');
     list.replaceChildren(...links.map(savedLinkCard));
 }
+registerShelfTab({
+    kind: 'link', label: 'shelfLinks',
+    count: () => listSavedLinks().length,
+    renderHome(host) {
+        const note = document.createElement('p'); note.className = 'recent-empty';
+        const list = document.createElement('div'); list.className = 'saved-links-list';
+        host.append(note, savedLinkAddForm(), list);
+        renderSavedLinks(list, note);
+    },
+    renderLibrary(status, list, tabs) {
+        const note = document.createElement('p'); note.className = 'shelf-note';
+        status.replaceChildren(tabs, note, savedLinkAddForm());
+        renderSavedLinks(list, note);
+    },
+});
+renderRecentBooks();   // the shelf drew the start screen before this tab registered (links but no books yet)
