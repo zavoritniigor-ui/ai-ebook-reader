@@ -133,7 +133,12 @@
         if (!onDeviceReady.has(tl) && onDevice.has(tl)) await Promise.race([onDevice.get(tl), new Promise(r => setTimeout(r, 400))]);
         const local = onDeviceReady.get(tl);
         if (local) {
-            try { const out = { text: await local.translate(text), from: SRC, onDevice: true }; c.set(key, out); saveCache(); return out; } catch (e) { /* Google below */ }
+            // A translator whose model is still downloading answers only when the download ends (seen on a computer whose
+            // Chrome had the API but no model): never wait for it longer than this, Google answers instead.
+            try {
+                const text2 = await Promise.race([local.translate(text), new Promise((_, no) => setTimeout(() => no(new Error('slow')), 1500))]);
+                const out = { text: text2, from: SRC, onDevice: true }; c.set(key, out); saveCache(); return out;
+            } catch (e) { /* Google below */ }
         }
         const job = (async () => {
             const url = `${TR_HOST}/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(text)}`;

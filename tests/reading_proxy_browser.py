@@ -27,6 +27,8 @@ c.call('Page.addScriptToEvaluateOnNewDocument', source=r'''
 window.__errors = []; addEventListener('error', e => __errors.push(e.message));
 window.__asked = []; window.__tr = [];
 window.__dev = [];
+// Chrome on a computer has its own Translator API (CI's does, with no model): off, except where it is what is tested.
+try { delete window.Translator; } catch (e) {} window.Translator = undefined; delete window.Translator;
 if (sessionStorage.getItem('pp_test_on_device') === '1') window.Translator = {
   availability: async o => (__dev.push('availability:' + o.sourceLanguage + '>' + o.targetLanguage), 'available'),
   create: async o => ({ translate: async t => (__dev.push(t), '[device ' + o.targetLanguage + '] ' + t) }) };
@@ -174,6 +176,12 @@ c.js("sessionStorage.setItem('pp_test_on_device', '1'); localStorage.removeItem(
 c.call('Page.reload'); c.wait("document.readyState === 'complete'", timeout=20); pause(.5)
 tap_word('#q', 'frère')
 check('16 with the Translator API (Chrome on a computer) the word is translated on the device, nothing sent to Google', f"{TR} === '[device en] frère' && __tr.length === 0 && __dev.includes('availability:fr>en')", timeout=5)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); window.__slow = true; 1")
+c.js("sessionStorage.setItem('pp_test_on_device', 'slow'); localStorage.removeItem('pp_tr_cache'); 1")
+c.call('Page.reload'); c.wait("document.readyState === 'complete'", timeout=20); pause(.5)
+c.js("window.Translator = { availability: async () => 'available', create: async () => ({ translate: () => new Promise(() => {}) }) }; 1")
+tap_word('#q', 'chat')
+check('16b an on-device translator that never answers (model still downloading) falls back to Google within 1.5 s', f"{TR} === '[en] chat' && __tr.some(x => x.q === 'chat')", timeout=5)
 c.js("sessionStorage.removeItem('pp_test_on_device'); 1")
 check('8 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL PASS')

@@ -22,7 +22,7 @@ export const proxyServedHere = hostname => hostname === PROXY_SERVING_HOST || /^
 const UA = 'AI-Ebook-Reader/1.0 (reading proxy; +https://ai-ebook-reader.pages.dev)';
 // The first 12 hex of the SHA-256 of proxy-assets/translate.js + proxy-assets/dict-worker.js, in their addresses: the domain's browser cache keeps static files
 // for hours, so without it a phone kept an old script (tests/reading_proxy_test.mjs checks it matches the file).
-export const TRANSLATE_JS_VERSION = '341072780843';
+export const TRANSLATE_JS_VERSION = '55f0dda18b32';
 const DROP_HEADERS = ['content-security-policy', 'content-security-policy-report-only', 'x-frame-options', 'set-cookie', 'clear-site-data',
     'cross-origin-embedder-policy', 'cross-origin-opener-policy', 'cross-origin-resource-policy', 'content-length', 'content-encoding',
     'strict-transport-security', 'report-to', 'nel', 'permissions-policy', 'alt-svc'];
