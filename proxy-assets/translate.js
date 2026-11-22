@@ -35,6 +35,7 @@
         }
         return raw;
     };
+    const NATIVE_FETCH = window.fetch.bind(window);   // our own calls (the owner's voice), never mapped into /p/…
     if (HOST) {
         const realFetch = window.fetch;
         window.fetch = function (input, init) {
@@ -182,10 +183,45 @@
             speechSynthesis.speak(u);
         } catch (e) {}
     }
-    function speak(text, lang = SRC) {
+    // The owner's own voice first (owner, 2026-11-22: «чому не працює хороша озвучка на сайтах»): the speech server on
+    // their computer (Kokoro for French and English, Piper for Ukrainian), reached through /api/speech like the reader
+    // does (js/local-speech.js). The computer off, the tunnel down or no answer in 4 s → Google's voice, and the server
+    // is left alone for two minutes so every next word does not wait for it again. Played sound is kept for a repeat.
+    const LOCAL_LANGS = new Set(['fr', 'en', 'uk']), LOCAL_WAIT_MS = 4000, LOCAL_REST_MS = 120000;
+    let localDownUntil = 0;
+    const localAudio = new Map();
+    async function localSpeechUrl(text, lang) {
+        if (!LOCAL_LANGS.has(lang) || Date.now() < localDownUntil) return null;
+        const key = lang + '|' + text;
+        if (localAudio.has(key)) return localAudio.get(key);
+        try {
+            const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), LOCAL_WAIT_MS);
+            const res = await NATIVE_FETCH('/api/speech/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, lang }), signal: ctl.signal });
+            const blob = res.ok ? await res.blob() : null;
+            clearTimeout(timer);
+            if (!blob || !blob.size) throw new Error('HTTP ' + res.status);
+            const url = URL.createObjectURL(blob);
+            localAudio.set(key, url);
+            if (localAudio.size > 60) { const [k, u] = localAudio.entries().next().value; URL.revokeObjectURL(u); localAudio.delete(k); }
+            return url;
+        } catch (e) { localDownUntil = Date.now() + LOCAL_REST_MS; return null; }
+    }
+    async function speak(text, lang = SRC) {
         const my = ++speakSeq, chunks = ttsChunks(text);
         try { speechSynthesis.cancel(); } catch (e) {}
         if (player) { try { player.pause(); } catch (e) {} player = null; }
+        const own = await localSpeechUrl(String(text).replace(/\s+/g, ' ').trim(), lang);
+        if (my !== speakSeq) return;
+        if (own) {
+            const a = new Audio(own); player = a;
+            const played = a.play();
+            if (played && played.catch) played.catch(() => { if (my === speakSeq) googleSpeak(my, chunks, lang); });
+            return;
+        }
+        googleSpeak(my, chunks, lang);
+    }
+    function googleSpeak(my, chunks, lang) {
         let i = 0;
         const fallback = () => { if (my === speakSeq) systemSpeak(chunks.slice(Math.max(0, i - 1)).join(' '), lang); };
         const next = () => {

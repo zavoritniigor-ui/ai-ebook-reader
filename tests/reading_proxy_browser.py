@@ -38,7 +38,11 @@ if (sessionStorage.getItem('pp_test_on_device') === '1') window.Translator = {
   create: async o => ({ translate: async t => (__dev.push(t), '[device ' + o.targetLanguage + '] ' + t) }) };
 const realFetch = window.fetch;
 // Every request leaves through here (after translate.js's own wrapper): record it; answer Google Translate with a stub.
+window.__local = []; window.__localVoice = 'off';
 window.fetch = (input, init) => { const u = typeof input === 'string' ? input : input.url; __asked.push(u);
+  // The owner's speech server (/api/speech): 'on' answers with sound, 'off' as when the computer is off.
+  if (u === '/api/speech/speak') { __local.push(JSON.parse(init.body));
+    return Promise.resolve(__localVoice === 'on' ? new Response(new Blob([new Uint8Array(64)], { type: 'audio/wav' }), { status: 200 }) : new Response('offline', { status: 502 })); }
   if (/translate\.googleapis\.com/.test(u)) { const q = new URL(u); __tr.push({ tl: q.searchParams.get('tl'), q: q.searchParams.get('q') });
     return Promise.resolve(new Response(JSON.stringify([[['[' + q.searchParams.get('tl') + '] ' + q.searchParams.get('q'), q.searchParams.get('q')]], null, 'fr']), { headers: { 'content-type': 'application/json' } })); }
   return Promise.resolve(new Response('{}', { status: 404 })); };
@@ -216,5 +220,19 @@ c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); 1")
 pt = c.js("""(() => { const n = document.querySelector('#r').firstChild; const r = document.createRange(); r.setStart(n, 0); r.setEnd(n, 7); const b = r.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })()""")
 c.js(f"window.__cm = new MouseEvent('contextmenu', {{ bubbles: true, cancelable: true, clientX: {pt['x']}, clientY: {pt['y']} }}); document.querySelector('#r').dispatchEvent(__cm); 1")
 check('19 a long press on an answer translates its word (and no system menu), the answer is not chosen', f"__cm.defaultPrevented && {SHOWN} && {PANEL}.shadowRoot.querySelector('.src').textContent === 'Réponse'", timeout=3)
+# ---------------------------------------------------------------- the owner's own voice (Kokoro on their computer)
+c.call('Page.reload'); c.wait("document.readyState === 'complete'", timeout=20); pause(.5)
+c.js("localStorage.removeItem('pp_autospeak'); __localVoice = 'on'; __plays.length = 0; __local.length = 0; 1")
+tap_word('#q', 'chat')
+check("20 the owner's speech server reads the word first (their Kokoro voice), not Google", "__local.length === 1 && __local[0].text === 'chat' && __local[0].lang === 'fr' && __plays.length === 1 && __plays[0].startsWith('blob:')", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.speak').click(); 1")
+check('20b a repeat plays the kept sound, no new request to the computer', "__local.length === 1 && __plays.length === 2 && __plays[1] === __plays[0]", timeout=3)
+c.call('Page.reload'); c.wait("document.readyState === 'complete'", timeout=20); pause(.5)
+c.js("__localVoice = 'off'; __plays.length = 0; __local.length = 0; 1")
+tap_word('#q', 'frère')
+check('20c the computer off: Google\'s voice reads it', f"__local.length === 1 && {PLAYED}[0] === 'frère|fr'", timeout=5)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); __plays.length = 0; 1")
+tap_word('#q', 'chat')
+check('20d ... and the next words do not wait for the computer again (two minutes)', f"__local.length === 1 && {PLAYED}[0] === 'chat|fr'", timeout=5)
 check('8 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL PASS')
