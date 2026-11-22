@@ -7,7 +7,8 @@ The engine is a deterministic model (as tests/tts_first_tap_browser.py) with inj
 nothing plays. Checked: a phrase the device fails twice is read by Google's voice in its language; the session then
 goes straight to Google (no more failed attempts per word); reading aloud continues after Google's phrase ends;
 stopping speech stops Google's audio; a long phrase is read in pieces of ≤ 180 characters; offline / refused audio
-ends the phrase as a failure (the reading is not left hanging); the production CSP allows the audio.
+ends the phrase as a failure (the reading is not left hanging); the production CSP allows the audio, and the app
+sends no Referer to other sites (Google's voice answers 404 to one).
 """
 import json, os, time
 from browser_cdp import CDP
@@ -91,5 +92,11 @@ CSP = next(l for l in open(os.path.join(ROOT, '_headers')) if 'Content-Security-
 media = CSP.split('media-src')[1].split(';')[0]
 assert 'https://translate.googleapis.com' in media and "'self'" in media and 'blob:' in media, media
 print('PASS 6 the production CSP lets the audio of translate.googleapis.com play (media-src only)')
+# Google's voice answers 404 to a request that names the page it comes from (Referer: https://ai-ebook-reader.pages.dev/
+# → 404 text/html; no Referer → 200 audio/mpeg, checked 2026-11-22). The owner's phone had «google-failed» on every word.
+# The app sends its address only to itself (its own /api functions still see it); <audio> has no referrerpolicy of its own.
+RP = next(l for l in open(os.path.join(ROOT, '_headers')) if 'Referrer-Policy' in l).split(':', 1)[1].strip()
+assert RP in ('same-origin', 'no-referrer'), RP
+print('PASS 6b the app names itself to no other site (Referrer-Policy: %s), so Google\'s voice answers' % RP)
 check('7 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL PASS')
