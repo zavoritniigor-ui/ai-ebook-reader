@@ -78,7 +78,50 @@ function traceTts(event, text) {
     ttsTrace.push({ t: Math.round(performance.now()), event, text: text ? String(text).slice(0, 40) : '' });
     if (ttsTrace.length > 60) ttsTrace.shift();
 }
+// Google Translate's voice when the device's own cannot speak (owner's phone, 2026-11-22: Android 10, every utterance
+// «synthesis-failed» even after the retry, the local server unreachable — no sound at all). The failed phrase is read
+// by Google (an <audio>, ≤ 180 characters a piece; CSP media-src allows translate.googleapis.com), and reading aloud
+// goes on from its end as if the device had spoken it. After such a failure the device is not asked again this session.
+const GOOGLE_VOICE_ERRORS = new Set(['synthesis-failed', 'synthesis-unavailable', 'language-unavailable', 'voice-unavailable', 'no-start']);
+let googleVoiceAudio = null, systemVoiceBroken = false;
+function stopGoogleVoice() {
+    if (!googleVoiceAudio) return;
+    try { googleVoiceAudio.pause(); } catch (e) {}
+    googleVoiceAudio = null;
+}
+function googleVoiceChunks(text) {
+    const out = []; let rest = String(text).replace(/\s+/g, ' ').trim();
+    while (rest.length > 180) {
+        let cut = Math.max(rest.lastIndexOf('. ', 180), rest.lastIndexOf(', ', 180), rest.lastIndexOf('; ', 180));
+        if (cut < 60) cut = rest.lastIndexOf(' ', 180);
+        if (cut < 60) cut = 180;
+        out.push(rest.slice(0, cut + 1).trim()); rest = rest.slice(cut + 1).trim();
+    }
+    if (rest) out.push(rest);
+    return out;
+}
+// onDone after the last piece; onFail when Google's voice cannot play either (offline, refused).
+function speakWithGoogleVoice(text, lang, gen, onDone, onFail) {
+    if (navigator.onLine === false) { onFail(); return; }
+    stopGoogleVoice();
+    const chunks = googleVoiceChunks(text), tl = String(lang || 'fr').slice(0, 2).toLowerCase();
+    let i = 0, failed = false;
+    const fail = () => { if (failed) return; failed = true; googleVoiceAudio = null; traceTts('google-failed', text); onFail(); };
+    const next = () => {
+        if (gen !== state.ttsGen || failed) return;
+        if (i >= chunks.length) { googleVoiceAudio = null; traceTts('google-end', text); onDone(); return; }
+        const a = new Audio(`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=${encodeURIComponent(tl)}&q=${encodeURIComponent(chunks[i++])}`);
+        googleVoiceAudio = a;
+        a.onended = next;
+        a.onerror = fail;
+        const played = a.play();
+        if (played && played.catch) played.catch(fail);
+    };
+    traceTts('google', text);
+    next();
+}
 function cancelSpeech(force) {
+    stopGoogleVoice();
     stopLocalSpeech();   // локальний голос (js/local-speech.js) зупиняється разом із браузерним
     if (!ttsSynth || !(force || ttsSynth.speaking || ttsSynth.pending || ttsSynth.paused)) return false;
     ttsSynth.cancel();
@@ -115,6 +158,8 @@ const liveUtterances = new Set();
 let ttsNoSoundShown = false;
 function speakWithRecovery(u, gen, mayRetry) {
     const onEnd = u.onend, onError = u.onerror;
+    const viaGoogle = (e) => speakWithGoogleVoice(u.text, u.lang, gen, () => { if (onEnd) onEnd.call(u, {}); }, () => { if (onError) onError.call(u, e || { error: 'google-failed' }); });
+    if (systemVoiceBroken) { viaGoogle(); return; }   // the device failed earlier this session: straight to Google
     let started = false, settled = false, watchdog = 0;
     const done = () => { settled = true; clearTimeout(watchdog); liveUtterances.delete(u); };
     const retry = (why) => {
@@ -138,6 +183,11 @@ function speakWithRecovery(u, gen, mayRetry) {
         const error = e && e.error;
         if (mayRetry && !started && gen === state.ttsGen && TTS_RETRYABLE_ERRORS.has(error)) { retry(error); return; }
         done(); traceTts('error:' + error, u.text);
+        if (GOOGLE_VOICE_ERRORS.has(error) && gen === state.ttsGen) {
+            if (error !== 'no-start') systemVoiceBroken = true;
+            viaGoogle(e);
+            return;
+        }
         if (error !== 'interrupted' && error !== 'canceled') console.warn('[tts] speech failed:', error, u.text.slice(0, 60));
         if (onError) onError.call(u, e);
     };
