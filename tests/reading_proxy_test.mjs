@@ -97,4 +97,47 @@ let sr = await speak('web.ai-ebook-reader.uk', 'https://web.ai-ebook-reader.uk')
 ok('the speech server lets the reading proxy\'s pages in (503 here only because no tunnel is configured in the test)', sr.status === 503, String(sr.status));
 sr = await speak('web.ai-ebook-reader.uk', 'https://evil.example');
 ok('... but not another site\'s page', sr.status === 403, String(sr.status));
+// Microsoft's neural voices (Azure AI Speech) when the owner's computer does not answer — same function, mocked network.
+{
+    const calls = [];
+    let tunnel = () => new Response('', { status: 530 });
+    const store = new Map();
+    globalThis.caches = { default: { match: async r => store.get(r.url)?.clone(), put: async (r, res) => { store.set(r.url, res); } } };
+    globalThis.fetch = async (url, init = {}) => {
+        const u = String(url); calls.push({ u, init });
+        if (u.startsWith('https://tunnel.example/')) return tunnel();
+        if (u === 'https://westeurope.tts.speech.microsoft.com/cognitiveservices/v1') return new Response(new Uint8Array([0xff, 0xf3, 1, 2]), { status: 200, headers: { 'content-type': 'audio/mpeg' } });
+        throw new Error('unexpected ' + u);
+    };
+    const env = { SPEECH_TUNNEL_URL: 'https://tunnel.example', SPEECH_TOKEN: 't', AZURE_SPEECH_KEY: 'k', AZURE_SPEECH_REGION: 'westeurope' };
+    const say = (body, e = env, path = 'speak') => speech.onRequest({ request: new Request('https://ai-ebook-reader.pages.dev/api/speech/' + path, { method: path === 'speak' ? 'POST' : 'GET', headers: { origin: 'https://ai-ebook-reader.pages.dev', 'content-type': 'application/json' }, body: path === 'speak' ? JSON.stringify(body) : undefined }), env: e, params: { path: [path] } });
+    let r = await say({ text: "l'école <b>", lang: 'fr' });
+    const az = calls.find(c => c.u.includes('tts.speech.microsoft.com'));
+    ok('the computer down (530): Microsoft\'s voice answers with MP3', r.status === 200 && r.headers.get('content-type') === 'audio/mpeg' && r.headers.get('x-speech-engine') === 'azure');
+    ok('... asked officially (Azure key header, SSML with the books\' French voice, the text escaped)', az && new Headers(az.init.headers).get('ocp-apim-subscription-key') === 'k'
+        && az.init.body.includes('<voice name="fr-FR-DeniseNeural">l&apos;école &lt;b&gt;</voice>'), az && az.init.body);
+    calls.length = 0; r = await say({ text: "l'école <b>", lang: 'fr' });
+    ok('the same text again comes from the cache (no second Azure request)', r.status === 200 && !calls.some(c => c.u.includes('microsoft')));
+    tunnel = () => new Response(new Uint8Array([82, 73, 70, 70]), { status: 200, headers: { 'content-type': 'audio/wav' } });
+    calls.length = 0; r = await say({ text: 'bonjour', lang: 'fr' });
+    ok('the computer up: its voice (Kokoro), Azure not asked', r.status === 200 && r.headers.get('content-type') === 'audio/wav' && !calls.some(c => c.u.includes('microsoft')));
+    tunnel = () => new Response('too long', { status: 400 });
+    calls.length = 0; r = await say({ text: 'x', lang: 'fr' });
+    ok('a real refusal of the computer (4xx) is passed on, not replaced', r.status === 400 && !calls.some(c => c.u.includes('microsoft')));
+    calls.length = 0; r = await say({ text: 'hello', lang: 'en' }, { AZURE_SPEECH_KEY: 'k', AZURE_SPEECH_REGION: 'westeurope', AZURE_SPEECH_VOICES: 'en=en-US-JennyNeural, fr=fr-CA-SylvieNeural' });
+    ok('no tunnel configured: Azure alone; AZURE_SPEECH_VOICES picks the voice', r.status === 200 && calls.length === 1 && calls[0].init.body.includes('en-US-JennyNeural'));
+    r = await say({ text: 'x'.repeat(1001), lang: 'fr' }, { AZURE_SPEECH_KEY: 'k', AZURE_SPEECH_REGION: 'westeurope' });
+    ok('an over-long text is not sent to Azure (quota)', r.status === 502);
+    r = await say({ text: 'x', lang: 'zz' }, { AZURE_SPEECH_KEY: 'k', AZURE_SPEECH_REGION: 'westeurope' });
+    ok('a language without a voice → 502 (the app falls back)', r.status === 502);
+    tunnel = () => new Response('', { status: 530 });
+    r = await say(null, env, 'health');
+    const h = await r.json();
+    ok('health with the computer down says Microsoft\'s voices are there (the app keeps «Локальний голос» working)', h.ok === true && h.device === 'azure' && h.languages.fr === 'azure' && h.languages.uk === 'azure');
+    r = await say({ text: 'x', lang: 'fr' }, {});
+    ok('nothing configured → 503, as before', r.status === 503);
+    r = await say({ text: 'x', lang: 'fr' }, { AZURE_SPEECH_KEY: 'k', AZURE_SPEECH_REGION: 'west europe; evil' });
+    ok('a malformed region is not used in the address', r.status === 503);
+    delete globalThis.caches;
+}
 console.log('ALL PASS');
