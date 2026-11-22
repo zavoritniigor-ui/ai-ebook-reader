@@ -9,7 +9,9 @@
 const ALLOWED = new Set(['health', 'speak']);
 const MAX_BODY_BYTES = 16 * 1024;   // фраза для озвучки коротка; сервер і так обмежує MAX_CHARS
 
-const ALLOWED_HOSTS = ['ai-ebook-reader.uk', 'ai-ebook-reader.pages.dev'];
+// web.ai-ebook-reader.uk: the reading proxy's host (functions/p/[[path]].js) — a word tapped on an exercise site is read
+// in the owner's voice too (owner, 2026-11-22). Sites shown there get nothing more than any visitor of the app already has.
+const ALLOWED_HOSTS = ['ai-ebook-reader.uk', 'ai-ebook-reader.pages.dev', 'web.ai-ebook-reader.uk'];
 // The app's own hosts. The backend refuses to serve any other deployment (a copied site). Add a host here for a new domain.
 function allowedHost(h) {
     return !!h && (ALLOWED_HOSTS.includes(h) || h.endsWith('.ai-ebook-reader.pages.dev') || h === 'localhost' || h === '127.0.0.1');
