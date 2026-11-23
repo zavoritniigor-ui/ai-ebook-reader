@@ -259,5 +259,47 @@ c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); __voices = [{{ name: 
 tap_word('#q', 'école')
 check('21d a browser without a natural voice (Chrome): unchanged, the computer reads first', "__sysV.length === 0 && __local.some(x => /école/.test(x.text))", timeout=3)
 c.js("__voices = []; 1")
+# ---------------------------------------------------------------- drag with a pen or a mouse, word by word (owner, 2026-11-23)
+c.js(f"(d => {{ if (d) d.shadowRoot.querySelector('.close').click(); }})({PANEL}); getSelection().removeAllRanges(); localStorage.removeItem('pp_autospeak'); __localVoice = 'on'; __local.length = 0; 1")
+c.js("addEventListener('pointerdown', e => setTimeout(() => { window.__downPrevented = e.defaultPrevented; }), true); 1")
+
+
+def word_pt(sel, word, at=.5):
+    return c.js(f"""(() => {{ const el = document.querySelector({json.dumps(sel)}); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n;
+      while ((n = w.nextNode())) {{ const i = n.data.indexOf({json.dumps(word)}); if (i >= 0) {{ const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + {len(word)});
+        const b = r.getBoundingClientRect(); return {{ x: b.left + b.width * {at}, y: b.top + b.height / 2 }}; }} }} return null; }})()""")
+
+
+def drag(sel, a, b, kind):
+    p, q = word_pt(sel, a), word_pt(sel, b)
+    c.call('Input.dispatchMouseEvent', type='mousePressed', x=p['x'], y=p['y'], button='left', buttons=1, clickCount=1, pointerType=kind)
+    for k in range(1, 6):
+        c.call('Input.dispatchMouseEvent', type='mouseMoved', x=p['x'] + (q['x'] - p['x']) * k / 5, y=p['y'] + (q['y'] - p['y']) * k / 5, button='left', buttons=1, pointerType=kind)
+    c.call('Input.dispatchMouseEvent', type='mouseReleased', x=q['x'], y=q['y'], button='left', buttons=0, clickCount=1, pointerType=kind)
+    pause(.8)
+
+
+SRC = f"{PANEL}.shadowRoot.querySelector('.src').textContent"
+drag('#q', 'Hier', 'pleuvait', 'mouse')
+check('22 a mouse drag selects whole words, then translates and reads them', f"{SHOWN} && {SRC} === 'Hier il pleuvait' && getSelection().toString() === 'Hier il pleuvait' && __local.some(x => x.text === 'Hier il pleuvait')", timeout=3)
+check('22b ... and the click the drag ends with does not replace it with one word', f"{SRC} === 'Hier il pleuvait'")
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); getSelection().removeAllRanges(); 1")
+drag('#q', 'chat', 'frère', 'pen')
+check('22c a pen drag backwards (to an earlier word) gives the words in reading order', f"{SHOWN} && {SRC} === 'frère. Le chat' && getSelection().toString() === 'frère. Le chat'", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); getSelection().removeAllRanges(); 1")
+p = word_pt('#r', 'Réponse')
+c.call('Input.dispatchMouseEvent', type='mousePressed', x=p['x'], y=p['y'], button='left', buttons=1, clickCount=1, pointerType='pen')
+c.call('Input.dispatchMouseEvent', type='mouseReleased', x=p['x'], y=p['y'], button='left', buttons=0, clickCount=1, pointerType='pen')
+pause(.3)
+check("22d a pen on an exercise's answer is left to the exercise (no drag of ours starts)", "__downPrevented === false")
+tap_word('#q', 'chat')
+check('22e a plain tap still translates its word', f"{SHOWN} && {SRC} === 'chat'", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); 1")
+p = word_pt('#q', 'école')
+c.call('Input.dispatchMouseEvent', type='mouseMoved', x=p['x'], y=p['y'], buttons=0, pointerType='pen'); pause(.3)
+check('22f a pen hovering over a word: the page does not pan, so touching down selects', "document.documentElement.style.touchAction === 'none'")
+chip = c.js("(b => { const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })([...document.querySelectorAll('button[data-pp]')].pop())")
+c.call('Input.dispatchMouseEvent', type='mouseMoved', x=chip['x'], y=chip['y'], buttons=0, pointerType='pen'); pause(.3)
+check('22g ... away from the text, panning is back', "document.documentElement.style.touchAction === ''")
 check('8 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL PASS')
