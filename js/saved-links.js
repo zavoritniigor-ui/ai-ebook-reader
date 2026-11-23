@@ -34,7 +34,7 @@ const SAVED_LINKS_KEY = 'reader_saved_links', SAVED_LINKS_MAX = 300;
 // The reading proxy (functions/p/[[path]].js): exercise sites listed there open through it, so a selected word or
 // sentence on them is translated. The same hosts as PROXY_HOSTS there (tests/reading_proxy_test.mjs compares them).
 const READING_PROXY_ORIGIN = 'https://web.ai-ebook-reader.uk';
-const READING_PROXY_HOSTS = ['francaisfacile.rfi.fr', 's.francaisfacile.rfi.fr', 'fle-rfi.h5p.com', 'c.h5p.io', 'eu-west-1.cdn.h5p.com'];
+const READING_PROXY_HOSTS = ['francaisfacile.rfi.fr', 's.francaisfacile.rfi.fr', 'fle-rfi.h5p.com', 'c.h5p.io', 'eu-west-1.cdn.h5p.com', 'www.francaisfacile.com'];
 function readingProxyUrl(url) {
     try { const u = new URL(url); if (u.protocol === 'https:' && READING_PROXY_HOSTS.includes(u.host)) return `${READING_PROXY_ORIGIN}/p/${u.host}${u.pathname}${u.search}${u.hash}`; } catch (e) {}
     return '';
