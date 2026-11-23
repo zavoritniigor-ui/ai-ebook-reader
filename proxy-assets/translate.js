@@ -172,12 +172,50 @@
         if (rest) out.push(rest);
         return out;
     }
+    // Edge on a computer has Microsoft's natural voices built in («Microsoft Denise Online (Natural) - French (France)»):
+    // free, the quality of the Azure voices. Where the browser has one for the language it reads FIRST (owner,
+    // 2026-11-23: «якщо браузер має природний голос … читати ним першим»); without one (Chrome, phones) nothing changes.
+    // Such a voice needs the network: when it fails or does not start in NATURAL_START_MS, the chain below reads.
+    const NATURAL_VOICE = /natural|neural/i, NATURAL_START_MS = 3000;
+    const MAIN_LOCALE = { fr: 'fr-fr', en: 'en-gb', uk: 'uk-ua', es: 'es-es', de: 'de-de', it: 'it-it', pt: 'pt-pt' };
+    let voiceList = [];
+    const loadVoices = () => { try { voiceList = speechSynthesis.getVoices() || []; } catch (e) {} };
+    try { loadVoices(); speechSynthesis.addEventListener?.('voiceschanged', loadVoices); } catch (e) {}
+    const voiceLang = v => String(v.lang || '').toLowerCase().replace('_', '-');
+    function langVoices(lang) {
+        loadVoices();   // read afresh each time: cheap, and right even when «voiceschanged» never came
+        const code = String(lang).slice(0, 2).toLowerCase();
+        return voiceList.filter(v => voiceLang(v).startsWith(code));
+    }
+    function naturalVoice(lang) {
+        const all = langVoices(lang).filter(v => NATURAL_VOICE.test(v.name || ''));
+        return all.find(v => voiceLang(v) === MAIN_LOCALE[String(lang).slice(0, 2).toLowerCase()]) || all[0] || null;
+    }
+    function naturalSpeak(my, text, voice, fallback) {
+        let started = false, over = false;
+        const giveUp = () => { if (over || my !== speakSeq) return; over = true; try { speechSynthesis.cancel(); } catch (e) {} fallback(); };
+        try {
+            speechSynthesis.cancel(); speechSynthesis.resume();
+            const u = new SpeechSynthesisUtterance(text);
+            u.voice = voice; u.lang = voice.lang;
+            u.onstart = () => { started = true; };
+            u.onend = () => { over = true; };
+            // «interrupted» / «canceled»: our own cancel() for the next word, not a failure of the voice
+            u.onerror = e => { if (!(e && /interrupted|canceled/.test(e.error || ''))) giveUp(); };
+            window.__ppUtterance = u;
+            speechSynthesis.speak(u);
+            setTimeout(() => { if (!started) giveUp(); }, NATURAL_START_MS);
+        } catch (e) { giveUp(); }
+    }
+    // The last resort, reached when the network voices failed: a voice on the device itself first (works offline),
+    // so an online natural voice that just failed is not tried again.
     function systemSpeak(text, lang) {
         try {
             speechSynthesis.cancel(); speechSynthesis.resume();   // resume(): Chrome on Android can be left paused
             const u = new SpeechSynthesisUtterance(text);
             u.lang = lang === 'fr' ? 'fr-FR' : lang;
-            const v = speechSynthesis.getVoices().find(x => x.lang.toLowerCase().startsWith(lang.slice(0, 2)));
+            const own = langVoices(lang);
+            const v = own.find(x => x.localService) || own[0];
             if (v) u.voice = v;
             window.__ppUtterance = u;   // kept referenced: Chrome may drop an utterance held only by its queue
             speechSynthesis.speak(u);
@@ -207,11 +245,17 @@
             return url;
         } catch (e) { localDownUntil = Date.now() + LOCAL_REST_MS; return null; }
     }
-    async function speak(text, lang = SRC) {
-        const my = ++speakSeq, chunks = ttsChunks(text);
+    function speak(text, lang = SRC) {
+        const my = ++speakSeq, chunks = ttsChunks(text), clean = String(text).replace(/\s+/g, ' ').trim();
         try { speechSynthesis.cancel(); } catch (e) {}
         if (player) { try { player.pause(); } catch (e) {} player = null; }
-        const own = await localSpeechUrl(String(text).replace(/\s+/g, ' ').trim(), lang);
+        const natural = naturalVoice(lang);
+        // Started here, in the tap itself: the browser lets a page speak only right after a user's gesture.
+        if (natural) naturalSpeak(my, clean, natural, () => ownOrGoogle(my, clean, chunks, lang));
+        else ownOrGoogle(my, clean, chunks, lang);
+    }
+    async function ownOrGoogle(my, clean, chunks, lang) {
+        const own = await localSpeechUrl(clean, lang);
         if (my !== speakSeq) return;
         if (own) {
             const a = new Audio(own); player = a;

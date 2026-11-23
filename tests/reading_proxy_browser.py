@@ -30,7 +30,13 @@ window.__dev = [];
 // Sound: Google Translate's voice is an <audio>; the device's voice is speechSynthesis. Both recorded, nothing plays.
 window.__plays = []; window.__sys = []; window.__audioFails = false;
 window.Audio = function (src) { return { src, play() { __plays.push(src); return __audioFails ? Promise.reject(new Error('NotAllowedError')) : Promise.resolve(); }, pause() {} }; };
-Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { speak(u) { __sys.push(u.text + '|' + u.lang); }, cancel() {}, resume() {}, getVoices: () => [] } });
+// __voices: what getVoices() lists (none, as on CI, unless a check sets them). __natMode: how a voice behaves — 'start'
+// (starts reading), 'error' (fails, as Edge's online voice offline), 'silent' (never starts).
+window.__voices = []; window.__natMode = 'start'; window.__sysV = [];
+window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { speak(u) { __sys.push(u.text + '|' + u.lang); __sysV.push(u.text + '|' + (u.voice ? u.voice.name : ''));
+  if (__natMode === 'start') setTimeout(() => u.onstart && u.onstart(), 10); else if (__natMode === 'error') setTimeout(() => u.onerror && u.onerror({ error: 'network' }), 10); },
+  cancel() {}, resume() {}, getVoices: () => __voices } });
 // Chrome on a computer has its own Translator API (CI's does, with no model): off, except where it is what is tested.
 try { delete window.Translator; } catch (e) {} window.Translator = undefined; delete window.Translator;
 if (sessionStorage.getItem('pp_test_on_device') === '1') window.Translator = {
@@ -234,5 +240,24 @@ check('20c the computer off: Google\'s voice reads it', f"__local.length === 1 &
 c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); __plays.length = 0; 1")
 tap_word('#q', 'chat')
 check('20d ... and the next words do not wait for the computer again (two minutes)', f"__local.length === 1 && {PLAYED}[0] === 'chat|fr'", timeout=5)
+# ---------------------------------------------------------------- Edge's own natural voice first (owner, 2026-11-23)
+EDGE_VOICES = """[{ name: 'Microsoft Hortense - French (France)', lang: 'fr-FR', localService: true },
+  { name: 'Microsoft Antoine Online (Natural) - French (Canada)', lang: 'fr-CA', localService: false },
+  { name: 'Microsoft Denise Online (Natural) - French (France)', lang: 'fr-FR', localService: false }]"""
+c.call('Page.reload'); c.wait("document.readyState === 'complete'", timeout=20); pause(.5)
+c.js(f"__voices = {EDGE_VOICES}; __natMode = 'start'; __localVoice = 'on'; __plays.length = 0; __local.length = 0; __sysV.length = 0; 1")
+tap_word('#q', 'chat')
+check("21 Edge with a natural French voice: it reads the word first (France's, not Canada's); no computer, no Google",
+      "__sysV[0] === 'chat|Microsoft Denise Online (Natural) - French (France)' && __local.length === 0 && __plays.length === 0", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); __natMode = 'error'; __sysV.length = 0; 1")
+tap_word('#q', 'frère')
+check("21b the natural voice fails (Edge offline): the owner's computer reads it", "__local.length === 1 && __local[0].text === 'frère' && __plays.length === 1", timeout=3)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); __natMode = 'silent'; __plays.length = 0; 1")
+tap_word('#q', 'vais')
+check('21c the natural voice never starts: after 3 s the next voice reads it', "__local.some(x => x.text === 'vais') && __plays.length === 1", timeout=6)
+c.js(f"{PANEL}.shadowRoot.querySelector('.close').click(); __voices = [{{ name: 'Google français', lang: 'fr-FR', localService: false }}]; __natMode = 'start'; __plays.length = 0; __sysV.length = 0; 1")
+tap_word('#q', 'école')
+check('21d a browser without a natural voice (Chrome): unchanged, the computer reads first', "__sysV.length === 0 && __local.some(x => /école/.test(x.text))", timeout=3)
+c.js("__voices = []; 1")
 check('8 no page errors', "__errors.length === 0 || JSON.stringify(__errors)")
 print('ALL PASS')
