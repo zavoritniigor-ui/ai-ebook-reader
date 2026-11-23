@@ -67,11 +67,13 @@ export class InlineScriptRewriter {
         t.replace(out, { html: true });
     }
 }
-class HeadInjector {
+export class HeadInjector {
     constructor(host) { this.host = host; }
     element(el) {
         // First in <head>, not deferred: it must wrap fetch / XMLHttpRequest before the site's own scripts run.
-        el.prepend(`<script src="/proxy-assets/translate.js?v=${TRANSLATE_JS_VERSION}" data-host="${this.host}" data-hosts="${[...PROXY_HOSTS].join(' ')}"></script>`, { html: true });
+        // charset="utf-8": without it a script is read in the PAGE's encoding, and a windows-1252 site (francaisfacile.com)
+        // turned the panel's Ukrainian labels and emoji into «Ð£ÐºÑ€Ð°Ñ—Ð½ÑÑŒÐºÐ°», «ðŸ"Š».
+        el.prepend(`<script src="/proxy-assets/translate.js?v=${TRANSLATE_JS_VERSION}" charset="utf-8" data-host="${this.host}" data-hosts="${[...PROXY_HOSTS].join(' ')}"></script>`, { html: true });
     }
 }
 
