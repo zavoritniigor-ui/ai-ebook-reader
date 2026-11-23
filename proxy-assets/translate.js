@@ -358,18 +358,21 @@
     function mark(range, name) {
         try { if (!window.CSS || !CSS.highlights) return; CSS.highlights.delete('pp-word'); CSS.highlights.delete('pp-sentence'); if (range) CSS.highlights.set(name, new Highlight(range)); } catch (e) {}
     }
+    // The page's own controls: links, buttons, answers, fields, things to drag; and anything drawn as clickable when it is
+    // small (a card, an answer) — a whole clickable column of text is not one.
+    function ownedByPage(t) {
+        if (t.closest(INTERACTIVE)) return true;
+        for (let el = t; el && el !== document.body; el = el.parentElement)
+            if (getComputedStyle(el).cursor === 'pointer' && el.getBoundingClientRect().height <= 160) return true;
+        return false;
+    }
     // anyControl: a long press translates even the words of buttons, answers and links (a tap there is the exercise's).
     function tapTarget(e, anyControl = false) {
         if (!tapOn() || e.defaultPrevented || e.button > 0) return null;
         const sel = getSelection(); if (!anyControl && sel && !sel.isCollapsed) return null;   // a selection is translated by itself
         const t = e.target;
         if (!(t instanceof Element) || t.closest('[data-pp]')) return null;
-        if (!anyControl) {
-            if (t.closest(INTERACTIVE)) return null;
-            // Drawn as clickable: a small thing (a card, an answer) is the page's; a whole clickable column of text is not.
-            for (let el = t; el && el !== document.body; el = el.parentElement)
-                if (getComputedStyle(el).cursor === 'pointer' && el.getBoundingClientRect().height <= 160) return null;
-        }
+        if (!anyControl && ownedByPage(t)) return null;
         const hit = wordAtPoint(e.clientX, e.clientY, t);
         if (!hit) return null;
         const c = { node: hit.node }, found = hit, wr = hit.range;
@@ -391,6 +394,7 @@
         else show(hit.word, hit.sentence);
     }
     document.addEventListener('click', e => {
+        if (dragEndedAt && Date.now() - dragEndedAt < 600) { dragEndedAt = 0; return; }   // the click a drag ends with
         const hit = tapTarget(e);
         if (!hit) return;
         // The tap is ours: marking it handled keeps Chrome's own «Touch to Search» sheet (Android) from opening over the
@@ -406,6 +410,78 @@
         e.preventDefault();
         translateHit(hit);
     });
+    // ---------- drag with a pen or a mouse: the selection grows word by word, as in the reader ----------
+    // (owner, 2026-11-23: «чому не можу робити виділення стилусом так само легко, як в застосунку»; js/selection-drag.js
+    // is the reader's version.) The system selection jumps whole lines and a pen drag on a scrolling site scrolls it.
+    // Here: a press on a word starts; each word reached extends the selection to whole words, in document order; the
+    // release translates and reads it and leaves it as a real selection (it can be copied). A finger is left as it was.
+    let drag = null, dragEndedAt = 0;
+    const rangeFromTo = (a, b) => {
+        const r = document.createRange();
+        const aFirst = a.compareBoundaryPoints(Range.START_TO_START, b) <= 0;
+        const first = aFirst ? a : b, lastR = aFirst ? b : a;
+        r.setStart(first.startContainer, first.startOffset);
+        r.setEnd(lastR.endContainer, lastR.endOffset);
+        return r;
+    };
+    document.addEventListener('pointerdown', e => {
+        drag = null;
+        if ((e.pointerType !== 'pen' && e.pointerType !== 'mouse') || e.button !== 0 || !tapOn()) return;
+        const t = e.target;
+        if (!(t instanceof Element) || t.closest('[data-pp]') || ownedByPage(t)) return;
+        const hit = wordAtPoint(e.clientX, e.clientY, t);
+        if (!hit) return;   // empty space: the browser's own selection, or a pen scroll
+        e.preventDefault();   // no system selection with its jumps (the click of a plain tap still comes)
+        try { getSelection().removeAllRanges(); } catch (err) {}
+        drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: hit.range, range: hit.range, moved: false };
+    });
+    document.addEventListener('pointermove', e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        if (!drag.moved) {
+            if (Math.abs(e.clientX - drag.x) < 6 && Math.abs(e.clientY - drag.y) < 6) return;   // a pen's tremble is still a tap
+            drag.moved = true;
+        }
+        const hit = wordAtPoint(e.clientX, e.clientY, e.target instanceof Element ? e.target : null);
+        if (!hit) return;   // between words: the selection stays as it is
+        drag.range = rangeFromTo(drag.from, hit.range);
+        mark(drag.range, 'pp-word');
+        if (e.cancelable) e.preventDefault();
+    });
+    const endDrag = e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const d = drag; drag = null;
+        if (!d.moved) return;   // a tap: the click below translates the word
+        dragEndedAt = Date.now();
+        const text = clean(d.range.toString());
+        if (!worth(text)) { mark(null); return; }
+        last = text;   // the selection set below must not be translated a second time
+        try { const s = getSelection(); s.removeAllRanges(); s.addRange(d.range); } catch (err) {}
+        marked = { wordRange: d.range, sentenceRange: null };
+        if (autoSpeak()) speak(text);   // in the gesture itself: the browser allows the sound
+        if (inFrame) window.top.postMessage({ pp: 'translate', text }, ORIGIN);
+        else show(text);
+    };
+    document.addEventListener('pointerup', endDrag);
+    document.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) { drag = null; mark(null); } });
+    // A pen hovering over a word: touching down must select, not scroll the page — so while it hovers over text the page
+    // does not pan (touch-action is read when the pen touches). Over empty space, and a moment after the pen has gone,
+    // panning is back; a finger never hovers, so it scrolls as always.
+    let penRaf = 0, penTimer = 0, penX = 0, penY = 0, penTarget = null;
+    const panBack = () => { document.documentElement.style.touchAction = ''; };
+    document.addEventListener('pointermove', e => {
+        if (e.pointerType !== 'pen' || e.buttons || drag) return;
+        penX = e.clientX; penY = e.clientY; penTarget = e.target;
+        clearTimeout(penTimer); penTimer = setTimeout(panBack, 1500);
+        if (penRaf) return;
+        penRaf = requestAnimationFrame(() => {
+            penRaf = 0;
+            const t = penTarget instanceof Element ? penTarget : null;
+            const overWord = tapOn() && t && !t.closest('[data-pp]') && !ownedByPage(t) && !!wordAtPoint(penX, penY, t);
+            document.documentElement.style.touchAction = overWord ? 'none' : '';
+        });
+    });
+    document.addEventListener('pointerout', e => { if (e.pointerType === 'pen' && !e.relatedTarget && !drag) { clearTimeout(penTimer); panBack(); } });
+
     // The top page asks a frame to mark its sentence when «Речення» is chosen there.
     window.addEventListener('message', e => {
         if (e.origin !== ORIGIN || !e.data) return;
