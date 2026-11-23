@@ -34,7 +34,7 @@ asked = []; let r = await call('/p/evil.example/x');
 ok('a site not on the list -> 403, nothing fetched', r.status === 403 && asked.length === 0);
 asked = []; r = await call('/p/francaisfacile.rfi.fr/fr/', { method: 'PUT' });
 ok('only GET, HEAD and POST', r.status === 405 && asked.length === 0);
-ok('the list is the exercise sites only', [...PROXY_HOSTS].sort().join(' ') === 'c.h5p.io eu-west-1.cdn.h5p.com fle-rfi.h5p.com francaisfacile.rfi.fr s.francaisfacile.rfi.fr');
+ok('the list is the exercise sites only', [...PROXY_HOSTS].sort().join(' ') === 'c.h5p.io eu-west-1.cdn.h5p.com fle-rfi.h5p.com francaisfacile.rfi.fr s.francaisfacile.rfi.fr www.francaisfacile.com');
 
 // ---- the request it makes
 asked = []; r = await call('/p/francaisfacile.rfi.fr/fr/actualit%C3%A9/20261106-france-le-prix-goncourt-2026?x=1', {
