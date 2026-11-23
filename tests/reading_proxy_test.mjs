@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const copy = join(mkdtempSync(join(tmpdir(), 'reading-proxy-')), 'proxy.mjs');
 writeFileSync(copy, readFileSync(join(root, 'functions', 'p', '[[path]].js')));
-const { onRequest, proxiedUrl, InlineScriptRewriter, PROXY_HOSTS, proxyServedHere, TRANSLATE_JS_VERSION } = await import(pathToFileURL(copy).href);
+const { onRequest, proxiedUrl, InlineScriptRewriter, HeadInjector, PROXY_HOSTS, proxyServedHere, TRANSLATE_JS_VERSION } = await import(pathToFileURL(copy).href);
 function ok(name, cond, extra = '') { if (!cond) { console.error('FAIL', name, extra); process.exit(1); } console.log('PASS', name); }
 
 let asked = [], reply = () => new Response('ok', { headers: { 'content-type': 'text/plain' } });
@@ -80,6 +80,13 @@ rw.text(chunk('i.h5p.com\\/content\\/9\\/embed\\">"; var b = "https://fle-rfi.h5
 const done = outs.find(o => o[0] === 'replace')?.[1] || '';
 ok('inline scripts: an address split across chunks is rewritten (JSON-escaped and plain); other sites untouched',
     done.includes('\\/p\\/fle-rfi.h5p.com\\/content\\/9\\/embed') && done.includes('"/p/fle-rfi.h5p.com/js"') && done.includes('https://www.rfi.fr/x') && outs[0][0] === 'remove', done);
+// The injected script is read as UTF-8 whatever the site's own encoding (a windows-1252 page garbled the panel's labels).
+{
+    let injected = '';
+    new HeadInjector('www.francaisfacile.com').element({ prepend(html) { injected = html; } });
+    ok('the injected panel script is declared UTF-8 (a windows-1252 site must not garble its labels)',
+        /^<script src="\/proxy-assets\/translate\.js\?v=[0-9a-f]{12}" charset="utf-8" /.test(injected), injected);
+}
 // The app opens these hosts through the proxy (js/saved-links.js READING_PROXY_HOSTS): the two lists must be the same.
 const appHosts = JSON.parse(readFileSync(join(root, 'js', 'saved-links.js'), 'utf8').match(/READING_PROXY_HOSTS = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
 ok('the app opens through the proxy exactly the sites the proxy serves', appHosts.slice().sort().join(' ') === [...PROXY_HOSTS].sort().join(' '), appHosts.join(' '));
