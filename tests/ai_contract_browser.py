@@ -20,6 +20,9 @@ import practice_fixtures as PF
 URL = os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html')
 c = CDP(); c.sock.settimeout(120)
 c.call('Page.enable'); c.call('Runtime.enable'); c.call('Network.enable'); c.call('Network.setBypassServiceWorker', bypass=True)
+# This suite tests the AI request for a tapped word: the conjugation-tables path (js/grammar-conjugation.js) is off here and has
+# its own suite (tests/grammar_local_tables_browser.py).
+c.call('Page.addScriptToEvaluateOnNewDocument', source='window.__grammarAiOnly = true;')
 KEY = 'test-key-SECRET-9f3a71c2d8'
 
 

@@ -186,3 +186,4 @@ tests/pdf_qr_browser.py
 tests/saved_links_browser.py
 tests/reading_proxy_browser.py
 tests/tts_google_fallback_browser.py
+tests/grammar_local_tables_browser.py

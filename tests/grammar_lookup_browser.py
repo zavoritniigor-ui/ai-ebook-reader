@@ -73,14 +73,14 @@ check("3 the verb is shown: lemma, the learner's word, the six forms in je..ils 
 check("4 alternatives are buttons (the duplicate of the lemma dropped)",
       "[...document.querySelectorAll('#grammar-content .grammar-lookup-alts button')].map(b => b.textContent).join('|') === 'dévorer — жадібно'")
 c.js("[...document.querySelectorAll('#grammar-controls-bar button')].find(b => b.textContent === 'Imparfait').click(); 1")
-check("5 a tense button conjugates the looked-up verb like a word from the book",
-      "__calls.length === 2 && __calls[1].task === 'grammar_paradigm' && __calls[1].prompt.includes('\"manger\"') && __calls[1].prompt.includes('Imparfait') && document.querySelector('#grammar-content .grammar-grid-title').textContent === 'Imparfait' && document.querySelector('#grammar-content .grammar-grid-value').textContent === 'mangeais' || JSON.stringify(__calls.map(x => x.task))", timeout=5)
+check("5 a tense button conjugates the looked-up verb like a word from the book -- from the conjugation tables, no AI call (js/grammar-conjugation.js)",
+      "__calls.length === 1 && document.querySelector('#grammar-content .grammar-grid-title').textContent === 'Imparfait' && document.querySelector('#grammar-content .grammar-grid-value').textContent === 'mangeais' || JSON.stringify(__calls.map(x => x.task))", timeout=5)
 check("5b ... and the learner's word and the alternatives stay on the card", "document.querySelector('#grammar-content .grammar-focus-query')?.textContent.includes('їсти') && !!document.querySelector('#grammar-content .grammar-lookup-alts button')")
 
 # ---- 3. an alternative
 c.js("document.querySelector('#grammar-content .grammar-lookup-alts button').click(); 1")
 check("6 an alternative is looked up in turn, keeping the learner's original word on screen",
-      "__calls.length === 3 && __calls[2].prompt.includes('typed \"dévorer\"') && document.querySelector('#grammar-content .grammar-focus-head b').textContent === 'dévorer' && document.querySelector('#grammar-content .grammar-focus-query').textContent.includes('їсти') || JSON.stringify(__calls.map(x => x.task))", timeout=5)
+      "__calls.length === 2 && __calls[1].prompt.includes('typed \"dévorer\"') && document.querySelector('#grammar-content .grammar-focus-head b').textContent === 'dévorer' && document.querySelector('#grammar-content .grammar-focus-query').textContent.includes('їсти') || JSON.stringify(__calls.map(x => x.task))", timeout=5)
 
 # ---- 4. an adjective
 type_and_submit('червоний')

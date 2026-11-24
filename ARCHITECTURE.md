@@ -24,7 +24,7 @@ Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.
 `core-text` → `lang-detect` → `local-speech` → `tts` → `selection` → `selection-pdf-order` → `pdf-flow` → `selection-highlight` →
 `selection-drag` → `cefr-lexicon-data` → `learning-stats` →
 `reading-ribbon` → `book-marks` → `navigation` → `pdf-zoom-pan` → `ui-tooltip` → `translation` → `dictionaries` →
-`sentence-structure` → `grammar-svo` → `grammar-analysis` → `grammar-prompts` → `grammar-panel` → `grammar-lookup` →
+`sentence-structure` → `grammar-svo` → `grammar-analysis` → `grammar-conjugation` → `grammar-prompts` → `grammar-panel` → `grammar-lookup` →
 `grammar-run` → `grammar-rules-data-fr/en` → `grammar-rules-details-fr/en` → `grammar-rules` →
 `ai-client` → `practice-session` → `practice-worksheet` → `dictation` → `offline-catalog` → `offline-dict-catalog` →
 `offline-translate` → `offline-dict` → `device-llm-catalog` → `device-llm` → `pdf-ink` → `text-ink` → `pdf-crop` → `pdf-qr` →
@@ -99,6 +99,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `translation-ai.js` | the two translation paths (machine / AI with word alignment), request chunks, cleanup of model output |
 | `grammar-svo.js` | Ask AI / Language level tasks, `startAiTask`, `flattenRange` |
 | `grammar-analysis.js`, `grammar-prompts.js` | Grammar analysis (prompt, `normalizeGrammarAnalysis`, verb endings); Ask AI and level prompts |
+| `grammar-conjugation.js` (+ `dict/fr-verbs.json`, `tools/build_fr_verbs.py`) | French conjugation tables without AI: a tapped verb's tense/person/table, the tense buttons; the AI only explains |
 | `grammar-panel.js`, `grammar-lookup.js`, `grammar-run.js` | Grammar panel rendering and `focusGrammarItem`; «your own word» lookup; `runGrammarAnalysis`, Practice button |
 | `sentence-structure.js` | sentence parts coloured in the text |
 | `grammar-rules.js` (+ `grammar-rules-data-*`, `grammar-rules-details-*`) | Rules panel: catalog and rules found on the page |
