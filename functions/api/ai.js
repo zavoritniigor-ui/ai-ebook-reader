@@ -10,6 +10,9 @@
 // НЕ відкритий проксі: лише запити зі сторінок самого застосунку (Origin), лише моделі застосунку, обмежені розмір запиту й
 // бюджет відповіді, грубе обмеження частоти на IP (у межах одного екземпляра функції). Ліміт витрат варто поставити й у
 // кабінеті провайдера — це єдиний справжній запобіжник від рахунку.
+// Власник (functions/_owner.js; пароль у схованому полі «Від розробника») — без обмежень сервера: без обмеження частоти,
+// будь-яка модель, бюджет відповіді такий, як просить застосунок (власник, 2026-11-23). Решта — як раніше.
+import { isOwner } from '../_owner.js';
 const URLS = { groq: 'https://api.groq.com/openai/v1/chat/completions', openai: 'https://api.openai.com/v1/responses' };
 const SECRETS = { groq: 'GROQ_API_KEY', openai: 'OPENAI_API_KEY' };
 // Ті самі моделі, що в js/ai-client.js (GROQ_MODEL, GROQ_VISION_MODEL, OPENAI_MODEL) — змінюючи там, змініть і тут. Groq рахує ліміти
@@ -83,17 +86,20 @@ export async function onRequestPost({ request, env }) {
     const key = secret(env, provider);
     if (!key) return json({ error: 'no shared key' }, 503);
     if (!sameOrigin(request, url)) return json({ error: 'forbidden' }, 403);
-    if (rateLimited(request.headers.get('cf-connecting-ip') || 'unknown')) return json({ error: 'rate limited' }, 429);
+    const owner = await isOwner(request, env);
+    if (!owner && rateLimited(request.headers.get('cf-connecting-ip') || 'unknown')) return json({ error: 'rate limited' }, 429);
     if (Number(request.headers.get('content-length') || 0) > MAX_BODY_BYTES) return json({ error: 'too large' }, 413);
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return json({ error: 'too large' }, 413);
     let body;
     try { body = JSON.parse(raw); } catch (e) { return json({ error: 'bad json' }, 400); }
-    if (!body || typeof body !== 'object' || Array.isArray(body) || !MODELS[provider].has(body.model)) return json({ error: 'bad model' }, 400);
+    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.model !== 'string' || (!owner && !MODELS[provider].has(body.model))) return json({ error: 'bad model' }, 400);
     // Бюджет відповіді — не більший за найбільший, що його просить застосунок; без нього провайдер узяв би свій максимум.
-    const budgetField = provider === 'openai' ? 'max_output_tokens' : 'max_completion_tokens';
-    const budget = Number(body[budgetField]);
-    body[budgetField] = Number.isFinite(budget) && budget > 0 ? Math.min(Math.floor(budget), MAX_OUTPUT_TOKENS) : 2048;
+    if (!owner) {
+        const budgetField = provider === 'openai' ? 'max_output_tokens' : 'max_completion_tokens';
+        const budget = Number(body[budgetField]);
+        body[budgetField] = Number.isFinite(budget) && budget > 0 ? Math.min(Math.floor(budget), MAX_OUTPUT_TOKENS) : 2048;
+    }
     for (const k of ['tools', 'tool_choice', 'n', 'background', 'previous_response_id', 'conversation']) delete body[k];
     if (provider === 'openai') body.store = false;
     const upstream = await fetch(URLS[provider], {

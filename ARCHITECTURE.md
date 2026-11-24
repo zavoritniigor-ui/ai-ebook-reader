@@ -121,7 +121,8 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 
 | File | Does |
 |---|---|
-| `ai.js` | shared-key AI proxy (Groq/OpenAI), passes streams through |
+| `ai.js` | shared-key AI proxy (Groq/OpenAI), passes streams through; the owner's devices skip its limits |
+| `owner.js` + `../_owner.js` | the owner's hidden sign-in (5 taps on the logo in «Від розробника», password = secret `OWNER_KEY` → HttpOnly cookie) |
 | `library.js` | proxy to fixed library hosts only (Gutenberg, Wikisource, Internet Archive, BNR, SE); ids/paths validated; same-origin requests only |
 | `offline-model.js`, `device-llm.js` | model file downloads from allow-listed sources, size/SHA-256 checked |
 | `speech/[[path]].js` | proxy to the owner's local speech server (tunnel and token in Cloudflare secrets) |

@@ -7,6 +7,9 @@
 // Every key and address lives ONLY in Cloudflare secrets, never in the browser. Neither configured → 503, and the
 // app uses the browser's voice. The visitor's IP (cf-connecting-ip) goes to the computer for its rate limit.
 // NOT an open proxy: only the app's own pages (Origin/Referer), two routes, a bounded body and text.
+// The owner's requests (functions/_owner.js) go to the computer marked X-Speech-Owner: 1, and its per-person limit
+// skips them (owner, 2026-11-23). Only this function holds the token, so nobody else can send that mark.
+import { isOwner } from '../../_owner.js';
 const ALLOWED = new Set(['health', 'speak']);
 const MAX_BODY_BYTES = 16 * 1024;   // фраза для озвучки коротка; сервер і так обмежує MAX_CHARS
 
@@ -90,7 +93,8 @@ export async function onRequest({ request, env, params }) {
         try {
             const upstream = await fetch(base + '/' + path, {
                 method: request.method,
-                headers: { 'Content-Type': 'application/json', 'X-Speech-Token': token, 'X-Client-IP': request.headers.get('cf-connecting-ip') || 'unknown' },
+                headers: { 'Content-Type': 'application/json', 'X-Speech-Token': token, 'X-Client-IP': request.headers.get('cf-connecting-ip') || 'unknown',
+                    ...(await isOwner(request, env) ? { 'X-Speech-Owner': '1' } : {}) },
                 body,
                 // health: the app waits 1.5 s for it (js/local-speech.js), so the computer gets 1 s and Azure the rest.
                 signal: AbortSignal.timeout(path === 'health' ? 1000 : TUNNEL_WAIT_MS),

@@ -47,5 +47,29 @@ check('7 the dialog closes with ✕', "(() => { document.querySelector('#develop
 c.js("state.uiLang = 'en'; applyI18n(); openDeveloperDialog(); 1"); time.sleep(0.2)
 check('8 the texts follow the menu language (English)',
       "document.querySelector('#developer-dialog .dev-title').textContent === 'From the developer' && /OpenAI may use these texts/.test(document.querySelector('#developer-dialog .dev-data-text').textContent) && document.getElementById('mr-dev-t').textContent === 'From the developer'")
+# The owner's hidden sign-in (owner, 2026-11-23): five quick taps on the logo; /api/owner is mocked (no server here).
+c.js("""state.uiLang = 'uk'; applyI18n(); document.getElementById('developer-dialog').close(); openDeveloperDialog();
+window.__ownerCalls = []; window.__nativeFetch = window.__nativeFetch || window.fetch; const nf = window.__nativeFetch;
+window.fetch = async (u, o) => {
+    if (String(u) !== '/api/owner') return nf(u, o);
+    const body = o && o.body ? JSON.parse(o.body) : null; __ownerCalls.push(body);
+    let status = 200, data = { owner: false, configured: true };
+    if (body && body.action === 'login') { if (body.key === 'right-password-0123456') data = { owner: true }; else { status = 403; data = { owner: false }; } }
+    return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+}; 1""")
+time.sleep(0.2)
+check('10 the owner box is hidden until the logo is tapped five times',
+      "(() => { const b = document.querySelector('#developer-dialog .dev-owner'); const logo = document.querySelector('#developer-dialog .dev-logo'); for (let i = 0; i < 4; i++) logo.click(); return b.hidden === true && getComputedStyle(b).display === 'none'; })()")
+c.js("document.querySelector('#developer-dialog .dev-logo').click(); 1"); time.sleep(0.3)
+check('11 the fifth tap shows it: a password field and «Увійти»',
+      "(() => { const d = document.querySelector('#developer-dialog'); return d.querySelector('.dev-owner').hidden === false && d.querySelector('.dev-owner-key').type === 'password' && d.querySelector('.dev-owner-in').textContent === 'Увійти' && /Введіть пароль власника/.test(d.querySelector('.dev-owner-state').textContent); })()")
+c.js("{ const d = document.querySelector('#developer-dialog'); d.querySelector('.dev-owner-key').value = 'wrong'; d.querySelector('.dev-owner-form').requestSubmit(); } 1"); time.sleep(0.3)
+check('12 a wrong password says so', "/Пароль не підходить/.test(document.querySelector('#developer-dialog .dev-owner-state').textContent)")
+c.js("{ const d = document.querySelector('#developer-dialog'); d.querySelector('.dev-owner-key').value = 'right-password-0123456'; d.querySelector('.dev-owner-form').requestSubmit(); } 1"); time.sleep(0.3)
+check('13 the right one: «власник», a «Вийти» button, the field emptied and the password kept nowhere in the app',
+      "(() => { const d = document.querySelector('#developer-dialog'); return /власник/.test(d.querySelector('.dev-owner-state').textContent) && d.querySelector('.dev-owner-out').hidden === false && d.querySelector('.dev-owner-form').hidden === true && d.querySelector('.dev-owner-key').value === '' && !Object.values(localStorage).some(v => String(v).includes('right-password')); })()")
+c.js("document.querySelector('#developer-dialog .dev-owner-out').click(); 1"); time.sleep(0.3)
+check('14 «Вийти» signs out', "__ownerCalls.at(-1).action === 'logout' && document.querySelector('#developer-dialog .dev-owner-form').hidden === false")
+check('15 reopened, the box is hidden again', "(() => { const d = document.getElementById('developer-dialog'); d.close(); openDeveloperDialog(); return d.querySelector('.dev-owner').hidden === true; })()")
 check('9 the logo is the Z / I icon at 512 px', "new Promise(r => { const i = new Image(); i.onload = () => r(i.naturalWidth === 512 && i.naturalHeight === 512); i.onerror = () => r(false); i.src = 'icons/icon-512.png?' + Date.now(); })")
 print('ALL DEVELOPER CHECKS PASSED')

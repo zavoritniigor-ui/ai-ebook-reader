@@ -54,6 +54,27 @@ Object.assign(I18N, {
     devSign: { uk: 'З повагою, Ігор Z.', en: 'Kind regards, Ihor Z.', fr: 'Cordialement, Ihor Z.', ru: 'С уважением, Игорь Z.', zh: '此致，Ihor Z.', ko: 'Ihor Z. 드림', hi: 'सादर, Ihor Z.', ga: 'Le meas, Ihor Z.', es: 'Atentamente, Ihor Z.' },
     devMailSubject: { uk: 'AI E-book Reader — побажання', en: 'AI E-book Reader — feedback', fr: 'AI E-book Reader — suggestions', ru: 'AI E-book Reader — пожелания', zh: 'AI E-book Reader — 反馈', ko: 'AI E-book Reader — 의견', hi: 'AI E-book Reader — सुझाव', ga: 'AI E-book Reader — aiseolas', es: 'AI E-book Reader — sugerencias' },
     devMailBody: { uk: 'Привіт! Мої побажання:\n\n\n\n—\nВерсія: {version}\nПристрій: {device}', en: 'Hello! My wishes:\n\n\n\n—\nVersion: {version}\nDevice: {device}', fr: 'Bonjour ! Mes souhaits :\n\n\n\n—\nVersion : {version}\nAppareil : {device}', ru: 'Привет! Мои пожелания:\n\n\n\n—\nВерсия: {version}\nУстройство: {device}', zh: '你好！我的建议：\n\n\n\n—\n版本：{version}\n设备：{device}', ko: '안녕하세요! 제 의견:\n\n\n\n—\n버전: {version}\n기기: {device}', hi: 'नमस्ते! मेरे सुझाव:\n\n\n\n—\nसंस्करण: {version}\nडिवाइस: {device}', ga: 'Dia duit! Mo mhianta:\n\n\n\n—\nLeagan: {version}\nGléas: {device}', es: '¡Hola! Mis sugerencias:\n\n\n\n—\nVersión: {version}\nDispositivo: {device}' },
+    // The owner's hidden sign-in (owner, 2026-11-23): five quick taps on the logo above.
+    devOwnerTitle: { uk: '🔑 Власник', en: '🔑 Owner', fr: '🔑 Propriétaire', ru: '🔑 Владелец', zh: '🔑 所有者', ko: '🔑 소유자', hi: '🔑 स्वामी', ga: '🔑 Úinéir', es: '🔑 Propietario' },
+    devOwnerYes: { uk: '✅ Цей пристрій — власник: обмеження сервера зняті.', en: '✅ This device is the owner: the server\'s limits are lifted.',
+        fr: '✅ Cet appareil est le propriétaire : les limites du serveur sont levées.', ru: '✅ Это устройство — владелец: ограничения сервера сняты.',
+        zh: '✅ 此设备为所有者：服务器限制已解除。', ko: '✅ 이 기기가 소유자입니다: 서버 제한이 해제되었습니다.', hi: '✅ यह डिवाइस स्वामी है: सर्वर की सीमाएँ हटा दी गई हैं।',
+        ga: '✅ Is é an gléas seo an t-úinéir: tá teorainneacha an fhreastalaí bainte.', es: '✅ Este dispositivo es el propietario: se han quitado los límites del servidor.' },
+    devOwnerNo: { uk: 'Введіть пароль власника, щоб зняти обмеження на цьому пристрої.', en: 'Enter the owner\'s password to lift the limits on this device.',
+        fr: 'Saisissez le mot de passe du propriétaire pour lever les limites sur cet appareil.', ru: 'Введите пароль владельца, чтобы снять ограничения на этом устройстве.',
+        zh: '输入所有者密码以解除此设备上的限制。', ko: '이 기기의 제한을 해제하려면 소유자 비밀번호를 입력하세요.', hi: 'इस डिवाइस पर सीमाएँ हटाने के लिए स्वामी का पासवर्ड डालें।',
+        ga: 'Cuir isteach pasfhocal an úinéara chun na teorainneacha a bhaint ar an ngléas seo.', es: 'Introduzca la contraseña del propietario para quitar los límites en este dispositivo.' },
+    devOwnerKey: { uk: 'Пароль', en: 'Password', fr: 'Mot de passe', ru: 'Пароль', zh: '密码', ko: '비밀번호', hi: 'पासवर्ड', ga: 'Pasfhocal', es: 'Contraseña' },
+    devOwnerIn: { uk: 'Увійти', en: 'Sign in', fr: 'Se connecter', ru: 'Войти', zh: '登录', ko: '로그인', hi: 'साइन इन', ga: 'Sínigh isteach', es: 'Entrar' },
+    devOwnerOut: { uk: 'Вийти', en: 'Sign out', fr: 'Se déconnecter', ru: 'Выйти', zh: '退出', ko: '로그아웃', hi: 'साइन आउट', ga: 'Sínigh amach', es: 'Salir' },
+    devOwnerWrong: { uk: 'Пароль не підходить.', en: 'Wrong password.', fr: 'Mot de passe incorrect.', ru: 'Пароль не подходит.', zh: '密码不正确。', ko: '비밀번호가 맞지 않습니다.', hi: 'पासवर्ड गलत है।', ga: 'Pasfhocal mícheart.', es: 'Contraseña incorrecta.' },
+    devOwnerNoKey: { uk: 'На сайті ще не задано пароль (секрет OWNER_KEY у Cloudflare).', en: 'No password on the site yet (secret OWNER_KEY in Cloudflare).',
+        fr: 'Aucun mot de passe sur le site pour l’instant (secret OWNER_KEY dans Cloudflare).', ru: 'На сайте ещё не задан пароль (секрет OWNER_KEY в Cloudflare).',
+        zh: '网站尚未设置密码（Cloudflare 中的密钥 OWNER_KEY）。', ko: '사이트에 아직 비밀번호가 없습니다 (Cloudflare의 비밀 OWNER_KEY).', hi: 'साइट पर अभी पासवर्ड नहीं है (Cloudflare में सीक्रेट OWNER_KEY)।',
+        ga: 'Níl pasfhocal ar an suíomh fós (rún OWNER_KEY in Cloudflare).', es: 'El sitio aún no tiene contraseña (secreto OWNER_KEY en Cloudflare).' },
+    devOwnerFail: { uk: 'Сервер не відповів. Спробуйте ще раз.', en: 'The server did not answer. Try again.', fr: 'Le serveur n’a pas répondu. Réessayez.',
+        ru: 'Сервер не ответил. Попробуйте ещё раз.', zh: '服务器没有响应。请重试。', ko: '서버가 응답하지 않았습니다. 다시 시도하세요.', hi: 'सर्वर ने जवाब नहीं दिया। फिर से कोशिश करें।',
+        ga: 'Níor fhreagair an freastalaí. Bain triail eile as.', es: 'El servidor no respondió. Inténtelo de nuevo.' },
 });
 
 // The app's version as the reader has it: the content identity of its main script.
@@ -78,10 +99,14 @@ function devDialog() {
         + '<button type="button" class="close-panel-btn dev-close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>'
         + '<div class="dev-body"><p class="dev-free"></p><div class="dev-data"><p class="dev-data-title"></p><p class="dev-data-text"></p></div>'
         + '<p class="dev-avoid"></p><a class="btn-primary dev-write" rel="noopener"></a><p class="dev-write-note"></p>'
-        + '<p class="dev-sign"><span class="dev-sign-name"></span> · <a class="dev-mail"></a></p></div>';
+        + '<p class="dev-sign"><span class="dev-sign-name"></span> · <a class="dev-mail"></a></p>'
+        + '<div class="dev-owner" hidden><p class="dev-owner-title"></p><p class="dev-owner-state"></p>'
+        + '<form class="dev-owner-form"><input type="password" class="dev-owner-key" autocomplete="current-password" required>'
+        + '<button type="submit" class="btn-primary dev-owner-in"></button></form><button type="button" class="dev-owner-out" hidden></button></div></div>';
     document.body.appendChild(dialog);
     dialog.querySelector('.dev-close').onclick = () => dialog.close();
     dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });   // a tap on the backdrop closes it
+    devOwnerWire(dialog);
     return dialog;
 }
 function renderDeveloperDialog() {
@@ -89,10 +114,51 @@ function renderDeveloperDialog() {
     set('.dev-title', 'mDev'); set('.dev-free', 'devFree'); set('.dev-data-title', 'devDataTitle'); set('.dev-data-text', 'devData');
     set('.dev-avoid', 'devAvoid'); set('.dev-write', 'devWrite'); set('.dev-write-note', 'devWriteNote'); set('.dev-sign-name', 'devSign');
     d.querySelector('.dev-close').setAttribute('aria-label', t('tClose'));
+    set('.dev-owner-title', 'devOwnerTitle'); set('.dev-owner-in', 'devOwnerIn'); set('.dev-owner-out', 'devOwnerOut');
+    d.querySelector('.dev-owner-key').placeholder = t('devOwnerKey');
+    d.querySelector('.dev-owner').hidden = true;   // hidden again every time the dialog opens
     const href = devMailHref();
     d.querySelector('.dev-write').href = href;
     const mail = d.querySelector('.dev-mail');
     mail.textContent = DEV_EMAIL; mail.href = 'mailto:' + DEV_EMAIL;
+}
+// ---- the owner's hidden sign-in (functions/api/owner.js) ----
+// The app is the same for everyone; on the owner's devices the server lifts its own limits (functions/api/ai.js). The password
+// goes to the server once and comes back as an HttpOnly cookie: it is never kept in the app or in localStorage.
+async function devOwnerAsk(body) {
+    try {
+        const res = await fetch('/api/owner', body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        return { status: res.status, owner: data.owner === true, configured: data.configured !== false };
+    } catch (e) { return { status: 0, owner: false, configured: true }; }
+}
+function devOwnerShow(d, r, failKey) {
+    d.querySelector('.dev-owner-state').textContent = t(failKey || (r.owner ? 'devOwnerYes' : r.configured ? 'devOwnerNo' : 'devOwnerNoKey'));
+    d.querySelector('.dev-owner-form').hidden = r.owner;
+    d.querySelector('.dev-owner-out').hidden = !r.owner;
+}
+function devOwnerWire(d) {
+    let taps = [];
+    d.querySelector('.dev-logo').addEventListener('click', async () => {
+        const now = Date.now();
+        taps = taps.filter(at => now - at < 3000).concat(now);
+        if (taps.length < 5) return;
+        taps = [];
+        d.querySelector('.dev-owner').hidden = false;
+        const r = await devOwnerAsk();
+        devOwnerShow(d, r, r.status === 200 ? '' : 'devOwnerFail');
+    });
+    d.querySelector('.dev-owner-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const input = d.querySelector('.dev-owner-key'), key = input.value;
+        input.value = '';
+        const r = await devOwnerAsk({ action: 'login', key });
+        devOwnerShow(d, r, r.status === 403 ? 'devOwnerWrong' : r.status === 503 ? 'devOwnerNoKey' : r.status === 200 ? '' : 'devOwnerFail');
+    });
+    d.querySelector('.dev-owner-out').addEventListener('click', async () => {
+        const r = await devOwnerAsk({ action: 'logout' });
+        devOwnerShow(d, { owner: false, configured: true }, r.status === 200 ? '' : 'devOwnerFail');
+    });
 }
 function openDeveloperDialog() {
     if (typeof closeFullMenu === 'function') closeFullMenu();
