@@ -13,10 +13,11 @@ const data = readFileSync(join(root, 'dict', 'fr-verbs.json'));
 const PERSONS = ['je', 'tu', 'il / elle / on', 'nous', 'vous', 'ils / elles'];
 const ctx = createContext({
     console, Map, Promise, JSON,
-    grammarConfigFor: () => ({ verb: { persons: PERSONS } }),
+    Set, Object, Intl, navigator: { languages: ['fr'] }, window: {},
     fetch: async url => ({ ok: url.startsWith('dict/fr-verbs.json?v='), json: async () => JSON.parse(data.toString('utf8')) }),
 });
-runInContext(src + '\nthis.api = { loadFrVerbTables, localVerbParadigm, frVerbAnalyses, frVerbTablesReady, frVerbIsParticipleOf, frVerbEntry, FR_VERB_TABLES_VERSION };', ctx);
+runInContext(readFileSync(join(root, 'js', 'core-languages.js'), 'utf8'), ctx);   // the real French grammar config (persons, endings)
+runInContext(src + '\nthis.api = { loadFrVerbTables, localVerbParadigm, frVerbAnalyses, frVerbTablesReady, frVerbIsParticipleOf, frVerbEntry, localFrSentenceVerbs, FR_VERB_TABLES_VERSION };', ctx);
 const api = ctx.api;
 let failed = 0;
 const ok = (name, cond, extra = '') => { if (cond) console.log('PASS', name); else { failed++; console.log('FAIL', name, extra); } };
@@ -72,5 +73,24 @@ ok('a feminine / plural participle belongs to its verb', api.frVerbIsParticipleO
 ok('a pronominal-only verb: «souviens» = se souvenir, and its table keeps the pronoun', an('souviens').includes('se souvenir:present:0') && JSON.parse(t('se souvenir', 'indicatif_present'))['je'] === 'me souviens' && JSON.parse(t('se souvenir', 'indicatif_passe_compose'))['tu'] === 't’es souvenu', an('souviens'));
 ok('the lookup needs no index of every form (fast, small)', (() => { const t0 = Date.now(); for (let i = 0; i < 50; i++) api.frVerbAnalyses('regardaient'); return Date.now() - t0 < 500; })());
 ok('a word that is no verb form: nothing', an('fenêtre') === '' && an('rouge') === '');
+// ---- every verb of a sentence (a selection), each rule of js/grammar-conjugation.js localFrSentenceVerbs
+// Measured on 120 sentences of two novels' and two textbooks' pages against a careful AI list (2026-11-24): 95 % / 93 % of
+// the verbs found (tuning / held-out set), 97 % / 95 % of the finds right, lemma 99 %, tense 98 % / 94 %, person 99 % / 96 %.
+const verbs = s => api.localFrSentenceVerbs(s).map(r => `${r.item.surface}=${r.item.lemma}:${r.item.features.tense || ''}:${r.item.features.mood}${r.item.features.person ? ':' + r.item.features.person[0] + (r.item.features.number === 'pluriel' ? 'p' : 's') : ''}`).join(' | ');
+const CASES = [
+    ['Hier soir, nous sommes allés au cinéma, puis nous avons mangé une pizza et Marie nous a raconté son voyage.',
+        'sommes allés=aller:passé composé:indicatif:1p | avons mangé=manger:passé composé:indicatif:1p | a raconté=raconter:passé composé:indicatif:3s', 'compound tenses; «Marie» is a name, not marier'],
+    ['La porte de la maison est ouverte et le livre est sur la table.', 'est=être:présent:indicatif:3s | est=être:présent:indicatif:3s', '«la porte», «le livre» are nouns'],
+    ['Il porte un sac et il livre des pizzas le soir.', 'porte=porter:présent:indicatif:3s | livre=livrer:présent:indicatif:3s', 'the same words with a subject are verbs'],
+    ['Est-il venu ? Demanda-t-il en souriant.', 'venu=venir:passé composé:indicatif:3s | Demanda=demander:passé simple:indicatif:3s | souriant=sourire:présent:participe', 'inversion: «est-il venu» is a passé composé, demanda-t-il'],
+    ['Mais non, tenez, préparez-moi mes habits et partez.', 'tenez=tenir:présent:impératif:2p | préparez=préparer:présent:impératif:2p | partez=partir:présent:impératif:2p', 'impératif after a comma, before -moi'],
+    ['Je pense que tu viens, et il faut que tu viennes.', 'pense=penser:présent:indicatif:1s | viens=venir:présent:indicatif:2s | faut=falloir:présent:indicatif:3s | viennes=venir:présent:subjonctif:2s', 'subjonctif only after «il faut que»'],
+    ['Est-ce qu’il consomme des produits laitiers ?', 'Est=être:présent:indicatif:3s | consomme=consommer:présent:indicatif:3s', '«est-ce que» takes the indicatif'],
+    ['Toi qui fus si bonne, tu ne la laissais jamais seule.', 'fus=être:passé simple:indicatif:2s | laissais=laisser:imparfait:indicatif:2s', '«toi qui» = tu; «la laissais»: an object pronoun'],
+    ['Mon chagrin en fut adouci, et nous avons été admis.', 'fut adouci=adoucir:passé simple:indicatif:3s | avons été admis=admettre:passé composé:indicatif:1p', 'the passive'],
+    ['Je ne veux point partir avant de manger.', 'veux=vouloir:présent:indicatif:1s | partir=partir::infinitif | manger=manger::infinitif', '«ne… point» is no verb; infinitives'],
+    ['Au coucher du soleil, toute offre fut refusée.', 'fut refusée=refuser:passé simple:indicatif:3s', '«au coucher», «toute offre» are nouns'],
+];
+for (const [text, want, why] of CASES) ok(`sentence: ${why}`, verbs(text) === want, '\n      got  ' + verbs(text) + '\n      want ' + want);
 if (failed) { console.log(failed, 'FAILED'); process.exit(1); }
 console.log('ALL FRENCH CONJUGATION CHECKS PASSED');

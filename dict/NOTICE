@@ -46,6 +46,6 @@ dict/fr-verbs.json — CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/
       tables of its French verb entries, from the wiktextract extraction of kaikki.org (Ylonen, T. (2022). Wiktextract: Wiktionary
       as Machine-Readable Structured Data. LREC 2022; https://kaikki.org/frwiktionary/raw-wiktextract-data.jsonl.gz, SHA-256
       fdc0acd0dc33cb98323479bfc95ae17563f0e706868e7bef2413693b635354e3);
-    * Lexique 3.83 (see above) — which verbs, and how common each is.
+    * Lexique 3.83 (see above) — which verbs, how common each is, and how often a verb form is another word (porte, livre).
     Changes: the verbs Lexique lists (6 341), the simple tenses only (stem + shared endings); the subject pronouns removed; the
     compound tenses are rebuilt from the auxiliary and the past participle (checked against Wiktionary's own: no difference).

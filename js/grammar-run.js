@@ -201,7 +201,8 @@ async function runGrammarAnalysis(contextText, sentenceText, opts = {}) {
     // One tapped/selected word (up to 3) inside a longer text: only it is analysed (grammarProfile, focusOnly), and its context is
     // the sentence around it, at most GRAMMAR_FOCUS_CONTEXT_CHARS -- not a 1400-character PDF run. The other tab asks for the rest.
     const focusOnly = !opts.whole && analysisText !== context && grammarWordCount(context) <= 3;
-    const key = grammarAnalysisCacheKey(analysisText + '\u0000' + context + (focusOnly ? '\u0000one' : ''), sourceLang, state.uiLang);
+    // one word / the tables' verbs of a selection / the whole AI analysis that the other tab asked for: three different results
+    const key = grammarAnalysisCacheKey(analysisText + '\u0000' + context + (focusOnly ? '\u0000one' : opts.whole ? '\u0000whole' : ''), sourceLang, state.uiLang);
     // Retry re-sends the ALREADY RESOLVED sentence: a later tap (which rewrites
     // state.lastGrammarSentence / lastTapPoint) can never swap the context under a Retry button.
     const retry = () => runGrammarAnalysis(context, analysisText, opts);
@@ -271,6 +272,21 @@ async function runGrammarAnalysis(contextText, sentenceText, opts = {}) {
                 analysis = fromTables; analysis.local = true;
                 recordAiDiagnostic({ task: 'grammar_analysis', phase: 'local', outcome: 'ok', reason: 'conjugation_tables', sourceLanguage: sourceLang, readings: local.readings.length });
             } else local = null;
+        } else if (!focusOnly && !opts.whole && sourceLang === 'fr' && typeof localFrSentenceVerbs === 'function' && window.__grammarAiOnly !== true) {
+            // A selected French sentence or paragraph: its verbs from the tables, at once; «why» is asked when one is opened
+            // (focusGrammarItem -> explainLocalGrammarItem). The Adjectives tab asks the AI for the whole text (switchGrammarMode).
+            await loadFrVerbTables();
+            if (!task.current()) { panel.classList.remove('loading'); return; }
+            const found = localFrSentenceVerbs(attemptText);
+            const fromTables = found.length && normalizeGrammarAnalysis(JSON.stringify({ language: 'fr', items: found.map(r => r.item) }), sourceLang, attemptText, focus);
+            if (fromTables && fromTables.ok && fromTables.items.length) {
+                for (const it of fromTables.items) {
+                    const r = found.find(x => x.item.surface === it.surface && !x.taken);
+                    if (r) { r.taken = true; it.localReading = r; }
+                }
+                analysis = fromTables; analysis.local = true; analysis.verbsOnly = true;
+                recordAiDiagnostic({ task: 'grammar_analysis', phase: 'local', outcome: 'ok', reason: 'conjugation_tables_text', sourceLanguage: sourceLang, verbs: fromTables.items.length });
+            }
         }
         const fromTables = !!analysis;
         for (let attempt = 0; !fromTables && attempt < 2; attempt++) {
