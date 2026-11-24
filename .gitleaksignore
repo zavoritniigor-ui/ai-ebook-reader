@@ -1,0 +1,3 @@
+# False positives of the secret scan (security-gate), one fingerprint per line.
+# The test password of the owner gate's unit tests (PR #467), not a secret:
+b16238b8992ac72d8a85a84832bf89cefd9cca55:tests/functions_loader.mjs:generic-api-key:20

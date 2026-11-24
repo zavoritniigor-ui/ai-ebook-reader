@@ -1,13 +1,7 @@
 // Unit test of the shared-AI-key proxy (functions/api/ai.js) with the provider mocked: forwards only the app's own requests,
 // adds the server key, caps the reply budget, never returns key or provider account details. Run: node tests/shared_ai_proxy_test.mjs
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-// Copied to .mjs so any Node version loads it as an ES module (the Pages Function is a plain .js file).
-const copy = join(mkdtempSync(join(tmpdir(), 'ai-proxy-')), 'ai.mjs');
-writeFileSync(copy, readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'functions', 'api', 'ai.js')));
-const { onRequestGet, onRequestPost } = await import(pathToFileURL(copy).href);
+import { loadFunction, OWNER_KEY, ownerCookie } from './functions_loader.mjs';
+const { onRequestGet, onRequestPost } = await loadFunction('api/ai.js');
 let sent = null;
 globalThis.fetch = async (url, opt) => { sent = { url, opt, body: JSON.parse(opt.body) }; return new Response(JSON.stringify({ ok: 1 }), { headers: { 'content-type': 'application/json' } }); };
 const O = 'https://ai-ebook-reader.pages.dev';
@@ -86,4 +80,20 @@ ok('more than 40 requests a minute from one IP -> 429', last.status === 429);
 sent = null; globalThis.fetch = async (url, opt) => { sent = { url }; return new Response('{}'); };
 r = await onRequestPost({ request: new Request('https://pirate.example/api/ai?provider=groq', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://pirate.example', 'sec-fetch-site': 'same-origin' }, body: JSON.stringify({ model: 'openai/gpt-oss-120b' }) }), env });
 ok('a copied deployment on a foreign host is refused (the shared key never reaches a pirate copy)', r.status === 403 && !sent);
+// ---- the owner (functions/_owner.js): the same app, without the server's limits; everyone else exactly as above
+const OWNER = await ownerCookie(), oenv = { ...env, OWNER_KEY };
+const asOwner = (body, h = {}) => onRequestPost({ request: req('?provider=groq', body, { origin: O, cookie: OWNER, 'cf-connecting-ip': '9.9.9.9', ...h }), env: oenv });
+globalThis.fetch = async (url, opt) => { sent = { url, body: JSON.parse(opt.body) }; return new Response('{}'); };
+let st = new Set(); for (let i = 0; i < 60; i++) st.add((await asOwner({ model: 'openai/gpt-oss-120b' })).status);
+ok('the owner: no rate limit (60 requests a minute from the IP that strangers already used up)', st.size === 1 && st.has(200));
+sent = null; r = await asOwner({ model: 'llama-huge', max_completion_tokens: 99999 });
+ok('the owner: any model, and the reply budget the app asked for', r.status === 200 && sent.body.model === 'llama-huge' && sent.body.max_completion_tokens === 99999);
+sent = null; r = await onRequestPost({ request: req('?provider=groq', { model: 'openai/gpt-oss-120b' }, { origin: O, cookie: 'reader_owner=' + '0'.repeat(64), 'cf-connecting-ip': '9.9.9.9' }), env: oenv });
+ok('a made-up owner cookie gets the usual limits (still rate limited)', r.status === 429 && !sent);
+sent = null; r = await onRequestPost({ request: req('?provider=groq', { model: 'openai/gpt-oss-120b' }, { origin: 'https://evil.example', cookie: OWNER }), env: oenv });
+ok('the owner\'s cookie from another site\'s page is refused (Origin still checked)', r.status === 403 && !sent);
+sent = null; r = await onRequestPost({ request: req('?provider=groq', { model: 'llama-huge' }, { origin: O, cookie: OWNER, 'cf-connecting-ip': '4.4.4.4' }), env });
+ok('no OWNER_KEY on the site: nobody is the owner, the usual model list holds', r.status === 400 && !sent);
 console.log('ALL SHARED AI PROXY CHECKS PASSED');
+// The owner's sign-in (functions/_owner.js, functions/api/owner.js) is checked here too: CI runs this file (.github is protected).
+await import('./owner_gate_test.mjs');
