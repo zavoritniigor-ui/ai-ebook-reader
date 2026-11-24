@@ -453,13 +453,13 @@ function renderGrammarFocusDetail(item, langCode) {
         detail.appendChild(ctx);
     }
 
-    if (item.explanation) {
+    if (item.explanation || item.explanationPending) {   // pending: a verb read from the tables, its explanation on its way
         const why = document.createElement('p');
-        why.className = 'grammar-focus-why';
+        why.className = 'grammar-focus-why' + (item.explanation ? '' : ' pending');
         const label = document.createElement('b');
         label.textContent = t(item.lookup ? 'grammarAbout' : 'grammarWhy') + ': ';
         why.appendChild(label);
-        why.appendChild(document.createTextNode(item.explanation));
+        why.appendChild(document.createTextNode(item.explanation || '…'));
         detail.appendChild(why);
     }
 
@@ -600,6 +600,17 @@ async function fetchVerbParadigm(item, langCode, tenseId, tenseLabel) {
     const cacheKey = langCode + '|' + item.lemma.toLowerCase() + '|' + tenseId;
     const cached = grammarContext.paradigmCache.get(cacheKey);
     if (cached) { renderGrammarFocusDetail(Object.assign({}, item, { forms: cached, paradigmLabel: tenseLabel }), langCode); return; }
+    // French: the table itself (js/grammar-conjugation.js), at once and offline; the AI only for a verb the tables lack.
+    if (langCode === 'fr' && typeof loadFrVerbTables === 'function' && window.__grammarAiOnly !== true) {   // the flag: suites testing the AI request
+        await loadFrVerbTables();
+        if (grammarContext.focused !== item) return;   // the learner moved to another word meanwhile
+        const local = localVerbParadigm(langCode, item.lemma, tenseId);
+        if (local) {
+            grammarContext.paradigmCache.set(cacheKey, local);
+            renderGrammarFocusDetail(Object.assign({}, item, { forms: local, paradigmLabel: tenseLabel }), langCode);
+            return;
+        }
+    }
     const task = beginAsyncTask('grammarParadigm');
     const sourceName = LANGUAGE_CONFIG[langCode]?.promptName || langCode;
     const prompt = `Conjugate the ${sourceName} verb ${JSON.stringify(item.lemma)} in the ${tenseLabel}.

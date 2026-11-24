@@ -258,8 +258,22 @@ async function runGrammarAnalysis(contextText, sentenceText, opts = {}) {
         showGrammarError(message, retry);
     };
     try {
-        let analysis = null, truncated = false;
-        for (let attempt = 0; attempt < 2; attempt++) {
+        let analysis = null, truncated = false, local = null;
+        // One tapped French verb: read from the conjugation tables (js/grammar-conjugation.js), no AI for the analysis itself --
+        // the table, tense and person are on screen at once; a few-hundred-character request then adds «why this form here».
+        // window.__grammarAiOnly: the suites that test the AI request itself (grammar_french, grammar_redesign, ai_contract) set it.
+        if (focusOnly && sourceLang === 'fr' && typeof localFrTappedVerb === 'function' && window.__grammarAiOnly !== true) {
+            await loadFrVerbTables();
+            if (!task.current()) { panel.classList.remove('loading'); return; }
+            local = localFrTappedVerb(focus, attemptText);
+            const fromTables = local && normalizeGrammarAnalysis(JSON.stringify({ language: 'fr', items: [local.item] }), sourceLang, attemptText, focus);
+            if (fromTables && fromTables.ok && fromTables.items.length === 1) {
+                analysis = fromTables; analysis.local = true;
+                recordAiDiagnostic({ task: 'grammar_analysis', phase: 'local', outcome: 'ok', reason: 'conjugation_tables', sourceLanguage: sourceLang, readings: local.readings.length });
+            } else local = null;
+        }
+        const fromTables = !!analysis;
+        for (let attempt = 0; !fromTables && attempt < 2; attempt++) {
             const profile = grammarProfile(attemptText, attempt > 0, focusOnly);
             const prompt = buildGrammarAnalysisPrompt(attemptText, sourceLang, langName, focus, profile);
             const meta = {};
@@ -321,6 +335,7 @@ async function runGrammarAnalysis(contextText, sentenceText, opts = {}) {
         panel.classList.remove('loading'); panel.classList.add('ready');
         presentGrammarAnalysis(analysis, sourceLang);
         showTab();
+        if (local) explainLocalGrammarItem(analysis.items[0], local, focus, sourceLang, langName);
     } catch (err) {
         if (!task.current()) { panel.classList.remove('loading'); return; }
         panel.classList.remove('loading');
@@ -329,4 +344,39 @@ async function runGrammarAnalysis(contextText, sentenceText, opts = {}) {
         window.lastAiRetryContext = { contextText, mode: 'grammar', userPrompt: '' };
         showGrammarError(msg, retry, err);
     }
+}
+
+// «Why this form here» for a verb read from the tables, and -- when the form can be several things (parle: présent je / il,
+// subjonctif, impératif) -- which one it is in this sentence. A few hundred characters instead of the ~8 000 of an analysis.
+function buildLocalExplainPrompt(item, readings, langName) {
+    const list = readings.map((r, i) => `${i + 1}) ${r.entry.lemma}: ${frReadingLabel(r)}`).join('\n');
+    const norm = state.uiLang === 'uk' ? ' Пиши сучасною літературною українською, без русизмів; лапки «».' : '';
+    return `French text: ${JSON.stringify(item.sentence)}
+The word ${JSON.stringify(item.surface)} ${readings.length > 1 ? 'can be' : 'is'}:
+${list}
+${readings.length > 1 ? 'Which one is it in this text? ' : ''}In ONE short sentence (under 20 words) in ${langName}, tell a learner why this form is used here (the reason for its tense, mood or person in THIS text).${norm}
+Reply with JSON only: {"pick":1,"explanation":"..."}`;
+}
+async function explainLocalGrammarItem(item, local, focus, langCode, langName) {
+    const rerender = () => { if (grammarContext.focused === item) renderGrammarFocusDetail(item, langCode); };
+    if (!aiCanAnswer()) return;                       // no AI at all: the table, tense and person are already there
+    item.explanationPending = true; rerender();
+    const task = beginAsyncTask('grammarExplain');
+    try {
+        const out = await callAI(buildLocalExplainPrompt(item, local.readings, langName), task.signal, 'grammar_paradigm');
+        if (!task.current()) return;
+        const data = parseAiJsonObject(out) || {};
+        const pick = Number(data.pick);
+        if (local.readings.length > 1 && Number.isInteger(pick) && pick >= 2 && pick <= local.readings.length) {
+            const alt = frLocalItem(local.readings[pick - 1], local.text, local.focusToken, local.subject);
+            const again = normalizeGrammarAnalysis(JSON.stringify({ language: 'fr', items: [alt] }), langCode, local.text, focus);
+            if (again.ok && again.items.length === 1) {
+                const keep = { tapped: item.tapped };
+                for (const k of Object.keys(item)) if (!(k in again.items[0])) delete item[k];
+                Object.assign(item, again.items[0], keep);
+            }
+        }
+        if (typeof data.explanation === 'string') item.explanation = normalizeGrammarText(data.explanation).slice(0, 400);
+    } catch (err) { /* the explanation is optional: the table, tense and person stay */ }
+    finally { item.explanationPending = false; rerender(); }
 }
