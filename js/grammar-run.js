@@ -260,27 +260,29 @@ async function runGrammarAnalysis(contextText, sentenceText, opts = {}) {
     };
     try {
         let analysis = null, truncated = false, local = null;
-        // One tapped French verb: read from the conjugation tables (js/grammar-conjugation.js), no AI for the analysis itself --
-        // the table, tense and person are on screen at once; a few-hundred-character request then adds «why this form here».
-        // window.__grammarAiOnly: the suites that test the AI request itself (grammar_french, grammar_redesign, ai_contract) set it.
-        if (focusOnly && sourceLang === 'fr' && typeof localFrTappedVerb === 'function' && window.__grammarAiOnly !== true) {
-            await loadFrVerbTables();
+        // One tapped French / English verb: read from the app's own tables (js/grammar-conjugation.js, js/grammar-english.js), no AI
+        // for the analysis itself -- the table, tense and person are on screen at once; a few-hundred-character request then adds
+        // «why this form here». window.__grammarAiOnly: the suites that test the AI request itself (grammar_french, grammar_redesign,
+        // ai_contract) set it.
+        const tables = window.__grammarAiOnly !== true ? localGrammarTables(sourceLang) : null;
+        if (focusOnly && tables) {
+            await tables.load();
             if (!task.current()) { panel.classList.remove('loading'); return; }
-            local = localFrTappedVerb(focus, attemptText) || (typeof localFrTappedAdjective === 'function' ? localFrTappedAdjective(focus, attemptText) : null);
-            const fromTables = local && normalizeGrammarAnalysis(JSON.stringify({ language: 'fr', items: [local.item] }), sourceLang, attemptText, focus);
+            local = tables.tappedVerb(focus, attemptText) || tables.tappedAdjective(focus, attemptText);
+            const fromTables = local && normalizeGrammarAnalysis(JSON.stringify({ language: sourceLang, items: [local.item] }), sourceLang, attemptText, focus);
             if (fromTables && fromTables.ok && fromTables.items.length === 1) {
                 analysis = fromTables; analysis.local = true;
                 recordAiDiagnostic({ task: 'grammar_analysis', phase: 'local', outcome: 'ok', reason: 'conjugation_tables', sourceLanguage: sourceLang, readings: local.readings.length });
             } else local = null;
-        } else if (!focusOnly && !opts.whole && sourceLang === 'fr' && typeof localFrSentenceVerbs === 'function' && window.__grammarAiOnly !== true) {
-            // A selected French sentence or paragraph: its verbs from the tables, at once; «why» is asked when one is opened
-            // (focusGrammarItem -> explainLocalGrammarItem). The Adjectives tab asks the AI for the whole text (switchGrammarMode).
-            await loadFrVerbTables();
+        } else if (!focusOnly && !opts.whole && tables) {
+            // A selected sentence or paragraph: its verbs and adjectives from the tables, at once; «why» is asked when one is opened
+            // (focusGrammarItem -> explainLocalGrammarItem). With no adjective found, the Adjectives tab asks the AI (switchGrammarMode).
+            await tables.load();
             if (!task.current()) { panel.classList.remove('loading'); return; }
-            const verbsFound = localFrSentenceVerbs(attemptText);
-            const adjectivesFound = typeof localFrSentenceAdjectives === 'function' ? localFrSentenceAdjectives(attemptText, verbsFound) : [];
+            const verbsFound = tables.verbs(attemptText);
+            const adjectivesFound = tables.adjectives(attemptText, verbsFound);
             const found = [...verbsFound, ...adjectivesFound];
-            const fromTables = found.length && normalizeGrammarAnalysis(JSON.stringify({ language: 'fr', items: found.map(r => r.item) }), sourceLang, attemptText, focus);
+            const fromTables = found.length && normalizeGrammarAnalysis(JSON.stringify({ language: sourceLang, items: found.map(r => r.item) }), sourceLang, attemptText, focus);
             if (fromTables && fromTables.ok && fromTables.items.length) {
                 for (const it of fromTables.items) {
                     const r = found.find(x => x.item.surface === it.surface && !x.taken);
@@ -365,22 +367,42 @@ async function runGrammarAnalysis(contextText, sentenceText, opts = {}) {
     }
 }
 
+// The languages whose verbs and adjectives the app reads from its own tables, without an AI analysis.
+function localGrammarTables(lang) {
+    if (lang === 'fr' && typeof localFrTappedVerb === 'function') {
+        return { load: loadFrVerbTables, tappedVerb: localFrTappedVerb, tappedAdjective: (f, t) => (typeof localFrTappedAdjective === 'function' ? localFrTappedAdjective(f, t) : null),
+            verbs: localFrSentenceVerbs, adjectives: (t, v) => (typeof localFrSentenceAdjectives === 'function' ? localFrSentenceAdjectives(t, v) : []) };
+    }
+    if (lang === 'en' && typeof localEnTappedVerb === 'function') {
+        return { load: loadEnVerbTables, tappedVerb: localEnTappedVerb, tappedAdjective: localEnTappedAdjective, verbs: localEnSentenceVerbs, adjectives: localEnSentenceAdjectives };
+    }
+    return null;
+}
 // «Why this form here» for a verb read from the tables, and -- when the form can be several things (parle: présent je / il,
 // subjonctif, impératif) -- which one it is in this sentence. A few hundred characters instead of the ~8 000 of an analysis.
-function buildLocalAdjectiveExplainPrompt(item, langName) {
+function buildLocalAdjectiveExplainPrompt(item, langName, langCode = 'fr') {
     const norm = state.uiLang === 'uk' ? ' Пиши сучасною літературною українською, без русизмів; лапки «».' : '';
+    if (langCode === 'en') {   // an English adjective agrees with nothing: its degree and the word it describes
+        const degree = item.features.degree || 'positive';
+        return `English text: ${JSON.stringify(item.sentence)}
+The adjective ${JSON.stringify(item.surface)} (${item.lemma}, ${degree})${item.agreesWith ? ` describes ${JSON.stringify(item.agreesWith)}` : ''}.
+In ONE short sentence (under 20 words) in ${langName}, tell a learner why this form is used here (${degree === 'positive' ? 'what it describes and where it stands' : `why the ${degree} is used`}).${norm}
+Reply with JSON only: {"explanation":"..."}`;
+    }
     return `French text: ${JSON.stringify(item.sentence)}
 The adjective ${JSON.stringify(item.surface)} (${item.lemma}, ${item.features.gender} ${item.features.number})${item.agreesWith ? ` agrees with ${JSON.stringify(item.agreesWith)}` : ''}.
 In ONE short sentence (under 20 words) in ${langName}, tell a learner why this form is used here (which word it agrees with, its gender and number${item.agreesWith ? '' : ', or why it has none'}).${norm}
 Reply with JSON only: {"explanation":"..."}`;
 }
-function buildLocalExplainPrompt(item, readings, langName) {
-    const list = readings.map((r, i) => `${i + 1}) ${r.entry.lemma}: ${frReadingLabel(r)}`).join('\n');
+function buildLocalExplainPrompt(item, readings, langName, langCode = 'fr') {
+    // an English reading carries its own label (js/grammar-english.js: «past perfect, 3rd person singular», «infinitive»)
+    const list = readings.map((r, i) => `${i + 1}) ${r.label ? r.lemma : r.entry.lemma}: ${r.label || frReadingLabel(r)}`).join('\n');
     const norm = state.uiLang === 'uk' ? ' Пиши сучасною літературною українською, без русизмів; лапки «».' : '';
-    return `French text: ${JSON.stringify(item.sentence)}
+    const what = langCode === 'en' ? 'tense, aspect, voice or person' : 'tense, mood or person';
+    return `${langCode === 'en' ? 'English' : 'French'} text: ${JSON.stringify(item.sentence)}
 The word ${JSON.stringify(item.surface)} ${readings.length > 1 ? 'can be' : 'is'}:
 ${list}
-${readings.length > 1 ? 'Which one is it in this text? ' : ''}In ONE short sentence (under 20 words) in ${langName}, tell a learner why this form is used here (the reason for its tense, mood or person in THIS text).${norm}
+${readings.length > 1 ? 'Which one is it in this text? ' : ''}In ONE short sentence (under 20 words) in ${langName}, tell a learner why this form is used here (the reason for its ${what} in THIS text).${norm}
 Reply with JSON only: {"pick":1,"explanation":"..."}`;
 }
 async function explainLocalGrammarItem(item, local, focus, langCode, langName) {
@@ -389,14 +411,15 @@ async function explainLocalGrammarItem(item, local, focus, langCode, langName) {
     item.explanationPending = true; rerender();
     const task = beginAsyncTask('grammarExplain');
     try {
-        const prompt = local.adjective ? buildLocalAdjectiveExplainPrompt(item, langName) : buildLocalExplainPrompt(item, local.readings, langName);
+        const prompt = local.adjective ? buildLocalAdjectiveExplainPrompt(item, langName, langCode) : buildLocalExplainPrompt(item, local.readings, langName, langCode);
         const out = await callAI(prompt, task.signal, 'grammar_paradigm');
         if (!task.current()) return;
         const data = parseAiJsonObject(out) || {};
         const pick = Number(data.pick);
         if (!local.adjective && local.readings.length > 1 && Number.isInteger(pick) && pick >= 2 && pick <= local.readings.length) {
-            const alt = frLocalItem(local.readings[pick - 1], local.text, local.focusToken, local.subject);
-            const again = normalizeGrammarAnalysis(JSON.stringify({ language: 'fr', items: [alt] }), langCode, local.text, focus);
+            const r = local.readings[pick - 1];
+            const alt = r.item || frLocalItem(r, local.text, local.focusToken, local.subject);
+            const again = normalizeGrammarAnalysis(JSON.stringify({ language: langCode, items: [alt] }), langCode, local.text, focus);
             if (again.ok && again.items.length === 1) {
                 const keep = { tapped: item.tapped };
                 for (const k of Object.keys(item)) if (!(k in again.items[0])) delete item[k];
