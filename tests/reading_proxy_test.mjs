@@ -96,9 +96,8 @@ const { createHash } = await import('node:crypto');
 const scriptHash = createHash('sha256').update(readFileSync(join(root, 'proxy-assets', 'translate.js'))).update(readFileSync(join(root, 'proxy-assets', 'dict-worker.js'))).digest('hex').slice(0, 12);
 ok('the injected script address carries the version of proxy-assets/translate.js + dict-worker.js (update TRANSLATE_JS_VERSION after editing them)', TRANSLATE_JS_VERSION === scriptHash, TRANSLATE_JS_VERSION + ' != ' + scriptHash);
 // The owner's speech server (functions/api/speech/[[path]].js) answers the proxy's host too, and still no other site.
-const speechCopy = join(mkdtempSync(join(tmpdir(), 'speech-')), 'speech.mjs');
-writeFileSync(speechCopy, readFileSync(join(root, 'functions', 'api', 'speech', '[[path]].js')));
-const speech = await import(pathToFileURL(speechCopy).href);
+const { loadFunction } = await import('./functions_loader.mjs');   // the whole functions/ folder: it imports functions/_owner.js
+const speech = await loadFunction('api/speech/[[path]].js');
 const speak = (host, origin) => speech.onRequest({ request: new Request(`https://${host}/api/speech/speak`, { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: '{"text":"chat","lang":"fr"}' }), env: {}, params: { path: ['speak'] } });
 let sr = await speak('web.ai-ebook-reader.uk', 'https://web.ai-ebook-reader.uk');
 ok('the speech server lets the reading proxy\'s pages in (503 here only because no tunnel is configured in the test)', sr.status === 503, String(sr.status));

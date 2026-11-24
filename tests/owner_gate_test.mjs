@@ -43,4 +43,16 @@ r = await post({ action: 'logout' });
 ok('sign out removes the cookie', r.status === 200 && /reader_owner=;.*Max-Age=0/.test(r.headers.get('set-cookie')));
 r = await post({ action: 'other' });
 ok('an unknown action: 400', r.status === 400);
+// ---- the voice: the owner's requests reach the computer marked, so its per-person limit skips them
+const speech = await loadFunction('api/speech/[[path]].js');
+let toPc = null;
+globalThis.fetch = async (url, init) => { toPc = new Headers(init.headers); return new Response(new Uint8Array([82, 73, 70, 70]), { headers: { 'content-type': 'audio/wav' } }); };
+const say = headers => speech.onRequest({ request: new Request(O + '/api/speech/speak', { method: 'POST', headers: { origin: O, 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.9', ...headers }, body: '{"text":"bonjour","lang":"fr"}' }),
+    env: { SPEECH_TUNNEL_URL: 'https://tunnel.example', SPEECH_TOKEN: 't', OWNER_KEY }, params: { path: ['speak'] } });
+r = await say({ cookie: OWNER });
+ok('the owner\'s request reaches the computer marked X-Speech-Owner: 1 (with the token and the IP as before)', r.status === 200 && toPc.get('x-speech-owner') === '1' && toPc.get('x-speech-token') === 't' && toPc.get('x-client-ip') === '203.0.113.9');
+r = await say({});
+ok('anyone else\'s request carries no such mark', r.status === 200 && !toPc.has('x-speech-owner'));
+r = await say({ 'x-speech-owner': '1' });
+ok('a visitor\'s own «X-Speech-Owner» header is not passed on', r.status === 200 && !toPc.has('x-speech-owner'));
 console.log('ALL OWNER GATE CHECKS PASSED');
