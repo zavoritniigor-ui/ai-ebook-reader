@@ -95,3 +95,5 @@ ok('the owner\'s cookie from another site\'s page is refused (Origin still check
 sent = null; r = await onRequestPost({ request: req('?provider=groq', { model: 'llama-huge' }, { origin: O, cookie: OWNER, 'cf-connecting-ip': '4.4.4.4' }), env });
 ok('no OWNER_KEY on the site: nobody is the owner, the usual model list holds', r.status === 400 && !sent);
 console.log('ALL SHARED AI PROXY CHECKS PASSED');
+// The owner's sign-in (functions/_owner.js, functions/api/owner.js) is checked here too: CI runs this file (.github is protected).
+await import('./owner_gate_test.mjs');
