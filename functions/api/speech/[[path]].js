@@ -6,7 +6,11 @@
 //    Azure AI Speech service (AZURE_SPEECH_KEY + AZURE_SPEECH_REGION, optional AZURE_SPEECH_VOICES), see azureSpeak.
 // Every key and address lives ONLY in Cloudflare secrets, never in the browser. Neither configured → 503, and the
 // app uses the browser's voice. The visitor's IP (cf-connecting-ip) goes to the computer for its rate limit.
-// NOT an open proxy: only the app's own pages (Origin/Referer), two routes, a bounded body and text.
+// NOT an open proxy: only the app's own pages (Origin/Referer), two routes, a bounded body and text — and ONLY the owner
+// (functions/_owner.js; owner, 2026-11-23): Origin is forged in one line, and Azure behind it has no limit of its own, so
+// anyone could spend the month's characters. Everyone else gets 403 and the app uses the browser's voice.
+import { isOwner } from '../../_owner.js';
+
 const ALLOWED = new Set(['health', 'speak']);
 const MAX_BODY_BYTES = 16 * 1024;   // фраза для озвучки коротка; сервер і так обмежує MAX_CHARS
 
@@ -76,6 +80,7 @@ export async function onRequest({ request, env, params }) {
         return new Response('not found', { status: 404 });
     }
     if (!sameOrigin(request, url)) return new Response('forbidden', { status: 403 });
+    if (!(await isOwner(request, env))) return new Response('owner only', { status: 403 });
     const base = String(env.SPEECH_TUNNEL_URL || '').trim().replace(/\/+$/, '');
     const token = String(env.SPEECH_TOKEN || '').trim();
     const azure = azureConfig(env);

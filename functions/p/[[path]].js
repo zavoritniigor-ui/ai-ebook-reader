@@ -9,6 +9,8 @@
 //   It answers only on hosts made for it (proxyServedHere): web.ai-ebook-reader.uk and branch previews
 //   (<branch>.ai-ebook-reader.pages.dev) — an allow-list, so a new domain of the app never gets it by accident.
 // - Only the hosts in PROXY_HOSTS: not an open proxy. Everything else on the page loads directly in the browser.
+// - ONLY the owner (functions/_owner.js; owner, 2026-11-23). Anyone else is sent to the site itself (a redirect), so a
+//   link still opens, just without the translation panel; the proxy's pages never run for strangers.
 // - An ordinary request with the app's honest User-Agent: no cookies are sent or kept, no browser disguise, nothing that
 //   gets around a site's protection. A site that refuses the server simply stays unavailable here.
 // - The site's own framing and CSP headers are dropped (the page is shown on our host), cookies are never set.
@@ -16,6 +18,8 @@
 // proxy-assets/translate.js (select a word or a sentence → translation, 🔊) — injected first in <head>.
 // The H5P CDNs too: their stylesheets name icon fonts the CDN gives only to H5P's own sites (CORS), so the exercise's
 // buttons lost their icons when the CSS came straight from the CDN.
+import { isOwner } from '../_owner.js';
+
 export const PROXY_HOSTS = new Set(['francaisfacile.rfi.fr', 's.francaisfacile.rfi.fr', 'fle-rfi.h5p.com', 'c.h5p.io', 'eu-west-1.cdn.h5p.com', 'www.francaisfacile.com']);
 export const PROXY_SERVING_HOST = 'web.ai-ebook-reader.uk';
 export const proxyServedHere = hostname => hostname === PROXY_SERVING_HOST || /^[a-z0-9-]+\.ai-ebook-reader\.pages\.dev$/.test(hostname);
@@ -77,7 +81,7 @@ export class HeadInjector {
     }
 }
 
-export async function onRequest({ request, params }) {
+export async function onRequest({ request, params, env }) {
     const here = new URL(request.url);
     if (!proxyServedHere(here.hostname)) return new Response('Not here', { status: 404 });
     if (!['GET', 'HEAD', 'POST'].includes(request.method)) return new Response('Method not allowed', { status: 405 });
@@ -87,6 +91,10 @@ export async function onRequest({ request, params }) {
     // The path exactly as the browser sent it (already percent-encoded: «actualit%C3%A9»); params.path is decoded, and
     // encoding it again turned é into %25C3%25A9 — a 404 on every accented address.
     const upstream = new URL(`https://${host}${here.pathname.slice(`/p/${host}`.length) || '/'}${here.search}`);
+    if (!(await isOwner(request, env))) {
+        if (request.method === 'POST') return new Response('owner only', { status: 403 });
+        return new Response(null, { status: 302, headers: { location: upstream.href, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
+    }
 
     const headers = new Headers({ 'user-agent': UA });
     for (const h of PASS_REQUEST_HEADERS) { const v = request.headers.get(h); if (v) headers.set(h, v); }
