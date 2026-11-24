@@ -1,6 +1,6 @@
 // Unit test of js/grammar-english.js with dict/en-verbs.json: English verbs and adjectives without AI.
-// 1) The four forms of every verb of a sample (533: the 150 most common, every irregular one of the first 2 000, every 40th after)
-//    and the comparative / superlative of 362 adjectives are compared with the English Wiktionary's own forms
+// 1) The four forms of every verb of a sample (532: the 150 most common, every irregular one of the first 2 000, every 40th after)
+//    and the comparative / superlative of 364 adjectives are compared with the English Wiktionary's own forms
 //    (tests/fixtures/en_verbs_check.json, written by tools/build_en_verbs.py); every tense button of the Grammar panel is built from them.
 // 2) One sentence per rule (our own sentences): which words are verbs / adjectives, lemma, tense, person, number, degree.
 // Run: node tests/en_conjugation_test.mjs

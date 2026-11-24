@@ -5,7 +5,7 @@ dict/en-verbs.json), not from an ~8 000-character AI analysis -- the same as Fre
 the verb group, tense, person and the table are on screen at once; the AI is asked only for «why this form here» (a few hundred
 characters). Tense buttons conjugate from the tables with no AI call; a noun still goes to the AI; Practice and the Adjectives
 tab keep working; window.__grammarAiOnly (the suites that test the AI request itself) still sends the analysis to the AI.
-The tables' own unit test (533 verbs and 362 adjectives against Wiktionary, one sentence per rule) runs first:
+The tables' own unit test (532 verbs and 364 adjectives against Wiktionary, one sentence per rule) runs first:
 node tests/en_conjugation_test.mjs."""
 import json, os, subprocess, sys, time
 from browser_cdp import CDP

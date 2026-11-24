@@ -248,6 +248,10 @@ function enNounNumber(t, j, tokens, text) {
 function enSubjectBefore(tokens, i, text) {
     for (let j = i - 1, n = 0; j >= 0 && n < 10; j--, n++) {
         const t = tokens[j];
+        // «Hi, thanks», «John, come here»: one word and a comma at the start of a sentence is someone spoken to, not the subject
+        if (enClauseBreakBefore(tokens, j + 1, text) && j + 1 <= i && /,/.test(text.slice(t.end, tokens[j + 1].start)) && (enSentenceStartAt(tokens, j, text) || (j > 0 && enSentenceStartAt(tokens, j - 1, text) && /^(?:hello|hi|hey|oh|well|yes|no|dear|thanks)$/.test(tokens[j - 1].fold)))) return null;
+        // existential «there» is the subject of be (there is), seem, appear… -- not of «Hello there, friend»
+        if (t.fold === 'there' && !enAuxOf(tokens[i]) && !/^(?:seem|seems|seemed|appear|appears|appeared|exist|exists|existed|remain|remains|remained|come|comes|came|live|lived|stand|stands|stood|lie|lies|lay|follow|follows|followed)$/.test(tokens[i].fold)) return null;
         if (enIsAdverb(t) || t.w === 'not') continue;
         if (Object.hasOwn(EN_SUBJECT, t.fold) && !(t.fold === 'that' && j + 1 < i && !enIsAdverb(tokens[j + 1]) && !EN_RELATIVE.has(t.fold))) {
             const head = tokens[j - 1];
@@ -258,7 +262,6 @@ function enSubjectBefore(tokens, i, text) {
             const [person, number] = EN_SUBJECT[t.fold];
             return { person, number, text: t.text, pronoun: true, at: j };
         }
-        if (j + 1 < i && enClauseBreakBefore(tokens, j + 1, text)) return null;
         if (EN_OBJECT_PRONOUNS.has(t.fold) || EN_PREPOSITIONS.has(t.fold) || EN_CONJUNCTIONS.has(t.fold) || enAuxOf(t) || t.fold === 'to') return null;
         if (EN_DETERMINERS.has(t.w) || t.w === 'POSS') continue;
         if (/^(?:here|there|now|then|today|tonight|yesterday|tomorrow|too|instead|anyway)$/.test(t.fold)) continue;
@@ -439,6 +442,12 @@ function enReadGroups(text) {
             const surface = contiguous ? text.slice(tokens[from].start, tokens[to].end) : tokens[to].text;
             const auxWords = auxes.map(a => (/^(?:ca|wo|sha|ai)$/i.test(a.tok.text) || a.tok.contracted ? a.w : a.tok.text.toLowerCase()));
             for (let q = from; q <= to; q++) used.add(q);
+            // «to be», «to be done», «to have seen»: an infinitive, no tense or person of its own
+            if (tokens[from - 1] && tokens[from - 1].fold === 'to' && /^(?:be|have)$/.test(tokens[from].w)) {
+                groups.push({ start: tokens[contiguous ? from : to].start, end: tokens[to].end, mainTok: tokens[to], main: to, lemma: main.a.lemma, tense: null, aspect: null,
+                    passive: ct.passive, modal: null, person: null, number: null, kind: 'infinitive', subject: null, auxWords, surface });
+                continue;
+            }
             groups.push({ start: tokens[contiguous ? from : to].start, end: tokens[to].end, mainTok: tokens[to], main: to, lemma: main.a.lemma, tense: ct.modal ? null : ct.tense, aspect: ct.aspect,
                 passive: ct.passive, modal: ct.modal, person, number, kind: 'finite', subject: s ? s.text : null, auxWords, surface });
             clauseFinite = true; if (s) lastSubject = s;
@@ -492,6 +501,7 @@ function enReadGroups(text) {
             if (p && (!base || p.index <= base.index || sing3)) pick = p;
             else if (sing3) pick = s3 || (p && !base ? p : null);
             else pick = (base && !(subj.person === 2 && subj.number === 'singular')) ? base : p || null;
+            if (!pick && s3 && subj.person === 2 && !subj.number) pick = s3;   // «There seems»: the form tells the number
             const limit = subj.pronoun ? 1 : subj.relative ? 0.97 : pick === p ? 0.97 : 0.9;
             if (pick && share < limit) reading = { a: pick, kind: 'finite', subject: subj };
         }
@@ -500,7 +510,7 @@ function enReadGroups(text) {
             const lead = direct && /^(?:then|please|and|also|now|first|finally|so|just|but|or)$/.test(direct.fold) ? i - 1 : i;
             const atStart = lead === i ? sentStart : (enSentenceStartAt(tokens, lead, text) || enClauseBreakBefore(tokens, lead, text));
             const nx = tokens[i + 1];
-            const imperativeSentence = groups.some(g => g.imperative) || lead === i || enSentenceStartAt(tokens, lead, text);
+            const imperativeSentence = groups.some(g => g.imperative) || lead === i || enSentenceStartAt(tokens, lead, text) || direct.fold === 'please';
             if (nx && /^\s*:/.test(text.slice(t.end, nx.start))) { /* «Witness: …» is a heading */ }
             else
             if (atStart && imperativeSentence && !(nx && enAuxOf(nx)) && !(nx && enVerbAnalyses(nx.text).some(a => a.slot === 's' || a.slot === 'past') && share > 0.3)

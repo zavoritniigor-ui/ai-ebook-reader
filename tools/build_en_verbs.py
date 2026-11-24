@@ -27,7 +27,7 @@ Output (one line of JSON per section):
     adj_homographs  how often an adjective, after a determiner, ends its phrase -- a noun there («the light.», «the right of»).
     adj_participles the participles that after «be» are adjectives (very tired, so interested), not the passive (was painted).
 """
-import argparse, gzip, hashlib, json, os, pickle, re, subprocess, sys
+import argparse, gzip, hashlib, json, os, re, subprocess, sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -61,14 +61,17 @@ def sha256(path):
 
 # ---------- pass over the extract (slow: ~3 GB; cached by the extract's hash) ----------
 def scan(src, cache_dir):
-    pickle_path = Path(cache_dir) / f'en-verbs-pass5-{KAIKKI_EN_SHA256[:16]}.pickle'
-    if pickle_path.exists():
-        with open(pickle_path, 'rb') as f: return pickle.load(f)
+    cache_path = Path(cache_dir) / f'en-verbs-pass5-{KAIKKI_EN_SHA256[:16]}.json.gz'   # JSON, not pickle: data only
+    if cache_path.exists():
+        with gzip.open(cache_path, 'rt', encoding='utf-8') as f: return json.load(f)
     entries = defaultdict(list)      # (word, pos) -> [{forms, senses, tags}]  (verbs and adjectives)
     pos_of = defaultdict(set)        # word -> every part of speech it has (lemma entries, not form-of)
     freq = Counter()                 # token -> occurrences in the examples (outside the marked headword)
     ctx = defaultdict(Counter)       # token -> the kinds of word right before it (CONTEXT_OF): how it is used
-    proc = subprocess.Popen(f"zcat '{src}' | grep -F '\"lang_code\": \"en\"'", shell=True, stdout=subprocess.PIPE, bufsize=1 << 20)
+    # zcat | grep keeps only the English entries' lines (fast); no shell
+    unzip = subprocess.Popen(['zcat', str(src)], stdout=subprocess.PIPE)
+    proc = subprocess.Popen(['grep', '-F', '"lang_code": "en"'], stdin=unzip.stdout, stdout=subprocess.PIPE, bufsize=1 << 20)
+    unzip.stdout.close()
     n = 0
     for line in proc.stdout:
         d = json.loads(line)
@@ -106,9 +109,9 @@ def scan(src, cache_dir):
                         nxt = toks[i + 1] if i + 1 < len(toks) else None
                         ends = nxt is None or NOUN_END_RE.search(low, m.end(), nxt.start()) or nxt.group() in FUNCTION_AFTER_NOUN
                         ctx[tok]['det_end' if ends else 'det_word'] += 1
-    proc.wait()
-    data = {'entries': dict(entries), 'pos_of': {w: sorted(p) for w, p in pos_of.items()}, 'freq': freq, 'ctx': {w: dict(c) for w, c in ctx.items() if sum(c.values()) >= 2}, 'lines': n}
-    with open(pickle_path, 'wb') as f: pickle.dump(data, f)
+    proc.wait(); unzip.wait()
+    data = {'entries': {f'{w}\t{p}': v for (w, p), v in entries.items()}, 'pos_of': {w: sorted(p) for w, p in pos_of.items()}, 'freq': freq, 'ctx': {w: dict(c) for w, c in ctx.items() if sum(c.values()) >= 2}, 'lines': n}
+    with gzip.open(cache_path, 'wt', encoding='utf-8') as f: json.dump(data, f)
     return data
 
 
@@ -203,7 +206,8 @@ def ctx_share(ctx, w, kinds, skip=()):
 
 
 def build(data):
-    E, F, C, P = data['entries'], data['freq'], data['ctx'], data['pos_of']
+    E = {tuple(k.split('\t')): v for k, v in data['entries'].items()}
+    F, C, P = data['freq'], data['ctx'], data['pos_of']
     verbs, adjs = [], []
     for (w, pos), entries in E.items():
         if not (WORD_RE.match(w) or (pos == 'adj' and CAPITALISED_ADJ_RE.match(w))) or w in MODALS: continue
@@ -306,7 +310,7 @@ def main():
     ap.add_argument('--cache', default=os.path.expanduser('~/.cache/ai-reader-dict'))
     args = ap.parse_args()
     src = Path(args.cache) / KAIKKI_EN
-    pass_file = Path(args.cache) / f'en-verbs-pass4-{KAIKKI_EN_SHA256[:16]}.pickle'
+    pass_file = Path(args.cache) / f'en-verbs-pass5-{KAIKKI_EN_SHA256[:16]}.json.gz'
     if not pass_file.exists() and sha256(src) != KAIKKI_EN_SHA256: sys.exit(f'{src}: not the pinned extract (SHA-256)')
     data = scan(src, args.cache)
     verb_lines, adj_lines, homographs, adj_homographs, verbs, adjs, adj_participles = build(data)
