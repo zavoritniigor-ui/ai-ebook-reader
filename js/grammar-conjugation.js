@@ -9,7 +9,7 @@
 //   loadFrVerbTables()             loads them once (a Promise; null when the file cannot be had: the AI then answers as before)
 //   localVerbParadigm(lang, lemma, tenseId)   {person: form} for a Grammar tense button, or null
 //   frVerbAnalyses(word)           what a written form can be: [{lemma, tense, person}] (person 0..5, or -1 for a participle)
-const FR_VERB_TABLES_VERSION = '4edcca1917b5';
+const FR_VERB_TABLES_VERSION = '4f4b48709591';
 const FR_VERB_TABLES_URL = 'dict/fr-verbs.json?v=' + FR_VERB_TABLES_VERSION;
 let frVerbData = null, frVerbLoading = null, frVerbReverse = null;
 const frVerbFold = v => String(v || '').replace(/[’ʼ]/g, "'").replace(/œ/g, 'oe').toLocaleLowerCase().trim();
@@ -33,6 +33,7 @@ function loadFrVerbTables() {
             });
             frVerbData = { tenses, byLemma, entries: [...byLemma.values()] };
             frVerbHomograph = new Map(Object.entries(raw.homographs || {}).map(([w, v]) => [frVerbFold(w), Number(v)]));
+            frAdjLoad(raw);
             return frVerbData;
         }).catch(() => null).finally(() => { if (!frVerbData) frVerbLoading = null; });
     }
@@ -410,6 +411,10 @@ function localFrSentenceVerbs(text, limit = 20) {
         const r = localFrTappedVerb(tk.text, text, i);
         if (!r) continue;
         const item = r.item, prev = tokens[i - 1];
+        // two finite verbs in a row with no subject between cannot be: «est inquiète» is être + an adjective
+        const finite = !['infinitif', 'participe'].includes(item.features.mood) && !item.features.auxiliary;
+        const prevVerb = prev && /^\s+$/.test(text.slice(prev.end, tk.start)) && items.find(x => x.focusToken.end === prev.end);   // only a space between
+        if (finite && prevVerb && !['infinitif', 'participe'].includes(prevVerb.item.features.mood) && !item.agreesWith) continue;
         const confirmed = item.agreesWith || item.features.auxiliary || r.readings.length === 1 && r.readings[0].tenseId === 'imperatif';
         const share = frHomographShare(tk.text);
         // a capitalised word inside a sentence with no subject before it is a name («Marie nous a raconté»), not «marier»
@@ -423,4 +428,178 @@ function localFrSentenceVerbs(text, limit = 20) {
         if (isVerb) { claimed.add(i); items.push(r); }
     }
     return items;
+}
+
+// ---- French adjectives without AI: their agreement grid, what a form is, and every adjective of a text ----
+// dict/fr-verbs.json "adjectives" (7 000, from the French Wiktionary): ms, fs, mp, fp, ms_vowel (bel, nouvel, vieil); "nouns"
+// (Lexique): the gender and number of a noun form, for the word an adjective agrees with; "adj_homographs": how often a form is
+// another word (a noun mostly: «le rouge», «un malade»).
+const FR_ADJ_SLOTS = ['ms', 'fs', 'mp', 'fp', 'ms_vowel'];
+const FR_ADJ_SLOT_FEATURES = { ms: ['masculin', 'singulier'], fs: ['féminin', 'singulier'], mp: ['masculin', 'pluriel'], fp: ['féminin', 'pluriel'], ms_vowel: ['masculin', 'singulier'] };
+let frAdj = null;
+function frAdjLoad(raw) {
+    if (!Array.isArray(raw.adjectives)) return;
+    const patterns = (raw.adj_patterns || []).map(p => p.split('|'));
+    const byLemma = new Map(), byStem = new Map();
+    raw.adjectives.forEach((line, index) => {
+        const [lemma, stem, pid] = line.split('\t');
+        const entry = { lemma, stem, pattern: patterns[Number(pid)], index };
+        if (!byLemma.has(frVerbFold(lemma))) byLemma.set(frVerbFold(lemma), entry);
+        const k = frVerbFold(stem); const list = byStem.get(k); if (list) list.push(entry); else byStem.set(k, [entry]);
+    });
+    const nouns = new Map();
+    for (const [gn, list] of Object.entries(raw.nouns || {})) for (const w of String(list).split('|')) if (w) nouns.set(frVerbFold(w), gn);
+    frAdj = { byLemma, byStem, nouns, homograph: new Map(Object.entries(raw.adj_homographs || {}).map(([w, v]) => [frVerbFold(w), Number(v)])) };
+}
+function frAdjEntry(lemma) { return frAdj ? frAdj.byLemma.get(frVerbFold(lemma)) || null : null; }
+function frAdjCells(entry) { return entry.pattern.map(s => (s === '~' ? null : entry.stem + s)); }
+// The Grammar panel's agreement grid for an adjective (GRAMMAR_LANG_CONFIG.fr.adjective.forms), or null.
+function localAdjectiveForms(langCode, lemma) {
+    if (langCode !== 'fr' || !frAdj) return null;
+    const entry = frAdjEntry(lemma);
+    if (!entry) return null;
+    const cells = frAdjCells(entry), out = {};
+    FR_ADJ_SLOTS.forEach((slot, i) => { if (cells[i]) out[slot] = cells[i]; });
+    return out;
+}
+// Which adjectives and slots a written form can be: [{entry, slots: ['fs'], …}]
+function frAdjAnalyses(word) {
+    if (!frAdj) return [];
+    const w = frVerbFold(word), out = [];
+    for (let len = Math.min(w.length, 40); len >= 0; len--) {
+        for (const entry of frAdj.byStem.get(w.slice(0, len)) || []) {
+            const slots = FR_ADJ_SLOTS.filter((slot, i) => entry.pattern[i] !== '~' && frVerbFold(entry.stem + entry.pattern[i]) === w);
+            if (slots.length) out.push({ entry, slots });
+        }
+    }
+    return out.sort((a, b) => a.entry.index - b.entry.index);
+}
+const frAdjShare = form => (frAdj && frAdj.homograph.get(frVerbFold(form))) || 0;
+const frNounGN = form => (frAdj && frAdj.nouns.get(frVerbFold(form))) || null;   // 'fs', 'mp', 'm-', '--'…
+const FR_COPULAS = new Set(['être', 'devenir', 'sembler', 'paraître', 'rester', 'demeurer', 'redevenir', 'rendre', 'trouver', 'croire']);
+const frIsAdverbMent = t => !!t && t.fold.length > 5 && t.fold.endsWith('ment') && !frNounGN(t.text);   // essentiellement, vraiment
+const FR_INTENSIFIERS = new Set(['très', 'si', 'plus', 'moins', 'trop', 'assez', 'bien', 'peu', 'aussi', 'tout', 'toute', 'toutes', 'fort', 'vraiment', 'tellement', 'presque', 'déjà', 'encore', 'pas', 'jamais', 'toujours']);
+// Function words: never an adjective, never the word an adjective agrees with.
+const FR_FUNCTION_WORDS = new Set([...FR_ARTICLES, ...FR_NOUN_DETERMINERS, 'tout', 'tous', 'toute', 'toutes', 'même', 'mêmes', 'autre', 'autres', 'tel', 'telle',
+    'tels', 'telles', 'quel', 'quelle', 'certain', 'certaine', 'chaque', 'plusieurs', 'aucun', 'avant', 'après', 'pendant', 'devant', 'derrière', 'sous', 'sur',
+    'chez', 'contre', 'selon', 'malgré', 'sans', 'vers', 'parmi', 'pour', 'par', 'avec', 'dans', 'entre', 'depuis', 'dès', 'bien', 'mal', 'très', 'trop', 'assez',
+    'peu', 'si', 'plus', 'moins', 'aussi', 'ainsi', 'alors', 'donc', 'mais', 'ou', 'et', 'ni', 'car', 'que', 'qui', 'quoi', 'dont', 'où', 'comme', 'quand',
+    'de', 'à', 'en', 'y', 'ne', 'pas', 'point', 'rien', 'jamais', 'encore', 'toujours', 'déjà', 'souvent', 'puis', 'enfin', 'ici', 'là', 'oui', 'non', 'mat',
+    'pourtant', 'sinon', 'aussitôt', 'ailleurs', 'voici', 'voilà', 'cependant', 'toutefois', 'ensuite', 'maintenant', "aujourd'hui", 'hier', 'demain',
+    'autrefois', 'jadis', 'partout', 'dehors', 'dedans', 'ensemble', 'surtout', 'plutôt', 'presque', 'soudain', 'tôt', 'tard', 'vite', 'loin', 'près',
+    'autour', 'longtemps', 'beaucoup', 'aussi', 'tant', 'tellement', 'parfois', 'quelquefois', 'bientôt', 'désormais', 'ainsi', 'combien', 'pourquoi',
+    'comment', 'lorsque', 'puisque', 'quoique', 'parce', 'certes', 'environ', 'debout']);
+const FR_NOT_ADJECTIVE = FR_FUNCTION_WORDS;
+const FR_PRONOUN_TARGETS = new Set(['je', 'tu', 'il', 'elle', 'on', 'nous', 'vous', 'ils', 'elles', 'ce', "c'", 'cela', 'ça', 'celui', 'celle', 'ceux', 'celles']);
+const frSlotFits = (slots, gn) => !gn || slots.some(slot => { const [g, n] = FR_ADJ_SLOT_FEATURES[slot]; return (gn[0] === '-' || gn[0] === g[0]) && (gn[1] === '-' || gn[1] === n[0]); });
+// a noun ending in -s / -x / -z has the same form in both numbers (la fois, le prix, le nez): its number is not told by it
+const frNounGNOf = t => { const gn = frNounGN(t.text); return gn && /[sxz]$/i.test(t.text) ? gn[0] + '-' : gn; };
+// The adjective at tokens[i], or null: the noun it agrees with (next to it, past an intensifier), or the subject of a copula before it.
+function frAdjectiveAt(tokens, i, text, verbTokens) {
+    const tk = tokens[i];
+    if (FR_NOT_ADJECTIVE.has(tk.fold) || tk.inverted || tk.text.length < 2) return null;
+    const an = frAdjAnalyses(tk.text);
+    if (!an.length) return null;
+    const share = frAdjShare(tk.text);
+    let target = null, via = null;
+    // a noun right after (un petit chat) or right before (une robe rouge, une maison très grande)
+    const after = tokens[i + 1], beforeIdx = (() => { let j = i - 1; while (j >= 0 && (FR_INTENSIFIERS.has(tokens[j].fold) || frIsAdverbMent(tokens[j]))) j--; return j; })();
+    const before = tokens[beforeIdx];
+    // a noun: known as one (or a name: «cher Paul»; or an unknown lowercase word that is no verb nor adjective: «épinettes»), no
+    // function word; when it can also be an adjective, it is mostly a noun («parties») or an article stands before it («le malade»)
+    const nounOk = t => {
+        if (!t || verbTokens.has(t.start) || FR_FUNCTION_WORDS.has(t.fold) || t.inverted || t.text.length < 3) return false;
+        const k = tokens.indexOf(t);
+        if (!frNounGN(t.text)) {   // an unknown word is a noun only at the start of a noun phrase: «de petites épinettes»
+            const p1 = tokens[k - 1], p2 = tokens[k - 2];
+            const det = x => !!x && (FR_ARTICLES.has(x.fold) || FR_NOUN_DETERMINERS.has(x.fold) || x.fold === 'de' || x.fold === "d'");
+            // a capitalised one: a name («cher Paul»); a lowercase one: a rare noun («épinettes») -- adverbs are function words
+            return k > 0 && !frAdjAnalyses(t.text).length && !frVerbAnalyses(t.text).length && !frIsAdverbMent(t)
+                && (/^\p{Lu}/u.test(t.text) || det(p1) || (frAdjAnalyses(p1.text).length && det(p2)) || !FR_FUNCTION_WORDS.has(t.fold));
+        }
+        return !frAdjAnalyses(t.text).length || frAdjShare(t.text) >= 0.5 || (k > 0 && (FR_ARTICLES.has(tokens[k - 1].fold) || FR_NOUN_DETERMINERS.has(tokens[k - 1].fold)));
+    };
+    const prevTok = tokens[i - 1];
+    const detBefore = prevTok && (FR_ARTICLES.has(prevTok.fold) || FR_NOUN_DETERMINERS.has(prevTok.fold));
+    // after an article only a following noun makes it an adjective («un petit chat»); «un roman», «la mort» are nouns
+    const cands = detBefore ? [after] : [before, after];
+    for (const cand of cands) if (!target && nounOk(cand) && frSlotFits(an[0].slots, frNounGNOf(cand) || '--')) { target = cand; via = 'noun'; }
+    if (detBefore && !target) return null;
+    // the attribute of a copula: «elle est heureuse», «ils semblent fatigués»
+    if (!target && before && verbTokens.has(before.start) && !detBefore) {
+        const v = verbTokens.get(before.start);
+        if (FR_COPULAS.has(String(v.item.lemma).replace(FR_VERB_REFLEXIVE_RE, ''))) {
+            via = 'copula';
+            if (v.item.agreesWith) target = { text: v.item.agreesWith };
+            else {   // «Les enfants sont fatigués»: the noun before the verb
+                let j = tokens.findIndex(t => t.start === v.focusToken.start);
+                const verbStart = v.item.surface.includes(' ') ? v.focusToken.end - v.item.surface.length : v.focusToken.start;
+                while (j > 0 && tokens[j].start >= verbStart) j--;
+                // the subject, not a «de» complement after it: «La porte de la maison est rouge» -> porte
+                const afterDe = k => tokens.slice(Math.max(0, k - 3), k).some(x => ['de', 'du', 'des', "d'"].includes(x.fold));
+                for (let n = 0; j >= 0 && n < 8; j--, n++) { const t = tokens[j]; if (nounOk(t) && !afterDe(j) && frSlotFits(an[0].slots, frNounGN(t.text))) { target = t; break; } }
+            }
+        }
+    }
+    if (!via && !(share < 0.2 && before && FR_INTENSIFIERS.has(tokens[i - 1]?.fold))) return null;
+    if (!via && share >= 0.6) return null;   // «le malade», «un rouge» with nothing to agree with: a noun
+    if (via === 'noun' && share >= 0.85) return null;   // «roman», «ami»: almost always a noun -- an adjective only after a copula
+    let slots = an[0].slots;
+    // the gender / number the word it agrees with has: «rouge» is feminine with «porte»; a pronoun (elle, ils) says it too
+    const PRON_GN = { je: '--', tu: '--', il: 'ms', elle: 'fs', on: '--', nous: '-p', vous: '--', ils: 'mp', elles: 'fp', ce: 'ms', "c'": 'ms' };
+    const targetGN = target ? ((target.start !== undefined ? frNounGNOf(target) : frNounGN(target.text)) || PRON_GN[frVerbFold(target.text)] || null) : null;
+    if (targetGN) { const fit = slots.filter(sl => frSlotFits([sl], targetGN)); if (fit.length) slots = fit; }
+    const [gender, number] = FR_ADJ_SLOT_FEATURES[slots[0]];
+    const sentences = typeof grammarSplitSentences === 'function' ? grammarSplitSentences(text) : [text];
+    const sentence = sentences.find(sn => sn.includes(tk.text)) || text;
+    const forms = localAdjectiveForms('fr', an[0].entry.lemma);
+    return {
+        item: { pos: 'adjective', lemma: an[0].entry.lemma, surface: tk.text, sentence, occurrence: 1, agreesWith: target ? target.text : null,
+            features: { gender, number }, explanation: '', rule: null, stemBreakdown: null, forms },
+        focusToken: tk, text, adjective: true, readings: []
+    };
+}
+// The tokens a verb reading covers (a compound tense: the auxiliary too), keyed by their start.
+function frVerbTokenMap(tokens, verbs) {
+    const map = new Map();
+    for (const v of verbs || []) {
+        const end = v.focusToken.end, from = v.item.surface.includes(' ') ? end - v.item.surface.length : v.focusToken.start;
+        for (const t of tokens) if (t.start >= from && t.end <= end) map.set(t.start, v);
+    }
+    return map;
+}
+// Every adjective of a French text (after its verbs are known: a verb form is no adjective).
+function localFrSentenceAdjectives(text, verbs, limit = 20) {
+    if (!frAdj) return [];
+    const tokens = frTokens(text), verbTokens = frVerbTokenMap(tokens, verbs);
+    const out = [];
+    for (let i = 0; i < tokens.length && out.length < limit; i++) {
+        if (verbTokens.has(tokens[i].start)) continue;
+        let r = frAdjectiveAt(tokens, i, text, verbTokens);
+        // «une âme pieuse et simple», «positives ou négatives»: after et / ou, the adjective of the same noun
+        const prev = out[out.length - 1];
+        if (!r && prev && ['et', 'ou'].includes(tokens[i - 1]?.fold) && prev.focusToken.end === tokens[i - 2]?.end && !FR_FUNCTION_WORDS.has(tokens[i].fold)) {
+            const an = frAdjAnalyses(tokens[i].text);
+            if (an.length) {
+                const pf = prev.item.features, slots = an[0].slots.filter(sl => FR_ADJ_SLOT_FEATURES[sl][0] === pf.gender && FR_ADJ_SLOT_FEATURES[sl][1] === pf.number);
+                if (slots.length) {
+                    const tk = tokens[i], [gender, number] = FR_ADJ_SLOT_FEATURES[slots[0]];
+                    r = { item: Object.assign({}, prev.item, { lemma: an[0].entry.lemma, surface: tk.text, features: { gender, number }, explanation: '', forms: localAdjectiveForms('fr', an[0].entry.lemma) }), focusToken: tk, text, adjective: true, readings: [] };
+                }
+            }
+        }
+        if (r) out.push(r);
+    }
+    return out;
+}
+// A tapped French adjective.
+function localFrTappedAdjective(focus, text) {
+    if (!frAdj) return null;
+    const tokens = frTokens(text), want = frTokens(focus);
+    if (want.length !== 1) return null;
+    const i = tokens.findIndex(t => t.fold === want[0].fold);
+    if (i < 0) return null;
+    const verbTokens = frVerbTokenMap(tokens, localFrSentenceVerbs(text));
+    if (verbTokens.has(tokens[i].start)) return null;
+    return frAdjectiveAt(tokens, i, text, verbTokens);
 }

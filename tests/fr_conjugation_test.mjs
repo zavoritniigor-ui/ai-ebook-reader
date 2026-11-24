@@ -17,7 +17,7 @@ const ctx = createContext({
     fetch: async url => ({ ok: url.startsWith('dict/fr-verbs.json?v='), json: async () => JSON.parse(data.toString('utf8')) }),
 });
 runInContext(readFileSync(join(root, 'js', 'core-languages.js'), 'utf8'), ctx);   // the real French grammar config (persons, endings)
-runInContext(src + '\nthis.api = { loadFrVerbTables, localVerbParadigm, frVerbAnalyses, frVerbTablesReady, frVerbIsParticipleOf, frVerbEntry, localFrSentenceVerbs, FR_VERB_TABLES_VERSION };', ctx);
+runInContext(src + '\nthis.api = { loadFrVerbTables, localVerbParadigm, frVerbAnalyses, frVerbTablesReady, frVerbIsParticipleOf, frVerbEntry, localFrSentenceVerbs, localFrSentenceAdjectives, localAdjectiveForms, localFrTappedAdjective, FR_VERB_TABLES_VERSION };', ctx);
 const api = ctx.api;
 let failed = 0;
 const ok = (name, cond, extra = '') => { if (cond) console.log('PASS', name); else { failed++; console.log('FAIL', name, extra); } };
@@ -92,5 +92,26 @@ const CASES = [
     ['Au coucher du soleil, toute offre fut refusée.', 'fut refusée=refuser:passé simple:indicatif:3s', '«au coucher», «toute offre» are nouns'],
 ];
 for (const [text, want, why] of CASES) ok(`sentence: ${why}`, verbs(text) === want, '\n      got  ' + verbs(text) + '\n      want ' + want);
+// ---- adjectives: the agreement grid, every adjective of a sentence and the word it agrees with
+// Measured on the same 120 sentences (2026-11-24): 81 % / 79 % of the adjectives found (tuning / held-out), 98 % / 94 % of the
+// finds right, gender + number 98 % / 100 %, the word it agrees with 89 % / 78 %.
+ok('beau: ms, fs, mp, fp and bel before a vowel', JSON.stringify(api.localAdjectiveForms('fr', 'beau')) === JSON.stringify({ ms: 'beau', fs: 'belle', mp: 'beaux', fp: 'belles', ms_vowel: 'bel' }));
+ok('heureux, rouge, disponible (no forms in Wiktionary), marron (a colour that never changes)',
+    JSON.stringify(api.localAdjectiveForms('fr', 'heureux')) === JSON.stringify({ ms: 'heureux', fs: 'heureuse', mp: 'heureux', fp: 'heureuses' })
+    && JSON.stringify(api.localAdjectiveForms('fr', 'rouge')) === JSON.stringify({ ms: 'rouge', fs: 'rouge', mp: 'rouges', fp: 'rouges' })
+    && JSON.stringify(api.localAdjectiveForms('fr', 'disponible')) === JSON.stringify({ ms: 'disponible', fs: 'disponible', mp: 'disponibles', fp: 'disponibles' })
+    && JSON.stringify(api.localAdjectiveForms('fr', 'marron')) === JSON.stringify({ ms: 'marron', fs: 'marron', mp: 'marron', fp: 'marron' }));
+const adjs = s => api.localFrSentenceAdjectives(s, api.localFrSentenceVerbs(s)).map(r => `${r.item.surface}=${r.item.lemma}:${r.item.features.gender[0]}${r.item.features.number[0]}>${r.item.agreesWith}`).join(' | ');
+const ADJ_CASES = [
+    ['Elle porte une robe rouge et un petit chapeau noir.', 'rouge=rouge:fs>robe | petit=petit:ms>chapeau | noir=noir:ms>chapeau', 'after and before its noun'],
+    ['Les enfants sont très fatigués après cette longue journée.', 'fatigués=fatigué:mp>enfants | longue=long:fs>journée', 'after a copula: the subject noun'],
+    ['Le malade semble heureux, mais sa vieille mère est inquiète.', 'heureux=heureux:ms>malade | vieille=vieux:fs>mère | inquiète=inquiet:fs>mère', '«le malade» is a noun; «est inquiète» is no verb'],
+    ['Un bel homme et une belle femme marchaient sous la pluie froide.', 'bel=beau:ms>homme | belle=beau:fs>femme | froide=froid:fs>pluie', 'bel / belle'],
+    ['La porte de la maison est rouge.', 'rouge=rouge:fs>porte', 'the subject, not the «de» complement; rouge is feminine with porte'],
+    ['C’est un roman d’amour, une âme pieuse et simple, des opinions positives ou négatives.', 'pieuse=pieux:fs>âme | simple=simple:fs>âme | positives=positif:fp>opinions | négatives=négatif:fp>opinions', '«un roman» is a noun; et / ou'],
+    ['Notre province est essentiellement agricole et la dernière fois, je suis disponible.', 'agricole=agricole:fs>province | dernière=dernier:fs>fois | disponible=disponible:ms>je', 'past an -ment adverb; «la fois»; a pronoun subject'],
+];
+for (const [text, want, why] of ADJ_CASES) ok(`adjectives: ${why}`, adjs(text) === want, '\n      got  ' + adjs(text) + '\n      want ' + want);
+ok('a tapped adjective is read from the tables', (() => { const r = api.localFrTappedAdjective('rouge', 'La porte de la maison est rouge.'); return !!r && r.item.lemma === 'rouge' && r.item.agreesWith === 'porte' && r.item.features.gender === 'féminin'; })());
 if (failed) { console.log(failed, 'FAILED'); process.exit(1); }
 console.log('ALL FRENCH CONJUGATION CHECKS PASSED');

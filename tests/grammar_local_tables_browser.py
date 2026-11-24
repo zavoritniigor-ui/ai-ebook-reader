@@ -99,8 +99,16 @@ c.js("switchGrammarMode('verbs'); 1")
 n2 = c.js("__calls.filter(x=>x.task==='grammar_analysis').length")
 c.js("""__analysis=()=>JSON.stringify({language:'fr',items:[]}); runGrammarAnalysis('porte', %s); 1""" % json.dumps(S4, ensure_ascii=False))
 check("«La porte» (a noun after an article) goes to the AI", "__calls.filter(x=>x.task==='grammar_analysis').length===%d && !grammarContext.analysis?.local" % (n2 + 1), timeout=10)
-c.js("runGrammarAnalysis('rouge', %s); 1" % json.dumps(S4, ensure_ascii=False))
-check("an adjective goes to the AI", "__calls.filter(x=>x.task==='grammar_analysis').length===%d" % (n2 + 2), timeout=10)
+c.js("__explain=()=>'{\"explanation\":\"Rouge узгоджується з porte.\"}'; runGrammarAnalysis('rouge', %s); 1" % json.dumps(S4, ensure_ascii=False))
+check("a tapped adjective comes from the tables too: rouge, feminine with «porte», its grid, no AI analysis",
+      "grammarContext.analysis?.local===true && grammarContext.focused?.pos==='adjective' && grammarContext.focused.lemma==='rouge' && grammarContext.focused.agreesWith==='porte' && grammarContext.focused.features.gender==='féminin' && document.querySelectorAll('#grammar-content .grammar-grid-row').length===4 && __calls.filter(x=>x.task==='grammar_analysis').length===%d" % (n2 + 1), timeout=10)
+check("... and its explanation from a small request", "grammarContext.focused.explanation==='Rouge узгоджується з porte.' && __calls.filter(x=>x.task==='grammar_paradigm').at(-1).prompt.length < 700")
+S6 = "Elle porte une robe rouge et un petit chapeau noir."
+c.js("grammarAnalysisCache.clear(); grammarContext.mode='verbs'; window.__nA2=__calls.filter(x=>x.task==='grammar_analysis').length; runGrammarAnalysis(%s, ''); 1" % json.dumps(S6, ensure_ascii=False))
+check("a selection with adjectives: the Adjectives tab lists them from the tables with no AI request",
+      "grammarContext.analysis?.local===true && grammarContext.analysis.verbsOnly===false && (switchGrammarMode('adjectives'), [...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].map(b=>b.textContent).join()==='rouge,petit,noir') && __calls.filter(x=>x.task==='grammar_analysis').length===__nA2")
+check("Practice is offered for those adjectives", "!!document.querySelector('.grammar-practice-btn')")
+c.js("switchGrammarMode('verbs'); 1")
 
 # ---- a selected sentence: its verbs from the tables, the explanation when one is opened
 S5 = "Hier soir, nous sommes allés au cinéma, puis nous avons mangé une pizza et Marie nous a raconté son voyage."
