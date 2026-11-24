@@ -99,7 +99,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `translation-ai.js` | the two translation paths (machine / AI with word alignment), request chunks, cleanup of model output |
 | `grammar-svo.js` | Ask AI / Language level tasks, `startAiTask`, `flattenRange` |
 | `grammar-analysis.js`, `grammar-prompts.js` | Grammar analysis (prompt, `normalizeGrammarAnalysis`, verb endings); Ask AI and level prompts |
-| `grammar-conjugation.js` (+ `dict/fr-verbs.json`, `tools/build_fr_verbs.py`) | French conjugation tables without AI: a tapped verb's tense/person/table, every verb of a selection, the tense buttons; the AI only explains |
+| `grammar-conjugation.js` (+ `dict/fr-verbs.json`, `tools/build_fr_verbs.py`) | French conjugation tables and adjective grids without AI: a tapped verb or adjective, every verb and adjective of a selection, the tense buttons; the AI only explains |
 | `grammar-panel.js`, `grammar-lookup.js`, `grammar-run.js` | Grammar panel rendering and `focusGrammarItem`; «your own word» lookup; `runGrammarAnalysis`, Practice button |
 | `sentence-structure.js` | sentence parts coloured in the text |
 | `grammar-rules.js` (+ `grammar-rules-data-*`, `grammar-rules-details-*`) | Rules panel: catalog and rules found on the page |

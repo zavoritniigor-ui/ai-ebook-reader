@@ -551,6 +551,12 @@ async function ensureAdjectiveForms(item, langCode, { force = false } = {}) {
     const cacheKey = 'adj|' + langCode + '|' + item.lemma.toLowerCase();
     const cached = grammarContext.paradigmCache.get(cacheKey);
     if (cached && accept(cached)) return;
+    // French: the agreement grid from the tables (js/grammar-conjugation.js), no AI
+    if (langCode === 'fr' && typeof localAdjectiveForms === 'function' && window.__grammarAiOnly !== true) {
+        await loadFrVerbTables();
+        const local = localAdjectiveForms(langCode, item.lemma);
+        if (local && accept(local)) { grammarContext.paradigmCache.set(cacheKey, local); return; }
+    }
     if (!aiCanAnswer()) { settle({ formsState: 'error', formsError: t('needKey'), formsTask: undefined }); return; }
     const prompt = buildAdjectiveFormsPrompt(item.lemma, langCode);
     const task = beginAsyncTask('grammarParadigm');

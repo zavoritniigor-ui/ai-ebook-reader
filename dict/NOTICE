@@ -40,12 +40,14 @@ dict/uk-forms.json — CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-
 The app works without dict/uk-forms.json (no agreement of a substituted word), so a commercial build can leave it out.
 
 dict/fr-verbs.json — CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
-    French conjugation tables for the Grammar panel (js/grammar-conjugation.js), built by tools/build_fr_verbs.py. Adapted from:
+    French conjugation tables and adjective agreement grids for the Grammar panel (js/grammar-conjugation.js), built by
+    tools/build_fr_verbs.py. Adapted from:
 
     * the French Wiktionary (https://fr.wiktionary.org), by its contributors — CC BY-SA 3.0 / 4.0 (and GFDL): the conjugation
-      tables of its French verb entries, from the wiktextract extraction of kaikki.org (Ylonen, T. (2022). Wiktextract: Wiktionary
+      tables of its French verb entries and the forms of its French adjectives, from the wiktextract extraction of kaikki.org (Ylonen, T. (2022). Wiktextract: Wiktionary
       as Machine-Readable Structured Data. LREC 2022; https://kaikki.org/frwiktionary/raw-wiktextract-data.jsonl.gz, SHA-256
       fdc0acd0dc33cb98323479bfc95ae17563f0e706868e7bef2413693b635354e3);
-    * Lexique 3.83 (see above) — which verbs, how common each is, and how often a verb form is another word (porte, livre).
+    * Lexique 3.83 (see above) — which verbs and adjectives, how common each is, how often a form is another word (porte, livre),
+      and the gender and number of noun forms (for the word an adjective agrees with).
     Changes: the verbs Lexique lists (6 341), the simple tenses only (stem + shared endings); the subject pronouns removed; the
     compound tenses are rebuilt from the auxiliary and the past participle (checked against Wiktionary's own: no difference).

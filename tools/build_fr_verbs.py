@@ -34,6 +34,11 @@ KAIKKI_FR = 'kaikki/fr-raw-wiktextract-data.jsonl.gz'
 KAIKKI_FR_SHA256 = 'fdc0acd0dc33cb98323479bfc95ae17563f0e706868e7bef2413693b635354e3'
 LEXIQUE = 'lexique-a742a88cb00759c1.tsv'
 LEXIQUE_MD5 = 'a742a88cb00759c1ebed34995aed9904'
+ADJ_MAX = 7000        # the most common adjectives of Lexique
+# colour words that never change (une robe marron, des yeux orange): Wiktionary also lists «marronne» for another sense
+INVARIABLE_ADJ = {'marron', 'orange', 'kaki', 'crème', 'chocolat', 'olive', 'turquoise', 'émeraude', 'citron', 'paille', 'ivoire', 'saumon',
+                  'cerise', 'bordeaux', 'abricot', 'noisette', 'marine', 'prune', 'sépia', 'safran', 'framboise', 'moutarde'}
+NOUN_MIN_FREQ = 0.5   # nouns kept for agreement: the forms read at least this often per million words in books (Lexique)
 
 # (tense id, the Wiktionary tag set, number of persons)
 TENSES = [
@@ -143,22 +148,87 @@ def main():
         except ValueError: f = 0.0
         d = as_verb if r[ic] in ('VER', 'AUX') else as_other
         d[r[io]] = d.get(r[io], 0.0) + f
+    # adjectives (their forms come from Wiktionary) and nouns (gender + number of a form, for an adjective's agreement)
+    ig, inb = hdr.index('genre'), hdr.index('nombre')
+    adj_freq, as_adj, as_nonadj, noun_best = {}, {}, {}, {}
+    for r in (x.split('\t') for x in rows[1:]):
+        try: f = float(r[iff])
+        except ValueError: f = 0.0
+        if r[ic] == 'ADJ':
+            try: adj_freq[r[il]] = max(adj_freq.get(r[il], 0.0), float(r[ifr]))
+            except ValueError: pass
+        d = as_adj if r[ic] == 'ADJ' else as_nonadj
+        d[r[io]] = d.get(r[io], 0.0) + f
+        if r[ic] == 'NOM' and f >= NOUN_MIN_FREQ and f > noun_best.get(r[io], (0, ''))[0]:
+            noun_best[r[io]] = (f, (r[ig] or '-') + (r[inb] or '-'))
+    adj_homographs = {}
+    for w in sorted(as_adj):
+        share = as_nonadj.get(w, 0.0) / (as_adj[w] + as_nonadj.get(w, 0.0) + 1e-9)
+        if share >= 0.05: adj_homographs[w] = round(share, 1)
+    # nouns by gender + number: {"fs": "maison|table|…", "mp": "…"} (a sorted list compresses well)
+    nouns = {}
+    for w, (_, gn) in sorted(noun_best.items()): nouns.setdefault(gn, []).append(w)
+    nouns = {gn: '|'.join(ws) for gn, ws in sorted(nouns.items())}
     homographs = {}
     for w in sorted(as_verb):
         share = as_other.get(w, 0.0) / (as_verb[w] + as_other.get(w, 0.0) + 1e-9)
-        if share >= 0.05: homographs[w] = round(share, 2)
+        if share >= 0.05: homographs[w] = round(share, 1)
 
     spell = lambda v: v.replace('oe', 'œ')   # Lexique writes manoeuvrer, Wiktionary manœuvrer
     wanted = set(freq) | {spell(v) for v in freq} | {p + x for v in freq for x in (v, spell(v)) for p in ('se ', 's’')}
-    best = {}
+    best, best_adj = {}, {}
     with gzip.open(kaikki, 'rt', encoding='utf-8') as f:
         for line in f:
-            if '"pos": "verb"' not in line or '"lang_code": "fr"' not in line: continue
+            if '"lang_code": "fr"' not in line or ('"pos": "verb"' not in line and '"pos": "adj"' not in line): continue
             d = json.loads(line)
             w = d.get('word')
-            if d.get('lang_code') != 'fr' or d.get('pos') != 'verb' or w not in wanted: continue
+            if d.get('lang_code') != 'fr': continue
+            if d.get('pos') == 'adj' and w in adj_freq:
+                if w not in best_adj or len(d.get('forms') or []) > len(best_adj[w].get('forms') or []): best_adj[w] = d
+                continue
+            if d.get('pos') != 'verb' or w not in wanted: continue
             n = len(d.get('forms', []))
             if n > len(best.get(w, {}).get('forms', [])): best[w] = d
+
+    # ms, fs, mp, fp, ms_vowel (bel, nouvel, vieil): the Grammar panel's adjective grid (GRAMMAR_LANG_CONFIG.fr.adjective.forms)
+    adjectives, adj_patterns, adj_pattern_ids = [], [], {}
+    adj_forms = set()
+    for lemma in sorted(adj_freq, key=lambda v: (-adj_freq[v], v)):
+        e = best_adj.get(lemma)
+        if not e or ' ' in lemma: continue
+        if len(adjectives) >= ADJ_MAX: break
+        if lemma in INVARIABLE_ADJ:
+            key = '||||~'
+            if key not in adj_pattern_ids: adj_pattern_ids[key] = len(adj_patterns); adj_patterns.append(key)
+            adjectives.append(f'{lemma}\t{lemma}\t{adj_pattern_ids[key]}'); adj_forms.add(lemma); continue
+        fs = mp = fp = vowel = None
+        both = None
+        for x in e.get('forms', []):
+            tags, form, raw = set(x.get('tags') or []), (x.get('form') or '').strip(), ' '.join(x.get('raw_tags') or [])
+            if not form or 'archaic' in tags or 'informal' in tags: continue
+            if tags == {'singular', 'feminine'}: fs = fs or form
+            elif tags == {'plural', 'masculine'}: mp = mp or form
+            elif tags == {'plural', 'feminine'}: fp = fp or form
+            elif tags in ({'plural', 'masculine', 'feminine'}, {'plural'}): both = both or form
+            elif 'voyelle' in raw: vowel = vowel or form
+        if not e.get('forms'):
+            # no forms listed: an -e adjective is the same in both genders (disponible, agricole), plural -s; others are skipped
+            if not lemma.endswith('e'): continue
+            fs, both = lemma, lemma + 's'
+        fs = fs or lemma                     # rouge, jeune: one form for both genders
+        mp = mp or both or lemma             # gris, heureux: the plural is the same word
+        fp = fp or both or (fs + 's' if not fs.endswith(('s', 'x')) else fs) if fs != lemma else (fp or both or mp)
+        cells = [lemma, fs, mp, fp, vowel]
+        stem = common_prefix([c for c in cells if c])
+        key = '|'.join('~' if c is None else c[len(stem):] for c in cells)
+        if key not in adj_pattern_ids: adj_pattern_ids[key] = len(adj_patterns); adj_patterns.append(key)
+        adjectives.append(f'{lemma}\t{stem}\t{adj_pattern_ids[key]}')
+        adj_forms.update(c for c in cells if c)
+    # every form of a kept adjective: how often it is another word (a form Lexique never reads as an adjective -- «parties» -- is 1.0)
+    adj_homographs = {}
+    for w in adj_forms:
+        share = as_nonadj.get(w, 0.0) / (as_adj.get(w, 0.0) + as_nonadj.get(w, 0.0) + 1e-9) if (as_adj.get(w) or as_nonadj.get(w)) else 0.0
+        if share >= 0.05: adj_homographs[w] = round(share, 1)
 
     aux_tables = {}
     for name, key in (('avoir', 'avoir'), ('être', 'etre')):
@@ -212,6 +282,10 @@ def main():
         'patterns': patterns,
         'verbs': verbs,
         'homographs': homographs,
+        'adj_patterns': adj_patterns,
+        'adjectives': adjectives,
+        'adj_homographs': adj_homographs,
+        'nouns': nouns,
     }
     text = '{\n' + ',\n'.join(f'"{k}": {json.dumps(v, ensure_ascii=False, separators=(",", ":"))}' for k, v in out.items()) + '\n}\n'
     OUT.write_text(text, encoding='utf-8')
@@ -223,6 +297,7 @@ def main():
     print(f"verbs {stats['verbs']} (pronominal only: {stats['reflexive_only']}), patterns {len(patterns)}, "
           f"{len(text.encode('utf-8')) // 1024} KB ({gz // 1024} KB gzip) -> {OUT.relative_to(root)}")
     print(f"homographs (a verb form that is often another word): {len(homographs)}")
+    print(f"adjectives {len(adjectives)} ({len(adj_patterns)} patterns), adjective homographs {len(adj_homographs)}, nouns {sum(v.count('|') + 1 for v in nouns.values())}")
     print(f"compound forms checked against Wiktionary: {stats['compound_checked']}, different: {stats['compound_mismatch']}")
     for m in mismatches: print('   ', m)
     print(f"Lexique verbs without a Wiktionary table: {len(stats['missing'])}; the most common: {stats['missing'][:15]}")
