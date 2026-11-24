@@ -51,3 +51,16 @@ dict/fr-verbs.json — CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/
       and the gender and number of noun forms (for the word an adjective agrees with).
     Changes: the verbs Lexique lists (6 341), the simple tenses only (stem + shared endings); the subject pronouns removed; the
     compound tenses are rebuilt from the auxiliary and the past participle (checked against Wiktionary's own: no difference).
+
+dict/en-verbs.json — CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
+    English verb forms and adjective degrees for the Grammar panel (js/grammar-english.js), built by tools/build_en_verbs.py.
+    Adapted from:
+
+    * the English Wiktionary (https://en.wiktionary.org), by its contributors — CC BY-SA 3.0 / 4.0 (and GFDL): the forms of its
+      English verbs (3rd person singular, present participle, past, past participle) and adjectives (comparative, superlative),
+      and, from the usage examples and quotations of its English entries, how often each form occurs and which word stands
+      before it (a determiner, a subject pronoun, a modal), from the wiktextract extraction of kaikki.org (Ylonen, T. (2022).
+      Wiktextract: Wiktionary as Machine-Readable Structured Data. LREC 2022; https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz,
+      SHA-256 784574cc577d333bbf9e659be38efa27e75e9bfc0a2a8c7ab2371bb5fec29b2d).
+    Changes: the ~8 000 verbs and ~8 000 adjectives most used in those examples; a verb is stored as its lemma and only the forms
+    the regular spelling rules do not give; how often a form is used as a noun or a verb is summed up as one number per form.

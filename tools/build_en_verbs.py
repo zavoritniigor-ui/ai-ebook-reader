@@ -232,17 +232,20 @@ def build(data):
             intens = c.get('intens', 0) / total if total >= 8 else 0
             if ratio is None: ok = intens >= 0.1 or (total < 8 and 'noun' not in P.get(w, []))
             else: ok = ratio >= 0.6 or (intens >= 0.05 and ratio >= 0.4)
-            if not ok or (w[0].isupper() and F.get(w.lower(), 0) < 30): continue   # Victorian, French; not «Seussian»
+            if not ok or (w[0].isupper() and (F.get(w.lower(), 0) < 30 or (w.lower(), 'adj') in E)): continue   # Victorian, French; not «Seussian», not «Red»
             score = F.get(w.lower(), 0) * ((ratio or 0.3) + intens)
             adjs.append((score, w, cells))
     # a form shared by two verbs counts for the more common one only («found»: find, not to found; «saw»: see)
     verbs.sort(key=lambda v: (-v[0], v[1]))
-    claimed, rescored = set(), []
+    claimed, rescored, pasts = set(), [], set()
     for score, w, cells in verbs:
         forms = {w, *(c[0] for c in cells)}
+        # an irregular past that is a more common verb's own past is a dialect spelling of that verb («gan»: went)
+        if cells[2][0] in pasts and cells[2][0] != regular_verb(w)[2]: continue
+        pasts.add(cells[2][0])
         rescored.append((sum(F.get(f, 0) * verbal(C, f) for f in forms - claimed), w, cells))
         claimed |= forms
-    verbs = sorted(rescored, key=lambda v: (-v[0], v[1]))
+    verbs = [v for v in sorted(rescored, key=lambda v: (-v[0], v[1])) if v[0] >= 2][:VERB_MAX]   # «gan» (went): its own forms are rare
     adjs.sort(key=lambda v: (-v[0], v[1]))
     # «better», «eldest»: a degree of another adjective, not an adjective of its own; «taken», «lived», «fell»: a verb form, an
     # adjective only when it is really used as one (very tired, the developed world)
@@ -254,7 +257,7 @@ def build(data):
         mid, end = c.get('det_word', 0), c.get('det_end', 0)
         return (total >= 8 and c.get('intens', 0) / total >= 0.1) or (mid >= 50 and mid / (mid + end) >= 0.8)
     adjs = [a for a in adjs if a[1] not in degree_forms and (a[1] not in verb_forms or adjectival(a[1]))]
-    verbs = [v for v in verbs if v[0] >= 2][:VERB_MAX]; adjs = [a for a in adjs if a[0] >= 2][:ADJ_MAX]
+    adjs = [a for a in adjs if a[0] >= 2][:ADJ_MAX]
     verb_lines, adj_lines, homographs, adj_homographs = [], [], {}, {}
     for _, w, cells in verbs:
         reg = regular_verb(w)
@@ -275,7 +278,7 @@ def build(data):
     for _, w, cells in adjs:
         comp, sup = cells
         if not comp or not sup: code = ''
-        elif comp[0] == 'more ' + w and sup[0] == 'most ' + w: code = 'm'
+        elif comp[0].startswith('more ') and sup[0].startswith('most '): code = 'm'
         else:
             comp1 = [f for f in comp if not f.startswith('more ')] or comp
             sup1 = [f for f in sup if not f.startswith('most ')] or sup
@@ -324,6 +327,7 @@ def main():
     ad = [a for i, a in enumerate(adjs) if i < 150 or (i < 2000 and adj_lines[i].count('\t') and not adj_lines[i].endswith('\tr') and not adj_lines[i].endswith('\tm')) or i % 40 == 0]
     def adj_check(cells):
         if not all(cells): return None
+        if cells[0][0].startswith('more '): return [cells[0][0], cells[1][0]]   # Wiktionary's first form: «more right», not «righter»
         comp = [f for f in cells[0] if not f.startswith('more ')] or cells[0]
         sup = [f for f in cells[1] if not f.startswith('most ')] or cells[1]
         return [comp[0], sup[0]]

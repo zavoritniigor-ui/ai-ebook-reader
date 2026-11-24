@@ -12,7 +12,7 @@
 //   localEnSentenceVerbs(text)             every verb group of a text: «has been eating», «did not call», «to see», «Ask»
 //   localEnSentenceAdjectives(text, verbs) every adjective: before its noun, after a linking verb or very / more / most
 //   localEnTappedVerb / localEnTappedAdjective (focus, text)   the tapped word's own item, read inside its sentence
-const EN_VERB_TABLES_VERSION = 'd97818fb6448';
+const EN_VERB_TABLES_VERSION = '1b938c1f32fa';
 const EN_VERB_TABLES_URL = 'dict/en-verbs.json?v=' + EN_VERB_TABLES_VERSION;
 let enData = null, enLoading = null;
 const enFold = v => String(v || '').replace(/[’ʼ‘]/g, "'").toLowerCase().trim();
@@ -34,8 +34,8 @@ function loadEnVerbTables() {
             const adjectives = new Map(), adjIrregular = new Map();
             (raw.adjectives || []).forEach((line, index) => {
                 const [lemma, code = ''] = line.split('\t');
-                const key = enFold(lemma);   // «American» is looked up as «american»
-                if (adjectives.has(key)) return;
+                const key = enFold(lemma);   // «American» is looked up as «american»; «red» wins over «Red»
+                if (adjectives.has(key) && !(/^\p{Lu}/u.test(adjectives.get(key).lemma) && !/^\p{Lu}/u.test(lemma))) return;
                 adjectives.set(key, { lemma, code, index });
                 if (code && code !== 'r' && code !== 'm') code.split('|').forEach((cell, k) => cell.split(',').forEach(f => adjIrregular.set(f, { lemma: key, degree: k ? 'superlative' : 'comparative' })));
             });
@@ -85,7 +85,7 @@ function enVerbAnalyses(word) {
     if (!/^[a-z]+(?:-[a-z]+)*$/.test(w)) return [];
     if (Object.hasOwn(EN_BE_FORMS, w)) return [{ lemma: 'be', slot: EN_BE_FORMS[w], index: -1 }];
     const cands = new Set([w, ...(enData.irregular.get(w) || [])]);
-    const strip = (suffix, add) => { if (w.length > suffix.length + 1 && w.endsWith(suffix)) cands.add(w.slice(0, -suffix.length) + add); };
+    const strip = (suffix, add) => { if (w.length > suffix.length && w.endsWith(suffix)) cands.add(w.slice(0, -suffix.length) + add); };
     strip('s', ''); strip('es', ''); strip('ies', 'y');
     for (const end of ['ing', 'ed']) {
         strip(end, ''); strip(end, 'e');
@@ -264,8 +264,9 @@ function enSubjectBefore(tokens, i, text) {
         if (/^(?:here|there|now|then|today|tonight|yesterday|tomorrow|too|instead|anyway)$/.test(t.fold)) continue;
         // a verb of a relative clause: the subject is the noun before «who / which / that» («The man who lives here is kind»)
         if (enVerbAnalyses(t.text).length && !/^\p{Lu}/u.test(t.text)) {
-            const rel = tokens.slice(Math.max(0, j - 3), j).map((x, q) => [x, Math.max(0, j - 3) + q]).reverse().find(([x]) => EN_RELATIVE.has(x.fold));
-            if (rel && rel[1] > 0) return enSubjectBefore(tokens, rel[1], text);
+            let r = j - 1;
+            while (r > 0 && enIsAdverb(tokens[r])) r--;
+            if (r > 0 && EN_RELATIVE.has(tokens[r].fold)) return enSubjectBefore(tokens, r, text);   // «who lives», «which always seemed»
             if (enHomograph(t.text) < 0.5) return null;
         }
         // a noun (or a name); when a preposition stands before its phrase, the noun before that preposition is the subject
@@ -307,7 +308,7 @@ function enVerbItem(g, text) {
             if ((grammarConfigFor('en').verb.endings || []).includes(ending)) stemBreakdown = { stem: surface.slice(0, k), ending: surface.slice(k) };
         }
     }
-    const rule = passive ? 'passive-voice' : modal ? 'modal-verbs' : kind === 'infinitive' || kind === 'gerund' ? 'infinitive-gerund' : kind === 'participle' ? 'participle-clauses' : null;
+    const rule = g.rule ? g.rule : passive ? 'passive-voice' : modal ? 'modal-verbs' : kind === 'infinitive' || kind === 'gerund' ? 'infinitive-gerund' : kind === 'participle' ? 'participle-clauses' : null;
     return {
         pos: 'verb', lemma, surface, sentence, occurrence, agreesWith: subject || null, features, explanation: '', rule, stemBreakdown,
         forms: enVerbParadigm(lemma, tenseId)
@@ -349,7 +350,6 @@ function enReadGroups(text) {
         if (breakAt(i)) clauseFinite = false;
         if (t.w === 'POSS' || t.w === 'not') continue;
         const aux = enAuxOf(t);
-        const start = sentenceOk => sentenceOk;
         // «had better go», «'d better»: one modal group
         if ((t.w === 'had' || t.fold === "'d") && tokens[i + 1] && ['better', 'best'].includes(tokens[i + 1].fold)) {
             const k = skipBetween(i + 2, false).k, a = tokens[k] && enVerbAnalyses(tokens[k].text).find(x => x.slot === 'base');
@@ -375,7 +375,7 @@ function enReadGroups(text) {
                 const prevW = chain[chain.length - 1].w;
                 // only the auxiliaries that can follow: will -> be / have; have -> been; be -> being; to «ought to»
                 const canFollow = nt && nAux && (
-                    (EN_AUX[prevW] === 'modal' && (nt.w === 'be' || nt.w === 'have')) || (EN_AUX[prevW] === 'do' && (nt.w === 'be' || nt.w === 'have') && false) ||
+                    (EN_AUX[prevW] === 'modal' && (nt.w === 'be' || nt.w === 'have')) ||
                     (EN_AUX[prevW] === 'have' && nt.w === 'been') || (EN_AUX[prevW] === 'be' && nt.w === 'being') ||
                     (prevW === 'been' && nt.w === 'being'));
                 if (!canFollow) break;
@@ -422,12 +422,10 @@ function enReadGroups(text) {
             }
             const auxes = chain;
             const mainSlot = main.a.slot;
-            const ct = auxes.length ? enChainTense(auxes, mainSlot) : { tense: /past/.test(mainSlot) ? 'past simple' : 'present simple', aspect: 'simple', passive: false, modal: null };
-            if (!auxes.length) { ct.tense = mainSlot === 'past' ? 'past simple' : 'present simple'; ct.aspect = 'simple'; }
+            const ct = auxes.length ? enChainTense(auxes, mainSlot) : { tense: mainSlot === 'past' ? 'past simple' : 'present simple', aspect: 'simple', passive: false, modal: null };
             // the subject: before the group, or inside it (a question)
             let s = subj ? (Object.hasOwn(EN_SUBJECT, subj.tok.fold) && !subj.noun ? { person: EN_SUBJECT[subj.tok.fold][0], number: EN_SUBJECT[subj.tok.fold][1], text: subj.tok.text }
                 : { person: 2, number: /[^s']s$/.test(subj.tok.fold) ? 'plural' : 'singular', text: subj.tok.text }) : enSubjectBefore(tokens, i, text);
-            if (!s && !breakAt(i) && lastSubject && clauseFinite === false) s = null;
             const firstW = auxes.length ? auxes[0].w : t.w;
             const n = enNumberOfForm(firstW);
             let person = s ? s.person : (n ? 2 : null), number = n || (s ? s.number : null);
@@ -442,7 +440,7 @@ function enReadGroups(text) {
             const auxWords = auxes.map(a => (/^(?:ca|wo|sha|ai)$/i.test(a.tok.text) || a.tok.contracted ? a.w : a.tok.text.toLowerCase()));
             for (let q = from; q <= to; q++) used.add(q);
             groups.push({ start: tokens[contiguous ? from : to].start, end: tokens[to].end, mainTok: tokens[to], main: to, lemma: main.a.lemma, tense: ct.modal ? null : ct.tense, aspect: ct.aspect,
-                passive: ct.passive, modal: ct.modal, person, number, kind: 'finite', subject: s ? s.text : null, auxWords: contiguous ? auxWords : auxWords, surface });
+                passive: ct.passive, modal: ct.modal, person, number, kind: 'finite', subject: s ? s.text : null, auxWords, surface });
             clauseFinite = true; if (s) lastSubject = s;
             continue;
         }
@@ -670,7 +668,6 @@ function localEnSentenceAdjectives(text, verbs, limit = 20) {
         const share = enAdjHomograph(t.text);
         // «the light», «a right»: a noun after a determiner with nothing to describe
         if (via === 'noun' && prev && EN_DETERMINERS.has(prev.w) && share >= 0.6 && !EN_INTENSIFIERS.has(prev.fold)) continue;
-        if (via === 'noun' && enVerbAnalyses(t.text).length && !enData.adjectives.has(t.fold)) continue;
         // a verb form before a noun is mostly the verb («made his money»): only after a determiner / an intensifier / be
         if (via === 'noun' && enVerbAnalyses(t.text).some(x => x.slot === 'past' || x.slot === 's' || x.slot === 'base') && !(prev && (EN_DETERMINERS.has(prev.w) || EN_INTENSIFIERS.has(prev.fold) || enData.adjectives.has(prev.fold) || EN_PREPOSITIONS.has(prev.fold)))) continue;
         const features = {};
