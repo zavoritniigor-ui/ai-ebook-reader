@@ -102,6 +102,23 @@ check("«La porte» (a noun after an article) goes to the AI", "__calls.filter(x
 c.js("runGrammarAnalysis('rouge', %s); 1" % json.dumps(S4, ensure_ascii=False))
 check("an adjective goes to the AI", "__calls.filter(x=>x.task==='grammar_analysis').length===%d" % (n2 + 2), timeout=10)
 
+# ---- a selected sentence: its verbs from the tables, the explanation when one is opened
+S5 = "Hier soir, nous sommes allés au cinéma, puis nous avons mangé une pizza et Marie nous a raconté son voyage."
+c.js("grammarAnalysisCache.clear(); grammarContext.mode='verbs'; window.__nA=__calls.filter(x=>x.task==='grammar_analysis').length; window.__nP=__calls.filter(x=>x.task==='grammar_paradigm').length; runGrammarAnalysis(%s, ''); 1" % json.dumps(S5, ensure_ascii=False))
+check("a selected sentence lists its verbs from the tables, at once: sommes allés, avons mangé, a raconté",
+      "grammarContext.analysis?.local===true && grammarContext.analysis.verbsOnly===true && [...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].map(b=>b.textContent).join()==='aller,manger,raconter'")
+assert c.js("__calls.filter(x=>x.task==='grammar_analysis').length===__nA && __calls.filter(x=>x.task==='grammar_paradigm').length===__nP"), 'no AI request for the list'
+print('PASS ... with no AI request at all (the old analysis of a sentence was one ~8 000-character request)', flush=True)
+check("Practice is offered for the selection's verbs", "!!document.querySelector('.grammar-practice-btn')")
+c.js("__explain=()=>'{\"pick\":1,\"explanation\":\"Passé composé: завершена дія.\"}'; [...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].find(b=>b.textContent==='manger').click(); 1")
+check("opening a verb shows its table and then its explanation from one small request",
+      "grammarContext.focused?.lemma==='manger' && grammarContext.focused.surface==='avons mangé' && document.querySelector('#grammar-content .grammar-grid-row.current .grammar-grid-value')?.textContent==='avons mangé' && grammarContext.focused.explanation==='Passé composé: завершена дія.'")
+assert c.js("__calls.filter(x=>x.task==='grammar_paradigm').length===__nP+1 && __calls.filter(x=>x.task==='grammar_analysis').length===__nA")
+print('PASS one ~400-character request explains the opened verb; still no analysis request', flush=True)
+c.js("__analysis=()=>JSON.stringify({language:'fr',items:[{pos:'adjective',lemma:'son',surface:'son',sentence:%s,occurrence:1,agreesWith:'voyage',features:{gender:'masculin',number:'singulier'},explanation:'x',stemBreakdown:null,forms:null}]}); switchGrammarMode('adjectives'); 1" % json.dumps(S5, ensure_ascii=False))
+check("the Adjectives tab of that selection asks the AI once", "__calls.filter(x=>x.task==='grammar_analysis').length===__nA+1 && grammarContext.analysis && grammarContext.analysis.verbsOnly!==true", timeout=10)
+c.js("switchGrammarMode('verbs'); 1")
+
 # ---- no AI at all: the table is still there
 c.js("sharedAiProviders.groq=false; state.groqKey=''; state.openaiKey=''; state.apiKey=''; grammarAnalysisCache.clear(); __calls.length=0; 1")
 c.js("runGrammarAnalysis('regardait', %s); 1" % json.dumps(S1, ensure_ascii=False))

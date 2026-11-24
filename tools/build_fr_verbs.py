@@ -17,7 +17,9 @@ Output (one line of JSON per section, so a diff stays readable):
     tenses    the simple tenses stored, in order; each has 6 persons (je, tu, il, nous, vous, ils), the impératif 3 (tu, nous, vous)
     patterns  ending lists: a verb's forms are its stem + each ending, in the order of `tenses`, then the past and the
               present participle; '~' = no such form (an impersonal verb has only «il»). Shared by every verb with the same endings.
-    verbs     "lemma\\tstem\\tpattern\\taux": aux 'a' (avoir) or 'e' (être; pronominal verbs too)
+    verbs     "lemma\\tstem\\tpattern\\taux": aux 'a' (avoir) or 'e' (être; pronominal verbs too); most common first
+    homographs  a verb form -> the share of its uses that are another word in Lexique (books frequency): «porte» 0.87, «est» 0.01.
+              js/grammar-conjugation.js counts a form as a verb in a sentence only with evidence when this is high; ≥ 0.05 only
     Compound tenses (passé composé, plus-que-parfait, …) are built from the auxiliary's own tables + the past participle by
     js/grammar-conjugation.js; this build builds them the same way and checks them against Wiktionary's own compound tables.
 """
@@ -131,10 +133,20 @@ def main():
     rows = lexique.read_text(encoding='utf-8').splitlines()
     hdr = rows[0].split('\t'); ic, il, ifr = hdr.index('cgram'), hdr.index('lemme'), hdr.index('freqlemlivres')
     freq = {}
+    io, iff = hdr.index('ortho'), hdr.index('freqlivres')
+    as_verb, as_other = {}, {}
     for r in (x.split('\t') for x in rows[1:]):
         if r[ic] in ('VER', 'AUX'):
             try: freq[r[il]] = max(freq.get(r[il], 0.0), float(r[ifr]))
             except ValueError: pass
+        try: f = float(r[iff])
+        except ValueError: f = 0.0
+        d = as_verb if r[ic] in ('VER', 'AUX') else as_other
+        d[r[io]] = d.get(r[io], 0.0) + f
+    homographs = {}
+    for w in sorted(as_verb):
+        share = as_other.get(w, 0.0) / (as_verb[w] + as_other.get(w, 0.0) + 1e-9)
+        if share >= 0.05: homographs[w] = round(share, 2)
 
     spell = lambda v: v.replace('oe', 'œ')   # Lexique writes manoeuvrer, Wiktionary manœuvrer
     wanted = set(freq) | {spell(v) for v in freq} | {p + x for v in freq for x in (v, spell(v)) for p in ('se ', 's’')}
@@ -199,6 +211,7 @@ def main():
         'tenses': [[t, n] for t, _, n in TENSES],
         'patterns': patterns,
         'verbs': verbs,
+        'homographs': homographs,
     }
     text = '{\n' + ',\n'.join(f'"{k}": {json.dumps(v, ensure_ascii=False, separators=(",", ":"))}' for k, v in out.items()) + '\n}\n'
     OUT.write_text(text, encoding='utf-8')
@@ -209,6 +222,7 @@ def main():
     gz = len(gzip.compress(text.encode('utf-8'), 9))
     print(f"verbs {stats['verbs']} (pronominal only: {stats['reflexive_only']}), patterns {len(patterns)}, "
           f"{len(text.encode('utf-8')) // 1024} KB ({gz // 1024} KB gzip) -> {OUT.relative_to(root)}")
+    print(f"homographs (a verb form that is often another word): {len(homographs)}")
     print(f"compound forms checked against Wiktionary: {stats['compound_checked']}, different: {stats['compound_mismatch']}")
     for m in mismatches: print('   ', m)
     print(f"Lexique verbs without a Wiktionary table: {len(stats['missing'])}; the most common: {stats['missing'][:15]}")

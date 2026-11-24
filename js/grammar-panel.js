@@ -509,6 +509,10 @@ function focusGrammarItem(item, langCode, { reveal = true } = {}) {
     if (grammarContext.analysis && grammarContext.analysis.items.includes(item)) renderGrammarPanel();
     else els.grammarContent.replaceChildren();
     renderGrammarFocusDetail(item, langCode);
+    // a verb of a selection read from the tables: its «why this form here» now, in a few hundred characters
+    if (item.localReading && !item.explanation && !item.explanationPending && typeof explainLocalGrammarItem === 'function') {
+        explainLocalGrammarItem(item, item.localReading, item.surface, langCode, typeof explainLangName === 'function' ? explainLangName() : 'English');
+    }
     if (!reveal) return;
     els.grammarPanel.classList.add('expanded');
     els.grammarPanel.classList.remove('loading');
@@ -648,7 +652,8 @@ function switchGrammarMode(mode) {
     // Only the tapped word was analysed (runGrammarAnalysis, focusOnly) and this tab has nothing of it: the sentence's own
     // verbs / adjectives are asked for now, so that tab and its Practice keep working as before.
     const an = grammarContext.analysis, wantPos = mode === 'adjectives' ? 'adjective' : 'verb';
-    if (an && an.focusOnly && !an.items.some(it => it.pos === wantPos) && grammarContext.sentence && grammarContext.selectedText) {
+    // the same for a selection whose verbs came from the conjugation tables (verbsOnly): its adjectives are asked for now
+    if (an && (an.focusOnly || an.verbsOnly) && !an.items.some(it => it.pos === wantPos) && grammarContext.sentence && grammarContext.selectedText) {
         runGrammarAnalysis(grammarContext.selectedText, grammarContext.sentence, { whole: true, mode });
         return;
     }

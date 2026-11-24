@@ -17,6 +17,7 @@ from browser_cdp import CDP
 
 c = CDP(); c.sock.settimeout(45)
 c.call('Page.enable'); c.call('Runtime.enable')
+c.call('Page.addScriptToEvaluateOnNewDocument', source='window.__grammarAiOnly = true;')   # this suite stubs the AI analysis of a French text; the tables' path: grammar_local_tables_browser.py
 c.call('Emulation.setDeviceMetricsOverride', width=1280, height=900, deviceScaleFactor=1, mobile=False)
 KEYS = {'OAI_1': 'sk-test-only-one-aaaaaaaa', 'OAI_2': 'sk-test-only-two-bbbbbbbb', 'OAI_BAD': 'sk-test-only-bad-cccccccc',
         'OAI_A': 'sk-test-only-rapid-a-dddd', 'OAI_B': 'sk-test-only-rapid-b-eeee',
