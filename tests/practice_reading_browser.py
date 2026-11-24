@@ -489,8 +489,10 @@ check("N: Grammar still lists its cards / shows the mode bar in the SOURCE langu
       "document.getElementById('grammar-mode-verbs').textContent==='Verbes' && document.getElementById('grammar-mode-adjectives').textContent==='Adjectifs' && !!document.querySelector('.grammar-practice-btn')")
 c.js("closePracticeSession(); document.getElementById('practice-panel').hidden=true; window.__g0=__calls.filter(x=>x.task==='grammar_analysis').length")
 click('#grammar-mode-adjectives'); time.sleep(0.2)
-check("N: Verbs <-> Adjectives is immediate (0 AI calls), verb tense chips vanish in Adjectifs and return in Verbes",
-      "document.querySelectorAll('#grammar-controls-bar button').length===0 && (()=>{ switchGrammarMode('verbs'); return document.querySelectorAll('#grammar-controls-bar button').length===GRAMMAR_LANG_CONFIG.fr.verb.tenses.length })() && __calls.filter(x=>x.task==='grammar_analysis').length===__g0")
+# One tapped word was analysed alone: the Adjectives tab asks ONCE for the sentence (owner 2026-11-23), then switching is free.
+c.wait("grammarContext.analysis && grammarContext.analysis.focusOnly!==true && els.grammarPanel.classList.contains('ready')", timeout=6)
+check("N: Verbs <-> Adjectives: one AI call for the sentence's adjectives, then immediate; verb tense chips vanish in Adjectifs and return in Verbes",
+      "document.querySelectorAll('#grammar-controls-bar button').length===0 && (()=>{ switchGrammarMode('verbs'); const n=document.querySelectorAll('#grammar-controls-bar button').length; switchGrammarMode('adjectives'); switchGrammarMode('verbs'); return n===GRAMMAR_LANG_CONFIG.fr.verb.tenses.length })() && __calls.filter(x=>x.task==='grammar_analysis').length<=__g0+1")
 check("N: hasGrammarConfig('pl') is still false -- Polish is intentionally NOT a supported language",
       "hasGrammarConfig('pl')===false && !SUPPORTED_LANGUAGE_CODES.includes('pl')")
 print("(the full Grammar behaviour is covered by grammar_redesign_browser.py, grammar_french_browser.py and grammar_language_isolation_browser.py, which all pass unchanged)", flush=True)

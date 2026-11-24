@@ -633,9 +633,16 @@ document.getElementById('grammar-mode-verbs').onclick = () => switchGrammarMode(
 document.getElementById('grammar-mode-adjectives').onclick = () => switchGrammarMode('adjectives');
 function switchGrammarMode(mode) {
     if (grammarContext.mode === mode) return;
+    const langCode = grammarContext.sourceLanguage || DEFAULT_GRAMMAR_LANG;
+    // Only the tapped word was analysed (runGrammarAnalysis, focusOnly) and this tab has nothing of it: the sentence's own
+    // verbs / adjectives are asked for now, so that tab and its Practice keep working as before.
+    const an = grammarContext.analysis, wantPos = mode === 'adjectives' ? 'adjective' : 'verb';
+    if (an && an.focusOnly && !an.items.some(it => it.pos === wantPos) && grammarContext.sentence && grammarContext.selectedText) {
+        runGrammarAnalysis(grammarContext.selectedText, grammarContext.sentence, { whole: true, mode });
+        return;
+    }
     grammarContext.mode = mode;
     cancelAsyncTasks(['grammarParadigm']);
-    const langCode = grammarContext.sourceLanguage || DEFAULT_GRAMMAR_LANG;
     // A focused occurrence of the OTHER part of speech no longer belongs on screen (and its
     // verb-only tense controls must not be able to act on it); one that fits stays visible.
     const focused = grammarContext.focused;

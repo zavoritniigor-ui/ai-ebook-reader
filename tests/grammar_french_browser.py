@@ -441,9 +441,10 @@ assert res['ok'] and res['language'] == 'fr' and c.js("grammarContext.sourceLang
 print('PASS source language detected as French for the tapped word')
 # Only items whose surface is in the analysed sentence survive (the gold reply also lists other sentences)
 surfaces = [i['surface'] for i in res['items']]
-assert surfaces == ['a mangé', 'rouge'], surfaces
-assert res['items'][0]['tapped'] is True
-print("PASS only the tapped sentence's verbs/adjectives survive; the tapped word's item is first")
+assert surfaces == ['a mangé'], surfaces
+assert res['items'][0]['tapped'] is True and res['focusOnly'] is True
+assert 'Analyze ONLY that exact word' in prompt, prompt[:600]
+print("PASS one tapped word: only it is analysed (owner 2026-11-23: a verb's table must come fast), the sentence is its context")
 check("Verbs mode: one lemma card for the sentence's verb",
       "[...document.querySelectorAll('#grammar-content .grammar-card-lemma')].map(b=>b.textContent).join(',')==='manger' && els.grammarPanel.classList.contains('ready')")
 check("Verbs mode shows the French mode labels and the French tense controls",
@@ -453,6 +454,12 @@ check("Verbs mode shows the French mode labels and the French tense controls",
 # --- Verbs <-> Adjectives switching with NO extra AI call
 before = c.js("__calls.filter(x=>x.task!=='translation').length")
 c.js("document.getElementById('grammar-mode-adjectives').click()")
+# Only the tapped verb was analysed: the Adjectives tab asks ONCE for the sentence's own verbs and adjectives.
+check("the Adjectives tab of a one-word analysis asks once for the whole sentence", "grammarContext.analysis && grammarContext.analysis.focusOnly===false && els.grammarPanel.classList.contains('ready')", timeout=6)
+assert c.js("__calls.filter(x=>x.task!=='translation').length") == before + 1
+assert 'Analyze that exact word/phrase FIRST' in last_grammar_prompt()
+before += 1
+print('PASS the other tab asks the sentence once (tapped word first), so its cards and Practice work as before')
 check("Adjectives mode: verb-only tense controls disappear",
       "document.querySelectorAll('#grammar-controls-bar button').length===0 && document.getElementById('grammar-mode-adjectives').classList.contains('active') && !document.getElementById('grammar-mode-verbs').classList.contains('active')")
 check("Adjectives mode: the adjective card is listed and no verb card remains",
@@ -484,7 +491,7 @@ print('PASS Verbs <-> Adjectives switching and clicking analysed occurrences mad
 fresh_paragraph()
 tap('mangé'); press_ai()
 time.sleep(0.4)
-assert grammar_calls() == 1, grammar_calls()
+assert grammar_calls() == 2, grammar_calls()   # 1 tap + 1 for the Adjectives tab
 check("re-tapping the same word re-renders from the cache", "els.grammarPanel.classList.contains('ready') && document.querySelectorAll('#grammar-content .grammar-card').length===1")
 print('PASS re-tapping the same word is answered from the cache (no new AI call)')
 
@@ -494,18 +501,19 @@ tap('parlions'); press_ai()
 check("a tap in another sentence triggers a new analysis", "grammarContext.analysis && grammarContext.analysis.items.some(i=>i.surface==='parlions')", timeout=6)
 prompt = last_grammar_prompt()
 assert S3 in prompt and S2 not in prompt and 'tapped "parlions"' in prompt
-assert grammar_calls() == 2
+assert grammar_calls() == 3
 print("PASS tapping 'parlions' sends the imparfait sentence S3 and names 'parlions'")
 res = c.js("grammarContext.analysis")
-assert [i['surface'] for i in res['items']] == ['parlions', 'finissent', 'rire'], [i['surface'] for i in res['items']]
-print('PASS the tapped verb comes first, then the other verbs of that sentence')
+assert [i['surface'] for i in res['items']] == ['parlions'], [i['surface'] for i in res['items']]
+print('PASS the tapped verb alone is analysed (the stub reply also lists the sentence\'s other verbs: they are dropped)')
 c.js("[...document.querySelectorAll('#grammar-content .grammar-card-lemma')].find(b=>b.textContent==='parler').click()")
 check("regular verb detail: stem+ending shown, conjugation table with the 'nous' row highlighted",
       """(()=>{const d=document.querySelector('#grammar-content .grammar-focus');
         return d.querySelector('.grammar-stem')?.textContent==='parl' && d.querySelector('.grammar-ending')?.textContent==='ions' &&
           d.querySelectorAll('.grammar-grid-row').length===6 && d.querySelector('.grammar-grid-row.current .grammar-grid-label')?.textContent==='nous' &&
           d.querySelector('.grammar-grid-row.current .grammar-grid-value')?.textContent==='parlions'})()""")
-c.js("[...document.querySelectorAll('#grammar-content .grammar-card-lemma')].find(b=>b.textContent==='rire').click()")
+c.js("runGrammarAnalysis('rire', %s); 1" % json.dumps(S3))   # its own analysis: a one-word one holds only the tapped verb ('rire' sits under the open panel, so no real tap)
+check("a tap on 'rire' analyses it", "grammarContext.focused?.lemma==='rire' && els.grammarPanel.classList.contains('ready')", timeout=6)
 check("irregular verb detail: no stem/ending pattern is offered",
       "document.querySelector('#grammar-content .grammar-focus').dataset.pos==='verb' && !document.querySelector('#grammar-content .grammar-focus-pattern')")
 
@@ -560,7 +568,7 @@ check("tapping 'parlions' focuses it (regular -ions pattern visible)",
       "grammarContext.focused?.surface==='parlions' && document.querySelector('#grammar-content .grammar-ending')?.textContent==='ions'", timeout=6)
 c.js("document.querySelector('#grammar-controls-bar button[data-tense-id=indicatif_passe_compose]').click()")
 check("pressing 'Passé composé' lights that chip", "[...document.querySelectorAll('#grammar-controls-bar button.active')].map(b=>b.textContent).join()==='Passé composé'", timeout=4)
-c.js("[...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].find(b=>b.textContent==='finir').click()")
+c.js("runGrammarAnalysis('finissent', %s); 1" % json.dumps(S3))   # another word of the sentence (a one-word analysis lists no other cards)
 check("focusing ANOTHER word clears the lit chip and shows that word's own forms, not the previous tense's table",
       """grammarContext.focused?.surface==='finissent' && grammarContext.activeTenseId===null &&
          document.querySelectorAll('#grammar-controls-bar button.active').length===0 &&

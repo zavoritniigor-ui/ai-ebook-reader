@@ -182,7 +182,9 @@ function recoverSentenceFromTapPoint() {
 // reuses a cached normalized analysis when available (switching Verbs<->Adjectives
 // or re-tapping the same passage never re-sends the source text — section 6/19/20),
 // otherwise runs one structured AI call covering both parts of speech.
-async function runGrammarAnalysis(contextText, sentenceText) {
+// opts.whole: analyse every verb and adjective of the sentence even for a tapped word (the other tab asked for them);
+// opts.mode: the tab to show when the result arrives.
+async function runGrammarAnalysis(contextText, sentenceText, opts = {}) {
     const context = normalizeGrammarText(contextText);
     // A tapped word/phrase is analyzed INSIDE its sentence so "why this form here" can
     // be answered contextually; a longer selection (which the tap sentence does not
@@ -196,10 +198,14 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     }
     const analysisText = (sentence && sentence !== context && sentence.includes(context)) ? sentence : context;
     const sourceLang = grammarSourceLanguageFor(context, analysisText);
-    const key = grammarAnalysisCacheKey(analysisText + '\u0000' + context, sourceLang, state.uiLang);
+    // One tapped/selected word (up to 3) inside a longer text: only it is analysed (grammarProfile, focusOnly), and its context is
+    // the sentence around it, at most GRAMMAR_FOCUS_CONTEXT_CHARS -- not a 1400-character PDF run. The other tab asks for the rest.
+    const focusOnly = !opts.whole && analysisText !== context && grammarWordCount(context) <= 3;
+    const key = grammarAnalysisCacheKey(analysisText + '\u0000' + context + (focusOnly ? '\u0000one' : ''), sourceLang, state.uiLang);
     // Retry re-sends the ALREADY RESOLVED sentence: a later tap (which rewrites
     // state.lastGrammarSentence / lastTapPoint) can never swap the context under a Retry button.
-    const retry = () => runGrammarAnalysis(context, analysisText);
+    const retry = () => runGrammarAnalysis(context, analysisText, opts);
+    const showTab = () => { if (opts.mode && grammarContext.mode !== opts.mode) switchGrammarMode(opts.mode); };
 
     // A new request supersedes EVERYTHING still in flight — including when it is answered from
     // the cache below, otherwise a slow earlier reply would land on top of it.
@@ -230,6 +236,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
         grammarContext.analysis = cached;
         presentGrammarAnalysis(cached, sourceLang);
         panel.classList.remove('loading'); panel.classList.add('ready');
+        showTab();
         return;
     }
 
@@ -243,7 +250,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     // The bounded text actually analysed (whole sentences, capped). A tapped word inside a sentence is unaffected.
     let attemptText = analysisText;
     let focus = context;
-    let scope = boundGrammarText(analysisText, GRAMMAR_TEXT_CAP_CHARS, analysisText !== context ? context : '');   // a tapped word stays inside the analysed text
+    let scope = boundGrammarText(analysisText, focusOnly ? GRAMMAR_FOCUS_CONTEXT_CHARS : GRAMMAR_TEXT_CAP_CHARS, analysisText !== context ? context : '');   // a tapped word stays inside the analysed text
     if (scope.trimmed && analysisText === context) { attemptText = scope.text; focus = scope.text; }
     else if (scope.trimmed) attemptText = scope.text;
     const fail = (message, reason) => {
@@ -253,7 +260,7 @@ async function runGrammarAnalysis(contextText, sentenceText) {
     try {
         let analysis = null, truncated = false;
         for (let attempt = 0; attempt < 2; attempt++) {
-            const profile = grammarProfile(attemptText, attempt > 0);
+            const profile = grammarProfile(attemptText, attempt > 0, focusOnly);
             const prompt = buildGrammarAnalysisPrompt(attemptText, sourceLang, langName, focus, profile);
             const meta = {};
             let out = '';
@@ -266,6 +273,11 @@ async function runGrammarAnalysis(contextText, sentenceText) {
             }
             if (!task.current()) { panel.classList.remove('loading'); return; }
             analysis = normalizeGrammarAnalysis(out, sourceLang, attemptText, focus);
+            // A model that still lists other words of the sentence: only the tapped one is kept (it is first when it is there).
+            if (focusOnly && analysis.ok && analysis.items.length > 1) {
+                const f = grammarFold(focus), hit = analysis.items.find(i => { const s = grammarFold(i.surface || ''); return s && (s.includes(f) || f.includes(s)); });
+                analysis.items = [hit || analysis.items[0]];
+            }
             if (truncated) { analysis.partial = true; if (!analysis.ok) analysis.error = 'truncated'; }   // the provider's word beats an empty/garbled partial
             const category = analysis.ok ? (analysis.suspect ? 'no_valid_items' : analysis.partial ? 'partial' : (analysis.notes.length || analysis.adjusted.length ? 'ok_recovered' : 'ok'))
                 : (GRAMMAR_REASON_CATEGORY[analysis.error] || analysis.error);
@@ -304,9 +316,11 @@ async function runGrammarAnalysis(contextText, sentenceText) {
             budgetLimited: overBudgetCount ? { n: keptLemmaCount, m: keptLemmaCount + overBudgetCount } : null
         };
         if (!analysis.partial) cacheGrammarAnalysis(key, analysis);      // a partial analysis is not cached: a retry deserves a fresh chance
+        analysis.focusOnly = focusOnly;
         grammarContext.analysis = analysis;
         panel.classList.remove('loading'); panel.classList.add('ready');
         presentGrammarAnalysis(analysis, sourceLang);
+        showTab();
     } catch (err) {
         if (!task.current()) { panel.classList.remove('loading'); return; }
         panel.classList.remove('loading');
