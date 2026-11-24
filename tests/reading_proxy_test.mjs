@@ -3,25 +3,23 @@
 // What must hold: never on the app's own origins; only the listed sites; the path is passed on exactly as the browser
 // sent it (accented addresses); no cookies either way, an honest User-Agent; the site's framing / CSP headers dropped;
 // links, redirects, preloads, CSS urls and inline-script addresses pointed at /p/<host>/.
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { loadFunction, OWNER_KEY, ownerCookie } from './functions_loader.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { onRequest, proxiedUrl, InlineScriptRewriter, HeadInjector, PROXY_HOSTS, proxyServedHere, TRANSLATE_JS_VERSION } = await loadFunction('p/[[path]].js');
-// The proxy and the voice serve only the owner (functions/_owner.js): requests carry the owner's cookie unless a check says otherwise.
-const OWNER = await ownerCookie(), OWNER_ENV = { OWNER_KEY };
+const copy = join(mkdtempSync(join(tmpdir(), 'reading-proxy-')), 'proxy.mjs');
+writeFileSync(copy, readFileSync(join(root, 'functions', 'p', '[[path]].js')));
+const { onRequest, proxiedUrl, InlineScriptRewriter, HeadInjector, PROXY_HOSTS, proxyServedHere, TRANSLATE_JS_VERSION } = await import(pathToFileURL(copy).href);
 function ok(name, cond, extra = '') { if (!cond) { console.error('FAIL', name, extra); process.exit(1); } console.log('PASS', name); }
 
 let asked = [], reply = () => new Response('ok', { headers: { 'content-type': 'text/plain' } });
 globalThis.fetch = async (url, init = {}) => { asked.push({ url: String(url), init }); return reply(url, init); };
 const P = 'https://web.ai-ebook-reader.uk';
-const call = (path, init = {}, owner = true) => {
-    const headers = new Headers(init.headers || {});
-    if (owner) headers.set('cookie', headers.has('cookie') ? `${headers.get('cookie')}; ${OWNER}` : OWNER);
-    const request = new Request(P + path, { ...init, headers });
+const call = (path, init = {}) => {
+    const request = new Request(P + path, init);
     const rest = new URL(request.url).pathname.replace(/^\/p\//, '');
-    return onRequest({ request, params: { path: rest.split('/').map(decodeURIComponent) }, env: OWNER_ENV });
+    return onRequest({ request, params: { path: rest.split('/').map(decodeURIComponent) } });
 };
 
 // ---- where it answers
@@ -36,12 +34,6 @@ asked = []; let r = await call('/p/evil.example/x');
 ok('a site not on the list -> 403, nothing fetched', r.status === 403 && asked.length === 0);
 asked = []; r = await call('/p/francaisfacile.rfi.fr/fr/', { method: 'PUT' });
 ok('only GET, HEAD and POST', r.status === 405 && asked.length === 0);
-asked = []; r = await call('/p/francaisfacile.rfi.fr/fr/exercices/a1/?x=1', {}, false);
-ok('a stranger is sent to the site itself, nothing fetched (owner only)', r.status === 302 && r.headers.get('location') === 'https://francaisfacile.rfi.fr/fr/exercices/a1/?x=1' && asked.length === 0);
-asked = []; r = await call('/p/francaisfacile.rfi.fr/fr/', { method: 'POST', body: 'a=1' }, false);
-ok('... and a stranger\'s POST is refused', r.status === 403 && asked.length === 0);
-asked = []; r = await onRequest({ request: new Request(P + '/p/francaisfacile.rfi.fr/fr/', { headers: { cookie: OWNER } }), params: { path: ['francaisfacile.rfi.fr', 'fr', ''] }, env: {} });
-ok('no OWNER_KEY on the site: nobody is the owner', r.status === 302 && asked.length === 0);
 ok('the list is the exercise sites only', [...PROXY_HOSTS].sort().join(' ') === 'c.h5p.io eu-west-1.cdn.h5p.com fle-rfi.h5p.com francaisfacile.rfi.fr s.francaisfacile.rfi.fr www.francaisfacile.com');
 
 // ---- the request it makes
@@ -104,14 +96,14 @@ const { createHash } = await import('node:crypto');
 const scriptHash = createHash('sha256').update(readFileSync(join(root, 'proxy-assets', 'translate.js'))).update(readFileSync(join(root, 'proxy-assets', 'dict-worker.js'))).digest('hex').slice(0, 12);
 ok('the injected script address carries the version of proxy-assets/translate.js + dict-worker.js (update TRANSLATE_JS_VERSION after editing them)', TRANSLATE_JS_VERSION === scriptHash, TRANSLATE_JS_VERSION + ' != ' + scriptHash);
 // The owner's speech server (functions/api/speech/[[path]].js) answers the proxy's host too, and still no other site.
-const speech = await loadFunction('api/speech/[[path]].js');
-const speak = (host, origin, owner = true) => speech.onRequest({ request: new Request(`https://${host}/api/speech/speak`, { method: 'POST', headers: { origin, 'content-type': 'application/json', ...(owner ? { cookie: OWNER } : {}) }, body: '{"text":"chat","lang":"fr"}' }), env: OWNER_ENV, params: { path: ['speak'] } });
+const speechCopy = join(mkdtempSync(join(tmpdir(), 'speech-')), 'speech.mjs');
+writeFileSync(speechCopy, readFileSync(join(root, 'functions', 'api', 'speech', '[[path]].js')));
+const speech = await import(pathToFileURL(speechCopy).href);
+const speak = (host, origin) => speech.onRequest({ request: new Request(`https://${host}/api/speech/speak`, { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: '{"text":"chat","lang":"fr"}' }), env: {}, params: { path: ['speak'] } });
 let sr = await speak('web.ai-ebook-reader.uk', 'https://web.ai-ebook-reader.uk');
 ok('the speech server lets the reading proxy\'s pages in (503 here only because no tunnel is configured in the test)', sr.status === 503, String(sr.status));
 sr = await speak('web.ai-ebook-reader.uk', 'https://evil.example');
 ok('... but not another site\'s page', sr.status === 403, String(sr.status));
-sr = await speak('ai-ebook-reader.uk', 'https://ai-ebook-reader.uk', false);
-ok('... and not a stranger, even from the app\'s own page (owner only; the app then uses the browser\'s voice)', sr.status === 403 && (await sr.text()) === 'owner only', String(sr.status));
 // Microsoft's neural voices (Azure AI Speech) when the owner's computer does not answer — same function, mocked network.
 {
     const calls = [];
@@ -125,11 +117,7 @@ ok('... and not a stranger, even from the app\'s own page (owner only; the app t
         throw new Error('unexpected ' + u);
     };
     const env = { SPEECH_TUNNEL_URL: 'https://tunnel.example', SPEECH_TOKEN: 't', AZURE_SPEECH_KEY: 'k', AZURE_SPEECH_REGION: 'westeurope' };
-    const say = (body, e = env, path = 'speak', owner = true) => speech.onRequest({ request: new Request('https://ai-ebook-reader.pages.dev/api/speech/' + path, { method: path === 'speak' ? 'POST' : 'GET', headers: { origin: 'https://ai-ebook-reader.pages.dev', 'content-type': 'application/json', ...(owner ? { cookie: OWNER } : {}) }, body: path === 'speak' ? JSON.stringify(body) : undefined }), env: { ...OWNER_ENV, ...e }, params: { path: [path] } });
-    calls.length = 0; let r0 = await say({ text: 'bonjour', lang: 'fr' }, env, 'speak', false);
-    ok('a stranger never reaches the computer or Azure (their quota)', r0.status === 403 && calls.length === 0);
-    calls.length = 0; r0 = await say(null, env, 'health', false);
-    ok('... nor health: the app sees no server voice and uses the browser\'s', r0.status === 403 && calls.length === 0);
+    const say = (body, e = env, path = 'speak') => speech.onRequest({ request: new Request('https://ai-ebook-reader.pages.dev/api/speech/' + path, { method: path === 'speak' ? 'POST' : 'GET', headers: { origin: 'https://ai-ebook-reader.pages.dev', 'content-type': 'application/json' }, body: path === 'speak' ? JSON.stringify(body) : undefined }), env: e, params: { path: [path] } });
     let r = await say({ text: "l'école <b>", lang: 'fr' });
     const az = calls.find(c => c.u.includes('tts.speech.microsoft.com'));
     ok('the computer down (530): Microsoft\'s voice answers with MP3', r.status === 200 && r.headers.get('content-type') === 'audio/mpeg' && r.headers.get('x-speech-engine') === 'azure');

@@ -54,6 +54,16 @@ Object.assign(I18N, {
     devSign: { uk: 'З повагою, Ігор Z.', en: 'Kind regards, Ihor Z.', fr: 'Cordialement, Ihor Z.', ru: 'С уважением, Игорь Z.', zh: '此致，Ihor Z.', ko: 'Ihor Z. 드림', hi: 'सादर, Ihor Z.', ga: 'Le meas, Ihor Z.', es: 'Atentamente, Ihor Z.' },
     devMailSubject: { uk: 'AI E-book Reader — побажання', en: 'AI E-book Reader — feedback', fr: 'AI E-book Reader — suggestions', ru: 'AI E-book Reader — пожелания', zh: 'AI E-book Reader — 反馈', ko: 'AI E-book Reader — 의견', hi: 'AI E-book Reader — सुझाव', ga: 'AI E-book Reader — aiseolas', es: 'AI E-book Reader — sugerencias' },
     devMailBody: { uk: 'Привіт! Мої побажання:\n\n\n\n—\nВерсія: {version}\nПристрій: {device}', en: 'Hello! My wishes:\n\n\n\n—\nVersion: {version}\nDevice: {device}', fr: 'Bonjour ! Mes souhaits :\n\n\n\n—\nVersion : {version}\nAppareil : {device}', ru: 'Привет! Мои пожелания:\n\n\n\n—\nВерсия: {version}\nУстройство: {device}', zh: '你好！我的建议：\n\n\n\n—\n版本：{version}\n设备：{device}', ko: '안녕하세요! 제 의견:\n\n\n\n—\n버전: {version}\n기기: {device}', hi: 'नमस्ते! मेरे सुझाव:\n\n\n\n—\nसंस्करण: {version}\nडिवाइस: {device}', ga: 'Dia duit! Mo mhianta:\n\n\n\n—\nLeagan: {version}\nGléas: {device}', es: '¡Hola! Mis sugerencias:\n\n\n\n—\nVersión: {version}\nDispositivo: {device}' },
+    // The owner's hidden sign-in (owner, 2026-11-23): five quick taps on the logo above. Only uk/en: nobody else sees it.
+    devOwnerTitle: { uk: '🔑 Власник', en: '🔑 Owner' },
+    devOwnerYes: { uk: '✅ Цей пристрій — власник: обмеження сервера зняті.', en: '✅ This device is the owner: the server\'s limits are lifted.' },
+    devOwnerNo: { uk: 'Введіть пароль власника, щоб зняти обмеження на цьому пристрої.', en: 'Enter the owner\'s password to lift the limits on this device.' },
+    devOwnerKey: { uk: 'Пароль', en: 'Password' },
+    devOwnerIn: { uk: 'Увійти', en: 'Sign in' },
+    devOwnerOut: { uk: 'Вийти', en: 'Sign out' },
+    devOwnerWrong: { uk: 'Пароль не підходить.', en: 'Wrong password.' },
+    devOwnerNoKey: { uk: 'На сайті ще не задано пароль (секрет OWNER_KEY у Cloudflare).', en: 'No password on the site yet (secret OWNER_KEY in Cloudflare).' },
+    devOwnerFail: { uk: 'Сервер не відповів. Спробуйте ще раз.', en: 'The server did not answer. Try again.' },
 });
 
 // The app's version as the reader has it: the content identity of its main script.
@@ -78,10 +88,14 @@ function devDialog() {
         + '<button type="button" class="close-panel-btn dev-close"><svg class="mi" aria-hidden="true"><use href="#i-close"/></svg></button></div>'
         + '<div class="dev-body"><p class="dev-free"></p><div class="dev-data"><p class="dev-data-title"></p><p class="dev-data-text"></p></div>'
         + '<p class="dev-avoid"></p><a class="btn-primary dev-write" rel="noopener"></a><p class="dev-write-note"></p>'
-        + '<p class="dev-sign"><span class="dev-sign-name"></span> · <a class="dev-mail"></a></p></div>';
+        + '<p class="dev-sign"><span class="dev-sign-name"></span> · <a class="dev-mail"></a></p>'
+        + '<div class="dev-owner" hidden><p class="dev-owner-title"></p><p class="dev-owner-state"></p>'
+        + '<form class="dev-owner-form"><input type="password" class="dev-owner-key" autocomplete="current-password" required>'
+        + '<button type="submit" class="btn-primary dev-owner-in"></button></form><button type="button" class="dev-owner-out" hidden></button></div></div>';
     document.body.appendChild(dialog);
     dialog.querySelector('.dev-close').onclick = () => dialog.close();
     dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });   // a tap on the backdrop closes it
+    devOwnerWire(dialog);
     return dialog;
 }
 function renderDeveloperDialog() {
@@ -89,10 +103,51 @@ function renderDeveloperDialog() {
     set('.dev-title', 'mDev'); set('.dev-free', 'devFree'); set('.dev-data-title', 'devDataTitle'); set('.dev-data-text', 'devData');
     set('.dev-avoid', 'devAvoid'); set('.dev-write', 'devWrite'); set('.dev-write-note', 'devWriteNote'); set('.dev-sign-name', 'devSign');
     d.querySelector('.dev-close').setAttribute('aria-label', t('tClose'));
+    set('.dev-owner-title', 'devOwnerTitle'); set('.dev-owner-in', 'devOwnerIn'); set('.dev-owner-out', 'devOwnerOut');
+    d.querySelector('.dev-owner-key').placeholder = t('devOwnerKey');
+    d.querySelector('.dev-owner').hidden = true;   // hidden again every time the dialog opens
     const href = devMailHref();
     d.querySelector('.dev-write').href = href;
     const mail = d.querySelector('.dev-mail');
     mail.textContent = DEV_EMAIL; mail.href = 'mailto:' + DEV_EMAIL;
+}
+// ---- the owner's hidden sign-in (functions/api/owner.js) ----
+// The app is the same for everyone; on the owner's devices the server lifts its own limits (functions/api/ai.js). The password
+// goes to the server once and comes back as an HttpOnly cookie: it is never kept in the app or in localStorage.
+async function devOwnerAsk(body) {
+    try {
+        const res = await fetch('/api/owner', body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        return { status: res.status, owner: data.owner === true, configured: data.configured !== false };
+    } catch (e) { return { status: 0, owner: false, configured: true }; }
+}
+function devOwnerShow(d, r, failKey) {
+    d.querySelector('.dev-owner-state').textContent = t(failKey || (r.owner ? 'devOwnerYes' : r.configured ? 'devOwnerNo' : 'devOwnerNoKey'));
+    d.querySelector('.dev-owner-form').hidden = r.owner;
+    d.querySelector('.dev-owner-out').hidden = !r.owner;
+}
+function devOwnerWire(d) {
+    let taps = [];
+    d.querySelector('.dev-logo').addEventListener('click', async () => {
+        const now = Date.now();
+        taps = taps.filter(at => now - at < 3000).concat(now);
+        if (taps.length < 5) return;
+        taps = [];
+        d.querySelector('.dev-owner').hidden = false;
+        const r = await devOwnerAsk();
+        devOwnerShow(d, r, r.status === 200 ? '' : 'devOwnerFail');
+    });
+    d.querySelector('.dev-owner-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const input = d.querySelector('.dev-owner-key'), key = input.value;
+        input.value = '';
+        const r = await devOwnerAsk({ action: 'login', key });
+        devOwnerShow(d, r, r.status === 403 ? 'devOwnerWrong' : r.status === 503 ? 'devOwnerNoKey' : r.status === 200 ? '' : 'devOwnerFail');
+    });
+    d.querySelector('.dev-owner-out').addEventListener('click', async () => {
+        const r = await devOwnerAsk({ action: 'logout' });
+        devOwnerShow(d, { owner: false, configured: true }, r.status === 200 ? '' : 'devOwnerFail');
+    });
 }
 function openDeveloperDialog() {
     if (typeof closeFullMenu === 'function') closeFullMenu();

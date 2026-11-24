@@ -3,18 +3,16 @@
 // Cloudflare Pages Function: /api/ai — спільний ключ AI для тих, хто не ввів власного (js/ai-client.js, SHARED_AI_KEY).
 // Ключі лежать ЛИШЕ в секретах Cloudflare Pages (Settings → Variables and Secrets: GROQ_API_KEY, OPENAI_API_KEY) і ніколи
 // не потрапляють у браузер, у репозиторій чи в код застосунку.
-//   GET                          -> {"groq":bool,"openai":bool,"format":{"groq":bool,"openai":bool},"owner":bool} — які спільні
-//                                   ключі налаштовані і чи вони схожі на ключ свого провайдера (gsk_… / sk-…); самих ключів не
-//                                   розкриває. Не власнику — усе false.
+//   GET                          -> {"groq":bool,"openai":bool,"format":{"groq":bool,"openai":bool}} — які спільні ключі налаштовані
+//                                   і чи вони схожі на ключ свого провайдера (gsk_… / sk-…); самих ключів не розкриває
 //   POST ?provider=groq|openai   -> тіло запиту провайдера (те саме, що застосунок надсилає напряму з власним ключем);
 //                                   відповідь провайдера (JSON або потік SSE) передається як є
-// ЛИШЕ ДЛЯ ВЛАСНИКА (functions/_owner.js; власник, 2026-11-23): Origin підробляється, а обмеження частоти в одному
-// екземплярі функції обходиться, тож чужий скрипт міг витрачати спільні ключі. Тепер решта відвідувачів бачить у GET, що
-// спільних ключів немає, і застосунок просить власний ключ. Власник — без обмеження частоти. Лишаються: Origin застосунку
-// (проти підробки запиту з чужої сторінки в браузері власника), лише моделі застосунку, обмежені розмір запиту й бюджет
-// відповіді. Ліміт витрат варто поставити й у кабінеті провайдера — це єдиний справжній запобіжник від рахунку.
+// НЕ відкритий проксі: лише запити зі сторінок самого застосунку (Origin), лише моделі застосунку, обмежені розмір запиту й
+// бюджет відповіді, грубе обмеження частоти на IP (у межах одного екземпляра функції). Ліміт витрат варто поставити й у
+// кабінеті провайдера — це єдиний справжній запобіжник від рахунку.
+// Власник (functions/_owner.js; пароль у схованому полі «Від розробника») — без обмежень сервера: без обмеження частоти,
+// будь-яка модель, бюджет відповіді такий, як просить застосунок (власник, 2026-11-23). Решта — як раніше.
 import { isOwner } from '../_owner.js';
-
 const URLS = { groq: 'https://api.groq.com/openai/v1/chat/completions', openai: 'https://api.openai.com/v1/responses' };
 const SECRETS = { groq: 'GROQ_API_KEY', openai: 'OPENAI_API_KEY' };
 // Ті самі моделі, що в js/ai-client.js (GROQ_MODEL, GROQ_VISION_MODEL, OPENAI_MODEL) — змінюючи там, змініть і тут. Groq рахує ліміти
@@ -26,6 +24,8 @@ const MODELS = { groq: new Set(['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'll
     openai: new Set(['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano']) };
 const MAX_BODY_BYTES = 6 * 1024 * 1024;   // запит із вирізаним фрагментом сторінки (data URL) буває кілька МБ
 const MAX_OUTPUT_TOKENS = 16000;
+const RATE_WINDOW_MS = 60000, RATE_MAX = 40;
+const hits = new Map();
 // Ключ, вставлений із телефона, часто має пробіл чи перенесення рядка на краю — провайдер тоді відповідає 401.
 const secret = (env, provider) => String(env[SECRETS[provider]] || '').trim();
 const KEY_FORMAT = { groq: /^gsk_[A-Za-z0-9]{20,}$/, openai: /^sk-[A-Za-z0-9_-]{20,}$/ };
@@ -48,6 +48,13 @@ function sameOrigin(request, url) {
     const referer = request.headers.get('referer');
     try { return !!referer && allowedHost(new URL(referer).hostname); } catch (e) { return false; }
 }
+function rateLimited(ip) {
+    const now = Date.now();
+    const list = (hits.get(ip) || []).filter(t => now - t < RATE_WINDOW_MS);
+    list.push(now); hits.set(ip, list);
+    if (hits.size > 5000) for (const [k, v] of hits) if (!v.length || now - v[v.length - 1] > RATE_WINDOW_MS) hits.delete(k);
+    return list.length > RATE_MAX;
+}
 
 // Відповідь 429 від Groq каже, КОТРИЙ ліміт вичерпано і коли повертатись: "...on tokens per minute (TPM): Limit 8000, Used 7000, Requested 1500.
 // Please try again in 5.25s". Застосунку (і діагностиці) потрібні лише ці числа; решту тексту провайдера не пересилаємо: там назва акаунта.
@@ -67,30 +74,32 @@ function rateDetails(upstream, text) {
     return Object.keys(rate).length ? rate : undefined;
 }
 
-export async function onRequestGet({ request, env }) {
-    if (!(await isOwner(request, env))) return json({ groq: false, openai: false, format: { groq: false, openai: false }, owner: false });
+export async function onRequestGet({ env }) {
     const groq = secret(env, 'groq'), openai = secret(env, 'openai');
-    return json({ groq: !!groq, openai: !!openai, format: { groq: KEY_FORMAT.groq.test(groq), openai: KEY_FORMAT.openai.test(openai) }, owner: true });
+    return json({ groq: !!groq, openai: !!openai, format: { groq: KEY_FORMAT.groq.test(groq), openai: KEY_FORMAT.openai.test(openai) } });
 }
 
 export async function onRequestPost({ request, env }) {
     const url = new URL(request.url);
     const provider = url.searchParams.get('provider') || '';
     if (!Object.hasOwn(URLS, provider)) return json({ error: 'bad provider' }, 400);
-    if (!sameOrigin(request, url)) return json({ error: 'forbidden' }, 403);
-    if (!(await isOwner(request, env))) return json({ error: 'owner only' }, 403);
     const key = secret(env, provider);
     if (!key) return json({ error: 'no shared key' }, 503);
+    if (!sameOrigin(request, url)) return json({ error: 'forbidden' }, 403);
+    const owner = await isOwner(request, env);
+    if (!owner && rateLimited(request.headers.get('cf-connecting-ip') || 'unknown')) return json({ error: 'rate limited' }, 429);
     if (Number(request.headers.get('content-length') || 0) > MAX_BODY_BYTES) return json({ error: 'too large' }, 413);
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return json({ error: 'too large' }, 413);
     let body;
     try { body = JSON.parse(raw); } catch (e) { return json({ error: 'bad json' }, 400); }
-    if (!body || typeof body !== 'object' || Array.isArray(body) || !MODELS[provider].has(body.model)) return json({ error: 'bad model' }, 400);
+    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.model !== 'string' || (!owner && !MODELS[provider].has(body.model))) return json({ error: 'bad model' }, 400);
     // Бюджет відповіді — не більший за найбільший, що його просить застосунок; без нього провайдер узяв би свій максимум.
-    const budgetField = provider === 'openai' ? 'max_output_tokens' : 'max_completion_tokens';
-    const budget = Number(body[budgetField]);
-    body[budgetField] = Number.isFinite(budget) && budget > 0 ? Math.min(Math.floor(budget), MAX_OUTPUT_TOKENS) : 2048;
+    if (!owner) {
+        const budgetField = provider === 'openai' ? 'max_output_tokens' : 'max_completion_tokens';
+        const budget = Number(body[budgetField]);
+        body[budgetField] = Number.isFinite(budget) && budget > 0 ? Math.min(Math.floor(budget), MAX_OUTPUT_TOKENS) : 2048;
+    }
     for (const k of ['tools', 'tool_choice', 'n', 'background', 'previous_response_id', 'conversation']) delete body[k];
     if (provider === 'openai') body.store = false;
     const upstream = await fetch(URLS[provider], {

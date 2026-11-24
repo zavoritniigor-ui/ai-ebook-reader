@@ -121,15 +121,14 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 
 | File | Does |
 |---|---|
-| `ai.js` | shared-key AI proxy (Groq/OpenAI), passes streams through; owner only |
+| `ai.js` | shared-key AI proxy (Groq/OpenAI), passes streams through; the owner's devices skip its limits |
+| `owner.js` + `../_owner.js` | the owner's hidden sign-in (5 taps on the logo in «Від розробника», password = secret `OWNER_KEY` → HttpOnly cookie) |
 | `library.js` | proxy to fixed library hosts only (Gutenberg, Wikisource, Internet Archive, BNR, SE); ids/paths validated; same-origin requests only |
 | `offline-model.js`, `device-llm.js` | model file downloads from allow-listed sources, size/SHA-256 checked |
-| `speech/[[path]].js` | proxy to the owner's local speech server (tunnel and token in Cloudflare secrets), Azure as fallback; owner only |
-| `owner.js` + `../_owner.js` | the owner's sign-in page (`OWNER_KEY` → HttpOnly cookie) and the gate the paid functions use (`OWNER_KEY` / `OWNER_IPS`) |
+| `speech/[[path]].js` | proxy to the owner's local speech server (tunnel and token in Cloudflare secrets) |
 | `sync.js` | device sync storage (KV; the server sees only the encrypted blob) |
 | `../share-target.js` | «Share → AI Reader» before the service worker controls the page |
-| `../p/[[path]].js` + `proxy-assets/translate.js` | reading proxy `/p/<host>/…` for listed exercise sites (RFI, its H5P), with the selection-translation panel injected; only on `web.ai-ebook-reader.uk` and branch previews, never on the app's origins; owner only (others go to the site) |
-| `../index.js` | `/` on `web.ai-ebook-reader.uk` sends to the app's address: the proxy host never shows the app |
+| `../p/[[path]].js` + `proxy-assets/translate.js` | reading proxy `/p/<host>/…` for listed exercise sites (RFI, its H5P), with the selection-translation panel injected; only on `web.ai-ebook-reader.uk` and branch previews, never on the app's origins |
 
 ## Security model
 

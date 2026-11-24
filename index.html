@@ -2068,6 +2068,13 @@
         #developer-dialog .dev-avoid, #developer-dialog .dev-write-note, #developer-dialog .dev-sign { color: var(--text-muted); font-size: 13.5px; }
         #developer-dialog .dev-write { display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 12px; font-weight: 700; text-decoration: none; }
         #developer-dialog .dev-mail { color: var(--accent-color); }
+        #developer-dialog .dev-owner { padding: 12px 14px; border-radius: 12px; border-left: 4px solid #4f7cff; background: color-mix(in srgb, #4f7cff 12%, transparent); display: flex; flex-direction: column; gap: 8px; }
+        #developer-dialog .dev-owner[hidden], #developer-dialog .dev-owner [hidden] { display: none; }
+        #developer-dialog .dev-owner-title { font-weight: 700; }
+        #developer-dialog .dev-owner-form { display: flex; gap: 8px; }
+        #developer-dialog .dev-owner-key { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); font: inherit; }
+        #developer-dialog .dev-owner-in, #developer-dialog .dev-owner-out { min-height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 700; }
+        #developer-dialog .dev-owner-out { align-self: flex-start; border: 0; background: #ffb347; color: #1d2433; cursor: pointer; }
         /* The welcome video played when the app is opened (js/welcome.js). It is never enlarged past its own pixels (js/welcome.js sets
            --welcome-w): stretched over a tablet's dense screen it turned into squares (owner, 2026-10-28). It sits in the middle of its
            own dark blue, its edges fading into it, so the frame is not seen. */
@@ -2662,7 +2669,7 @@
     <script src="js/scanner.js?v=ad775efa00da"></script>
     <script src="js/sync.js?v=01fd5d86deb6"></script>
     <script src="js/quick-wheel.js?v=8dbec94c3e2e"></script>
-    <script src="js/developer.js?v=b5903ef00cab"></script>
+    <script src="js/developer.js?v=e186ee9a4949"></script>
     <script src="js/main.js?v=9434a890bdaa"></script>
     <script src="js/demo-textbook.js?v=e0126685cec3"></script>
     <script src="js/pwa-lifecycle.js?v=2a9d1da063bc"></script>
