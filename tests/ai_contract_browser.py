@@ -362,20 +362,24 @@ def run_grammar(text, focus_sentence=None, plan=None, provider='openai', mode='v
 
 # A. one tapped word (sentence context); the model answers with extras
 a_ = run_grammar('effectuer', F.SENTENCES[1], plan=[dict(mode='extras')])
-assert a_['error'] is None and a_['items'] == 2 and a_['requests'][0]['tapped'] and not a_['requests'][0]['lite'], a_
+assert a_['error'] is None and a_['items'] == 1 and a_['requests'][0]['tapped'] and not a_['requests'][0]['lite'], a_   # one tapped word: only it (owner 2026-11-23)
 assert a_['diag'][-1]['reason'] in ('ok', 'ok_recovered') and a_['diag'][-1]['selection']['words'] == 7
 tokA = a_['requests'][0]['maxTokens']
-print("PASS A: ONE TAPPED WORD in its sentence: accepted (%d items) although the model added fields for a larger analysis; full contract; %d output tokens" % (a_['items'], tokA), flush=True)
+print("PASS A: ONE TAPPED WORD in its sentence: only it is kept (%d item) although the model added fields and other words; full contract; %d output tokens" % (a_['items'], tokA), flush=True)
 # switching modes reuses the analysis: zero further requests
 before = c.js("__stub.requests.length")
-c.js("switchGrammarMode('adjectives'); switchGrammarMode('verbs')")
+c.js("switchGrammarMode('adjectives')")   # the tapped verb was analysed alone: the Adjectives tab asks ONCE for the sentence
+c.wait("grammarContext.analysis && grammarContext.analysis.focusOnly===false && !els.grammarContent.querySelector('.spinner-large')", timeout=20)
+assert c.js("__stub.requests.length") == before + 1
+before += 1
+c.js("switchGrammarMode('verbs'); switchGrammarMode('adjectives'); switchGrammarMode('verbs')")
 assert c.js("__stub.requests.length") == before
 assert c.js("(()=>{switchGrammarMode('adjectives'); const n=document.querySelectorAll('#grammar-controls-bar button').length; switchGrammarMode('verbs'); return n})()") == 0
-print("PASS A: Verbes <-> Adjectifs reuses the cached analysis (0 requests) and Adjectifs shows no tense controls", flush=True)
+print("PASS A: Verbes <-> Adjectifs: one request for the sentence's other words, then the cached analysis (0 requests); Adjectifs shows no tense controls", flush=True)
 # B. one sentence selected
 b_ = run_grammar(F.SENTENCES[1])
-assert b_['error'] is None and b_['items'] == 2 and b_['requests'][0]['maxTokens'] == tokA and not b_['requests'][0]['lite'], b_
-print("PASS B: ONE SENTENCE: accepted (%d items), same small budget (%d tokens), full contract" % (b_['items'], b_['requests'][0]['maxTokens']), flush=True)
+assert b_['error'] is None and b_['items'] == 2 and b_['requests'][0]['maxTokens'] >= tokA and not b_['requests'][0]['lite'], b_
+print("PASS B: ONE SENTENCE: accepted (%d items), a small budget (%d tokens), full contract" % (b_['items'], b_['requests'][0]['maxTokens']), flush=True)
 # C. several sentences (the reported page)
 c_ = run_grammar(F.SEVERAL_C)
 assert c_['error'] is None and c_['items'] == 10 and c_['requests'][0]['lite'] and c_['requests'][0]['maxTokens'] > tokA, c_
@@ -632,17 +636,17 @@ c.wait("!!grammarContext.analysis", timeout=20)
 rq = c.js("__stub.requests.filter(r=>r.kind==='grammar')")
 assert len(rq) == 1 and rq[0]['chars'] == len(RUN) and rq[0]['maxTokens'] > 1400 and rq[0]['promptHasTapped'], rq
 print("PASS 9: tapping ONE word on the reported page sends the whole unpunctuated run (%d chars) with a %d-token budget (the old code sent 1400)" % (rq[0]['chars'], rq[0]['maxTokens']), flush=True)
-check("9: five items are accepted; the tapped word's own occurrence is focused (Verbes) with its sentence and highlight",
-      "grammarContext.analysis.items.length===5 && grammarContext.focused?.surface==='effectuer' && grammarContext.mode==='verbs' && !!document.querySelector('#grammar-content .grammar-focus') && document.querySelector('#grammar-content .grammar-context-target')?.textContent==='effectuer'")
+check("9: only the tapped word is kept (the reply also lists 4 other words); its occurrence is focused (Verbes) with its sentence and highlight",
+      "grammarContext.analysis.items.length===1 && grammarContext.focused?.surface==='effectuer' && grammarContext.mode==='verbs' && !!document.querySelector('#grammar-content .grammar-focus') && document.querySelector('#grammar-content .grammar-context-target')?.textContent==='effectuer'")
 assert c.js("readerAiDiagnostics().filter(d=>d.task==='grammar_analysis').at(-1).sourceLanguage") == 'fr'
 print("PASS 9: source language French, French 'Verbes' mode, English tense controls absent (French chips only)", flush=True)
 # The timeline changes visual order; the full French label set must stay exact.
 check("9: French tense controls only (no English names leaking)", "[...document.querySelectorAll('#grammar-controls-bar button')].map(b=>b.textContent).sort().join()===GRAMMAR_LANG_CONFIG.fr.verb.tenses.map(t=>t.label).sort().join()")
 n0 = c.js("__stub.requests.length")
-c.js("switchGrammarMode('adjectives')")
-check("9: Adjectifs lists the two adjectives with NO tense controls, from the cached analysis (0 requests)",
-      "[...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].map(b=>b.textContent).join()==='visuel,olfactif' && document.querySelectorAll('#grammar-controls-bar button').length===0")
-assert c.js("__stub.requests.length") == n0
+c.js("switchGrammarMode('adjectives')")   # the tapped verb was analysed alone: Adjectifs asks ONCE for the run's other words
+check("9: Adjectifs lists the two adjectives with NO tense controls, after ONE request for the run's other words",
+      "grammarContext.analysis.focusOnly===false && [...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].map(b=>b.textContent).join()==='visuel,olfactif' && document.querySelectorAll('#grammar-controls-bar button').length===0", timeout=20)
+assert c.js("__stub.requests.length") == n0 + 1
 # the same tap when the provider cuts the reply off after two complete items
 partial_text = json.dumps(REPLY, ensure_ascii=False, separators=(',', ':'))
 cut_idx = [m.start() for m in re.finditer(r'\},\{"pos"', partial_text)][1] + 1
@@ -651,8 +655,8 @@ c.js("els.tooltip.style.display='none'")
 time.sleep(0.4)
 tap_pdf_word('effectuer')
 c.wait("!!grammarContext.analysis && grammarContext.analysis.partial===true", timeout=20)
-check("9: a cut-off reply on the same tap shows the 2 complete items with a 'partial analysis' note (no error banner)",
-      "grammarContext.analysis.items.length===2 && !!document.querySelector('#grammar-content .grammar-note') && !document.querySelector('#grammar-content .ai-error-text') && grammarContext.focused?.surface==='effectuer'")
+check("9: a cut-off reply on the same tap shows the tapped word's complete item with a 'partial analysis' note (no error banner)",
+      "grammarContext.analysis.items.length===1 && !!document.querySelector('#grammar-content .grammar-note') && !document.querySelector('#grammar-content .ai-error-text') && grammarContext.focused?.surface==='effectuer'")
 assert c.js("readerAiDiagnostics().filter(d=>d.task==='grammar_analysis').at(-1).reason") == 'partial'
 # Practice built from this analysis, then a highlighted form is clicked: exact occurrence, zero AI calls.
 # The reply must cover BOTH lemmas actually detected on this tap (effectuer, préparer) -- not the generic
@@ -730,8 +734,8 @@ else:
     # a word of the unpunctuated «¡» list under it: the whole list, and nothing else
     r1 = real_tap('olfactive')
     assert 'Observation visuelle et olfactive' in r1['text'][:45] and 'Établir un diagnostic' not in r1['text'] and r1['promptHasTapped'], r1['text'][:120]
-    assert 250 < r1['chars'] < 600 and r1['lite'] is True and r1['maxTokens'] >= 3500, r1
-    print("PASS 10: tapping 'olfactive' on the real page sends the whole unpunctuated bullet run (%d chars, lite contract, %d-token budget; the old code sent 1400)" % (r1['chars'], r1['maxTokens']), flush=True)
+    assert 'olfactive' in r1['text'] and r1['chars'] <= 320 and r1['lite'] is False and r1['maxTokens'] <= 2500, r1   # one tapped word: its context only (owner 2026-11-23)
+    print("PASS 10: tapping 'olfactive' on the real page sends the part of its bullet run around it (%d chars, %d-token budget; the whole run took 3500+ tokens)" % (r1['chars'], r1['maxTokens']), flush=True)
     # words the PDF splits into several text items reach the model WHOLE (they used to arrive as "a ppliquer", "a ssurer")
     r2 = real_tap('ppliquer')
     assert r2['text'].startswith('appliquer les mesures sécuritaires liées au travail à effectuer') and 'a ppliquer' not in r2['text'], r2['text'][:120]
@@ -754,11 +758,9 @@ else:
         adjusted:grammarContext.analysis.adjusted.map(a=>a.reason), notes:grammarContext.analysis.notes, lang:grammarContext.sourceLanguage, focused:grammarContext.focused&&grammarContext.focused.surface, mode:grammarContext.mode,
         chips:[...document.querySelectorAll('#grammar-controls-bar button')].map(b=>b.textContent), banner:!!document.querySelector('#grammar-content .ai-error-text')})""")
     assert st['ok'] is True and st['lang'] == 'fr' and st['mode'] == 'verbs' and not st['banner'], st
-    assert st['n'] == 2 and not st['rejected'], ('both items of the fenced reply must be accepted on the real page', st)
+    assert st['n'] == 1 and not st['rejected'] and 'surface_recased' in st['adjusted'], ('the fenced reply is accepted; only the tapped word is kept', st)
     assert st['focused'] == 'effectuer', ("the tapped word's own occurrence is focused", st)
     assert sorted(st['chips']) == sorted(c.js("GRAMMAR_LANG_CONFIG.fr.verb.tenses.map(t=>t.label)")), ('French tense controls only', st['chips'])
-    print("PASS 10: a fenced reply that names the language 'French' and lower-cases 'Établir' is accepted on the real page (both verbs of the heading, recovered: %s), the tapped 'effectuer' is focused, Verbes mode, French controls only" % st['notes'], flush=True)
-    assert any(i['surface'] == 'Établir' for i in c.js("grammarContext.analysis.items")), "the displayed surface must be the SOURCE text's own spelling"
-    print("PASS 10: the surface shown for the lower-cased 'établir' is the page's own 'Établir'", flush=True)
+    print("PASS 10: a fenced reply that names the language 'French' and lower-cases 'Établir' is accepted on the real page (recovered: %s; the lower-cased surface re-cased to the page's own), the tapped 'effectuer' is kept and focused, Verbes mode, French controls only" % st['notes'], flush=True)
 
 print("\n=== ALL AI CONTRACT CHECKS PASSED ===")
