@@ -18,7 +18,7 @@ const VOICE_POOR_RE = /compact|eloquence|espeak|pico|festival|sapi\s?4|robot|cla
 // «network» — серверні голоси Google TTS на Android (ru-ru-x-dfc-network): помітно кращі за -local того ж рушія.
 const VOICE_TOP_RE  = /neural|natural|wavenet|studio|journey|siri|premium|enhanced|network/i;
 // Улюблена локаль для кожної мови: fr-FR звучить звичніше за fr-CA, en-US за en-IN.
-const PREFERRED_LOCALE = { fr: ['fr-fr', 'fr-ca'], en: ['en-us', 'en-gb'], uk: ['uk-ua'], ru: ['ru-ru'], zh: ['zh-cn', 'zh-tw'], ko: ['ko-kr'], hi: ['hi-in'], ga: ['ga-ie'], fa: ['fa-ir'],
+const PREFERRED_LOCALE = { fr: ['fr-fr', 'fr-ca'], en: ['en-us', 'en-gb'], uk: ['uk-ua'], ru: ['ru-ru'], zh: ['zh-cn', 'zh-tw'], ko: ['ko-kr'], hi: ['hi-in'], ga: ['ga-ie'], fa: ['fa-ir'], ar: ['ar-sa', 'ar-eg', 'ar-ae', 'ar-xa'],
     de: ['de-de', 'de-at', 'de-ch'], es: ['es-es', 'es-mx', 'es-us'], it: ['it-it'], pt: ['pt-br', 'pt-pt'], nl: ['nl-nl', 'nl-be'], pl: ['pl-pl'] };
 // Голос формально тієї ж мови, але читає НЕ ТАК: переклад китайською — спрощений путунхуа, а кантонський
 // голос (zh-HK / yue) вимовляє ці ієрогліфи зовсім інакше. Такий голос — лише якщо іншого немає.
