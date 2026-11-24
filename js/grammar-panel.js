@@ -610,11 +610,15 @@ async function fetchVerbParadigm(item, langCode, tenseId, tenseLabel) {
     const cacheKey = langCode + '|' + item.lemma.toLowerCase() + '|' + tenseId;
     const cached = grammarContext.paradigmCache.get(cacheKey);
     if (cached) { renderGrammarFocusDetail(Object.assign({}, item, { forms: cached, paradigmLabel: tenseLabel }), langCode); return; }
-    // French: the table itself (js/grammar-conjugation.js), at once and offline; the AI only for a verb the tables lack.
-    if (langCode === 'fr' && typeof loadFrVerbTables === 'function' && window.__grammarAiOnly !== true) {   // the flag: suites testing the AI request
-        await loadFrVerbTables();
+    // French / English: the table itself (js/grammar-conjugation.js, js/grammar-english.js), at once and offline; the AI only for a
+    // verb the tables lack.
+    const tables = window.__grammarAiOnly === true ? null   // the flag: suites testing the AI request
+        : langCode === 'fr' && typeof loadFrVerbTables === 'function' ? { load: loadFrVerbTables, paradigm: lemma => localVerbParadigm('fr', lemma, tenseId) }
+        : langCode === 'en' && typeof loadEnVerbTables === 'function' ? { load: loadEnVerbTables, paradigm: lemma => enVerbParadigm(lemma, tenseId) } : null;
+    if (tables) {
+        await tables.load();
         if (grammarContext.focused !== item) return;   // the learner moved to another word meanwhile
-        const local = localVerbParadigm(langCode, item.lemma, tenseId);
+        const local = tables.paradigm(item.lemma);
         if (local) {
             grammarContext.paradigmCache.set(cacheKey, local);
             renderGrammarFocusDetail(Object.assign({}, item, { forms: local, paradigmLabel: tenseLabel }), langCode);

@@ -82,6 +82,8 @@ window.fetch=async(url,options={})=>{
  return provider==='openai'&&body.stream?sseResponse('<p>Provider answer</p><img src="x" onerror="window.__unsafe=1"><script>window.__unsafe=1</script>'):response('<p>Provider answer</p><img src="x" onerror="window.__unsafe=1"><script>window.__unsafe=1</script>');
 };
 ''')['identifier']
+# This suite tests the AI request of Grammar: the app's own tables (js/grammar-conjugation.js, js/grammar-english.js) are off here.
+c.call('Page.addScriptToEvaluateOnNewDocument', source='window.__grammarAiOnly = true;')
 c.call('Page.navigate',url=os.environ.get('READER_TEST_URL', 'http://127.0.0.1:8765/index.html'))
 c.wait("document.readyState==='complete' && !document.body.inert")
 c.js("localStorage.clear();showUpdateBanner=()=>{};document.getElementById('sw-update-banner')?.remove()")
