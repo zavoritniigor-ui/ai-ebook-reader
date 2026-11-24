@@ -1211,7 +1211,12 @@
         .tt-extra { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--tt-line, rgba(255,255,255,0.1)); font-weight: normal; font-size: 13.5px; color: #c9ced6; }
         .tt-sense { margin: 5px 0; line-height: 1.5; }
         .tt-pos { display: inline-block; margin-right: 8px; padding: 0 8px; font-size: 11px; line-height: 18px; font-weight: 700; letter-spacing: .02em; font-style: normal; border-radius: 999px; background: color-mix(in srgb, var(--tt-accent, #8ab4ff) 16%, transparent); color: var(--tt-accent, #8ab4ff); }
-        .tt-translation { unicode-bidi: plaintext; }   /* a right-to-left translation (Persian) reads from the right */
+        .tt-translation { unicode-bidi: plaintext; }
+        /* Arabic menu (body.ui-rtl, js/i18n-ar.js): the interface's own text reads from the right. The menu, the settings and the
+           dialogs are laid out right to left; in the side panels each paragraph takes its own direction, so a French sentence or a
+           conjugation stays left to right. The reader and the book's text are not touched. */
+        body.ui-rtl #app-header, body.ui-rtl #settings-modal, body.ui-rtl dialog { direction: rtl; }
+        body.ui-rtl :is(.side-panel .panel-header, .side-panel .panel-content :is(p, li, h3, h4, label, button, .grammar-note), .toast, #sw-update-banner, #tooltip :is(.tt-label, .tt-note, button)) { unicode-bidi: plaintext; text-align: start; }   /* a right-to-left translation (Persian) reads from the right */
         .tt-dict-src { margin-bottom: 4px; font-size: 11px; font-weight: 700; letter-spacing: .02em; opacity: .75; }
         .tt-dict-host { overflow-y: auto; overscroll-behavior: contain; width: 0; min-width: 100%; }   /* the popup's width, never wider: a late block must not widen it */
         .tt-dict-host.tt-dict-up { order: -1; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--tt-line, rgba(255,255,255,0.1)); }
@@ -2252,6 +2257,7 @@
                         <option value="de">🇩🇪 Deutsch</option>
                         <option value="es">🇪🇸 Español</option>
                         <option value="fa">🇮🇷 فارسی</option>
+                        <option value="ar">🇸🇦 العربية</option>
                     </select>
                 </div>
                 <button type="button" class="menu-row" id="btn-rules" aria-controls="rules-panel" aria-labelledby="mr-rules-t" aria-describedby="mr-rules-d"><svg class="mi" aria-hidden="true"><use href="#i-rules"/></svg><span class="mr-text"><span class="mr-title" id="mr-rules-t" data-i18n="mRules">Граматичні правила</span><span class="mr-desc" id="mr-rules-d" data-i18n="mRulesDesc">Правила з прикладами з цієї сторінки</span></span><svg class="mi-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
@@ -2299,6 +2305,7 @@
                         <option value="hi">🇮🇳 हिन्दी</option>
                         <option value="ga">🇮🇪 Gaeilge</option>
                         <option value="es">🇪🇸 Español</option>
+                        <option value="ar">🇸🇦 العربية</option>
                     </select>
                 </div>
                 <button type="button" class="menu-row" id="btn-local-speech" role="switch" aria-checked="false" aria-labelledby="mr-local-t" aria-describedby="mr-local-d"><svg class="mi" aria-hidden="true"><use href="#i-voices"/></svg><span class="mr-text"><span class="mr-title" id="mr-local-t" data-i18n="mLocalSpeech">Локальний голос</span><span class="mr-desc" id="mr-local-d" data-i18n="mLocalSpeechDesc">Озвучка через ваш сервер; без нього — голос браузера</span></span><span class="mr-switch" aria-hidden="true"></span></button>
@@ -2406,7 +2413,7 @@
                 <div class="chat-input-area">
                     <select id="mic-lang" class="mic-lang">
                         <option value="uk-UA">🇺🇦 UK</option><option value="en-US">🇬🇧 EN</option><option value="fr-FR">🇫🇷 FR</option><option value="ru-RU">🇷🇺 RU</option>
-                        <option value="zh-CN">🇨🇳 中文</option><option value="ko-KR">🇰🇷 KO</option><option value="hi-IN">🇮🇳 HI</option><option value="ga-IE">🇮🇪 GA</option><option value="fa-IR">🇮🇷 FA</option>
+                        <option value="zh-CN">🇨🇳 中文</option><option value="ko-KR">🇰🇷 KO</option><option value="hi-IN">🇮🇳 HI</option><option value="ga-IE">🇮🇪 GA</option><option value="fa-IR">🇮🇷 FA</option><option value="ar-SA">🇸🇦 AR</option>
                     </select>
                     <button type="button" class="mic-btn" id="mic-btn" aria-label="Почати диктовку" aria-pressed="false"><svg class="mi" aria-hidden="true"><use href="#i-mic"/></svg></button>
                     <input type="search" id="ask-input" name="conversational_query" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" enterkeyhint="send" data-i18n-ph="ask">
@@ -2601,10 +2608,10 @@
 
     <script src="js/core.js?v=ca171848ff38"></script>
     <script src="js/core-text-layout.js?v=2adccaf900db"></script>
-    <script src="js/core-languages.js?v=4a43225dcecc"></script>
+    <script src="js/core-languages.js?v=ee26f24ad521"></script>
     <script src="js/core-state.js?v=61e7c85cf78a"></script>
-    <script src="js/core-voices.js?v=5f57792befc8"></script>
-    <script src="js/core-i18n.js?v=c8077ba132a3"></script>
+    <script src="js/core-voices.js?v=858460eaa8fb"></script>
+    <script src="js/core-i18n.js?v=7077b9a387bb"></script>
     <script src="js/core-text.js?v=17197c408d62"></script>
     <script src="js/reader-workspace.js?v=33bf4da760d5"></script>
     <script src="js/lang-detect.js?v=1b92f7bf3d2e"></script>
@@ -2674,6 +2681,7 @@
     <script src="js/main.js?v=9434a890bdaa"></script>
     <script src="js/demo-textbook.js?v=e0126685cec3"></script>
     <script src="js/pwa-lifecycle.js?v=2a9d1da063bc"></script>
+    <script src="js/i18n-ar.js?v=85e8f7869491"></script>
     <script src="js/i18n-es.js?v=8992e9f0da64"></script>
 </body>
 </html>

@@ -64,8 +64,8 @@ check("T1: French tenses configured", "GRAMMAR_LANG_CONFIG.fr.verb.tenses.length
 check("T1: English tenses configured", "GRAMMAR_LANG_CONFIG.en.verb.tenses.length >= 8")
 check("T1: French has subjunctive tense", "window.__grammarTests.config.frHasSubjonctif")
 check("T1: French has imperfect tense", "window.__grammarTests.config.frHasImparfait")
-check("T1: every one of the 9 supported languages (not just EN/FR) has its own config",
-      "SUPPORTED_LANGUAGE_CODES.length === 9 && SUPPORTED_LANGUAGE_CODES.every(c => GRAMMAR_LANG_CONFIG[c])")
+check("T1: every one of the 10 supported languages (Arabic since 2026-11-24) (not just EN/FR) has its own config",
+      "SUPPORTED_LANGUAGE_CODES.length === 10 && SUPPORTED_LANGUAGE_CODES.every(c => GRAMMAR_LANG_CONFIG[c])")
 
 print("\n=== TEST 2: Grammar analysis prompt language purity ===")
 c.js(r"""

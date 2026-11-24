@@ -1141,6 +1141,8 @@ function setPanelSubtitle(id, text) {
 const I18N_REFRESHERS = [];
 function onI18nApplied(refresh) { I18N_REFRESHERS.push(refresh); }
 function applyI18n() {
+    // a right-to-left menu language (Arabic): the interface's own text reads from the right (index.html, body.ui-rtl)
+    document.body.classList.toggle('ui-rtl', !!(LANGUAGE_CONFIG[state.uiLang] && LANGUAGE_CONFIG[state.uiLang].rtl));
     document.querySelectorAll('[data-i18n]').forEach(el => { const text = t(el.dataset.i18n); el.textContent = el.hasAttribute('data-i18n-plain') ? plainLabel(text) : text; });
     document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
     document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });

@@ -19,7 +19,10 @@ const LANGUAGE_CONFIG = {
     // Іспанська — і мова перекладу, і мова меню (рядки меню — js/i18n-es.js).
     es: { locale: 'es-ES', aiName: 'іспанською', promptName: 'Spanish' },
     // Перська (фарсі) — лише МОВА ПЕРЕКЛАДУ та озвучення (targetOnly), письмо справа наліво (owner, 2026-10-26).
-    fa: { locale: 'fa-IR', aiName: 'перською (фарсі)', promptName: 'Persian (Farsi)', targetOnly: true }
+    fa: { locale: 'fa-IR', aiName: 'перською (фарсі)', promptName: 'Persian (Farsi)', targetOnly: true },
+    // Арабська — мова меню, перекладу й озвучення (owner, 2026-11-24: «Додай всюди арабську мову»); рядки меню — js/i18n-ar.js.
+    // rtl: текст інтерфейсу пишеться справа наліво (body.ui-rtl), розкладка й текст книги — як були.
+    ar: { locale: 'ar-SA', aiName: 'арабською', promptName: 'Arabic', rtl: true }
 };
 // Прапорець країни мови: його бачить кожен список мов у меню (owner, 2026-10-26). Без прапорця — порожньо.
 const LANG_FLAGS = { uk: '🇺🇦', en: '🇬🇧', fr: '🇫🇷', ru: '🇷🇺', zh: '🇨🇳', ko: '🇰🇷', hi: '🇮🇳', ga: '🇮🇪', de: '🇩🇪', es: '🇪🇸', fa: '🇮🇷',
@@ -263,6 +266,25 @@ const GRAMMAR_LANG_CONFIG = {
             forms: [
                 { id: 'ms', label: 'पुल्लिंग एकवचन' }, { id: 'fs', label: 'स्त्रीलिंग एकवचन' },
                 { id: 'mp', label: 'पुल्लिंग बहुवचन' }, { id: 'fp', label: 'स्त्रीलिंग बहुवचन' }
+            ]
+        }
+    },
+    ar: {
+        labels: { verbs: 'الأفعال', adjectives: 'الصفات' },
+        verb: {
+            features: ['tense', 'mood', 'person', 'gender', 'number'],
+            tenses: [
+                { id: 'madi', label: 'الماضي' }, { id: 'mudari', label: 'المضارع' }, { id: 'mustaqbal', label: 'المستقبل' },
+                { id: 'amr', label: 'الأمر' }
+            ],
+            persons: ['أنا', 'أنتَ', 'أنتِ', 'هو', 'هي', 'نحن', 'أنتما', 'هما', 'أنتم', 'أنتنّ', 'هم', 'هنّ'],
+            promptNote: 'Arabic: the lemma is the dictionary form, the 3rd person masculine singular of the past (كَتَبَ, ذَهَبَ); features.tense is الماضي, المضارع, المستقبل (سَ / سوف + المضارع) or الأمر.'
+        },
+        adjective: {
+            features: ['gender', 'number'],
+            forms: [
+                { id: 'ms', label: 'مذكر مفرد' }, { id: 'fs', label: 'مؤنث مفرد' },
+                { id: 'mp', label: 'مذكر جمع' }, { id: 'fp', label: 'مؤنث جمع' }
             ]
         }
     },
