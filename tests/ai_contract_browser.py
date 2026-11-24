@@ -640,7 +640,7 @@ rq = c.js("__stub.requests.filter(r=>r.kind==='grammar')")
 assert len(rq) == 1 and rq[0]['chars'] == len(RUN) and rq[0]['maxTokens'] > 1400 and rq[0]['promptHasTapped'], rq
 print("PASS 9: tapping ONE word on the reported page sends the whole unpunctuated run (%d chars) with a %d-token budget (the old code sent 1400)" % (rq[0]['chars'], rq[0]['maxTokens']), flush=True)
 check("9: only the tapped word is kept (the reply also lists 4 other words); its occurrence is focused (Verbes) with its sentence and highlight",
-      "grammarContext.analysis.items.length===1 && grammarContext.focused?.surface==='effectuer' && grammarContext.mode==='verbs' && !!document.querySelector('#grammar-content .grammar-focus') && document.querySelector('#grammar-content .grammar-context-target')?.textContent==='effectuer'")
+      "grammarContext.analysis?.items.length===1 && grammarContext.focused?.surface==='effectuer' && grammarContext.mode==='verbs' && !!document.querySelector('#grammar-content .grammar-focus') && document.querySelector('#grammar-content .grammar-context-target')?.textContent==='effectuer'")
 assert c.js("readerAiDiagnostics().filter(d=>d.task==='grammar_analysis').at(-1).sourceLanguage") == 'fr'
 print("PASS 9: source language French, French 'Verbes' mode, English tense controls absent (French chips only)", flush=True)
 # The timeline changes visual order; the full French label set must stay exact.
@@ -648,7 +648,7 @@ check("9: French tense controls only (no English names leaking)", "[...document.
 n0 = c.js("__stub.requests.length")
 c.js("switchGrammarMode('adjectives')")   # the tapped verb was analysed alone: Adjectifs asks ONCE for the run's other words
 check("9: Adjectifs lists the two adjectives with NO tense controls, after ONE request for the run's other words",
-      "grammarContext.analysis.focusOnly===false && [...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].map(b=>b.textContent).join()==='visuel,olfactif' && document.querySelectorAll('#grammar-controls-bar button').length===0", timeout=20)
+      "grammarContext.analysis?.focusOnly===false && [...document.querySelectorAll('#grammar-content > .grammar-card .grammar-card-lemma')].map(b=>b.textContent).join()==='visuel,olfactif' && document.querySelectorAll('#grammar-controls-bar button').length===0", timeout=20)
 assert c.js("__stub.requests.length") == n0 + 1
 # the same tap when the provider cuts the reply off after two complete items
 partial_text = json.dumps(REPLY, ensure_ascii=False, separators=(',', ':'))
@@ -659,7 +659,7 @@ time.sleep(0.4)
 tap_pdf_word('effectuer')
 c.wait("!!grammarContext.analysis && grammarContext.analysis.partial===true", timeout=20)
 check("9: a cut-off reply on the same tap shows the tapped word's complete item with a 'partial analysis' note (no error banner)",
-      "grammarContext.analysis.items.length===1 && !!document.querySelector('#grammar-content .grammar-note') && !document.querySelector('#grammar-content .ai-error-text') && grammarContext.focused?.surface==='effectuer'")
+      "grammarContext.analysis?.items.length===1 && !!document.querySelector('#grammar-content .grammar-note') && !document.querySelector('#grammar-content .ai-error-text') && grammarContext.focused?.surface==='effectuer'")
 assert c.js("readerAiDiagnostics().filter(d=>d.task==='grammar_analysis').at(-1).reason") == 'partial'
 # Practice built from this analysis, then a highlighted form is clicked: exact occurrence, zero AI calls.
 # The reply must cover BOTH lemmas actually detected on this tap (effectuer, préparer) -- not the generic
