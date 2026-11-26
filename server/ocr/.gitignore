@@ -1,0 +1,7 @@
+.ocr-token
+.venv/
+.cache/
+.jobs/
+__pycache__/
+*.pyc
+!tests/test_*.py
