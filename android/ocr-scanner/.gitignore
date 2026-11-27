@@ -1,0 +1,9 @@
+.tools/
+.gradle/
+local.properties
+**/build/
+validation/
+*.keystore
+*.jks
+signing.properties
+.secrets/

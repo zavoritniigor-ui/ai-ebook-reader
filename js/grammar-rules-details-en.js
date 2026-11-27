@@ -33,13 +33,7 @@ Exceptions:
 • Be, have : I am / you are / he is; I have / he has.
 • -s, -sh, -ch, -x, -o → +es (watches, goes) ; consonne + y → -ies (studies), mais voyelle + y → +s (plays).
 • Après does/doesn’t disparaît le -s : she doesn’t work (et non works).
-• Les verbes modaux ne prennent pas de -s : she can swim.
-Conjugaison (personne, nombre):
-| Personne | work | be | have | do | go |
-| I | work | am | have | do | go |
-| you | work | are | have | do | go |
-| he / she / it | works | is | has | does | goes |
-| we / you / they | work | are | have | do | go |`,
+• Les verbes modaux ne prennent pas de -s : she can swim.`,
         ru: `Правила:
 • Утвердительная форма: начальная форма глагола; в третьем лице единственного числа добавляется -s/-es (he works, she watches).
 • Отрицания и вопросы: do/does + начальная форма глагола: she doesn’t work, does he work?
@@ -48,13 +42,7 @@ Conjugaison (personne, nombre):
 • Be, have: I am / you are / he is; I have / he has.
 • -s, -sh, -ch, -x, -o → +es (watches, goes); согласная + y → -ies (studies), но гласная + y → +s (plays).
 • После does/doesn’t -s исчезает: she doesn’t work (не works).
-• Модальные глаголы не принимают -s: she can swim.
-Спряжение (лицо, число):
-| Лицо | work | be | have | do | go |
-| I | work | am | have | do | go |
-| you | work | are | have | do | go |
-| he / she / it | works | is | has | does | goes |
-| we / you / they | work | are | have | do | go |`,
+• Модальные глаголы не принимают -s: she can swim.`,
         es: `Reglas:
 • Forma afirmativa: forma base del verbo; en tercera persona del singular se añade -s/-es (he works, she watches).
 • Negaciones y preguntas: do/does + forma base del verbo: she doesn’t work, does he work?
@@ -63,13 +51,7 @@ Excepciones:
 • Be, have: I am / you are / he is; I have / he has.
 • -s, -sh, -ch, -x, -o → +es (watches, goes); consonante + y → -ies (studies), pero vocal + y → +s (plays).
 • Después de does/doesn’t, el -s desaparece: she doesn’t work (no works).
-• Los verbos modales no llevan -s: she can swim.
-Conjugación (persona, número):
-| Persona | work | be | have | do | go |
-| I | work | am | have | do | go |
-| you | work | are | have | do | go |
-| he / she / it | works | is | has | does | goes |
-| we / you / they | work | are | have | do | go |`,
+• Los verbos modales no llevan -s: she can swim.`,
         zh: `规则:
 • 肯定句用动词原形；第三人称单数加 -s/-es (he works, she watches)。
 • 否定句和疑问句用 do/does + 动词原形：she doesn’t work, does he work?
@@ -78,13 +60,7 @@ Conjugación (persona, número):
 • Be, have：I am / you are / he is; I have / he has.
 • -s, -sh, -ch, -x, -o → +es (watches, goes);辅音 + y → -ies (studies)，但元音 + y → +s (plays)。
 • 在 does/doesn’t 之后，-s 消失：she doesn’t work（不是 works）。
-• 情态动词不带-s：she can swim.
-变位（人称、数）:
-| 人称 | work | be | have | do | go |
-| I | work | am | have | do | go |
-| you | work | are | have | do | go |
-| he / she / it | works | is | has | does | goes |
-| we / you / they | work | are | have | do | go |`,
+• 情态动词不带-s：she can swim.`,
         ko: `규칙:
 • 긍정문은 동사원형을 사용하며, 3인칭 단수에서는 -s/-es를 붙입니다 (he works, she watches).
 • 부정문과 의문문은 do/does + 동사원형을 사용합니다: she doesn’t work, does he work?
@@ -93,13 +69,7 @@ Conjugación (persona, número):
 • Be, have: I am / you are / he is; I have / he has.
 • -s, -sh, -ch, -x, -o → +es (watches, goes); 자음 + y → -ies (studies), 모음 + y → +s (plays).
 • does/doesn’t 이후에는 -s가 사라집니다: she doesn’t work(works 아님)
-• 조동사는 -s를 취하지 않습니다: she can swim.
-활용(인칭, 수):
-| 인칭 | work | be | have | do | go |
-| I | work | am | have | do | go |
-| you | work | are | have | do | go |
-| he / she / it | works | is | has | does | goes |
-| we / you / they | work | are | have | do | go |`,
+• 조동사는 -s를 취하지 않습니다: she can swim.`,
         hi: `नियम:
 • सकारात्मक वाक्य में क्रिया का मूल रूप आता है; तृतीय पुरुष एकवचन में -s/-es जुड़ता है (he works, she watches)।
 • नकारात्मक और प्रश्नवाचक वाक्यों में do/does + क्रिया का मूल रूप आता है: she doesn’t work, does he work?
@@ -108,13 +78,7 @@ Conjugación (persona, número):
 • Be, have: I am / you are / he is; I have / he has.
 • -s, -sh, -ch, -x, -o → +es (watches, goes); व्यंजन + y → -ies (studies), लेकिन स्वर + y → +s (plays)।
 • does/doesn’t के बाद -s गायब हो जाता है: she doesn’t work (works नहीं)।
-• भाववाचक सहायक क्रियाएँ कोई -s नहीं लेती हैं: she can swim.
-क्रिया-रूप (पुरुष, वचन):
-| पुरुष | work | be | have | do | go |
-| I | work | am | have | do | go |
-| you | work | are | have | do | go |
-| he / she / it | works | is | has | does | goes |
-| we / you / they | work | are | have | do | go |`,
+• भाववाचक सहायक क्रियाएँ कोई -s नहीं लेती हैं: she can swim.`,
         ga: `Rialacha:
 • Foirm dhearfach: bunfhoirm an bhriathair; cuirtear -s/-es leis sa tríú pearsa uatha (he works, she watches).
 • Diúltú agus ceisteanna: do/does + bunfhoirm an bhriathair: she doesn’t work, does he work?
@@ -123,13 +87,16 @@ Eisceachtaí:
 • Be, have: I am / you are / he is; I have / he has.
 • -s, -sh, -ch, -x, -o → +es (watches, goes); consan + y → -ies (studies), ach guta + y → +s (plays).
 • Tar éis does/doesn’t, imíonn an -s: she doesn’t work (seachas works).
-• Ní ghlacann briathra módúla -s: she can swim.
-Réimniú (pearsa, uimhir):
-| Pearsa | work | be | have | do | go |
-| I | work | am | have | do | go |
-| you | work | are | have | do | go |
-| he / she / it | works | is | has | does | goes |
-| we / you / they | work | are | have | do | go |`
+• Ní ghlacann briathra módúla -s: she can swim.`,
+        ar: `القواعد:
+• الإثبات: الفعل في صيغته الأساسية؛ ومع ضمير الغائب المفرد يُضاف ‎-s/-es (he works, she watches).
+• النفي والاستفهام — do/does + الفعل الأساسي: she doesn’t work, does he work?
+• يُستعمل للعادات والحقائق والمواعيد الثابتة (the train leaves at nine) ومع ظروف التكرار.
+الاستثناءات:
+• Be وhave: I am / you are / he is; I have / he has.
+• ‎-s, -sh, -ch, -x, -o → +es (watches, goes)؛ حرف ساكن + y → ‎-ies (studies)، أما حرف علة + y → ‎+s (plays).
+• بعد does/doesn’t تختفي ‎-s: she doesn’t work (وليس works).
+• الأفعال الناقصة (modal) لا تأخذ ‎-s: she can swim.`
     });
 
     D('present-continuous', {
@@ -156,13 +123,7 @@ Exceptions:
 Exceptions:
 • Les verbes statifs évitent normalement le continuous : know, like, love, want, believe, understand, need, belong, own, seem (I know, pas I am knowing).
 • Certains verbes ont les deux sens : I think it’s good (opinion) / I’m thinking about it (processus) ; I see (comprendre) / I’m seeing him (réunion).
-• Orthographe de -ing : make → making, run → running, lie → lying.
-Conjugaison (personne, nombre):
-| Personne | be + working |
-| I | am working |
-| you | are working |
-| he / she / it | is working |
-| we / you / they | are working |`,
+• Orthographe de -ing : make → making, run → running, lie → lying.`,
         ru: `Правила:
 • Am/is/are + глагол на -ing: I am reading, they are playing.
 • Действие сейчас, временная ситуация, продуманный план (we are meeting tomorrow).
@@ -170,13 +131,7 @@ Conjugaison (personne, nombre):
 Исключения:
 • Стативные глаголы обычно избегают continuous: know, like, love, want, believe, understand, need, belong, own, seem (I know, а не I am knowing).
 • Некоторые глаголы имеют оба значения: I think it’s good (мнение) / I’m thinking about it (процесс); I see (понимание) / I’m seeing him (встреча).
-• Написание -ing: make → making, run → running, lie → lying.
-Спряжение (лицо, число):
-| Лицо | be + working |
-| I | am working |
-| you | are working |
-| he / she / it | is working |
-| we / you / they | are working |`,
+• Написание -ing: make → making, run → running, lie → lying.`,
         es: `Reglas:
 • Am/is/are + verbo en -ing: I am reading, they are playing.
 • Una acción ahora, una situación temporal, un plan arreglado (we are meeting tomorrow).
@@ -184,13 +139,7 @@ Conjugaison (personne, nombre):
 Excepciones:
 • Los verbos estativos normalmente evitan el continuous: know, like, love, want, believe, understand, need, belong, own, seem (I know, no I am knowing).
 • Algunos verbos tienen ambos significados: I think it’s good (opinión) / I’m thinking about it (proceso); I see (comprender) / I’m seeing him (reunión).
-• Ortografía -ing: make → making, run → running, lie → lying.
-Conjugación (persona, número):
-| Persona | be + working |
-| I | am working |
-| you | are working |
-| he / she / it | is working |
-| we / you / they | are working |`,
+• Ortografía -ing: make → making, run → running, lie → lying.`,
         zh: `规则:
 • Am/is/are + 动词的 -ing 形式：I am reading, they are playing.
 • 现在的行动，临时的情况，安排好的计划(we are meeting tomorrow)。
@@ -198,13 +147,7 @@ Conjugación (persona, número):
 例外:
 • 静态动词通常避免 continuous：know, like, love, want, believe, understand, need, belong, own, seem（I know，而不是 I am knowing）。
 • 一些动词具有两种含义：I think it’s good（意见）/I’m thinking about it（过程）； I see（理解）/I’m seeing him（会议）。
-• -ing 拼写：make → making, run → running, lie → lying.
-变位（人称、数）:
-| 人称 | be + working |
-| I | am working |
-| you | are working |
-| he / she / it | is working |
-| we / you / they | are working |`,
+• -ing 拼写：make → making, run → running, lie → lying.`,
         ko: `규칙:
 • Am/is/are + 동사의 -ing형: I am reading, they are playing.
 • 지금의 행동, 일시적인 상황, 정해진 계획 (we are meeting tomorrow).
@@ -212,13 +155,7 @@ Conjugación (persona, número):
 예외:
 • 상태 동사는 일반적으로 continuous: know, like, love, want, believe, understand, need, belong, own, seem(I know, I am knowing 아님)를 피합니다.
 • 일부 동사에는 두 가지 의미가 모두 있습니다: I think it’s good(의견) / I’m thinking about it(과정); I see(이해) / I’m seeing him(회의).
-• -ing 철자: make → making, run → running, lie → lying.
-활용(인칭, 수):
-| 인칭 | be + working |
-| I | am working |
-| you | are working |
-| he / she / it | is working |
-| we / you / they | are working |`,
+• -ing 철자: make → making, run → running, lie → lying.`,
         hi: `नियम:
 • Am/is/are + क्रिया का -ing रूप: I am reading, they are playing.
 • अभी एक कार्रवाई, एक अस्थायी स्थिति, एक व्यवस्थित योजना (we are meeting tomorrow)।
@@ -226,13 +163,7 @@ Conjugación (persona, número):
 अपवाद:
 • स्थितिसूचक क्रियाएँ आमतौर पर continuous से बचती हैं: know, like, love, want, believe, understand, need, belong, own, seem (I know, I am knowing नहीं)।
 • कुछ क्रियाओं के दोनों अर्थ होते हैं: I think it’s good (राय) / I’m thinking about it (प्रक्रिया); I see (समझें) / I’m seeing him (बैठक)।
-• -ing वर्तनी: make → making, run → running, lie → lying.
-क्रिया-रूप (पुरुष, वचन):
-| पुरुष | be + working |
-| I | am working |
-| you | are working |
-| he / she / it | is working |
-| we / you / they | are working |`,
+• -ing वर्तनी: make → making, run → running, lie → lying.`,
         ga: `Rialacha:
 • Am/is/are + foirm -ing an bhriathair: I am reading, they are playing.
 • Gníomh anois, staid shealadach nó socrú atá déanta (we are meeting tomorrow).
@@ -240,13 +171,15 @@ Conjugación (persona, número):
 Eisceachtaí:
 • De ghnáth ní úsáidtear briathra staide sa continuous: know, like, love, want, believe, understand, need, belong, own, seem (I know, seachas I am knowing).
 • Tá an dá bhrí ag roinnt briathra: I think it’s good (tuairim) / I’m thinking about it (próiseas); I see (tuigim) / I’m seeing him (ag bualadh leis).
-• Litriú -ing: make → making, run → running, lie → lying.
-Réimniú (pearsa, uimhir):
-| Pearsa | be + working |
-| I | am working |
-| you | are working |
-| he / she / it | is working |
-| we / you / they | are working |`
+• Litriú -ing: make → making, run → running, lie → lying.`,
+        ar: `القواعد:
+• Am/is/are + الفعل مع ‎-ing: I am reading, they are playing.
+• حدث يجري الآن، أو وضع مؤقت، أو خطة متفق عليها (we are meeting tomorrow).
+• للتعبير عن الضيق مع always: he is always losing his keys.
+الاستثناءات:
+• أفعال الحالة لا تأتي عادةً في الصيغة المستمرة (continuous): know, like, love, want, believe, understand, need, belong, own, seem (I know، وليس I am knowing).
+• لبعض الأفعال معنيان: I think it’s good (رأي) / I’m thinking about it (عملية تفكير)؛ I see (أفهم) / I’m seeing him (لقاء).
+• تهجئة ‎-ing: make → making, run → running, lie → lying.`
     });
 
     D('present-perfect', {
@@ -276,11 +209,7 @@ Exceptions:
 • Avec une heure passée définie, utilisez le past simple : I saw him yesterday (pas I have seen him yesterday).
 • Participes irréguliers : be → been, go → gone/been, do → done, see → seen, take → taken, write → written.
 • Have gone (y est allé et est toujours là) ≠ have been (y est allé et est revenu).
-• Britanniques contre Américains : les Américains utilisent souvent le past simple avec le already/just/yet.
-Conjugaison (personne, nombre):
-| Personne | have/has + worked | have/has + gone |
-| I / you / we / they | have worked | have gone |
-| he / she / it | has worked | has gone |`,
+• Britanniques contre Américains : les Américains utilisent souvent le past simple avec le already/just/yet.`,
         ru: `Правила:
 • Have/has + причастие прошедшего времени: I have seen, she has finished.
 • Опыт (I have been to Rome), результат (I have lost my keys), действие до сих пор с for/since (we have lived here for years).
@@ -289,11 +218,7 @@ Conjugaison (personne, nombre):
 • Для определенного времени прошлого используйте past simple: I saw him yesterday (не I have seen him yesterday).
 • Неправильные причастия: be → been, go → gone/been, do → done, see → seen, take → taken, write → written.
 • Have gone (ушел и остался там) ≠ have been (ушел и вернулся).
-• Британцы против американцев: американцы часто используют past simple с already/just/yet.
-Спряжение (лицо, число):
-| Лицо | have/has + worked | have/has + gone |
-| I / you / we / they | have worked | have gone |
-| he / she / it | has worked | has gone |`,
+• Британцы против американцев: американцы часто используют past simple с already/just/yet.`,
         es: `Reglas:
 • Have/has + participio pasado: I have seen, she has finished.
 • Experimenta (I have been to Rome), resultado (I have lost my keys), una acción hasta ahora con for/since (we have lived here for years).
@@ -302,11 +227,7 @@ Excepciones:
 • Con un pasado definido utilizar el past simple: I saw him yesterday (no I have seen him yesterday).
 • Participios irregulares: be → been, go → gone/been, do → done, see → seen, take → taken, write → written.
 • Have gone (fue y sigue allí) ≠ have been (fue y volvió).
-• Británico versus estadounidense: los estadounidenses suelen utilizar el past simple con el already/just/yet.
-Conjugación (persona, número):
-| Persona | have/has + worked | have/has + gone |
-| I / you / we / they | have worked | have gone |
-| he / she / it | has worked | has gone |`,
+• Británico versus estadounidense: los estadounidenses suelen utilizar el past simple con el already/just/yet.`,
         zh: `规则:
 • Have/has + 过去分词：I have seen, she has finished.
 • 体验(I have been to Rome)，结果(I have lost my keys)，迄今为止与for/since (we have lived here for years)的动作。
@@ -315,11 +236,7 @@ Conjugación (persona, número):
 • 对于明确的过去时间，请使用 past simple：I saw him yesterday（而不是 I have seen him yesterday）。
 • 不规则分词：be → been, go → gone/been, do → done, see → seen, take → taken, write → written.
 • Have gone（去了并且还在）≠ have been（去了又回来了）。
-• 英国 vs 美国：美国人经常使用 past simple 和 already/just/yet.
-变位（人称、数）:
-| 人称 | have/has + worked | have/has + gone |
-| I / you / we / they | have worked | have gone |
-| he / she / it | has worked | has gone |`,
+• 英国 vs 美国：美国人经常使用 past simple 和 already/just/yet.`,
         ko: `규칙:
 • Have/has + 과거분사: I have seen, she has finished.
 • (I have been to Rome)를 경험하고 결과는 (I have lost my keys)이며 for/since (we have lived here for years)로 지금까지의 작업입니다.
@@ -328,11 +245,7 @@ Conjugación (persona, número):
 • 확실한 과거 시간에는 past simple: I saw him yesterday(I have seen him yesterday 아님)를 사용하세요.
 • 불규칙 분사: be → been, go → gone/been, do → done, see → seen, take → taken, write → written.
 • Have gone(갔다가 아직 있음) ≠ have been(갔다가 돌아옴)
-• 영국 대 미국: 미국인은 종종 past simple를 already/just/yet.와 함께 사용합니다.
-활용(인칭, 수):
-| 인칭 | have/has + worked | have/has + gone |
-| I / you / we / they | have worked | have gone |
-| he / she / it | has worked | has gone |`,
+• 영국 대 미국: 미국인은 종종 past simple를 already/just/yet.와 함께 사용합니다.`,
         hi: `नियम:
 • Have/has + भूतकालिक कृदंत: I have seen, she has finished.
 • अनुभव (I have been to Rome), परिणाम (I have lost my keys), for/since (we have lived here for years) के साथ अब तक की एक कार्रवाई।
@@ -341,11 +254,7 @@ Conjugación (persona, número):
 • एक निश्चित भूतकाल के साथ past simple: I saw him yesterday (I have seen him yesterday नहीं) का उपयोग करें।
 • अनियमित कृदंत: be → been, go → gone/been, do → done, see → seen, take → taken, write → written.
 • Have gone (गया और अभी भी वहीं है) ≠ have been (गया और वापस आया)।
-• ब्रिटिश बनाम अमेरिकी: अमेरिकी अक्सर already/just/yet. के साथ past simple का उपयोग करते हैं
-क्रिया-रूप (पुरुष, वचन):
-| पुरुष | have/has + worked | have/has + gone |
-| I / you / we / they | have worked | have gone |
-| he / she / it | has worked | has gone |`,
+• ब्रिटिश बनाम अमेरिकी: अमेरिकी अक्सर already/just/yet. के साथ past simple का उपयोग करते हैं`,
         ga: `Rialacha:
 • Have/has + rangabháil chaite: I have seen, she has finished.
 • Taithí (I have been to Rome), toradh (I have lost my keys), gníomh a mhaireann go dtí seo le for/since (we have lived here for years).
@@ -354,11 +263,16 @@ Eisceachtaí:
 • Le ham cinnte san am atá caite, úsáidtear an past simple: I saw him yesterday (seachas I have seen him yesterday).
 • Rangabhálacha neamhrialta: be → been, go → gone/been, do → done, see → seen, take → taken, write → written.
 • Have gone (chuaigh agus tá fós ann) ≠ have been (chuaigh agus tháinig ar ais).
-• Béarla na Breataine agus Mheiriceá: is minice a úsáideann Meiriceánaigh an past simple le already/just/yet.
-Réimniú (pearsa, uimhir):
-| Pearsa | have/has + worked | have/has + gone |
-| I / you / we / they | have worked | have gone |
-| he / she / it | has worked | has gone |`
+• Béarla na Breataine agus Mheiriceá: is minice a úsáideann Meiriceánaigh an past simple le already/just/yet.`,
+        ar: `القواعد:
+• Have/has + اسم المفعول (past participle): I have seen, she has finished.
+• التجربة (I have been to Rome)، والنتيجة (I have lost my keys)، وحدث مستمر حتى الآن مع for/since (we have lived here for years).
+• العلامات: already, yet, just, ever, never, recently, so far, since, for.
+الاستثناءات:
+• مع زمن ماضٍ محدد يُستعمل الماضي البسيط (past simple): I saw him yesterday (وليس I have seen him yesterday).
+• أسماء مفعول شاذة: be → been, go → gone/been, do → done, see → seen, take → taken, write → written.
+• Have gone (ذهب وما زال هناك) ≠ have been (ذهب ثم عاد).
+• البريطانية والأمريكية: الأمريكيون كثيرًا ما يستعملون الماضي البسيط مع already/just/yet.`
     });
 
     D('present-perfect-continuous', {
@@ -433,7 +347,15 @@ Excepciones:
 Eisceachtaí:
 • Le briathra staide, úsáidtear an present perfect simple: I have known him for years (seachas have been knowing).
 • Nuair is tábhachtach an méid nó an críochnú, úsáidtear an fhoirm simple: I have read three books (seachas have been reading).
-• Ceadaíonn Always/lately/recently an dá fhoirm.`
+• Ceadaíonn Always/lately/recently an dá fhoirm.`,
+        ar: `القواعد:
+• Have/has been + الفعل مع ‎-ing: I have been waiting for an hour.
+• يؤكد على مدة حدث بدأ في الماضي وما زال مستمرًا أو توقف للتو؛ مع نتيجة ظاهرة (your eyes are red — you have been crying).
+• كثيرًا ما يأتي مع for وsince.
+الاستثناءات:
+• مع أفعال الحالة يُستعمل المضارع التام البسيط (present perfect simple): I have known him for years (وليس have been knowing).
+• عندما يهم العدد أو الإنجاز تُستعمل الصيغة البسيطة: I have read three books (وليس have been reading).
+• Always/lately/recently تسمح بالصيغتين.`
     });
 
     D('past-simple', {
@@ -463,13 +385,7 @@ Exceptions:
 • Orthographe : stop → stopped, study → studied, love → loved, play → played.
 • Prononciation de -ed : /t/ (walked), /d/ (played), /ɪd/ (wanted).
 • Be : was/were ; non utilisé avec did (did you be est faux).
-• Après did, le formulaire de base n'a pas de -ed : I didn’t walk.
-Conjugaison (personne, nombre):
-| Personne | work (régulier) | go (irrégulier) | be | have | do |
-| I | worked | went | was | had | did |
-| you | worked | went | were | had | did |
-| he / she / it | worked | went | was | had | did |
-| we / you / they | worked | went | were | had | did |`,
+• Après did, le formulaire de base n'a pas de -ed : I didn’t walk.`,
         ru: `Правила:
 • Правильные глаголы: +ed (walked); неправильные глаголы имеют особые формы (go → went, see → saw).
 • Отрицательные предложения и вопросы — did + базовая форма глагола: I didn’t go, did you see him?
@@ -478,13 +394,7 @@ Conjugaison (personne, nombre):
 • Правописание: stop → stopped, study → studied, love → loved, play → played.
 • Произношение -ed: /t/ (walked), /d/ (played), /ɪd/ (wanted).
 • Be: was/were; не используется с did (did you be неверен).
-• После did в базовой форме нет -ed: I didn’t walk.
-Спряжение (лицо, число):
-| Лицо | work (правильный) | go (неправильный) | be | have | do |
-| I | worked | went | was | had | did |
-| you | worked | went | were | had | did |
-| he / she / it | worked | went | was | had | did |
-| we / you / they | worked | went | were | had | did |`,
+• После did в базовой форме нет -ed: I didn’t walk.`,
         es: `Reglas:
 • Verbos regulares: +ed (walked); los verbos irregulares tienen formas especiales (go → went, see → saw).
 • Oraciones negativas y preguntas — did + forma base del verbo: I didn’t go, did you see him?
@@ -493,13 +403,7 @@ Excepciones:
 • Ortografía: stop → stopped, study → studied, love → loved, play → played.
 • Pronunciación de -ed: /t/ (walked), /d/ (played), /ɪd/ (wanted).
 • Be: was/were; no se usa con did (did you be es incorrecto).
-• Después de did el formulario base no tiene -ed: I didn’t walk.
-Conjugación (persona, número):
-| Persona | work (regular) | go (irregular) | be | have | do |
-| I | worked | went | was | had | did |
-| you | worked | went | were | had | did |
-| he / she / it | worked | went | was | had | did |
-| we / you / they | worked | went | were | had | did |`,
+• Después de did el formulario base no tiene -ed: I didn’t walk.`,
         zh: `规则:
 • 规则动词：+ed (walked)；不规则动词有特殊形式(go → went, see → saw)。
 • 否定句和疑问句 - did + 动词的基本形式：I didn’t go, did you see him?
@@ -508,13 +412,7 @@ Conjugación (persona, número):
 • 拼写：stop → stopped, study → studied, love → loved, play → played.
 • -ed 发音：/t/ (walked)、/d/ (played)、/ɪd/ (wanted)。
 • Be: was/were;不与did一起使用（did you be是错误的）。
-• 在did之后，基本形式没有-ed：I didn’t walk.
-变位（人称、数）:
-| 人称 | work（规则动词） | go（不规则动词） | be | have | do |
-| I | worked | went | was | had | did |
-| you | worked | went | were | had | did |
-| he / she / it | worked | went | was | had | did |
-| we / you / they | worked | went | were | had | did |`,
+• 在did之后，基本形式没有-ed：I didn’t walk.`,
         ko: `규칙:
 • 일반 동사: +ed (walked); 불규칙 동사는 특별한 형태인 (go → went, see → saw)를 가집니다.
 • 부정문 및 의문문 — did + 동사 기본형: I didn’t go, did you see him?
@@ -523,13 +421,7 @@ Conjugación (persona, número):
 • 철자: stop → stopped, study → studied, love → loved, play → played.
 • -ed 발음: /t/ (walked), /d/ (played), /ɪd/ (wanted).
 • Be: was/were; did와 함께 사용되지 않습니다(did you be가 잘못되었습니다).
-• did 이후 기본 양식에는 -ed가 없습니다: I didn’t walk.
-활용(인칭, 수):
-| 인칭 | work (규칙 동사) | go (불규칙 동사) | be | have | do |
-| I | worked | went | was | had | did |
-| you | worked | went | were | had | did |
-| he / she / it | worked | went | was | had | did |
-| we / you / they | worked | went | were | had | did |`,
+• did 이후 기본 양식에는 -ed가 없습니다: I didn’t walk.`,
         hi: `नियम:
 • नियमित क्रियाएँ: +ed (walked); अनियमित क्रियाओं के विशेष रूप (go → went, see → saw) होते हैं।
 • नकारात्मक वाक्य और प्रश्न - did + क्रिया का मूल रूप: I didn’t go, did you see him?
@@ -538,13 +430,7 @@ Conjugación (persona, número):
 • वर्तनी: stop → stopped, study → studied, love → loved, play → played.
 • -ed उच्चारण: /t/ (walked), /d/ (played), /ɪd/ (wanted)।
 • Be: was/were; did के साथ प्रयोग नहीं किया गया (did you be गलत है)।
-• did के बाद आधार फॉर्म में कोई -ed नहीं है: I didn’t walk.
-क्रिया-रूप (पुरुष, वचन):
-| पुरुष | work (नियमित) | go (अनियमित) | be | have | do |
-| I | worked | went | was | had | did |
-| you | worked | went | were | had | did |
-| he / she / it | worked | went | was | had | did |
-| we / you / they | worked | went | were | had | did |`,
+• did के बाद आधार फॉर्म में कोई -ed नहीं है: I didn’t walk.`,
         ga: `Rialacha:
 • Briathra rialta: +ed (walked); tá foirmeacha speisialta ag briathra neamhrialta (go → went, see → saw).
 • Diúltú agus ceisteanna: did + bunfhoirm an bhriathair: I didn’t go, did you see him?
@@ -553,13 +439,16 @@ Eisceachtaí:
 • Litriú: stop → stopped, study → studied, love → loved, play → played.
 • Fuaimniú -ed: /t/ (walked), /d/ (played), /ɪd/ (wanted).
 • Be: was/were; ní úsáidtear le did é (tá did you be mícheart).
-• Tar éis did, níl -ed ar an mbunfhoirm: I didn’t walk.
-Réimniú (pearsa, uimhir):
-| Pearsa | work (rialta) | go (neamhrialta) | be | have | do |
-| I | worked | went | was | had | did |
-| you | worked | went | were | had | did |
-| he / she / it | worked | went | was | had | did |
-| we / you / they | worked | went | were | had | did |`
+• Tar éis did, níl -ed ar an mbunfhoirm: I didn’t walk.`,
+        ar: `القواعد:
+• الأفعال القياسية: ‎+ed (walked)؛ والأفعال الشاذة لها صيغ خاصة (go → went, see → saw).
+• النفي والاستفهام — did + الفعل الأساسي: I didn’t go, did you see him?
+• حدث منتهٍ في الماضي في وقت معروف (yesterday, last year, in 2010, ago).
+الاستثناءات:
+• التهجئة: stop → stopped, study → studied, love → loved, play → played.
+• نطق ‎-ed: /t/ (walked)، /d/ (played)، /ɪd/ (wanted).
+• Be: was/were؛ ولا يُستعمل مع did (did you be خطأ).
+• بعد did يأتي الفعل الأساسي بلا ‎-ed: I didn’t walk.`
     });
 
     D('past-continuous', {
@@ -586,11 +475,7 @@ Exceptions:
 Exceptions:
 • Verbes statifs : not was knowing — simplement knew.
 • Les actions courtes consécutives utilisent le past simple, pas le continuous : he opened the door and walked in.
-• Après when/while : while + continuous, when + simple (when the phone rang, I was sleeping).
-Conjugaison (personne, nombre):
-| Personne | was/were + working |
-| I / he / she / it | was working |
-| you / we / they | were working |`,
+• Après when/while : while + continuous, when + simple (when the phone rang, I was sleeping).`,
         ru: `Правила:
 • Was/were + глагол на -ing: I was reading, they were playing.
 • Действие, происходящее в определенный момент в прошлом (at 8 pm I was cooking) или фон короткого простого действия в прошедшем времени: I was walking when it started to rain.
@@ -598,11 +483,7 @@ Conjugaison (personne, nombre):
 Исключения:
 • Стативные глаголы: not was knowing — просто knew.
 • Последовательные короткие действия используют past simple, а не continuous: he opened the door and walked in.
-• После when/while: while + continuous, when + simple (when the phone rang, I was sleeping).
-Спряжение (лицо, число):
-| Лицо | was/were + working |
-| I / he / she / it | was working |
-| you / we / they | were working |`,
+• После when/while: while + continuous, when + simple (when the phone rang, I was sleeping).`,
         es: `Reglas:
 • Was/were + verbo en -ing: I was reading, they were playing.
 • Una acción en progreso en un momento del pasado (at 8 pm I was cooking) o el fondo de una acción de pasado simple breve: I was walking when it started to rain.
@@ -610,11 +491,7 @@ Conjugaison (personne, nombre):
 Excepciones:
 • Verbos estátivos: not was knowing — simplemente knew.
 • Las acciones cortas consecutivas utilizan el past simple, no el continuous: he opened the door and walked in.
-• Después de when/while: while + continuous, when + simple (when the phone rang, I was sleeping).
-Conjugación (persona, número):
-| Persona | was/were + working |
-| I / he / she / it | was working |
-| you / we / they | were working |`,
+• Después de when/while: while + continuous, when + simple (when the phone rang, I was sleeping).`,
         zh: `规则:
 • Was/were + 动词的 -ing 形式：I was reading, they were playing.
 • 过去时某个时刻正在进行的动作 (at 8 pm I was cooking) 或过去简单动作的背景：I was walking when it started to rain.
@@ -622,11 +499,7 @@ Conjugación (persona, número):
 例外:
 • 静态动词：not was knowing — 只是 knew.
 • 连续的短操作使用 past simple，而不是 continuous：he opened the door and walked in.
-• when/while 之后：while + continuous, when + simple (when the phone rang, I was sleeping)。
-变位（人称、数）:
-| 人称 | was/were + working |
-| I / he / she / it | was working |
-| you / we / they | were working |`,
+• when/while 之后：while + continuous, when + simple (when the phone rang, I was sleeping)。`,
         ko: `규칙:
 • Was/were + 동사의 -ing형: I was reading, they were playing.
 • 과거 (at 8 pm I was cooking)의 한 순간에 진행 중인 작업 또는 짧은 과거-단순 작업의 배경: I was walking when it started to rain.
@@ -634,11 +507,7 @@ Conjugación (persona, número):
 예외:
 • 상태 동사: not was knowing — 간단히 knew.
 • 연속적인 짧은 동작은 continuous가 아닌 past simple를 사용합니다: he opened the door and walked in.
-• when/while 이후: while + continuous, when + simple (when the phone rang, I was sleeping).
-활용(인칭, 수):
-| 인칭 | was/were + working |
-| I / he / she / it | was working |
-| you / we / they | were working |`,
+• when/while 이후: while + continuous, when + simple (when the phone rang, I was sleeping).`,
         hi: `नियम:
 • Was/were + क्रिया का -ing रूप: I was reading, they were playing.
 • अतीत में एक पल में प्रगति पर एक कार्रवाई (at 8 pm I was cooking) या एक संक्षिप्त अतीत-सरल कार्रवाई की पृष्ठभूमि: I was walking when it started to rain.
@@ -646,11 +515,7 @@ Conjugación (persona, número):
 अपवाद:
 • स्थितिसूचक क्रियाएँ: not was knowing - बस knew.
 • लगातार छोटी कार्रवाइयां past simple का उपयोग करती हैं, continuous का नहीं: he opened the door and walked in.
-• when/while के बाद: while + continuous, when + simple (when the phone rang, I was sleeping)।
-क्रिया-रूप (पुरुष, वचन):
-| पुरुष | was/were + working |
-| I / he / she / it | was working |
-| you / we / they | were working |`,
+• when/while के बाद: while + continuous, when + simple (when the phone rang, I was sleeping)।`,
         ga: `Rialacha:
 • Was/were + foirm -ing an bhriathair: I was reading, they were playing.
 • Gníomh ar siúl ag pointe san am atá caite (at 8 pm I was cooking), nó cúlra do ghníomh gearr sa past simple: I was walking when it started to rain.
@@ -658,11 +523,15 @@ Conjugación (persona, número):
 Eisceachtaí:
 • Briathra staide: not was knowing — úsáidtear knew. go simplí.
 • Le gníomhartha gearra as a chéile, úsáidtear an past simple, ní an continuous: he opened the door and walked in.
-• Tar éis when/while: while + continuous, when + simple (when the phone rang, I was sleeping).
-Réimniú (pearsa, uimhir):
-| Pearsa | was/were + working |
-| I / he / she / it | was working |
-| you / we / they | were working |`
+• Tar éis when/while: while + continuous, when + simple (when the phone rang, I was sleeping).`,
+        ar: `القواعد:
+• Was/were + الفعل مع ‎-ing: I was reading, they were playing.
+• حدث كان جاريًا في لحظة من الماضي (at 8 pm I was cooking) أو خلفية لحدث قصير بالماضي البسيط: I was walking when it started to rain.
+• حدثان طويلان متزامنان: while she was cooking, he was reading.
+الاستثناءات:
+• أفعال الحالة: ليس not was knowing — بل knew فقط.
+• الأحداث القصيرة المتتابعة تأتي بالماضي البسيط (past simple) لا المستمر (continuous): he opened the door and walked in.
+• بعد when/while: ‏while + المستمر، وwhen + البسيط (when the phone rang, I was sleeping).`
     });
 
     D('past-perfect', {
@@ -689,10 +558,7 @@ Exceptions:
 Exceptions:
 • Quand l'ordre est évident (after, before, as soon as) le past simple suffit souvent : after he left, I called.
 • ’d peut signifier had ou would — décidez par la forme qui suit : she’d left (had), she’d leave (would).
-• Pour une durée allant jusqu'à un instant passé, utilisez le past perfect continuous.
-Conjugaison (personne, nombre):
-| Personne | had + participe passé |
-| I / you / he / she / it / we / they | had worked · had gone · had been |`,
+• Pour une durée allant jusqu'à un instant passé, utilisez le past perfect continuous.`,
         ru: `Правила:
 • Had + причастие прошедшего времени: I had finished, she had left.
 • Действие, которое произошло ДО другого прошлого действия или момента (when I arrived, the film had started).
@@ -700,10 +566,7 @@ Conjugaison (personne, nombre):
 Исключения:
 • Когда порядок (after, before, as soon as) очевиден, часто достаточно past simple: after he left, I called.
 • ’d может означать had или would — решите по следующей форме: she’d left (had), she’d leave (would).
-• Для продолжительности до прошлого момента используйте past perfect continuous.
-Спряжение (лицо, число):
-| Лицо | had + причастие прошедшего времени |
-| I / you / he / she / it / we / they | had worked · had gone · had been |`,
+• Для продолжительности до прошлого момента используйте past perfect continuous.`,
         es: `Reglas:
 • Had + participio pasado: I had finished, she had left.
 • Una acción que ocurrió ANTES de otra acción pasada o momento (when I arrived, the film had started).
@@ -711,10 +574,7 @@ Conjugaison (personne, nombre):
 Excepciones:
 • Cuando el orden es obvio (after, before, as soon as), el past simple suele ser suficiente: after he left, I called.
 • ’d puede significar had o would; decídalo por la siguiente forma: she’d left (had), she’d leave (would).
-• Para duración hasta un momento pasado utilice el past perfect continuous.
-Conjugación (persona, número):
-| Persona | had + participio pasado |
-| I / you / he / she / it / we / they | had worked · had gone · had been |`,
+• Para duración hasta un momento pasado utilice el past perfect continuous.`,
         zh: `规则:
 • Had + 过去分词：I had finished, she had left.
 • 在另一个过去的动作或时刻 (when I arrived, the film had started) 之前发生的动作。
@@ -722,10 +582,7 @@ Conjugación (persona, número):
 例外:
 • 当顺序很明显 (after, before, as soon as) 时，past simple 通常就足够了：after he left, I called.
 • ’d 可以表示 had 或 would - 由以下形式决定：she’d left (had)、she’d leave (would)。
-• 对于过去一刻的持续时间，请使用 past perfect continuous.
-变位（人称、数）:
-| 人称 | had + 过去分词 |
-| I / you / he / she / it / we / they | had worked · had gone · had been |`,
+• 对于过去一刻的持续时间，请使用 past perfect continuous.`,
         ko: `규칙:
 • Had + 과거분사: I had finished, she had left.
 • 다른 과거 행동이나 순간 (when I arrived, the film had started) 이전에 발생한 행동.
@@ -733,10 +590,7 @@ Conjugación (persona, número):
 예외:
 • 순서가 분명한 경우 (after, before, as soon as) past simple로도 충분할 때가 많습니다: after he left, I called.
 • ’d는 had 또는 would를 의미할 수 있습니다. 다음 형식에 따라 결정하세요. she’d left (had), she’d leave (would).
-• 지난 순간까지 지속하려면 past perfect continuous.를 사용하세요
-활용(인칭, 수):
-| 인칭 | had + 과거분사 |
-| I / you / he / she / it / we / they | had worked · had gone · had been |`,
+• 지난 순간까지 지속하려면 past perfect continuous.를 사용하세요`,
         hi: `नियम:
 • Had + भूतकालिक कृदंत: I had finished, she had left.
 • एक क्रिया जो किसी अन्य पिछली क्रिया या क्षण (when I arrived, the film had started) से पहले हुई हो।
@@ -744,10 +598,7 @@ Conjugación (persona, número):
 अपवाद:
 • जब क्रम स्पष्ट है (after, before, as soon as) तो past simple अक्सर पर्याप्त होता है: after he left, I called.
 • ’d का अर्थ had या would हो सकता है - निम्न फ़ॉर्म से निर्णय लें: she’d left (had), she’d leave (would)।
-• पिछले क्षण तक की अवधि के लिए past perfect continuous. का उपयोग करें
-क्रिया-रूप (पुरुष, वचन):
-| पुरुष | had + भूतकालिक कृदंत |
-| I / you / he / she / it / we / they | had worked · had gone · had been |`,
+• पिछले क्षण तक की अवधि के लिए past perfect continuous. का उपयोग करें`,
         ga: `Rialacha:
 • Had + rangabháil chaite: I had finished, she had left.
 • Gníomh a tharla ROIMH ghníomh eile nó pointe ama san am atá caite (when I arrived, the film had started).
@@ -755,10 +606,15 @@ Conjugación (persona, número):
 Eisceachtaí:
 • Nuair atá an t-ord soiléir (after, before, as soon as), is leor an past simple go minic: after he left, I called.
 • Féadann ’d had nó would a chiallaíonn; braitheann sé ar an bhfoirm a leanann: she’d left (had), she’d leave (would).
-• Le fad ama go dtí pointe san am atá caite, úsáidtear an past perfect continuous.
-Réimniú (pearsa, uimhir):
-| Pearsa | had + rangabháil chaite |
-| I / you / he / she / it / we / they | had worked · had gone · had been |`
+• Le fad ama go dtí pointe san am atá caite, úsáidtear an past perfect continuous.`,
+        ar: `القواعد:
+• Had + اسم المفعول: I had finished, she had left.
+• حدث وقع قبل حدث أو لحظة أخرى في الماضي (when I arrived, the film had started).
+• في الشرط الثالث وبعد wish عن الماضي: if I had known…; I wish I had gone.
+الاستثناءات:
+• عندما يكون الترتيب واضحًا (after, before, as soon as) يكفي غالبًا الماضي البسيط (past simple): after he left, I called.
+• ’d قد تعني had أو would — يُحسم ذلك بالصيغة التي تليها: she’d left (had)، she’d leave (would).
+• للتعبير عن مدة حتى لحظة في الماضي يُستعمل الماضي التام المستمر (past perfect continuous).`
     });
 
     D('past-perfect-continuous', {
@@ -815,7 +671,13 @@ Excepciones:
 • Gníomh fada go dtí pointe san am atá caite, go minic le toradh infheicthe (his hands were dirty — he had been working).
 Eisceachtaí:
 • Le briathra staide, úsáidtear an past perfect simple: I had known her for years.
-• Nuair a shonraítear líon, úsáidtear an simple: he had written three letters.`
+• Nuair a shonraítear líon, úsáidtear an simple: he had written three letters.`,
+        ar: `القواعد:
+• Had been + الفعل مع ‎-ing: she had been studying for hours.
+• حدث طويل امتد حتى لحظة في الماضي، وغالبًا مع نتيجة ظاهرة (his hands were dirty — he had been working).
+الاستثناءات:
+• مع أفعال الحالة يُستعمل الماضي التام البسيط (past perfect simple): I had known her for years.
+• عند ذكر عدد — الصيغة البسيطة: he had written three letters.`
     });
 
     D('future-will', {
@@ -842,13 +704,7 @@ Exceptions:
 Exceptions:
 • Après if/when/as soon as/before/until sur le futur — present simple, pas will : if it rains, we will stay.
 • Pour quelque chose de déjà prévu, going to / present continuous est mieux.
-• Shall — I/we dans les offres : shall I open the window? (britannique).
-Conjugaison (personne, nombre):
-| Personne | will + base verbale | going to |
-| I | I will work (I’ll work) | I am going to work |
-| you | you will work | you are going to work |
-| he / she / it | he will work | he is going to work |
-| we / they | we will work | we are going to work |`,
+• Shall — I/we dans les offres : shall I open the window? (britannique).`,
         ru: `Правила:
 • Will + базовая форма глагола: I will help, it will rain; сокращения ’ll, won’t.
 • Спонтанные решения, прогнозы (I think it will snow), обещания, предложения.
@@ -856,13 +712,7 @@ Conjugaison (personne, nombre):
 Исключения:
 • После if/when/as soon as/before/until о будущем — present simple, а не will: if it rains, we will stay.
 • Для уже запланированного going to / present continuous лучше.
-• Shall — I/we в предложениях: shall I open the window? (Британский).
-Спряжение (лицо, число):
-| Лицо | will + начальная форма глагола | going to |
-| I | I will work (I’ll work) | I am going to work |
-| you | you will work | you are going to work |
-| he / she / it | he will work | he is going to work |
-| we / they | we will work | we are going to work |`,
+• Shall — I/we в предложениях: shall I open the window? (Британский).`,
         es: `Reglas:
 • Will + forma base del verbo: I will help, it will rain; contracciones ’ll, won’t.
 • Decisiones espontáneas, predicciones (I think it will snow), promesas, ofertas.
@@ -870,13 +720,7 @@ Conjugaison (personne, nombre):
 Excepciones:
 • Después de if/when/as soon as/before/until sobre el futuro: present simple, no will: if it rains, we will stay.
 • Para algo ya planeado, going to / present continuous es mejor.
-• Shall — I/we en ofertas: shall I open the window? (británico).
-Conjugación (persona, número):
-| Persona | will + forma base del verbo | going to |
-| I | I will work (I’ll work) | I am going to work |
-| you | you will work | you are going to work |
-| he / she / it | he will work | he is going to work |
-| we / they | we will work | we are going to work |`,
+• Shall — I/we en ofertas: shall I open the window? (británico).`,
         zh: `规则:
 • Will + 动词的基本形式：I will help, it will rain；缩写 ’ll, won’t.
 • 自发决定、预测 (I think it will snow)、承诺、提议。
@@ -884,13 +728,7 @@ Conjugación (persona, número):
 例外:
 • 在关于未来的 if/when/as soon as/before/until 之后 - present simple，而不是 will：if it rains, we will stay.
 • 对于已经计划好的事情，going to / present continuous 更好。
-• 优惠中的 Shall — I/we：shall I open the window?（英国）。
-变位（人称、数）:
-| 人称 | will + 动词原形 | going to |
-| I | I will work (I’ll work) | I am going to work |
-| you | you will work | you are going to work |
-| he / she / it | he will work | he is going to work |
-| we / they | we will work | we are going to work |`,
+• 优惠中的 Shall — I/we：shall I open the window?（英国）。`,
         ko: `규칙:
 • Will + 동사의 기본형: I will help, it will rain; 축약형 ’ll, won’t.
 • 자발적인 결정, 예측 (I think it will snow), 약속, 제안.
@@ -898,13 +736,7 @@ Conjugación (persona, número):
 예외:
 • 미래에 대한 if/when/as soon as/before/until 이후 — will가 아닌 present simple: if it rains, we will stay.
 • 이미 계획된 일에는 going to / present continuous가 더 좋습니다.
-• 오퍼 내 Shall — I/we: shall I open the window?(영국).
-활용(인칭, 수):
-| 인칭 | will + 동사원형 | going to |
-| I | I will work (I’ll work) | I am going to work |
-| you | you will work | you are going to work |
-| he / she / it | he will work | he is going to work |
-| we / they | we will work | we are going to work |`,
+• 오퍼 내 Shall — I/we: shall I open the window?(영국).`,
         hi: `नियम:
 • Will + क्रिया का मूल रूप: I will help, it will rain; संकुचन ’ll, won’t.
 • सहज निर्णय, भविष्यवाणियाँ (I think it will snow), वादे, प्रस्ताव।
@@ -912,13 +744,7 @@ Conjugación (persona, número):
 अपवाद:
 • भविष्य के बारे में if/when/as soon as/before/until के बाद - present simple, will नहीं: if it rains, we will stay.
 • पहले से नियोजित किसी चीज़ के लिए going to / present continuous बेहतर है।
-• ऑफ़र में Shall — I/we: shall I open the window? (ब्रिटिश)।
-क्रिया-रूप (पुरुष, वचन):
-| पुरुष | will + क्रिया का मूल रूप | going to |
-| I | I will work (I’ll work) | I am going to work |
-| you | you will work | you are going to work |
-| he / she / it | he will work | he is going to work |
-| we / they | we will work | we are going to work |`,
+• ऑफ़र में Shall — I/we: shall I open the window? (ब्रिटिश)।`,
         ga: `Rialacha:
 • Will + bunfhoirm an bhriathair: I will help, it will rain; foirmeacha giorraithe ’ll, won’t.
 • Cinntí spontáineacha, tuartha (I think it will snow), gealltanais, tairiscintí.
@@ -926,13 +752,15 @@ Conjugación (persona, número):
 Eisceachtaí:
 • Tar éis if/when/as soon as/before/until faoin todhchaí, úsáidtear an present simple, ní will: if it rains, we will stay.
 • Le rud atá pleanáilte cheana, is fearr going to / present continuous.
-• Shall — I/we i dtairiscintí: shall I open the window? (Béarla na Breataine).
-Réimniú (pearsa, uimhir):
-| Pearsa | will + bunfhoirm an bhriathair | going to |
-| I | I will work (I’ll work) | I am going to work |
-| you | you will work | you are going to work |
-| he / she / it | he will work | he is going to work |
-| we / they | we will work | we are going to work |`
+• Shall — I/we i dtairiscintí: shall I open the window? (Béarla na Breataine).`,
+        ar: `القواعد:
+• Will + الفعل الأساسي: I will help, it will rain؛ والاختصارات ’ll, won’t.
+• القرارات الفورية، والتوقعات (I think it will snow)، والوعود، والعروض.
+• كثيرًا ما يأتي بعد I think, probably, perhaps, I’m sure.
+الاستثناءات:
+• بعد if/when/as soon as/before/until عن المستقبل — المضارع البسيط (present simple) لا will: if it rains, we will stay.
+• لما خُطط له مسبقًا الأفضل going to أو المضارع المستمر (present continuous).
+• Shall — مع I/we في العروض: shall I open the window? (بريطانية).`
     });
 
     D('going-to', {
@@ -998,7 +826,14 @@ Excepciones:
 Eisceachtaí:
 • Le go agus come, is gnách an present continuous: I’m going to the shop (tá I’m going to go to the shop ceart freisin, ach níos faide).
 • Ní úsáidtear le cinntí a dhéantar tráth na cainte é; úsáidtear will.
-• Sa chaint: gonna (ní úsáidtear sa scríbhneoireacht fhoirmiúil é).`
+• Sa chaint: gonna (ní úsáidtear sa scríbhneoireacht fhoirmiúil é).`,
+        ar: `القواعد:
+• Am/is/are going to + الفعل الأساسي: we are going to buy a house.
+• النوايا والخطط المسبقة؛ وتوقع مبني على دليل (look at the clouds — it’s going to rain).
+الاستثناءات:
+• مع go وcome الأكثر شيوعًا المضارع المستمر (present continuous): I’m going to the shop (وI’m going to go to the shop صحيحة أيضًا، لكنها أطول).
+• لا يُستعمل للقرارات المتخذة لحظة الكلام — استعمل will.
+• في الكلام العامي: gonna (لا تُكتب في النصوص الرسمية).`
     });
 
     D('future-continuous-perfect', {
@@ -1064,7 +899,14 @@ Excepciones:
 • Future perfect continuous: will have been + foirm -ing an bhriathair — fad ama go dtí pointe (by May I will have been working here for five years).
 Eisceachtaí:
 • Tar éis by («faoi»), úsáidtear an future perfect; tar éis until/till — future simple nó continuous de réir na brí.
-• Tar éis when/before/after faoin todhchaí, úsáidtear an present simple/perfect, ní will have.`
+• Tar éis when/before/after faoin todhchaí, úsáidtear an present simple/perfect, ní will have.`,
+        ar: `القواعد:
+• المستقبل المستمر (Future continuous): will be + الفعل مع ‎-ing — حدث سيكون جاريًا في لحظة مستقبلية (this time tomorrow I will be flying).
+• المستقبل التام (Future perfect): will have + اسم المفعول — حدث سينتهي قبل لحظة مستقبلية (by June she will have finished).
+• المستقبل التام المستمر (Future perfect continuous): will have been + الفعل مع ‎-ing — مدة حتى لحظة ما (by May I will have been working here for five years).
+الاستثناءات:
+• بعد by (بحلول) — المستقبل التام (future perfect)؛ وبعد until/till — المستقبل البسيط (future simple) أو المستمر (continuous) بحسب المعنى.
+• بعد when/before/after عن المستقبل — المضارع البسيط أو التام (present simple/perfect)، لا will have.`
     });
 
     D('used-to-would', {
@@ -1139,7 +981,15 @@ Excepciones:
 Eisceachtaí:
 • Le briathra staide (be, have, know, live), ní úsáidtear ach used to: I used to have a dog (seachas would have).
 • Ciallaíonn Be used to + -ing «cleachta le»: I’m used to getting up early — struchtúr eile.
-• Le heachtra aonair san am atá caite, úsáidtear an past simple.`
+• Le heachtra aonair san am atá caite, úsáidtear an past simple.`,
+        ar: `القواعد:
+• Used to + الفعل الأساسي: عادة أو حالة في الماضي لم تعد قائمة (we used to live in Spain; he used to be shy).
+• Would + الفعل الأساسي: حدث متكرر في الماضي، وليس حالة (every summer we would visit my aunt).
+• النفي والاستفهام: didn’t use to, did you use to.
+الاستثناءات:
+• مع أفعال الحالة (be, have, know, live) لا يُستعمل إلا used to: I used to have a dog (وليس would have).
+• Be used to + ‎-ing تعني «معتاد على»: I’m used to getting up early — تركيب مختلف.
+• لحدث واحد في الماضي — الماضي البسيط (past simple).`
     });
 
     D('modal-verbs', {
@@ -1223,7 +1073,16 @@ Eisceachtaí:
 • Níl foirm chaite ag Must: had to (I had to leave).
 • Glacann Ought to to, murab ionann agus na cinn eile.
 • Can’t have + rangabháil — tátal diúltach cinnte faoin am atá caite: he can’t have seen it.
-• Féadann Need agus dare a bheith módúil (needn’t) nó ina ngnáthbhriathra (don’t need to).`
+• Féadann Need agus dare a bheith módúil (needn’t) nó ina ngnáthbhriathra (don’t need to).`,
+        ar: `القواعد:
+• Can/could, may/might, must, should/ought to, will/would, shall + الفعل الأساسي بدون to؛ بلا ‎-s مع الغائب؛ والنفي بإضافة not فقط (can’t).
+• Can — القدرة أو الإذن؛ could — للتأدب أو الماضي؛ may/might — الاحتمال؛ must — إلزام قوي أو استنتاج؛ should — النصيحة.
+• Must not (منع) ≠ don’t have to (غير ضروري).
+الاستثناءات:
+• لا ماضي لـ must: had to (I had to leave).
+• Ought to تأخذ to، بخلاف غيرها.
+• Can’t have + اسم المفعول — نفي واثق عن الماضي: he can’t have seen it.
+• Need وdare قد يكونان ناقصين (needn’t) أو عاديين (don’t need to).`
     });
 
     D('conditional-zero-first', {
@@ -1307,7 +1166,16 @@ Eisceachtaí:
 • Ní úsáidtear will sa chlásal if: if it rains (seachas if it will rain).
 • Ach if you will (cúirtéiseach, «má tá tú sásta»): if you will wait here…
 • Unless = if … not: unless you hurry, you will be late.
-• Féadann briathra módúla teacht in áit will: if you ask, he may help.`
+• Féadann briathra módúla teacht in áit will: if you ask, he may help.`,
+        ar: `القواعد:
+• الشرط الصفري (Zero): if + المضارع (present)، والمضارع (present) — حقائق عامة (if you heat ice, it melts).
+• الشرط الأول (First): if + المضارع (present)، will + الفعل الأساسي — شرط حقيقي في المستقبل (if it rains, we will stay home).
+• القلب بدون if في الكتابة الرسمية: should you need help, call us.
+الاستثناءات:
+• لا will في جملة if: if it rains (وليس if it will rain).
+• لكن if you will (تأدبًا، بمعنى «إن تفضلت»): if you will wait here…
+• Unless = if … not: unless you hurry, you will be late.
+• يمكن للأفعال الناقصة أن تحل محل will: if you ask, he may help.`
     });
 
     D('conditional-second', {
@@ -1391,7 +1259,16 @@ Eisceachtaí:
 • Be: were do gach pearsa (if I were rich; foirmiúil); go neamhfhoirmiúil, was.
 • Ní úsáidtear would sa chlásal if: if I had (seachas if I would have).
 • Inbhéartú: were I you, I would…
-• Measctha: if I had studied (san am atá caite), I would be a doctor now.`
+• Measctha: if I had studied (san am atá caite), I would be a doctor now.`,
+        ar: `القواعد:
+• If + الماضي البسيط (past simple)، would + الفعل الأساسي: if I had a car, I would drive.
+• وضع غير واقعي أو مستبعد في الحاضر أو المستقبل؛ والنصيحة: if I were you, I would apologise.
+• Could/might يمكن أن تحل محل would.
+الاستثناءات:
+• Be: ‏were لكل الضمائر (if I were rich؛ رسمي) — وفي العامية was.
+• لا would في جملة if: if I had (وليس if I would have).
+• القلب: were I you, I would…
+• المختلط: if I had studied (ماضٍ)، I would be a doctor now.`
     });
 
     D('conditional-third', {
@@ -1466,7 +1343,15 @@ Excepciones:
 Eisceachtaí:
 • Ní úsáidtear would have sa chlásal if: if I had known (seachas if I would have known).
 • Inbhéartú: had I known, I would have come.
-• Coinníollach measctha: if I had taken the job, I would be rich now.`
+• Coinníollach measctha: if I had taken the job, I would be rich now.`,
+        ar: `القواعد:
+• If + الماضي التام (past perfect)، would have + اسم المفعول: if she had studied, she would have passed.
+• شرط لم يتحقق في الماضي ونتيجته المتخيلة؛ للتعبير عن الندم واللوم.
+• Could have/might have بدلًا من would have.
+الاستثناءات:
+• لا would have في جملة if: if I had known (وليس if I would have known).
+• القلب: had I known, I would have come.
+• الشرط المختلط: if I had taken the job, I would be rich now.`
     });
 
     D('wishes', {
@@ -1541,7 +1426,15 @@ Excepciones:
 Eisceachtaí:
 • Be: were do gach pearsa sa stíl fhoirmiúil: I wish I were there.
 • Ní úsáidtear Wish + would nuair is ionann an t-ainmní; ní deirtear I wish I would…
-• Could in áit would le haghaidh cumais: I wish I could fly.`
+• Could in áit would le haghaidh cumais: I wish I could fly.`,
+        ar: `القواعد:
+• Wish/if only + الماضي البسيط (past simple) — أمنية عن الحاضر: I wish I were taller; if only I knew.
+• Wish/if only + الماضي التام (past perfect) — ندم على الماضي: I wish I had gone; if only I hadn’t said that.
+• Wish + would — شكوى أو ضيق (I wish he would stop).
+الاستثناءات:
+• Be: ‏were لكل الضمائر في الأسلوب الرسمي: I wish I were there.
+• لا تُستعمل wish + would عندما يكون الفاعل نفسه: لا يُقال I wish I would…
+• Could بدلًا من would للتعبير عن القدرة: I wish I could fly.`
     });
 
     D('subjunctive', {
@@ -1616,7 +1509,15 @@ Excepciones:
 Eisceachtaí:
 • Sa Bhéarla labhartha, go háirithe Béarla na Breataine, tá should coitianta: I suggest that he should go.
 • Ní athraíonn an foshuiteach sa tríú pearsa: he go, seachas goes.
-• Modh ordaitheach le you chun béim a chur air: You be quiet!`
+• Modh ordaitheach le you chun béim a chur air: You be quiet!`,
+        ar: `القواعد:
+• بعد suggest, recommend, insist, demand, propose, require: ‏that + الفاعل + الصيغة الأساسية للفعل (I suggest that he go; it is vital that she be present).
+• If I were…, as if he were… (رسمي).
+• الأمر: الفعل الأساسي بلا فاعل: Close the door. النفي: Don’t + الفعل. Let’s — اقتراح (let’s go).
+الاستثناءات:
+• في الإنجليزية المحكية (البريطانية خاصة) تشيع should: I suggest that he should go.
+• صيغة الـ subjunctive لا تتغير مع الغائب: he go، وليس goes.
+• الأمر مع you للتوكيد: You be quiet!`
     });
 
     D('infinitive-gerund', {
@@ -1700,7 +1601,16 @@ Excepciones:
 Eisceachtaí:
 • Tá bríonna éagsúla leis an dá struchtúr: remember/forget/stop/try — I stopped smoking (d’éirigh mé as caitheamh tobac) / I stopped to smoke (stad mé chun tobac a chaitheamh); remember to lock (gan dearmad a dhéanamh ar ghlasáil) / remember locking (cuimhneamh gur ghlasáil mé).
 • An bhrí chéanna leis an dá fhoirm: like, love, hate, prefer, begin, start (like to swim / like swimming).
-• Infinideach gan to tar éis briathra módúla, let agus make (he made me laugh).`
+• Infinideach gan to tar éis briathra módúla, let agus make (he made me laugh).`,
+        ar: `القواعد:
+• To-infinitive (المصدر مع to): want, decide, hope, plan, promise, refuse, agree, manage, learn, afford (decide to leave).
+• ‎-ing: enjoy, avoid, finish, keep, mind, suggest, consider, practise, risk (enjoy swimming).
+• بعد حروف الجر لا يأتي إلا ‎-ing: interested in learning, before leaving.
+• الـ gerund فاعلًا: swimming is fun.
+الاستثناءات:
+• الصيغتان بمعنيين مختلفين: remember/forget/stop/try — I stopped smoking (أقلعت) / I stopped to smoke (توقفت لكي أدخن)؛ remember to lock (لا تنسَ) / remember locking (أتذكر أنني فعلت).
+• الصيغتان بالمعنى نفسه: like, love, hate, prefer, begin, start (like to swim / like swimming).
+• المصدر بدون to بعد الأفعال الناقصة وlet وmake (he made me laugh).`
     });
 
     D('passive-voice', {
@@ -1733,13 +1643,7 @@ Exceptions:
 • Avec deux objets deux passifs sont possibles : I was given a book / a book was given to me.
 • Modaux : must be done, can be seen. Infinitif : to be done.
 • Obtenez-passif (informel) : he got fired.
-• Le passif statif (the door is closed) décrit un état.
-Conjugaison (personne, nombre):
-| Temps | be + participe passé (singulier / pluriel) |
-| Présent | the letter is written / the letters are written |
-| Passé | the letter was written / the letters were written |
-| Present perfect | the letter has been written / the letters have been written |
-| Futur | the letter will be written / the letters will be written |`,
+• Le passif statif (the door is closed) décrit un état.`,
         ru: `Правила:
 • Be (в нужном времени) + причастие прошедшего времени: is written, was broken, has been done, will be sent, is being built.
 • Агент с by (при необходимости): written by Tom.
@@ -1749,13 +1653,7 @@ Conjugaison (personne, nombre):
 • При двух объектах возможны два пассива: I was given a book / a book was given to me.
 • Модальные глаголы: must be done, can be seen. Инфинитив: to be done.
 • Пассивный (неформальный): he got fired.
-• Статический пассив (the door is closed) описывает состояние.
-Спряжение (лицо, число):
-| Время | be + причастие прошедшего времени (ед. ч. / мн. ч.) |
-| Настоящее время | the letter is written / the letters are written |
-| Прошедшее время | the letter was written / the letters were written |
-| Настоящее совершённое время | the letter has been written / the letters have been written |
-| Будущее время | the letter will be written / the letters will be written |`,
+• Статический пассив (the door is closed) описывает состояние.`,
         es: `Reglas:
 • Be (en el tiempo necesario) + participio pasado: is written, was broken, has been done, will be sent, is being built.
 • Agente con by (si es necesario): written by Tom.
@@ -1765,13 +1663,7 @@ Excepciones:
 • Con dos objetos son posibles dos pasivas: I was given a book / a book was given to me.
 • Modales: must be done, can be seen. Infinitivo: to be done.
 • Ponte pasivo (informal): he got fired.
-• El pasivo estativo (the door is closed) describe un estado.
-Conjugación (persona, número):
-| Tiempo | be + participio pasado (singular / plural) |
-| Presente | the letter is written / the letters are written |
-| Pasado | the letter was written / the letters were written |
-| Pretérito perfecto compuesto | the letter has been written / the letters have been written |
-| Futuro | the letter will be written / the letters will be written |`,
+• El pasivo estativo (the door is closed) describe un estado.`,
         zh: `规则:
 • Be（所需时态）+过去分词：is written, was broken, has been done, will be sent, is being built.
 • by 代理（如果需要）：written by Tom.
@@ -1781,13 +1673,7 @@ Conjugación (persona, número):
 • 对于两个对象，可以有两个被动：I was given a book / a book was given to me.
 • 情态动词：must be done, can be seen. 不定式：to be done.
 • 获取被动（非正式）：he got fired.
-• 静态被动 (the door is closed) 描述一种状态。
-变位（人称、数）:
-| 时态 | be + 过去分词（单数 / 复数） |
-| 现在时 | the letter is written / the letters are written |
-| 过去时 | the letter was written / the letters were written |
-| 现在完成时 | the letter has been written / the letters have been written |
-| 将来时 | the letter will be written / the letters will be written |`,
+• 静态被动 (the door is closed) 描述一种状态。`,
         ko: `규칙:
 • Be(필요 시제) + 과거 분사: is written, was broken, has been done, will be sent, is being built.
 • by를 사용하는 에이전트(필요한 경우): written by Tom.
@@ -1797,13 +1683,7 @@ Conjugación (persona, número):
 • 두 개의 객체에는 두 개의 패시브가 가능합니다: I was given a book / a book was given to me.
 • 조동사: must be done, can be seen. 부정사: to be done.
 • Get-passive(비공식): he got fired.
-• 정적 수동형 (the door is closed)는 상태를 설명합니다.
-활용(인칭, 수):
-| 시제 | be + 과거분사 (단수 / 복수) |
-| 현재 | the letter is written / the letters are written |
-| 과거 | the letter was written / the letters were written |
-| 현재완료 | the letter has been written / the letters have been written |
-| 미래 | the letter will be written / the letters will be written |`,
+• 정적 수동형 (the door is closed)는 상태를 설명합니다.`,
         hi: `नियम:
 • Be (आवश्यक काल में) + भूतकालिक कृदंत: is written, was broken, has been done, will be sent, is being built.
 • आवश्यक होने पर कर्ता को by से दर्शाते हैं: written by Tom.
@@ -1813,13 +1693,7 @@ Conjugación (persona, número):
 • दो कर्म होने पर दो कर्मवाच्य रूप संभव हैं: I was given a book / a book was given to me.
 • भाववाचक सहायक क्रियाएँ: must be done, can be seen. अनंत रूप: to be done.
 • Get से बना कर्मवाच्य (अनौपचारिक): he got fired.
-• स्थितिसूचक कर्मवाच्य (the door is closed) किसी अवस्था को दर्शाता है।
-क्रिया-रूप (पुरुष, वचन):
-| काल | be + भूतकालिक कृदंत (एकवचन / बहुवचन) |
-| वर्तमान काल | the letter is written / the letters are written |
-| भूतकाल | the letter was written / the letters were written |
-| पूर्ण वर्तमान काल | the letter has been written / the letters have been written |
-| भविष्य काल | the letter will be written / the letters will be written |`,
+• स्थितिसूचक कर्मवाच्य (the door is closed) किसी अवस्था को दर्शाता है।`,
         ga: `Rialacha:
 • Be (san aimsir chuí) + rangabháil chaite: is written, was broken, has been done, will be sent, is being built.
 • An gníomhaí le by, más gá: written by Tom.
@@ -1829,13 +1703,17 @@ Eisceachtaí:
 • Le dhá chuspóir, is féidir dhá fhoirm fhulangacha: I was given a book / a book was given to me.
 • Briathra módúla: must be done, can be seen. Infinideach: to be done.
 • Foirm fhulangach le Get (neamhfhoirmiúil): he got fired.
-• Déanann an fhoirm fhulangach statach (the door is closed) cur síos ar staid.
-Réimniú (pearsa, uimhir):
-| Aimsir | be + rangabháil chaite (uatha / iolra) |
-| Aimsir láithreach | the letter is written / the letters are written |
-| Aimsir chaite | the letter was written / the letters were written |
-| Aimsir láithreach fhoirfe | the letter has been written / the letters have been written |
-| Aimsir fháistineach | the letter will be written / the letters will be written |`
+• Déanann an fhoirm fhulangach statach (the door is closed) cur síos ar staid.`,
+        ar: `القواعد:
+• Be (في الزمن المطلوب) + اسم المفعول: is written, was broken, has been done, will be sent, is being built.
+• الفاعل الحقيقي مع by (عند الحاجة): written by Tom.
+• يُستعمل عندما يكون الفاعل مجهولًا أو غير مهم أو واضحًا.
+الاستثناءات:
+• للأفعال المتعدية فقط صيغة مبني للمجهول (وليس: it was happened).
+• مع مفعولين يمكن صياغتان للمجهول: I was given a book / a book was given to me.
+• الأفعال الناقصة: must be done, can be seen. المصدر: to be done.
+• المجهول بـ get (غير رسمي): he got fired.
+• المجهول الدال على الحالة (the door is closed) يصف حالة.`
     });
 
     D('causative', {
@@ -1910,7 +1788,15 @@ Excepciones:
 Eisceachtaí:
 • Have + person + base an bhriathair (gan to) — cur ar dhuine rud a dhéanamh (to): I had the mechanic check the car.
 • Get + person + infinideach le to: I got him to help me.
-• Ná measc leis an ngnáth-have é: I have my hair cut (nós); braitheann sé ar an gcomhthéacs.`
+• Ná measc leis an ngnáth-have é: I have my hair cut (nós); braitheann sé ar an gcomhthéacs.`,
+        ar: `القواعد:
+• Have + المفعول + اسم المفعول — شخص آخر يقوم بالعمل لنا: I had my hair cut; she is having the car repaired.
+• Get + المفعول + اسم المفعول — أقل رسمية: I need to get my phone fixed.
+• لتجربة سلبية: he had his wallet stolen.
+الاستثناءات:
+• Have + person + base verb (بلا to) — «أن تجعل شخصًا يفعل»: I had the mechanic check the car.
+• Get + person + to-infinitive: I got him to help me.
+• لا يُخلط مع have العادية: I have my hair cut (عادة) — يتوقف على السياق.`
     });
 
     D('reported-speech', {
@@ -2003,7 +1889,17 @@ Eisceachtaí:
 • Tá an t-athrú aimsire roghnach má tá an ráiteas fós fíor: she said that the Earth is round.
 • Ní athraíonn Could, would, should, might, ought to.
 • Said gan chuspóir / told le cuspóir: she said that…; she told me that…
-• Féadann an past simple fanacht má tá an comhthéacs soiléir.`
+• Féadann an past simple fanacht má tá an comhthéacs soiléir.`,
+        ar: `القواعد:
+• المضارع ← الماضي: "I am tired" → she said she was tired; will → would; can → could; have done → had done.
+• تتغير الضمائر وكلمات الزمن: I → he/she; today → that day; tomorrow → the next day; here → there.
+• الأسئلة: asked if/whether أو كلمة استفهام wh- مع ترتيب الجملة الخبرية: he asked where I lived.
+• الأوامر: told/asked + المفعول + to-infinitive.
+الاستثناءات:
+• تغيير الزمن اختياري إذا كان الكلام ما زال صحيحًا: she said that the Earth is round.
+• Could, would, should, might, ought to لا تتغير.
+• Said بلا مفعول / told مع مفعول: she said that…; she told me that…
+• يمكن أن يبقى الماضي البسيط (past simple) إذا كان السياق واضحًا.`
     });
 
     D('question-tags', {
@@ -2087,7 +1983,16 @@ Eisceachtaí:
 • I am → aren’t I? (seachas amn’t I).
 • Let’s → shall we?; imperative → will you?/won’t you?
 • Nobody/somebody/everyone → they: nobody called, did they?
-• Áirítear abairtí le never/hardly/barely mar abairtí diúltacha: he never lies, does he?`
+• Áirítear abairtí le never/hardly/barely mar abairtí diúltacha: he never lies, does he?`,
+        ar: `القواعد:
+• جملة مثبتة ← سؤال ذيلي منفي (you like tea, don’t you?)؛ ومنفية ← مثبت (it isn’t cold, is it?).
+• الذيل يكرر الفعل المساعد أو الناقص للجملة؛ فإن لم يوجد فـ do/does/did.
+• التنغيم: هابط — للتأكد من أمر متوقع؛ صاعد — سؤال حقيقي.
+الاستثناءات:
+• I am → aren’t I? (وليس amn’t I).
+• Let’s → shall we?؛ وimperative (الأمر) → will you?/won’t you?
+• Nobody/somebody/everyone → they: nobody called, did they?
+• الجمل التي فيها never/hardly/barely تُعد منفية: he never lies, does he?`
     });
 
     D('phrasal-verbs', {
@@ -2171,7 +2076,16 @@ Eisceachtaí:
 • Doscartha: look after, get over, run into, deal with — leanann an cuspóir an cáithnín.
 • Briathra trí fhocal: put up with, look forward to, run out of, get on with.
 • Is minic a bhíonn an bhrí nathach: give up = géilleadh, put off = cur siar.
-• Cáithnín ≠ réamhfhocal áite: He ran up the stairs (réamhfhocal), i gcomparáid le vs He picked up the book.`
+• Cáithnín ≠ réamhfhocal áite: He ran up the stairs (réamhfhocal), i gcomparáid le vs He picked up the book.`,
+        ar: `القواعد:
+• فعل + أداة (up, out, off, on, in, down, away, back, over…): give up, look after, turn off, carry on.
+• المتعدي القابل للفصل: الضمير يأتي فقط بين الفعل والأداة (turn it off، وليس turn off it)؛ والاسم يمكن أن يأتي في أي جهة (turn the light off / turn off the light).
+• اللازم: wake up, break down, take off.
+الاستثناءات:
+• غير القابل للفصل: look after, get over, run into, deal with — المفعول يأتي بعد الأداة.
+• أفعال من ثلاث كلمات: put up with, look forward to, run out of, get on with.
+• المعنى اصطلاحي غالبًا: give up = يستسلم، put off = يؤجل.
+• الأداة ≠ حرف جر للمكان: He ran up the stairs (حرف جر) vs He picked up the book.`
     });
 
     D('articles-a-an', {
@@ -2246,7 +2160,15 @@ Excepciones:
 Eisceachtaí:
 • An fhuaim atá tábhachtach, ní an litir: an hour, an honest man (h balbh); a university, a European, a one-way ticket (fuaim /j/ nó /w/).
 • Le giorrúcháin, de réir fhuaim na litreach: an MBA, a UFO.
-• Níl alt i mórán nathanna seasta: go to bed, at school.`
+• Níl alt i mórán nathanna seasta: go to bed, at school.`,
+        ar: `القواعد:
+• A — قبل صوت ساكن، وan — قبل صوت علة (a book, an apple).
+• مع الأسماء المفردة المعدودة عند ذكرها أول مرة، بمعنى «أي واحد» (she is a doctor)، وبمعنى «واحد» (twice a week).
+• لا تُستعمل مع الجمع ولا مع غير المعدود.
+الاستثناءات:
+• العبرة بالصوت لا بالحرف: an hour, an honest man (حرف h صامت)؛ a university, a European, a one-way ticket (صوت /j/ أو /w/).
+• الاختصارات بحسب نطق الحرف: an MBA, a UFO.
+• عبارات ثابتة كثيرة بلا أداة: go to bed, at school.`
     });
 
     D('article-the', {
@@ -2330,7 +2252,16 @@ Eisceachtaí:
 • Gan the: tíortha agus cathracha (France, Paris), teangacha, formhór lochanna, beanna sléibhe agus béilí (breakfast).
 • Ach the Netherlands, the Alps, the Pacific, the Thames, the UK.
 • Fuaimniú: the /ðə/ roimh chonsan, /ði/ roimh ghuta, /ðiː/ le haghaidh béime.
-• Institiúidí ina ngnáthfheidhm: gan the: go to school, in hospital (Béarla na Breataine).`
+• Institiúidí ina ngnáthfheidhm: gan the: go to school, in hospital (Béarla na Breataine).`,
+        ar: `القواعد:
+• The لشيء معروف للمتكلمين أو فريد: the sun, the book on the table, the best.
+• الذكر الثاني: I saw a dog. The dog was big.
+• مع صيغ التفضيل والأعداد الترتيبية وأسماء الأنهار والمحيطات والفنادق والصحف والدول بصيغة الجمع (the United States).
+الاستثناءات:
+• بلا the: الدول والمدن (France, Paris)، واللغات، ومعظم البحيرات والقمم، والوجبات (breakfast).
+• لكن the Netherlands, the Alps, the Pacific, the Thames, the UK.
+• النطق: the /ðə/ قبل الساكن، /ði/ قبل العلة، /ðiː/ للتوكيد.
+• المؤسسات في استعمالها المعتاد — بلا the: go to school, in hospital (بريطانية).`
     });
 
     D('zero-article', {
@@ -2414,7 +2345,16 @@ Eisceachtaí:
 • Le cás sonrach, úsáidtear the: the music I heard yesterday.
 • Le hainm béile agus aidiacht, úsáidtear a: we had a wonderful lunch.
 • By + modh taistil, gan alt: by car, by train.
-• Glacann roinnt tíortha/grúpaí the: the UK, the Netherlands.`
+• Glacann roinnt tíortha/grúpaí the: the UK, the Netherlands.`,
+        ar: `القواعد:
+• بلا أداة: الجمع وغير المعدود بالمعنى العام (I like music, dogs are loyal).
+• اللغات، والمواد الدراسية، والوجبات، والرياضات، ومعظم الدول والمدن، والفصول.
+• عبارات المؤسسات: go to school/church/prison/bed, at home, at work.
+الاستثناءات:
+• الحالة المحددة تأخذ the: the music I heard yesterday.
+• الوجبات مع صفة تأخذ a: we had a wonderful lunch.
+• By + وسيلة النقل بلا أداة: by car, by train.
+• بعض الدول والمجموعات تأخذ the: the UK, the Netherlands.`
     });
 
     D('countable-uncountable', {
@@ -2489,7 +2429,15 @@ Excepciones:
 Eisceachtaí:
 • Neamh-ináirithe sa Bhéarla ach ináirithe i mórán teangacha: advice, information, news, furniture, luggage, traffic, progress, knowledge (tá an advice mícheart).
 • Tá an dá úsáid ag roinnt ainmfhocal: a coffee / coffee, a paper / paper, a glass / glass, an experience / experience.
-• Hair, fruit — neamh-ináirithe de ghnáth; hairs, fruits — míreanna/cineálacha aonair.`
+• Hair, fruit — neamh-ináirithe de ghnáth; hairs, fruits — míreanna/cineálacha aonair.`,
+        ar: `القواعد:
+• المعدود له جمع ويأخذ a/an (a book, two books)؛ وغير المعدود لا (water, advice, information, furniture, news).
+• كمية غير المعدود: some, much, a lot of, a piece of, a bit of, a glass of.
+• الأسئلة: how many (للمعدود)، how much (لغير المعدود).
+الاستثناءات:
+• غير معدود في الإنجليزية لكنه معدود في لغات كثيرة: advice, information, news, furniture, luggage, traffic, progress, knowledge (an advice خطأ).
+• بعض الأسماء لها الاستعمالان: a coffee / coffee, a paper / paper, a glass / glass, an experience / experience.
+• Hair, fruit — غير معدود عادةً؛ hairs, fruits — أفراد أو أنواع.`
     });
 
     D('quantifiers', {
@@ -2582,7 +2530,17 @@ Eisceachtaí:
 • Some i dtairiscintí agus iarrataí: would you like some tea? can I have some water?
 • Ciallaíonn Any i ráiteas dearfach «cibé ceann»: any day will do.
 • Is annamh Much/many i ráitis dhearfacha (úsáidtear a lot of); tá siad nádúrtha i ndiúltú agus i gceisteanna.
-• Glacann Each/every briathar uatha: every student has a book.`
+• Glacann Each/every briathar uatha: every student has a book.`,
+        ar: `القواعد:
+• Some — في الإثبات؛ any — في النفي والاستفهام؛ no = not any.
+• Much/little — لغير المعدود؛ many/few — للمعدود؛ a lot of/plenty of — للاثنين.
+• A few/a little = «بعض» (إيجابي)؛ few/little = «يكاد لا يوجد» (سلبي).
+• Enough, several, both, all, each, every.
+الاستثناءات:
+• Some في العروض والطلبات: would you like some tea? can I have some water?
+• Any في الإثبات تعني «أيّ كان»: any day will do.
+• Much/many نادرتان في الإثبات (استعمل a lot of)؛ وطبيعيتان في النفي والاستفهام.
+• Each/every يأتي بعدهما فعل مفرد: every student has a book.`
     });
 
     D('plurals', {
@@ -2615,16 +2573,7 @@ Exceptions:
 • Irrégulier : man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • Inchangé : sheep, fish, deer, series, species.
 • -o : potatoes, tomatoes, heroes (mais photos, pianos).
-• Pluriel uniquement : les mots scissors, trousers, glasses, clothes; news et -ics (mathematics, physics) prennent un verbe au singulier.
-Conjugaison (personne, nombre):
-| Singulier | Pluriel | Règle |
-| book | books | +s |
-| box | boxes | -x/-s/-ch/-sh → +es |
-| city | cities | consonne + y → -ies |
-| knife | knives | -f/-fe → -ves |
-| man | men | irrégulier |
-| child | children | irrégulier |
-| sheep | sheep | invariable |`,
+• Pluriel uniquement : les mots scissors, trousers, glasses, clothes; news et -ics (mathematics, physics) prennent un verbe au singulier.`,
         ru: `Правила:
 • Обычно +s: book → books.
 • -s, -x, -ch, -sh, -z → +es: box → boxes, watch → watches.
@@ -2634,16 +2583,7 @@ Conjugaison (personne, nombre):
 • Неправильные формы: man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • Без изменений: sheep, fish, deer, series, species.
 • -o: potatoes, tomatoes, heroes (но photos, pianos).
-• Только во множественном числе: слова scissors, trousers, glasses, clothes; news и -ics (mathematics, physics) принимают глагол в единственном числе.
-Спряжение (лицо, число):
-| Единственное число | Множественное число | Правило |
-| book | books | +s |
-| box | boxes | -x/-s/-ch/-sh → +es |
-| city | cities | согласная + y → -ies |
-| knife | knives | -f/-fe → -ves |
-| man | men | неправильная форма |
-| child | children | неправильная форма |
-| sheep | sheep | без изменений |`,
+• Только во множественном числе: слова scissors, trousers, glasses, clothes; news и -ics (mathematics, physics) принимают глагол в единственном числе.`,
         es: `Reglas:
 • Normalmente +s: book → books.
 • -s, -x, -ch, -sh, -z → +es: box → boxes, watch → watches.
@@ -2653,16 +2593,7 @@ Excepciones:
 • Irregular: man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • Sin cambios: sheep, fish, deer, series, species.
 • -o: potatoes, tomatoes, heroes (pero photos, pianos).
-• Solo plural: las palabras scissors, trousers, glasses, clothes; news y -ics (mathematics, physics) toman un verbo en singular.
-Conjugación (persona, número):
-| Singular | Plural | Regla |
-| book | books | +s |
-| box | boxes | -x/-s/-ch/-sh → +es |
-| city | cities | consonante + y → -ies |
-| knife | knives | -f/-fe → -ves |
-| man | men | irregular |
-| child | children | irregular |
-| sheep | sheep | invariable |`,
+• Solo plural: las palabras scissors, trousers, glasses, clothes; news y -ics (mathematics, physics) toman un verbo en singular.`,
         zh: `规则:
 • 通常为 +s：book → books.
 • -s, -x, -ch, -sh, -z → +es：box → boxes, watch → watches.
@@ -2672,16 +2603,7 @@ Conjugación (persona, número):
 • 不规则：man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • 不变：sheep, fish, deer, series, species.
 • -o：potatoes, tomatoes, heroes（但 photos, pianos）。
-• 仅限复数：scissors, trousers, glasses, clothes; news 和 -ics 单词 (mathematics, physics) 采用单数动词。
-变位（人称、数）:
-| 单数 | 复数 | 规则 |
-| book | books | +s |
-| box | boxes | -x/-s/-ch/-sh → +es |
-| city | cities | 辅音 + y → -ies |
-| knife | knives | -f/-fe → -ves |
-| man | men | 不规则变化 |
-| child | children | 不规则变化 |
-| sheep | sheep | 不变 |`,
+• 仅限复数：scissors, trousers, glasses, clothes; news 和 -ics 单词 (mathematics, physics) 采用单数动词。`,
         ko: `규칙:
 • 보통 +s: book → books.
 • -s, -x, -ch, -sh, -z → +es: box → boxes, watch → watches.
@@ -2691,16 +2613,7 @@ Conjugación (persona, número):
 • 불규칙: man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • 변경되지 않음: sheep, fish, deer, series, species.
 • -o: potatoes, tomatoes, heroes(그러나 photos, pianos).
-• 복수형만 사용: scissors, trousers, glasses, clothes; news 및 -ics 단어 (mathematics, physics)는 단수 동사를 취합니다.
-활용(인칭, 수):
-| 단수 | 복수 | 규칙 |
-| book | books | +s |
-| box | boxes | -x/-s/-ch/-sh → +es |
-| city | cities | 자음 + y → -ies |
-| knife | knives | -f/-fe → -ves |
-| man | men | 불규칙 |
-| child | children | 불규칙 |
-| sheep | sheep | 변화 없음 |`,
+• 복수형만 사용: scissors, trousers, glasses, clothes; news 및 -ics 단어 (mathematics, physics)는 단수 동사를 취합니다.`,
         hi: `नियम:
 • सामान्यतः +s: book → books.
 • -s, -x, -ch, -sh, -z → +es: box → boxes, watch → watches.
@@ -2710,16 +2623,7 @@ Conjugación (persona, número):
 • अनियमित रूप: man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • अपरिवर्तित रूप: sheep, fish, deer, series, species.
 • -o: potatoes, tomatoes, heroes (लेकिन photos, pianos)।
-• केवल बहुवचन: scissors, trousers, glasses, clothes; news तथा -ics पर समाप्त शब्दों (mathematics, physics) के साथ एकवचन क्रिया आती है।
-क्रिया-रूप (पुरुष, वचन):
-| एकवचन | बहुवचन | नियम |
-| book | books | +s |
-| box | boxes | -x/-s/-ch/-sh → +es |
-| city | cities | व्यंजन + y → -ies |
-| knife | knives | -f/-fe → -ves |
-| man | men | अनियमित |
-| child | children | अनियमित |
-| sheep | sheep | अपरिवर्तित |`,
+• केवल बहुवचन: scissors, trousers, glasses, clothes; news तथा -ics पर समाप्त शब्दों (mathematics, physics) के साथ एकवचन क्रिया आती है।`,
         ga: `Rialacha:
 • De ghnáth +s: book → books.
 • -s, -x, -ch, -sh, -z → +es: box → boxes, watch → watches.
@@ -2729,16 +2633,17 @@ Eisceachtaí:
 • Neamhrialta: man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
 • Gan athrú: sheep, fish, deer, series, species.
 • -o: potatoes, tomatoes, heroes (ach photos, pianos).
-• Iolra amháin: scissors, trousers, glasses, clothes; news agus focail dar críoch -ics (mathematics, physics) a ghlacann briathar uatha.
-Réimniú (pearsa, uimhir):
-| Uatha | Iolra | Riail |
-| book | books | +s |
-| box | boxes | -x/-s/-ch/-sh → +es |
-| city | cities | consan + y → -ies |
-| knife | knives | -f/-fe → -ves |
-| man | men | neamhrialta |
-| child | children | neamhrialta |
-| sheep | sheep | gan athrú |`
+• Iolra amháin: scissors, trousers, glasses, clothes; news agus focail dar críoch -ics (mathematics, physics) a ghlacann briathar uatha.`,
+        ar: `القواعد:
+• عادةً ‎+s: book → books.
+• ‎-s, -x, -ch, -sh, -z → +es: box → boxes, watch → watches.
+• حرف ساكن + y → ‎-ies: city → cities؛ حرف علة + y → ‎+s: day → days.
+• ‎-f/-fe → -ves: knife → knives, leaf → leaves.
+الاستثناءات:
+• الشاذ: man → men, woman → women, child → children, foot → feet, tooth → teeth, mouse → mice, person → people.
+• لا يتغير: sheep, fish, deer, series, species.
+• ‎-o: potatoes, tomatoes, heroes (لكن photos, pianos).
+• جمع فقط: scissors, trousers, glasses, clothes؛ وnews والكلمات المنتهية بـ ‎-ics (mathematics, physics) يأتي بعدها فعل مفرد.`
     });
 
     D('possessives', {
@@ -2822,7 +2727,16 @@ Eisceachtaí:
 • Its (sealbhach) ≠ it’s (it is/has).
 • Glacann am agus fad ’s freisin: today’s news, a week’s holiday.
 • Sealbhach dúbailte: a friend of mine (seachas a friend of me).
-• Comhsheilbh: Tom and Anna’s house; seilbh ar leith: Tom’s and Anna’s cars.`
+• Comhsheilbh: Tom and Anna’s house; seilbh ar leith: Tom’s and Anna’s cars.`,
+        ar: `القواعد:
+• للأشخاص والحيوانات: ’s (Tom’s book)؛ والجمع المنتهي بـ ‎-s: الفاصلة العليا بعد s (the boys’ room)؛ والجمع الشاذ: ’s (children’s toys).
+• للأشياء: of (the end of the day, the door of the house).
+• صفات الملكية قبل الاسم: my, your, his, her, its, our, their؛ وضمائر الملكية بلا اسم: mine, yours, his, hers, ours, theirs.
+الاستثناءات:
+• Its (ملكية) ≠ it’s (it is/has).
+• الزمن والمسافة يأخذان ’s أيضًا: today’s news, a week’s holiday.
+• الملكية المزدوجة: a friend of mine (وليس a friend of me).
+• الملكية المشتركة: Tom and Anna’s house؛ والمنفصلة — Tom’s and Anna’s cars.`
     });
 
     D('demonstratives', {
@@ -2906,7 +2820,16 @@ Eisceachtaí:
 • This ar an bhfón: this is Anna (mise), is that John? (tusa).
 • That/those in áit ainmfhocail a athdhéanfaí: the weather here is better than that in Spain.
 • Those who = daoine who: those who wait.
-• This/that roimh one/ones: I like this one, those ones (neamhfhoirmiúil).`
+• This/that roimh one/ones: I like this one, those ones (neamhfhoirmiúil).`,
+        ar: `القواعد:
+• This/these — للقريب مكانًا أو زمانًا أو ذهنًا؛ that/those — للبعيد.
+• This/that — للمفرد؛ these/those — للجمع.
+• ضمائر ومحددات: this is my friend; I like these shoes.
+الاستثناءات:
+• This في الهاتف: this is Anna (أنا)، is that John? (أنت).
+• That/those بدلًا من اسم مكرر: the weather here is better than that in Spain.
+• Those who = الناس الذين: those who wait.
+• This/that قبل one/ones: I like this one, those ones (غير رسمي).`
     });
 
     D('comparatives', {
@@ -2990,7 +2913,16 @@ Eisceachtaí:
 • Neamhrialta: good → better, bad → worse, far → farther/further, little → less, many/much → more.
 • Roinnt aidiachtaí dhá shiolla: clever → cleverer / more clever, simple → simpler.
 • The … the…: the more, the better.
-• Less + aidiacht le haghaidh comparáide sa treo eile: less expensive.`
+• Less + aidiacht le haghaidh comparáide sa treo eile: less expensive.`,
+        ar: `القواعد:
+• الصفات ذات المقطع الواحد: ‎+er (tall → taller)؛ وذات المقطعين المنتهية بـ ‎-y: ‎-ier (happy → happier)؛ والطويلة — more + الصفة (more interesting).
+• Than تُدخل المقارنة: she is taller than her brother.
+• مضاعفة الحرف الساكن: big → bigger؛ ‎-e + r: nice → nicer.
+الاستثناءات:
+• الشاذ: good → better, bad → worse, far → farther/further, little → less, many/much → more.
+• بعض الصفات ذات المقطعين: clever → cleverer / more clever, simple → simpler.
+• The … the…: the more, the better.
+• Less + الصفة للعكس: less expensive.`
     });
 
     D('superlatives', {
@@ -3074,7 +3006,16 @@ Eisceachtaí:
 • Neamhrialta: the best, the worst, the furthest, the least, the most.
 • Dobhriathra: the fastest (fast), the most carefully.
 • Gan the nuair nach bhfuil comparáid le grúpa i gceist: she is happiest when she sings.
-• Ceann de na cinn is…: one of the most important.`
+• Ceann de na cinn is…: one of the most important.`,
+        ar: `القواعد:
+• The + الصفة ‎-est (the tallest)؛ وذات المقطعين المنتهية بـ ‎-y: the happiest؛ والطويلة — the most + الصفة (the most beautiful).
+• بعد صيغة التفضيل — in/of: the tallest in the class, the best of all.
+• The مطلوبة دائمًا تقريبًا.
+الاستثناءات:
+• الشاذ: the best, the worst, the furthest, the least, the most.
+• الظروف: the fastest (fast)، the most carefully.
+• بلا the عندما لا توجد مقارنة بمجموعة: she is happiest when she sings.
+• One of the most…: one of the most important.`
     });
 
     D('as-as-too-enough', {
@@ -3167,7 +3108,17 @@ Eisceachtaí:
 • Too much/too many le hainmfhocail: too much noise, too many people.
 • Tagann Enough TAR ÉIS aidiachta ach ROIMH ainmfhocal.
 • So … that / such … that — toradh: so tired that…, such a long day that…
-• As much/many as le méideanna: as many as ten.`
+• As much/many as le méideanna: as many as ten.`,
+        ar: `القواعد:
+• As + صفة/ظرف + as: درجة متساوية (as tall as his father).
+• Not as/so … as: درجة أدنى (not as expensive as).
+• Too + صفة — «أكثر من اللازم» (سلبي): it is too hot.
+• صفة + enough — «بما يكفي»: old enough to drive؛ وenough + اسم: enough money.
+الاستثناءات:
+• Too much/too many مع الأسماء: too much noise, too many people.
+• Enough تأتي بعد الصفة لكن قبل الاسم.
+• So … that / such … that — النتيجة: so tired that…, such a long day that…
+• As much/many as للكميات: as many as ten.`
     });
 
     D('adjective-order', {
@@ -3242,7 +3193,15 @@ Excepciones:
 Eisceachtaí:
 • Camóg/and idir aidiachtaí den chatagóir chéanna: a tall, handsome man.
 • Tar éis briathra ceangail, féadann aon ord a bheith ann: the table is old and wooden.
-• Péirí seasta: black and white, big bad wolf.`
+• Péirí seasta: black and white, big bad wolf.`,
+        ar: `القواعد:
+• الترتيب: الرأي ← الحجم ← العمر ← الشكل ← اللون ← الأصل ← المادة ← الغرض + الاسم: a lovely small old round red Italian wooden table.
+• يُحفظ باسم OSASCOMP.
+• عادةً لا أكثر من ثلاث صفات.
+الاستثناءات:
+• فاصلة أو and بين صفات من الفئة نفسها: a tall, handsome man.
+• بعد أفعال الربط يصح أي ترتيب: the table is old and wooden.
+• أزواج ثابتة: black and white, big bad wolf.`
     });
 
     D('adverbs-manner', {
@@ -3335,7 +3294,17 @@ Eisceachtaí:
 • Good → well (dobhriathar): she plays well.
 • Hardly = beagnach nach, lately = le déanaí (ní foirmeacha de hard/late iad).
 • Glacann briathra ceangail aidiachtaí: it smells good, seachas well (ach he is well — sláintiúil).
-• Aidiachtaí dar críoch -ly: friendly, lovely, lonely — ní dobhriathra iad.`
+• Aidiachtaí dar críoch -ly: friendly, lovely, lonely — ní dobhriathra iad.`,
+        ar: `القواعد:
+• الصفة + ‎-ly: quick → quickly, careful → carefully؛ حرف ساكن + y → ‎-ily: happy → happily.
+• يأتي بعد الفعل أو مفعوله: she sings beautifully; he did it carefully.
+• يصف فعلًا أو صفة أو ظرفًا آخر.
+الاستثناءات:
+• الصيغة نفسها للصفة والظرف: fast, hard, late, early, daily, straight.
+• Good → well (ظرف): she plays well.
+• Hardly = بالكاد، lately = مؤخرًا (ليستا من hard/late).
+• أفعال الربط تأخذ صفات: it smells good، وليس well (لكن he is well — بصحة جيدة).
+• صفات تنتهي بـ ‎-ly: friendly, lovely, lonely — ليست ظروفًا.`
     });
 
     D('adverbs-frequency', {
@@ -3410,7 +3379,15 @@ Excepciones:
 Eisceachtaí:
 • Tá Never, hardly ever, rarely diúltach cheana; ní úsáidtear le not iad (I never eat meat, seachas I don’t never).
 • Always sa present continuous — crá: he is always complaining.
-• Nathanna minicíochta: every day, twice a week, once a month — ag deireadh na habairte.`
+• Nathanna minicíochta: every day, twice a week, once a month — ag deireadh na habairte.`,
+        ar: `القواعد:
+• Always, usually, often, sometimes, occasionally, rarely, seldom, never.
+• قبل الفعل الرئيسي: she often reads؛ وبعد be: he is always late؛ وبين الفعل المساعد والرئيسي: I have never seen it.
+• Sometimes, usually, often يمكن أن تبدأ الجملة أو تختمها للتوكيد.
+الاستثناءات:
+• Never, hardly ever, rarely منفية أصلًا: لا تُستعمل مع not (I never eat meat، وليس I don’t never).
+• Always في المضارع المستمر (present continuous) — للضيق: he is always complaining.
+• عبارات التكرار: every day, twice a week, once a month — في آخر الجملة.`
     });
 
     D('personal-pronouns', {
@@ -3494,7 +3471,16 @@ Eisceachtaí:
 • Tar éis be sa chaint, an fhoirm chuspóireach: it’s me (go foirmiúil: it is I).
 • I gcomparáidí: taller than I (foirmiúil) / than me (neamhfhoirmiúil).
 • They do dhuine amháin nach eol a inscne: someone called — they left a message.
-• You — uatha agus iolra; le haghaidh béime, you guys, y’all (neamhfhoirmiúil).`
+• You — uatha agus iolra; le haghaidh béime, you guys, y’all (neamhfhoirmiúil).`,
+        ar: `القواعد:
+• الفاعل: I, you, he, she, it, we, they؛ والمفعول: me, you, him, her, it, us, them.
+• صيغ المفعول بعد الفعل أو حرف الجر: she called me; give it to them.
+• It — للأشياء والحيوانات وغير الشخصي؛ he/she — للأشخاص.
+الاستثناءات:
+• بعد be في الكلام — صيغة المفعول: it’s me (رسميًا: it is I).
+• في المقارنة: taller than I (رسمي) / than me (غير رسمي).
+• They لشخص واحد مجهول الجنس: someone called — they left a message.
+• You — للمفرد والجمع؛ وللتوكيد you guys, y’all (غير رسمي).`
     });
 
     D('reflexive-pronouns', {
@@ -3569,7 +3555,15 @@ Excepciones:
 Eisceachtaí:
 • Ní ghlacann mórán briathra atá athfhillteach i dteangacha eile forainm athfhillteach sa Bhéarla: wash, shave, dress, feel, relax, hurry (he washed — not he washed himself nuair atá an bhrí soiléir).
 • -selves don iolra, -self don uatha.
-• Each other / one another — cómhalartach, ní athfhillteach: they love each other.`
+• Each other / one another — cómhalartach, ní athfhillteach: they love each other.`,
+        ar: `القواعد:
+• Myself, yourself, himself, herself, itself, ourselves, yourselves, themselves.
+• الفعل يعود على فاعله: she hurt herself; he taught himself.
+• للتوكيد: I did it myself؛ وby + الضمير الانعكاسي = وحدي: by myself.
+الاستثناءات:
+• أفعال كثيرة انعكاسية في لغات أخرى لا تأخذ ضميرًا انعكاسيًا في الإنجليزية: wash, shave, dress, feel, relax, hurry (he washed — not he washed himself، عندما يكون واضحًا).
+• ‎-selves للجمع، ‎-self للمفرد.
+• Each other / one another — تبادلي لا انعكاسي: they love each other.`
     });
 
     D('relative-pronouns', {
@@ -3653,7 +3647,16 @@ Eisceachtaí:
 • Féadfar That/who/which a fhágáil ar lár nuair is cuspóir é: the book (that) I read.
 • Ní úsáidtear That tar éis réamhfhocail ná i gclásail neamhshainmhínitheacha.
 • Féadann Which tagairt don chlásal iomlán: he was late, which annoyed me.
-• Whose — le rudaí freisin: a house whose roof is red.`
+• Whose — le rudaí freisin: a house whose roof is red.`,
+        ar: `القواعد:
+• Who — للأشخاص؛ which — للأشياء؛ that — للأشخاص والأشياء (في الجمل المحددة)؛ whose — للملكية؛ where — للمكان؛ when — للزمان.
+• Who/which/that قد يكون فاعلًا (the man who called) أو مفعولًا (the book that I read).
+• Whom — مفعول رسمي (the man whom I met).
+الاستثناءات:
+• يمكن حذف that/who/which عندما يكون مفعولًا: the book (that) I read.
+• That لا تُستعمل بعد حرف جر ولا في الجمل غير المحددة.
+• Which قد تعود على الجملة كلها: he was late, which annoyed me.
+• Whose — للأشياء أيضًا: a house whose roof is red.`
     });
 
     D('defining-non-defining', {
@@ -3728,7 +3731,15 @@ Excepciones:
 Eisceachtaí:
 • Le hainmneacha dílse, úsáidtear clásal neamhshainmhínitheach beagnach i gcónaí: Paris, which is in France…
 • I gclásal neamhshainmhínitheach, féadann Which tagairt don abairt iomlán.
-• Where/when i gclásail neamhshainmhínitheacha: in 2020, when the pandemic started, we moved.`
+• Where/when i gclásail neamhshainmhínitheacha: in 2020, when the pandemic started, we moved.`,
+        ar: `القواعد:
+• المحددة — ضرورية للتعريف، بلا فواصل: the girl who lives here is my cousin.
+• غير المحددة — معلومة إضافية، بين فاصلتين: my sister, who lives here, is a nurse.
+• في الجمل غير المحددة لا تُستعمل that ولا يمكن حذف الضمير.
+الاستثناءات:
+• أسماء الأعلام تأخذ دائمًا تقريبًا جملة غير محددة: Paris, which is in France…
+• Which في الجملة غير المحددة قد تعود على الجملة كلها.
+• Where/when في الجمل غير المحددة: in 2020, when the pandemic started, we moved.`
     });
 
     D('indefinite-pronouns', {
@@ -3821,6 +3832,16 @@ Eisceachtaí:
 • Some- i dtairiscintí: would you like something to drink?
 • Any- i ráiteas dearfach = «cibé duine»: anyone can do it.
 • Gan diúltú dúbailte: I don’t see anything (seachas nothing).
+• Else: someone else, nothing else.`,
+        ar: `القواعد:
+• Some-/any-/no-/every- + ‎-one/-body/-thing/-where.
+• Some- — في الإثبات؛ any- — في النفي والاستفهام؛ no- منفية أصلًا؛ every- — الكل.
+• الفعل مفرد: everyone is here.
+• مع ضمائر ‎-body/-one استعمل they/their (everyone brought their book).
+الاستثناءات:
+• Some- في العروض: would you like something to drink?
+• Any- في الإثبات = «أيّ كان»: anyone can do it.
+• لا نفي مزدوج: I don’t see anything (وليس nothing).
 • Else: someone else, nothing else.`
     });
 
@@ -3904,6 +3925,15 @@ Excepciones:
 Eisceachtaí:
 • Go neamhfhoirmiúil, there’s + iolra: there’s two people (glactar leis sa chaint).
 • There ≠ they’re ≠ their (litriú).
+• It is … that/to: it is important to learn.
+• There seems/appears/happens to be…`,
+        ar: `القواعد:
+• There is/are/was/were + الفاعل: الوجود (there is a cat on the roof; there are three apples).
+• الفعل يطابق الاسم الذي يليه: there is a book, there are books.
+• It — فاعل شكلي للطقس والوقت والمسافة والتقييم: it is raining; it is half past nine; it is far.
+الاستثناءات:
+• في العامية there’s + جمع: there’s two people (مقبول في الكلام).
+• There ≠ they’re ≠ their (في التهجئة).
 • It is … that/to: it is important to learn.
 • There seems/appears/happens to be…`
     });
@@ -3998,7 +4028,17 @@ Eisceachtaí:
 • Tá diúltú dúbailte mícheart sa Bhéarla caighdeánach; i gcanúintí, neartaíonn sé an diúltú.
 • Diúltú + any → no-: I don’t have any money = I have no money.
 • Neither/nor → inbhéartú: neither do I, nor will he.
-• Don’t + briathar — toirmeasc (don’t go), gan ainmní.`
+• Don’t + briathar — toirmeasc (don’t go), gan ainmní.`,
+        ar: `القواعد:
+• الفعل المساعد + not: is not/isn’t, have not/haven’t, will not/won’t؛ وفي الأزمنة البسيطة do/does/did + not + الفعل الأساسي: she doesn’t like it.
+• No, never, nobody, nothing, nowhere, neither, none تنفي أيضًا.
+• الإنجليزية تستعمل نفيًا واحدًا في الجملة: I don’t know anything (= I know nothing).
+الاستثناءات:
+• Be والأفعال الناقصة — بلا do: she isn’t, he can’t.
+• النفي المزدوج خطأ في الإنجليزية الفصحى؛ وفي اللهجات يفيد التوكيد.
+• النفي + any → no-: I don’t have any money = I have no money.
+• Neither/nor → القلب: neither do I, nor will he.
+• Don’t + الفعل — نهي (don’t go)، بلا فاعل.`
     });
 
     D('questions', {
@@ -4091,7 +4131,17 @@ Eisceachtaí:
 • In aimsirí simplí, bogann Be féin chun tosaigh: is she tired?
 • Ceisteanna indíreacha: ord focal ráitis: I wonder where she lives (seachas where does she live).
 • Ceisteanna cúirtéiseacha: could you tell me…?
-• Ceisteanna diúltacha: don’t you like it? / do you not like it? (foirmiúil).`
+• Ceisteanna diúltacha: don’t you like it? / do you not like it? (foirmiúil).`,
+        ar: `القواعد:
+• أسئلة Yes/no: الفعل المساعد قبل الفاعل (do you like it? is she here? have you finished?).
+• أسئلة wh-: أداة الاستفهام + الفعل المساعد + الفاعل + الفعل: where do you live?
+• السؤال عن الفاعل — بلا do وبلا قلب: who called? what happened?
+• في الأزمنة البسيطة التي لا فعل مساعد فيها — do/does/did.
+الاستثناءات:
+• Be في الأزمنة البسيطة تنتقل بنفسها إلى المقدمة: is she tired?
+• الأسئلة غير المباشرة — بترتيب الجملة الخبرية: I wonder where she lives (وليس where does she live).
+• الأسئلة المهذبة: could you tell me…?
+• الأسئلة المنفية: don’t you like it? / do you not like it? (رسمي).`
     });
 
     D('conjunctions', {
@@ -4175,7 +4225,16 @@ Eisceachtaí:
 • Although/though/even though ≠ despite/in spite of (+ ainmfhocal/-ing): although it rained / despite the rain.
 • Since — am («ón uair sin») nó cúis («mar»).
 • Because ≠ because of (+ ainmfhocal): because it rained / because of the rain.
-• Cuireann Whereas/while codarsnacht in iúl.`
+• Cuireann Whereas/while codarsnacht in iúl.`,
+        ar: `القواعد:
+• أدوات العطف (FANBOYS): for, and, nor, but, or, yet, so — تربط أجزاء متكافئة؛ وتسبقها فاصلة بين جملتين.
+• أدوات الربط التابعة: because, although/though, while, when, if, unless, since, after, before, until, as soon as, whereas — تُدخل جملة تابعة.
+• قد تأتي الجملة التابعة أولًا (مع فاصلة) أو بعد الجملة الرئيسية (بلا فاصلة).
+الاستثناءات:
+• Although/though/even though ≠ despite/in spite of (+ اسم أو ‎-ing): although it rained / despite the rain.
+• Since — للزمن («منذ») أو للسبب («بما أن»).
+• Because ≠ because of (+ اسم): because it rained / because of the rain.
+• Whereas/while تعبّران عن التباين.`
     });
 
     D('linking-words', {
@@ -4277,7 +4336,18 @@ Eisceachtaí:
 • Ciallaíonn However «is cuma cé chomh» (however hard he tries) freisin; ní nascóir é ansin.
 • Féadann Therefore, however teacht i lár idir chamóga: it was late; we, however, continued.
 • Is cónaisc iad But/and/so, ní nascóirí abairte; ní chuirtear lánstad rompu.
-• Not only … but also — nascóir péireáilte; ní dhéantar inbhéartú ach nuair a thosaíonn not only an abairt: not only did he lie, but he also left.`
+• Not only … but also — nascóir péireáilte; ní dhéantar inbhéartú ach nuair a thosaíonn not only an abairt: not only did he lie, but he also left.`,
+        ar: `القواعد:
+• التباين: however, nevertheless, on the other hand, in contrast, whereas.
+• النتيجة: therefore, consequently, as a result, thus, so.
+• الإضافة: moreover, furthermore, besides, in addition, also.
+• الترتيب: firstly, then, finally؛ والمثال: for example, for instance.
+• في أول الجملة — تليها فاصلة؛ وبين جملتين تسبقها فاصلة منقوطة.
+الاستثناءات:
+• However تعني أيضًا «مهما» (however hard he tries) — وعندها ليست أداة ربط.
+• Therefore وhowever قد تأتيان في الوسط بين فاصلتين: it was late; we, however, continued.
+• But/and/so أدوات عطف لا أدوات ربط: لا نقطة قبلها.
+• Not only … but also — أداة ربط مزدوجة؛ والقلب فقط عندما تبدأ not only الجملة: not only did he lie, but he also left.`
     });
 
     D('cleft', {
@@ -4361,7 +4431,16 @@ Eisceachtaí:
 • Who — le daoine amháin; that — le gach rud, daoine san áireamh.
 • Réitíonn an briathar tar éis who/that leis an bhfocal aibhsithe: it is I who am responsible (foirmiúil).
 • Struchtúr wh-scoilte droim ar ais: a rest is what I need.
-• Ní úsáidtear le ráitis neodracha é; bíonn ton áititheach leis.`
+• Ní úsáidtear le ráitis neodracha é; bíonn ton áititheach leis.`,
+        ar: `القواعد:
+• It + be + الجزء المؤكَّد + that/who: it was Tom who broke it; it was yesterday that I met her.
+• جملة what المؤكِّدة: what I need is a rest; all I want is peace.
+• تبرز معلومة جديدة أو مقابلة.
+الاستثناءات:
+• Who — للأشخاص فقط؛ that — لكل شيء (والأشخاص أيضًا).
+• الفعل بعد who/that يطابق الكلمة المؤكَّدة: it is I who am responsible (رسمي).
+• جملة wh- المعكوسة: a rest is what I need.
+• لا تُستعمل للعبارات المحايدة: تبدو ملحّة.`
     });
 
     D('inversion', {
@@ -4445,7 +4524,16 @@ Eisceachtaí:
 • Ní gá nuair nach bhfuil an dobhriathar ar dtús: I have never seen such a view.
 • Only after/only when/only if — inbhéartú sa phríomhchlásal: only after dinner did he speak.
 • So/such ag an tús: so tired was he that…
-• Ní gá nuair atá an focal diúltach ina chuid den ainmní: hardly anyone came.`
+• Ní gá nuair atá an focal diúltach ina chuid den ainmní: hardly anyone came.`,
+        ar: `القواعد:
+• بعد never, rarely, seldom, hardly, scarcely, no sooner, not only, only then, little في أول الجملة — يسبق الفعل المساعد الفاعل: never have I seen such a view.
+• في الأزمنة البسيطة — do/does/did: rarely do we eat out; not only did he lie.
+• Hardly/scarcely … when/before؛ no sooner … than.
+الاستثناءات:
+• لا حاجة إليه عندما لا يكون الظرف في الأول: I have never seen such a view.
+• Only after/only when/only if — القلب في الجملة الرئيسية: only after dinner did he speak.
+• So/such في الأول: so tired was he that…
+• لا حاجة إليه عندما تكون كلمة النفي جزءًا من الفاعل: hardly anyone came.`
     });
 
     D('participle-clauses', {
@@ -4529,7 +4617,16 @@ Excepciones:
 Eisceachtaí:
 • Tá rangabháil dangling mícheart nuair is éagsúil an dá ainmní: walking down the street, the trees looked beautiful (cé a bhí ag siúl?).
 • Tar éis cónasc: while walking, after finishing, on arriving.
-• Not + rangabháil: not knowing what to do, she waited.`
+• Not + rangabháil: not knowing what to do, she waited.`,
+        ar: `القواعد:
+• اسم الفاعل (‎-ing): أحداث متزامنة، مبني للمعلوم — walking home, I met Tom.
+• اسم المفعول: مبني للمجهول — tired, she went to bed؛ built in 1900, the house is old.
+• الصيغة التامة (having + اسم المفعول): حدث سابق — having finished, he left.
+• فاعل جملة الـ participle وفاعل الجملة الرئيسية واحد.
+الاستثناءات:
+• الـ participle المعلّق (dangling) خطأ عندما يختلف الفاعلان: walking down the street, the trees looked beautiful (مَن كان يمشي؟).
+• بعد أدوات الربط: while walking, after finishing, on arriving.
+• Not + participle: not knowing what to do, she waited.`
     });
 
     D('so-neither', {
@@ -4613,7 +4710,16 @@ Eisceachtaí:
 • Me too / me neither — roghanna neamhfhoirmiúla.
 • Le be: "I’m tired." "So am I."
 • Ciallaíonn "So I do" (gan inbhéartú) «go deimhin I do»; tá sé difriúil ó "So do I".
-• Not … either in áit neither: I don’t either.`
+• Not … either in áit neither: I don’t either.`,
+        ar: `القواعد:
+• So + الفعل المساعد + الفاعل — موافقة على جملة مثبتة: "I love pizza." "So do I."
+• Neither/nor + الفعل المساعد + الفاعل — موافقة على جملة منفية: "I can’t swim." "Neither can I."
+• الفعل المساعد نفسه الذي في الجملة الأولى؛ فإن لم يوجد — do/does/did.
+الاستثناءات:
+• Me too / me neither — بدائل غير رسمية.
+• مع be: "I’m tired." "So am I."
+• "So I do" (بلا قلب) تعني «فعلًا أفعل ذلك» — وتختلف عن "So do I".
+• Not … either بدلًا من neither: I don’t either.`
     });
 
     D('time-markers', {
@@ -4715,7 +4821,18 @@ Eisceachtaí:
 • Already/yet: already i ráitis dhearfacha, yet i ndiúltú agus i gceisteanna (still = «fós»).
 • Just: present perfect (I have just left) nó past simple (Meiriceánach: I just left).
 • Ago — le haimsirí caite, an past simple den chuid is mó; riamh leis an present perfect; TAR ÉIS na tréimhse i gcónaí: two years ago.
-• For vs since: for + fad ama, since + pointe tosaigh.`
+• For vs since: for + fad ama, since + pointe tosaigh.`,
+        ar: `القواعد:
+• Past simple: yesterday, last week, ago, in 2010, then, when.
+• Present perfect: already, yet, just, ever, never, recently, lately, so far, since, for.
+• Continuous: now, at the moment, currently, these days.
+• Future: tomorrow, next week, soon, by then, in a year.
+• في أول الجملة أو آخرها؛ وكلمات التكرار قبل الفعل.
+الاستثناءات:
+• Already/yet: ‏already في الإثبات، وyet في النفي والاستفهام (still = «ما زال»).
+• Just: الـ present perfect (I have just left) أو الـ past simple (الأمريكية I just left).
+• Ago — مع أزمنة الماضي (غالبًا الـ past simple)، ولا تأتي أبدًا مع الـ present perfect، ودائمًا بعد المدة: two years ago.
+• For vs since: ‏for + مدة، since + نقطة البداية.`
     });
 
     D('for-since-ago-during', {
@@ -4817,7 +4934,18 @@ Eisceachtaí:
 • For + present perfect (ar siúl fós): I have lived here for years; for + past simple (fad ama críochnaithe): I lived there for two years.
 • Freagraíonn During «cathain»; freagraíonn for «cá fhad».
 • Is minic a fhágtar For ar lár: I waited (for) an hour; ní fhágtar ar lár é leis an present perfect chun fad ama a léiriú.
-• Since + past simple sa chlásal: since I left school.`
+• Since + past simple sa chlásal: since I left school.`,
+        ar: `القواعد:
+• For + مدة: for two years, for ten minutes.
+• Since + نقطة البداية: since 2015, since Monday, since I was a child.
+• Ago + الماضي البسيط (past simple): five minutes ago.
+• During + حدث أو فترة: during the war, during the summer.
+• While + الفاعل + الفعل: while I was sleeping.
+الاستثناءات:
+• For + الـ present perfect (ما زال مستمرًا): I have lived here for years؛ وfor + الـ past simple (مدة منتهية): I lived there for two years.
+• During تجيب عن «متى»؛ وfor تجيب عن «كم من الوقت».
+• كثيرًا ما تُحذف for: I waited (for) an hour؛ ولا تُحذف مع الـ present perfect للمدة.
+• Since + الماضي البسيط في الجملة: since I left school.`
     });
 
     D('prepositions-time', {
@@ -4901,7 +5029,16 @@ Eisceachtaí:
 • At night, ach in the morning/afternoon/evening, on Monday morning.
 • At the weekend (Béarla na Breataine) / on the weekend (Béarla Mheiriceá).
 • Gan réamhfhocal le next/last/this/every/tomorrow: next week, last Monday, this morning.
-• In 10 minutes («i gceann»), i gcomparáid le vs within 10 minutes («laistigh de»).`
+• In 10 minutes («i gceann»), i gcomparáid le vs within 10 minutes («laistigh de»).`,
+        ar: `القواعد:
+• At + الوقت الدقيق ولحظات معينة: at 5 pm, at noon, at night, at the weekend (بريطانية).
+• On + الأيام والتواريخ: on Monday, on May 3, on my birthday, on Friday morning.
+• In + الأشهر والسنوات والفصول وأجزاء اليوم والقرون: in July, in 2020, in summer, in the morning.
+الاستثناءات:
+• At night، لكن in the morning/afternoon/evening، وon Monday morning.
+• At the weekend (بريطانية) / on the weekend (أمريكية).
+• بلا حرف جر مع next/last/this/every/tomorrow: next week, last Monday, this morning.
+• In 10 minutes («بعد») vs within 10 minutes («خلال»).`
     });
 
     D('prepositions-place', {
@@ -4985,7 +5122,16 @@ Eisceachtaí:
 • In a car/taxi, ach on a bus/train/plane/bike.
 • At home, at work, at school (gan alt); in bed, on the way.
 • In the corner (taobh istigh) / on the corner (sráideanna); at the corner (pointe an trasnaithe).
-• Tá difríocht idir Over/above agus under/below: over — díreach os a chionn, over, above — níos airde.`
+• Tá difríocht idir Over/above agus under/below: over — díreach os a chionn, over, above — níos airde.`,
+        ar: `القواعد:
+• In — داخل (in the box, in London)؛ on — على سطح (on the table)؛ at — عند نقطة (at the door, at school).
+• To/from: ‏to (الاتجاه)، from، into، out of، onto، off.
+• الموقع: under, over, above, below, between, among, behind, in front of, next to, opposite.
+الاستثناءات:
+• In a car/taxi، لكن on a bus/train/plane/bike.
+• At home, at work, at school (بلا أداة)؛ in bed, on the way.
+• In the corner (في الداخل) / on the corner (للشوارع)؛ at the corner (نقطة التقاطع).
+• Over/above وunder/below تختلف: over — فوقه مباشرة، above — أعلى منه.`
     });
 
     D('verb-preposition', {
@@ -5069,7 +5215,16 @@ Eisceachtaí:
 • Ní ghlacann roinnt briathra réamhfhocal sa Bhéarla cé go nglacann a gcomhionann i dteangacha eile é: enter the room, discuss the problem, marry her, approach the door, reach the city.
 • Briathar amháin, réamhfhocail éagsúla le bríonna éagsúla: look at, look for, look after.
 • Different from/to/than — de réir an chineáil Bhéarla.
-• Arrive at (foirgneamh), arrive in (cathair/tír).`
+• Arrive at (foirgneamh), arrive in (cathair/tír).`,
+        ar: `القواعد:
+• حرف الجر يتوقف على الفعل أو الصفة ولا يُستنتج من الترجمة: depend on, listen to, wait for, look at, afraid of, good at, interested in, married to, different from.
+• بعد حرف الجر — اسم أو ضمير أو ‎-ing: good at swimming.
+• يبقى حرف الجر في الأسئلة والجمل الموصولة: who are you waiting for? the man I talked to.
+الاستثناءات:
+• بعض الأفعال لا تأخذ حرف جر حيث تأخذه لغات أخرى: enter the room, discuss the problem, marry her, approach the door, reach the city.
+• فعل واحد — حروف جر مختلفة بمعانٍ مختلفة: look at, look for, look after.
+• Different from/to/than — بحسب نوع الإنجليزية.
+• Arrive at (مبنى)، arrive in (مدينة أو بلد).`
     });
 
     D('purpose-cause-result', {
@@ -5153,16 +5308,198 @@ Eisceachtaí:
 • Cuspóir diúltach: in order not to / so as not to (seachas to not).
 • So that + would/could san am atá caite: she left early so that she could catch the train.
 • Because of ≠ because: not because of it rained.
-• Such + a + aidiacht + ainmfhocal / so + aidiacht: such a long day / so long a day (foirmiúil).`
+• Such + a + aidiacht + ainmfhocal / so + aidiacht: such a long day / so long a day (foirmiúil).`,
+        ar: `القواعد:
+• الغرض: to + المصدر (he saved money to travel)، in order to / so as to (أكثر رسمية)، so that + الفاعل + can/will/would (so that we can see better).
+• السبب: because + جملة، because of + اسم، since/as، due to، owing to.
+• النتيجة: so, therefore, as a result؛ so + صفة + that؛ such + (a) + اسم + that.
+الاستثناءات:
+• الغرض المنفي: in order not to / so as not to (وليس to not).
+• So that + would/could في الماضي: she left early so that she could catch the train.
+• Because of ≠ because: لا يُقال because of it rained.
+• Such + a + صفة + اسم / so + صفة: such a long day / so long a day (رسمي).`
     });
 
 
     // ---- Tables: person · number (English has no grammatical gender on verbs). Row = "| cell | cell |", first row is the header. ----
+    // Labels and notes of the conjugation tables in the seven added explanation languages (en cell → translated cell).
+    const TBL_LOCALES = {
+        head: {
+            fr: "Conjugaison (personne, nombre):",
+            ru: "Спряжение (лицо, число):",
+            es: "Conjugación (persona, número):",
+            zh: "变位（人称、数）:",
+            ko: "활용(인칭, 수):",
+            hi: "क्रिया-रूप (पुरुष, वचन):",
+            ga: "Réimniú (pearsa, uimhir):",
+            ar: "التصريف (الضمير، العدد):",
+        },
+        person: {
+            fr: "Personne",
+            ru: "Лицо",
+            es: "Persona",
+            zh: "人称",
+            ko: "인칭",
+            hi: "पुरुष",
+            ga: "Pearsa",
+            ar: "الضمير",
+        },
+        cells: {
+            fr: {
+                "work (regular)": "work (régulier)",
+                "go (irregular)": "go (irrégulier)",
+                "had + past participle": "had + participe passé",
+                "will + base verb": "will + base verbale",
+                "tense": "Temps",
+                "be + past participle (singular / plural)": "be + participe passé (singulier / pluriel)",
+                "present": "Présent",
+                "past": "Passé",
+                "present perfect": "Present perfect",
+                "future": "Futur",
+                "singular": "Singulier",
+                "plural": "Pluriel",
+                "rule": "Règle",
+                "consonant + y → -ies": "consonne + y → -ies",
+                "irregular": "irrégulier",
+                "unchanged": "invariable",
+            },
+            ru: {
+                "work (regular)": "work (правильный)",
+                "go (irregular)": "go (неправильный)",
+                "had + past participle": "had + причастие прошедшего времени",
+                "will + base verb": "will + начальная форма глагола",
+                "tense": "Время",
+                "be + past participle (singular / plural)": "be + причастие прошедшего времени (ед. ч. / мн. ч.)",
+                "present": "Настоящее время",
+                "past": "Прошедшее время",
+                "present perfect": "Настоящее совершённое время",
+                "future": "Будущее время",
+                "singular": "Единственное число",
+                "plural": "Множественное число",
+                "rule": "Правило",
+                "consonant + y → -ies": "согласная + y → -ies",
+                "irregular": "неправильная форма",
+                "unchanged": "без изменений",
+            },
+            es: {
+                "had + past participle": "had + participio pasado",
+                "will + base verb": "will + forma base del verbo",
+                "tense": "Tiempo",
+                "be + past participle (singular / plural)": "be + participio pasado (singular / plural)",
+                "present": "Presente",
+                "past": "Pasado",
+                "present perfect": "Pretérito perfecto compuesto",
+                "future": "Futuro",
+                "singular": "Singular",
+                "plural": "Plural",
+                "rule": "Regla",
+                "consonant + y → -ies": "consonante + y → -ies",
+                "unchanged": "invariable",
+            },
+            zh: {
+                "work (regular)": "work（规则动词）",
+                "go (irregular)": "go（不规则动词）",
+                "had + past participle": "had + 过去分词",
+                "will + base verb": "will + 动词原形",
+                "tense": "时态",
+                "be + past participle (singular / plural)": "be + 过去分词（单数 / 复数）",
+                "present": "现在时",
+                "past": "过去时",
+                "present perfect": "现在完成时",
+                "future": "将来时",
+                "singular": "单数",
+                "plural": "复数",
+                "rule": "规则",
+                "consonant + y → -ies": "辅音 + y → -ies",
+                "irregular": "不规则变化",
+                "unchanged": "不变",
+            },
+            ko: {
+                "work (regular)": "work (규칙 동사)",
+                "go (irregular)": "go (불규칙 동사)",
+                "had + past participle": "had + 과거분사",
+                "will + base verb": "will + 동사원형",
+                "tense": "시제",
+                "be + past participle (singular / plural)": "be + 과거분사 (단수 / 복수)",
+                "present": "현재",
+                "past": "과거",
+                "present perfect": "현재완료",
+                "future": "미래",
+                "singular": "단수",
+                "plural": "복수",
+                "rule": "규칙",
+                "consonant + y → -ies": "자음 + y → -ies",
+                "irregular": "불규칙",
+                "unchanged": "변화 없음",
+            },
+            hi: {
+                "work (regular)": "work (नियमित)",
+                "go (irregular)": "go (अनियमित)",
+                "had + past participle": "had + भूतकालिक कृदंत",
+                "will + base verb": "will + क्रिया का मूल रूप",
+                "tense": "काल",
+                "be + past participle (singular / plural)": "be + भूतकालिक कृदंत (एकवचन / बहुवचन)",
+                "present": "वर्तमान काल",
+                "past": "भूतकाल",
+                "present perfect": "पूर्ण वर्तमान काल",
+                "future": "भविष्य काल",
+                "singular": "एकवचन",
+                "plural": "बहुवचन",
+                "rule": "नियम",
+                "consonant + y → -ies": "व्यंजन + y → -ies",
+                "irregular": "अनियमित",
+                "unchanged": "अपरिवर्तित",
+            },
+            ga: {
+                "work (regular)": "work (rialta)",
+                "go (irregular)": "go (neamhrialta)",
+                "had + past participle": "had + rangabháil chaite",
+                "will + base verb": "will + bunfhoirm an bhriathair",
+                "tense": "Aimsir",
+                "be + past participle (singular / plural)": "be + rangabháil chaite (uatha / iolra)",
+                "present": "Aimsir láithreach",
+                "past": "Aimsir chaite",
+                "present perfect": "Aimsir láithreach fhoirfe",
+                "future": "Aimsir fháistineach",
+                "singular": "Uatha",
+                "plural": "Iolra",
+                "rule": "Riail",
+                "consonant + y → -ies": "consan + y → -ies",
+                "irregular": "neamhrialta",
+                "unchanged": "gan athrú",
+            },
+            ar: {
+                "work (regular)": "work (فعل قياسي)",
+                "go (irregular)": "go (فعل شاذ)",
+                "had + past participle": "had + اسم المفعول",
+                "will + base verb": "will + الفعل الأساسي",
+                "tense": "الزمن",
+                "be + past participle (singular / plural)": "be + اسم المفعول (مفرد / جمع)",
+                "present": "المضارع",
+                "past": "الماضي",
+                "present perfect": "المضارع التام",
+                "future": "المستقبل",
+                "singular": "المفرد",
+                "plural": "الجمع",
+                "rule": "القاعدة",
+                "consonant + y → -ies": "حرف ساكن + y → ‎-ies",
+                "irregular": "شاذ",
+                "unchanged": "لا يتغير",
+            },
+        },
+        topic: {},   // per-topic exceptions to cells: { loc: { topicId: { enCell: cell } } }
+    };
     const TBL = (id, rows) => {
         if (!en[id]) throw new Error('details table for unknown topic ' + id);
         const block = rows.map(r => '| ' + r.join(' | ') + ' |').join('\n');
         en[id].uk += '\nВідмінювання (особа, число):\n' + block.replace('PERSON', 'Особа');
         en[id].en += '\nConjugation (person, number):\n' + block.replace('PERSON', 'Person');
+        // The seven added languages: the same rows, the notes and labels translated cell by cell (TBL_LOCALES), forms untouched.
+        for (const loc of Object.keys(TBL_LOCALES.head)) {
+            const own = (TBL_LOCALES.topic[loc] || {})[id] || {}, cells = TBL_LOCALES.cells[loc] || {};
+            const tr = cell => (cell in own ? own[cell] : cell in cells ? cells[cell] : cell);
+            en[id][loc] += '\n' + TBL_LOCALES.head[loc] + '\n' + (rr => rr.map(r => '| ' + r.join(' | ') + ' |').join('\n'))(rows.map(r => r.map(tr))).replace('PERSON', TBL_LOCALES.person[loc]);
+        }
     };
     TBL('present-simple', [
         ['PERSON', 'work', 'be', 'have', 'do', 'go'],
@@ -5200,4 +5537,6 @@ Eisceachtaí:
 
     const store = window.GRAMMAR_RULE_DETAILS || (window.GRAMMAR_RULE_DETAILS = {});
     store.en = en;
+    // The translated table labels, so a test can catch a label whose table cell changed (it would fall back to English).
+    (window.GRAMMAR_RULE_TABLE_LABELS || (window.GRAMMAR_RULE_TABLE_LABELS = {})).en = TBL_LOCALES;
 })();

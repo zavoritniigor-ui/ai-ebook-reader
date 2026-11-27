@@ -1,0 +1,12 @@
+fastapi==0.165.0
+starlette==1.10.0
+uvicorn==0.54.0
+Pillow==13.0.0
+reportlab==5.1.2
+pypdf==7.2.0
+numpy==2.5.5
+# Transitive pins at or above the OSV fixes (h11, anyio, idna, certifi), so the app layer upgrades the runtime too.
+h11==0.16.0
+anyio==4.16.0
+idna==3.20
+certifi==2026.11.20

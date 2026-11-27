@@ -30,7 +30,7 @@ Vendor: `jszip`, `mammoth`, `marked`, `pdf.mjs` (module) + `js/pdf-worker-setup.
 `offline-translate` → `offline-dict` → `device-llm-catalog` → `device-llm` → `pdf-ink` → `text-ink` → `pdf-crop` → `pdf-qr` →
 `pdf-outline` → `pdf-thumbnails` → `pdf-continuous` → `pdf-contrast` → `publication-files` → `pdf-render` →
 `book-audio` → `book-speech` → `formats` → `comics` → `onboarding` → `library-queue` → `library` → `book-shelf` → `saved-links` →
-`scanner` → `sync` → `quick-wheel` → `developer` → `main` → `demo-textbook` → `pwa-lifecycle` → `i18n-es`
+`ocr-client` → `scanner` → `sync` → `quick-wheel` → `developer` → `main` → `demo-textbook` → `pwa-lifecycle` → `i18n-es`
 
 `tests/migration_audit_browser.py` pins this list. Load-bearing positions:
 - the one inline line after `lang-detect.js` (`if (ttsSynth) { ttsSynth.onvoiceschanged = loadVoices; loadVoices(); }`)
@@ -116,7 +116,8 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `library-queue.js` | one download at a time, retries |
 | `book-shelf.js` | «My books»: opened books kept in IndexedDB, start-screen drum |
 | `saved-links.js` | «Мої книги → Посилання»: saved QR codes and exercise pages, open / back to the book page |
-| `scanner.js` | document scanner: photos → frame (whole photo, editable) → filters → PDF/JPG/PNG, N pages per sheet, OCR (Tesseract) |
+| `ocr-client.js` | same-origin OCR jobs: serial original uploads, bounded PDF/JSON download, cancellation and job cleanup |
+| `scanner.js` | document scanner: editable full-photo frame, filters and layouts; local Tesseract or opt-in server PDF with light previews |
 | `sync.js` | sync between devices by code |
 
 ## Server (`functions/api/`, Cloudflare Pages Functions)
@@ -128,6 +129,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `library.js` | proxy to fixed library hosts only (Gutenberg, Wikisource, Internet Archive, BNR, SE); ids/paths validated; same-origin requests only |
 | `offline-model.js`, `device-llm.js` | model file downloads from allow-listed sources, size/SHA-256 checked |
 | `speech/[[path]].js` | proxy to the owner's local speech server (tunnel and token in Cloudflare secrets) |
+| `ocr/[[path]].js` | fixed-route proxy to the owner's GPU OCR server (`OCR_TUNNEL_URL`, `OCR_TOKEN` in Cloudflare secrets) |
 | `sync.js` | device sync storage (KV; the server sees only the encrypted blob) |
 | `../share-target.js` | «Share → AI Reader» before the service worker controls the page |
 | `../p/[[path]].js` + `proxy-assets/translate.js` | reading proxy `/p/<host>/…` for listed exercise sites (RFI, its H5P), with the selection-translation panel injected; only on `web.ai-ebook-reader.uk` and branch previews, never on the app's origins |
