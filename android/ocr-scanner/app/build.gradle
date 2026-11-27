@@ -1,0 +1,42 @@
+plugins { id 'com.android.application' }
+def signingPropertiesPath = providers.environmentVariable('OCR_ANDROID_SIGNING_PROPERTIES').orNull
+def privateSigning = new Properties()
+if (signingPropertiesPath != null) {
+    file(signingPropertiesPath).withInputStream { privateSigning.load(it) }
+}
+android {
+    namespace 'org.aiebook.reader.scanner'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'org.aiebook.reader.scanner'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+    signingConfigs {
+        if (signingPropertiesPath != null) {
+            release {
+                storeFile rootProject.file(privateSigning.getProperty('storeFile'))
+                storePassword privateSigning.getProperty('storePassword')
+                keyAlias privateSigning.getProperty('keyAlias')
+                keyPassword privateSigning.getProperty('keyPassword')
+            }
+        }
+    }
+    buildTypes { release { minifyEnabled false; if (signingPropertiesPath != null) signingConfig signingConfigs.release } }
+    testBuildType = providers.gradleProperty('ocrTestBuildType').getOrElse('debug')
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    packaging { resources.excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/NOTICE'] }
+}
+dependencies {
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
+    implementation 'androidx.core:core:1.16.0'
+    implementation 'androidx.exifinterface:exifinterface:1.4.1'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test:core:1.6.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}

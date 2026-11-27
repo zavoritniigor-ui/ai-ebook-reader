@@ -1,0 +1,15 @@
+<resources>
+    <string name="title">Reader · Offline Scanner</string>
+    <string name="help">English and French · no internet needed\nDrag 4 corners. Add pages, then export the PDF into Reader.</string>
+    <string name="pick_photo">Choose photo</string><string name="camera">Camera</string><string name="rotate">↻ 90°</string>
+    <string name="enhance">Enhance</string><string name="add_page">Add page</string><string name="create_pdf">Create PDF</string>
+    <string name="clear">Clear</string><string name="cancel">Cancel</string><string name="save_pdf">Save PDF</string><string name="save_json">JSON</string><string name="share">Reader / share</string>
+    <string name="initial">Pages: 0 / 20. Photos stay on this device.</string><string name="rotation">Rotation: %1$d° (applied when adding)</string>
+    <string name="cancelling">Finishing the current recognition…</string><string name="saved">Saved: %1$s</string>
+    <string name="check_corners">Check corners and tap Add page. Pages: %1$d</string><string name="choose_first">Choose or photograph a page first.</string>
+    <string name="page_limit">A document can have up to 20 pages.</string><string name="page_added">Pages: %1$d / 20 · words: %2$d · OCR: %3$d ms</string>
+    <string name="add_first">Add at least one page.</string><string name="export_ready">Ready: %1$d pages. Save the PDF or open it in Reader.</string>
+    <string name="share_title">Open PDF / share</string><string name="processing">Processing on this device…</string><string name="cancelled">Cancelled. You can continue.</string><string name="error">Error: %1$s</string>
+    <string name="crop_description">Page preview. Drag the four blue corner handles to crop.</string>
+    <string name="busy">Wait for the current step to finish.</string>
+</resources>

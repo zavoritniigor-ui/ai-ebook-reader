@@ -1,0 +1,15 @@
+<resources>
+    <string name="title">Reader · Офлайн-сканер</string>
+    <string name="help">Англійська й французька · без інтернету\nПеретягни 4 кути. Додай сторінки й експортуй PDF у Reader.</string>
+    <string name="pick_photo">Вибрати фото</string><string name="camera">Камера</string><string name="rotate">↻ 90°</string>
+    <string name="enhance">Чіткіше</string><string name="add_page">Додати</string><string name="create_pdf">Створити PDF</string>
+    <string name="clear">Очистити</string><string name="cancel">Скасувати</string><string name="save_pdf">Зберегти PDF</string><string name="save_json">JSON</string><string name="share">У Reader / поділитися</string>
+    <string name="initial">Сторінок: 0 / 20. Фото залишаються на цьому пристрої.</string><string name="rotation">Поворот: %1$d° (застосується при додаванні)</string>
+    <string name="cancelling">Завершую поточне розпізнавання…</string><string name="saved">Збережено: %1$s</string>
+    <string name="check_corners">Перевір кути й натисни «Додати». Сторінок: %1$d</string><string name="choose_first">Спочатку вибери або сфотографуй сторінку.</string>
+    <string name="page_limit">Максимум 20 сторінок у документі.</string><string name="page_added">Сторінок: %1$d / 20 · слів: %2$d · OCR: %3$d мс</string>
+    <string name="add_first">Додай принаймні одну сторінку.</string><string name="export_ready">Готово: %1$d стор. Збережи PDF або передай у Reader.</string>
+    <string name="share_title">Відкрити PDF / поділитися</string><string name="processing">Обробка на пристрої…</string><string name="cancelled">Скасовано. Можна продовжувати.</string><string name="error">Помилка: %1$s</string>
+    <string name="crop_description">Перегляд сторінки. Перетягни чотири сині кути для кадрування.</string>
+    <string name="busy">Зачекай, доки завершиться поточний крок.</string>
+</resources>
