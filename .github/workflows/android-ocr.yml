@@ -32,7 +32,8 @@ jobs:
       - name: Install the pinned Android platform and build tools from the runner's SDK manager
         run: |
           set -euo pipefail
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          # `yes` is killed by SIGPIPE once sdkmanager stops reading; only sdkmanager's status may fail the step.
+          (yes || true) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
       - name: Unit tests, lint and debug build
         working-directory: android/ocr-scanner
