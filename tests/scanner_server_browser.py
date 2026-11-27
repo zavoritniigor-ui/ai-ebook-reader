@@ -35,7 +35,10 @@ c.js("""(async()=>{
    if(!String(url).startsWith('/api/ocr/'))return __realFetch(url,init);
    __calls.push({url:String(url),method:init.method||'GET',body:init.body,headers:init.headers});
    if(__mode==='offline')throw new TypeError('network unavailable');
-   if((init.method||'GET')==='DELETE')return new Response(null,{status:204});
+   if((init.method||'GET')==='DELETE'){
+     if(__mode==='cleanup')return new Promise(resolve=>{window.__finishCleanup=()=>resolve(new Response(null,{status:204}));});
+     return new Response(null,{status:204});
+   }
    if(String(url).endsWith('/jobs'))return Response.json({id:'a'.repeat(32)},{status:201});
    if(String(url).includes('/pages/')){
      if(__mode==='wait')return new Promise((resolve,reject)=>init.signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError')),{once:true}));
@@ -86,10 +89,40 @@ check('oversized photos fail before any upload', """(async()=>{
  try{await OcrClient.createPdf([{file,corners:SCAN_FULL,rotation:0,filter:'orig'}],{paper:'fit',nup:1,dewarp:false});return false;}
  catch(e){return e.code==='too_large'&&__calls.length===0;}
 })()""")
+check('a server deadline reports an unavailable connection rather than a user cancellation', """(async()=>{
+ __calls=[];__mode='wait';const timer=setTimeout;
+ window.setTimeout=(fn,ms,...args)=>timer(fn,ms===125000?0:ms,...args);
+ try{await scanExport('save');return scanEl('scan-status').textContent===t('scanServerOffline')&&__calls.at(-1).method==='DELETE'&&!scanState.busy;}
+ finally{window.setTimeout=timer;}
+})()""")
+check('cancel during final cleanup prevents saving or opening the completed PDF', """(async()=>{
+ __calls=[];__mode='cleanup';__finishCleanup=null;const before=__saved,run=scanExport('save');
+ for(let i=0;i<100&&!__finishCleanup;i++)await new Promise(r=>setTimeout(r,10));
+ const pending=!!__finishCleanup;scanEl('scan-cancel-export').click();__finishCleanup();await run;
+ return pending&&__saved===before&&!scanState.busy&&scanEl('scan-status').textContent==='';
+})()""")
 check('returning to local mode re-renders from original and performs no OCR-server request', """(async()=>{
  __calls=[];scanEl('scan-engine').value='device';scanEl('scan-engine').dispatchEvent(new Event('change'));
  scanEl('scan-format').value='jpg';scanEl('scan-ocr').checked=false;await scanExport('save');
  const p=scanState.pages[0];return !p.previewOnly&&Math.max(p.w,p.h)>1000&&__calls.length===0&&__saved.type==='image/jpeg';
+})()""")
+check('mode cannot change midway through asynchronous preview encoding; later local export restores original resolution', """(async()=>{
+ __mode='ok';__calls=[];scanEl('scan-engine').value='server';scanEl('scan-engine').dispatchEvent(new Event('change'));
+ const encode=HTMLCanvasElement.prototype.toBlob;window.__releaseEncode=null;
+ HTMLCanvasElement.prototype.toBlob=function(callback,...args){
+   if(!__releaseEncode){const canvas=this;__releaseEncode=()=>encode.call(canvas,callback,...args);}
+   else encode.call(this,callback,...args);
+ };
+ try{
+   const adding=scanAddFiles([__original],false);
+   for(let i=0;i<100&&!__releaseEncode;i++)await new Promise(r=>setTimeout(r,10));
+   scanEl('scan-engine').value='device';scanEl('scan-engine').dispatchEvent(new Event('change'));
+   const stayed=scanUsesServer();__releaseEncode();await adding;
+   const p=scanState.pages.at(-1),preview=p.previewOnly&&Math.max(p.w,p.h)<=1000;
+   scanEl('scan-engine').value='device';scanEl('scan-engine').dispatchEvent(new Event('change'));
+   scanState.pages.forEach(page=>{page.selected=page===p;});scanEl('scan-format').value='jpg';await scanExport('save');
+   return stayed&&preview&&!p.previewOnly&&Math.max(p.w,p.h)>1000&&__calls.length===0;
+ }finally{HTMLCanvasElement.prototype.toBlob=encode;}
 })()""")
 c.js('window.fetch=__realFetch;closeScanner();localStorage.clear();1')
 c.sock.close()

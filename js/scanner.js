@@ -255,12 +255,13 @@ const scanBlob = (canvas, type, quality) => new Promise((resolve, reject) => can
 // Готова сторінка: вирівняна, покращена, повернута → JPEG і мініатюра. source — уже завантажене фото (у редакторі).
 // release: source більше не потрібне (додавання фото) — його полотно звільняється, щойно пікселі аркуша прочитано.
 async function scanRender(page, source = null, release = false) {
+    const previewOnly = scanUsesServer();
     const canvas = source || await scanLoad(page.file, scanWorkSide());
     try {
         const out = scanRotate(scanFilter(scanWarp(canvas, page.corners, release || !source), page.filter), page.rotation);
         page.out = await scanBlob(out, 'image/jpeg', page.filter === 'bw' ? 0.82 : 0.88);
         page.w = out.width; page.h = out.height;
-        page.previewOnly = scanUsesServer();
+        page.previewOnly = previewOnly;
         const k = 240 / Math.max(out.width, out.height), thumb = document.createElement('canvas');
         thumb.width = Math.max(1, Math.round(out.width * k)); thumb.height = Math.max(1, Math.round(out.height * k));
         thumb.getContext('2d').drawImage(out, 0, 0, thumb.width, thumb.height);
@@ -506,6 +507,7 @@ function buildScanner() {
     const engine = document.createElement('select'); engine.id = 'scan-engine'; engine.dataset.i18nAria = 'scanEngine';
     for (const [value, key] of [['device', 'scanDevice'], ['server', 'scanServer']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; engine.append(o); }
     engine.value = scanStored('reader_scan_engine', 'device', [['device'], ['server']]);
+    engine.dataset.previous = engine.value;
     engineRow.append(engineLabel, engine);
     const camera = document.createElement('input'); camera.type = 'file'; camera.accept = 'image/*'; camera.setAttribute('capture', 'environment'); camera.id = 'scan-camera-input'; camera.hidden = true;
     const gallery = document.createElement('input'); gallery.type = 'file'; gallery.accept = 'image/*'; gallery.multiple = true; gallery.id = 'scan-gallery-input'; gallery.hidden = true;
@@ -588,7 +590,10 @@ function buildScanner() {
         const privacy = scanEl('scan-privacy');
         if (privacy) { privacy.dataset.i18n = server ? 'scanServerPrivacy' : 'scanPrivacy'; privacy.textContent = t(privacy.dataset.i18n); }
     };
-    engine.addEventListener('change', () => { scanStore('reader_scan_engine', engine.value); syncOcr(); });
+    engine.addEventListener('change', () => {
+        if (scanState.busy) { engine.value = engine.dataset.previous; return; }
+        engine.dataset.previous = engine.value; scanStore('reader_scan_engine', engine.value); syncOcr();
+    });
     format.addEventListener('change', syncOcr); syncOcr();
     const fmtRow = document.createElement('div'); fmtRow.className = 'scan-format-row'; fmtRow.append(format, nupSel);
     out.append(allRow, fmtRow, ocrRow, dewarpRow, actions, cancelExport);

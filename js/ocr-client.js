@@ -40,7 +40,7 @@ const OcrClient = (() => {
             return JSON.parse(await blob.text());
         } catch (e) {
             if (signal?.aborted) throw cancelled();
-            if (e.code) throw e;
+            if (typeof e.code === 'string') throw e;
             throw failure('offline');
         } finally { clearTimeout(timeout); signal?.removeEventListener('abort', abort); ctl.abort(); }
     }
@@ -69,6 +69,8 @@ const OcrClient = (() => {
                 try { await request('/jobs/' + id, { method: 'DELETE' }, cleanup.signal, 'empty'); } catch (e) { /* The server TTL is the fallback. */ }
                 finally { clearTimeout(timer); }
             }
+            // Cancel still wins while the independent cleanup request is pending.
+            if (signal?.aborted) throw cancelled();
         }
     }
     return Object.freeze({ createPdf });
