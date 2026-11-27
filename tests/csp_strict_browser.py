@@ -15,11 +15,15 @@ assert "'unsafe-inline'" not in CSP.split('script-src', 1)[1].split(';', 1)[0], 
 # cloudflareinsights.com. Without these two hosts the CSP silently blocks it and the dashboard shows no visits.
 assert 'https://static.cloudflareinsights.com' in CSP.split('script-src', 1)[1].split(';', 1)[0], 'script-src must allow the Web Analytics beacon'
 assert 'https://cloudflareinsights.com' in CSP.split('connect-src', 1)[1].split(';', 1)[0], 'connect-src must allow Web Analytics reports'
+# The scanner's «📷 Take photo» is <input type=file capture>. Android's Chrome opens the camera only when the site may use it;
+# with camera=() the tap did nothing in the installed app (owner 2026-11-27). Only this origin gets it; the rest stays off.
+PERMISSIONS = next(line.split(':', 1)[1].strip() for line in open(os.path.join(ROOT, '_headers')) if line.strip().startswith('Permissions-Policy'))
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header('Content-Security-Policy', CSP)
+        self.send_header('Permissions-Policy', PERMISSIONS)
         super().end_headers()
     def log_message(self, *a): pass
 
@@ -90,5 +94,7 @@ c.js("closeLibrary(); 1")
 c.js("""(() => { const d = document.createElement('div'); d.innerHTML = '<img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" onerror="window.__pwned=1" onload="window.__pwned=1">'; document.body.append(d);
   const s = document.createElement('script'); s.textContent = 'window.__pwned = 2'; document.body.append(s); return 1; })()"""); time.sleep(1)
 check('12 an injected inline handler or <script> does NOT run (the browser blocks it)', "!window.__pwned && __csp.some(v => /script-src/.test(v))")
+check('13 the served Permissions-Policy lets the app itself use the camera (scanner photos) and still blocks geolocation and payment',
+      "(fp => fp.allowsFeature('camera') && !fp.allowsFeature('geolocation') && !fp.allowsFeature('payment') || JSON.stringify(fp.allowedFeatures().filter(f => /camera|geolocation|payment/.test(f))))(document.featurePolicy)")
 print('ALL PASS')
 server.shutdown()
