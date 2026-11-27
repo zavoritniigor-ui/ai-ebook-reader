@@ -147,6 +147,7 @@ check("4 English stays stem-based: work|s, work|ed, go|es, do|es, be|ing; went /
          const got = [['work', 'works'], ['work', 'worked'], ['go', 'goes'], ['do', 'does'], ['be', 'being'], ['go', 'went'], ['be', 'was'], ['have', 'has']].map(p => seg(p[0], p[1])).join(',');
          return got === 'work[s],work[ed],go[es],do[es],be[ing],went,was,has' || got; })()""")
 
+c.js('loadRuleDetails(); 1'); c.wait('ruleDetailsReady()', timeout=20)   # the details load on first use, not at start
 # ---- the Rules catalogue: every verb column of every conjugation table -------------------------------------------------------
 check("5 every verb column of every French conjugation table in the Rules catalogue has coloured endings (simple AND compound tenses)",
       """(() => { const ids = ['present', 'imparfait', 'passe-simple', 'futur-simple', 'conditionnel-present', 'subjonctif-present', 'imperatif', 'passe-compose', 'plus-que-parfait', 'futur-anterieur', 'conditionnel-passe', 'subjonctif-passe', 'verbes-pronominaux'];
