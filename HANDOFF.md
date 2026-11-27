@@ -9,7 +9,6 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex (rules i18n), continued by Claude Code | `ship/rules-details-i18n` | `js/grammar-rules-details-{en,fr}.js` — 7 added explanation locales (fr/ru/es/zh/ko/hi/ga) over uk/en; `tests/grammar_rules_browser.py` checks 33a–d | translations complete; checks 33/33a–d green locally; PR open | 2026-11-26 |
 | Codex local OCR context task | `fix/ocr-curved-context-order` | `js/selection-pdf-order.js`, curved OCR regression fixture/test | PR #474; local gates green; awaits lead final review | 2026-11-26 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | untangling module cycles: `core-i18n.js`, `pwa-lifecycle.js`, `ui-tooltip.js`, label refreshers in `tts`/`navigation`/`dictation`/`learning-stats`/`lang-detect`/`grammar-lookup`/`book-audio` | PR open | 2026-11-14 |
 | Claude Code on the owner's computer (setup session) | `claude-code-setup` | `.claude/settings.json` (deny rules, syntax hook), `.claude/hooks/`, `.claude/skills/ship/` | PR open, waits for the owner's review | 2026-11-16 |
