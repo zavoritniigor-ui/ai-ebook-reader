@@ -1,0 +1,636 @@
+{
+  "width": 2400,
+  "height": 1800,
+  "words": [
+    {
+      "word": "French",
+      "bbox": [
+        120.0,
+        259.6491,
+        220.0,
+        282.6491
+      ],
+      "sentence": "French reading: accents and words."
+    },
+    {
+      "word": "reading",
+      "bbox": [
+        229.25,
+        244.9692,
+        353.25,
+        273.9692
+      ],
+      "sentence": "French reading: accents and words."
+    },
+    {
+      "word": "accents",
+      "bbox": [
+        362.8438,
+        224.0071,
+        478.8438,
+        245.0071
+      ],
+      "sentence": "French reading: accents and words."
+    },
+    {
+      "word": "and",
+      "bbox": [
+        488.625,
+        211.4026,
+        544.625,
+        234.4026
+      ],
+      "sentence": "French reading: accents and words."
+    },
+    {
+      "word": "words",
+      "bbox": [
+        554.6094,
+        207.0297,
+        653.6094,
+        230.0297
+      ],
+      "sentence": "French reading: accents and words."
+    },
+    {
+      "word": "L'école",
+      "bbox": [
+        120.0,
+        498.5563,
+        225.0,
+        522.5563
+      ],
+      "sentence": "L'école française est près de la forêt."
+    },
+    {
+      "word": "française",
+      "bbox": [
+        234.5938,
+        482.7082,
+        372.5938,
+        511.7082
+      ],
+      "sentence": "L'école française est près de la forêt."
+    },
+    {
+      "word": "est",
+      "bbox": [
+        381.7188,
+        466.4769,
+        427.7188,
+        487.4769
+      ],
+      "sentence": "L'école française est près de la forêt."
+    },
+    {
+      "word": "près",
+      "bbox": [
+        437.0938,
+        454.7305,
+        502.0938,
+        484.7305
+      ],
+      "sentence": "L'école française est près de la forêt."
+    },
+    {
+      "word": "de",
+      "bbox": [
+        511.4219,
+        450.4292,
+        549.4219,
+        473.4292
+      ],
+      "sentence": "L'école française est près de la forêt."
+    },
+    {
+      "word": "la",
+      "bbox": [
+        558.4531,
+        448.1855,
+        585.4531,
+        471.1855
+      ],
+      "sentence": "L'école française est près de la forêt."
+    },
+    {
+      "word": "forêt",
+      "bbox": [
+        594.7031,
+        445.2819,
+        674.7031,
+        469.2819
+      ],
+      "sentence": "L'école française est près de la forêt."
+    },
+    {
+      "word": "Élève",
+      "bbox": [
+        120.0,
+        735.789,
+        211.0,
+        765.789
+      ],
+      "sentence": "Élève, été, Noël, où, déjà, cœur, garçon."
+    },
+    {
+      "word": "été",
+      "bbox": [
+        221.0,
+        730.8679,
+        279.0,
+        757.8679
+      ],
+      "sentence": "Élève, été, Noël, où, déjà, cœur, garçon."
+    },
+    {
+      "word": "Noël",
+      "bbox": [
+        288.7344,
+        718.2728,
+        365.7344,
+        744.2728
+      ],
+      "sentence": "Élève, été, Noël, où, déjà, cœur, garçon."
+    },
+    {
+      "word": "où",
+      "bbox": [
+        375.375,
+        704.4159,
+        422.375,
+        731.4159
+      ],
+      "sentence": "Élève, été, Noël, où, déjà, cœur, garçon."
+    },
+    {
+      "word": "déjà",
+      "bbox": [
+        431.8125,
+        694.8165,
+        505.8125,
+        724.8165
+      ],
+      "sentence": "Élève, été, Noël, où, déjà, cœur, garçon."
+    },
+    {
+      "word": "cœur",
+      "bbox": [
+        515.0938,
+        695.7796,
+        603.0938,
+        714.7796
+      ],
+      "sentence": "Élève, été, Noël, où, déjà, cœur, garçon."
+    },
+    {
+      "word": "garçon",
+      "bbox": [
+        612.6875,
+        692.7367,
+        725.6875,
+        714.7367
+      ],
+      "sentence": "Élève, été, Noël, où, déjà, cœur, garçon."
+    },
+    {
+      "word": "À",
+      "bbox": [
+        120.0,
+        975.6664,
+        141.0,
+        1002.6664
+      ],
+      "sentence": "À bientôt !"
+    },
+    {
+      "word": "bientôt",
+      "bbox": [
+        150.0469,
+        976.5338,
+        257.0469,
+        1000.5338
+      ],
+      "sentence": "À bientôt !"
+    },
+    {
+      "word": "Êtes-vous",
+      "bbox": [
+        287.875,
+        948.0001,
+        433.875,
+        975.0001
+      ],
+      "sentence": "Êtes-vous prêt à lire ?"
+    },
+    {
+      "word": "prêt",
+      "bbox": [
+        442.9688,
+        934.3111,
+        503.9688,
+        964.3111
+      ],
+      "sentence": "Êtes-vous prêt à lire ?"
+    },
+    {
+      "word": "à",
+      "bbox": [
+        513.4375,
+        929.9774,
+        531.4375,
+        953.9774
+      ],
+      "sentence": "Êtes-vous prêt à lire ?"
+    },
+    {
+      "word": "lire",
+      "bbox": [
+        541.3594,
+        928.5029,
+        588.3594,
+        951.5029
+      ],
+      "sentence": "Êtes-vous prêt à lire ?"
+    },
+    {
+      "word": "Le",
+      "bbox": [
+        120.0,
+        1220.8627,
+        155.0,
+        1242.8627
+      ],
+      "sentence": "Le prix est de 12,50 euros en 2026."
+    },
+    {
+      "word": "prix",
+      "bbox": [
+        164.1719,
+        1218.4207,
+        221.1719,
+        1247.4207
+      ],
+      "sentence": "Le prix est de 12,50 euros en 2026."
+    },
+    {
+      "word": "est",
+      "bbox": [
+        231.1562,
+        1213.2359,
+        277.1562,
+        1234.2359
+      ],
+      "sentence": "Le prix est de 12,50 euros en 2026."
+    },
+    {
+      "word": "de",
+      "bbox": [
+        286.5312,
+        1202.3485,
+        324.5312,
+        1225.3485
+      ],
+      "sentence": "Le prix est de 12,50 euros en 2026."
+    },
+    {
+      "word": "euros",
+      "bbox": [
+        429.0,
+        1182.6314,
+        512.0,
+        1198.6314
+      ],
+      "sentence": "Le prix est de 12,50 euros en 2026."
+    },
+    {
+      "word": "en",
+      "bbox": [
+        521.6562,
+        1176.8152,
+        558.6562,
+        1192.8152
+      ],
+      "sentence": "Le prix est de 12,50 euros en 2026."
+    },
+    {
+      "word": "2026",
+      "bbox": [
+        568.6562,
+        1167.8172,
+        654.6562,
+        1189.8172
+      ],
+      "sentence": "Le prix est de 12,50 euros en 2026."
+    },
+    {
+      "word": "English",
+      "bbox": [
+        1300.0,
+        205.0,
+        1408.0,
+        234.0
+      ],
+      "sentence": "English reading: follow this column."
+    },
+    {
+      "word": "reading",
+      "bbox": [
+        1417.8438,
+        205.0,
+        1541.8438,
+        234.0
+      ],
+      "sentence": "English reading: follow this column."
+    },
+    {
+      "word": "follow",
+      "bbox": [
+        1551.4375,
+        205.0,
+        1639.4375,
+        228.0
+      ],
+      "sentence": "English reading: follow this column."
+    },
+    {
+      "word": "this",
+      "bbox": [
+        1649.4375,
+        205.0,
+        1704.4375,
+        228.0
+      ],
+      "sentence": "English reading: follow this column."
+    },
+    {
+      "word": "column",
+      "bbox": [
+        1713.7031,
+        205.0,
+        1833.7031,
+        228.0
+      ],
+      "sentence": "English reading: follow this column."
+    },
+    {
+      "word": "Small",
+      "bbox": [
+        1300.0,
+        445.0,
+        1383.0,
+        468.0
+      ],
+      "sentence": "Small letters must remain clickable."
+    },
+    {
+      "word": "letters",
+      "bbox": [
+        1392.8438,
+        445.0,
+        1489.8438,
+        468.0
+      ],
+      "sentence": "Small letters must remain clickable."
+    },
+    {
+      "word": "must",
+      "bbox": [
+        1499.0938,
+        447.0,
+        1575.0938,
+        468.0
+      ],
+      "sentence": "Small letters must remain clickable."
+    },
+    {
+      "word": "remain",
+      "bbox": [
+        1584.25,
+        445.0,
+        1689.25,
+        468.0
+      ],
+      "sentence": "Small letters must remain clickable."
+    },
+    {
+      "word": "clickable",
+      "bbox": [
+        1698.8594,
+        445.0,
+        1838.8594,
+        468.0
+      ],
+      "sentence": "Small letters must remain clickable."
+    },
+    {
+      "word": "Read",
+      "bbox": [
+        1300.0,
+        685.0,
+        1375.0,
+        708.0
+      ],
+      "sentence": "Read every word from top to bottom."
+    },
+    {
+      "word": "every",
+      "bbox": [
+        1384.9219,
+        692.0,
+        1469.9219,
+        714.0
+      ],
+      "sentence": "Read every word from top to bottom."
+    },
+    {
+      "word": "word",
+      "bbox": [
+        1479.1875,
+        685.0,
+        1553.1875,
+        708.0
+      ],
+      "sentence": "Read every word from top to bottom."
+    },
+    {
+      "word": "from",
+      "bbox": [
+        1562.4531,
+        685.0,
+        1632.4531,
+        708.0
+      ],
+      "sentence": "Read every word from top to bottom."
+    },
+    {
+      "word": "top",
+      "bbox": [
+        1641.7969,
+        687.0,
+        1690.7969,
+        714.0
+      ],
+      "sentence": "Read every word from top to bottom."
+    },
+    {
+      "word": "to",
+      "bbox": [
+        1700.5,
+        687.0,
+        1730.5,
+        708.0
+      ],
+      "sentence": "Read every word from top to bottom."
+    },
+    {
+      "word": "bottom",
+      "bbox": [
+        1740.1562,
+        685.0,
+        1858.1562,
+        708.0
+      ],
+      "sentence": "Read every word from top to bottom."
+    },
+    {
+      "word": "The",
+      "bbox": [
+        1299.0,
+        925.0,
+        1356.0,
+        948.0
+      ],
+      "sentence": "The next sentence stays in this column."
+    },
+    {
+      "word": "next",
+      "bbox": [
+        1365.3281,
+        927.0,
+        1432.3281,
+        948.0
+      ],
+      "sentence": "The next sentence stays in this column."
+    },
+    {
+      "word": "sentence",
+      "bbox": [
+        1441.3125,
+        927.0,
+        1578.3125,
+        948.0
+      ],
+      "sentence": "The next sentence stays in this column."
+    },
+    {
+      "word": "stays",
+      "bbox": [
+        1588.125,
+        927.0,
+        1667.125,
+        954.0
+      ],
+      "sentence": "The next sentence stays in this column."
+    },
+    {
+      "word": "in",
+      "bbox": [
+        1676.8125,
+        925.0,
+        1703.8125,
+        948.0
+      ],
+      "sentence": "The next sentence stays in this column."
+    },
+    {
+      "word": "this",
+      "bbox": [
+        1713.6875,
+        925.0,
+        1768.6875,
+        948.0
+      ],
+      "sentence": "The next sentence stays in this column."
+    },
+    {
+      "word": "column",
+      "bbox": [
+        1777.9531,
+        925.0,
+        1897.9531,
+        948.0
+      ],
+      "sentence": "The next sentence stays in this column."
+    },
+    {
+      "word": "Click",
+      "bbox": [
+        1300.0,
+        1165.0,
+        1372.0,
+        1188.0
+      ],
+      "sentence": "Click a word to translate and speak."
+    },
+    {
+      "word": "a",
+      "bbox": [
+        1381.0156,
+        1172.0,
+        1399.0156,
+        1188.0
+      ],
+      "sentence": "Click a word to translate and speak."
+    },
+    {
+      "word": "word",
+      "bbox": [
+        1408.9375,
+        1165.0,
+        1482.9375,
+        1188.0
+      ],
+      "sentence": "Click a word to translate and speak."
+    },
+    {
+      "word": "to",
+      "bbox": [
+        1492.2031,
+        1167.0,
+        1522.2031,
+        1188.0
+      ],
+      "sentence": "Click a word to translate and speak."
+    },
+    {
+      "word": "translate",
+      "bbox": [
+        1531.8594,
+        1165.0,
+        1665.8594,
+        1188.0
+      ],
+      "sentence": "Click a word to translate and speak."
+    },
+    {
+      "word": "and",
+      "bbox": [
+        1675.4531,
+        1165.0,
+        1731.4531,
+        1188.0
+      ],
+      "sentence": "Click a word to translate and speak."
+    },
+    {
+      "word": "speak",
+      "bbox": [
+        1741.4375,
+        1165.0,
+        1839.4375,
+        1194.0
+      ],
+      "sentence": "Click a word to translate and speak."
+    }
+  ]
+}

@@ -155,6 +155,25 @@ function pdfReadingOrder(rects) {
     for (const band of pdfLineBands(rects, rects.map((_, i) => i))) out.push(...band.indices.sort((a, b) => rects[a].left - rects[b].left));
     return out;
 }
+// An OCR engine can emit correct reading order along a curved line whose ends differ by several glyph heights.
+// Horizontal bands cannot recover that order: they read the upper end before the beginning of the same sentence.
+// Trust the stream only INSIDE an established column, and only while each step moves down the page or follows the
+// line to the right. A short rightward step may climb by up to one glyph height (the curve near a book's spine).
+// Backward steps on the same line (style runs emitted after the plain text) and blocks jumping upwards still use the
+// visual order. Font count does not prove an OCR stream's order, and the stricter paragraph flow remains unchanged.
+function pdfColumnStreamInOrder(rects) {
+    for (let i = 1; i < rects.length; i++) {
+        const a = rects[i - 1], b = rects[i], h = Math.max(1, Math.min(a.height, b.height));
+        const dy = (b.top + b.bottom - a.top - a.bottom) / 2;
+        if (b.left < a.left - 2) {
+            if (dy <= h * 0.5) return false;   // goes back along this line, or jumps to an earlier block
+        } else if (dy < -h * 0.8) {
+            const gap = b.left - a.right;
+            if (gap < -h * 0.2 || gap > h * 2 || dy < -h * 1.2) return false;
+        }
+    }
+    return true;
+}
 function pdfLineSegments(spans, rects, layerWidth, columnStarts, narrowStarts = []) {
     const columnGapThreshold = Math.max(24, layerWidth * 0.08);
     const bands = pdfLineBands(rects, rects.map((_, idx) => idx));
@@ -338,9 +357,8 @@ function pdfVisualGroup(layer, targetSpan) {
     const sameColumn = [];
     const sameColumnRects = [];
     spans.forEach((s, i) => { if (segColumn[spanSeg[i]] === targetColumn) { sameColumn.push(s); sameColumnRects.push(rects[i]); } });
-    // У межах колонки — справжній порядок читання (рядок згори вниз, у рядку зліва
-    // направо), а не DOM/content-stream порядок.
-    const order = pdfReadingOrder(sameColumnRects);
+    // A geometrically consistent stream keeps curved OCR lines whole. Only unordered streams need visual sorting.
+    const order = pdfColumnStreamInOrder(sameColumnRects) ? sameColumn.map((_, i) => i) : pdfReadingOrder(sameColumnRects);
     const sorted = order.map(i => sameColumn[i]);
     const sortedRects = order.map(i => sameColumnRects[i]);
     // Розрив по Y, помітно більший за міжрядковий, — це вже інший абзац/підпис/
@@ -535,8 +553,7 @@ function resolveCanonicalPdfSelection(range, options = {}) {
         const run = colIdx.slice(Math.min(p1, p2), Math.max(p1, p2) + 1);
         // Endpoints can be adjacent in the content stream while all intervening lines
         // are stored later. Inspect the whole column, not just the endpoint run.
-        const climbs = colIdx.some((i, k) => k && pageCols.rects[i].top < pageCols.rects[colIdx[k - 1]].top - pageCols.rects[colIdx[k - 1]].height * 0.8);
-        if (!climbs) { layerInOrder = true; selectedSpans = run.map(i => pageSpans[i]); }
+        if (pdfColumnStreamInOrder(colIdx.map(i => pageCols.rects[i]))) { layerInOrder = true; selectedSpans = run.map(i => pageSpans[i]); }
         else {
             const colSpans = pdfReadingOrder(colIdx.map(i => pageCols.rects[i])).map(k => pageSpans[colIdx[k]]);
             const i1 = colSpans.indexOf(startSpan), i2 = colSpans.indexOf(endSpan);
