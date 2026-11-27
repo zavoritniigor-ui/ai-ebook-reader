@@ -54,6 +54,23 @@ class WordGeometryTests(unittest.TestCase):
                          ["heading", "left-one", "left-two", "right-one", "right-two", "footer"])
         self.assertEqual([word["line"] for word in ordered], list(range(6)))
 
+    def test_tilted_photo_columns_with_a_narrow_gutter_are_not_interleaved(self):
+        # A photographed page: each line rises 60 px across its column, so line boxes are ~100 px tall while the
+        # letters are ~40 px. The 70 px gutter is below 3 x line height but well above the word size.
+        words = []
+        for row in range(4):
+            top = 100 + row * 110
+            for column, (left, right) in enumerate([(0, 1000), (1070, 2070)]):
+                line = row * 2 + column
+                for index, x in enumerate(range(left, right, 250)):
+                    rise = (x - left) * 0.06
+                    words.append({"text": f"{'LR'[column]}{row}-{index}", "line": line,
+                                  "bbox": [x, top - rise, x + 200, top - rise + 40]})
+        ordered = [word["text"] for word in reading_order(words)]
+        left = [text for text in ordered if text.startswith("L")]
+        self.assertEqual(ordered[:len(left)], left)
+        self.assertEqual([text.split("-")[0] for text in left[::4]], ["L0", "L1", "L2", "L3"])
+
     def test_empty_reading_order(self):
         self.assertEqual(reading_order([]), [])
 

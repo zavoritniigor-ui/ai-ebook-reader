@@ -34,11 +34,16 @@ def reading_order(words):
                     max(word["bbox"][3] for word in group)]
              for line, group in lines.items()}
 
+    # Gutters scale with the type size. A tilted or curved photographed line has a box far taller than its letters,
+    # so the column gap is measured against word heights (2026-11-26, real two-column photo: the 50-75 px gutter was
+    # below 3 x the inflated line height and both columns were read line by line in turn).
+    word_height = statistics.median(word["bbox"][3] - word["bbox"][1] for word in words) if words else 0
+
     def split(indices):
         if len(indices) < 2:
             return indices
         height = statistics.median(boxes[index][3] - boxes[index][1] for index in indices)
-        for axis, minimum in [(0, height * 3), (1, height * 1.5)]:
+        for axis, minimum in [(0, min(height * 3, word_height * 0.8)), (1, height * 1.5)]:
             ordered = sorted(indices, key=lambda index: boxes[index][axis])
             end = boxes[ordered[0]][axis + 2]
             gaps = []
