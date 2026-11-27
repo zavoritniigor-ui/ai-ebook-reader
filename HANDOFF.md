@@ -9,7 +9,7 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Codex on the owner's computer | `feat/ocr-server-scanner` | `js/scanner.js`, `js/ocr-client.js`, scanner browser tests, script registration and integration docs | implementing opt-in server OCR and light phone previews | 2026-11-26 |
+| Claude Code (server OCR scanner) | `feat/ocr-server-scanner` | `js/scanner.js`, `js/ocr-client.js`, scanner browser tests, script registration and integration docs | race fixes committed; PR next | 2026-11-26 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | untangling module cycles: `core-i18n.js`, `pwa-lifecycle.js`, `ui-tooltip.js`, label refreshers in `tts`/`navigation`/`dictation`/`learning-stats`/`lang-detect`/`grammar-lookup`/`book-audio` | PR open | 2026-11-14 |
 | Claude Code on the owner's computer (setup session) | `claude-code-setup` | `.claude/settings.json` (deny rules, syntax hook), `.claude/hooks/`, `.claude/skills/ship/` | PR open, waits for the owner's review | 2026-11-16 |
 | Claude Code on the owner's computer | — | «Analects» OCR highlight offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
