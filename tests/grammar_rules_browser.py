@@ -204,6 +204,33 @@ check("33 every topic of both catalogues has expanded rules AND exceptions (uk +
          if (!/^Правила:/m.test(d.uk) || !/^Винятки/m.test(d.uk) || d.uk.length < 250) bad.push(lang + ':' + x.id + ':uk');
          if (!/^Rules:/m.test(d.en) || !/^Exceptions/m.test(d.en) || d.en.length < 250) bad.push(lang + ':' + x.id + ':en'); }
          return bad.length === 0 || JSON.stringify(bad.slice(0, 12)); })()""")
+check("33a all seven added explanation languages cover every topic with localized headings and identical list/table structure",
+      """(() => { const heads = {fr:['Règles:', 'Exceptions:'],ru:['Правила:', 'Исключения:'],es:['Reglas:', 'Excepciones:'],zh:['规则:', '例外:'],ko:['규칙:', '예외:'],hi:['नियम:', 'अपवाद:'],ga:['Rialacha:', 'Eisceachtaí:']};
+         const shape = text => text.split('\\n').map(line => line.startsWith('• ') ? 'bullet' : line.startsWith('| ') ? 'table:' + line.split(' | ').length : line.endsWith(':') ? 'heading' : line ? 'text' : 'blank').join(',');
+         const bad = []; for (const book of ['en', 'fr']) for (const section of GRAMMAR_RULES[book].sections) for (const topic of section.topics) {
+           const detail = GRAMMAR_RULE_DETAILS[book][topic.id]; for (const [locale, headings] of Object.entries(heads)) {
+             const text = detail[locale]; if (typeof text !== 'string' || !text.startsWith(headings[0] + '\\n') || !text.split('\\n').some(line => line.startsWith(headings[1].slice(0, -1)) && line.endsWith(':')) || shape(text) !== shape(detail.en) || text === detail.en || /ZXQ|QXZ|QQQ|RRR/.test(text)) bad.push(book + ':' + topic.id + ':' + locale);
+           }
+         } return !bad.length || JSON.stringify(bad.slice(0, 20)); })()""")
+check("33b English and French teaching examples, spelling changes and conjugation forms survive in every added language",
+      """(() => { const samples = {en: {'present-simple':['he works','she watches','she doesn’t work','does he work?','studies','plays'], 'present-continuous':['I think it’s good','I’m thinking about it','I’m seeing him','make → making','lie → lying'], 'infinitive-gerund':['I stopped smoking','I stopped to smoke','remember to lock','remember locking'], 'reported-speech':['I am tired','she said she was tired','she said that the Earth is round'], 'article-the':['/ðə/','/ði/','/ðiː/'], 'prepositions-place':['in the box','on the table','at the door']},
+           fr: {present:['je parle','nous finissons','ils vendent','payer → je paie/je paye'], 'passe-compose':['j’ai sorti la voiture','elle s’est lavée','elle s’est lavé les mains','ils se sont parlé','elles sont allées'], 'subjonctif-present':['qu’ils parlent → que je parle','je veux partir','je veux que je parte','que je sois'], 'pronoms-relatifs':['l’homme qui parle','moi qui suis','toi qui es','nous qui sommes'], interrogation:['Tu viens','Est-ce que tu viens','Parle-t-il','A-t-elle fini'], possessifs:['mon/ma/mes','Leur(s)']}};
+         const bad = []; for (const [book, topics] of Object.entries(samples)) for (const [id, examples] of Object.entries(topics)) for (const locale of ['fr','ru','es','zh','ko','hi','ga']) {
+           const text = GRAMMAR_RULE_DETAILS[book][id][locale]; for (const example of examples) if (!text.includes(example)) bad.push(book + ':' + id + ':' + locale + ':' + example);
+         } return !bad.length || JSON.stringify(bad); })()""")
+check("33c UI language chooses the localized explanation and renders real lists and conjugation tables for both catalogues",
+      """(() => { const previous = state.uiLang; const bad = []; const heads = {fr:'Règles:',ru:'Правила:',es:'Reglas:',zh:'规则:',ko:'규칙:',hi:'नियम:',ga:'Rialacha:'};
+         try { for (const [locale, heading] of Object.entries(heads)) for (const book of ['en', 'fr']) {
+           state.uiLang = locale; const id = book === 'en' ? 'present-simple' : 'passe-compose'; const topic = GRAMMAR_RULES[book].sections.flatMap(section => section.topics).find(topic => topic.id === id);
+           const detail = ruleDetails(topic, book); const text = rulesPick(detail); const container = document.createElement('div'); renderRuleDetailsText(container, text, book, id);
+           if (text !== detail[locale] || container.querySelector('h5')?.textContent !== heading || container.querySelectorAll('li').length !== text.split('\\n').filter(line => line.startsWith('• ')).length || !container.querySelector('table') || container.querySelector('table').textContent.includes('Особа')) bad.push(book + ':' + locale);
+         } } finally { state.uiLang = previous; } return !bad.length || JSON.stringify(bad); })()""")
+check("33d continuous tense formulas keep -ing and contracted forms retain their apostrophes in all seven languages",
+      """(() => { const bad = []; for (const locale of ['fr','ru','es','zh','ko','hi','ga']) {
+         for (const id of ['present-continuous','present-perfect-continuous','past-continuous','past-perfect-continuous']) if (!GRAMMAR_RULE_DETAILS.en[id][locale].split('\\n')[1].includes('-ing')) bad.push(id + ':' + locale);
+         const future = GRAMMAR_RULE_DETAILS.en['future-continuous-perfect'][locale].split('\\n'); for (const index of [1, 3]) if (!future[index].includes('-ing')) bad.push('future:' + index + ':' + locale);
+         if (!GRAMMAR_RULE_DETAILS.en['past-perfect'][locale].includes('’d') || !GRAMMAR_RULE_DETAILS.en['future-will'][locale].includes('’ll')) bad.push('contraction:' + locale);
+       } return !bad.length || JSON.stringify(bad); })()""")
 c.js("openBookFile(new File([Uint8Array.from(atob(%s),ch=>ch.charCodeAt(0))],'lecture.md',{lastModified:%d}))" % (json.dumps(b64), int(time.time())))
 c.wait("els.pages.textContent.includes('Marie a mangé')", timeout=20); time.sleep(0.8)
 EXC = GOLD([{"text": "a mangé", "note": "avoir + participe"}, {"text": "est partie", "note": "être + participe", "exception": True, "exceptionNote": "Participe accordé avec le sujet (verbe de mouvement)"},
