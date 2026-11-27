@@ -5735,11 +5735,20 @@ Eisceachtaí:
 
 
     // ---- Таблиці відмінювання: особа · число · рід. Рядок таблиці — «| клітинка | клітинка |», перший рядок — заголовок. ----
+    // The rows carry the Ukrainian notes; the English text gets them in English (whole bilingual cells first, then the short notes).
+    const EN_NOTES = [
+        ['COD перед дієсловом / object BEFORE the verb', 'COD BEFORE the verb'], ['рід і число / gender and number', 'gender and number'],
+        ['закінчення / ending', 'ending'], ['приклад / example', 'example'],
+        ['чол. одн. / masc. sg.', 'masc. sg.'], ['жін. одн. / fem. sg.', 'fem. sg.'], ['чол. мн. / masc. pl.', 'masc. pl.'], ['жін. мн. / fem. pl.', 'fem. pl.'],
+        ['чол. одн.', 'masc. sg.'], ['жін. одн.', 'fem. sg.'], ['чол. мн.', 'masc. pl.'], ['жін. мн.', 'fem. pl.'],
+        ['(рід не впливає)', '(gender does not matter)'], ['(рід і число!)', '(gender and number!)'], ['(з être)', '(with être)'],
+        ['інфінітив', 'infinitive'], ['(ч.)', '(m.)'], ['(ж.)', '(f.)'], ['(одн.)', '(sg.)'], ['(мн.)', '(pl.)']];
+    const enNotes = cell => EN_NOTES.reduce((text, [uk, en]) => text.split(uk).join(en), cell);
     const TBL = (id, rows) => {
         if (!fr[id]) throw new Error('details table for unknown topic ' + id);
-        const block = rows.map(r => '| ' + r.join(' | ') + ' |').join('\n');
-        fr[id].uk += '\nВідмінювання (особа, число, рід):\n' + block.replace('PERSON', 'Особа');
-        fr[id].en += '\nConjugation (person, number, gender):\n' + block.replace('PERSON', 'Person');
+        const block = rr => rr.map(r => '| ' + r.join(' | ') + ' |').join('\n');
+        fr[id].uk += '\nВідмінювання (особа, число, рід):\n' + block(rows).replace('PERSON', 'Особа');
+        fr[id].en += '\nConjugation (person, number, gender):\n' + block(rows.map(r => r.map(enNotes))).replace('PERSON', 'Person');
     };
     TBL('present', [
         ['PERSON', 'parler', 'finir', 'vendre', 'être', 'avoir', 'aller', 'faire'],
