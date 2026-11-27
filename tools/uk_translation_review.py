@@ -35,10 +35,11 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, 'tests'))
+sys.path.insert(0, os.path.join(REPO, 'tools'))
+from safe_http import local_http_status   # no urllib: tools/safe_http.py  # noqa: E402
 
 PROD = 'https://ai-ebook-reader.pages.dev/index.html'
 
@@ -156,11 +157,9 @@ def start_chrome(port, profile):
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     deadline = time.time() + 30
     while time.time() < deadline:
-        try:
-            urllib.request.urlopen(f'http://127.0.0.1:{port}/json', timeout=1).read()
+        if local_http_status(port, '/json', 1.0) == 200:
             return proc
-        except Exception:
-            time.sleep(0.3)
+        time.sleep(0.3)
     proc.terminate()
     raise SystemExit('Chrome did not open its CDP port')
 
