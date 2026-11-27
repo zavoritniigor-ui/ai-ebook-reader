@@ -1,0 +1,7 @@
+# Clean GPU base: no application PDF libraries or unpublished prototype layers.
+FROM docker.io/library/python:3.12-slim-bookworm@sha256:1475c4f5b6bcb7d35e57661d6f5d7429ec4041275633c15f2b49350ac898276d
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core libgl1 libglib2.0-0 libgomp1 libstdc++6 && rm -rf /var/lib/apt/lists/*
+COPY requirements-gpu.txt .
+RUN python -m pip install --no-cache-dir paddlepaddle-gpu==3.0.0 --index-url https://www.paddlepaddle.org.cn/packages/stable/cu126/ \
+    && python -m pip install --no-cache-dir -r requirements-gpu.txt

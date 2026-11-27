@@ -129,6 +129,7 @@ A new module: add its `<script>` in `index.html`, its path to `sw.js` `APP_SHELL
 | `library.js` | proxy to fixed library hosts only (Gutenberg, Wikisource, Internet Archive, BNR, SE); ids/paths validated; same-origin requests only |
 | `offline-model.js`, `device-llm.js` | model file downloads from allow-listed sources, size/SHA-256 checked |
 | `speech/[[path]].js` | proxy to the owner's local speech server (tunnel and token in Cloudflare secrets) |
+| `ocr/[[path]].js` | fixed-route proxy to the owner's GPU OCR server (`OCR_TUNNEL_URL`, `OCR_TOKEN` in Cloudflare secrets) |
 | `sync.js` | device sync storage (KV; the server sees only the encrypted blob) |
 | `../share-target.js` | «Share → AI Reader» before the service worker controls the page |
 | `../p/[[path]].js` + `proxy-assets/translate.js` | reading proxy `/p/<host>/…` for listed exercise sites (RFI, its H5P), with the selection-translation panel injected; only on `web.ai-ebook-reader.uk` and branch previews, never on the app's origins |

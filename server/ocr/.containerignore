@@ -1,0 +1,9 @@
+.ocr-token
+.venv
+.cache
+.jobs
+__pycache__
+tests
+README.md
+*.pdf
+*.json
