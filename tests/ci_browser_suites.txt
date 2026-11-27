@@ -144,6 +144,7 @@ tests/page_arrows_browser.py
 tests/reading_bottom_row_browser.py
 tests/fullscreen_browser.py
 tests/scanner_browser.py
+tests/scanner_server_browser.py
 tests/update_button_browser.py
 tests/tts_double_voice_browser.py
 tests/tts_lang_voice_mismatch_browser.py

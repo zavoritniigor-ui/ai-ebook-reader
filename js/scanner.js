@@ -4,9 +4,20 @@
  * Фото з камери чи галереї → краї аркуша (знаходяться самі, кути можна підправити пальцем) → вирівнювання перспективи →
  * покращення («Кольоровий» — білий папір без тіней, кольори тексту, печаток і маркера лишаються; «Ч/Б», «Сірий»; «Оригінал» — фото як є) → PDF (A4, Letter або за розміром фото),
  * JPG чи PNG; друк, «Поділитися», зберегти на пристрій, відкрити в читалці.
- * Усе на цьому пристрої: фото нікуди не надсилаються, нічого не зберігається між сеансами. Без бібліотек: PDF складає
+ * Обробка на пристрої або явний вибір GPU-сервера. Нічого не зберігається між сеансами. Локальний PDF складає
  * scanBuildPdf, кілька JPG/PNG пакуються в ZIP (JSZip, уже є в застосунку). */
 Object.assign(I18N, {
+    scanEngine: { uk: 'Де обробляти фото', en: 'Where to process photos', fr: 'Où traiter les photos', ru: 'Где обрабатывать фото', es: 'Dónde procesar las fotos' },
+    scanDevice: { uk: 'На цьому пристрої', en: 'On this device', fr: 'Sur cet appareil', ru: 'На этом устройстве', es: 'En este dispositivo' },
+    scanServer: { uk: 'На OCR-сервері', en: 'On the OCR server', fr: 'Sur le serveur OCR', ru: 'На OCR-сервере', es: 'En el servidor OCR' },
+    scanServerPrivacy: { uk: 'Оригінали вибраних фото надсилаються через HTTPS на OCR-сервер власника Reader лише після натискання дії. Сервер повертає PDF з текстом англійською та французькою.', en: 'Selected original photos are sent over HTTPS to the Reader owner’s OCR server only when you choose an export action. It returns a PDF with English and French text.', fr: 'Les photos originales sélectionnées sont envoyées en HTTPS au serveur OCR du propriétaire de Reader uniquement lors de l’export. Il renvoie un PDF avec le texte anglais et français.', ru: 'Оригиналы выбранных фото отправляются по HTTPS на OCR-сервер владельца Reader только при экспорте. Он возвращает PDF с английским и французским текстом.', es: 'Las fotos originales seleccionadas se envían por HTTPS al servidor OCR del propietario de Reader solo al exportar. Devuelve un PDF con texto inglés y francés.' },
+    scanDewarp: { uk: 'Випрямляти вигин сторінки (експериментально)', en: 'Flatten page curvature (experimental)', fr: 'Aplatir la courbure (expérimental)', ru: 'Выпрямлять изгиб страницы (экспериментально)', es: 'Aplanar la curvatura (experimental)' },
+    scanServerBusy: { uk: 'OCR на сервері: сторінка {n} з {total}…', en: 'Server OCR: page {n} of {total}…', fr: 'OCR serveur : page {n} sur {total}…', ru: 'OCR на сервере: страница {n} из {total}…', es: 'OCR del servidor: página {n} de {total}…' },
+    scanServerUnavailable: { uk: 'OCR-сервер ще не налаштовано. Виберіть обробку на пристрої або спробуйте пізніше.', en: 'The OCR server is not configured yet. Choose on-device processing or try later.', fr: 'Le serveur OCR n’est pas encore configuré. Choisissez le traitement local ou réessayez plus tard.', ru: 'OCR-сервер ещё не настроен. Выберите обработку на устройстве или попробуйте позже.', es: 'El servidor OCR aún no está configurado. Elija el procesamiento local o inténtelo más tarde.' },
+    scanServerOffline: { uk: 'Немає зв’язку з OCR-сервером. Перевірте інтернет і чи працює сервер.', en: 'Cannot reach the OCR server. Check your internet connection and that the server is running.', fr: 'Serveur OCR inaccessible. Vérifiez Internet et que le serveur fonctionne.', ru: 'Нет связи с OCR-сервером. Проверьте интернет и работу сервера.', es: 'No se puede conectar con el servidor OCR. Compruebe Internet y que el servidor esté encendido.' },
+    scanServerLimit: { uk: 'Для сервера виберіть до 20 фото, кожне до 20 МіБ.', en: 'Select up to 20 photos, each up to 20 MiB, for the server.', fr: 'Sélectionnez au plus 20 photos de 20 Mio maximum pour le serveur.', ru: 'Для сервера выберите до 20 фото, каждое до 20 МиБ.', es: 'Seleccione hasta 20 fotos de hasta 20 MiB para el servidor.' },
+    scanServerRetry: { uk: 'OCR-сервер зайнятий. Спробуйте ще раз трохи пізніше.', en: 'The OCR server is busy. Try again shortly.', fr: 'Le serveur OCR est occupé. Réessayez bientôt.', ru: 'OCR-сервер занят. Попробуйте чуть позже.', es: 'El servidor OCR está ocupado. Inténtelo de nuevo en breve.' },
+    scanServerImage: { uk: 'Сервер не зміг обробити фото або рамку. Перевірте формат і кути сторінки.', en: 'The server could not process a photo or its frame. Check the image format and page corners.', fr: 'Le serveur ne peut pas traiter une photo ou son cadre. Vérifiez le format et les coins.', ru: 'Сервер не смог обработать фото или рамку. Проверьте формат и углы страницы.', es: 'El servidor no pudo procesar una foto o su marco. Compruebe el formato y las esquinas.' },
     mScan: { uk: 'Сканер документів', en: 'Document scanner', fr: 'Scanner de documents', ru: 'Сканер документов', zh: '文档扫描', ko: '문서 스캐너', hi: 'दस्तावेज़ स्कैनर', ga: 'Scanóir doiciméad' },
     mScanDesc: { uk: 'Фото сторінок → PDF для друку, JPG чи PNG', en: 'Photos of pages → PDF for printing, JPG or PNG', fr: 'Photos de pages → PDF à imprimer, JPG ou PNG',
                  ru: 'Фото страниц → PDF для печати, JPG или PNG', zh: '页面照片 → 可打印的 PDF、JPG 或 PNG', ko: '페이지 사진 → 인쇄용 PDF, JPG 또는 PNG',
@@ -94,8 +105,10 @@ const SCAN_RETRY_SIDE = 2000;   // друга спроба для фото, як
 const SCAN_FILTERS = [['doc', 'scanFilterDoc'], ['bw', 'scanFilterBw'], ['gray', 'scanFilterGray'], ['orig', 'scanFilterOrig']];
 const SCAN_FORMATS = [['pdf-a4', 'scanPdfA4'], ['pdf-letter', 'scanPdfLetter'], ['pdf-fit', 'scanPdfFit'], ['jpg', 'scanJpg'], ['jpg-one', 'scanJpgOne'], ['png', 'scanPng']];
 // Сторінка: { file, corners: [[x,y]×4] частки фото (ЛВ, ПВ, ПН, ЛН), rotation (0/90/180/270), filter, out: JPEG Blob, w, h, thumb: blob-URL }.
-const scanState = { pages: [], busy: false, edit: null, nextId: 1 };
+const scanState = { pages: [], busy: false, edit: null, nextId: 1, controller: null };
 function scanEl(id) { return document.getElementById(id); }
+function scanUsesServer() { return scanEl('scan-engine')?.value === 'server'; }
+function scanWorkSide() { return scanUsesServer() ? 1000 : SCAN_WORK_SIDE; }
 // З чим працюють «Для всіх», друк і збереження: позначені галочкою сторінки, а коли жодної не позначено — усі
 // (власник, 2026-11-01: «обробити усі фото, лише відмітивши їх після завантаження»).
 function scanTargets() { const chosen = scanState.pages.filter(p => p.selected); return chosen.length ? chosen : scanState.pages; }
@@ -242,11 +255,13 @@ const scanBlob = (canvas, type, quality) => new Promise((resolve, reject) => can
 // Готова сторінка: вирівняна, покращена, повернута → JPEG і мініатюра. source — уже завантажене фото (у редакторі).
 // release: source більше не потрібне (додавання фото) — його полотно звільняється, щойно пікселі аркуша прочитано.
 async function scanRender(page, source = null, release = false) {
-    const canvas = source || await scanLoad(page.file, SCAN_WORK_SIDE);
+    const previewOnly = scanUsesServer();
+    const canvas = source || await scanLoad(page.file, scanWorkSide());
     try {
         const out = scanRotate(scanFilter(scanWarp(canvas, page.corners, release || !source), page.filter), page.rotation);
         page.out = await scanBlob(out, 'image/jpeg', page.filter === 'bw' ? 0.82 : 0.88);
         page.w = out.width; page.h = out.height;
+        page.previewOnly = previewOnly;
         const k = 240 / Math.max(out.width, out.height), thumb = document.createElement('canvas');
         thumb.width = Math.max(1, Math.round(out.width * k)); thumb.height = Math.max(1, Math.round(out.height * k));
         thumb.getContext('2d').drawImage(out, 0, 0, thumb.width, thumb.height);
@@ -487,6 +502,13 @@ function buildScanner() {
     close.addEventListener('click', closeScanner);
     head.append(title, close);
     const add = document.createElement('div'); add.className = 'scan-add';
+    const engineRow = document.createElement('label'); engineRow.className = 'scan-row';
+    const engineLabel = document.createElement('span'); engineLabel.dataset.i18n = 'scanEngine';
+    const engine = document.createElement('select'); engine.id = 'scan-engine'; engine.dataset.i18nAria = 'scanEngine';
+    for (const [value, key] of [['device', 'scanDevice'], ['server', 'scanServer']]) { const o = document.createElement('option'); o.value = value; o.dataset.i18n = key; engine.append(o); }
+    engine.value = scanStored('reader_scan_engine', 'device', [['device'], ['server']]);
+    engine.dataset.previous = engine.value;
+    engineRow.append(engineLabel, engine);
     const camera = document.createElement('input'); camera.type = 'file'; camera.accept = 'image/*'; camera.setAttribute('capture', 'environment'); camera.id = 'scan-camera-input'; camera.hidden = true;
     const gallery = document.createElement('input'); gallery.type = 'file'; gallery.accept = 'image/*'; gallery.multiple = true; gallery.id = 'scan-gallery-input'; gallery.hidden = true;
     for (const input of [camera, gallery]) input.addEventListener('change', () => { const files = [...input.files]; input.value = ''; scanAddFiles(files, input === camera); });
@@ -555,13 +577,29 @@ function buildScanner() {
     ocrLang.value = scanStored('reader_scan_ocr_lang', scanOcrLangDefault(), SCAN_OCR_LANGS);
     ocrLang.addEventListener('change', () => scanStore('reader_scan_ocr_lang', ocrLang.value));
     ocrRow.append(ocr, ocrText, ocrLang);
-    const syncOcr = () => { ocrRow.hidden = !format.value.startsWith('pdf'); nupSel.hidden = format.value !== 'pdf-a4' && format.value !== 'pdf-letter'; };
+    const dewarpRow = document.createElement('label'); dewarpRow.className = 'scan-ocr'; dewarpRow.id = 'scan-dewarp-row';
+    const dewarp = document.createElement('input'); dewarp.type = 'checkbox'; dewarp.id = 'scan-dewarp';
+    const dewarpText = document.createElement('span'); dewarpText.dataset.i18n = 'scanDewarp'; dewarpRow.append(dewarp, dewarpText);
+    const cancelExport = scanButton('scanCancel', () => scanState.controller?.abort()); cancelExport.id = 'scan-cancel-export'; cancelExport.hidden = true;
+    const syncOcr = () => {
+        const server = scanUsesServer();
+        for (const o of format.options) o.disabled = server && !o.value.startsWith('pdf');
+        if (server && !format.value.startsWith('pdf')) format.value = 'pdf-fit';
+        ocrRow.hidden = server || !format.value.startsWith('pdf'); dewarpRow.hidden = !server;
+        nupSel.hidden = format.value !== 'pdf-a4' && format.value !== 'pdf-letter';
+        const privacy = scanEl('scan-privacy');
+        if (privacy) { privacy.dataset.i18n = server ? 'scanServerPrivacy' : 'scanPrivacy'; privacy.textContent = t(privacy.dataset.i18n); }
+    };
+    engine.addEventListener('change', () => {
+        if (scanState.busy) { engine.value = engine.dataset.previous; return; }
+        engine.dataset.previous = engine.value; scanStore('reader_scan_engine', engine.value); syncOcr();
+    });
     format.addEventListener('change', syncOcr); syncOcr();
     const fmtRow = document.createElement('div'); fmtRow.className = 'scan-format-row'; fmtRow.append(format, nupSel);
-    out.append(allRow, fmtRow, ocrRow, actions);
-    const privacy = document.createElement('p'); privacy.className = 'scan-privacy'; privacy.dataset.i18n = 'scanPrivacy';
+    out.append(allRow, fmtRow, ocrRow, dewarpRow, actions, cancelExport);
+    const privacy = document.createElement('p'); privacy.id = 'scan-privacy'; privacy.className = 'scan-privacy'; privacy.dataset.i18n = scanUsesServer() ? 'scanServerPrivacy' : 'scanPrivacy';
     const listView = document.createElement('div'); listView.id = 'scan-list-view'; listView.className = 'scan-view';
-    listView.append(add, status, empty, selRow, list, out, privacy);
+    listView.append(engineRow, add, status, empty, selRow, list, out, privacy);
     // Редактор однієї сторінки
     const editView = document.createElement('div'); editView.id = 'scan-edit-view'; editView.className = 'scan-view'; editView.hidden = true;
     const hint = document.createElement('div'); hint.className = 'scan-hint'; hint.dataset.i18n = 'scanCorners';
@@ -593,6 +631,7 @@ function buildScanner() {
     tools.append(edges, filters, preview, done);
     editView.append(hint, stage, tools);
     box.append(head, listView, editView); modal.append(box); document.body.append(modal);
+    syncOcr();
     scanBindHandles(stage);
     window.addEventListener('resize', () => { if (scanState.edit) scanDrawEditor(); });
     document.addEventListener('keydown', e => {
@@ -608,6 +647,7 @@ function openScanner() {
     scanRenderList();
 }
 function closeScanner() {
+    scanState.controller?.abort();
     if (scanState.edit) scanCloseEditor(false);
     scanEl('scanner')?.classList.remove('open');
 }
@@ -638,7 +678,7 @@ async function scanAddFiles(files, fromCamera) {
             // Перед тим як здатися, фото пробується ще раз меншим (SCAN_RETRY_SIDE) — після паузи, коли пам'ять попередніх
             // уже звільнена (власник, 2026-11-01: одне фото з серії «не вдалося відкрити», хоча це звичайний JPG).
             let ok = false, loaded = false;
-            for (const side of [SCAN_WORK_SIDE, SCAN_RETRY_SIDE]) {
+            for (const side of [scanWorkSide(), Math.min(scanWorkSide(), SCAN_RETRY_SIDE)]) {
                 let source;
                 try { source = await scanLoad(files[i], side); loaded = true; } catch (e) { source = null; }
                 if (source) {
@@ -757,7 +797,7 @@ function scanClearAll() {
 async function scanOpenEditor(page) {
     if (scanState.busy) return;
     let source;
-    try { source = await scanLoad(page.file, SCAN_WORK_SIDE); } catch (e) { scanStatus(t('scanBadImage').replace('{name}', page.file.name || '?')); return; }
+    try { source = await scanLoad(page.file, scanWorkSide()); } catch (e) { scanStatus(t('scanBadImage').replace('{name}', page.file.name || '?')); return; }
     scanState.edit = { page, source, corners: page.corners.map(c => c.slice()), rotation: page.rotation, filter: page.filter, token: 0 };
     scanEl('scan-list-view').hidden = true; scanEl('scan-edit-view').hidden = false;
     scanSyncFilters(); scanDrawEditor(); scanEditPreview();
@@ -854,15 +894,33 @@ async function scanEditPreview() {
 async function scanExport(action) {
     if (!scanState.pages.length || scanState.busy) return;
     const format = scanEl('scan-format').value, pages = scanTargets(), nup = scanNup();
-    if (action === 'print') { scanPrint(format, pages, nup); return; }
+    const server = scanUsesServer();
     scanState.busy = true; scanStatus(t('libLoading'));
+    const controls = [...scanEl('scanner').querySelectorAll('button,input,select')].filter(el => !el.classList.contains('close-panel-btn') && el.id !== 'scan-cancel-export');
+    const disabled = controls.map(el => el.disabled); controls.forEach(el => { el.disabled = true; });
+    scanState.controller = server ? new AbortController() : null;
+    scanEl('scan-cancel-export').hidden = !server;
     try {
         const target = action === 'open' && !format.startsWith('pdf') ? 'pdf-fit' : format;
-        if (target.startsWith('pdf') && scanEl('scan-ocr')?.checked) {
-            try { await scanOcrAll(scanEl('scan-ocr-lang').value, pages); }
-            catch (e) { scanStatus(t('scanOcrFailed')); await new Promise(r => setTimeout(r, 1200)); }   // PDF буде, лише без тексту
+        let file;
+        if (server) {
+            const result = await OcrClient.createPdf(pages, { paper: target === 'pdf-a4' ? 'a4' : target === 'pdf-letter' ? 'letter' : 'fit', nup: target === 'pdf-fit' ? 1 : nup, dewarp: scanEl('scan-dewarp').checked }, {
+                signal: scanState.controller.signal,
+                onProgress: p => scanStatus(p.stage === 'page' ? t('scanServerBusy').replace('{n}', p.n).replace('{total}', p.total) : t('libLoading'))
+            });
+            file = result.file;
+        } else {
+            // A page first added in server mode is only a preview. Re-render it from its original for local export.
+            for (const page of pages) if (page.previewOnly) await scanRender(page);
+            if (action === 'print') { scanPrint(format, pages, nup); scanStatus(''); return; }
+            if (target.startsWith('pdf') && scanEl('scan-ocr')?.checked) {
+                try { await scanOcrAll(scanEl('scan-ocr-lang').value, pages); }
+                catch (e) { scanStatus(t('scanOcrFailed')); await new Promise(r => setTimeout(r, 1200)); }
+            }
+            file = await scanMakeFile(target, pages, target === format ? nup : 1);
         }
-        const file = await scanMakeFile(target, pages, target === format ? nup : 1);
+        scanState.controller = null;
+        if (action === 'print') { scanPrintPdf(file); scanStatus(''); return; }
         if (action === 'open') { closeScanner(); scanStatus(''); await openBookFile(markShelfScan(file)); return; }
         if (action === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
             try { await navigator.share({ files: [file], title: file.name }); scanStatus(''); return; }
@@ -870,8 +928,23 @@ async function scanExport(action) {
         }
         scanStatus(await scanSaveFile(file));
     } catch (e) {
-        scanStatus(t('scanFailed'));
-    } finally { scanState.busy = false; }
+        const key = { too_large: 'scanServerLimit', invalid_image: 'scanServerImage', busy: 'scanServerRetry', unavailable: 'scanServerUnavailable', offline: 'scanServerOffline' }[e.code];
+        scanStatus(e.name === 'AbortError' ? '' : t(key || 'scanFailed'));
+    } finally {
+        scanState.controller = null; scanState.busy = false;
+        controls.forEach((el, i) => { el.disabled = disabled[i]; });
+        scanEl('scan-cancel-export').hidden = true;
+    }
+}
+function scanPrintPdf(file) {
+    const url = URL.createObjectURL(file), frame = document.createElement('iframe');
+    frame.title = t('scanPrint'); frame.style.cssText = 'position:fixed;width:1px;height:1px;border:0;left:-10000px';
+    const cleanup = () => { frame.remove(); URL.revokeObjectURL(url); };
+    frame.onload = () => {
+        frame.contentWindow.addEventListener('afterprint', cleanup, { once: true });
+        frame.contentWindow.focus(); frame.contentWindow.print();
+    };
+    frame.src = url; document.body.append(frame); setTimeout(cleanup, 120000);
 }
 async function scanSaveFile(file) {
     if (typeof window.showSaveFilePicker === 'function') {

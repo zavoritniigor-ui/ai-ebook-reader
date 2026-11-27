@@ -9,7 +9,6 @@ Read before your first edit; add your row; remove it after your merge ([how](doc
 
 | Agent | Branch | Files / area | State | Since |
 | --- | --- | --- | --- | --- |
-| Claude Code (Android offline scanner) | `feat/android-offline-ocr` | `android/ocr-scanner/**` | PR open; physical Pixel/Lenovo checks and curved-page quality still open | 2026-11-26 |
 | Claude Code, cloud session «Порівняння функцій конкурентів» | `ccr-a7aab2dd-fip6w9` | untangling module cycles: `core-i18n.js`, `pwa-lifecycle.js`, `ui-tooltip.js`, label refreshers in `tts`/`navigation`/`dictation`/`learning-stats`/`lang-detect`/`grammar-lookup`/`book-audio` | PR open | 2026-11-14 |
 | Claude Code on the owner's computer (setup session) | `claude-code-setup` | `.claude/settings.json` (deny rules, syntax hook), `.claude/hooks/`, `.claude/skills/ship/` | PR open, waits for the owner's review | 2026-11-16 |
 | Claude Code on the owner's computer | — | «Analects» OCR highlight offset (`js/pdf-render.js`); waits for the owner's PDF file | not started | 2026-10-31 |
