@@ -1,0 +1,58 @@
+name: Android offline OCR
+
+# Builds the separate offline scanner APK (android/ocr-scanner) and runs its host unit tests and lint.
+# Instrumentation tests need an emulator with KVM and stay a local gate (see android/ocr-scanner/README.md).
+# Only actions/* are used, pinned to commit SHAs; the Gradle wrapper pins its own distribution SHA-256.
+on:
+  pull_request:
+    branches: [main]
+    paths: ['android/ocr-scanner/**', '.github/workflows/android-ocr.yml']
+  push:
+    branches: [main]
+    paths: ['android/ocr-scanner/**', '.github/workflows/android-ocr.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Set up JDK 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install the pinned Android platform and build tools from the runner's SDK manager
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+      - name: Unit tests, lint and debug build
+        working-directory: android/ocr-scanner
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+      - name: Check that the merged manifest has no network permission
+        working-directory: android/ocr-scanner
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump permissions app/build/outputs/apk/debug/app-debug.apk > permissions.txt
+          cat permissions.txt
+          if grep -E 'android.permission.(INTERNET|ACCESS_NETWORK_STATE)' permissions.txt; then exit 1; fi
+      - name: Upload the debug APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: reader-offline-scanner-debug
+          path: android/ocr-scanner/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Upload test and lint reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: android-ocr-reports
+          path: android/ocr-scanner/app/build/reports/
