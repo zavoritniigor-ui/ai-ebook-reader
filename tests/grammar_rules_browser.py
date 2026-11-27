@@ -231,6 +231,9 @@ check("33d continuous tense formulas keep -ing and contracted forms retain their
          const future = GRAMMAR_RULE_DETAILS.en['future-continuous-perfect'][locale].split('\\n'); for (const index of [1, 3]) if (!future[index].includes('-ing')) bad.push('future:' + index + ':' + locale);
          if (!GRAMMAR_RULE_DETAILS.en['past-perfect'][locale].includes('’d') || !GRAMMAR_RULE_DETAILS.en['future-will'][locale].includes('’ll')) bad.push('contraction:' + locale);
        } return !bad.length || JSON.stringify(bad); })()""")
+check("33e the English explanation (also the fallback for untranslated UI languages and the AI's reference) carries no Ukrainian notes, tables included",
+      """(() => { const bad = []; for (const book of ['en', 'fr']) for (const [id, d] of Object.entries(GRAMMAR_RULE_DETAILS[book])) { const m = d.en.match(/\\p{Script=Cyrillic}+/gu); if (m) bad.push(book + ':' + id + ':' + m.join(' ')); }
+         return !bad.length || JSON.stringify(bad.slice(0, 12)); })()""")
 c.js("openBookFile(new File([Uint8Array.from(atob(%s),ch=>ch.charCodeAt(0))],'lecture.md',{lastModified:%d}))" % (json.dumps(b64), int(time.time())))
 c.wait("els.pages.textContent.includes('Marie a mangé')", timeout=20); time.sleep(0.8)
 EXC = GOLD([{"text": "a mangé", "note": "avoir + participe"}, {"text": "est partie", "note": "être + participe", "exception": True, "exceptionNote": "Participe accordé avec le sujet (verbe de mouvement)"},
