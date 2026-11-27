@@ -38,15 +38,7 @@ Exceptions:
 • Verbes irréguliers : être (je suis, nous sommes, ils sont), avoir (j’ai, nous avons, ils ont), aller (je vais, ils vont), faire (vous faites, ils font), dire (vous dites), venir, pouvoir, vouloir, savoir etc. — les formes doivent être apprises.
 • Changements orthographiques dans les verbes -er : manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
 • Les verbes -er prennent -es sous la forme tu mais abandonnent -s à l'impératif (parle !).
-• Tous les verbes -ir ne ressemblent pas à finir : partir, sortir, dormir, sentir, servir — je pars, nous partons (pas de -iss-) ; ouvrir, offrir, souffrir, cueillir va comme -er (j’ouvre, tu ouvres).
-Conjugaison (personne, nombre, genre):
-| Personne | parler | finir | vendre | être | avoir | aller | faire |
-| je | parle | finis | vends | suis | ai | vais | fais |
-| tu | parles | finis | vends | es | as | vas | fais |
-| il / elle / on | parle | finit | vend | est | a | va | fait |
-| nous | parlons | finissons | vendons | sommes | avons | allons | faisons |
-| vous | parlez | finissez | vendez | êtes | avez | allez | faites |
-| ils / elles | parlent | finissent | vendent | sont | ont | vont | font |`,
+• Tous les verbes -ir ne ressemblent pas à finir : partir, sortir, dormir, sentir, servir — je pars, nous partons (pas de -iss-) ; ouvrir, offrir, souffrir, cueillir va comme -er (j’ouvre, tu ouvres).`,
         ru: `Правила:
 • Глаголы -er (группа 1, большинство): je parle, tu parles, il parle, nous parlons, vous parlez, ils parlent.
 • Глаголы -ir (finir): je finis, tu finis, il finit, nous finissons, vous finissez, ils finissent.
@@ -56,15 +48,7 @@ Conjugaison (personne, nombre, genre):
 • Неправильные глаголы: être (je suis, nous sommes, ils sont), avoir (j’ai, nous avons, ils ont), aller (je vais, ils vont), faire (vous faites, ils font), dire (vous dites), venir, pouvoir, vouloir, savoir и т. д. — формы необходимо выучить.
 • Изменения правописания глаголов -er: manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
 • Глаголы -er принимают -es в форме tu, но отбрасывают -s в повелительном наклонении (parle !).
-• Не каждый глагол -ir выглядит как finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (нет -iss-); ouvrir, offrir, souffrir, cueillir идет как -er (j’ouvre, tu ouvres).
-Спряжение (лицо, число, род):
-| Лицо | parler | finir | vendre | être | avoir | aller | faire |
-| je | parle | finis | vends | suis | ai | vais | fais |
-| tu | parles | finis | vends | es | as | vas | fais |
-| il / elle / on | parle | finit | vend | est | a | va | fait |
-| nous | parlons | finissons | vendons | sommes | avons | allons | faisons |
-| vous | parlez | finissez | vendez | êtes | avez | allez | faites |
-| ils / elles | parlent | finissent | vendent | sont | ont | vont | font |`,
+• Не каждый глагол -ir выглядит как finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (нет -iss-); ouvrir, offrir, souffrir, cueillir идет как -er (j’ouvre, tu ouvres).`,
         es: `Reglas:
 • Verbos -er (grupo 1, la mayoría): je parle, tu parles, il parle, nous parlons, vous parlez, ils parlent.
 • -ir verbos (finir): je finis, tu finis, il finit, nous finissons, vous finissez, ils finissent.
@@ -74,15 +58,7 @@ Excepciones:
 • Verbos irregulares: être (je suis, nous sommes, ils sont), avoir (j’ai, nous avons, ils ont), aller (je vais, ils vont), faire (vous faites, ils font), dire (vous dites), venir, pouvoir, vouloir, savoir, etc. — las formas deben aprenderse.
 • Cambios ortográficos en los verbos -er: manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
 • Los verbos -er toman -es en la forma tu pero eliminan el -s en imperativo (¡parle!).
-• No todos los verbos -ir son así: finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (no -iss-); ouvrir, offrir, souffrir, cueillir es como -er (j’ouvre, tu ouvres).
-Conjugación (persona, número, género):
-| Persona | parler | finir | vendre | être | avoir | aller | faire |
-| je | parle | finis | vends | suis | ai | vais | fais |
-| tu | parles | finis | vends | es | as | vas | fais |
-| il / elle / on | parle | finit | vend | est | a | va | fait |
-| nous | parlons | finissons | vendons | sommes | avons | allons | faisons |
-| vous | parlez | finissez | vendez | êtes | avez | allez | faites |
-| ils / elles | parlent | finissent | vendent | sont | ont | vont | font |`,
+• No todos los verbos -ir son así: finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (no -iss-); ouvrir, offrir, souffrir, cueillir es como -er (j’ouvre, tu ouvres).`,
         zh: `规则:
 • -er 动词（第 1 组，大多数）：je parle, tu parles, il parle, nous parlons, vous parlez, ils parlent.
 • -ir 动词 (finir)：je finis, tu finis, il finit, nous finissons, vous finissez, ils finissent.
@@ -92,15 +68,7 @@ Conjugación (persona, número, género):
 • 不规则动词：être (je suis, nous sommes, ils sont)、avoir (j’ai, nous avons, ils ont)、aller (je vais, ils vont)、faire (vous faites, ils font)、dire (vous dites)、venir, pouvoir, vouloir, savoir 等 - 形式必须学习。
 • -er 动词的拼写变化：manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
 • -er 动词采用 tu 形式的 -es，但在祈使句中删除 -s（parle！）。
-• 并非每个 -ir 动词都像 finir：partir, sortir, dormir, sentir, servir — je pars, nous partons（没有 -iss-）； ouvrir, offrir, souffrir, cueillir 就像 -er (j’ouvre, tu ouvres) 一样。
-变位（人称、数、性）:
-| 人称 | parler | finir | vendre | être | avoir | aller | faire |
-| je | parle | finis | vends | suis | ai | vais | fais |
-| tu | parles | finis | vends | es | as | vas | fais |
-| il / elle / on | parle | finit | vend | est | a | va | fait |
-| nous | parlons | finissons | vendons | sommes | avons | allons | faisons |
-| vous | parlez | finissez | vendez | êtes | avez | allez | faites |
-| ils / elles | parlent | finissent | vendent | sont | ont | vont | font |`,
+• 并非每个 -ir 动词都像 finir：partir, sortir, dormir, sentir, servir — je pars, nous partons（没有 -iss-）； ouvrir, offrir, souffrir, cueillir 就像 -er (j’ouvre, tu ouvres) 一样。`,
         ko: `규칙:
 • -er 동사(그룹 1, 다수): je parle, tu parles, il parle, nous parlons, vous parlez, ils parlent.
 • -ir 동사 (finir): je finis, tu finis, il finit, nous finissons, vous finissez, ils finissent.
@@ -110,15 +78,7 @@ Conjugación (persona, número, género):
 • 불규칙 동사: être (je suis, nous sommes, ils sont), avoir (j’ai, nous avons, ils ont), aller (je vais, ils vont), faire (vous faites, ils font), dire (vous dites), venir, pouvoir, vouloir, savoir 등 — 형태를 배워야 합니다.
 • -er 동사의 철자 변경: manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
 • -er 동사는 tu 형식에서 -es를 취하지만 명령형에서는 -s를 삭제합니다(parle !).
-• 모든 -ir 동사가 finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (-iss- 없음)와 같은 것은 아닙니다. ouvrir, offrir, souffrir, cueillir는 -er (j’ouvre, tu ouvres)처럼 됩니다.
-활용(인칭, 수, 성):
-| 인칭 | parler | finir | vendre | être | avoir | aller | faire |
-| je | parle | finis | vends | suis | ai | vais | fais |
-| tu | parles | finis | vends | es | as | vas | fais |
-| il / elle / on | parle | finit | vend | est | a | va | fait |
-| nous | parlons | finissons | vendons | sommes | avons | allons | faisons |
-| vous | parlez | finissez | vendez | êtes | avez | allez | faites |
-| ils / elles | parlent | finissent | vendent | sont | ont | vont | font |`,
+• 모든 -ir 동사가 finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (-iss- 없음)와 같은 것은 아닙니다. ouvrir, offrir, souffrir, cueillir는 -er (j’ouvre, tu ouvres)처럼 됩니다.`,
         hi: `नियम:
 • -er क्रियाएँ (पहला समूह, सबसे अधिक): je parle, tu parles, il parle, nous parlons, vous parlez, ils parlent.
 • -ir क्रियाएँ (finir): je finis, tu finis, il finit, nous finissons, vous finissez, ils finissent.
@@ -128,15 +88,7 @@ Conjugación (persona, número, género):
 • अनियमित क्रियाएँ: être (je suis, nous sommes, ils sont), avoir (j’ai, nous avons, ils ont), aller (je vais, ils vont), faire (vous faites, ils font), dire (vous dites), venir, pouvoir, vouloir, savoir आदि — रूप याद करने होते हैं।
 • -er क्रियाओं में वर्तनी-परिवर्तन: manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
 • -er क्रियाओं के tu रूप में -es आता है, लेकिन आज्ञार्थक में -s हटता है (parle !)।
-• हर -ir क्रिया का रूपांतरण finir जैसा नहीं होता: partir, sortir, dormir, sentir, servir — je pars, nous partons (-iss- नहीं); ouvrir, offrir, souffrir, cueillir का रूपांतरण -er जैसा होता है (j’ouvre, tu ouvres)।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | parler | finir | vendre | être | avoir | aller | faire |
-| je | parle | finis | vends | suis | ai | vais | fais |
-| tu | parles | finis | vends | es | as | vas | fais |
-| il / elle / on | parle | finit | vend | est | a | va | fait |
-| nous | parlons | finissons | vendons | sommes | avons | allons | faisons |
-| vous | parlez | finissez | vendez | êtes | avez | allez | faites |
-| ils / elles | parlent | finissent | vendent | sont | ont | vont | font |`,
+• हर -ir क्रिया का रूपांतरण finir जैसा नहीं होता: partir, sortir, dormir, sentir, servir — je pars, nous partons (-iss- नहीं); ouvrir, offrir, souffrir, cueillir का रूपांतरण -er जैसा होता है (j’ouvre, tu ouvres)।`,
         ga: `Rialacha:
 • Briathra -er (grúpa 1, an chuid is mó): je parle, tu parles, il parle, nous parlons, vous parlez, ils parlent.
 • Briathra -ir (finir): je finis, tu finis, il finit, nous finissons, vous finissez, ils finissent.
@@ -146,15 +98,17 @@ Eisceachtaí:
 • Briathra neamhrialta: être (je suis, nous sommes, ils sont), avoir (j’ai, nous avons, ils ont), aller (je vais, ils vont), faire (vous faites, ils font), dire (vous dites), venir, pouvoir, vouloir, savoir srl. — ní mór na foirmeacha a fhoghlaim.
 • Athruithe litrithe i mbriathra -er: manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
 • Glacann briathra -er -es san fhoirm tu, ach fágtar -s ar lár sa mhodh ordaitheach (parle !).
-• Ní réimnítear gach briathar -ir mar finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (gan -iss-); réimnítear ouvrir, offrir, souffrir, cueillir mar bhriathra -er (j’ouvre, tu ouvres).
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | parler | finir | vendre | être | avoir | aller | faire |
-| je | parle | finis | vends | suis | ai | vais | fais |
-| tu | parles | finis | vends | es | as | vas | fais |
-| il / elle / on | parle | finit | vend | est | a | va | fait |
-| nous | parlons | finissons | vendons | sommes | avons | allons | faisons |
-| vous | parlez | finissez | vendez | êtes | avez | allez | faites |
-| ils / elles | parlent | finissent | vendent | sont | ont | vont | font |`
+• Ní réimnítear gach briathar -ir mar finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (gan -iss-); réimnítear ouvrir, offrir, souffrir, cueillir mar bhriathra -er (j’ouvre, tu ouvres).`,
+        ar: `القواعد:
+• أفعال ‎-er (المجموعة الأولى، وهي الأغلبية): je parle, tu parles, il parle, nous parlons, vous parlez, ils parlent.
+• أفعال ‎-ir (finir): je finis, tu finis, il finit, nous finissons, vous finissez, ils finissent.
+• أفعال ‎-re (vendre): je vends, tu vends, il vend, nous vendons, vous vendez, ils vendent.
+• الـ présent يعبّر عن حدث يجري الآن، وعن العادة والحقيقة العامة، ومع المواعيد الثابتة عن المستقبل القريب أيضًا (le train part à neuf heures).
+الاستثناءات:
+• الأفعال الشاذة: être (je suis, nous sommes, ils sont)، avoir (j’ai, nous avons, ils ont)، aller (je vais, ils vont)، faire (vous faites, ils font)، dire (vous dites)، وvenir وpouvoir وvouloir وsavoir وغيرها — يجب حفظ صيغها.
+• تغيرات إملائية في أفعال ‎-er: manger → nous mangeons, commencer → nous commençons, appeler → j’appelle, acheter → j’achète, payer → je paie/je paye.
+• أفعال ‎-er تأخذ ‎-es مع tu لكنها تُسقط ‎-s في الأمر (parle !).
+• ليس كل فعل ‎-ir يُصرَّف مثل finir: partir, sortir, dormir, sentir, servir — je pars, nous partons (بلا ‎-iss-)؛ وouvrir, offrir, souffrir, cueillir تُصرَّف مثل ‎-er (j’ouvre, tu ouvres).`
     });
 
     D('passe-compose', {
@@ -184,17 +138,7 @@ Exceptions:
 Exceptions:
 • Participes irréguliers : avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • Certains verbes de mouvement prennent avoir lorsqu'ils ont un complément d’objet direct : j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier (mais : elle est sortie).
-• Accord : avec être, le participe s’accorde avec le sujet (elles sont parties) ; avec avoir, uniquement avec le COD placé AVANT le verbe (les lettres qu’il a écrites) ; pour les verbes pronominaux, avec le COD placé avant le verbe : elle s’est lavée, mais elle s’est lavé les mains, ils se sont parlé.
-Conjugaison (personne, nombre, genre):
-| Personne | avoir + parlé (le genre ne change pas la forme) | être + allé (genre et nombre !) |
-| je | j’ai parlé | je suis allé (m.) / allée (f.) |
-| tu | tu as parlé | tu es allé / allée |
-| il | il a parlé | il est allé |
-| elle | elle a parlé | elle est allée |
-| nous | nous avons parlé | nous sommes allés (m.) / allées (f.) |
-| vous | vous avez parlé | vous êtes allé(e) (sing.) · allé(e)s (plur.) |
-| ils | ils ont parlé | ils sont allés |
-| elles | elles ont parlé | elles sont allées |`,
+• Accord : avec être, le participe s’accorde avec le sujet (elles sont parties) ; avec avoir, uniquement avec le COD placé AVANT le verbe (les lettres qu’il a écrites) ; pour les verbes pronominaux, avec le COD placé avant le verbe : elle s’est lavée, mais elle s’est lavé les mains, ils se sont parlé.`,
         ru: `Правила:
 • Образование: avoir (настоящее время) + причастие прошедшего времени: j’ai parlé, tu as fini, il a vendu.
 • С être — только закрытый список глаголов движения и изменения состояния (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner) и их производные (devenir, revenir, rentrer, repartir…) и ВСЕ возвратные глаголы: elle est allée, nous nous sommes levés. Остальные глаголы движения принимают avoir: j’ai couru, il a marché, nous avons voyagé.
@@ -203,17 +147,7 @@ Conjugaison (personne, nombre, genre):
 Исключения:
 • Неправильные причастия: avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • Некоторые глаголы движения принимают avoir, когда у них есть прямой объект: j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier (но: elle est sortie).
-• Согласование: с être причастие согласуется с подлежащим (elles sont parties); с avoir — только с прямым дополнением перед глаголом (les lettres qu’il a écrites); у возвратных глаголов — с прямым дополнением, если оно перед глаголом: elle s’est lavée, но elle s’est lavé les mains, ils se sont parlé.
-Спряжение (лицо, число, род):
-| Лицо | avoir + parlé (род не влияет) | être + allé (род и число!) |
-| je | j’ai parlé | je suis allé (м.) / allée (ж.) |
-| tu | tu as parlé | tu es allé / allée |
-| il | il a parlé | il est allé |
-| elle | elle a parlé | elle est allée |
-| nous | nous avons parlé | nous sommes allés (м.) / allées (ж.) |
-| vous | vous avez parlé | vous êtes allé(e) (ед. ч.) · allé(e)s (мн. ч.) |
-| ils | ils ont parlé | ils sont allés |
-| elles | elles ont parlé | elles sont allées |`,
+• Согласование: с être причастие согласуется с подлежащим (elles sont parties); с avoir — только с прямым дополнением перед глаголом (les lettres qu’il a écrites); у возвратных глаголов — с прямым дополнением, если оно перед глаголом: elle s’est lavée, но elle s’est lavé les mains, ils se sont parlé.`,
         es: `Reglas:
 • Formación: avoir (presente) + participio pasado: j’ai parlé, tu as fini, il a vendu.
 • Con être — sólo una lista cerrada de verbos de movimiento y cambio de estado (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner) y sus derivados (devenir, revenir, rentrer, repartir…) y TODOS los verbos reflexivos: elle est allée, nous nous sommes levés. Otros verbos de movimiento toman avoir: j’ai couru, il a marché, nous avons voyagé.
@@ -222,17 +156,7 @@ Conjugaison (personne, nombre, genre):
 Excepciones:
 • Participios irregulares: avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • Algunos verbos de movimiento toman avoir cuando tienen un objeto directo: j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier (pero: elle est sortie).
-• Concordancia: con être, el participio concuerda con el sujeto (elles sont parties); con avoir, solo con el complemento directo que precede al verbo (les lettres qu’il a écrites); en los pronominales, con el complemento directo antepuesto: elle s’est lavée, pero elle s’est lavé les mains, ils se sont parlé.
-Conjugación (persona, número, género):
-| Persona | avoir + parlé (el género no influye) | être + allé (¡género y número!) |
-| je | j’ai parlé | je suis allé (m.) / allée (f.) |
-| tu | tu as parlé | tu es allé / allée |
-| il | il a parlé | il est allé |
-| elle | elle a parlé | elle est allée |
-| nous | nous avons parlé | nous sommes allés (m.) / allées (f.) |
-| vous | vous avez parlé | vous êtes allé(e) (sing.) · allé(e)s (pl.) |
-| ils | ils ont parlé | ils sont allés |
-| elles | elles ont parlé | elles sont allées |`,
+• Concordancia: con être, el participio concuerda con el sujeto (elles sont parties); con avoir, solo con el complemento directo que precede al verbo (les lettres qu’il a écrites); en los pronominales, con el complemento directo antepuesto: elle s’est lavée, pero elle s’est lavé les mains, ils se sont parlé.`,
         zh: `规则:
 • 构成：avoir（现在时）+过去分词：j’ai parlé, tu as fini, il a vendu.
 • 使用 être — 仅包含运动动词和状态变化 (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner) 及其派生词 (devenir, revenir, rentrer, repartir...) 和所有反身动词：elle est allée, nous nous sommes levés. 其他运动动词采用 avoir：j’ai couru, il a marché, nous avons voyagé.
@@ -241,17 +165,7 @@ Conjugación (persona, número, género):
 例外:
 • 不规则分词：avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • 一些动作动词在有直接宾语时采用 avoir：j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier（但是：elle est sortie）。
-• 配合：用 être 时，分词与主语保持性数一致 (elles sont parties)；用 avoir 时，仅与动词前的直接宾语配合 (les lettres qu’il a écrites)；代词式动词也与位于动词前的直接宾语配合：elle s’est lavée，但 elle s’est lavé les mains, ils se sont parlé。
-变位（人称、数、性）:
-| 人称 | avoir + parlé（不受性影响） | être + allé（注意性和数！） |
-| je | j’ai parlé | je suis allé （阳性） / allée （阴性） |
-| tu | tu as parlé | tu es allé / allée |
-| il | il a parlé | il est allé |
-| elle | elle a parlé | elle est allée |
-| nous | nous avons parlé | nous sommes allés （阳性） / allées （阴性） |
-| vous | vous avez parlé | vous êtes allé(e) （单数） · allé(e)s （复数） |
-| ils | ils ont parlé | ils sont allés |
-| elles | elles ont parlé | elles sont allées |`,
+• 配合：用 être 时，分词与主语保持性数一致 (elles sont parties)；用 avoir 时，仅与动词前的直接宾语配合 (les lettres qu’il a écrites)；代词式动词也与位于动词前的直接宾语配合：elle s’est lavée，但 elle s’est lavé les mains, ils se sont parlé。`,
         ko: `규칙:
 • 형식: avoir(현재) + 과거분사: j’ai parlé, tu as fini, il a vendu.
 • être 사용 — 동작 동사와 상태 변화 (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner) 및 그 파생어(devenir, revenir, rentrer, repartir…) 및 모든 재귀 동사의 폐쇄형 목록만 사용: elle est allée, nous nous sommes levés. 기타 동작 동사에는 avoir 사용: j’ai couru, il a marché, nous avons voyagé.
@@ -260,17 +174,7 @@ Conjugación (persona, número, género):
 예외:
 • 불규칙 분사: avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • 일부 동작 동사는 직접 목적어가 있는 경우 avoir를 취합니다: j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier(그러나: elle est sortie).
-• 일치: être를 쓰면 분사의 성·수를 주어에 맞춥니다 (elles sont parties). avoir를 쓰면 동사 앞에 놓인 직접목적어와만 일치시킵니다 (les lettres qu’il a écrites). 대명동사도 직접목적어가 동사 앞에 올 때 일치시킵니다: elle s’est lavée, 그러나 elle s’est lavé les mains, ils se sont parlé.
-활용(인칭, 수, 성):
-| 인칭 | avoir + parlé (성에 따른 변화 없음) | être + allé (성과 수에 주의!) |
-| je | j’ai parlé | je suis allé (남성) / allée (여성) |
-| tu | tu as parlé | tu es allé / allée |
-| il | il a parlé | il est allé |
-| elle | elle a parlé | elle est allée |
-| nous | nous avons parlé | nous sommes allés (남성) / allées (여성) |
-| vous | vous avez parlé | vous êtes allé(e) (단수) · allé(e)s (복수) |
-| ils | ils ont parlé | ils sont allés |
-| elles | elles ont parlé | elles sont allées |`,
+• 일치: être를 쓰면 분사의 성·수를 주어에 맞춥니다 (elles sont parties). avoir를 쓰면 동사 앞에 놓인 직접목적어와만 일치시킵니다 (les lettres qu’il a écrites). 대명동사도 직접목적어가 동사 앞에 올 때 일치시킵니다: elle s’est lavée, 그러나 elle s’est lavé les mains, ils se sont parlé.`,
         hi: `नियम:
 • रचना: avoir (वर्तमान) + भूतकालिक कृदंत: j’ai parlé, tu as fini, il a vendu.
 • être के साथ केवल गति और अवस्था-परिवर्तन की निश्चित क्रियाएँ (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner), उनसे बनी क्रियाएँ (devenir, revenir, rentrer, repartir…) और सभी निजवाचक क्रियाएँ आती हैं: elle est allée, nous nous sommes levés. गति की अन्य क्रियाएँ avoir लेती हैं: j’ai couru, il a marché, nous avons voyagé.
@@ -279,17 +183,7 @@ Conjugación (persona, número, género):
 अपवाद:
 • अनियमित कृदंत: avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • कुछ गति-क्रियाओं का प्रत्यक्ष कर्म होने पर avoir आता है: j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier (लेकिन elle est sortie)।
-• सामंजस्य: être के साथ कृदंत कर्ता के अनुसार (elles sont parties); avoir के साथ केवल क्रिया से पहले आए प्रत्यक्ष कर्म के अनुसार (les lettres qu’il a écrites); निजवाचक क्रियाओं में भी पहले आए प्रत्यक्ष कर्म के अनुसार: elle s’est lavée, लेकिन elle s’est lavé les mains, ils se sont parlé।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | avoir + parlé (लिंग का प्रभाव नहीं) | être + allé (लिंग और वचन!) |
-| je | j’ai parlé | je suis allé (पुल्लिंग) / allée (स्त्रीलिंग) |
-| tu | tu as parlé | tu es allé / allée |
-| il | il a parlé | il est allé |
-| elle | elle a parlé | elle est allée |
-| nous | nous avons parlé | nous sommes allés (पुल्लिंग) / allées (स्त्रीलिंग) |
-| vous | vous avez parlé | vous êtes allé(e) (एकवचन) · allé(e)s (बहुवचन) |
-| ils | ils ont parlé | ils sont allés |
-| elles | elles ont parlé | elles sont allées |`,
+• सामंजस्य: être के साथ कृदंत कर्ता के अनुसार (elles sont parties); avoir के साथ केवल क्रिया से पहले आए प्रत्यक्ष कर्म के अनुसार (les lettres qu’il a écrites); निजवाचक क्रियाओं में भी पहले आए प्रत्यक्ष कर्म के अनुसार: elle s’est lavée, लेकिन elle s’est lavé les mains, ils se sont parlé।`,
         ga: `Rialacha:
 • Foirmiú: avoir (láithreach) + rangabháil chaite: j’ai parlé, tu as fini, il a vendu.
 • Ní úsáidtear être ach le liosta teoranta briathra gluaiseachta agus athraithe staide (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner), a ndíorthaigh (devenir, revenir, rentrer, repartir…) agus GACH briathar athfhillteach: elle est allée, nous nous sommes levés. Glacann briathra gluaiseachta eile avoir: j’ai couru, il a marché, nous avons voyagé.
@@ -298,17 +192,16 @@ Conjugación (persona, número, género):
 Eisceachtaí:
 • Rangabhálacha neamhrialta: avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
 • Glacann roinnt briathra gluaiseachta avoir nuair atá cuspóir díreach acu: j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier (ach elle est sortie).
-• Réiteach: le être, réitíonn an rangabháil leis an ainmní (elles sont parties); le avoir, leis an gcuspóir díreach amháin má thagann sé ROIMH an mbriathar (les lettres qu’il a écrites); le briathra athfhillteacha, leis an gcuspóir díreach roimh an mbriathar: elle s’est lavée, ach elle s’est lavé les mains, ils se sont parlé.
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | avoir + parlé (ní athraíonn an fhoirm de réir inscne) | être + allé (inscne agus uimhir!) |
-| je | j’ai parlé | je suis allé (fir.) / allée (bain.) |
-| tu | tu as parlé | tu es allé / allée |
-| il | il a parlé | il est allé |
-| elle | elle a parlé | elle est allée |
-| nous | nous avons parlé | nous sommes allés (fir.) / allées (bain.) |
-| vous | vous avez parlé | vous êtes allé(e) (uatha) · allé(e)s (iolra) |
-| ils | ils ont parlé | ils sont allés |
-| elles | elles ont parlé | elles sont allées |`
+• Réiteach: le être, réitíonn an rangabháil leis an ainmní (elles sont parties); le avoir, leis an gcuspóir díreach amháin má thagann sé ROIMH an mbriathar (les lettres qu’il a écrites); le briathra athfhillteacha, leis an gcuspóir díreach roimh an mbriathar: elle s’est lavée, ach elle s’est lavé les mains, ils se sont parlé.`,
+        ar: `القواعد:
+• التكوين: avoir (في المضارع) + اسم المفعول: j’ai parlé, tu as fini, il a vendu.
+• مع être — فقط قائمة مغلقة من أفعال الحركة وتغير الحال (aller, venir, arriver, partir, entrer, sortir, monter, descendre, naître, mourir, rester, tomber, passer, retourner) ومشتقاتها (devenir, revenir, rentrer, repartir…) وكل الأفعال الانعكاسية: elle est allée, nous nous sommes levés. أما أفعال الحركة الأخرى فتأخذ avoir: j’ai couru, il a marché, nous avons voyagé.
+• أسماء المفعول: ‎-er → -é، ‎-ir → -i، ‎-re → -u (parlé, fini, vendu).
+• النفي يحيط بالفعل المساعد: je n’ai pas parlé.
+الاستثناءات:
+• أسماء مفعول شاذة: avoir → eu, être → été, faire → fait, prendre → pris, voir → vu, mettre → mis, écrire → écrit, ouvrir → ouvert, venir → venu.
+• بعض أفعال الحركة تأخذ avoir عندما يكون لها مفعول مباشر: j’ai sorti la voiture, il a monté les valises, elle a descendu l’escalier (لكن: elle est sortie).
+• المطابقة: مع être يطابق اسم المفعول الفاعل (elles sont parties)؛ ومع avoir فقط مع مفعول مباشر يأتي قبل الفعل (les lettres qu’il a écrites)؛ وفي الأفعال الانعكاسية مع المفعول المباشر إذا جاء قبل الفعل: elle s’est lavée، لكن elle s’est lavé les mains، ils se sont parlé.`
     });
 
     D('imparfait', {
@@ -338,15 +231,7 @@ Exceptions:
 • La seule racine verbale irrégulière est être : j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
 • Verbes en -ger/-cer : nous mangions (mais je mangeais), nous commencions (mais je commençais) — pour conserver la prononciation.
 • Verbes dont le radical verbal se termine par -i (étudier, rire) : deux i dans nous/vous (nous étudiions, vous riiez).
-• Ne pas confondre avec le conditionnel : les terminaisons sont similaires, mais le conditionnel est précédé d'un -r-.
-Conjugaison (personne, nombre, genre):
-| Personne | parler | finir | être | avoir | aller |
-| je | parlais | finissais | étais | avais | allais |
-| tu | parlais | finissais | étais | avais | allais |
-| il / elle / on | parlait | finissait | était | avait | allait |
-| nous | parlions | finissions | étions | avions | allions |
-| vous | parliez | finissiez | étiez | aviez | alliez |
-| ils / elles | parlaient | finissaient | étaient | avaient | allaient |`,
+• Ne pas confondre avec le conditionnel : les terminaisons sont similaires, mais le conditionnel est précédé d'un -r-.`,
         ru: `Правила:
 • Корень глагола = nous-форма présent без -ons; окончания: -ais, -ais, -ait, -ions, -iez, -aient (nous parlons → je parlais).
 • Используется для описания, предыстории, привычки и продолжения прошлых действий; с passé composé он образует «фон + событие» (il pleuvait quand je suis sorti).
@@ -355,15 +240,7 @@ Conjugaison (personne, nombre, genre):
 • Единственная неправильная основа глагола — être: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
 • Глаголы в -ger/-cer: nous mangions (но je mangeais), nous commencions (но je commençais) — для сохранения произношения.
 • Глаголы, основа которых заканчивается на -i (étudier, rire): два «и» на nous/vous (nous étudiions, vous riiez).
-• Не путайте с условным: окончания похожи, но перед условным стоит -r-.
-Спряжение (лицо, число, род):
-| Лицо | parler | finir | être | avoir | aller |
-| je | parlais | finissais | étais | avais | allais |
-| tu | parlais | finissais | étais | avais | allais |
-| il / elle / on | parlait | finissait | était | avait | allait |
-| nous | parlions | finissions | étions | avions | allions |
-| vous | parliez | finissiez | étiez | aviez | alliez |
-| ils / elles | parlaient | finissaient | étaient | avaient | allaient |`,
+• Не путайте с условным: окончания похожи, но перед условным стоит -r-.`,
         es: `Reglas:
 • Raíz verbal = la forma nous de présent sin -ons; terminaciones: -ais, -ais, -ait, -ions, -iez, -aient (nous parlons → je parlais).
 • Se utiliza para descripción, antecedentes, hábitos y acciones pasadas continuas; con el passé composé forma "fondo + evento" (il pleuvait quand je suis sorti).
@@ -372,15 +249,7 @@ Excepciones:
 • La única raíz del verbo irregular es être: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
 • Verbos en -ger/-cer: nous mangions (pero je mangeais), nous commencions (pero je commençais) — para mantener la pronunciación.
 • Verbos cuya raíz verbal termina en -i (étudier, rire): dos ies en nous/vous (nous étudiions, vous riiez).
-• No confundir con el condicional: las terminaciones son similares, pero el condicional tiene un -r- delante.
-Conjugación (persona, número, género):
-| Persona | parler | finir | être | avoir | aller |
-| je | parlais | finissais | étais | avais | allais |
-| tu | parlais | finissais | étais | avais | allais |
-| il / elle / on | parlait | finissait | était | avait | allait |
-| nous | parlions | finissions | étions | avions | allions |
-| vous | parliez | finissiez | étiez | aviez | alliez |
-| ils / elles | parlaient | finissaient | étaient | avaient | allaient |`,
+• No confundir con el condicional: las terminaciones son similares, pero el condicional tiene un -r- delante.`,
         zh: `规则:
 • 动词词干 = présent 的 nous 形式，不含 -ons；结局：-ais, -ais, -ait, -ions, -iez, -aient (nous parlons → je parlais)。
 • 用于描述、背景、习惯和延续过去的动作；与passé composé组成“背景+事件”(il pleuvait quand je suis sorti)。
@@ -389,15 +258,7 @@ Conjugación (persona, número, género):
 • 唯一的不规则动词词干是 être: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
 • -ger/-cer 中的动词：nous mangions（但 je mangeais）、nous commencions（但 je commençais）— 保持发音。
 • 动词词干以 -i (étudier, rire) 结尾的动词：nous/vous (nous étudiions, vous riiez) 中有两个 i。
-• 不要与条件句混淆：结尾相似，但条件句前面有一个 -r-。
-变位（人称、数、性）:
-| 人称 | parler | finir | être | avoir | aller |
-| je | parlais | finissais | étais | avais | allais |
-| tu | parlais | finissais | étais | avais | allais |
-| il / elle / on | parlait | finissait | était | avait | allait |
-| nous | parlions | finissions | étions | avions | allions |
-| vous | parliez | finissiez | étiez | aviez | alliez |
-| ils / elles | parlaient | finissaient | étaient | avaient | allaient |`,
+• 不要与条件句混淆：结尾相似，但条件句前面有一个 -r-。`,
         ko: `규칙:
 • 동사 어간 = -ons가 없는 présent의 nous형; 엔딩: -ais, -ais, -ait, -ions, -iez, -aient (nous parlons → je parlais).
 • 설명, 배경, 습관 및 계속되는 과거 작업에 사용됩니다. passé composé를 사용하면 "배경 + 이벤트" (il pleuvait quand je suis sorti)를 형성합니다.
@@ -406,15 +267,7 @@ Conjugación (persona, número, género):
 • 유일한 불규칙 동사 어간은 être: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.입니다
 • -ger/-cer의 동사: nous mangions(그러나 je mangeais), nous commencions(그러나 je commençais) — 발음을 유지합니다.
 • 동사 어간이 -i (étudier, rire)로 끝나는 동사: nous/vous (nous étudiions, vous riiez)에 i가 2개 있습니다.
-• 조건법과 혼동하지 마세요. 결말은 비슷하지만 조건법 앞에 -r-가 있습니다.
-활용(인칭, 수, 성):
-| 인칭 | parler | finir | être | avoir | aller |
-| je | parlais | finissais | étais | avais | allais |
-| tu | parlais | finissais | étais | avais | allais |
-| il / elle / on | parlait | finissait | était | avait | allait |
-| nous | parlions | finissions | étions | avions | allions |
-| vous | parliez | finissiez | étiez | aviez | alliez |
-| ils / elles | parlaient | finissaient | étaient | avaient | allaient |`,
+• 조건법과 혼동하지 마세요. 결말은 비슷하지만 조건법 앞에 -r-가 있습니다.`,
         hi: `नियम:
 • आधार = présent के nous रूप से -ons हटाएँ; प्रत्यय: -ais, -ais, -ait, -ions, -iez, -aient (nous parlons → je parlais)।
 • वर्णन, पृष्ठभूमि, आदत और भूतकाल में जारी कार्यों के लिए; passé composé के साथ «पृष्ठभूमि + घटना» बनता है (il pleuvait quand je suis sorti)।
@@ -423,15 +276,7 @@ Conjugación (persona, número, género):
 • एकमात्र अनियमित आधार être है: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
 • -ger/-cer क्रियाएँ: nous mangions (लेकिन je mangeais), nous commencions (लेकिन je commençais) — उच्चारण बनाए रखने के लिए।
 • -i पर समाप्त आधार वाली क्रियाओं में (étudier, rire): nous/vous में दो i आते हैं (nous étudiions, vous riiez)।
-• शर्तवाचक से भ्रमित न करें: प्रत्यय समान हैं, लेकिन शर्तवाचक में उनसे पहले -r- आता है।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | parler | finir | être | avoir | aller |
-| je | parlais | finissais | étais | avais | allais |
-| tu | parlais | finissais | étais | avais | allais |
-| il / elle / on | parlait | finissait | était | avait | allait |
-| nous | parlions | finissions | étions | avions | allions |
-| vous | parliez | finissiez | étiez | aviez | alliez |
-| ils / elles | parlaient | finissaient | étaient | avaient | allaient |`,
+• शर्तवाचक से भ्रमित न करें: प्रत्यय समान हैं, लेकिन शर्तवाचक में उनसे पहले -r- आता है।`,
         ga: `Rialacha:
 • Fréamh = foirm nous an présent gan -ons; deirí: -ais, -ais, -ait, -ions, -iez, -aient (nous parlons → je parlais).
 • Le haghaidh cur síos, cúlra, nósanna agus gníomhartha leanúnacha san am atá caite; leis an passé composé, cruthaíonn sé «cúlra + eachtra» (il pleuvait quand je suis sorti).
@@ -440,15 +285,16 @@ Eisceachtaí:
 • Is é être an t-aon fhréamh neamhrialta: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
 • Briathra dar críoch -ger/-cer: nous mangions (ach je mangeais), nous commencions (ach je commençais) — chun an fuaimniú a choinneáil.
 • Le fréamh dar críoch -i (étudier, rire), bíonn dhá i sna foirmeacha nous/vous (nous étudiions, vous riiez).
-• Ná measc leis an modh coinníollach é: tá na deirí cosúil le chéile, ach tá -r- rompu sa choinníollach.
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | parler | finir | être | avoir | aller |
-| je | parlais | finissais | étais | avais | allais |
-| tu | parlais | finissais | étais | avais | allais |
-| il / elle / on | parlait | finissait | était | avait | allait |
-| nous | parlions | finissions | étions | avions | allions |
-| vous | parliez | finissiez | étiez | aviez | alliez |
-| ils / elles | parlaient | finissaient | étaient | avaient | allaient |`
+• Ná measc leis an modh coinníollach é: tá na deirí cosúil le chéile, ach tá -r- rompu sa choinníollach.`,
+        ar: `القواعد:
+• الجذر = صيغة nous في الـ présent بدون ‎-ons؛ والنهايات: ‎-ais, -ais, -ait, -ions, -iez, -aient (nous parlons → je parlais).
+• يُستعمل للوصف والخلفية والعادة والأحداث المستمرة في الماضي؛ ومع الـ passé composé يكوّن «خلفية + حدث» (il pleuvait quand je suis sorti).
+• كلمات نموذجية: toujours, souvent, d’habitude, chaque jour, autrefois, pendant que.
+الاستثناءات:
+• الجذر الشاذ الوحيد هو être: j’étais, tu étais, il était, nous étions, vous étiez, ils étaient.
+• الأفعال المنتهية بـ ‎-ger/-cer: nous mangions (لكن je mangeais)، nous commencions (لكن je commençais) — للحفاظ على النطق.
+• الأفعال التي ينتهي جذرها بـ ‎-i (étudier, rire): حرفا i مع nous/vous (nous étudiions, vous riiez).
+• لا تخلط بينه وبين الشرطي: النهايات متشابهة، لكن في الشرطي يسبقها ‎-r-.`
     });
 
     D('plus-que-parfait', {
@@ -472,105 +318,56 @@ Exceptions:
 • Le choix du verbe auxiliaire et l’accord du participe suivent les règles du passé composé.
 Exceptions:
 • Dans la narration, il est souvent remplacé par le passé composé lorsque l'ordre ressort clairement du contexte.
-• Après si dans une condition passée irréelle — plus-que-parfait (si j’avais su…), mais la proposition principale prend le conditionnel passé.
-Conjugaison (personne, nombre, genre):
-| Personne | avoir (imparfait) + parlé | être (imparfait) + allé |
-| je | j’avais parlé | j’étais allé (m.) / allée (f.) |
-| tu | tu avais parlé | tu étais allé / allée |
-| il / elle | il / elle avait parlé | il était allé · elle était allée |
-| nous | nous avions parlé | nous étions allés / allées |
-| vous | vous aviez parlé | vous étiez allé(e)(s) |
-| ils / elles | ils / elles avaient parlé | ils étaient allés · elles étaient allées |`,
+• Après si dans une condition passée irréelle — plus-que-parfait (si j’avais su…), mais la proposition principale prend le conditionnel passé.`,
         ru: `Правила:
 • Образование: avoir/être в imparfait + причастие прошедшего времени: j’avais fini, elle était partie, nous nous étions levés.
 • Отмечает действие, которое произошло ДО другого прошлого действия или момента в прошлом.
 • Выбор вспомогательного глагола и согласование причастия — как в passé composé.
 Исключения:
 • В повествовании его часто заменяют на passé composé, если порядок понятен из контекста.
-• После si в нереальном условии в прошлом — plus-que-parfait (si j’avais su…), но главное предложение принимает прошедшее условное наклонение.
-Спряжение (лицо, число, род):
-| Лицо | avoir (imparfait) + parlé | être (imparfait) + allé |
-| je | j’avais parlé | j’étais allé (м.) / allée (ж.) |
-| tu | tu avais parlé | tu étais allé / allée |
-| il / elle | il / elle avait parlé | il était allé · elle était allée |
-| nous | nous avions parlé | nous étions allés / allées |
-| vous | vous aviez parlé | vous étiez allé(e)(s) |
-| ils / elles | ils / elles avaient parlé | ils étaient allés · elles étaient allées |`,
+• После si в нереальном условии в прошлом — plus-que-parfait (si j’avais su…), но главное предложение принимает прошедшее условное наклонение.`,
         es: `Reglas:
 • Formación: avoir/être en imparfait + participio pasado: j’avais fini, elle était partie, nous nous étions levés.
 • Marca una acción que ocurrió ANTES de otra acción pasada o de un momento en el pasado.
 • La elección del auxiliar y la concordancia del participio siguen las reglas del passé composé.
 Excepciones:
 • En la narración, a menudo se reemplaza por passé composé cuando el orden se desprende claramente del contexto.
-• Después de si en una condición pasada irreal: plus-que-parfait (si j’avais su…), pero la cláusula principal toma el pasado condicional.
-Conjugación (persona, número, género):
-| Persona | avoir (imparfait) + parlé | être (imparfait) + allé |
-| je | j’avais parlé | j’étais allé (m.) / allée (f.) |
-| tu | tu avais parlé | tu étais allé / allée |
-| il / elle | il / elle avait parlé | il était allé · elle était allée |
-| nous | nous avions parlé | nous étions allés / allées |
-| vous | vous aviez parlé | vous étiez allé(e)(s) |
-| ils / elles | ils / elles avaient parlé | ils étaient allés · elles étaient allées |`,
+• Después de si en una condición pasada irreal: plus-que-parfait (si j’avais su…), pero la cláusula principal toma el pasado condicional.`,
         zh: `规则:
 • 构成：imparfait 中的 avoir/être + 过去分词：j’avais fini, elle était partie, nous nous étions levés.
 • 标记在另一个过去的操作或过去的某个时刻之前发生的操作。
 • 助动词的选择及分词的性数配合规则与 passé composé 相同。
 例外:
 • 在叙述中，当上下文中的顺序清晰时，它通常被 passé composé 取代。
-• 在不真实的过去条件式中的 si 之后 - plus-que-parfait (si j’avais su…)，但主句采用过去条件式。
-变位（人称、数、性）:
-| 人称 | avoir (imparfait) + parlé | être (imparfait) + allé |
-| je | j’avais parlé | j’étais allé （阳性） / allée （阴性） |
-| tu | tu avais parlé | tu étais allé / allée |
-| il / elle | il / elle avait parlé | il était allé · elle était allée |
-| nous | nous avions parlé | nous étions allés / allées |
-| vous | vous aviez parlé | vous étiez allé(e)(s) |
-| ils / elles | ils / elles avaient parlé | ils étaient allés · elles étaient allées |`,
+• 在不真实的过去条件式中的 si 之后 - plus-que-parfait (si j’avais su…)，但主句采用过去条件式。`,
         ko: `규칙:
 • 형식: imparfait의 avoir/être + 과거 분사: j’avais fini, elle était partie, nous nous étions levés.
 • 다른 과거 작업 또는 과거 순간 이전에 발생한 작업을 표시합니다.
 • 조동사 선택과 분사의 성·수 일치 규칙은 passé composé와 같습니다.
 예외:
 • 내레이션에서는 순서가 문맥상 명확할 때 passé composé로 대체되는 경우가 많습니다.
-• 비현실적인 과거 조건에서 si 이후 — plus-que-parfait (si j’avais su…), 그러나 주절은 과거 조건을 취합니다.
-활용(인칭, 수, 성):
-| 인칭 | avoir (imparfait) + parlé | être (imparfait) + allé |
-| je | j’avais parlé | j’étais allé (남성) / allée (여성) |
-| tu | tu avais parlé | tu étais allé / allée |
-| il / elle | il / elle avait parlé | il était allé · elle était allée |
-| nous | nous avions parlé | nous étions allés / allées |
-| vous | vous aviez parlé | vous étiez allé(e)(s) |
-| ils / elles | ils / elles avaient parlé | ils étaient allés · elles étaient allées |`,
+• 비현실적인 과거 조건에서 si 이후 — plus-que-parfait (si j’avais su…), 그러나 주절은 과거 조건을 취합니다.`,
         hi: `नियम:
 • रचना: imparfait में avoir/être + भूतकालिक कृदंत: j’avais fini, elle était partie, nous nous étions levés.
 • भूतकाल की किसी अन्य क्रिया या समय-बिंदु से पहले हो चुका कार्य दर्शाता है।
 • सहायक क्रिया का चुनाव और कृदंत का लिंग-वचन सामंजस्य passé composé जैसे हैं।
 अपवाद:
 • कथा में क्रम संदर्भ से स्पष्ट हो तो इसकी जगह प्रायः passé composé आता है।
-• भूतकाल की अवास्तविक शर्त में si के बाद plus-que-parfait (si j’avais su…), लेकिन मुख्य उपवाक्य में भूतकालिक शर्तवाचक रूप आता है।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | avoir (imparfait) + parlé | être (imparfait) + allé |
-| je | j’avais parlé | j’étais allé (पुल्लिंग) / allée (स्त्रीलिंग) |
-| tu | tu avais parlé | tu étais allé / allée |
-| il / elle | il / elle avait parlé | il était allé · elle était allée |
-| nous | nous avions parlé | nous étions allés / allées |
-| vous | vous aviez parlé | vous étiez allé(e)(s) |
-| ils / elles | ils / elles avaient parlé | ils étaient allés · elles étaient allées |`,
+• भूतकाल की अवास्तविक शर्त में si के बाद plus-que-parfait (si j’avais su…), लेकिन मुख्य उपवाक्य में भूतकालिक शर्तवाचक रूप आता है।`,
         ga: `Rialacha:
 • Foirmiú: avoir/être san imparfait + rangabháil chaite: j’avais fini, elle était partie, nous nous étions levés.
 • Léiríonn sé gníomh a tharla ROIMH ghníomh eile nó roimh phointe ama san am atá caite.
 • Roghnaítear an briathar cúnta agus déantar réiteach na rangabhála mar atá sa passé composé.
 Eisceachtaí:
 • Sa scéalaíocht, is minic a chuirtear an passé composé ina áit nuair atá an t-ord soiléir ón gcomhthéacs.
-• Tar éis si i gcoinníoll neamhréadúil san am atá caite, úsáidtear an plus-que-parfait (si j’avais su…), ach an coinníollach caite sa phríomhchlásal.
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | avoir (imparfait) + parlé | être (imparfait) + allé |
-| je | j’avais parlé | j’étais allé (fir.) / allée (bain.) |
-| tu | tu avais parlé | tu étais allé / allée |
-| il / elle | il / elle avait parlé | il était allé · elle était allée |
-| nous | nous avions parlé | nous étions allés / allées |
-| vous | vous aviez parlé | vous étiez allé(e)(s) |
-| ils / elles | ils / elles avaient parlé | ils étaient allés · elles étaient allées |`
+• Tar éis si i gcoinníoll neamhréadúil san am atá caite, úsáidtear an plus-que-parfait (si j’avais su…), ach an coinníollach caite sa phríomhchlásal.`,
+        ar: `القواعد:
+• التكوين: avoir/être في الـ imparfait + اسم المفعول: j’avais fini, elle était partie, nous nous étions levés.
+• يدل على حدث وقع قبل حدث آخر أو لحظة في الماضي.
+• اختيار الفعل المساعد ومطابقة اسم المفعول كما في الـ passé composé.
+الاستثناءات:
+• في السرد كثيرًا ما يحل محله الـ passé composé عندما يتضح الترتيب من السياق.
+• بعد si في شرط غير واقعي في الماضي — الـ plus-que-parfait (si j’avais su…)، أما الجملة الرئيسية فتأخذ الشرطي الماضي.`
     });
 
     D('passe-simple', {
@@ -594,105 +391,56 @@ Exceptions:
 • Marque les événements terminés dans la narration (ouvrit la porte, entra).
 Exceptions:
 • Tiges fortement irrégulières : être → il fut, ils furent; avoir → il eut; faire → il fit; venir/tenir → il vint, ils vinrent, il tint; voir → il vit; dire → il dit; prendre → il prit.
-• En pratique, un lecteur a surtout besoin de reconnaître la 3ème personne (il/elle/ils/elles).
-Conjugaison (personne, nombre, genre):
-| Personne | parler | finir | être | avoir |
-| je | parlai | finis | fus | eus |
-| tu | parlas | finis | fus | eus |
-| il / elle | parla | finit | fut | eut |
-| nous | parlâmes | finîmes | fûmes | eûmes |
-| vous | parlâtes | finîtes | fûtes | eûtes |
-| ils / elles | parlèrent | finirent | furent | eurent |`,
+• En pratique, un lecteur a surtout besoin de reconnaître la 3ème personne (il/elle/ils/elles).`,
         ru: `Правила:
 • Только в литературе, исторических текстах и сказках; в речи используется passé composé.
 • -er: il parla, ils parlèrent; -ir/-re: il finit, ils finirent, il vendit, ils vendirent.
 • Отмечает завершенные события в повествовании (ouvrit la porte, entra).
 Исключения:
 • Сильно неровные стебли: être → il fut, ils furent; avoir → il eut; faire → il fit; venir/tenir → il vint, ils vinrent, il tint; voir → il vit; dire → il dit; prendre → il prit.
-• На практике читателю чаще всего приходится распознавать (il/elle/ils/elles) от третьего лица.
-Спряжение (лицо, число, род):
-| Лицо | parler | finir | être | avoir |
-| je | parlai | finis | fus | eus |
-| tu | parlas | finis | fus | eus |
-| il / elle | parla | finit | fut | eut |
-| nous | parlâmes | finîmes | fûmes | eûmes |
-| vous | parlâtes | finîtes | fûtes | eûtes |
-| ils / elles | parlèrent | finirent | furent | eurent |`,
+• На практике читателю чаще всего приходится распознавать (il/elle/ils/elles) от третьего лица.`,
         es: `Reglas:
 • Sólo en literatura, textos históricos y cuentos; en el habla se utiliza el passé composé.
 • -er: il parla, ils parlèrent; -ir/-re: il finit, ils finirent, il vendit, ils vendirent.
 • Marca eventos completados en la narración (ouvrit la porte, entra).
 Excepciones:
 • Tallos muy irregulares: être → il fut, ils furent; avoir → il eut; faire → il fit; venir/tenir → il vint, ils vinrent, il tint; voir → il vit; dire → il dit; prendre → il prit.
-• En la práctica, un lector necesita principalmente reconocer la tercera persona (il/elle/ils/elles).
-Conjugación (persona, número, género):
-| Persona | parler | finir | être | avoir |
-| je | parlai | finis | fus | eus |
-| tu | parlas | finis | fus | eus |
-| il / elle | parla | finit | fut | eut |
-| nous | parlâmes | finîmes | fûmes | eûmes |
-| vous | parlâtes | finîtes | fûtes | eûtes |
-| ils / elles | parlèrent | finirent | furent | eurent |`,
+• En la práctica, un lector necesita principalmente reconocer la tercera persona (il/elle/ils/elles).`,
         zh: `规则:
 • 仅出现在文学、历史文本和故事中；在语音中使用 passé composé。
 • -er：il parla, ils parlèrent; -ir/-re：il finit, ils finirent, il vendit, ils vendirent.
 • 在旁白中标记已完成的事件 (ouvrit la porte, entra)。
 例外:
 • 严重不规则的茎：être → il fut, ils furent; avoir → il eut; faire → il fit; venir/tenir → il vint, ils vinrent, il tint; voir → il vit; dire → il dit; prendre → il prit.
-• 实际上，读者大多需要识别第三人称 (il/elle/ils/elles)。
-变位（人称、数、性）:
-| 人称 | parler | finir | être | avoir |
-| je | parlai | finis | fus | eus |
-| tu | parlas | finis | fus | eus |
-| il / elle | parla | finit | fut | eut |
-| nous | parlâmes | finîmes | fûmes | eûmes |
-| vous | parlâtes | finîtes | fûtes | eûtes |
-| ils / elles | parlèrent | finirent | furent | eurent |`,
+• 实际上，读者大多需要识别第三人称 (il/elle/ils/elles)。`,
         ko: `규칙:
 • 문학, 역사서, 동화에만 해당됩니다. 연설에서는 passé composé가 사용됩니다.
 • -er: il parla, ils parlèrent; -ir/-re: il finit, ils finirent, il vendit, ils vendirent.
 • (ouvrit la porte, entra) 내레이션에서 완료된 이벤트를 표시합니다.
 예외:
 • 매우 불규칙 어간: être → il fut, ils furent; avoir → il eut; faire → il fit; venir/tenir → il vint, ils vinrent, il tint; voir → il vit; dire → il dit; prendre → il prit.
-• 실제로 독자는 대부분 3인칭 (il/elle/ils/elles)를 인식해야 합니다.
-활용(인칭, 수, 성):
-| 인칭 | parler | finir | être | avoir |
-| je | parlai | finis | fus | eus |
-| tu | parlas | finis | fus | eus |
-| il / elle | parla | finit | fut | eut |
-| nous | parlâmes | finîmes | fûmes | eûmes |
-| vous | parlâtes | finîtes | fûtes | eûtes |
-| ils / elles | parlèrent | finirent | furent | eurent |`,
+• 실제로 독자는 대부분 3인칭 (il/elle/ils/elles)를 인식해야 합니다.`,
         hi: `नियम:
 • केवल साहित्य, ऐतिहासिक लेखन और कथाओं में; बोलचाल में passé composé आता है।
 • -er: il parla, ils parlèrent; -ir/-re: il finit, ils finirent, il vendit, ils vendirent.
 • कथा में पूर्ण घटनाएँ दर्शाता है (ouvrit la porte, entra)।
 अपवाद:
 • अत्यधिक अनियमित आधार: être → il fut, ils furent; avoir → il eut; faire → il fit; venir/tenir → il vint, ils vinrent, il tint; voir → il vit; dire → il dit; prendre → il prit.
-• व्यवहार में पाठक को मुख्यतः तृतीय पुरुष पहचानना आवश्यक है (il/elle/ils/elles)।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | parler | finir | être | avoir |
-| je | parlai | finis | fus | eus |
-| tu | parlas | finis | fus | eus |
-| il / elle | parla | finit | fut | eut |
-| nous | parlâmes | finîmes | fûmes | eûmes |
-| vous | parlâtes | finîtes | fûtes | eûtes |
-| ils / elles | parlèrent | finirent | furent | eurent |`,
+• व्यवहार में पाठक को मुख्यतः तृतीय पुरुष पहचानना आवश्यक है (il/elle/ils/elles)।`,
         ga: `Rialacha:
 • I litríocht, i dtéacsanna stairiúla agus i scéalta amháin; sa chaint, úsáidtear an passé composé.
 • -er: il parla, ils parlèrent; -ir/-re: il finit, ils finirent, il vendit, ils vendirent.
 • Léiríonn sé eachtraí críochnaithe sa scéalaíocht (ouvrit la porte, entra).
 Eisceachtaí:
 • Fréamhacha atá an-neamhrialta: être → il fut, ils furent; avoir → il eut; faire → il fit; venir/tenir → il vint, ils vinrent, il tint; voir → il vit; dire → il dit; prendre → il prit.
-• Go praiticiúil, is ar an tríú pearsa is mó a chaithfidh an léitheoir aithint (il/elle/ils/elles).
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | parler | finir | être | avoir |
-| je | parlai | finis | fus | eus |
-| tu | parlas | finis | fus | eus |
-| il / elle | parla | finit | fut | eut |
-| nous | parlâmes | finîmes | fûmes | eûmes |
-| vous | parlâtes | finîtes | fûtes | eûtes |
-| ils / elles | parlèrent | finirent | furent | eurent |`
+• Go praiticiúil, is ar an tríú pearsa is mó a chaithfidh an léitheoir aithint (il/elle/ils/elles).`,
+        ar: `القواعد:
+• فقط في الأدب والنصوص التاريخية والحكايات؛ وفي الكلام يُستعمل الـ passé composé.
+• ‎-er: il parla, ils parlèrent؛ ‎-ir/-re: il finit, ils finirent, il vendit, ils vendirent.
+• يدل على أحداث منتهية في السرد (ouvrit la porte, entra).
+الاستثناءات:
+• جذور شاذة جدًا: être → il fut, ils furent؛ avoir → il eut؛ faire → il fit؛ venir/tenir → il vint, ils vinrent, il tint؛ voir → il vit؛ dire → il dit؛ prendre → il prit.
+• عمليًا يحتاج القارئ غالبًا إلى التعرف على صيغة الغائب (il/elle/ils/elles).`
     });
 
     D('futur-simple', {
@@ -716,105 +464,56 @@ Exceptions (irregular stems):
 • Après quand/lorsque/dès que, si la proposition principale est future, la proposition subordonnée est également future (quand tu arriveras, je partirai) — contrairement à l'anglais.
 Exceptions (radicaux irréguliers):
 • être → je serai; avoir → j’aurai; aller → j’irai; faire → je ferai; pouvoir → je pourrai; vouloir → je voudrai; savoir → je saurai; voir → je verrai; venir → je viendrai; envoyer → j’enverrai; devoir → je devrai.
-• Après si — pas le futur mais le présent (si tu viens, nous partirons).
-Conjugaison (personne, nombre, genre):
-| Personne | parler | finir | être | avoir | aller | faire |
-| je | parlerai | finirai | serai | aurai | irai | ferai |
-| tu | parleras | finiras | seras | auras | iras | feras |
-| il / elle / on | parlera | finira | sera | aura | ira | fera |
-| nous | parlerons | finirons | serons | aurons | irons | ferons |
-| vous | parlerez | finirez | serez | aurez | irez | ferez |
-| ils / elles | parleront | finiront | seront | auront | iront | feront |`,
+• Après si — pas le futur mais le présent (si tu viens, nous partirons).`,
         ru: `Правила:
 • Инфинитив (-re теряет -e) + -ai, -as, -a, -ons, -ez, -ont: je parlerai, nous finirons, il vendra.
 • Используется для будущих действий, прогнозов и вежливых приказов (tu feras attention).
 • После quand/lorsque/dès que, если главное предложение стоит в будущем, придаточное предложение тоже будет в будущем (quand tu arriveras, je partirai) — в отличие от английского языка.
 Исключения (неправильные основы):
 • être → je serai; avoir → j’aurai; aller → j’irai; faire → je ferai; pouvoir → je pourrai; vouloir → je voudrai; savoir → je saurai; voir → je verrai; venir → je viendrai; envoyer → j’enverrai; devoir → je devrai.
-• После si — не будущее, а présent (si tu viens, nous partirons).
-Спряжение (лицо, число, род):
-| Лицо | parler | finir | être | avoir | aller | faire |
-| je | parlerai | finirai | serai | aurai | irai | ferai |
-| tu | parleras | finiras | seras | auras | iras | feras |
-| il / elle / on | parlera | finira | sera | aura | ira | fera |
-| nous | parlerons | finirons | serons | aurons | irons | ferons |
-| vous | parlerez | finirez | serez | aurez | irez | ferez |
-| ils / elles | parleront | finiront | seront | auront | iront | feront |`,
+• После si — не будущее, а présent (si tu viens, nous partirons).`,
         es: `Reglas:
 • Infinitivo (-re pierde su -e) + -ai, -as, -a, -ons, -ez, -ont: je parlerai, nous finirons, il vendra.
 • Utilizado para acciones futuras, predicciones y órdenes educadas (tu feras attention).
 • Después de quand/lorsque/dès que, si la cláusula principal es futura, la cláusula subordinada también es futura (quand tu arriveras, je partirai), a diferencia del inglés.
 Excepciones (raíces irregulares):
 • être → je serai; avoir → j’aurai; aller → j’irai; faire → je ferai; pouvoir → je pourrai; vouloir → je voudrai; savoir → je saurai; voir → je verrai; venir → je viendrai; envoyer → j’enverrai; devoir → je devrai.
-• Después del si, no el futuro sino el présent (si tu viens, nous partirons).
-Conjugación (persona, número, género):
-| Persona | parler | finir | être | avoir | aller | faire |
-| je | parlerai | finirai | serai | aurai | irai | ferai |
-| tu | parleras | finiras | seras | auras | iras | feras |
-| il / elle / on | parlera | finira | sera | aura | ira | fera |
-| nous | parlerons | finirons | serons | aurons | irons | ferons |
-| vous | parlerez | finirez | serez | aurez | irez | ferez |
-| ils / elles | parleront | finiront | seront | auront | iront | feront |`,
+• Después del si, no el futuro sino el présent (si tu viens, nous partirons).`,
         zh: `规则:
 • 不定式（-re 失去 -e）+ -ai, -as, -a, -ons, -ez, -ont：je parlerai, nous finirons, il vendra.
 • 用于未来的行动、预测和礼貌命令 (tu feras attention)。
 • 在 quand/lorsque/dès que 之后，如果主句是将来时，从句也是将来时 (quand tu arriveras, je partirai) — 与英语不同。
 例外（不规则词干）:
 • être → je serai; avoir → j’aurai; aller → j’irai; faire → je ferai; pouvoir → je pourrai; vouloir → je voudrai; savoir → je saurai; voir → je verrai; venir → je viendrai; envoyer → j’enverrai; devoir → je devrai.
-• si 之后 — 不是未来，而是 présent (si tu viens, nous partirons)。
-变位（人称、数、性）:
-| 人称 | parler | finir | être | avoir | aller | faire |
-| je | parlerai | finirai | serai | aurai | irai | ferai |
-| tu | parleras | finiras | seras | auras | iras | feras |
-| il / elle / on | parlera | finira | sera | aura | ira | fera |
-| nous | parlerons | finirons | serons | aurons | irons | ferons |
-| vous | parlerez | finirez | serez | aurez | irez | ferez |
-| ils / elles | parleront | finiront | seront | auront | iront | feront |`,
+• si 之后 — 不是未来，而是 présent (si tu viens, nous partirons)。`,
         ko: `규칙:
 • 부정사 (-re는 -e를 잃음) + -ai, -as, -a, -ons, -ez, -ont: je parlerai, nous finirons, il vendra.
 • 향후 행동, 예측, 정중한 명령 (tu feras attention)에 사용됩니다.
 • quand/lorsque/dès que 이후 주절이 미래이면 종속절도 미래입니다. (quand tu arriveras, je partirai) — 영어와는 다릅니다.
 예외(불규칙 어간):
 • être → je serai; avoir → j’aurai; aller → j’irai; faire → je ferai; pouvoir → je pourrai; vouloir → je voudrai; savoir → je saurai; voir → je verrai; venir → je viendrai; envoyer → j’enverrai; devoir → je devrai.
-• si 이후 — 미래가 아닌 présent (si tu viens, nous partirons).
-활용(인칭, 수, 성):
-| 인칭 | parler | finir | être | avoir | aller | faire |
-| je | parlerai | finirai | serai | aurai | irai | ferai |
-| tu | parleras | finiras | seras | auras | iras | feras |
-| il / elle / on | parlera | finira | sera | aura | ira | fera |
-| nous | parlerons | finirons | serons | aurons | irons | ferons |
-| vous | parlerez | finirez | serez | aurez | irez | ferez |
-| ils / elles | parleront | finiront | seront | auront | iront | feront |`,
+• si 이후 — 미래가 아닌 présent (si tu viens, nous partirons).`,
         hi: `नियम:
 • अनंत रूप (-re से -e हटता है) + -ai, -as, -a, -ons, -ez, -ont: je parlerai, nous finirons, il vendra.
 • भविष्य के कार्यों, पूर्वानुमानों और विनम्र आदेशों के लिए (tu feras attention)।
 • quand/lorsque/dès que के बाद मुख्य उपवाक्य भविष्य में हो तो अधीन उपवाक्य भी भविष्य में आता है (quand tu arriveras, je partirai) — अंग्रेज़ी से अलग।
 अपवाद (अनियमित आधार):
 • être → je serai; avoir → j’aurai; aller → j’irai; faire → je ferai; pouvoir → je pourrai; vouloir → je voudrai; savoir → je saurai; voir → je verrai; venir → je viendrai; envoyer → j’enverrai; devoir → je devrai.
-• si के बाद भविष्य नहीं, présent आता है (si tu viens, nous partirons)।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | parler | finir | être | avoir | aller | faire |
-| je | parlerai | finirai | serai | aurai | irai | ferai |
-| tu | parleras | finiras | seras | auras | iras | feras |
-| il / elle / on | parlera | finira | sera | aura | ira | fera |
-| nous | parlerons | finirons | serons | aurons | irons | ferons |
-| vous | parlerez | finirez | serez | aurez | irez | ferez |
-| ils / elles | parleront | finiront | seront | auront | iront | feront |`,
+• si के बाद भविष्य नहीं, présent आता है (si tu viens, nous partirons)।`,
         ga: `Rialacha:
 • Infinideach (cailltear -e ó -re) + -ai, -as, -a, -ons, -ez, -ont: je parlerai, nous finirons, il vendra.
 • Le haghaidh gníomhartha sa todhchaí, tuartha agus orduithe cúirtéiseacha (tu feras attention).
 • Tar éis quand/lorsque/dès que, má tá an príomhchlásal san fháistineach, bíonn an fochlásal san fháistineach freisin (quand tu arriveras, je partirai) — murab ionann agus an Béarla.
 Eisceachtaí (fréamhacha neamhrialta):
 • être → je serai; avoir → j’aurai; aller → j’irai; faire → je ferai; pouvoir → je pourrai; vouloir → je voudrai; savoir → je saurai; voir → je verrai; venir → je viendrai; envoyer → j’enverrai; devoir → je devrai.
-• Tar éis si, úsáidtear an présent seachas an fáistineach (si tu viens, nous partirons).
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | parler | finir | être | avoir | aller | faire |
-| je | parlerai | finirai | serai | aurai | irai | ferai |
-| tu | parleras | finiras | seras | auras | iras | feras |
-| il / elle / on | parlera | finira | sera | aura | ira | fera |
-| nous | parlerons | finirons | serons | aurons | irons | ferons |
-| vous | parlerez | finirez | serez | aurez | irez | ferez |
-| ils / elles | parleront | finiront | seront | auront | iront | feront |`
+• Tar éis si, úsáidtear an présent seachas an fáistineach (si tu viens, nous partirons).`,
+        ar: `القواعد:
+• المصدر (‎-re يفقد ‎-e) + ‎-ai, -as, -a, -ons, -ez, -ont: je parlerai, nous finirons, il vendra.
+• يُستعمل للأحداث المستقبلية والتوقعات والأوامر المهذبة (tu feras attention).
+• بعد quand/lorsque/dès que، إذا كانت الجملة الرئيسية في المستقبل فالتابعة في المستقبل أيضًا (quand tu arriveras, je partirai) — بخلاف الإنجليزية.
+الاستثناءات (جذور شاذة):
+• être → je serai؛ avoir → j’aurai؛ aller → j’irai؛ faire → je ferai؛ pouvoir → je pourrai؛ vouloir → je voudrai؛ savoir → je saurai؛ voir → je verrai؛ venir → je viendrai؛ envoyer → j’enverrai؛ devoir → je devrai.
+• بعد si — لا المستقبل بل الـ présent (si tu viens, nous partirons).`
     });
 
     D('futur-anterieur', {
@@ -838,105 +537,56 @@ Exceptions:
 • Il peut exprimer une supposition : il aura oublié (il a dû oublier).
 Exceptions:
 • Le choix entre avoir/être et l’accord suivent les règles du passé composé.
-• Non utilisé après si : si tu as fini…, pas si tu auras fini.
-Conjugaison (personne, nombre, genre):
-| Personne | avoir (futur) + parlé | être (futur) + allé |
-| je | j’aurai parlé | je serai allé (m.) / allée (f.) |
-| tu | tu auras parlé | tu seras allé / allée |
-| il / elle | il / elle aura parlé | il sera allé · elle sera allée |
-| nous | nous aurons parlé | nous serons allés / allées |
-| vous | vous aurez parlé | vous serez allé(e)(s) |
-| ils / elles | ils / elles auront parlé | ils seront allés · elles seront allées |`,
+• Non utilisé après si : si tu as fini…, pas si tu auras fini.`,
         ru: `Правила:
 • Образование: avoir/être в futur simple + причастие прошедшего времени: j’aurai fini, elle sera partie.
 • Действие завершено ДО другого будущего действия или момента (quand tu arriveras, j’aurai fini).
 • Он может выражать предположение: il aura oublié (наверное, он забыл).
 Исключения:
 • Выбор avoir/être и согласование — как в passé composé.
-• Не используется после si: si tu as fini…, а не si tu auras fini.
-Спряжение (лицо, число, род):
-| Лицо | avoir (futur) + parlé | être (futur) + allé |
-| je | j’aurai parlé | je serai allé (м.) / allée (ж.) |
-| tu | tu auras parlé | tu seras allé / allée |
-| il / elle | il / elle aura parlé | il sera allé · elle sera allée |
-| nous | nous aurons parlé | nous serons allés / allées |
-| vous | vous aurez parlé | vous serez allé(e)(s) |
-| ils / elles | ils / elles auront parlé | ils seront allés · elles seront allées |`,
+• Не используется после si: si tu as fini…, а не si tu auras fini.`,
         es: `Reglas:
 • Formación: avoir/être en futur simple + participio pasado: j’aurai fini, elle sera partie.
 • Una acción completada ANTES de otra acción futura o momento (quand tu arriveras, j’aurai fini).
 • Puede expresar una suposición: il aura oublié (debe haberlo olvidado).
 Excepciones:
 • La elección de avoir/être y la concordancia siguen las reglas del passé composé.
-• No se usa después de si: si tu as fini…, no si tu auras fini.
-Conjugación (persona, número, género):
-| Persona | avoir (futur) + parlé | être (futur) + allé |
-| je | j’aurai parlé | je serai allé (m.) / allée (f.) |
-| tu | tu auras parlé | tu seras allé / allée |
-| il / elle | il / elle aura parlé | il sera allé · elle sera allée |
-| nous | nous aurons parlé | nous serons allés / allées |
-| vous | vous aurez parlé | vous serez allé(e)(s) |
-| ils / elles | ils / elles auront parlé | ils seront allés · elles seront allées |`,
+• No se usa después de si: si tu as fini…, no si tu auras fini.`,
         zh: `规则:
 • 构成：futur simple 中的 avoir/être + 过去分词：j’aurai fini, elle sera partie.
 • 某个操作在另一个未来操作或时刻 (quand tu arriveras, j’aurai fini) 之前完成。
 • 它可以表达一个假设：il aura oublié（他一定忘记了）。
 例外:
 • avoir/être 的选择和性数配合规则与 passé composé 相同。
-• 在 si 之后不使用：si tu as fini…，而不是 si tu auras fini.
-变位（人称、数、性）:
-| 人称 | avoir (futur) + parlé | être (futur) + allé |
-| je | j’aurai parlé | je serai allé （阳性） / allée （阴性） |
-| tu | tu auras parlé | tu seras allé / allée |
-| il / elle | il / elle aura parlé | il sera allé · elle sera allée |
-| nous | nous aurons parlé | nous serons allés / allées |
-| vous | vous aurez parlé | vous serez allé(e)(s) |
-| ils / elles | ils / elles auront parlé | ils seront allés · elles seront allées |`,
+• 在 si 之后不使用：si tu as fini…，而不是 si tu auras fini.`,
         ko: `규칙:
 • 형식: futur simple의 avoir/être + 과거 분사: j’aurai fini, elle sera partie.
 • 다른 향후 작업 또는 순간 (quand tu arriveras, j’aurai fini) 이전에 완료된 작업입니다.
 • il aura oublié라는 가정을 표현할 수 있습니다(그가 잊어버렸나 봐요).
 예외:
 • avoir/être 선택과 성·수 일치 규칙은 passé composé와 같습니다.
-• si 이후에는 사용되지 않습니다: si tu as fini…, si tu auras fini. 아님
-활용(인칭, 수, 성):
-| 인칭 | avoir (futur) + parlé | être (futur) + allé |
-| je | j’aurai parlé | je serai allé (남성) / allée (여성) |
-| tu | tu auras parlé | tu seras allé / allée |
-| il / elle | il / elle aura parlé | il sera allé · elle sera allée |
-| nous | nous aurons parlé | nous serons allés / allées |
-| vous | vous aurez parlé | vous serez allé(e)(s) |
-| ils / elles | ils / elles auront parlé | ils seront allés · elles seront allées |`,
+• si 이후에는 사용되지 않습니다: si tu as fini…, si tu auras fini. 아님`,
         hi: `नियम:
 • रचना: futur simple में avoir/être + भूतकालिक कृदंत: j’aurai fini, elle sera partie.
 • भविष्य के किसी अन्य कार्य या समय-बिंदु से पहले पूरा हो जाने वाला कार्य (quand tu arriveras, j’aurai fini)।
 • अनुमान भी दर्शा सकता है: il aura oublié (वह शायद भूल गया होगा)।
 अपवाद:
 • avoir/être का चुनाव और लिंग-वचन सामंजस्य passé composé जैसे हैं।
-• si के बाद नहीं आता: si tu as fini…, si tu auras fini. नहीं।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | avoir (futur) + parlé | être (futur) + allé |
-| je | j’aurai parlé | je serai allé (पुल्लिंग) / allée (स्त्रीलिंग) |
-| tu | tu auras parlé | tu seras allé / allée |
-| il / elle | il / elle aura parlé | il sera allé · elle sera allée |
-| nous | nous aurons parlé | nous serons allés / allées |
-| vous | vous aurez parlé | vous serez allé(e)(s) |
-| ils / elles | ils / elles auront parlé | ils seront allés · elles seront allées |`,
+• si के बाद नहीं आता: si tu as fini…, si tu auras fini. नहीं।`,
         ga: `Rialacha:
 • Foirmiú: avoir/être san futur simple + rangabháil chaite: j’aurai fini, elle sera partie.
 • Gníomh a bheidh críochnaithe ROIMH ghníomh eile nó pointe ama sa todhchaí (quand tu arriveras, j’aurai fini).
 • Féadann sé tuairimíocht a léiriú: il aura oublié (caithfidh sé go ndearna sé dearmad).
 Eisceachtaí:
 • Roghnaítear avoir/être agus déantar réiteach mar atá sa passé composé.
-• Ní úsáidtear tar éis si é: si tu as fini…, seachas si tu auras fini.
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | avoir (futur) + parlé | être (futur) + allé |
-| je | j’aurai parlé | je serai allé (fir.) / allée (bain.) |
-| tu | tu auras parlé | tu seras allé / allée |
-| il / elle | il / elle aura parlé | il sera allé · elle sera allée |
-| nous | nous aurons parlé | nous serons allés / allées |
-| vous | vous aurez parlé | vous serez allé(e)(s) |
-| ils / elles | ils / elles auront parlé | ils seront allés · elles seront allées |`
+• Ní úsáidtear tar éis si é: si tu as fini…, seachas si tu auras fini.`,
+        ar: `القواعد:
+• التكوين: avoir/être في الـ futur simple + اسم المفعول: j’aurai fini, elle sera partie.
+• حدث ينتهي قبل حدث أو لحظة أخرى في المستقبل (quand tu arriveras, j’aurai fini).
+• قد يعبّر عن افتراض: il aura oublié (لا بد أنه نسي).
+الاستثناءات:
+• اختيار avoir/être والمطابقة كما في الـ passé composé.
+• لا يُستعمل بعد si: si tu as fini…، وليس si tu auras fini.`
     });
 
     D('futur-proche', {
@@ -960,105 +610,56 @@ Exceptions:
 • La négation renvoie aller : je ne vais pas partir.
 Exceptions:
 • Ne pas confondre avec aller comme verbe complet de mouvement (je vais à Paris).
-• Je vais aller est familier et correct ; à l'écrit, le futur simple est plus habituel : j’irai.
-Conjugaison (personne, nombre, genre):
-| Personne | aller (présent) + infinitif |
-| je | je vais parler |
-| tu | tu vas parler |
-| il / elle / on | il va parler |
-| nous | nous allons parler |
-| vous | vous allez parler |
-| ils / elles | ils vont parler |`,
+• Je vais aller est familier et correct ; à l'écrit, le futur simple est plus habituel : j’irai.`,
         ru: `Правила:
 • Aller (настоящее время) + инфинитив: je vais partir, il va pleuvoir, nous allons manger.
 • Для неизбежных или запланированных событий и прогнозов, основанных на доказательствах; в речи часто заменяет futur simple.
 • Отрицание переносит aller: je ne vais pas partir.
 Исключения:
 • Не путайте aller с полным глаголом движения (je vais à Paris).
-• Je vais aller — разговорный и правильный вариант; в письменной форме более привычно простое будущее: j’irai.
-Спряжение (лицо, число, род):
-| Лицо | aller (présent) + инфинитив |
-| je | je vais parler |
-| tu | tu vas parler |
-| il / elle / on | il va parler |
-| nous | nous allons parler |
-| vous | vous allez parler |
-| ils / elles | ils vont parler |`,
+• Je vais aller — разговорный и правильный вариант; в письменной форме более привычно простое будущее: j’irai.`,
         es: `Reglas:
 • Aller (presente) + infinitivo: je vais partir, il va pleuvoir, nous allons manger.
 • Para eventos inminentes o planificados y predicciones basadas en evidencia; en el habla a menudo reemplaza al futur simple.
 • La negación envuelve aller: je ne vais pas partir.
 Excepciones:
 • No confundir con aller como verbo completo de movimiento (je vais à Paris).
-• Je vais aller es coloquial y correcto; por escrito es más habitual el futuro simple: j’irai.
-Conjugación (persona, número, género):
-| Persona | aller (présent) + infinitivo |
-| je | je vais parler |
-| tu | tu vas parler |
-| il / elle / on | il va parler |
-| nous | nous allons parler |
-| vous | vous allez parler |
-| ils / elles | ils vont parler |`,
+• Je vais aller es coloquial y correcto; por escrito es más habitual el futuro simple: j’irai.`,
         zh: `规则:
 • Aller（现在时）+ 不定式：je vais partir, il va pleuvoir, nous allons manger.
 • 针对即将发生或计划发生的事件以及基于证据的预测；在语音中它经常代替 futur simple.
 • 否定换行 aller：je ne vais pas partir.
 例外:
 • 不要与 aller 混淆，作为完整的运动动词 (je vais à Paris)。
-• Je vais aller 是口语且正确的；在写作中，简单的未来更常见：j’irai.
-变位（人称、数、性）:
-| 人称 | aller (présent) + 不定式 |
-| je | je vais parler |
-| tu | tu vas parler |
-| il / elle / on | il va parler |
-| nous | nous allons parler |
-| vous | vous allez parler |
-| ils / elles | ils vont parler |`,
+• Je vais aller 是口语且正确的；在写作中，简单的未来更常见：j’irai.`,
         ko: `규칙:
 • Aller(현재) + 부정사: je vais partir, il va pleuvoir, nous allons manger.
 • 임박하거나 계획된 사건 및 증거를 기반으로 한 예측 연설에서는 종종 futur simple.를 대체합니다
 • 부정 래핑 aller: je ne vais pas partir.
 예외:
 • aller를 동작 (je vais à Paris)의 정식 동사로 혼동하지 마세요.
-• Je vais aller는 구어적이고 정확합니다. 서면에서는 단순한 미래가 더 일반적입니다: j’irai.
-활용(인칭, 수, 성):
-| 인칭 | aller (présent) + 부정사 |
-| je | je vais parler |
-| tu | tu vas parler |
-| il / elle / on | il va parler |
-| nous | nous allons parler |
-| vous | vous allez parler |
-| ils / elles | ils vont parler |`,
+• Je vais aller는 구어적이고 정확합니다. 서면에서는 단순한 미래가 더 일반적입니다: j’irai.`,
         hi: `नियम:
 • Aller (वर्तमान) + अनंत रूप: je vais partir, il va pleuvoir, nous allons manger.
 • निकट या नियोजित घटनाओं तथा प्रमाण पर आधारित पूर्वानुमानों के लिए; बोलचाल में प्रायः futur simple. की जगह आता है।
 • नकार aller के दोनों ओर आता है: je ne vais pas partir.
 अपवाद:
 • गति की स्वतंत्र क्रिया aller से भ्रमित न करें (je vais à Paris)।
-• Je vais aller बोलचाल में सही है; लिखित भाषा में सरल भविष्य अधिक सामान्य है: j’irai.
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | aller (présent) + क्रिया का अनंत रूप |
-| je | je vais parler |
-| tu | tu vas parler |
-| il / elle / on | il va parler |
-| nous | nous allons parler |
-| vous | vous allez parler |
-| ils / elles | ils vont parler |`,
+• Je vais aller बोलचाल में सही है; लिखित भाषा में सरल भविष्य अधिक सामान्य है: j’irai.`,
         ga: `Rialacha:
 • Aller (láithreach) + infinideach: je vais partir, il va pleuvoir, nous allons manger.
 • Le haghaidh eachtraí atá ar tí tarlú nó atá pleanáilte, agus tuartha bunaithe ar fhianaise; sa chaint, tagann sé in áit an futur simple. go minic.
 • Tagann an diúltú timpeall ar aller: je ne vais pas partir.
 Eisceachtaí:
 • Ná measc é le aller mar ghnáthbhriathar gluaiseachta (je vais à Paris).
-• Tá Je vais aller ceart sa chaint; sa scríbhneoireacht, is gnách an fáistineach simplí: j’irai.
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | aller (présent) + infinideach |
-| je | je vais parler |
-| tu | tu vas parler |
-| il / elle / on | il va parler |
-| nous | nous allons parler |
-| vous | vous allez parler |
-| ils / elles | ils vont parler |`
+• Tá Je vais aller ceart sa chaint; sa scríbhneoireacht, is gnách an fáistineach simplí: j’irai.`,
+        ar: `القواعد:
+• Aller (في المضارع) + المصدر: je vais partir, il va pleuvoir, nous allons manger.
+• للأحداث الوشيكة أو المخطط لها وللتوقعات المبنية على دليل؛ وفي الكلام كثيرًا ما يحل محل الـ futur simple.
+• النفي يحيط بـ aller: je ne vais pas partir.
+الاستثناءات:
+• لا تخلط بينه وبين aller فعلًا تامًا للحركة (je vais à Paris).
+• Je vais aller عامية وصحيحة؛ وفي الكتابة المستقبل البسيط أكثر شيوعًا: j’irai.`
     });
 
     D('passe-recent', {
@@ -1079,99 +680,49 @@ Exceptions:
 • Pour une action qui vient de se produire ; dans le passé — venait de + infinitif (il venait de partir).
 Exceptions:
 • Venir de + nom/lieu signifie « venir de » (je viens de Paris) — pas du passé récent.
-• Rarement nié ; on dit il n’est pas encore arrivé à la place.
-Conjugaison (personne, nombre, genre):
-| Personne | venir de (présent) + infinitif |
-| je | je viens de parler |
-| tu | tu viens de parler |
-| il / elle / on | il vient de parler |
-| nous | nous venons de parler |
-| vous | vous venez de parler |
-| ils / elles | ils viennent de parler |`,
+• Rarement nié ; on dit il n’est pas encore arrivé à la place.`,
         ru: `Правила:
 • Venir de (настоящее время) + инфинитив: il vient d’arriver, nous venons de manger.
 • Для только что произошедшего действия; в прошедшем времени — venait de + инфинитив (il venait de partir).
 Исключения:
 • Venir de + существительное/место означает "происходящий из" (je viens de Paris), а не passé récent.
-• Редко отрицается; вместо этого пишут il n’est pas encore arrivé.
-Спряжение (лицо, число, род):
-| Лицо | venir de (présent) + инфинитив |
-| je | je viens de parler |
-| tu | tu viens de parler |
-| il / elle / on | il vient de parler |
-| nous | nous venons de parler |
-| vous | vous venez de parler |
-| ils / elles | ils viennent de parler |`,
+• Редко отрицается; вместо этого пишут il n’est pas encore arrivé.`,
         es: `Reglas:
 • Venir de (presente) + infinitivo: il vient d’arriver, nous venons de manger.
 • Para una acción que acaba de ocurrir; en el pasado — venait de + infinitivo (il venait de partir).
 Excepciones:
 • Venir de + sustantivo/lugar significa "venir de" (je viens de Paris), no del passé récent.
-• Rara vez negado; uno dice il n’est pas encore arrivé en su lugar.
-Conjugación (persona, número, género):
-| Persona | venir de (présent) + infinitivo |
-| je | je viens de parler |
-| tu | tu viens de parler |
-| il / elle / on | il vient de parler |
-| nous | nous venons de parler |
-| vous | vous venez de parler |
-| ils / elles | ils viennent de parler |`,
+• Rara vez negado; uno dice il n’est pas encore arrivé en su lugar.`,
         zh: `规则:
 • Venir de（现在时）+ 不定式：il vient d’arriver, nous venons de manger.
 • 对于刚刚发生的动作；过去 — venait de + 不定式 (il venait de partir)。
 例外:
 • Venir de + 名词/地点的意思是“来自”(je viens de Paris) — 不是 passé récent.
-• 很少被否定；有人说 il n’est pas encore arrivé。
-变位（人称、数、性）:
-| 人称 | venir de (présent) + 不定式 |
-| je | je viens de parler |
-| tu | tu viens de parler |
-| il / elle / on | il vient de parler |
-| nous | nous venons de parler |
-| vous | vous venez de parler |
-| ils / elles | ils viennent de parler |`,
+• 很少被否定；有人说 il n’est pas encore arrivé。`,
         ko: `규칙:
 • Venir de(현재) + 부정사: il vient d’arriver, nous venons de manger.
 • 방금 발생한 작업의 경우; 과거 — venait de + 부정사 (il venait de partir).
 예외:
 • Venir de + 명사/장소는 passé récent.가 아닌 (je viens de Paris)에서 "온다"를 의미합니다
-• 부정되는 경우는 거의 없습니다. 대신 il n’est pas encore arrivé라고 말합니다.
-활용(인칭, 수, 성):
-| 인칭 | venir de (présent) + 부정사 |
-| je | je viens de parler |
-| tu | tu viens de parler |
-| il / elle / on | il vient de parler |
-| nous | nous venons de parler |
-| vous | vous venez de parler |
-| ils / elles | ils viennent de parler |`,
+• 부정되는 경우는 거의 없습니다. 대신 il n’est pas encore arrivé라고 말합니다.`,
         hi: `नियम:
 • Venir de (वर्तमान) + अनंत रूप: il vient d’arriver, nous venons de manger.
 • अभी-अभी हुए कार्य के लिए; भूतकाल में venait de + अनंत रूप (il venait de partir)।
 अपवाद:
 • Venir de + संज्ञा/स्थान का अर्थ «से आना» है (je viens de Paris); यह passé récent. नहीं है।
-• इसका नकारात्मक प्रयोग दुर्लभ है; इसके बदले il n’est pas encore arrivé कहते हैं।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | venir de (présent) + क्रिया का अनंत रूप |
-| je | je viens de parler |
-| tu | tu viens de parler |
-| il / elle / on | il vient de parler |
-| nous | nous venons de parler |
-| vous | vous venez de parler |
-| ils / elles | ils viennent de parler |`,
+• इसका नकारात्मक प्रयोग दुर्लभ है; इसके बदले il n’est pas encore arrivé कहते हैं।`,
         ga: `Rialacha:
 • Venir de (láithreach) + infinideach: il vient d’arriver, nous venons de manger.
 • Le haghaidh gníomh atá díreach tar éis tarlú; san am atá caite, venait de + infinideach (il venait de partir).
 Eisceachtaí:
 • Ciallaíonn Venir de + ainmfhocal/áit «teacht ó» (je viens de Paris); ní hé an passé récent. é.
-• Is annamh a dhiúltaítear é; deirtear il n’est pas encore arrivé ina áit.
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | venir de (présent) + infinideach |
-| je | je viens de parler |
-| tu | tu viens de parler |
-| il / elle / on | il vient de parler |
-| nous | nous venons de parler |
-| vous | vous venez de parler |
-| ils / elles | ils viennent de parler |`
+• Is annamh a dhiúltaítear é; deirtear il n’est pas encore arrivé ina áit.`,
+        ar: `القواعد:
+• Venir de (في المضارع) + المصدر: il vient d’arriver, nous venons de manger.
+• لحدث وقع للتو؛ وفي الماضي — venait de + المصدر (il venait de partir).
+الاستثناءات:
+• Venir de + اسم أو مكان تعني «جاء من» (je viens de Paris) — وليست الـ passé récent.
+• نادرًا ما يُنفى؛ بل يُقال il n’est pas encore arrivé.`
     });
 
     D('en-train-de', {
@@ -1228,7 +779,13 @@ Excepciones:
 • Cuireann sé béim ar ghníomh atá AR SIÚL anois díreach, nó a bhí ar siúl ag am ar leith.
 Eisceachtaí:
 • Ní úsáidtear le briathra staide ná braistinte (savoir, aimer, vouloir, voir) é: ní deirtear «je suis en train de savoir».
-• Ní úsáidtear le haghaidh nósanna é; úsáidtear an gnáth-présent.`
+• Ní úsáidtear le haghaidh nósanna é; úsáidtear an gnáth-présent.`,
+        ar: `القواعد:
+• Être (في أي زمن) + en train de + المصدر: je suis en train de lire, ils étaient en train de manger.
+• يؤكد أن الحدث جارٍ الآن (أو كان جاريًا في لحظة معينة).
+الاستثناءات:
+• لا يُستعمل مع أفعال الحالة والإدراك (savoir, aimer, vouloir, voir): لا يُقال « je suis en train de savoir ».
+• لا يُستعمل للعادات — استعمل الـ présent العادي.`
     });
 
     D('conditionnel-present', {
@@ -1255,15 +812,7 @@ Exceptions:
 Exceptions:
 • Mêmes radicaux irréguliers que le futur : être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
 • Jamais de conditionnel après si introduisant une condition (si j’avais…, et non si j’aurais…) ; il est possible après si dans une interrogation indirecte (je me demande s’il viendrait).
-• Dans la presse pour des informations non confirmées (le ministre aurait démissionné — prétendument).
-Conjugaison (personne, nombre, genre):
-| Personne | parler | finir | être | avoir | aller | pouvoir |
-| je | parlerais | finirais | serais | aurais | irais | pourrais |
-| tu | parlerais | finirais | serais | aurais | irais | pourrais |
-| il / elle / on | parlerait | finirait | serait | aurait | irait | pourrait |
-| nous | parlerions | finirions | serions | aurions | irions | pourrions |
-| vous | parleriez | finiriez | seriez | auriez | iriez | pourriez |
-| ils / elles | parleraient | finiraient | seraient | auraient | iraient | pourraient |`,
+• Dans la presse pour des informations non confirmées (le ministre aurait démissionné — prétendument).`,
         ru: `Правила:
 • Основа глагола Futur + окончания imparfait: je parlerais, tu finirais, il serait, nous irions.
 • Используется для вежливых просьб (je voudrais un café), советов (tu devrais), предположений и нереальных условий (si j’avais le temps, je voyagerais).
@@ -1271,15 +820,7 @@ Conjugaison (personne, nombre, genre):
 Исключения:
 • Те же неправильные основы, что и будущее: être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
 • После si со значением «если» условное наклонение не употребляется (si j’avais…, а не si j’aurais…); после si со значением «ли» оно возможно (je me demande s’il viendrait).
-• В прессе по неподтвержденным новостям (le ministre aurait démissionné — якобы).
-Спряжение (лицо, число, род):
-| Лицо | parler | finir | être | avoir | aller | pouvoir |
-| je | parlerais | finirais | serais | aurais | irais | pourrais |
-| tu | parlerais | finirais | serais | aurais | irais | pourrais |
-| il / elle / on | parlerait | finirait | serait | aurait | irait | pourrait |
-| nous | parlerions | finirions | serions | aurions | irions | pourrions |
-| vous | parleriez | finiriez | seriez | auriez | iriez | pourriez |
-| ils / elles | parleraient | finiraient | seraient | auraient | iraient | pourraient |`,
+• В прессе по неподтвержденным новостям (le ministre aurait démissionné — якобы).`,
         es: `Reglas:
 • Raíz verbal Futur + terminaciones imparfait: je parlerais, tu finirais, il serait, nous irions.
 • Utilizado para solicitudes educadas (je voudrais un café), consejos (tu devrais), conjeturas y condiciones irreales (si j’avais le temps, je voyagerais).
@@ -1287,15 +828,7 @@ Conjugaison (personne, nombre, genre):
 Excepciones:
 • Los mismos raíces irregulares que el futuro: être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
 • Nunca se usa el condicional después de si que introduce una condición (si j’avais…, no si j’aurais…); sí puede usarse tras si en una interrogativa indirecta (je me demande s’il viendrait).
-• En la prensa por noticias no confirmadas (le ministre aurait démissionné — supuestamente).
-Conjugación (persona, número, género):
-| Persona | parler | finir | être | avoir | aller | pouvoir |
-| je | parlerais | finirais | serais | aurais | irais | pourrais |
-| tu | parlerais | finirais | serais | aurais | irais | pourrais |
-| il / elle / on | parlerait | finirait | serait | aurait | irait | pourrait |
-| nous | parlerions | finirions | serions | aurions | irions | pourrions |
-| vous | parleriez | finiriez | seriez | auriez | iriez | pourriez |
-| ils / elles | parleraient | finiraient | seraient | auraient | iraient | pourraient |`,
+• En la prensa por noticias no confirmadas (le ministre aurait démissionné — supuestamente).`,
         zh: `规则:
 • Futur 动词词干 + imparfait 词尾：je parlerais, tu finirais, il serait, nous irions.
 • 用于礼貌请求 (je voudrais un café)、建议 (tu devrais)、猜想和不真实的条件 (si j’avais le temps, je voyagerais)。
@@ -1303,15 +836,7 @@ Conjugación (persona, número, género):
 例外:
 • 与未来相同的不规则词干：être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
 • si 表示“如果”时，后面不能用条件式 (si j’avais…，而不是 si j’aurais…)；si 表示“是否”时可以用 (je me demande s’il viendrait)。
-• 在媒体上发布未经证实的消息（le ministre aurait démissionné - 据称）。
-变位（人称、数、性）:
-| 人称 | parler | finir | être | avoir | aller | pouvoir |
-| je | parlerais | finirais | serais | aurais | irais | pourrais |
-| tu | parlerais | finirais | serais | aurais | irais | pourrais |
-| il / elle / on | parlerait | finirait | serait | aurait | irait | pourrait |
-| nous | parlerions | finirions | serions | aurions | irions | pourrions |
-| vous | parleriez | finiriez | seriez | auriez | iriez | pourriez |
-| ils / elles | parleraient | finiraient | seraient | auraient | iraient | pourraient |`,
+• 在媒体上发布未经证实的消息（le ministre aurait démissionné - 据称）。`,
         ko: `규칙:
 • Futur 동사 어간 + imparfait 어미: je parlerais, tu finirais, il serait, nous irions.
 • 정중한 요청 (je voudrais un café), 조언 (tu devrais), 추측 및 비현실적인 조건 (si j’avais le temps, je voyagerais)에 사용됩니다.
@@ -1319,15 +844,7 @@ Conjugación (persona, número, género):
 예외:
 • 미래와 동일한 불규칙 어간: être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
 • si가 «만약»을 뜻하면 뒤에 조건법을 쓰지 않습니다 (si j’avais…, si j’aurais… 아님). 간접의문에서 «~인지»를 뜻할 때는 가능합니다 (je me demande s’il viendrait).
-• 확인되지 않은 소식에 대한 언론 보도(le ministre aurait démissionné — 추정)
-활용(인칭, 수, 성):
-| 인칭 | parler | finir | être | avoir | aller | pouvoir |
-| je | parlerais | finirais | serais | aurais | irais | pourrais |
-| tu | parlerais | finirais | serais | aurais | irais | pourrais |
-| il / elle / on | parlerait | finirait | serait | aurait | irait | pourrait |
-| nous | parlerions | finirions | serions | aurions | irions | pourrions |
-| vous | parleriez | finiriez | seriez | auriez | iriez | pourriez |
-| ils / elles | parleraient | finiraient | seraient | auraient | iraient | pourraient |`,
+• 확인되지 않은 소식에 대한 언론 보도(le ministre aurait démissionné — 추정)`,
         hi: `नियम:
 • Futur का आधार + imparfait के प्रत्यय: je parlerais, tu finirais, il serait, nous irions.
 • विनम्र अनुरोध (je voudrais un café), सलाह (tu devrais), अनुमान और अवास्तविक शर्तों के लिए (si j’avais le temps, je voyagerais)।
@@ -1335,15 +852,7 @@ Conjugación (persona, número, género):
 अपवाद:
 • भविष्य वाले ही अनियमित आधार: être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
 • «यदि» के अर्थ वाले si के बाद शर्तवाचक रूप नहीं आता (si j’avais…, न कि si j’aurais…); अप्रत्यक्ष प्रश्न में «क्या…» के अर्थ वाले si के बाद आ सकता है (je me demande s’il viendrait)।
-• समाचारों में अपुष्ट सूचना के लिए (le ministre aurait démissionné — कथित रूप से)।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | parler | finir | être | avoir | aller | pouvoir |
-| je | parlerais | finirais | serais | aurais | irais | pourrais |
-| tu | parlerais | finirais | serais | aurais | irais | pourrais |
-| il / elle / on | parlerait | finirait | serait | aurait | irait | pourrait |
-| nous | parlerions | finirions | serions | aurions | irions | pourrions |
-| vous | parleriez | finiriez | seriez | auriez | iriez | pourriez |
-| ils / elles | parleraient | finiraient | seraient | auraient | iraient | pourraient |`,
+• समाचारों में अपुष्ट सूचना के लिए (le ministre aurait démissionné — कथित रूप से)।`,
         ga: `Rialacha:
 • Fréamh an Futur + deirí an imparfait: je parlerais, tu finirais, il serait, nous irions.
 • Le haghaidh iarratais chúirtéiseacha (je voudrais un café), comhairle (tu devrais), tuairimíochta agus coinníollacha neamhréadúla (si j’avais le temps, je voyagerais).
@@ -1351,15 +860,15 @@ Conjugación (persona, número, género):
 Eisceachtaí:
 • Na fréamhacha neamhrialta céanna leis an bhfáistineach: être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
 • Ní úsáidtear an modh coinníollach tar éis si a chiallaíonn «má» (si j’avais…, seachas si j’aurais…); tá sé ceadaithe tar éis si i gceist indíreach (je me demande s’il viendrait).
-• Sa phreas le haghaidh eolais neamh dheimhnithe (le ministre aurait démissionné — de réir tuairiscí).
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | parler | finir | être | avoir | aller | pouvoir |
-| je | parlerais | finirais | serais | aurais | irais | pourrais |
-| tu | parlerais | finirais | serais | aurais | irais | pourrais |
-| il / elle / on | parlerait | finirait | serait | aurait | irait | pourrait |
-| nous | parlerions | finirions | serions | aurions | irions | pourrions |
-| vous | parleriez | finiriez | seriez | auriez | iriez | pourriez |
-| ils / elles | parleraient | finiraient | seraient | auraient | iraient | pourraient |`
+• Sa phreas le haghaidh eolais neamh dheimhnithe (le ministre aurait démissionné — de réir tuairiscí).`,
+        ar: `القواعد:
+• جذر الـ Futur + نهايات الـ imparfait: je parlerais, tu finirais, il serait, nous irions.
+• يُستعمل للطلبات المهذبة (je voudrais un café)، والنصيحة (tu devrais)، والتخمين، والشروط غير الواقعية (si j’avais le temps, je voyagerais).
+• بعد si — الـ imparfait، مع الشرطي في الجملة الرئيسية.
+الاستثناءات:
+• الجذور الشاذة نفسها كما في المستقبل: être → serais, avoir → aurais, aller → irais, faire → ferais, pouvoir → pourrais, vouloir → voudrais, savoir → saurais, venir → viendrais.
+• لا شرطي أبدًا بعد si بمعنى «إذا» (si j’avais…، وليس si j’aurais…)؛ أما بعد si بمعنى «هل» فيجوز (je me demande s’il viendrait).
+• في الصحافة للأخبار غير المؤكدة (le ministre aurait démissionné — على ما يُقال).`
     });
 
     D('conditionnel-passe', {
@@ -1383,105 +892,56 @@ Exceptions:
 • Regrets et reproches : tu aurais dû me prévenir ; informations non vérifiées dans la presse.
 Exceptions:
 • Le choix du verbe auxiliaire et l’accord du participe suivent les règles du passé composé.
-• Devoir/pouvoir/vouloir au passé conditionnel + infinitif : j’aurais pu venir, il aurait dû partir.
-Conjugaison (personne, nombre, genre):
-| Personne | avoir (conditionnel) + voulu | être (conditionnel) + venu |
-| je | j’aurais voulu | je serais venu (m.) / venue (f.) |
-| tu | tu aurais voulu | tu serais venu / venue |
-| il / elle | il / elle aurait voulu | il serait venu · elle serait venue |
-| nous | nous aurions voulu | nous serions venus / venues |
-| vous | vous auriez voulu | vous seriez venu(e)(s) |
-| ils / elles | ils / elles auraient voulu | ils seraient venus · elles seraient venues |`,
+• Devoir/pouvoir/vouloir au passé conditionnel + infinitif : j’aurais pu venir, il aurait dû partir.`,
         ru: `Правила:
 • Образование: avoir/être в условном настоящем времени + причастие прошедшего времени: j’aurais voulu, il serait venu, elles se seraient levées.
 • Невыполненное прошедшее условие: si + plus-que-parfait → прошедшее условное (si j’avais su, je serais venu).
 • Сожаление и упрек: tu aurais dû me prévenir; непроверенная информация в прессе.
 Исключения:
 • Выбор вспомогательного глагола и согласование причастия — как в passé composé.
-• Devoir/pouvoir/vouloir в условном прошедшем + инфинитиве: j’aurais pu venir, il aurait dû partir.
-Спряжение (лицо, число, род):
-| Лицо | avoir (conditionnel) + voulu | être (conditionnel) + venu |
-| je | j’aurais voulu | je serais venu (м.) / venue (ж.) |
-| tu | tu aurais voulu | tu serais venu / venue |
-| il / elle | il / elle aurait voulu | il serait venu · elle serait venue |
-| nous | nous aurions voulu | nous serions venus / venues |
-| vous | vous auriez voulu | vous seriez venu(e)(s) |
-| ils / elles | ils / elles auraient voulu | ils seraient venus · elles seraient venues |`,
+• Devoir/pouvoir/vouloir в условном прошедшем + инфинитиве: j’aurais pu venir, il aurait dû partir.`,
         es: `Reglas:
 • Formación: avoir/être en presente condicional + participio pasado: j’aurais voulu, il serait venu, elles se seraient levées.
 • Condición pasada no cumplida: si + plus-que-parfait → condicional pasada (si j’avais su, je serais venu).
 • Arrepentimiento y reproche: tu aurais dû me prévenir; información no verificada en la prensa.
 Excepciones:
 • La elección del auxiliar y la concordancia del participio siguen las reglas del passé composé.
-• Devoir/pouvoir/vouloir en pasado condicional + infinitivo: j’aurais pu venir, il aurait dû partir.
-Conjugación (persona, número, género):
-| Persona | avoir (conditionnel) + voulu | être (conditionnel) + venu |
-| je | j’aurais voulu | je serais venu (m.) / venue (f.) |
-| tu | tu aurais voulu | tu serais venu / venue |
-| il / elle | il / elle aurait voulu | il serait venu · elle serait venue |
-| nous | nous aurions voulu | nous serions venus / venues |
-| vous | vous auriez voulu | vous seriez venu(e)(s) |
-| ils / elles | ils / elles auraient voulu | ils seraient venus · elles seraient venues |`,
+• Devoir/pouvoir/vouloir en pasado condicional + infinitivo: j’aurais pu venir, il aurait dû partir.`,
         zh: `规则:
 • 构成：现在条件式中的 avoir/être + 过去分词：j’aurais voulu, il serait venu, elles se seraient levées.
 • 未满足的过去条件式：si + plus-que-parfait → 过去条件式 (si j’avais su, je serais venu)。
 • 遗憾与责备：tu aurais dû me prévenir；媒体上未经证实的信息。
 例外:
 • 助动词的选择及分词的性数配合规则与 passé composé 相同。
-• Devoir/pouvoir/vouloir 过去时条件式 + 不定式：j’aurais pu venir, il aurait dû partir.
-变位（人称、数、性）:
-| 人称 | avoir (conditionnel) + voulu | être (conditionnel) + venu |
-| je | j’aurais voulu | je serais venu （阳性） / venue （阴性） |
-| tu | tu aurais voulu | tu serais venu / venue |
-| il / elle | il / elle aurait voulu | il serait venu · elle serait venue |
-| nous | nous aurions voulu | nous serions venus / venues |
-| vous | vous auriez voulu | vous seriez venu(e)(s) |
-| ils / elles | ils / elles auraient voulu | ils seraient venus · elles seraient venues |`,
+• Devoir/pouvoir/vouloir 过去时条件式 + 不定式：j’aurais pu venir, il aurait dû partir.`,
         ko: `규칙:
 • 형식: 조건법 현재형 + 과거분사의 avoir/être: j’aurais voulu, il serait venu, elles se seraient levées.
 • 미완성 과거 조건: si + plus-que-parfait → 과거 조건 (si j’avais su, je serais venu).
 • 후회와 비난: tu aurais dû me prévenir; 언론에서 확인되지 않은 정보입니다.
 예외:
 • 조동사 선택과 분사의 성·수 일치 규칙은 passé composé와 같습니다.
-• Devoir/pouvoir/vouloir 과거 조건법 + 부정사: j’aurais pu venir, il aurait dû partir.
-활용(인칭, 수, 성):
-| 인칭 | avoir (conditionnel) + voulu | être (conditionnel) + venu |
-| je | j’aurais voulu | je serais venu (남성) / venue (여성) |
-| tu | tu aurais voulu | tu serais venu / venue |
-| il / elle | il / elle aurait voulu | il serait venu · elle serait venue |
-| nous | nous aurions voulu | nous serions venus / venues |
-| vous | vous auriez voulu | vous seriez venu(e)(s) |
-| ils / elles | ils / elles auraient voulu | ils seraient venus · elles seraient venues |`,
+• Devoir/pouvoir/vouloir 과거 조건법 + 부정사: j’aurais pu venir, il aurait dû partir.`,
         hi: `नियम:
 • रचना: वर्तमान शर्तवाचक में avoir/être + भूतकालिक कृदंत: j’aurais voulu, il serait venu, elles se seraient levées.
 • भूतकाल की अपूर्ण शर्त: si + plus-que-parfait → भूतकालिक शर्तवाचक (si j’avais su, je serais venu)।
 • पछतावा और उलाहना: tu aurais dû me prévenir; समाचारों में अपुष्ट सूचना।
 अपवाद:
 • सहायक क्रिया का चुनाव और कृदंत का लिंग-वचन सामंजस्य passé composé जैसे हैं।
-• भूतकालिक शर्तवाचक में Devoir/pouvoir/vouloir + अनंत रूप: j’aurais pu venir, il aurait dû partir.
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | avoir (conditionnel) + voulu | être (conditionnel) + venu |
-| je | j’aurais voulu | je serais venu (पुल्लिंग) / venue (स्त्रीलिंग) |
-| tu | tu aurais voulu | tu serais venu / venue |
-| il / elle | il / elle aurait voulu | il serait venu · elle serait venue |
-| nous | nous aurions voulu | nous serions venus / venues |
-| vous | vous auriez voulu | vous seriez venu(e)(s) |
-| ils / elles | ils / elles auraient voulu | ils seraient venus · elles seraient venues |`,
+• भूतकालिक शर्तवाचक में Devoir/pouvoir/vouloir + अनंत रूप: j’aurais pu venir, il aurait dû partir.`,
         ga: `Rialacha:
 • Foirmiú: avoir/être sa choinníollach láithreach + rangabháil chaite: j’aurais voulu, il serait venu, elles se seraient levées.
 • Coinníoll nár comhlíonadh san am atá caite: si + plus-que-parfait → coinníollach caite (si j’avais su, je serais venu).
 • Aiféala agus cáineadh: tu aurais dû me prévenir; eolas neamh dheimhnithe sa phreas.
 Eisceachtaí:
 • Roghnaítear an briathar cúnta agus déantar réiteach na rangabhála mar atá sa passé composé.
-• Devoir/pouvoir/vouloir sa choinníollach caite + infinideach: j’aurais pu venir, il aurait dû partir.
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | avoir (conditionnel) + voulu | être (conditionnel) + venu |
-| je | j’aurais voulu | je serais venu (fir.) / venue (bain.) |
-| tu | tu aurais voulu | tu serais venu / venue |
-| il / elle | il / elle aurait voulu | il serait venu · elle serait venue |
-| nous | nous aurions voulu | nous serions venus / venues |
-| vous | vous auriez voulu | vous seriez venu(e)(s) |
-| ils / elles | ils / elles auraient voulu | ils seraient venus · elles seraient venues |`
+• Devoir/pouvoir/vouloir sa choinníollach caite + infinideach: j’aurais pu venir, il aurait dû partir.`,
+        ar: `القواعد:
+• التكوين: avoir/être في الشرطي الحاضر + اسم المفعول: j’aurais voulu, il serait venu, elles se seraient levées.
+• شرط لم يتحقق في الماضي: si + plus-que-parfait → الشرطي الماضي (si j’avais su, je serais venu).
+• الندم واللوم: tu aurais dû me prévenir؛ والمعلومات غير المؤكدة في الصحافة.
+الاستثناءات:
+• اختيار الفعل المساعد ومطابقة اسم المفعول كما في الـ passé composé.
+• Devoir/pouvoir/vouloir في الشرطي الماضي + المصدر: j’aurais pu venir, il aurait dû partir.`
     });
 
     D('hypothese-si', {
@@ -1565,7 +1025,16 @@ Excepciones:
 Eisceachtaí:
 • Ní thagann an futur ná an coinníollach díreach tar éis si riamh (tá si tu viendras mícheart).
 • Ní coinníollacha iad Si = «sea» mar fhreagra ar cheist dhiúltach (tu ne viens pas ? — Si !) ná si = «chomh» (si grand).
-• I gceist indíreach, ciallaíonn Si (je me demande s’il vient) «an…».`
+• I gceist indíreach, ciallaíonn Si (je me demande s’il vient) «an…».`,
+        ar: `القواعد:
+• شرط حقيقي: si + présent → futur / présent / الأمر (si tu viens, nous partirons).
+• غير واقعي (في الحاضر): si + imparfait → الشرطي الحاضر (si j’étais riche, j’achèterais…).
+• لم يتحقق (في الماضي): si + plus-que-parfait → الشرطي الماضي (si j’avais su, je serais venu).
+• Si قد تبدأ الجملة أو تأتي في وسطها؛ وقبل il/ils — s’ (s’il pleut).
+الاستثناءات:
+• لا futur ولا شرطي مباشرة بعد si (si tu viendras خطأ).
+• Si = «بلى» جوابًا عن سؤال منفي (tu ne viens pas ? — Si !) وsi = «جدًا» (si grand) ليستا شرطًا.
+• Si في السؤال غير المباشر (je me demande s’il vient) تعني «هل».`
     });
 
     D('subjonctif-present', {
@@ -1595,15 +1064,7 @@ Exceptions:
 • Irrégulier : être → que je sois, qu’il soit; avoir → que j’aie, qu’il ait; aller → que j’aille; faire → que je fasse; pouvoir → que je puisse; savoir → que je sache; vouloir → que je veuille.
 • Dans nous/vous, cela équivaut à l’imparfait (que nous parlions).
 • Après penser/croire/espérer à la forme affirmative : indicatif ; à la forme négative ou interrogative (je ne pense pas que) : subjonctif.
-• Après que adopte le mode indicatif, bien que beaucoup utilisent à tort le mode subjonctif.
-Conjugaison (personne, nombre, genre):
-| Personne | parler | finir | être | avoir | aller | faire |
-| que je | parle | finisse | sois | aie | aille | fasse |
-| que tu | parles | finisses | sois | aies | ailles | fasses |
-| qu’il / qu’elle | parle | finisse | soit | ait | aille | fasse |
-| que nous | parlions | finissions | soyons | ayons | allions | fassions |
-| que vous | parliez | finissiez | soyez | ayez | alliez | fassiez |
-| qu’ils / qu’elles | parlent | finissent | soient | aient | aillent | fassent |`,
+• Après que adopte le mode indicatif, bien que beaucoup utilisent à tort le mode subjonctif.`,
         ru: `Правила:
 • Образование: que + основа формы ils в présent + -e, -es, -e, -ions, -iez, -ent (qu’ils parlent → que je parle).
 • Используется после: необходимости (il faut que), желания/приказа (vouloir que, exiger que), эмоции (être content que, regretter que), сомнения (douter que, il se peut que) и союзов bien que, pour que, avant que, afin que, à moins que, jusqu’à ce que.
@@ -1612,15 +1073,7 @@ Conjugaison (personne, nombre, genre):
 • Неправильные формы: être → que je sois, qu’il soit; avoir → que j’aie, qu’il ait; aller → que j’aille; faire → que je fasse; pouvoir → que je puisse; savoir → que je sache; vouloir → que je veuille.
 • В nous/vous он равен imparfait (que nous parlions).
 • После penser/croire/espérer в утвердительной форме — изъявительное наклонение; в отрицательной или вопросительной форме (je ne pense pas que) — сослагательное.
-• Après que принимает изъявительное наклонение, хотя многие ошибочно используют сослагательное наклонение.
-Спряжение (лицо, число, род):
-| Лицо | parler | finir | être | avoir | aller | faire |
-| que je | parle | finisse | sois | aie | aille | fasse |
-| que tu | parles | finisses | sois | aies | ailles | fasses |
-| qu’il / qu’elle | parle | finisse | soit | ait | aille | fasse |
-| que nous | parlions | finissions | soyons | ayons | allions | fassions |
-| que vous | parliez | finissiez | soyez | ayez | alliez | fassiez |
-| qu’ils / qu’elles | parlent | finissent | soient | aient | aillent | fassent |`,
+• Après que принимает изъявительное наклонение, хотя многие ошибочно используют сослагательное наклонение.`,
         es: `Reglas:
 • Formación: que + raíz de la forma ils del présent + -e, -es, -e, -ions, -iez, -ent (qu’ils parlent → que je parle).
 • Usado después de: necesidad (il faut que), deseo/orden (vouloir que, exiger que), emoción (être content que, regretter que), duda (douter que, il se peut que) y las conjunciones bien que, pour que, avant que, afin que, à moins que, jusqu’à ce que.
@@ -1629,15 +1082,7 @@ Excepciones:
 • Irregular: être → que je sois, qu’il soit; avoir → que j’aie, qu’il ait; aller → que j’aille; faire → que je fasse; pouvoir → que je puisse; savoir → que je sache; vouloir → que je veuille.
 • En nous/vous es igual al imparfait (que nous parlions).
 • Después de penser/croire/espérer en afirmativa se usa el indicativo; en negativa o interrogativa (je ne pense pas que), el subjuntivo.
-• Après que toma el modo indicativo, aunque muchos usan erróneamente el modo subjuntivo.
-Conjugación (persona, número, género):
-| Persona | parler | finir | être | avoir | aller | faire |
-| que je | parle | finisse | sois | aie | aille | fasse |
-| que tu | parles | finisses | sois | aies | ailles | fasses |
-| qu’il / qu’elle | parle | finisse | soit | ait | aille | fasse |
-| que nous | parlions | finissions | soyons | ayons | allions | fassions |
-| que vous | parliez | finissiez | soyez | ayez | alliez | fassiez |
-| qu’ils / qu’elles | parlent | finissent | soient | aient | aillent | fassent |`,
+• Après que toma el modo indicativo, aunque muchos usan erróneamente el modo subjuntivo.`,
         zh: `规则:
 • 构成：que + présent 中 ils 形式的词干 + -e, -es, -e, -ions, -iez, -ent (qu’ils parlent → que je parle)。
 • 用在：必要性 (il faut que)、愿望/命令 (vouloir que, exiger que)、情感 (être content que, regretter que)、怀疑 (douter que, il se peut que) 和连词 bien que, pour que, avant que, afin que, à moins que, jusqu’à ce que.
@@ -1646,15 +1091,7 @@ Conjugación (persona, número, género):
 • 不规则：être → que je sois, qu’il soit; avoir → que j’aie, qu’il ait; aller → que j’aille; faire → que je fasse; pouvoir → que je puisse; savoir → que je sache; vouloir → que je veuille.
 • 在 nous/vous 中，它等于 imparfait (que nous parlions)。
 • penser/croire/espérer 的肯定式后用直陈式；否定式或疑问式 (je ne pense pas que) 后用虚拟式。
-• Après que 采用直陈式，尽管许多人错误地使用了虚拟式。
-变位（人称、数、性）:
-| 人称 | parler | finir | être | avoir | aller | faire |
-| que je | parle | finisse | sois | aie | aille | fasse |
-| que tu | parles | finisses | sois | aies | ailles | fasses |
-| qu’il / qu’elle | parle | finisse | soit | ait | aille | fasse |
-| que nous | parlions | finissions | soyons | ayons | allions | fassions |
-| que vous | parliez | finissiez | soyez | ayez | alliez | fassiez |
-| qu’ils / qu’elles | parlent | finissent | soient | aient | aillent | fassent |`,
+• Après que 采用直陈式，尽管许多人错误地使用了虚拟式。`,
         ko: `규칙:
 • 형태: que + présent의 ils형 어간 + -e, -es, -e, -ions, -iez, -ent (qu’ils parlent → que je parle).
 • 뒤에 사용됨: 필요성 (il faut que), 소원/주문 (vouloir que, exiger que), 감정 (être content que, regretter que), 의심 (douter que, il se peut que) 및 접속사 bien que, pour que, avant que, afin que, à moins que, jusqu’à ce que.
@@ -1663,15 +1100,7 @@ Conjugación (persona, número, género):
 • 불규칙: être → que je sois, qu’il soit; avoir → que j’aie, qu’il ait; aller → que j’aille; faire → que je fasse; pouvoir → que je puisse; savoir → que je sache; vouloir → que je veuille.
 • nous/vous에서는 imparfait (que nous parlions)와 같습니다.
 • penser/croire/espérer의 긍정형 뒤에는 직설법을, 부정형이나 의문형 (je ne pense pas que) 뒤에는 접속법을 씁니다.
-• Après que는 직설법을 사용하지만 접속법을 잘못 사용하는 경우가 많습니다.
-활용(인칭, 수, 성):
-| 인칭 | parler | finir | être | avoir | aller | faire |
-| que je | parle | finisse | sois | aie | aille | fasse |
-| que tu | parles | finisses | sois | aies | ailles | fasses |
-| qu’il / qu’elle | parle | finisse | soit | ait | aille | fasse |
-| que nous | parlions | finissions | soyons | ayons | allions | fassions |
-| que vous | parliez | finissiez | soyez | ayez | alliez | fassiez |
-| qu’ils / qu’elles | parlent | finissent | soient | aient | aillent | fassent |`,
+• Après que는 직설법을 사용하지만 접속법을 잘못 사용하는 경우가 많습니다.`,
         hi: `नियम:
 • रचना: que + présent में ils रूप का आधार + -e, -es, -e, -ions, -iez, -ent (qu’ils parlent → que je parle)।
 • इनके बाद आता है: आवश्यकता (il faut que), इच्छा/आदेश (vouloir que, exiger que), भावना (être content que, regretter que), संदेह (douter que, il se peut que) और समुच्चयबोधक bien que, pour que, avant que, afin que, à moins que, jusqu’à ce que.
@@ -1680,15 +1109,7 @@ Conjugación (persona, número, género):
 • अनियमित रूप: être → que je sois, qu’il soit; avoir → que j’aie, qu’il ait; aller → que j’aille; faire → que je fasse; pouvoir → que je puisse; savoir → que je sache; vouloir → que je veuille.
 • nous/vous में यह imparfait के समान है (que nous parlions)।
 • penser/croire/espérer के सकारात्मक रूप के बाद निश्चयार्थक विधि आती है; नकारात्मक या प्रश्नवाचक रूप (je ne pense pas que) के बाद विधिलिंग आता है।
-• Après que के साथ निश्चयार्थक विधि आती है, हालाँकि कई लोग ग़लती से विधिलिंग लगाते हैं।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | parler | finir | être | avoir | aller | faire |
-| que je | parle | finisse | sois | aie | aille | fasse |
-| que tu | parles | finisses | sois | aies | ailles | fasses |
-| qu’il / qu’elle | parle | finisse | soit | ait | aille | fasse |
-| que nous | parlions | finissions | soyons | ayons | allions | fassions |
-| que vous | parliez | finissiez | soyez | ayez | alliez | fassiez |
-| qu’ils / qu’elles | parlent | finissent | soient | aient | aillent | fassent |`,
+• Après que के साथ निश्चयार्थक विधि आती है, हालाँकि कई लोग ग़लती से विधिलिंग लगाते हैं।`,
         ga: `Rialacha:
 • Foirmiú: que + fréamh na foirme ils sa présent + -e, -es, -e, -ions, -iez, -ent (qu’ils parlent → que je parle).
 • Úsáidtear tar éis riachtanais (il faut que), mianta/orduithe (vouloir que, exiger que), mothúchán (être content que, regretter que), amhrais (douter que, il se peut que) agus na gcónasc bien que, pour que, avant que, afin que, à moins que, jusqu’à ce que.
@@ -1697,15 +1118,16 @@ Eisceachtaí:
 • Foirmeacha neamhrialta: être → que je sois, qu’il soit; avoir → que j’aie, qu’il ait; aller → que j’aille; faire → que je fasse; pouvoir → que je puisse; savoir → que je sache; vouloir → que je veuille.
 • Sna foirmeacha nous/vous, is ionann é agus an imparfait (que nous parlions).
 • Tar éis penser/croire/espérer san fhoirm dhearfach, úsáidtear an modh táscach; san fhoirm dhiúltach nó i gceist (je ne pense pas que), úsáidtear an modh foshuiteach.
-• Glacann Après que an modh táscach, cé go n-úsáideann go leor daoine an foshuiteach go mícheart.
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | parler | finir | être | avoir | aller | faire |
-| que je | parle | finisse | sois | aie | aille | fasse |
-| que tu | parles | finisses | sois | aies | ailles | fasses |
-| qu’il / qu’elle | parle | finisse | soit | ait | aille | fasse |
-| que nous | parlions | finissions | soyons | ayons | allions | fassions |
-| que vous | parliez | finissiez | soyez | ayez | alliez | fassiez |
-| qu’ils / qu’elles | parlent | finissent | soient | aient | aillent | fassent |`
+• Glacann Après que an modh táscach, cé go n-úsáideann go leor daoine an foshuiteach go mícheart.`,
+        ar: `القواعد:
+• التكوين: que + جذر ils (في الـ présent) + ‎-e, -es, -e, -ions, -iez, -ent (qu’ils parlent → que je parle).
+• يُستعمل بعد: الضرورة (il faut que)، والرغبة أو الأمر (vouloir que, exiger que)، والمشاعر (être content que, regretter que)، والشك (douter que, il se peut que)، وأدوات الربط bien que, pour que, avant que, afin que, à moins que, jusqu’à ce que.
+• إذا كان فاعل الجملتين واحدًا، يُستعمل المصدر: je veux partir (وليس je veux que je parte).
+الاستثناءات:
+• الشاذ: être → que je sois, qu’il soit؛ avoir → que j’aie, qu’il ait؛ aller → que j’aille؛ faire → que je fasse؛ pouvoir → que je puisse؛ savoir → que je sache؛ vouloir → que je veuille.
+• مع nous/vous يساوي الـ imparfait (que nous parlions).
+• بعد penser/croire/espérer في الإثبات — الإخباري؛ وفي النفي أو السؤال (je ne pense pas que) — الـ subjonctif.
+• Après que تأخذ الإخباري، مع أن كثيرين يستعملون الـ subjonctif خطأً.`
     });
 
     D('subjonctif-passe', {
@@ -1726,99 +1148,49 @@ Exceptions:
 • Marque une action COMPLETÉE avant la proposition principale, après les mêmes déclencheurs que le mode subjonctif présent (je suis content que tu sois venu).
 Exceptions:
 • Le choix du verbe auxiliaire et l’accord du participe suivent les règles du passé composé.
-• Si les actions sont simultanées ou si l’action subordonnée est ultérieure, on emploie le subjonctif présent (je suis content que tu viennes).
-Conjugaison (personne, nombre, genre):
-| Personne | avoir (subjonctif) + fini | être (subjonctif) + parti |
-| que je | j’aie fini | je sois parti (m.) / partie (f.) |
-| que tu | tu aies fini | tu sois parti / partie |
-| qu’il / qu’elle | il / elle ait fini | il soit parti · elle soit partie |
-| que nous | nous ayons fini | nous soyons partis / parties |
-| que vous | vous ayez fini | vous soyez parti(e)(s) |
-| qu’ils / qu’elles | ils / elles aient fini | ils soient partis · elles soient parties |`,
+• Si les actions sont simultanées ou si l’action subordonnée est ultérieure, on emploie le subjonctif présent (je suis content que tu viennes).`,
         ru: `Правила:
 • Образование: avoir/être в настоящем сослагательном наклонении + причастие прошедшего времени: que j’aie fini, qu’elle soit partie.
 • Отмечает действие ЗАВЕРШЕННОЕ перед главным предложением после тех же триггеров, что и текущее сослагательное наклонение (je suis content que tu sois venu).
 Исключения:
 • Выбор вспомогательного глагола и согласование причастия — как в passé composé.
-• Если действия одновременны или действие придаточного происходит позже — subjonctif présent (je suis content que tu viennes).
-Спряжение (лицо, число, род):
-| Лицо | avoir (subjonctif) + fini | être (subjonctif) + parti |
-| que je | j’aie fini | je sois parti (м.) / partie (ж.) |
-| que tu | tu aies fini | tu sois parti / partie |
-| qu’il / qu’elle | il / elle ait fini | il soit parti · elle soit partie |
-| que nous | nous ayons fini | nous soyons partis / parties |
-| que vous | vous ayez fini | vous soyez parti(e)(s) |
-| qu’ils / qu’elles | ils / elles aient fini | ils soient partis · elles soient parties |`,
+• Если действия одновременны или действие придаточного происходит позже — subjonctif présent (je suis content que tu viennes).`,
         es: `Reglas:
 • Formación: avoir/être en presente de subjuntivo + participio pasado: que j’aie fini, qu’elle soit partie.
 • Marca una acción COMPLETADA antes de la cláusula principal, después de los mismos desencadenantes que el presente de subjuntivo (je suis content que tu sois venu).
 Excepciones:
 • La elección del auxiliar y la concordancia del participio siguen las reglas del passé composé.
-• Si las acciones son simultáneas o la de la subordinada es posterior, se usa el presente de subjuntivo (je suis content que tu viennes).
-Conjugación (persona, número, género):
-| Persona | avoir (subjonctif) + fini | être (subjonctif) + parti |
-| que je | j’aie fini | je sois parti (m.) / partie (f.) |
-| que tu | tu aies fini | tu sois parti / partie |
-| qu’il / qu’elle | il / elle ait fini | il soit parti · elle soit partie |
-| que nous | nous ayons fini | nous soyons partis / parties |
-| que vous | vous ayez fini | vous soyez parti(e)(s) |
-| qu’ils / qu’elles | ils / elles aient fini | ils soient partis · elles soient parties |`,
+• Si las acciones son simultáneas o la de la subordinada es posterior, se usa el presente de subjuntivo (je suis content que tu viennes).`,
         zh: `规则:
 • 构成：现在虚拟式中的avoir/être + 过去分词：que j’aie fini, qu’elle soit partie.
 • 在与当前虚拟式 (je suis content que tu sois venu) 相同的触发器之后，在主句之前标记一个动作已完成。
 例外:
 • 助动词的选择及分词的性数配合规则与 passé composé 相同。
-• 动作同时发生，或从句动作较晚发生时，用现在虚拟式 (je suis content que tu viennes)。
-变位（人称、数、性）:
-| 人称 | avoir (subjonctif) + fini | être (subjonctif) + parti |
-| que je | j’aie fini | je sois parti （阳性） / partie （阴性） |
-| que tu | tu aies fini | tu sois parti / partie |
-| qu’il / qu’elle | il / elle ait fini | il soit parti · elle soit partie |
-| que nous | nous ayons fini | nous soyons partis / parties |
-| que vous | vous ayez fini | vous soyez parti(e)(s) |
-| qu’ils / qu’elles | ils / elles aient fini | ils soient partis · elles soient parties |`,
+• 动作同时发生，或从句动作较晚发生时，用现在虚拟式 (je suis content que tu viennes)。`,
         ko: `규칙:
 • 형식: 현재 접속법의 avoir/être + 과거 분사: que j’aie fini, qu’elle soit partie.
 • 주절 앞, 현재 접속법 (je suis content que tu sois venu)와 동일한 트리거 뒤의 작업 완료를 표시합니다.
 예외:
 • 조동사 선택과 분사의 성·수 일치 규칙은 passé composé와 같습니다.
-• 동작이 동시에 일어나거나 종속절의 동작이 나중에 일어나면 접속법 현재를 씁니다 (je suis content que tu viennes).
-활용(인칭, 수, 성):
-| 인칭 | avoir (subjonctif) + fini | être (subjonctif) + parti |
-| que je | j’aie fini | je sois parti (남성) / partie (여성) |
-| que tu | tu aies fini | tu sois parti / partie |
-| qu’il / qu’elle | il / elle ait fini | il soit parti · elle soit partie |
-| que nous | nous ayons fini | nous soyons partis / parties |
-| que vous | vous ayez fini | vous soyez parti(e)(s) |
-| qu’ils / qu’elles | ils / elles aient fini | ils soient partis · elles soient parties |`,
+• 동작이 동시에 일어나거나 종속절의 동작이 나중에 일어나면 접속법 현재를 씁니다 (je suis content que tu viennes).`,
         hi: `नियम:
 • रचना: वर्तमान विधिलिंग में avoir/être + भूतकालिक कृदंत: que j’aie fini, qu’elle soit partie.
 • वर्तमान विधिलिंग वाले ही प्रेरक पदों के बाद, मुख्य उपवाक्य से पहले पूर्ण हुआ कार्य दर्शाता है (je suis content que tu sois venu)।
 अपवाद:
 • सहायक क्रिया का चुनाव और कृदंत का लिंग-वचन सामंजस्य passé composé जैसे हैं।
-• क्रियाएँ एक साथ हों या अधीन उपवाक्य की क्रिया बाद में हो तो वर्तमान विधिलिंग आता है (je suis content que tu viennes)।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | avoir (subjonctif) + fini | être (subjonctif) + parti |
-| que je | j’aie fini | je sois parti (पुल्लिंग) / partie (स्त्रीलिंग) |
-| que tu | tu aies fini | tu sois parti / partie |
-| qu’il / qu’elle | il / elle ait fini | il soit parti · elle soit partie |
-| que nous | nous ayons fini | nous soyons partis / parties |
-| que vous | vous ayez fini | vous soyez parti(e)(s) |
-| qu’ils / qu’elles | ils / elles aient fini | ils soient partis · elles soient parties |`,
+• क्रियाएँ एक साथ हों या अधीन उपवाक्य की क्रिया बाद में हो तो वर्तमान विधिलिंग आता है (je suis content que tu viennes)।`,
         ga: `Rialacha:
 • Foirmiú: avoir/être sa fhoshuiteach láithreach + rangabháil chaite: que j’aie fini, qu’elle soit partie.
 • Léiríonn sé gníomh a críochnaíodh roimh ghníomh an phríomhchlásail, tar éis na spreagthóirí céanna leis an bhfoshuiteach láithreach (je suis content que tu sois venu).
 Eisceachtaí:
 • Roghnaítear an briathar cúnta agus déantar réiteach na rangabhála mar atá sa passé composé.
-• Má tharlaíonn na gníomhartha ag an am céanna, nó má tharlaíonn gníomh an fhochlásail níos déanaí, úsáidtear an foshuiteach láithreach (je suis content que tu viennes).
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | avoir (subjonctif) + fini | être (subjonctif) + parti |
-| que je | j’aie fini | je sois parti (fir.) / partie (bain.) |
-| que tu | tu aies fini | tu sois parti / partie |
-| qu’il / qu’elle | il / elle ait fini | il soit parti · elle soit partie |
-| que nous | nous ayons fini | nous soyons partis / parties |
-| que vous | vous ayez fini | vous soyez parti(e)(s) |
-| qu’ils / qu’elles | ils / elles aient fini | ils soient partis · elles soient parties |`
+• Má tharlaíonn na gníomhartha ag an am céanna, nó má tharlaíonn gníomh an fhochlásail níos déanaí, úsáidtear an foshuiteach láithreach (je suis content que tu viennes).`,
+        ar: `القواعد:
+• التكوين: avoir/être في الـ subjonctif الحاضر + اسم المفعول: que j’aie fini, qu’elle soit partie.
+• يدل على حدث انتهى قبل الجملة الرئيسية، بعد المحفزات نفسها التي تستدعي الـ subjonctif الحاضر (je suis content que tu sois venu).
+الاستثناءات:
+• اختيار الفعل المساعد ومطابقة اسم المفعول كما في الـ passé composé.
+• إذا كان الحدثان متزامنين أو كان الحدث لاحقًا — الـ subjonctif الحاضر (je suis content que tu viennes).`
     });
 
     D('imperatif', {
@@ -1842,84 +1214,56 @@ Exceptions:
 • Négation — ne … pas autour du verbe : ne parle pas ! Les pronoms SUIVENT un verbe affirmatif avec des traits d'union (donne-le-moi), mais le précèdent du négatif (ne me le donne pas).
 Exceptions:
 • Formes spéciales : être → sois, soyons, soyez; avoir → aie, ayons, ayez; savoir → sache, sachons, sachez; vouloir → veuillez (poli).
-• Me/te devient moi/toi après le verbe (lève-toi, donne-moi).
-Conjugaison (personne, nombre, genre):
-| Personne | parler | finir | être | avoir | aller |
-| tu | parle ! | finis ! | sois ! | aie ! | va ! |
-| nous | parlons ! | finissons ! | soyons ! | ayons ! | allons ! |
-| vous | parlez ! | finissez ! | soyez ! | ayez ! | allez ! |`,
+• Me/te devient moi/toi après le verbe (lève-toi, donne-moi).`,
         ru: `Правила:
 • Три формы — tu, nous, vous без подлежащего: parle ! parlons ! parlez !
 • В форме tu глаголов -er (и aller, ouvrir и т. д.) отбрасывается -s: parle, va, ouvre, но возвращается перед y/en: vas-y, parles-en.
 • Отрицание — ne … pas вокруг глагола: ne parle pas ! Местоимения СЛЕДУЮТ за утвердительным глаголом через дефис (donne-le-moi), но предшествуют ему отрицательным (ne me le donne pas).
 Исключения:
 • Специальные формы: être → sois, soyons, soyez; avoir → aie, ayons, ayez; savoir → sache, sachons, sachez; vouloir → veuillez (вежливо).
-• Me/te становится moi/toi после глагола (lève-toi, donne-moi).
-Спряжение (лицо, число, род):
-| Лицо | parler | finir | être | avoir | aller |
-| tu | parle ! | finis ! | sois ! | aie ! | va ! |
-| nous | parlons ! | finissons ! | soyons ! | ayons ! | allons ! |
-| vous | parlez ! | finissez ! | soyez ! | ayez ! | allez ! |`,
+• Me/te становится moi/toi после глагола (lève-toi, donne-moi).`,
         es: `Reglas:
 • Tres formularios: tu, nous, vous sin asunto: ¡parle ! parlons ! parlez!
 • La forma tu de los verbos -er (y aller, ouvrir, etc.) elimina la forma -s: parle, va, ouvre, pero regresa antes de y/en: vas-y, parles-en.
 • Negación — ne … pas alrededor del verbo: ne parle pas ! Los pronombres SIGUEN a un verbo afirmativo con guiones (donne-le-moi), pero lo preceden en negativo (ne me le donne pas).
 Excepciones:
 • Formas especiales: être → sois, soyons, soyez; avoir → aie, ayons, ayez; savoir → sache, sachons, sachez; vouloir → veuillez (educado).
-• Me/te se convierte en moi/toi después del verbo (lève-toi, donne-moi).
-Conjugación (persona, número, género):
-| Persona | parler | finir | être | avoir | aller |
-| tu | parle ! | finis ! | sois ! | aie ! | va ! |
-| nous | parlons ! | finissons ! | soyons ! | ayons ! | allons ! |
-| vous | parlez ! | finissez ! | soyez ! | ayez ! | allez ! |`,
+• Me/te se convierte en moi/toi después del verbo (lève-toi, donne-moi).`,
         zh: `规则:
 • 三种形式 - tu, nous, vous 无主语：parle ! parlons ! parlez！
 • -er 动词（以及 aller, ouvrir 等）的 tu 形式会删除 -s：parle, va, ouvre — 但它会在 y/en：vas-y, parles-en. 之前返回
 • 否定 - ne … pas 动词周围：ne parle pas！代词位于带有连字符 (donne-le-moi) 的肯定动词之后，但位于否定动词 (ne me le donne pas) 之前。
 例外:
 • 特殊形式：être → sois, soyons, soyez; avoir → aie, ayons, ayez; savoir → sache, sachons, sachez; vouloir → veuillez（礼貌）。
-• Me/te 在动词 (lève-toi, donne-moi) 后变为 moi/toi。
-变位（人称、数、性）:
-| 人称 | parler | finir | être | avoir | aller |
-| tu | parle ! | finis ! | sois ! | aie ! | va ! |
-| nous | parlons ! | finissons ! | soyons ! | ayons ! | allons ! |
-| vous | parlez ! | finissez ! | soyez ! | ayez ! | allez ! |`,
+• Me/te 在动词 (lève-toi, donne-moi) 后变为 moi/toi。`,
         ko: `규칙:
 • 세 가지 형식 — 주어가 없는 tu, nous, vous: parle ! parlons ! parlez !
 • -er 동사(및 aller, ouvrir 등)의 tu 형식은 -s: parle, va, ouvre를 삭제하지만 y/en: vas-y, parles-en. 이전에 반환됩니다.
 • 부정 — 동사 주변의 ne … pas: ne parle pas ! 대명사는 하이픈 (donne-le-moi)를 사용하여 긍정 동사를 따르지만 부정 (ne me le donne pas)에서는 앞에 옵니다.
 예외:
 • 특수 형식: être → sois, soyons, soyez; avoir → aie, ayons, ayez; savoir → sache, sachons, sachez; vouloir → veuillez(정중).
-• Me/te는 동사 (lève-toi, donne-moi) 다음에 moi/toi가 됩니다.
-활용(인칭, 수, 성):
-| 인칭 | parler | finir | être | avoir | aller |
-| tu | parle ! | finis ! | sois ! | aie ! | va ! |
-| nous | parlons ! | finissons ! | soyons ! | ayons ! | allons ! |
-| vous | parlez ! | finissez ! | soyez ! | ayez ! | allez ! |`,
+• Me/te는 동사 (lève-toi, donne-moi) 다음에 moi/toi가 됩니다.`,
         hi: `नियम:
 • तीन रूप — कर्ता के बिना tu, nous, vous: parle ! parlons ! parlez !
 • -er क्रियाओं और aller, ouvrir आदि के tu रूप में -s हटता है: parle, va, ouvre; लेकिन y/en से पहले लौट आता है: vas-y, parles-en.
 • नकार में क्रिया के दोनों ओर ne … pas: ne parle pas ! सकारात्मक रूप में सर्वनाम क्रिया के बाद हाइफ़न सहित आते हैं (donne-le-moi); नकारात्मक में उससे पहले (ne me le donne pas)।
 अपवाद:
 • विशेष रूप: être → sois, soyons, soyez; avoir → aie, ayons, ayez; savoir → sache, sachons, sachez; vouloir → veuillez (विनम्र)।
-• क्रिया के बाद Me/te बदलकर moi/toi हो जाते हैं (lève-toi, donne-moi)।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | parler | finir | être | avoir | aller |
-| tu | parle ! | finis ! | sois ! | aie ! | va ! |
-| nous | parlons ! | finissons ! | soyons ! | ayons ! | allons ! |
-| vous | parlez ! | finissez ! | soyez ! | ayez ! | allez ! |`,
+• क्रिया के बाद Me/te बदलकर moi/toi हो जाते हैं (lève-toi, donne-moi)।`,
         ga: `Rialacha:
 • Trí fhoirm — tu, nous, vous gan ainmní: parle ! parlons ! parlez !
 • San fhoirm tu de bhriathra -er (agus aller, ouvrir srl.), fágtar -s ar lár: parle, va, ouvre; tagann sé ar ais roimh y/en, áfach: vas-y, parles-en.
 • Diúltú: ne … pas timpeall ar an mbriathar: ne parle pas ! Leanann forainmneacha briathar dearfach le fleiscíní (donne-le-moi), ach tagann siad roimhe sa diúltach (ne me le donne pas).
 Eisceachtaí:
 • Foirmeacha speisialta: être → sois, soyons, soyez; avoir → aie, ayons, ayez; savoir → sache, sachons, sachez; vouloir → veuillez (cúirtéiseach).
-• Athraíonn Me/te go moi/toi tar éis an bhriathair (lève-toi, donne-moi).
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | parler | finir | être | avoir | aller |
-| tu | parle ! | finis ! | sois ! | aie ! | va ! |
-| nous | parlons ! | finissons ! | soyons ! | ayons ! | allons ! |
-| vous | parlez ! | finissez ! | soyez ! | ayez ! | allez ! |`
+• Athraíonn Me/te go moi/toi tar éis an bhriathair (lève-toi, donne-moi).`,
+        ar: `القواعد:
+• ثلاث صيغ — tu وnous وvous بلا فاعل: parle ! parlons ! parlez !
+• صيغة tu لأفعال ‎-er (وaller وouvrir وغيرها) تُسقط ‎-s: parle, va, ouvre — لكنها تعود قبل y/en: vas-y, parles-en.
+• النفي — ne … pas حول الفعل: ne parle pas ! الضمائر تأتي بعد الفعل المثبت مع شرطات (donne-le-moi)، وتسبقه في النفي (ne me le donne pas).
+الاستثناءات:
+• صيغ خاصة: être → sois, soyons, soyez؛ avoir → aie, ayons, ayez؛ savoir → sache, sachons, sachez؛ vouloir → veuillez (للتأدب).
+• Me/te تصبحان moi/toi بعد الفعل (lève-toi, donne-moi).`
     });
 
     D('infinitif', {
@@ -1994,7 +1338,15 @@ Excepciones:
 Eisceachtaí:
 • Tar éis après, úsáidtear an infinideach caite (après avoir mangé) seachas an ceann simplí.
 • Tar éis an réamhfhocail en, úsáidtear an gérondif (en parlant) seachas an infinideach.
-• Briathra a ghlacann à/de roimh infinideach: commencer à, finir de, essayer de, décider de — féach ábhar na réamhfhocal.`
+• Briathra a ghlacann à/de roimh infinideach: commencer à, finir de, essayer de, décider de — féach ábhar na réamhfhocal.`,
+        ar: `القواعد:
+• النهايات: ‎-er (parler)، ‎-ir (finir)، ‎-re (vendre)، ‎-oir (pouvoir)؛ والانعكاسي — se lever.
+• يأتي بعد حروف الجر (pour, sans, avant de, afin de, au lieu de)، والأفعال الناقصة (pouvoir, vouloir, devoir, savoir)، وaller وvenir de، وقد يقوم مقام الاسم (lire est utile).
+• المصدر المنفي: ne pas partir (الكلمتان قبل المصدر).
+الاستثناءات:
+• بعد après — المصدر الماضي (après avoir mangé)، لا البسيط.
+• بعد حرف الجر en — لا المصدر بل الـ gérondif (en parlant).
+• أفعال مع à/de قبل المصدر: commencer à, finir de, essayer de, décider de — انظر موضوع حروف الجر.`
     });
 
     D('participe-present-gerondif', {
@@ -2069,7 +1421,15 @@ Excepciones:
 Eisceachtaí:
 • Trí fhréamh neamhrialta: être → étant, avoir → ayant, savoir → sachant.
 • Réitíonn aidiachtaí a dhíorthaítear ó rangabháil lena n-ainmfhocal (une histoire amusante, des enfants charmants); ní foirmeacha briathartha iad a thuilleadh.
-• Ní thagann ach an gérondif tar éis an réamhfhocail en; glacann réamhfhocail eile an infinideach (pour partir).`
+• Ní thagann ach an gérondif tar éis an réamhfhocail en; glacann réamhfhocail eile an infinideach (pour partir).`,
+        ar: `القواعد:
+• اسم الفاعل: جذر nous + ‎-ant (nous parlons → parlant)؛ لا يتغير عندما يكون صيغة فعلية.
+• Gérondif = en + اسم الفاعل: الطريقة (il travaille en chantant)، والتزامن (en marchant)، والشرط (en travaillant, tu réussiras).
+• فاعله هو نفسه فاعل الجملة الرئيسية.
+الاستثناءات:
+• ثلاثة جذور شاذة: être → étant, avoir → ayant, savoir → sachant.
+• الصفات المشتقة من اسم الفاعل تطابق (une histoire amusante, des enfants charmants) — ولم تعد صيغة فعلية.
+• حرف الجر en وحده يأتي بعده الـ gérondif؛ وحروف الجر الأخرى تأخذ المصدر (pour partir).`
     });
 
     D('voix-passive', {
@@ -2096,13 +1456,7 @@ Exceptions:
 Exceptions:
 • Seuls les verbes transitifs (avec un complément d’objet direct) ont un passif ; un complément d’objet indirect ne peut pas devenir le sujet (contrairement à l'anglais).
 • Le passé composé avec être (elle est partie) n'est pas un passif.
-• Les verbes statifs (être fatigué) et passifs se confondent facilement : la porte est fermée (état) vs la porte est fermée par le gardien (action).
-Conjugaison (personne, nombre, genre):
-| Genre et nombre | présent | passé composé | futur simple |
-| masc. sing. | le livre est écrit | le livre a été écrit | le livre sera écrit |
-| fém. sing. | la lettre est écrite | la lettre a été écrite | la lettre sera écrite |
-| masc. plur. | les livres sont écrits | les livres ont été écrits | les livres seront écrits |
-| fém. plur. | les lettres sont écrites | les lettres ont été écrites | les lettres seront écrites |`,
+• Les verbes statifs (être fatigué) et passifs se confondent facilement : la porte est fermée (état) vs la porte est fermée par le gardien (action).`,
         ru: `Правила:
 • Être (в нужном времени) + причастие прошедшего времени, согласующееся с подлежащим: la lettre est écrite, les livres ont été vendus.
 • Агент: par (действие) или de (состояние/чувство): écrit par Zola, aimé de tous.
@@ -2110,13 +1464,7 @@ Conjugaison (personne, nombre, genre):
 Исключения:
 • Только переходные глаголы (с прямым дополнением) имеют пассив; косвенный объект не может стать подлежащим (в отличие от английского языка).
 • passé composé с être (elle est partie) не является пассивным.
-• Стативные глаголы (être fatigué) и пассивный залог легко спутать: la porte est fermée (состояние) и la porte est fermée par le gardien (действие).
-Спряжение (лицо, число, род):
-| Род и число | présent | passé composé | futur simple |
-| м. р., ед. ч. | le livre est écrit | le livre a été écrit | le livre sera écrit |
-| ж. р., ед. ч. | la lettre est écrite | la lettre a été écrite | la lettre sera écrite |
-| м. р., мн. ч. | les livres sont écrits | les livres ont été écrits | les livres seront écrits |
-| ж. р., мн. ч. | les lettres sont écrites | les lettres ont été écrites | les lettres seront écrites |`,
+• Стативные глаголы (être fatigué) и пассивный залог легко спутать: la porte est fermée (состояние) и la porte est fermée par le gardien (действие).`,
         es: `Reglas:
 • Être (en el tiempo necesario) + participio pasado de acuerdo con el sujeto: la lettre est écrite, les livres ont été vendus.
 • El agente: par (acción) o de (estado/sentimiento): écrit par Zola, aimé de tous.
@@ -2124,13 +1472,7 @@ Conjugaison (personne, nombre, genre):
 Excepciones:
 • Solo los verbos transitivos (con objeto directo) tienen pasiva; un objeto indirecto no puede convertirse en sujeto (a diferencia del inglés).
 • El passé composé con être (elle est partie) no es pasivo.
-• Los verbos estativos (être fatigué) y el pasivo se confunden fácilmente: la porte est fermée (estado) vs la porte est fermée par le gardien (acción).
-Conjugación (persona, número, género):
-| Género y número | présent | passé composé | futur simple |
-| masc. sing. | le livre est écrit | le livre a été écrit | le livre sera écrit |
-| fem. sing. | la lettre est écrite | la lettre a été écrite | la lettre sera écrite |
-| masc. pl. | les livres sont écrits | les livres ont été écrits | les livres seront écrits |
-| fem. pl. | les lettres sont écrites | les lettres ont été écrites | les lettres seront écrites |`,
+• Los verbos estativos (être fatigué) y el pasivo se confunden fácilmente: la porte est fermée (estado) vs la porte est fermée par le gardien (acción).`,
         zh: `规则:
 • Être（所需时态）+与主语一致的过去分词：la lettre est écrite, les livres ont été vendus.
 • 代理：par（动作）或 de（状态/感觉）：écrit par Zola, aimé de tous.
@@ -2138,13 +1480,7 @@ Conjugación (persona, número, género):
 例外:
 • 只有及物动词（带有直接宾语）才有被动语态；间接宾语不能成为主语（与英语不同）。
 • passé composé 与 être (elle est partie) 不是被动式。
-• 静态动词 (être fatigué) 和被动动词很容易混淆：la porte est fermée（状态）与 la porte est fermée par le gardien（动作）。
-变位（人称、数、性）:
-| 性和数 | présent | passé composé | futur simple |
-| 阳性单数 | le livre est écrit | le livre a été écrit | le livre sera écrit |
-| 阴性单数 | la lettre est écrite | la lettre a été écrite | la lettre sera écrite |
-| 阳性复数 | les livres sont écrits | les livres ont été écrits | les livres seront écrits |
-| 阴性复数 | les lettres sont écrites | les lettres ont été écrites | les lettres seront écrites |`,
+• 静态动词 (être fatigué) 和被动动词很容易混淆：la porte est fermée（状态）与 la porte est fermée par le gardien（动作）。`,
         ko: `규칙:
 • Être(필요 시제) + 주어와 일치하는 과거 분사: la lettre est écrite, les livres ont été vendus.
 • 에이전트: par(행동) 또는 de(상태/감정): écrit par Zola, aimé de tous.
@@ -2152,13 +1488,7 @@ Conjugación (persona, número, género):
 예외:
 • (직접 목적어가 있는) 타동사에만 수동태가 있습니다. (영어와 달리) 간접 목적어는 주어가 될 수 없습니다.
 • être (elle est partie)가 있는 passé composé는 패시브가 아닙니다.
-• 상태 동사 (être fatigué)와 수동 동사는 la porte est fermée(상태)와 la porte est fermée par le gardien(동작)처럼 쉽게 혼동됩니다.
-활용(인칭, 수, 성):
-| 성과 수 | présent | passé composé | futur simple |
-| 남성 단수 | le livre est écrit | le livre a été écrit | le livre sera écrit |
-| 여성 단수 | la lettre est écrite | la lettre a été écrite | la lettre sera écrite |
-| 남성 복수 | les livres sont écrits | les livres ont été écrits | les livres seront écrits |
-| 여성 복수 | les lettres sont écrites | les lettres ont été écrites | les lettres seront écrites |`,
+• 상태 동사 (être fatigué)와 수동 동사는 la porte est fermée(상태)와 la porte est fermée par le gardien(동작)처럼 쉽게 혼동됩니다.`,
         hi: `नियम:
 • Être (आवश्यक काल में) + कर्ता के लिंग-वचन के अनुरूप भूतकालिक कृदंत: la lettre est écrite, les livres ont été vendus.
 • कार्य करने वाला: par (कार्य) या de (अवस्था/भावना): écrit par Zola, aimé de tous.
@@ -2166,13 +1496,7 @@ Conjugación (persona, número, género):
 अपवाद:
 • केवल सकर्मक क्रियाओं, जिनका प्रत्यक्ष कर्म हो, का कर्मवाच्य बनता है; अप्रत्यक्ष कर्म कर्ता नहीं बन सकता — अंग्रेज़ी से अलग।
 • être के साथ passé composé (elle est partie) कर्मवाच्य नहीं है।
-• स्थितिसूचक क्रियाओं (être fatigué) और कर्मवाच्य में भ्रम हो सकता है: la porte est fermée (अवस्था) बनाम la porte est fermée par le gardien (कार्य)।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| लिंग और वचन | présent | passé composé | futur simple |
-| पुल्लिंग एकवचन | le livre est écrit | le livre a été écrit | le livre sera écrit |
-| स्त्रीलिंग एकवचन | la lettre est écrite | la lettre a été écrite | la lettre sera écrite |
-| पुल्लिंग बहुवचन | les livres sont écrits | les livres ont été écrits | les livres seront écrits |
-| स्त्रीलिंग बहुवचन | les lettres sont écrites | les lettres ont été écrites | les lettres seront écrites |`,
+• स्थितिसूचक क्रियाओं (être fatigué) और कर्मवाच्य में भ्रम हो सकता है: la porte est fermée (अवस्था) बनाम la porte est fermée par le gardien (कार्य)।`,
         ga: `Rialacha:
 • Être (san aimsir chuí) + rangabháil chaite a réitíonn leis an ainmní: la lettre est écrite, les livres ont été vendus.
 • An gníomhaí: par (gníomh) nó de (staid/mothúchán): écrit par Zola, aimé de tous.
@@ -2180,13 +1504,15 @@ Conjugación (persona, número, género):
 Eisceachtaí:
 • Ní bhíonn foirm fhulangach ach ag briathra aistreacha (le cuspóir díreach); ní féidir le cuspóir indíreach a bheith ina ainmní, murab ionann agus an Béarla.
 • Ní foirm fhulangach é an passé composé le être (elle est partie).
-• Is furasta briathra staide (être fatigué) agus an fhoirm fhulangach a mheascadh: la porte est fermée (staid) i gcomparáid le la porte est fermée par le gardien (gníomh).
-Réimniú (pearsa, uimhir, inscne):
-| Inscne agus uimhir | présent | passé composé | futur simple |
-| firinscneach uatha | le livre est écrit | le livre a été écrit | le livre sera écrit |
-| baininscneach uatha | la lettre est écrite | la lettre a été écrite | la lettre sera écrite |
-| firinscneach iolra | les livres sont écrits | les livres ont été écrits | les livres seront écrits |
-| baininscneach iolra | les lettres sont écrites | les lettres ont été écrites | les lettres seront écrites |`
+• Is furasta briathra staide (être fatigué) agus an fhoirm fhulangach a mheascadh: la porte est fermée (staid) i gcomparáid le la porte est fermée par le gardien (gníomh).`,
+        ar: `القواعد:
+• Être (في الزمن المطلوب) + اسم المفعول المطابق للفاعل: la lettre est écrite, les livres ont été vendus.
+• الفاعل الحقيقي: par (للفعل) أو de (للحالة أو الشعور): écrit par Zola, aimé de tous.
+• كثيرًا ما يُتجنب المجهول: on + الفعل (on parle français ici) أو صيغة انعكاسية (cela se dit).
+الاستثناءات:
+• للأفعال المتعدية (ذات المفعول المباشر) فقط صيغة مجهول؛ والمفعول غير المباشر لا يمكن أن يصبح فاعلًا (بخلاف الإنجليزية).
+• الـ passé composé مع être (elle est partie) ليس مبنيًا للمجهول.
+• يسهل الخلط بين أفعال الحالة (être fatigué) والمجهول: la porte est fermée (حالة) vs la porte est fermée par le gardien (فعل).`
     });
 
     D('verbes-pronominaux', {
@@ -2213,17 +1539,7 @@ Exceptions:
 Exceptions:
 • Le participe NE s'accorde PAS lorsque le pronom est un complément d’objet indirect : elles se sont parlé, ils se sont téléphoné, elle s’est acheté un livre.
 • Avec se rire, se plaire, se complaire, se succéder, se ressembler, se nuire — le participe est invariable.
-• À l'impératif : lève-toi ! (trait d'union + toi), négatif : ne te lève pas !
-Conjugaison (personne, nombre, genre):
-| Personne | présent (se laver) | passé composé (avec être) |
-| je | je me lave | je me suis lavé (m.) / lavée (f.) |
-| tu | tu te laves | tu t’es lavé / lavée |
-| il | il se lave | il s’est lavé |
-| elle | elle se lave | elle s’est lavée |
-| nous | nous nous lavons | nous nous sommes lavés / lavées |
-| vous | vous vous lavez | vous vous êtes lavé(e)(s) |
-| ils | ils se lavent | ils se sont lavés |
-| elles | elles se lavent | elles se sont lavées |`,
+• À l'impératif : lève-toi ! (trait d'union + toi), négatif : ne te lève pas !`,
         ru: `Правила:
 • Местоимение соответствует подлежащему: je me, tu te, il/elle se, nous nous, vous vous, ils/elles se (je me lave, nous nous levons).
 • Типы: истинно рефлексивный (se lever), реципрокный (se parler), пассивный (cela se vend), чисто местоименный (se souvenir, s’évanouir).
@@ -2231,17 +1547,7 @@ Conjugaison (personne, nombre, genre):
 Исключения:
 • Причастие НЕ согласуется, когда местоимение является косвенным дополнением: elles se sont parlé, ils se sont téléphoné, elle s’est acheté un livre.
 • При se rire, se plaire, se complaire, se succéder, se ressembler, se nuire — причастие неизменно.
-• В повелительном наклонении: lève-toi ! (дефис + toi), отрицательная форма: ne te lève pas !
-Спряжение (лицо, число, род):
-| Лицо | présent (se laver) | passé composé (с être) |
-| je | je me lave | je me suis lavé (м.) / lavée (ж.) |
-| tu | tu te laves | tu t’es lavé / lavée |
-| il | il se lave | il s’est lavé |
-| elle | elle se lave | elle s’est lavée |
-| nous | nous nous lavons | nous nous sommes lavés / lavées |
-| vous | vous vous lavez | vous vous êtes lavé(e)(s) |
-| ils | ils se lavent | ils se sont lavés |
-| elles | elles se lavent | elles se sont lavées |`,
+• В повелительном наклонении: lève-toi ! (дефис + toi), отрицательная форма: ne te lève pas !`,
         es: `Reglas:
 • El pronombre concuerda con el sujeto: je me, tu te, il/elle se, nous nous, vous vous, ils/elles se (je me lave, nous nous levons).
 • Tipos: (se lever) verdaderamente reflexivo, (se parler) recíproco, (cela se vend) de tipo pasivo, (se souvenir, s’évanouir) puramente pronominal.
@@ -2249,17 +1555,7 @@ Conjugaison (personne, nombre, genre):
 Excepciones:
 • El participio NO concuerda cuando el pronombre es objeto indirecto: elles se sont parlé, ils se sont téléphoné, elle s’est acheté un livre.
 • Con se rire, se plaire, se complaire, se succéder, se ressembler, se nuire, el participio es invariable.
-• En imperativo: lève-toi ! (guion + toi), negativo: ne te lève pas !
-Conjugación (persona, número, género):
-| Persona | présent (se laver) | passé composé (con être) |
-| je | je me lave | je me suis lavé (m.) / lavée (f.) |
-| tu | tu te laves | tu t’es lavé / lavée |
-| il | il se lave | il s’est lavé |
-| elle | elle se lave | elle s’est lavée |
-| nous | nous nous lavons | nous nous sommes lavés / lavées |
-| vous | vous vous lavez | vous vous êtes lavé(e)(s) |
-| ils | ils se lavent | ils se sont lavés |
-| elles | elles se lavent | elles se sont lavées |`,
+• En imperativo: lève-toi ! (guion + toi), negativo: ne te lève pas !`,
         zh: `规则:
 • 代词与主语一致：je me, tu te, il/elle se, nous nous, vous vous, ils/elles se (je me lave, nous nous levons)。
 • 类型：真正反身(se lever)、倒数(se parler)、被动式(cela se vend)、纯代词(se souvenir, s’évanouir)。
@@ -2267,17 +1563,7 @@ Conjugación (persona, número, género):
 例外:
 • 当代词是间接宾语时，分词不一致：elles se sont parlé, ils se sont téléphoné, elle s’est acheté un livre.
 • 对于 se rire, se plaire, se complaire, se succéder, se ressembler, se nuire — 分词是不变的。
-• 祈使句：lève-toi！ （连字符 + toi），负数：ne te lève pas！
-变位（人称、数、性）:
-| 人称 | présent (se laver) | passé composé （用 être） |
-| je | je me lave | je me suis lavé （阳性） / lavée （阴性） |
-| tu | tu te laves | tu t’es lavé / lavée |
-| il | il se lave | il s’est lavé |
-| elle | elle se lave | elle s’est lavée |
-| nous | nous nous lavons | nous nous sommes lavés / lavées |
-| vous | vous vous lavez | vous vous êtes lavé(e)(s) |
-| ils | ils se lavent | ils se sont lavés |
-| elles | elles se lavent | elles se sont lavées |`,
+• 祈使句：lève-toi！ （连字符 + toi），负数：ne te lève pas！`,
         ko: `규칙:
 • 주어와 일치하는 대명사: je me, tu te, il/elle se, nous nous, vous vous, ils/elles se (je me lave, nous nous levons).
 • 유형: 진정한 재귀 (se lever), 상호 (se parler), 수동형 (cela se vend), 순전히 대명사 (se souvenir, s’évanouir).
@@ -2285,17 +1571,7 @@ Conjugación (persona, número, género):
 예외:
 • 대명사가 간접 목적어일 때 분사가 일치하지 않습니다: elles se sont parlé, ils se sont téléphoné, elle s’est acheté un livre.
 • se rire, se plaire, se complaire, se succéder, se ressembler, se nuire를 사용하면 분사가 변하지 않습니다.
-• 명령형: lève-toi ! (하이픈 + toi), 부정: ne te lève pas !
-활용(인칭, 수, 성):
-| 인칭 | présent (se laver) | passé composé (être 사용) |
-| je | je me lave | je me suis lavé (남성) / lavée (여성) |
-| tu | tu te laves | tu t’es lavé / lavée |
-| il | il se lave | il s’est lavé |
-| elle | elle se lave | elle s’est lavée |
-| nous | nous nous lavons | nous nous sommes lavés / lavées |
-| vous | vous vous lavez | vous vous êtes lavé(e)(s) |
-| ils | ils se lavent | ils se sont lavés |
-| elles | elles se lavent | elles se sont lavées |`,
+• 명령형: lève-toi ! (하이픈 + toi), 부정: ne te lève pas !`,
         hi: `नियम:
 • सर्वनाम कर्ता के अनुसार होता है: je me, tu te, il/elle se, nous nous, vous vous, ils/elles se (je me lave, nous nous levons)।
 • प्रकार: वास्तविक निजवाचक (se lever), परस्परवाचक (se parler), कर्मवाच्य जैसे (cela se vend), स्वभावतः सर्वनामयुक्त (se souvenir, s’évanouir)।
@@ -2303,17 +1579,7 @@ Conjugación (persona, número, género):
 अपवाद:
 • सर्वनाम अप्रत्यक्ष कर्म हो तो कृदंत का सामंजस्य नहीं होता: elles se sont parlé, ils se sont téléphoné, elle s’est acheté un livre.
 • se rire, se plaire, se complaire, se succéder, se ressembler, se nuire के साथ कृदंत अपरिवर्तित रहता है।
-• आज्ञार्थक: lève-toi ! (हाइफ़न + toi), नकारात्मक: ne te lève pas !
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुरुष | présent (se laver) | passé composé (être के साथ) |
-| je | je me lave | je me suis lavé (पुल्लिंग) / lavée (स्त्रीलिंग) |
-| tu | tu te laves | tu t’es lavé / lavée |
-| il | il se lave | il s’est lavé |
-| elle | elle se lave | elle s’est lavée |
-| nous | nous nous lavons | nous nous sommes lavés / lavées |
-| vous | vous vous lavez | vous vous êtes lavé(e)(s) |
-| ils | ils se lavent | ils se sont lavés |
-| elles | elles se lavent | elles se sont lavées |`,
+• आज्ञार्थक: lève-toi ! (हाइफ़न + toi), नकारात्मक: ne te lève pas !`,
         ga: `Rialacha:
 • Réitíonn an forainm leis an ainmní: je me, tu te, il/elle se, nous nous, vous vous, ils/elles se (je me lave, nous nous levons).
 • Cineálacha: fíor-athfhillteach (se lever), cómhalartach (se parler), cosúil leis an bhfoirm fhulangach (cela se vend), forainmneach go bunúsach (se souvenir, s’évanouir).
@@ -2321,17 +1587,15 @@ Conjugación (persona, número, género):
 Eisceachtaí:
 • NÍ réitíonn an rangabháil nuair is cuspóir indíreach é an forainm: elles se sont parlé, ils se sont téléphoné, elle s’est acheté un livre.
 • Le se rire, se plaire, se complaire, se succéder, se ressembler, se nuire, tá an rangabháil do-athraithe.
-• Sa mhodh ordaitheach: lève-toi ! (fleiscín + toi); diúltach: ne te lève pas !
-Réimniú (pearsa, uimhir, inscne):
-| Pearsa | présent (se laver) | passé composé (le être) |
-| je | je me lave | je me suis lavé (fir.) / lavée (bain.) |
-| tu | tu te laves | tu t’es lavé / lavée |
-| il | il se lave | il s’est lavé |
-| elle | elle se lave | elle s’est lavée |
-| nous | nous nous lavons | nous nous sommes lavés / lavées |
-| vous | vous vous lavez | vous vous êtes lavé(e)(s) |
-| ils | ils se lavent | ils se sont lavés |
-| elles | elles se lavent | elles se sont lavées |`
+• Sa mhodh ordaitheach: lève-toi ! (fleiscín + toi); diúltach: ne te lève pas !`,
+        ar: `القواعد:
+• الضمير يطابق الفاعل: je me, tu te, il/elle se, nous nous, vous vous, ils/elles se (je me lave, nous nous levons).
+• الأنواع: انعكاسي حقيقي (se lever)، وتبادلي (se parler)، وبمعنى المجهول (cela se vend)، وضميري بحت (se souvenir, s’évanouir).
+• في الـ passé composé — être فقط؛ واسم المفعول يطابق المفعول المباشر إذا جاء قبل الفعل: elle s’est lavée، لكن elle s’est lavé les mains.
+الاستثناءات:
+• اسم المفعول لا يطابق عندما يكون الضمير مفعولًا غير مباشر: elles se sont parlé, ils se sont téléphoné, elle s’est acheté un livre.
+• مع se rire, se plaire, se complaire, se succéder, se ressembler, se nuire — اسم المفعول لا يتغير.
+• في الأمر: lève-toi ! (شرطة + toi)، والنفي: ne te lève pas !`
     });
 
     D('verbes-modaux', {
@@ -2415,7 +1679,16 @@ Eisceachtaí:
 • Pouvoir i gceist sa chéad phearsa: puis-je (seachas peux-je).
 • Savoir ≠ pouvoir: je sais nager (tá a fhios agam conas), je peux nager (tá mé ábalta/tá cead agam).
 • Ciallaíonn Devoir + ainmfhocal «bheith i bhfiacha» (je dois dix euros); ní brí mhódúil í.
-• Rangabhálacha sa passé composé: dû, pu, voulu, su (je n’ai pas pu venir).`
+• Rangabhálacha sa passé composé: dû, pu, voulu, su (je n’ai pas pu venir).`,
+        ar: `القواعد:
+• Pouvoir (je peux, nous pouvons, ils peuvent)، vouloir (je veux, nous voulons, ils veulent)، devoir (je dois, nous devons, ils doivent)، savoir + المصدر بلا حرف جر.
+• المعاني: الإمكان أو الإذن (pouvoir)، والرغبة (vouloir)، والإلزام أو الاحتمال (devoir)، والمعرفة بكيفية الفعل (savoir).
+• Falloir فعل غير شخصي: il faut partir, il faut que tu partes.
+الاستثناءات:
+• Pouvoir في سؤال المتكلم: puis-je (وليس peux-je).
+• Savoir ≠ pouvoir: je sais nager (أعرف كيف)، je peux nager (أستطيع أو مسموح لي).
+• Devoir + اسم تعني «يَدين بـ» (je dois dix euros)، وليس معنى ناقصًا.
+• أسماء المفعول في الـ passé composé: dû, pu, voulu, su (je n’ai pas pu venir).`
     });
 
     D('concordance-temps', {
@@ -2481,7 +1754,14 @@ Excepciones:
 Eisceachtaí:
 • Fanann fírinne ghinearálta sa présent: il a dit que la Terre est ronde.
 • Tar éis si i gcoinníoll neamhréadúil, úsáidtear an imparfait/plus-que-parfait, ní an coinníollach.
-• I gceist indíreach agus tar éis espérer/croire san fhoirm dhearfach, úsáidtear an modh táscach, ní an modh foshuiteach.`
+• I gceist indíreach agus tar éis espérer/croire san fhoirm dhearfach, úsáidtear an modh táscach, ní an modh foshuiteach.`,
+        ar: `القواعد:
+• الجملة الرئيسية في الحاضر: التابعة — présent (متزامن)، passé composé (سابق)، futur (لاحق): il dit qu’il vient / est venu / viendra.
+• الجملة الرئيسية في الماضي: المتزامن → imparfait؛ السابق → plus-que-parfait؛ اللاحق → الشرطي الحاضر: il a dit qu’il venait / était venu / viendrait.
+الاستثناءات:
+• الحقيقة العامة تبقى في الـ présent: il a dit que la Terre est ronde.
+• بعد si في شرط غير واقعي — imparfait/plus-que-parfait، لا الشرطي.
+• في السؤال غير المباشر وبعد espérer/croire (في الإثبات) — الإخباري، لا الـ subjonctif أبدًا.`
     });
 
     D('discours-indirect', {
@@ -2556,7 +1836,15 @@ Excepciones:
 Eisceachtaí:
 • Imíonn an t-inbhéartú: Où vas-tu ? → Il demande où je vais.
 • Qu’est-ce que → ce que; qu’est-ce qui → ce qui; est-ce que → si.
-• Roimh il/ils → s’il, úsáidtear Si, ach roimh elle — si elle.`
+• Roimh il/ils → s’il, úsáidtear Si, ach roimh elle — si elle.`,
+        ar: `القواعد:
+• الإخبار: dire que؛ وأسئلة نعم/لا: demander si؛ وأسئلة wh-: demander ce que/où/quand…؛ والأوامر: dire de + المصدر.
+• تتغير الضمائر وكلمات الزمن: je → il, ici → là, demain → le lendemain, hier → la veille, maintenant → alors.
+• تتغير الأزمنة بحسب الـ concordance des temps (présent → imparfait وهكذا).
+الاستثناءات:
+• يختفي القلب: Où vas-tu ? → Il demande où je vais.
+• Qu’est-ce que → ce que؛ qu’est-ce qui → ce qui؛ est-ce que → si.
+• Si قبل il/ils → s’il، لكن قبل elle — si elle.`
     });
 
     D('accord-participe-etre', {
@@ -2583,13 +1871,7 @@ Exceptions:
 Exceptions:
 • Avec on : quand on = nous, le participe peut s'accorder (on est allées — femmes).
 • Avec vous de politesse désignant une seule personne, l’accord se fait avec le sujet réel (vous êtes arrivée, madame).
-• Les verbes de mouvement qui prennent avoir (sortir une voiture) suivent l'autre règle : accord uniquement avec un COD placé avant le verbe.
-Conjugaison (personne, nombre, genre):
-| Genre et nombre | Terminaison | Exemple |
-| masc. sing. | — | il est parti |
-| fém. sing. | +e | elle est partie |
-| masc. plur. | +s | ils sont partis |
-| fém. plur. | +es | elles sont parties |`,
+• Les verbes de mouvement qui prennent avoir (sortir une voiture) suivent l'autre règle : accord uniquement avec un COD placé avant le verbe.`,
         ru: `Правила:
 • При être причастие согласуется с подлежащим в роде и числе: il est parti, elle est partie, ils sont partis, elles sont parties.
 • То же в пассиве: la lettre est écrite.
@@ -2597,13 +1879,7 @@ Conjugaison (personne, nombre, genre):
 Исключения:
 • При on: при on = nous причастие может согласовываться (on est allées — женщины).
 • При вежливом обращении vous к одному человеку согласование идёт с реальным подлежащим (vous êtes arrivée, madame).
-• Глаголы движения, которые принимают avoir (sortir une voiture), подчиняются другому правилу — согласование только с COD, поставленным перед глаголом.
-Спряжение (лицо, число, род):
-| Род и число | Окончание | Пример |
-| м. р., ед. ч. | — | il est parti |
-| ж. р., ед. ч. | +e | elle est partie |
-| м. р., мн. ч. | +s | ils sont partis |
-| ж. р., мн. ч. | +es | elles sont parties |`,
+• Глаголы движения, которые принимают avoir (sortir une voiture), подчиняются другому правилу — согласование только с COD, поставленным перед глаголом.`,
         es: `Reglas:
 • Con être el participio concuerda con el sujeto en género y número: il est parti, elle est partie, ils sont partis, elles sont parties.
 • Lo mismo en la pasiva: la lettre est écrite.
@@ -2611,13 +1887,7 @@ Conjugaison (personne, nombre, genre):
 Excepciones:
 • Con on: cuando on = nous, el participio puede concordar (on est allées — mujeres).
 • Con vous de cortesía dirigido a una sola persona, se concuerda con el sujeto real (vous êtes arrivée, madame).
-• Los verbos de movimiento que toman avoir (sortir une voiture) siguen la otra regla: concordancia solo con un COD colocado antes del verbo.
-Conjugación (persona, número, género):
-| Género y número | Terminación | Ejemplo |
-| masc. sing. | — | il est parti |
-| fem. sing. | +e | elle est partie |
-| masc. pl. | +s | ils sont partis |
-| fem. pl. | +es | elles sont parties |`,
+• Los verbos de movimiento que toman avoir (sortir une voiture) siguen la otra regla: concordancia solo con un COD colocado antes del verbo.`,
         zh: `规则:
 • être 分词与主语性和数一致：il est parti, elle est partie, ils sont partis, elles sont parties.
 • 被动式相同：la lettre est écrite.
@@ -2625,13 +1895,7 @@ Conjugación (persona, número, género):
 例外:
 • 对于 on：当 on = nous 时，分词可以配合（on est allées — 女性）。
 • vous 礼貌地指一个人时，按实际主语的性和数配合 (vous êtes arrivée, madame)。
-• 采用 avoir (sortir une voiture) 的运动动词遵循其他规则 - 仅与放在动词前面的 COD 一致。
-变位（人称、数、性）:
-| 性和数 | 词尾 | 例子 |
-| 阳性单数 | — | il est parti |
-| 阴性单数 | +e | elle est partie |
-| 阳性复数 | +s | ils sont partis |
-| 阴性复数 | +es | elles sont parties |`,
+• 采用 avoir (sortir une voiture) 的运动动词遵循其他规则 - 仅与放在动词前面的 COD 一致。`,
         ko: `규칙:
 • être를 사용하면 분사가 성별 및 수의 주어와 일치합니다: il est parti, elle est partie, ils sont partis, elles sont parties.
 • 패시브에서도 동일: la lettre est écrite.
@@ -2639,13 +1903,7 @@ Conjugación (persona, número, género):
 예외:
 • on 사용: on = nous인 경우 분사가 일치할 수 있습니다(on est allées — 여성).
 • 한 사람에게 공손하게 vous를 쓸 때는 실제 주어에 성·수를 일치시킵니다 (vous êtes arrivée, madame).
-• avoir (sortir une voiture)를 취하는 동작 동사는 다른 규칙을 따릅니다. 즉 동사 앞에 있는 COD와만 일치합니다.
-활용(인칭, 수, 성):
-| 성과 수 | 어미 | 예문 |
-| 남성 단수 | — | il est parti |
-| 여성 단수 | +e | elle est partie |
-| 남성 복수 | +s | ils sont partis |
-| 여성 복수 | +es | elles sont parties |`,
+• avoir (sortir une voiture)를 취하는 동작 동사는 다른 규칙을 따릅니다. 즉 동사 앞에 있는 COD와만 일치합니다.`,
         hi: `नियम:
 • être के साथ कृदंत कर्ता के लिंग-वचन के अनुसार बदलता है: il est parti, elle est partie, ils sont partis, elles sont parties.
 • कर्मवाच्य में भी ऐसा ही है: la lettre est écrite.
@@ -2653,13 +1911,7 @@ Conjugación (persona, número, género):
 अपवाद:
 • on के साथ: जब on = nous हो, तो कृदंत का सामंजस्य हो सकता है (on est allées — महिलाएँ)।
 • एक व्यक्ति के लिए आदरसूचक vous होने पर सामंजस्य वास्तविक कर्ता के अनुसार होता है (vous êtes arrivée, madame)।
-• avoir लेने वाली गति-क्रियाओं (sortir une voiture) का नियम अलग है: सामंजस्य केवल क्रिया से पहले आए COD से।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| लिंग और वचन | प्रत्यय | उदाहरण |
-| पुल्लिंग एकवचन | — | il est parti |
-| स्त्रीलिंग एकवचन | +e | elle est partie |
-| पुल्लिंग बहुवचन | +s | ils sont partis |
-| स्त्रीलिंग बहुवचन | +es | elles sont parties |`,
+• avoir लेने वाली गति-क्रियाओं (sortir une voiture) का नियम अलग है: सामंजस्य केवल क्रिया से पहले आए COD से।`,
         ga: `Rialacha:
 • Le être, réitíonn an rangabháil leis an ainmní ó thaobh inscne agus uimhreach: il est parti, elle est partie, ils sont partis, elles sont parties.
 • Is amhlaidh sa fhoirm fhulangach freisin: la lettre est écrite.
@@ -2667,13 +1919,15 @@ Conjugación (persona, número, género):
 Eisceachtaí:
 • Le on: nuair is on = nous atá i gceist, féadann an rangabháil réiteach leis (on est allées — mná).
 • Le vous cúirtéiseach do dhuine amháin, déantar réiteach leis an bhfíorábhar (vous êtes arrivée, madame).
-• Leanann briathra gluaiseachta a ghlacann avoir (sortir une voiture) an riail eile: ní dhéantar réiteach ach le COD a thagann roimh an mbriathar.
-Réimniú (pearsa, uimhir, inscne):
-| Inscne agus uimhir | Deireadh | Sampla |
-| firinscneach uatha | — | il est parti |
-| baininscneach uatha | +e | elle est partie |
-| firinscneach iolra | +s | ils sont partis |
-| baininscneach iolra | +es | elles sont parties |`
+• Leanann briathra gluaiseachta a ghlacann avoir (sortir une voiture) an riail eile: ní dhéantar réiteach ach le COD a thagann roimh an mbriathar.`,
+        ar: `القواعد:
+• مع être يطابق اسم المفعول الفاعل في الجنس والعدد: il est parti, elle est partie, ils sont partis, elles sont parties.
+• وكذلك في المجهول: la lettre est écrite.
+• مع الأفعال الانعكاسية القاعدة أعقد (انظر الأفعال الانعكاسية).
+الاستثناءات:
+• مع on: عندما تعني on ‏nous، يجوز أن يطابق اسم المفعول (on est allées — نساء).
+• vous المهذبة لشخص واحد: المطابقة مع الفاعل الحقيقي (vous êtes arrivée, madame).
+• أفعال الحركة التي تأخذ avoir (sortir une voiture) تتبع القاعدة الأخرى — المطابقة فقط مع COD يأتي قبل الفعل.`
     });
 
     D('accord-participe-avoir', {
@@ -2700,13 +1954,7 @@ Exceptions:
 • Avec le pronom en le participe est invariable : j’en ai mangé.
 • Participes invariables : coûté, valu, duré, vécu, couru, pesé au sens littéral (les dix euros que ce livre m’a coûté).
 • Devant un infinitif, le participe s’accorde seulement si le COD accomplit l’action de l’infinitif : la femme que j’ai vue chanter (accord), les chansons que j’ai entendu chanter (pas d’accord).
-• Neutre le (= it) : elle est plus grande que je ne l’avais pensé (invariable).
-Conjugaison (personne, nombre, genre):
-| COD avant le verbe | participe | Exemple |
-| masc. sing. | mangé | le gâteau que j’ai mangé |
-| fém. sing. | mangée | la pomme que j’ai mangée |
-| masc. plur. | mangés | les gâteaux que j’ai mangés |
-| fém. plur. | mangées | les pommes que j’ai mangées |`,
+• Neutre le (= it) : elle est plus grande que je ne l’avais pensé (invariable).`,
         ru: `Правила:
 • При avoir причастие согласуется с прямым дополнением (COD) ТОЛЬКО если оно стоит ПЕРЕД глаголом: les pommes que j’ai mangées, je les ai vus, quelle robe as-tu choisie ?
 • Если COD следует за глаголом или отсутствует, причастие неизменно: j’ai mangé des pommes, elles ont parlé.
@@ -2714,13 +1962,7 @@ Conjugaison (personne, nombre, genre):
 • С местоимением en причастие неизменно: j’en ai mangé.
 • Неизменяемые причастия: coûté, valu, duré, vécu, couru, pesé в прямом смысле (les dix euros que ce livre m’a coûté).
 • Перед инфинитивом причастие согласуется, только если COD выполняет действие инфинитива: la femme que j’ai vue chanter (согласуется), les chansons que j’ai entendu chanter (не согласуется).
-• Средний род le (= it): elle est plus grande que je ne l’avais pensé (неизменяемый).
-Спряжение (лицо, число, род):
-| Прямое дополнение (COD) перед глаголом | participe | Пример |
-| м. р., ед. ч. | mangé | le gâteau que j’ai mangé |
-| ж. р., ед. ч. | mangée | la pomme que j’ai mangée |
-| м. р., мн. ч. | mangés | les gâteaux que j’ai mangés |
-| ж. р., мн. ч. | mangées | les pommes que j’ai mangées |`,
+• Средний род le (= it): elle est plus grande que je ne l’avais pensé (неизменяемый).`,
         es: `Reglas:
 • Con avoir el participio concuerda con el objeto directo (COD) SÓLO si va ANTES del verbo: les pommes que j’ai mangées, je les ai vus, quelle robe as-tu choisie ?
 • Si el COD sigue al verbo o está ausente, el participio es invariable: j’ai mangé des pommes, elles ont parlé.
@@ -2728,13 +1970,7 @@ Excepciones:
 • Con el pronombre en el participio es invariable: j’en ai mangé.
 • Participios invariables: coûté, valu, duré, vécu, couru, pesé en su sentido literal (les dix euros que ce livre m’a coûté).
 • Ante un infinitivo, el participio concuerda solo si el COD realiza la acción del infinitivo: la femme que j’ai vue chanter (concuerda), les chansons que j’ai entendu chanter (no concuerda).
-• Pronombre neutro le (= it): elle est plus grande que je ne l’avais pensé (invariable).
-Conjugación (persona, número, género):
-| Complemento directo (COD) antes del verbo | participe | Ejemplo |
-| masc. sing. | mangé | le gâteau que j’ai mangé |
-| fem. sing. | mangée | la pomme que j’ai mangée |
-| masc. pl. | mangés | les gâteaux que j’ai mangés |
-| fem. pl. | mangées | les pommes que j’ai mangées |`,
+• Pronombre neutro le (= it): elle est plus grande que je ne l’avais pensé (invariable).`,
         zh: `规则:
 • 对于 avoir，分词只有在动词之前才与直接宾语 (COD) 一致：les pommes que j’ai mangées, je les ai vus, quelle robe as-tu choisie ?
 • 如果 COD 跟在动词后面或不存在，则分词不变：j’ai mangé des pommes, elles ont parlé.
@@ -2742,13 +1978,7 @@ Conjugación (persona, número, género):
 • 代词 en 的分词是不变的：j’en ai mangé.
 • 不变分词：字面意义上的 coûté, valu, duré, vécu, couru, pesé (les dix euros que ce livre m’a coûté)。
 • 不定式前的分词，只有在 COD 执行不定式所表示的动作时才与其保持性数一致：la femme que j’ai vue chanter（配合），les chansons que j’ai entendu chanter（不配合）。
-• 中性 le（= it）：elle est plus grande que je ne l’avais pensé（不变）。
-变位（人称、数、性）:
-| 动词前的直接宾语 (COD) | participe | 例子 |
-| 阳性单数 | mangé | le gâteau que j’ai mangé |
-| 阴性单数 | mangée | la pomme que j’ai mangée |
-| 阳性复数 | mangés | les gâteaux que j’ai mangés |
-| 阴性复数 | mangées | les pommes que j’ai mangées |`,
+• 中性 le（= it）：elle est plus grande que je ne l’avais pensé（不变）。`,
         ko: `규칙:
 • avoir의 경우 분사는 동사 앞에 오는 경우에만 직접 목적어 (COD)와 일치합니다: les pommes que j’ai mangées, je les ai vus, quelle robe as-tu choisie ?
 • COD가 동사 뒤에 나오거나 없으면 분사는 변하지 않습니다: j’ai mangé des pommes, elles ont parlé.
@@ -2756,13 +1986,7 @@ Conjugación (persona, número, género):
 • 대명사 en의 경우 분사는 불변입니다: j’en ai mangé.
 • 불변 분사: coûté, valu, duré, vécu, couru, pesé는 문자 그대로 (les dix euros que ce livre m’a coûté)입니다.
 • 부정사 앞의 분사는 COD가 부정사의 동작을 수행할 때만 성·수를 일치시킵니다: la femme que j’ai vue chanter (일치), les chansons que j’ai entendu chanter (불일치).
-• 중성 le (= it): elle est plus grande que je ne l’avais pensé (불변).
-활용(인칭, 수, 성):
-| 동사 앞의 직접목적어 (COD) | participe | 예문 |
-| 남성 단수 | mangé | le gâteau que j’ai mangé |
-| 여성 단수 | mangée | la pomme que j’ai mangée |
-| 남성 복수 | mangés | les gâteaux que j’ai mangés |
-| 여성 복수 | mangées | les pommes que j’ai mangées |`,
+• 중성 le (= it): elle est plus grande que je ne l’avais pensé (불변).`,
         hi: `नियम:
 • avoir के साथ कृदंत प्रत्यक्ष कर्म (COD) के अनुसार केवल तभी बदलता है जब वह क्रिया से पहले आए: les pommes que j’ai mangées, je les ai vus, quelle robe as-tu choisie ?
 • COD क्रिया के बाद आए या न हो तो कृदंत अपरिवर्तित है: j’ai mangé des pommes, elles ont parlé.
@@ -2770,13 +1994,7 @@ Conjugación (persona, número, género):
 • सर्वनाम en के साथ कृदंत अपरिवर्तित है: j’en ai mangé.
 • अपरिवर्तनीय कृदंत: coûté, valu, duré, vécu, couru, pesé अपने शाब्दिक अर्थ में (les dix euros que ce livre m’a coûté)।
 • अनंत रूप से पहले कृदंत का लिंग-वचन सामंजस्य तभी होता है जब COD उस क्रिया को करता है: la femme que j’ai vue chanter (सामंजस्य), les chansons que j’ai entendu chanter (सामंजस्य नहीं)।
-• तटस्थ le (= यह): elle est plus grande que je ne l’avais pensé (अपरिवर्तित)।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| क्रिया से पहले प्रत्यक्ष कर्म (COD) | participe | उदाहरण |
-| पुल्लिंग एकवचन | mangé | le gâteau que j’ai mangé |
-| स्त्रीलिंग एकवचन | mangée | la pomme que j’ai mangée |
-| पुल्लिंग बहुवचन | mangés | les gâteaux que j’ai mangés |
-| स्त्रीलिंग बहुवचन | mangées | les pommes que j’ai mangées |`,
+• तटस्थ le (= यह): elle est plus grande que je ne l’avais pensé (अपरिवर्तित)।`,
         ga: `Rialacha:
 • Le avoir, ní réitíonn an rangabháil leis an gcuspóir díreach (COD) ACH má thagann sé ROIMH an mbriathar: les pommes que j’ai mangées, je les ai vus, quelle robe as-tu choisie ?
 • Má thagann an COD tar éis an bhriathair nó mura bhfuil sé ann, tá an rangabháil do-athraithe: j’ai mangé des pommes, elles ont parlé.
@@ -2784,13 +2002,15 @@ Eisceachtaí:
 • Leis an bhforainm en, tá an rangabháil do-athraithe: j’en ai mangé.
 • Rangabhálacha do-athraithe: coûté, valu, duré, vécu, couru, pesé ina mbrí litriúil (les dix euros que ce livre m’a coûté).
 • Roimh infinideach, ní réitíonn an rangabháil leis an COD ach má dhéanann an COD gníomh an infinidigh: la femme que j’ai vue chanter (réiteach), les chansons que j’ai entendu chanter (gan réiteach).
-• le neodrach (= é sin): elle est plus grande que je ne l’avais pensé (do-athraithe).
-Réimniú (pearsa, uimhir, inscne):
-| Cuspóir díreach (COD) roimh an mbriathar | participe | Sampla |
-| firinscneach uatha | mangé | le gâteau que j’ai mangé |
-| baininscneach uatha | mangée | la pomme que j’ai mangée |
-| firinscneach iolra | mangés | les gâteaux que j’ai mangés |
-| baininscneach iolra | mangées | les pommes que j’ai mangées |`
+• le neodrach (= é sin): elle est plus grande que je ne l’avais pensé (do-athraithe).`,
+        ar: `القواعد:
+• مع avoir يطابق اسم المفعول المفعولَ المباشر (COD) فقط إذا جاء قبل الفعل: les pommes que j’ai mangées, je les ai vus, quelle robe as-tu choisie ?
+• إذا جاء الـ COD بعد الفعل أو لم يوجد، لا يتغير اسم المفعول: j’ai mangé des pommes, elles ont parlé.
+الاستثناءات:
+• مع الضمير en لا يتغير اسم المفعول: j’en ai mangé.
+• أسماء مفعول لا تتغير: coûté, valu, duré, vécu, couru, pesé بمعناها الحرفي (les dix euros que ce livre m’a coûté).
+• قبل المصدر يطابق اسم المفعول فقط إذا كان الـ COD هو من يقوم بفعل المصدر: la femme que j’ai vue chanter (يطابق)، les chansons que j’ai entendu chanter (لا يطابق).
+• le المحايدة (= ذلك): elle est plus grande que je ne l’avais pensé (لا يتغير).`
     });
 
     D('accord-adjectif', {
@@ -2820,16 +2040,7 @@ Exceptions:
 • Doublage : bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • Spécial : beau → belle (bel avant une voyelle), nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
 • Pluriel : -al → -aux (national → nationaux ; mais banal, final, fatal, naval → -als), beau/nouveau → +x.
-• Invariable : couleurs des noms (orange, marron), composés (bleu foncé), demi/nu avant le nom.
-Conjugaison (personne, nombre, genre):
-| masc. sing. | fém. sing. | masc. plur. | fém. plur. |
-| petit | petite | petits | petites |
-| grand | grande | grands | grandes |
-| bon | bonne | bons | bonnes |
-| heureux | heureuse | heureux | heureuses |
-| blanc | blanche | blancs | blanches |
-| beau (bel) | belle | beaux | belles |
-| nouveau (nouvel) | nouvelle | nouveaux | nouvelles |`,
+• Invariable : couleurs des noms (orange, marron), composés (bleu foncé), demi/nu avant le nom.`,
         ru: `Правила:
 • Женский род обычно +e (petit → petite), множественное число +s (petits, petites); -s/-x во множественном числе остаются без изменений (gris, heureux).
 • Прилагательное согласуется со своим существительным, а также после être (elle est contente).
@@ -2838,16 +2049,7 @@ Conjugaison (personne, nombre, genre):
 • Удвоение: bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • Специальный вариант: beau → belle (bel перед гласной), nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
 • Множественное число: -al → -aux (national → nationaux; но banal, final, fatal, naval → -als), beau/nouveau → +x.
-• Неизменяемые: цвета от существительных (orange, marron), составные (bleu foncé), demi/nu перед существительным.
-Спряжение (лицо, число, род):
-| м. р., ед. ч. | ж. р., ед. ч. | м. р., мн. ч. | ж. р., мн. ч. |
-| petit | petite | petits | petites |
-| grand | grande | grands | grandes |
-| bon | bonne | bons | bonnes |
-| heureux | heureuse | heureux | heureuses |
-| blanc | blanche | blancs | blanches |
-| beau (bel) | belle | beaux | belles |
-| nouveau (nouvel) | nouvelle | nouveaux | nouvelles |`,
+• Неизменяемые: цвета от существительных (orange, marron), составные (bleu foncé), demi/nu перед существительным.`,
         es: `Reglas:
 • Lo femenino suele ser +e (petit → petite), plural +s (petits, petites); Los plurales -s/-x no cambian (gris, heureux).
 • El adjetivo concuerda con su sustantivo y también después de être (elle est contente).
@@ -2856,16 +2058,7 @@ Excepciones:
 • Duplicación: bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • Especial: beau → belle (bel antes de una vocal), nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
 • Plurales: -al → -aux (national → nationaux; pero banal, final, fatal, naval → -als), beau/nouveau → +x.
-• Invariable: colores de los sustantivos (orange, marron), compuestos (bleu foncé), demi/nu antes del sustantivo.
-Conjugación (persona, número, género):
-| masc. sing. | fem. sing. | masc. pl. | fem. pl. |
-| petit | petite | petits | petites |
-| grand | grande | grands | grandes |
-| bon | bonne | bons | bonnes |
-| heureux | heureuse | heureux | heureuses |
-| blanc | blanche | blancs | blanches |
-| beau (bel) | belle | beaux | belles |
-| nouveau (nouvel) | nouvelle | nouveaux | nouvelles |`,
+• Invariable: colores de los sustantivos (orange, marron), compuestos (bleu foncé), demi/nu antes del sustantivo.`,
         zh: `规则:
 • 阴性通常是+e (petit → petite)，复数+s (petits, petites)； -s/-x 复数形式不变 (gris, heureux)。
 • 形容词与其名词一致，并且位于 être (elle est contente) 之后。
@@ -2874,16 +2067,7 @@ Conjugación (persona, número, género):
 • 加倍：bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • 特殊：beau → belle（元音前的 bel）、nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
 • 复数：-al → -aux（national → nationaux；但 banal, final, fatal, naval → -als）、beau/nouveau → +x.
-• 不变：来自名词 (orange, marron) 的颜色，名词前的复合词 (bleu foncé)、demi/nu。
-变位（人称、数、性）:
-| 阳性单数 | 阴性单数 | 阳性复数 | 阴性复数 |
-| petit | petite | petits | petites |
-| grand | grande | grands | grandes |
-| bon | bonne | bons | bonnes |
-| heureux | heureuse | heureux | heureuses |
-| blanc | blanche | blancs | blanches |
-| beau (bel) | belle | beaux | belles |
-| nouveau (nouvel) | nouvelle | nouveaux | nouvelles |`,
+• 不变：来自名词 (orange, marron) 的颜色，名词前的复合词 (bleu foncé)、demi/nu。`,
         ko: `규칙:
 • 여성형은 일반적으로 +e (petit → petite), 복수형 +s (petits, petites)입니다. -s/-x 복수형은 (gris, heureux)로 변경되지 않습니다.
 • 형용사는 명사와 일치하며 être (elle est contente) 뒤에도 일치합니다.
@@ -2892,16 +2076,7 @@ Conjugación (persona, número, género):
 • 더블링: bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • 특수: beau → belle(모음 앞의 bel), nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
 • 복수형: -al → -aux(national → nationaux; 그러나 banal, final, fatal, naval → -als), beau/nouveau → +x.
-• 불변: 명사 앞의 (orange, marron), 복합어 (bleu foncé), demi/nu의 색상.
-활용(인칭, 수, 성):
-| 남성 단수 | 여성 단수 | 남성 복수 | 여성 복수 |
-| petit | petite | petits | petites |
-| grand | grande | grands | grandes |
-| bon | bonne | bons | bonnes |
-| heureux | heureuse | heureux | heureuses |
-| blanc | blanche | blancs | blanches |
-| beau (bel) | belle | beaux | belles |
-| nouveau (nouvel) | nouvelle | nouveaux | nouvelles |`,
+• 불변: 명사 앞의 (orange, marron), 복합어 (bleu foncé), demi/nu의 색상.`,
         hi: `नियम:
 • स्त्रीलिंग सामान्यतः +e (petit → petite), बहुवचन +s (petits, petites); -s/-x पर समाप्त बहुवचन अपरिवर्तित (gris, heureux)।
 • विशेषण अपनी संज्ञा के अनुसार बदलता है; être के बाद भी (elle est contente)।
@@ -2910,16 +2085,7 @@ Conjugación (persona, número, género):
 • द्वित्व: bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • विशेष रूप: beau → belle (स्वर से पहले bel), nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
 • बहुवचन: -al → -aux (national → nationaux; लेकिन banal, final, fatal, naval → -als), beau/nouveau → +x.
-• अपरिवर्तनीय: संज्ञाओं से बने रंग (orange, marron), संयुक्त रंगनाम (bleu foncé), संज्ञा से पहले demi/nu।
-क्रिया-रूप (पुरुष, वचन, लिंग):
-| पुल्लिंग एकवचन | स्त्रीलिंग एकवचन | पुल्लिंग बहुवचन | स्त्रीलिंग बहुवचन |
-| petit | petite | petits | petites |
-| grand | grande | grands | grandes |
-| bon | bonne | bons | bonnes |
-| heureux | heureuse | heureux | heureuses |
-| blanc | blanche | blancs | blanches |
-| beau (bel) | belle | beaux | belles |
-| nouveau (nouvel) | nouvelle | nouveaux | nouvelles |`,
+• अपरिवर्तनीय: संज्ञाओं से बने रंग (orange, marron), संयुक्त रंगनाम (bleu foncé), संज्ञा से पहले demi/nu।`,
         ga: `Rialacha:
 • Baininscneach de ghnáth: +e (petit → petite); iolra: +s (petits, petites); ní athraíonn iolraí dar críoch -s/-x (gris, heureux).
 • Réitíonn an aidiacht lena hainmfhocal, agus tar éis être freisin (elle est contente).
@@ -2928,16 +2094,16 @@ Eisceachtaí:
 • Dúbailt: bon → bonne, gentil → gentille, gros → grosse, muet → muette.
 • Foirmeacha speisialta: beau → belle (bel roimh ghuta), nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
 • Iolraí: -al → -aux (national → nationaux; ach banal, final, fatal, naval → -als), beau/nouveau → +x.
-• Do-athraithe: dathanna ó ainmfhocail (orange, marron), dathanna comhshuite (bleu foncé), demi/nu roimh an ainmfhocal.
-Réimniú (pearsa, uimhir, inscne):
-| firinscneach uatha | baininscneach uatha | firinscneach iolra | baininscneach iolra |
-| petit | petite | petits | petites |
-| grand | grande | grands | grandes |
-| bon | bonne | bons | bonnes |
-| heureux | heureuse | heureux | heureuses |
-| blanc | blanche | blancs | blanches |
-| beau (bel) | belle | beaux | belles |
-| nouveau (nouvel) | nouvelle | nouveaux | nouvelles |`
+• Do-athraithe: dathanna ó ainmfhocail (orange, marron), dathanna comhshuite (bleu foncé), demi/nu roimh an ainmfhocal.`,
+        ar: `القواعد:
+• المؤنث عادةً ‎+e (petit → petite)، والجمع ‎+s (petits, petites)؛ والمنتهي بـ ‎-s/-x لا يتغير في الجمع (gris, heureux).
+• تطابق الصفة اسمها، وكذلك بعد être (elle est contente).
+• عدة أسماء: إذا اختلف جنسها — المذكر الجمع (un homme et une femme contents).
+الاستثناءات:
+• المضاعفة: bon → bonne, gentil → gentille, gros → grosse, muet → muette.
+• حالات خاصة: beau → belle (وbel قبل حرف علة)، nouveau → nouvelle, vieux → vieille, blanc → blanche, long → longue, doux → douce, heureux → heureuse, actif → active.
+• الجمع: ‎-al → -aux (national → nationaux؛ لكن banal, final, fatal, naval → -als)، وbeau/nouveau → ‎+x.
+• لا تتغير: الألوان المأخوذة من أسماء (orange, marron)، والمركبة (bleu foncé)، وdemi/nu قبل الاسم.`
     });
 
     D('place-adjectif', {
@@ -3003,7 +2169,14 @@ Excepciones (cambios de significado):
 • Roimh an ainmfhocal freisin: petit, joli, vieux, nouveau, mauvais, long, court, haut.
 Eisceachtaí (athruithe brí):
 • un grand homme (mór le rá) / un homme grand (ard); un ancien collègue (iar-) / un livre ancien (seanársa); ma propre chambre (mo chuid féin) / une chambre propre (glan); un pauvre garçon (créatúr bocht) / un garçon pauvre (gan airgead); un brave homme (maith) / un homme brave (cróga).
-• Dhá aidiacht: glacann gach ceann a hionad féin (une jolie robe rouge).`
+• Dhá aidiacht: glacann gach ceann a hionad féin (une jolie robe rouge).`,
+        ar: `القواعد:
+• عادةً بعد الاسم: une voiture rouge, un livre intéressant, une table ronde (اللون والشكل والجنسية — دائمًا بعده).
+• قبل الاسم — القصيرة الشائعة (BAGS: الجمال، العمر، الجودة، الحجم): un beau jour, un jeune homme, un bon repas, une grande maison.
+• وقبل الاسم أيضًا: petit, joli, vieux, nouveau, mauvais, long, court, haut.
+الاستثناءات (تغير المعنى):
+• un grand homme (عظيم) / un homme grand (طويل)؛ un ancien collègue (سابق) / un livre ancien (قديم أثري)؛ ma propre chambre (خاصتي) / une chambre propre (نظيفة)؛ un pauvre garçon (مسكين) / un garçon pauvre (فقير، بلا مال)؛ un brave homme (طيب) / un homme brave (شجاع).
+• صفتان: كل منهما في موضعها (une jolie robe rouge).`
     });
 
     D('pluriel-noms', {
@@ -3078,7 +2251,15 @@ Excepciones:
 Eisceachtaí:
 • -ail → -ails (des détails), ach des travaux, des vitraux, des coraux.
 • Foirmeacha neamhrialta: un œil → des yeux, monsieur → messieurs, madame → mesdames.
-• -al — eisceachtaí: bal, carnaval, festival, récital — +s; -eu — eisceachtaí: pneu, bleu — +s; -ou — eisceachtaí: bijou, caillou, chou, genou, hibou, joujou, pou — +x.`
+• -al — eisceachtaí: bal, carnaval, festival, récital — +s; -eu — eisceachtaí: pneu, bleu — +s; -ou — eisceachtaí: bijou, caillou, chou, genou, hibou, joujou, pou — +x.`,
+        ar: `القواعد:
+• عادةً ‎+s: un livre → des livres؛ والأسماء المنتهية بـ ‎-s, -x, -z لا تتغير: un fils → des fils.
+• ‎-al → -aux (un journal → des journaux)؛ ‎-eau, -eu → +x (un cadeau → des cadeaux, un jeu → des jeux).
+• تتغير الأداة والصفة أيضًا؛ وكثيرًا ما لا يُسمع الجمع إلا في الأداة.
+الاستثناءات:
+• ‎-ail → -ails (des détails)، لكن des travaux, des vitraux, des coraux.
+• الشاذ: un œil → des yeux, monsieur → messieurs, madame → mesdames.
+• استثناءات ‎-al: bal, carnaval, festival, récital — ‎+s؛ واستثناءات ‎-eu: pneu, bleu — ‎+s؛ واستثناءات ‎-ou: bijou, caillou, chou, genou, hibou, joujou, pou — ‎+x.`
     });
 
     D('genre-noms', {
@@ -3162,7 +2343,16 @@ Eisceachtaí:
 • -age: la plage, l’image, la page, la cage, la nage — baininscneach.
 • -ée: le musée, le lycée, le trophée — firinscneach.
 • Athraíonn an inscne an bhrí: le livre (leabhar) / la livre (punt), le tour / la tour, le poste / la poste, le mode / la mode.
-• Focail chasta: amour, orgue, délice — firinscneach san uatha, baininscneach san iolra.`
+• Focail chasta: amour, orgue, délice — firinscneach san uatha, baininscneach san iolra.`,
+        ar: `القواعد:
+• المؤنث: ‎-tion, -sion, -té, -ée (عدا musée, lycée)، ‎-ure, -ance, -ence, -ie, -ette, -eur (للمجرد: la peur؛ لكن le bonheur, le malheur, l’honneur مذكرة).
+• المذكر: ‎-ment, -age, -eau, -isme, -ier, -oir, -eur (للأشخاص: le docteur)، والأيام واللغات والأشجار والمعادن.
+• احفظ الجنس مع الأداة.
+الاستثناءات:
+• ‎-age: la plage, l’image, la page, la cage, la nage — مؤنثة.
+• ‎-ée: le musée, le lycée, le trophée — مذكرة.
+• الجنس يغير المعنى: le livre (كتاب) / la livre (جنيه)، le tour / la tour، le poste / la poste، le mode / la mode.
+• كلمات صعبة: amour, orgue, délice — مذكرة في المفرد، مؤنثة في الجمع.`
     });
 
     D('article-defini', {
@@ -3237,7 +2427,15 @@ Excepciones:
 Eisceachtaí:
 • Roimh h aspiré, ní dhéantar eiliú: le héros, la honte, les haricots (ach l’homme, l’heure — h balbh).
 • Fágtar ar lár é tar éis être le gairmeacha (il est médecin) agus i mórán nathanna seasta (avoir faim).
-• Ní ailt iad Le/la/les mar fhorainmneacha cuspóra dhírigh (je le vois).`
+• Ní ailt iad Le/la/les mar fhorainmneacha cuspóra dhírigh (je le vois).`,
+        ar: `القواعد:
+• Le (مذكر)، la (مؤنث)، l’ (قبل حرف علة أو h صامتة)، les (جمع).
+• لشيء معروف أو فريد (la lune)، وللمفاهيم العامة (j’aime le café)، وللأيام بمعنى «كل» (le lundi)، ولأعضاء الجسم (je me lave les mains).
+• أداة التعريف لا تتغير بعد النفي.
+الاستثناءات:
+• الـ h المنطوقة (aspiré) — بلا حذف: le héros, la honte, les haricots (لكن l’homme, l’heure — h صامتة).
+• تُحذف بعد être مع المهن (il est médecin) وفي عبارات ثابتة كثيرة (avoir faim).
+• Le/la/les بوصفها ضمائر مفعول مباشر ليست أدوات (je le vois).`
     });
 
     D('article-indefini', {
@@ -3312,7 +2510,15 @@ Excepciones:
 Eisceachtaí:
 • Des + aidiacht roimh an ainmfhocal → de (de grandes maisons) sa scríbhneoireacht fhoirmiúil.
 • Fanann Un/une tar éis c’est/il y a fiú sa diúltach nuair a dhiúltaítear don chéannacht.
-• Un mar uimhir («aon») — aithnítear é de réir na béime (j’ai un frère, pas deux).`
+• Un mar uimhir («aon») — aithnítear é de réir na béime (j’ai un frère, pas deux).`,
+        ar: `القواعد:
+• Un (مذكر)، une (مؤنث)، des (جمع) — لشيء جديد أو غير محدد أو «بعض».
+• بعد النفي — de/d’: je n’ai pas de livre (لكن: ce n’est pas un livre — هوية لا كمية).
+• قبل صفة في الجمع رسميًا de: de beaux jours (وفي الكلام كثيرًا des beaux jours).
+الاستثناءات:
+• Des + صفة قبل الاسم → de (de grandes maisons) في الكتابة الرسمية.
+• Un/une تبقى بعد c’est/il y a حتى في النفي عندما تُنفى الهوية.
+• Un بوصفها عددًا («واحد») — تُميَّز بالنبر (j’ai un frère, pas deux).`
     });
 
     D('article-partitif', {
@@ -3387,7 +2593,15 @@ Excepciones:
 Eisceachtaí:
 • Tar éis aimer, adorer, détester, préférer, úsáidtear an t-alt cinnte (j’aime le café, seachas du café), mar tá an bhrí ginearálta.
 • Ná measc é leis an gcumasc de + le = du (je parle du film).
-• Tar éis être sa diúltach: ce n’est pas du lait — fanann an t-alt páirteach (aithint).`
+• Tar éis être sa diúltach: ce n’est pas du lait — fanann an t-alt páirteach (aithint).`,
+        ar: `القواعد:
+• Du (مذكر)، de la (مؤنث)، de l’ (قبل حرف علة)، des (جمع) — كمية غير محددة من غير المعدود: du pain, de la confiture, de l’eau.
+• بعد النفي والكميات — de/d’: pas de pain, beaucoup de pain, un kilo de farine.
+• للمجردات: avoir du courage, faire du sport, jouer du piano (الآلة: jouer de + le = du).
+الاستثناءات:
+• بعد aimer, adorer, détester, préférer — أداة التعريف (j’aime le café، وليس du café) لأن المعنى عام.
+• لا تخلط بينها وبين الدمج de + le = du (je parle du film).
+• بعد être في النفي: ce n’est pas du lait — تبقى أداة التبعيض (تحديد هوية).`
     });
 
     D('contractions', {
@@ -3462,7 +2676,15 @@ Excepciones:
 Eisceachtaí:
 • Déantar cumasc roimh h aspiré (au héros), ach ní dhéantar roimh h balbh (à l’hôtel).
 • Ní cumaisc iad Du/des mar ailt pháirteacha nó éiginnte (du pain, des amis).
-• Tíortha: au Canada, aux États-Unis, ach en France (gan alt).`
+• Tíortha: au Canada, aux États-Unis, ach en France (gan alt).`,
+        ar: `القواعد:
+• à + le → au؛ à + les → aux؛ de + le → du؛ de + les → des.
+• لا دمج قبل la وl’: à la maison, de l’école.
+• Aller au cinéma, parler du film, revenir des États-Unis.
+الاستثناءات:
+• قبل الـ h المنطوقة يحدث الدمج (au héros)، ولا يحدث قبل الـ h الصامتة (à l’hôtel).
+• Du/des بوصفها أداة تبعيض أو تنكير ليست دمجًا (du pain, des amis).
+• الدول: au Canada, aux États-Unis، لكن en France (بلا أداة).`
     });
 
     D('possessifs', {
@@ -3537,7 +2759,15 @@ Excepciones:
 Eisceachtaí:
 • Le baill choirp, tagann an t-alt cinnte in áit an tsealbhaigh go minic: je me lave les mains, il a mal à la tête.
 • Tá Leur(s) sealbhach; ná measc é leis an bhforainm leur (je leur parle).
-• Sealbhach + à + forainm chun béim a chur ar an úinéir: c’est mon livre à moi.`
+• Sealbhach + à + forainm chun béim a chur ar an úinéir: c’est mon livre à moi.`,
+        ar: `القواعد:
+• تطابق الشيء المملوك لا المالك: mon/ma/mes, ton/ta/tes, son/sa/ses (له/لها)، notre/nos, votre/vos, leur/leurs.
+• Son/sa/ses قد تعني «له» أو «لها» — جنس الاسم هو الذي يحدد (son père = أبوه أو أبوها).
+• قبل اسم مؤنث يبدأ بحرف علة: mon, ton, son (mon amie, ton école).
+الاستثناءات:
+• لأعضاء الجسم كثيرًا ما تحل أداة التعريف محل الملكية: je me lave les mains, il a mal à la tête.
+• Leur(s) للملكية؛ ولا تخلط بينها وبين الضمير leur (je leur parle).
+• الملكية + à + ضمير تؤكد المالك: c’est mon livre à moi.`
     });
 
     D('demonstratifs', {
@@ -3612,7 +2842,15 @@ Excepciones:
 Eisceachtaí:
 • Cet roimh ghuta amháin: cet homme, cet été; ach ce héros (h aspiré).
 • Sa chaint, is minic a thagann -là in áit -ci ar fad.
-• Tá Ce mar chuid de c’est/ce sont (forainm) freisin; ná measc leis an gcinnteoir é.`
+• Tá Ce mar chuid de c’est/ce sont (forainm) freisin; ná measc leis an gcinnteoir é.`,
+        ar: `القواعد:
+• Ce (مذكر)، cet (مذكر قبل حرف علة أو h صامتة)، cette (مؤنث)، ces (جمع).
+• للإشارة إلى شيء في الموقف أو النص؛ وتحدد ‎-ci (القريب) و‎-là (البعيد): ce livre-ci, cette femme-là.
+• الجنس والعدد يتبعان الاسم.
+الاستثناءات:
+• Cet فقط قبل حرف علة: cet homme, cet été؛ لكن ce héros (h منطوقة).
+• في الكلام كثيرًا ما تحل ‎-là محل ‎-ci تمامًا.
+• Ce جزء أيضًا من c’est/ce sont (ضمير)، ولا تُخلط بأداة الإشارة.`
     });
 
     D('quantite', {
@@ -3696,7 +2934,16 @@ Eisceachtaí:
 • Encore + alt páirteach (encore du pain), ach ní ghlacann un peu de alt (un peu de sel).
 • Bien du/de la («go leor») leis an alt páirteach: bien du plaisir.
 • Bíonn an briathar tar éis la plupart des, une foule de, un grand nombre de san iolra.
-• Quelques ≠ quelque (uatha, «éigin»): quelque chose, quelque temps.`
+• Quelques ≠ quelque (uatha, «éigin»): quelque chose, quelque temps.`,
+        ar: `القواعد:
+• Beaucoup de, peu de, assez de, trop de, plus de, moins de, tant de + اسم بلا أداة: beaucoup de monde.
+• Plusieurs, quelques, chaque, certains, divers — بلا de؛ وchaque في المفرد فقط.
+• La plupart des, bien des, la moitié de + جمع مع أداة: la plupart des gens.
+الاستثناءات:
+• Encore + أداة التبعيض (encore du pain)، لكن un peu de بلا أداة (un peu de sel).
+• Bien du/de la (كثير من) مع التبعيض: bien du plaisir.
+• الفعل بعد la plupart des, une foule de, un grand nombre de — جمع.
+• Quelques ≠ quelque (مفرد «بعض»): quelque chose, quelque temps.`
     });
 
     D('comparatif', {
@@ -3780,7 +3027,16 @@ Eisceachtaí:
 • Bon → meilleur (seachas plus bon): ce vin est meilleur. Bien → mieux (seachas plus bien): il chante mieux.
 • Mauvais → pire (nó plus mauvais), mal → plus mal / pis (annamh).
 • Petit → plus petit; moindre — «níos lú» sa chiall fháthchiallach (le moindre mal).
-• Tar éis que, úsáidtear forainm treise (plus grand que moi); sa stíl fhoirmiúil, féadann ne iomarcach teacht roimh an mbriathar (il est plus grand que je ne pensais).`
+• Tar éis que, úsáidtear forainm treise (plus grand que moi); sa stíl fhoirmiúil, féadann ne iomarcach teacht roimh an mbriathar (il est plus grand que je ne pensais).`,
+        ar: `القواعد:
+• Plus/moins/aussi + صفة أو ظرف + que: elle est plus grande que lui.
+• للكمية: plus de/moins de/autant de + اسم + que (plus de livres que moi).
+• مع الأفعال: الفعل + plus/moins/autant que.
+الاستثناءات:
+• Bon → meilleur (وليس plus bon): ce vin est meilleur. Bien → mieux (وليس plus bien): il chante mieux.
+• Mauvais → pire (أو plus mauvais)، mal → plus mal / pis (نادر).
+• Petit → plus petit؛ وmoindre — «أقل» بالمعنى المجازي (le moindre mal).
+• بعد que يأتي الضمير المؤكِّد (plus grand que moi)؛ وفي الأسلوب الرسمي قد تظهر ne زائدة قبل الفعل (il est plus grand que je ne pensais).`
     });
 
     D('superlatif', {
@@ -3855,7 +3111,15 @@ Excepciones:
 Eisceachtaí:
 • Le meilleur (ó bon), le mieux (ó bien), le pire (ó mauvais).
 • Le haidiacht TAR ÉIS an ainmfhocail, athdhéantar an t-alt: la voiture la plus rapide; roimh an ainmfhocal, níl ach alt amháin ann: le plus beau jour.
-• Tar éis le plus… que, úsáidtear an foshuiteach le haghaidh measúnuithe: c’est le plus beau film que j’aie vu.`
+• Tar éis le plus… que, úsáidtear an foshuiteach le haghaidh measúnuithe: c’est le plus beau film que j’aie vu.`,
+        ar: `القواعد:
+• Le/la/les + plus/moins + صفة: le plus grand, la plus belle, les moins chers.
+• الظرف: le plus vite, le mieux.
+• بعد صيغة التفضيل تُستعمل de (le plus grand de la classe)؛ والجملة الموصولة كثيرًا ما تكون في الـ subjonctif.
+الاستثناءات:
+• Le meilleur (من bon)، le mieux (من bien)، le pire (من mauvais).
+• مع صفة تأتي بعد الاسم تتكرر الأداة: la voiture la plus rapide؛ وقبل الاسم أداة واحدة: le plus beau jour.
+• بعد le plus… que + الـ subjonctif للتقييم: c’est le plus beau film que j’aie vu.`
     });
 
     D('adverbes-ment', {
@@ -3939,7 +3203,16 @@ Eisceachtaí:
 • Foirmeacha neamhrialta: gentil → gentiment, bref → brièvement, précis → précisément, énorme → énormément, profond → profondément.
 • Bon → bien, mauvais → mal, meilleur → mieux — dobhriathra ar leith.
 • Lent → lentement, présent → présentement — ní -emment, cé go gcríochnaíonn an aidiacht le -ent.
-• Feidhmíonn roinnt aidiachtaí mar dhobhriathra: parler bas, coûter cher, travailler dur.`
+• Feidhmíonn roinnt aidiachtaí mar dhobhriathra: parler bas, coûter cher, travailler dur.`,
+        ar: `القواعد:
+• صيغة المؤنث من الصفة + ‎-ment: lent → lente → lentement؛ doux → douce → doucement.
+• الصفات المنتهية بحرف علة: ‎+ment: vrai → vraiment, poli → poliment.
+• ‎-ant → -amment، ‎-ent → -emment: constant → constamment, évident → évidemment.
+الاستثناءات:
+• الشاذ: gentil → gentiment, bref → brièvement, précis → précisément, énorme → énormément, profond → profondément.
+• Bon → bien, mauvais → mal, meilleur → mieux — ظروف مستقلة.
+• Lent → lentement, présent → présentement — وليس ‎-emment، مع أن الصفة تنتهي بـ ‎-ent.
+• بعض الصفات تعمل عمل الظروف: parler bas, coûter cher, travailler dur.`
     });
 
     D('adverbes-places', {
@@ -4014,7 +3287,15 @@ Excepciones:
 Eisceachtaí:
 • Leanann dobhriathra áite agus ama (hier, demain, ici, là) an rangabháil: il est arrivé hier.
 • Dobhriathra abairte (heureusement, malheureusement, probablement) — ag an tús nó tar éis an ainmní.
-• Pas, jamais, plus — le ne timpeall ar an mbriathar cúnta: il n’a jamais mangé.`
+• Pas, jamais, plus — le ne timpeall ar an mbriathar cúnta: il n’a jamais mangé.`,
+        ar: `القواعد:
+• في الأزمنة البسيطة — مباشرة بعد الفعل: il parle lentement.
+• في الأزمنة المركبة تأتي الظروف القصيرة (déjà, bien, mal, trop, beaucoup, toujours, encore, vite, souvent) بين الفعل المساعد واسم المفعول: il a déjà mangé.
+• ظروف ‎-ment كثيرًا ما تأتي بعد اسم المفعول: il a parlé lentement (أو قبله: il a lentement parlé — أسلوبيًا).
+الاستثناءات:
+• ظروف المكان والزمان (hier, demain, ici, là) تأتي بعد اسم المفعول: il est arrivé hier.
+• ظروف الجملة (heureusement, malheureusement, probablement) — في الأول أو بعد الفاعل.
+• Pas, jamais, plus — مع ne حول الفعل المساعد: il n’a jamais mangé.`
     });
 
     D('pronoms-sujets', {
@@ -4098,7 +3379,16 @@ Eisceachtaí:
 • il neamhphearsanta: il pleut, il faut, il y a.
 • Ils — le grúpa ina bhfuil fear amháin ar a laghad; elles — mná amháin.
 • Ainmfhocal mar ainmní + forainm (Pierre, il…) sa chaint chun béim a chur air.
-• Réiteach le on: féadann an rangabháil a bheith san iolra (on est partis).`
+• Réiteach le on: féadann an rangabháil a bheith san iolra (on est partis).`,
+        ar: `القواعد:
+• Je (وj’ قبل حرف علة)، tu, il, elle, on, nous, vous, ils, elles.
+• Tu — للأصدقاء والأطفال؛ وvous — للتأدب أو الجمع.
+• On = «نحن» (غير رسمي)، «الناس عمومًا»، «أحدهم»؛ والفعل بصيغة الغائب المفرد.
+الاستثناءات:
+• il غير الشخصي: il pleut, il faut, il y a.
+• Ils — لمجموعة فيها رجل واحد على الأقل؛ وelles — للنساء فقط.
+• اسم فاعل + ضمير (Pierre, il…) في الكلام للتوكيد.
+• المطابقة مع on: قد يأتي اسم المفعول جمعًا (on est partis).`
     });
 
     D('pronoms-cod', {
@@ -4182,7 +3472,16 @@ Excepciones:
 Eisceachtaí:
 • Féadann Le teacht in áit smaoinimh iomláin nó aidiachta: je le sais, elle l’est (heureuse).
 • Spreagann sé réiteach na rangabhála: je les ai vus (COD roimh an mbriathar).
-• Le halt éiginnte nó páirteach, úsáidtear en ina áit (j’en veux).`
+• Le halt éiginnte nó páirteach, úsáidtear en ina áit (j’en veux).`,
+        ar: `القواعد:
+• Me, te, le/la (l’), nous, vous, les — قبل الفعل المصرَّف: je le vois, elle les a achetés.
+• مع المصدر — قبل المصدر: je veux le voir.
+• في الأمر المثبت — بعد الفعل مع شرطة: regarde-le !
+• Le/la/les تحل محل اسم مع أداة تعريف أو ملكية أو إشارة (le livre → je le lis).
+الاستثناءات:
+• Le قد تحل محل فكرة كاملة أو صفة: je le sais, elle l’est (heureuse).
+• تستدعي مطابقة اسم المفعول: je les ai vus (COD قبل الفعل).
+• مع أداة تنكير أو تبعيض تُستعمل en بدلًا منها (j’en veux).`
     });
 
     D('pronoms-coi', {
@@ -4257,7 +3556,15 @@ Excepciones:
 Eisceachtaí:
 • Le rudaí, úsáidtear y in áit lui/leur: je pense à mon travail → j’y pense.
 • Éilíonn roinnt briathra le à à + forainm treise: penser à lui, songer à elle, s’intéresser à eux, être à moi.
-• Leur (forainm, gan -s) ≠ leur(s) (sealbhach).`
+• Leur (forainm, gan -s) ≠ leur(s) (sealbhach).`,
+        ar: `القواعد:
+• Me, te, lui, nous, vous, leur — تحل محل à + شخص: je lui parle, il leur a donné un livre.
+• الموضع — قبل الفعل (مثل الـ COD)؛ وفي الأمر المثبت — بعده: parle-lui !
+• أفعال نموذجية: parler à, donner à, téléphoner à, écrire à, répondre à, dire à.
+الاستثناءات:
+• للأشياء تُستعمل y بدلًا من lui/leur: je pense à mon travail → j’y pense.
+• بعض الأفعال مع à تتطلب à + الضمير المؤكِّد: penser à lui, songer à elle, s’intéresser à eux, être à moi.
+• Leur (ضمير، بلا ‎-s) ≠ leur(s) (ملكية).`
     });
 
     D('pronoms-y-en', {
@@ -4341,7 +3648,16 @@ Eisceachtaí:
 • Le huimhreán/focal cainníochta, coinníonn en é: j’en ai trois, j’en ai beaucoup.
 • Faigheann foirm ordaitheach tu a -s ar ais: vas-y, parles-en, manges-en.
 • Le daoine, in áit de + duine, úsáidtear de lui/d’elle, ní en: je parle de lui.
-• I ngrúpaí forainmneacha, tagann y/en i gcónaí ag an deireadh (je lui en donne).`
+• I ngrúpaí forainmneacha, tagann y/en i gcónaí ag an deireadh (je lui en donne).`,
+        ar: `القواعد:
+• Y تحل محل à/dans/sur/chez + مكان أو شيء: j’y vais (je vais à Paris)، j’y pense.
+• En تحل محل de + اسم، أو التبعيض، أو الكمية: j’en veux (du pain)، j’en ai trois، je viens d’en parler.
+• الموضع — قبل الفعل؛ وفي الأمر المثبت — بعده (vas-y, parles-en).
+الاستثناءات:
+• مع العدد أو كلمة الكمية تبقيها en: j’en ai trois, j’en ai beaucoup.
+• أمر tu يستعيد ‎-s: vas-y, parles-en, manges-en.
+• للأشخاص مع de + شخص تُستعمل de lui/d’elle، لا en: je parle de lui.
+• في مجموعات الضمائر تأتي y/en دائمًا في الآخر (je lui en donne).`
     });
 
     D('pronoms-relatifs', {
@@ -4443,7 +3759,18 @@ Eisceachtaí:
 • Le daoine tar éis réamhfhocail, qui: la femme avec qui je parle.
 • Ce qui/ce que/ce dont — gan réamhtheachtaí: je sais ce que tu veux.
 • Réitíonn an briathar tar éis qui leis an réamhtheachtaí: moi qui suis, toi qui es, nous qui sommes.
-• Déantar eiliú ar Que roimh ghuta (qu’il), ach ní dhéantar ar qui riamh.`
+• Déantar eiliú ar Que roimh ghuta (qu’il), ach ní dhéantar ar qui riamh.`,
+        ar: `القواعد:
+• Qui — فاعل: l’homme qui parle.
+• Que (qu’) — مفعول مباشر: le livre que je lis.
+• Dont — «الذي … عنه/منه»: le film dont je parle؛ وبمعنى «الذي … له»: la femme dont le fils est médecin.
+• Où — للمكان أو الزمان: la ville où j’habite, le jour où il est venu.
+• حرف جر + lequel/laquelle/lesquels/lesquelles: la table sur laquelle (ومع à → auquel، de → duquel).
+الاستثناءات:
+• للأشخاص بعد حرف جر — qui: la femme avec qui je parle.
+• Ce qui/ce que/ce dont — بلا سابق: je sais ce que tu veux.
+• الفعل بعد qui يطابق السابق: moi qui suis, toi qui es, nous qui sommes.
+• Que تُحذف علتها قبل حرف علة (qu’il)، أما qui فلا أبدًا.`
     });
 
     D('pronoms-toniques', {
@@ -4509,7 +3836,14 @@ Excepciones:
 Eisceachtaí:
 • Tar éis à le daoine, glacann roinnt briathra forainm treise seachas forainm cuspóra indírigh: penser à lui, songer à elle.
 • Soi — neamhphearsanta: on a besoin de soi, chacun pour soi.
-• Eux/elles — le daoine agus ainmhithe amháin; le rudaí, úsáidtear y/en.`
+• Eux/elles — le daoine agus ainmhithe amháin; le rudaí, úsáidtear y/en.`,
+        ar: `القواعد:
+• Moi, toi, lui, elle, nous, vous, eux, elles.
+• تُستعمل: بعد حروف الجر (avec moi, pour toi)، وبعد c’est/ce sont (c’est moi)، وللتوكيد (moi, je pense)، وفي المقارنة (plus grand que lui)، وبلا فعل (Qui est là ? — Moi.)، وفي العطف (Pierre et moi).
+الاستثناءات:
+• بعد à للأشخاص، تستعمل بعض الأفعال الضمير المؤكِّد بدلًا من الضمير غير المباشر: penser à lui, songer à elle.
+• Soi — غير شخصي: on a besoin de soi, chacun pour soi.
+• Eux/elles — للأشخاص والحيوانات فقط؛ وللأشياء تُستعمل y/en.`
     });
 
     D('double-pronoms', {
@@ -4584,7 +3918,15 @@ Excepciones:
 Eisceachtaí:
 • Ní dhéantar eiliú ar Me/te/se roimh le/la/les: il me le donne (seachas il m’le donne).
 • Sa mhodh ordaitheach, me/te → moi/toi (donne-le-moi), ach roimh en: donne-m’en.
-• Ní féidir me/te/nous/vous agus lui/leur a chur le chéile: ní je lui te présente ach je te présente à lui.`
+• Ní féidir me/te/nous/vous agus lui/leur a chur le chéile: ní je lui te présente ach je te présente à lui.`,
+        ar: `القواعد:
+• الترتيب قبل الفعل: me/te/se/nous/vous → le/la/les → lui/leur → y → en.
+• أمثلة: il me le donne; je le lui dis; nous leur en parlons; elle m’y a conduit.
+• في الأمر المثبت: الفعل + COD + COI (donne-le-moi)؛ وفي النفي كالمعتاد (ne me le donne pas).
+الاستثناءات:
+• Me/te/se لا تُحذف علتها قبل le/la/les: il me le donne (وليس il m’le donne).
+• في الأمر me/te → moi/toi (donne-le-moi) لكن قبل en: donne-m’en.
+• me/te/nous/vous لا تجتمع مع lui/leur: ليس je lui te présente بل je te présente à lui.`
     });
 
     D('pronoms-interrogatifs', {
@@ -4677,7 +4019,17 @@ Eisceachtaí:
 • Ní úsáidtear Que (qu’) ach le hinbhéartú nó est-ce que: que veux-tu ? / qu’est-ce que tu veux ?
 • Quoi — tar éis réamhfhocail nó gan bhriathar: tu parles de quoi ? Quoi ?
 • Pourquoi + inbhéartú le -t- ar mhaithe le dea-fhuaimniú: pourquoi a-t-il…
-• Quel — tar éis être: quelle est ta ville ?`
+• Quel — tar éis être: quelle est ta ville ?`,
+        ar: `القواعد:
+• مَن: qui / qui est-ce qui (فاعل)، qui / qui est-ce que (مفعول).
+• ماذا: qu’est-ce qui (فاعل)، que / qu’est-ce que (مفعول)، quoi (بعد حرف جر).
+• أين/متى/كيف/لماذا/كم: où, quand, comment, pourquoi, combien (de).
+• أيّ: quel, quelle, quels, quelles (تطابق)؛ وlequel — أيّ واحد من.
+الاستثناءات:
+• Que (qu’) فقط مع القلب أو est-ce que: que veux-tu ? / qu’est-ce que tu veux ?
+• Quoi — بعد حرف جر أو بلا فعل: tu parles de quoi ? Quoi ?
+• Pourquoi + قلب مع ‎-t- الصوتية: pourquoi a-t-il…
+• Quel — بعد être: quelle est ta ville ?`
     });
 
     D('negation', {
@@ -4779,7 +4131,18 @@ Eisceachtaí:
 • Ne … ni … ni: je n’ai ni frère ni sœur (gan alt).
 • Sa chaint, is minic a fhágtar ne ar lár: je sais pas.
 • I bhfreagra nó gan bhriathar, úsáidtear Pas/jamais gan ne: Pas du tout ! Jamais !
-• ne iomarcach (gan bhrí dhiúltach): je crains qu’il ne vienne.`
+• ne iomarcach (gan bhrí dhiúltach): je crains qu’il ne vienne.`,
+        ar: `القواعد:
+• Ne (n’) قبل الفعل + الجزء الثاني بعده: ne … pas, ne … jamais, ne … plus, ne … rien, ne … personne, ne … aucun, ne … guère.
+• في الأزمنة المركبة يأتي الجزء الثاني بعد الفعل المساعد: je n’ai pas mangé؛ لكن personne وaucun تأتيان بعد اسم المفعول: je n’ai vu personne.
+• الأداة بعد النفي: un/une/des/du → de/d’ (je n’ai pas de pain).
+• مع المصدر تسبقه الكلمتان: ne pas partir.
+الاستثناءات:
+• Ne … que ليست نفيًا بل حصرًا («فقط»).
+• Ne … ni … ni: je n’ai ni frère ni sœur (بلا أداة).
+• في الكلام كثيرًا ما تُحذف ne: je sais pas.
+• Pas/jamais بلا ne في الجواب أو بلا فعل: Pas du tout ! Jamais !
+• الـ ne الزائدة (بلا معنى النفي): je crains qu’il ne vienne.`
     });
 
     D('interrogation', {
@@ -4872,7 +4235,17 @@ Eisceachtaí:
 • Le hinbhéartú agus il/elle/on tar éis guta, cuirtear -t- leis ar mhaithe le dea-fhuaimniú: Parle-t-il ? A-t-elle fini ?
 • Ainmfhocal mar ainmní + forainm: Pierre vient-il ? (dúbailt an ainmní).
 • Is annamh inbhéartú le je: puis-je, suis-je, ai-je; murach sin, úsáidtear est-ce que.
-• Ní dhéantar inbhéartú i gceisteanna faoin ainmní (qui, qu’est-ce qui): Qui parle ?`
+• Ní dhéantar inbhéartú i gceisteanna faoin ainmní (qui, qu’est-ce qui): Qui parle ?`,
+        ar: `القواعد:
+• بالتنغيم (غير رسمي): Tu viens ?
+• Est-ce que (محايد): Est-ce que tu viens ?
+• بالقلب (رسمي): Viens-tu ? Où vas-tu ?
+• مع أداة استفهام: Où habites-tu ? / Où est-ce que tu habites ? / Tu habites où ?
+الاستثناءات:
+• القلب مع il/elle/on بعد حرف علة يأخذ ‎-t- الصوتية: Parle-t-il ? A-t-elle fini ?
+• اسم فاعل + ضمير: Pierre vient-il ? (تكرار الفاعل).
+• مع je القلب نادر: puis-je, suis-je, ai-je — وإلا فاستعمل est-ce que.
+• الأسئلة عن الفاعل (qui, qu’est-ce qui) بلا قلب: Qui parle ?`
     });
 
     D('mise-en-relief', {
@@ -4956,7 +4329,16 @@ Excepciones:
 Eisceachtaí:
 • Le réamhfhocal: c’est à toi que je parle; c’est de lui que je parle.
 • Ce qui/ce que/ce dont … c’est: ce que je veux, c’est du repos (struchtúr bréagscoilte).
-• Diúltach: ce n’est pas moi qui…`
+• Diúltach: ce n’est pas moi qui…`,
+        ar: `القواعد:
+• C’est + العنصر المؤكَّد + qui (للفاعل) / que (لغيره): c’est Marie qui a parlé; c’est ce livre que je veux.
+• Ce sont + جمع (رسمي)، وفي الكلام كثيرًا c’est.
+• يمكن تأكيد الفاعل أو المفعول أو الظرف: c’est demain que je pars.
+• الفعل بعد qui يطابق العنصر المؤكَّد: c’est moi qui ai fait ça.
+الاستثناءات:
+• مع حرف جر: c’est à toi que je parle; c’est de lui que je parle.
+• Ce qui/ce que/ce dont … c’est: ce que je veux, c’est du repos (تأكيد شبه منقسم).
+• في النفي: ce n’est pas moi qui…`
     });
 
     D('conjonctions-subordination', {
@@ -5031,7 +4413,15 @@ Excepciones:
 Eisceachtaí:
 • Glacann Après que an modh táscach (cé go n-úsáidtear an foshuiteach go mícheart go minic).
 • Avant que, sans que — an foshuiteach; leis an ainmní céanna, úsáidtear an infinideach (avant de partir), áfach.
-• Freagraíonn Parce que pourquoi; puisque — cúis atá ar eolas cheana; tá car comhordaitheach, ní fo-ordaitheach.`
+• Freagraíonn Parce que pourquoi; puisque — cúis atá ar eolas cheana; tá car comhordaitheach, ní fo-ordaitheach.`,
+        ar: `القواعد:
+• مع الإخباري: parce que, puisque, quand, lorsque, pendant que, tandis que, comme, dès que, après que, aussitôt que, si.
+• مع الـ subjonctif: bien que, quoique, pour que, afin que, avant que, jusqu’à ce que, à moins que, sans que, pourvu que.
+• Que تحل محل أداة الربط المكررة: quand il pleut et que je suis fatigué…
+الاستثناءات:
+• Après que تأخذ الإخباري (مع أن الـ subjonctif يُستعمل خطأً كثيرًا).
+• Avant que وsans que — الـ subjonctif، لكن مع الفاعل نفسه يُستعمل المصدر (avant de partir).
+• Parce que تجيب عن pourquoi؛ وpuisque — سبب معروف مسبقًا؛ وcar أداة عطف لا ربط تابع.`
     });
 
     D('connecteurs-logiques', {
@@ -5124,7 +4514,17 @@ Eisceachtaí:
 • Ní úsáidtear Mais agus pourtant le chéile leis an mbrí chéanna.
 • Féadann Donc teacht i lár na habairte: je pense donc je suis.
 • Or — «anois/fós», cuireann sé cúinse nua i láthair; ní chiallaíonn sé «nó».
-• Is cónasc comhordaitheach é Car: de ghnáth bíonn sé idir dhá chlásal, ní ag tús abairte.`
+• Is cónasc comhordaitheach é Car: de ghnáth bíonn sé idir dhá chlásal, ní ag tús abairte.`,
+        ar: `القواعد:
+• التباين: mais, pourtant, cependant, toutefois, en revanche, au contraire.
+• السبب: car, en effet, parce que؛ والنتيجة: donc, alors, par conséquent, c’est pourquoi.
+• الترتيب: d’abord, ensuite, puis, enfin؛ والإضافة: de plus, en outre, d’ailleurs.
+• تُفصل عادةً بفاصلة في أول الجملة.
+الاستثناءات:
+• Mais وpourtant لا تُستعملان معًا بالمعنى نفسه.
+• Donc قد تأتي في الوسط: je pense donc je suis.
+• Or — «والحال أن»، تُدخل ظرفًا جديدًا، وليست «أو».
+• Car أداة عطف: تأتي عادةً بين جملتين لا في أول الجملة.`
     });
 
     D('proposition-relative', {
@@ -5208,7 +4608,16 @@ Excepciones:
 Eisceachtaí:
 • Ní dhéantar eiliú ar Qui riamh, ach déantar ar que (qu’il).
 • Tá de san áireamh in Dont cheana (ní úsáidtear «dont de» riamh): le livre dont j’ai besoin.
-• Tar éis ainmfhocail áite/ama, tagann Où in áit réamhfhocail + lequel.`
+• Tar éis ainmfhocail áite/ama, tagann Où in áit réamhfhocail + lequel.`,
+        ar: `القواعد:
+• تصف اسمًا؛ وتبدأ بضمير موصول (qui, que, dont, où, lequel).
+• المحددة (بلا فواصل): l’homme qui parle est mon père؛ وغير المحددة (بين فاصلتين): Paul, qui parle, est mon père.
+• فعل جملة qui يطابق السابق.
+• تتطلب أحيانًا الـ subjonctif (c’est le seul livre que je puisse lire).
+الاستثناءات:
+• Qui لا تُحذف علتها أبدًا، أما que فتُحذف (qu’il).
+• Dont تتضمن de أصلًا (لا يُقال « dont de » أبدًا): le livre dont j’ai besoin.
+• Où بعد اسم مكان أو زمان تحل محل حرف الجر + lequel.`
     });
 
     D('depuis-il-y-a-pendant', {
@@ -5310,7 +4719,18 @@ Eisceachtaí:
 • Depuis + imparfait le gníomh leanúnach san am atá caite: il travaillait depuis une heure quand…
 • Tá an bhrí chéanna ag Ça fait … que / il y a … que + présent agus depuis: ça fait deux ans que j’habite ici.
 • Is minic a fhágtar Pendant ar lár: j’ai dormi dix heures.
-• Depuis le passé composé diúltach: je ne l’ai pas vu depuis mardi.`
+• Depuis le passé composé diúltach: je ne l’ai pas vu depuis mardi.`,
+        ar: `القواعد:
+• Depuis + présent: الحدث ما زال مستمرًا: j’habite ici depuis deux ans.
+• Il y a + مدة + زمن ماضٍ: «منذ … مضت»: il est parti il y a une heure.
+• Pendant + مدة: المدة (منتهية أو مستقبلية): j’ai dormi pendant dix heures.
+• Dans + مدة: «بعد»: je pars dans deux jours.
+• En + مدة: «في غضون» (كم استغرق): j’ai fini en une heure.
+الاستثناءات:
+• Depuis + imparfait لحدث مستمر في الماضي: il travaillait depuis une heure quand…
+• Ça fait … que / il y a … que + présent — مثل depuis: ça fait deux ans que j’habite ici.
+• كثيرًا ما تُحذف pendant: j’ai dormi dix heures.
+• Depuis مع passé composé منفي: je ne l’ai pas vu depuis mardi.`
     });
 
     D('marqueurs-temps', {
@@ -5403,7 +4823,17 @@ Excepciones:
 Eisceachtaí:
 • Athraíonn brí Déjà, encore, toujours, ne … plus de réir an chomhthéacs (encore = fós/arís).
 • Soudain/tout à coup — passé composé, seachas imparfait (eachtra, ní cúlra).
-• Féadann Aujourd’hui tagairt don am atá caite laistigh de théacs — «inniu» an scéalaí.`
+• Féadann Aujourd’hui tagairt don am atá caite laistigh de théacs — «inniu» an scéalaí.`,
+        ar: `القواعد:
+• الماضي: hier, avant-hier, la semaine dernière, autrefois, il y a… → passé composé/imparfait.
+• الحاضر: maintenant, en ce moment, aujourd’hui, actuellement → présent.
+• المستقبل: demain, bientôt, la semaine prochaine, dans… → futur.
+• التكرار: toujours, souvent, parfois, rarement, jamais.
+• التتابع: d’abord, ensuite, puis, enfin, soudain.
+الاستثناءات:
+• Déjà, encore, toujours, ne … plus تختلف معانيها بحسب السياق (encore = ما زال / مرة أخرى).
+• Soudain/tout à coup — passé composé لا imparfait (حدث لا خلفية).
+• Aujourd’hui قد تشير إلى الماضي داخل النص («اليوم» عند الراوي).`
     });
 
     D('prepositions-lieu', {
@@ -5487,7 +4917,16 @@ Eisceachtaí:
 • Tá tíortha dar críoch -e baininscneach; eisceachtaí: le Mexique, le Mozambique, le Cambodge — firinscneach.
 • Oileáin: à Cuba, à Malte, en Corse, à Tahiti.
 • Roimh ghuta: en Iran, en Israël, en Afghanistan, fiú má tá sé firinscneach.
-• Chez le daoine agus siopaí: chez le médecin.`
+• Chez le daoine agus siopaí: chez le médecin.`,
+        ar: `القواعد:
+• À + مدينة (à Paris)، en + دولة مؤنثة (en France, en Italie)، au + مذكرة (au Canada, au Japon)، aux + جمع (aux États-Unis).
+• Dans + مكان مغلق (dans la boîte)، sur، sous، devant، derrière، entre، chez + شخص (chez moi).
+• De/du/des/d’ — من: je viens de France, du Canada, des États-Unis, de Paris.
+الاستثناءات:
+• الدول المنتهية بـ ‎-e مؤنثة؛ والاستثناءات: le Mexique, le Mozambique, le Cambodge — مذكرة.
+• الجزر: à Cuba, à Malte, en Corse, à Tahiti.
+• قبل حرف علة: en Iran, en Israël, en Afghanistan (حتى المذكرة).
+• Chez للأشخاص والمحلات: chez le médecin.`
     });
 
     D('a-de-en', {
@@ -5571,7 +5010,16 @@ Eisceachtaí:
 • Iompar: en voiture, en train, en avion, en bus, ach à vélo, à pied, à cheval, à moto.
 • Séasúir: en été, en automne, en hiver, ach au printemps.
 • Briathra le dhá bhrí: penser à (smaoineamh ar), penser de (tuairim a bheith faoi).
-• Tar éis réamhfhocail, úsáidtear forainm treise: penser à lui, parler de lui; le rudaí, áfach, y/en.`
+• Tar éis réamhfhocail, úsáidtear forainm treise: penser à lui, parler de lui; le rudaí, áfach, y/en.`,
+        ar: `القواعد:
+• À: الاتجاه أو المكان (aller à l’école)، والزمن (à midi)، والملكية (ce livre est à moi)، وبعد penser à, répondre à, commencer à, aider à, apprendre à.
+• De: الأصل (venir de)، والانتماء (la maison de Paul)، وبعد parler de, avoir besoin de, finir de, essayer de, décider de, oublier de.
+• En: المادة (en bois)، واللغة (en français)، والمواصلات (en train؛ لكن à pied, à vélo, à moto)، والشهر والسنة والفصل (en mai, en 2020, en été).
+الاستثناءات:
+• المواصلات: en voiture, en train, en avion, en bus، لكن à vélo, à pied, à cheval, à moto.
+• الفصول: en été, en automne, en hiver، لكن au printemps.
+• أفعال بمعنيين: penser à (يفكر في)، penser de (له رأي في).
+• بعد حرف الجر يُستعمل الضمير المؤكِّد: penser à lui, parler de lui؛ لكن y/en للأشياء.`
     });
 
     D('expressions-cause-but', {
@@ -5646,7 +5094,15 @@ Excepciones:
 Eisceachtaí:
 • Pour que/afin que — foshuiteach; pour/afin de — infinideach nuair is ionann an t-ainmní.
 • Si bien que + táscach (fíric), de sorte que + foshuiteach (cuspóir) nó táscach (toradh).
-• À cause de ≠ grâce à (diúltach/dearfach); tá en raison de neodrach.`
+• À cause de ≠ grâce à (diúltach/dearfach); tá en raison de neodrach.`,
+        ar: `القواعد:
+• السبب: parce que, car, puisque, comme, à cause de (سلبي)، grâce à (إيجابي)، en raison de.
+• الغرض: pour + المصدر، afin de + المصدر، pour que/afin que + الـ subjonctif.
+• النتيجة: donc, alors, si bien que, tellement … que, tant … que, au point de.
+الاستثناءات:
+• Pour que/afin que — الـ subjonctif؛ وpour/afin de — المصدر عندما يكون الفاعل واحدًا.
+• Si bien que + الإخباري (واقعة)، de sorte que + الـ subjonctif (غرض) أو الإخباري (نتيجة).
+• À cause de ≠ grâce à (سلبي/إيجابي)؛ وen raison de محايدة.`
     });
 
     D('ne-que-restriction', {
@@ -5730,7 +5186,16 @@ Eisceachtaí:
 • Seulement/uniquement — comhchiallaigh, gan ne.
 • In aimsirí comhshuite, tagann que roimh an ngné srianta, ní díreach tar éis an bhriathair chúnta: il n’a mangé que du pain.
 • Ne … pas que — «ní… amháin»: il n’y a pas que moi.
-• Ná measc le ne … pas é: tá brí dhearfach le ne … que.`
+• Ná measc le ne … pas é: tá brí dhearfach le ne … que.`,
+        ar: `القواعد:
+• Ne … que = «فقط»: il ne mange que du pain.
+• Ne قبل الفعل، وque قبل العنصر المحصور: je n’ai que dix euros.
+• تبقى الأداة (لا تصبح de) لأنها ليست نفيًا.
+الاستثناءات:
+• Seulement/uniquement — مرادفات، بلا ne.
+• في الأزمنة المركبة تأتي que قبل العنصر المحصور، لا مباشرة بعد الفعل المساعد: il n’a mangé que du pain.
+• Ne … pas que — «ليس فقط»: il n’y a pas que moi.
+• لا تخلط بينها وبين ne … pas: ‏ne … que مثبتة في المعنى.`
     });
 
 
@@ -5744,11 +5209,211 @@ Eisceachtaí:
         ['(рід не впливає)', '(gender does not matter)'], ['(рід і число!)', '(gender and number!)'], ['(з être)', '(with être)'],
         ['інфінітив', 'infinitive'], ['(ч.)', '(m.)'], ['(ж.)', '(f.)'], ['(одн.)', '(sg.)'], ['(мн.)', '(pl.)']];
     const enNotes = cell => EN_NOTES.reduce((text, [uk, en]) => text.split(uk).join(en), cell);
+    // Labels and notes of the conjugation tables in the seven added explanation languages (en cell → translated cell).
+    const TBL_LOCALES = {
+        head: {
+            fr: "Conjugaison (personne, nombre, genre):",
+            ru: "Спряжение (лицо, число, род):",
+            es: "Conjugación (persona, número, género):",
+            zh: "变位（人称、数、性）:",
+            ko: "활용(인칭, 수, 성):",
+            hi: "क्रिया-रूप (पुरुष, वचन, लिंग):",
+            ga: "Réimniú (pearsa, uimhir, inscne):",
+            ar: "التصريف (الضمير، العدد، الجنس):",
+        },
+        person: {
+            fr: "Personne",
+            ru: "Лицо",
+            es: "Persona",
+            zh: "人称",
+            ko: "인칭",
+            hi: "पुरुष",
+            ga: "Pearsa",
+            ar: "الضمير",
+        },
+        cells: {
+            fr: {
+                "avoir + parlé (gender does not matter)": "avoir + parlé (le genre ne change pas la forme)",
+                "être + allé (gender and number!)": "être + allé (genre et nombre !)",
+                "vous êtes allé(e) (sg.) · allé(e)s (pl.)": "vous êtes allé(e) (sing.) · allé(e)s (plur.)",
+                "aller (présent) + infinitive": "aller (présent) + infinitif",
+                "venir de (présent) + infinitive": "venir de (présent) + infinitif",
+                "gender and number": "Genre et nombre",
+                "masc. sg.": "masc. sing.",
+                "fem. sg.": "fém. sing.",
+                "masc. pl.": "masc. plur.",
+                "fem. pl.": "fém. plur.",
+                "passé composé (with être)": "passé composé (avec être)",
+                "ending": "Terminaison",
+                "example": "Exemple",
+                "COD BEFORE the verb": "COD avant le verbe",
+            },
+            ru: {
+                "avoir + parlé (gender does not matter)": "avoir + parlé (род не влияет)",
+                "être + allé (gender and number!)": "être + allé (род и число!)",
+                "je suis allé (m.) / allée (f.)": "je suis allé (м.) / allée (ж.)",
+                "nous sommes allés (m.) / allées (f.)": "nous sommes allés (м.) / allées (ж.)",
+                "vous êtes allé(e) (sg.) · allé(e)s (pl.)": "vous êtes allé(e) (ед. ч.) · allé(e)s (мн. ч.)",
+                "j’étais allé (m.) / allée (f.)": "j’étais allé (м.) / allée (ж.)",
+                "je serai allé (m.) / allée (f.)": "je serai allé (м.) / allée (ж.)",
+                "aller (présent) + infinitive": "aller (présent) + инфинитив",
+                "venir de (présent) + infinitive": "venir de (présent) + инфинитив",
+                "je serais venu (m.) / venue (f.)": "je serais venu (м.) / venue (ж.)",
+                "je sois parti (m.) / partie (f.)": "je sois parti (м.) / partie (ж.)",
+                "gender and number": "Род и число",
+                "masc. sg.": "м. р., ед. ч.",
+                "fem. sg.": "ж. р., ед. ч.",
+                "masc. pl.": "м. р., мн. ч.",
+                "fem. pl.": "ж. р., мн. ч.",
+                "passé composé (with être)": "passé composé (с être)",
+                "je me suis lavé (m.) / lavée (f.)": "je me suis lavé (м.) / lavée (ж.)",
+                "ending": "Окончание",
+                "example": "Пример",
+                "COD BEFORE the verb": "Прямое дополнение (COD) перед глаголом",
+            },
+            es: {
+                "avoir + parlé (gender does not matter)": "avoir + parlé (el género no influye)",
+                "être + allé (gender and number!)": "être + allé (¡género y número!)",
+                "vous êtes allé(e) (sg.) · allé(e)s (pl.)": "vous êtes allé(e) (sing.) · allé(e)s (pl.)",
+                "aller (présent) + infinitive": "aller (présent) + infinitivo",
+                "venir de (présent) + infinitive": "venir de (présent) + infinitivo",
+                "gender and number": "Género y número",
+                "masc. sg.": "masc. sing.",
+                "fem. sg.": "fem. sing.",
+                "passé composé (with être)": "passé composé (con être)",
+                "ending": "Terminación",
+                "example": "Ejemplo",
+                "COD BEFORE the verb": "Complemento directo (COD) antes del verbo",
+            },
+            zh: {
+                "avoir + parlé (gender does not matter)": "avoir + parlé（不受性影响）",
+                "être + allé (gender and number!)": "être + allé（注意性和数！）",
+                "je suis allé (m.) / allée (f.)": "je suis allé （阳性） / allée （阴性）",
+                "nous sommes allés (m.) / allées (f.)": "nous sommes allés （阳性） / allées （阴性）",
+                "vous êtes allé(e) (sg.) · allé(e)s (pl.)": "vous êtes allé(e) （单数） · allé(e)s （复数）",
+                "j’étais allé (m.) / allée (f.)": "j’étais allé （阳性） / allée （阴性）",
+                "je serai allé (m.) / allée (f.)": "je serai allé （阳性） / allée （阴性）",
+                "aller (présent) + infinitive": "aller (présent) + 不定式",
+                "venir de (présent) + infinitive": "venir de (présent) + 不定式",
+                "je serais venu (m.) / venue (f.)": "je serais venu （阳性） / venue （阴性）",
+                "je sois parti (m.) / partie (f.)": "je sois parti （阳性） / partie （阴性）",
+                "gender and number": "性和数",
+                "masc. sg.": "阳性单数",
+                "fem. sg.": "阴性单数",
+                "masc. pl.": "阳性复数",
+                "fem. pl.": "阴性复数",
+                "passé composé (with être)": "passé composé （用 être）",
+                "je me suis lavé (m.) / lavée (f.)": "je me suis lavé （阳性） / lavée （阴性）",
+                "ending": "词尾",
+                "example": "例子",
+                "COD BEFORE the verb": "动词前的直接宾语 (COD)",
+            },
+            ko: {
+                "avoir + parlé (gender does not matter)": "avoir + parlé (성에 따른 변화 없음)",
+                "être + allé (gender and number!)": "être + allé (성과 수에 주의!)",
+                "je suis allé (m.) / allée (f.)": "je suis allé (남성) / allée (여성)",
+                "nous sommes allés (m.) / allées (f.)": "nous sommes allés (남성) / allées (여성)",
+                "vous êtes allé(e) (sg.) · allé(e)s (pl.)": "vous êtes allé(e) (단수) · allé(e)s (복수)",
+                "j’étais allé (m.) / allée (f.)": "j’étais allé (남성) / allée (여성)",
+                "je serai allé (m.) / allée (f.)": "je serai allé (남성) / allée (여성)",
+                "aller (présent) + infinitive": "aller (présent) + 부정사",
+                "venir de (présent) + infinitive": "venir de (présent) + 부정사",
+                "je serais venu (m.) / venue (f.)": "je serais venu (남성) / venue (여성)",
+                "je sois parti (m.) / partie (f.)": "je sois parti (남성) / partie (여성)",
+                "gender and number": "성과 수",
+                "masc. sg.": "남성 단수",
+                "fem. sg.": "여성 단수",
+                "masc. pl.": "남성 복수",
+                "fem. pl.": "여성 복수",
+                "passé composé (with être)": "passé composé (être 사용)",
+                "je me suis lavé (m.) / lavée (f.)": "je me suis lavé (남성) / lavée (여성)",
+                "ending": "어미",
+                "example": "예문",
+                "COD BEFORE the verb": "동사 앞의 직접목적어 (COD)",
+            },
+            hi: {
+                "avoir + parlé (gender does not matter)": "avoir + parlé (लिंग का प्रभाव नहीं)",
+                "être + allé (gender and number!)": "être + allé (लिंग और वचन!)",
+                "je suis allé (m.) / allée (f.)": "je suis allé (पुल्लिंग) / allée (स्त्रीलिंग)",
+                "nous sommes allés (m.) / allées (f.)": "nous sommes allés (पुल्लिंग) / allées (स्त्रीलिंग)",
+                "vous êtes allé(e) (sg.) · allé(e)s (pl.)": "vous êtes allé(e) (एकवचन) · allé(e)s (बहुवचन)",
+                "j’étais allé (m.) / allée (f.)": "j’étais allé (पुल्लिंग) / allée (स्त्रीलिंग)",
+                "je serai allé (m.) / allée (f.)": "je serai allé (पुल्लिंग) / allée (स्त्रीलिंग)",
+                "aller (présent) + infinitive": "aller (présent) + क्रिया का अनंत रूप",
+                "venir de (présent) + infinitive": "venir de (présent) + क्रिया का अनंत रूप",
+                "je serais venu (m.) / venue (f.)": "je serais venu (पुल्लिंग) / venue (स्त्रीलिंग)",
+                "je sois parti (m.) / partie (f.)": "je sois parti (पुल्लिंग) / partie (स्त्रीलिंग)",
+                "gender and number": "लिंग और वचन",
+                "masc. sg.": "पुल्लिंग एकवचन",
+                "fem. sg.": "स्त्रीलिंग एकवचन",
+                "masc. pl.": "पुल्लिंग बहुवचन",
+                "fem. pl.": "स्त्रीलिंग बहुवचन",
+                "passé composé (with être)": "passé composé (être के साथ)",
+                "je me suis lavé (m.) / lavée (f.)": "je me suis lavé (पुल्लिंग) / lavée (स्त्रीलिंग)",
+                "ending": "प्रत्यय",
+                "example": "उदाहरण",
+                "COD BEFORE the verb": "क्रिया से पहले प्रत्यक्ष कर्म (COD)",
+            },
+            ga: {
+                "avoir + parlé (gender does not matter)": "avoir + parlé (ní athraíonn an fhoirm de réir inscne)",
+                "être + allé (gender and number!)": "être + allé (inscne agus uimhir!)",
+                "je suis allé (m.) / allée (f.)": "je suis allé (fir.) / allée (bain.)",
+                "nous sommes allés (m.) / allées (f.)": "nous sommes allés (fir.) / allées (bain.)",
+                "vous êtes allé(e) (sg.) · allé(e)s (pl.)": "vous êtes allé(e) (uatha) · allé(e)s (iolra)",
+                "j’étais allé (m.) / allée (f.)": "j’étais allé (fir.) / allée (bain.)",
+                "je serai allé (m.) / allée (f.)": "je serai allé (fir.) / allée (bain.)",
+                "aller (présent) + infinitive": "aller (présent) + infinideach",
+                "venir de (présent) + infinitive": "venir de (présent) + infinideach",
+                "je serais venu (m.) / venue (f.)": "je serais venu (fir.) / venue (bain.)",
+                "je sois parti (m.) / partie (f.)": "je sois parti (fir.) / partie (bain.)",
+                "gender and number": "Inscne agus uimhir",
+                "masc. sg.": "firinscneach uatha",
+                "fem. sg.": "baininscneach uatha",
+                "masc. pl.": "firinscneach iolra",
+                "fem. pl.": "baininscneach iolra",
+                "passé composé (with être)": "passé composé (le être)",
+                "je me suis lavé (m.) / lavée (f.)": "je me suis lavé (fir.) / lavée (bain.)",
+                "ending": "Deireadh",
+                "example": "Sampla",
+                "COD BEFORE the verb": "Cuspóir díreach (COD) roimh an mbriathar",
+            },
+            ar: {
+                "avoir + parlé (gender does not matter)": "avoir + parlé (الجنس لا يؤثر)",
+                "être + allé (gender and number!)": "être + allé (الجنس والعدد!)",
+                "vous êtes allé(e) (sg.) · allé(e)s (pl.)": "vous êtes allé(e) (مفرد) · allé(e)s (جمع)",
+                "aller (présent) + infinitive": "aller (présent) + المصدر",
+                "venir de (présent) + infinitive": "venir de (présent) + المصدر",
+                "gender and number": "الجنس والعدد",
+                "masc. sg.": "مذكر مفرد",
+                "fem. sg.": "مؤنث مفرد",
+                "masc. pl.": "مذكر جمع",
+                "fem. pl.": "مؤنث جمع",
+                "passé composé (with être)": "passé composé (مع être)",
+                "ending": "النهاية",
+                "example": "مثال",
+                "COD BEFORE the verb": "المفعول المباشر (COD) قبل الفعل",
+                "je suis allé (m.) / allée (f.)": "je suis allé (مذكر) / allée (مؤنث)",
+                "nous sommes allés (m.) / allées (f.)": "nous sommes allés (مذكر) / allées (مؤنث)",
+                "j’étais allé (m.) / allée (f.)": "j’étais allé (مذكر) / allée (مؤنث)",
+                "je serai allé (m.) / allée (f.)": "je serai allé (مذكر) / allée (مؤنث)",
+                "je serais venu (m.) / venue (f.)": "je serais venu (مذكر) / venue (مؤنث)",
+                "je sois parti (m.) / partie (f.)": "je sois parti (مذكر) / partie (مؤنث)",
+                "je me suis lavé (m.) / lavée (f.)": "je me suis lavé (مذكر) / lavée (مؤنث)",
+            },
+        },
+        topic: {},   // per-topic exceptions to cells: { loc: { topicId: { enCell: cell } } }
+    };
     const TBL = (id, rows) => {
         if (!fr[id]) throw new Error('details table for unknown topic ' + id);
         const block = rr => rr.map(r => '| ' + r.join(' | ') + ' |').join('\n');
         fr[id].uk += '\nВідмінювання (особа, число, рід):\n' + block(rows).replace('PERSON', 'Особа');
         fr[id].en += '\nConjugation (person, number, gender):\n' + block(rows.map(r => r.map(enNotes))).replace('PERSON', 'Person');
+        // The seven added languages: the same rows, the notes and labels translated cell by cell (TBL_LOCALES), forms untouched.
+        for (const loc of Object.keys(TBL_LOCALES.head)) {
+            const own = (TBL_LOCALES.topic[loc] || {})[id] || {}, cells = TBL_LOCALES.cells[loc] || {};
+            const tr = cell => (cell in own ? own[cell] : cell in cells ? cells[cell] : cell);
+            fr[id][loc] += '\n' + TBL_LOCALES.head[loc] + '\n' + (block)(rows.map(r => r.map(enNotes)).map(r => r.map(tr))).replace('PERSON', TBL_LOCALES.person[loc]);
+        }
     };
     TBL('present', [
         ['PERSON', 'parler', 'finir', 'vendre', 'être', 'avoir', 'aller', 'faire'],
@@ -5886,4 +5551,6 @@ Eisceachtaí:
 
     const store = window.GRAMMAR_RULE_DETAILS || (window.GRAMMAR_RULE_DETAILS = {});
     store.fr = fr;
+    // The translated table labels, so a test can catch a label whose table cell changed (it would fall back to English).
+    (window.GRAMMAR_RULE_TABLE_LABELS || (window.GRAMMAR_RULE_TABLE_LABELS = {})).fr = TBL_LOCALES;
 })();
