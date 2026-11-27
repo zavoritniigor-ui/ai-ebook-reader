@@ -165,6 +165,7 @@ tests/device_llm_browser.py
 tests/pdf_sentence_reselect_browser.py
 tests/pdf_bilingual_columns_browser.py
 tests/pdf_scan_selection_browser.py
+tests/pdf_curved_ocr_browser.py
 tests/bilingual_selection_browser.py
 tests/pdf_hitbox_stateless_browser.py
 tests/book_audio_browser.py
