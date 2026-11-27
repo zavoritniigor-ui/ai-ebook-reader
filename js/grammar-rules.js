@@ -44,8 +44,27 @@ function ruleLevelBadge(topic) {
 function rulesPick(obj) { return (obj && (obj[state.uiLang] || obj.en || obj.uk || obj.fr)) || ''; }
 // The topic's own name in the language of the rules (French: title.fr, English: title.en); the UI-language name goes under it.
 function ruleTitle(topic, lang = rulesState.lang) { return topic.title[lang] || topic.title.fr || topic.title.en || rulesPick(topic.title); }
-// Expanded rules + exceptions live in separate files (js/grammar-rules-details-<lang>.js): id → {uk, en} text.
+// Expanded rules + exceptions live in separate files (js/grammar-rules-details-<lang>.js): id → {uk, en, …} text.
 function ruleDetails(topic, lang = rulesState.lang) { const d = (window.GRAMMAR_RULE_DETAILS && window.GRAMMAR_RULE_DETAILS[lang] && window.GRAMMAR_RULE_DETAILS[lang][topic.id]) || topic.details; return d || null; }
+// Those files are large (all explanation languages), so they are not parsed at start: index.html keeps their versioned URLs in
+// an inert <template id="rules-details-scripts"> (the offline shell still caches them) and the first use of Rules loads them.
+let ruleDetailsLoading = null;
+function ruleDetailsReady() { return !!(window.GRAMMAR_RULE_DETAILS && window.GRAMMAR_RULE_DETAILS.fr && window.GRAMMAR_RULE_DETAILS.en); }
+function loadRuleDetails() {
+    if (ruleDetailsReady()) return Promise.resolve();
+    if (ruleDetailsLoading) return ruleDetailsLoading;
+    const tpl = document.getElementById('rules-details-scripts');
+    const sources = tpl ? [...tpl.content.querySelectorAll('script[src]')].map(s => s.getAttribute('src')) : [];
+    ruleDetailsLoading = Promise.all(sources.map(src => new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src; script.async = false;
+        script.onload = resolve; script.onerror = () => reject(new Error('rule details: ' + src));
+        document.head.appendChild(script);
+    }))).catch(err => { ruleDetailsLoading = null; throw err; });   // a failed load (offline, no cache) may be retried later
+    return ruleDetailsLoading;
+}
+// Runs fn once the details are there — or anyway when they cannot load: the theory alone still works.
+function withRuleDetails(fn) { return loadRuleDetails().then(fn, fn); }
 function rulesCatalogue(lang) { return (window.GRAMMAR_RULES && window.GRAMMAR_RULES[lang]) || null; }
 function rulesAllTopics(lang) {
     const cat = rulesCatalogue(lang);
@@ -445,6 +464,7 @@ function layoutRulesPanel() {
 }
 function openRulesPanel({ keep = false } = {}) {
     const { panel } = rulesEls();
+    loadRuleDetails().catch(() => {});   // start fetching the detailed rules while the menu renders
     // Одне вікно за раз: «Граматика», «Запитай AI», Практика й підказка слова не лежать під «Правилами».
     els.grammarPanel.classList.remove('expanded'); els.askPanel.classList.remove('expanded');
     const practice = document.getElementById('practice-panel');
@@ -582,7 +602,7 @@ function renderRulesTree() {
         }
         const practise = ruleEl('button', 'rules-practice rules-section-practice', '✍️ ' + t('rulesPracticeSection'));
         practise.type = 'button';
-        practise.onclick = () => startRulePractice({ title: rulesPick(section.title), topics: topics.map(rulePracticeTopic) }, practise);
+        practise.onclick = () => withRuleDetails(() => startRulePractice({ title: rulesPick(section.title), topics: topics.map(rulePracticeTopic) }, practise));
         details.appendChild(practise);
         content.appendChild(details);
     }
@@ -757,12 +777,17 @@ function renderRuleTopic() {
     theory.appendChild(ul);
     content.appendChild(theory);
     const more = ruleDetails(topic);
-    if (more) {
+    if (more || !ruleDetailsReady()) {
         const d = document.createElement('details');
         d.className = 'rules-theory rules-details';
         d.appendChild(ruleEl('summary', '', t('rulesDetails')));
-        renderRuleDetailsText(d, rulesPick(more));
         content.appendChild(d);
+        // Not loaded yet (the first topic opened right after start): the block keeps its place and fills in when they arrive.
+        if (more) renderRuleDetailsText(d, rulesPick(more));
+        else {
+            const lang = rulesState.lang;
+            withRuleDetails(() => { const late = ruleDetails(topic, lang); if (late && d.isConnected) renderRuleDetailsText(d, rulesPick(late), lang, topic.id); else d.remove(); });
+        }
     }
 
     const actions = ruleEl('div', 'rules-actions');
@@ -771,7 +796,7 @@ function renderRuleTopic() {
     const clear = ruleEl('button', 'rules-clear', t('rulesClear')); clear.type = 'button';
     clear.onclick = () => { clearRuleHighlights(); rulesState.matches = []; rulesState.token++; rulesState.status = 'idle'; setRulesStatus(''); content.querySelector('.rules-matches')?.replaceChildren(); content.querySelector('.rules-detail')?.replaceChildren(); };
     const practise = ruleEl('button', 'rules-practice', '✍️ ' + t('rulesPractice')); practise.type = 'button'; practise.id = 'rules-practice';
-    practise.onclick = () => startRulePractice({ title: ruleTitle(topic), topics: [rulePracticeTopic(topic)] }, practise);
+    practise.onclick = () => withRuleDetails(() => startRulePractice({ title: ruleTitle(topic), topics: [rulePracticeTopic(topic)] }, practise));
     actions.append(find, practise, clear);
     content.appendChild(actions);
     const status = ruleEl('p', 'rules-status'); status.id = 'rules-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
@@ -885,6 +910,7 @@ async function explainRuleMatch(m, topic, question, out, isCurrent) {
     if (!aiAvailable() || !navigator.onLine) { out.textContent = t('needKey'); return; }
     out.textContent = t('generating');
     try {
+        await loadRuleDetails().catch(() => {});   // the detailed rules are the AI's ground truth too
         const text = await callAI(buildRuleExplainPrompt(m, topic, rulesState.lang, explainLangName(), question), undefined, 'rules_explain');
         const clean = String(text || '').replace(/```[a-z]*|```/g, '').trim();
         if (!clean) throw new Error('empty');
