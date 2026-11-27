@@ -396,9 +396,12 @@ async function scanOcrWorkerFor(lang) {
     scanOcrWorkerLang = lang;
     return scanOcrWorker;
 }
+// Мова інтерфейсу — не мова сторінки: українець, що вчить французьку, фотографує французький текст, а модель ukr читає
+// його кириличною кашею. Тому — мова книжки (вибрана вручну важливіша за метадані), а без неї французька модель: вона
+// читає англійську так само добре, як eng, і зберігає акценти (виміряно 2026-11-27: fra 95/94, eng на французькій 88).
 function scanOcrLangDefault() {
     const map = { uk: 'ukr', fr: 'fra', en: 'eng', de: 'deu', es: 'spa' };
-    return map[state.bookLangMeta] || map[state.uiLang] || 'eng';
+    return map[state.bookLangManual] || map[state.bookLangMeta] || 'fra';
 }
 // Слова сторінки з рамками в пікселях page.out; висота кожного слова — висота його рядка (рівний текстовий шар).
 async function scanOcrPage(page, lang) {
@@ -642,6 +645,8 @@ function buildScanner() {
 }
 function openScanner() {
     buildScanner();
+    // Панель будується раз; поки людина сама не вибрала мову, вона йде за книжкою, відкритою зараз.
+    scanEl('scan-ocr-lang').value = scanStored('reader_scan_ocr_lang', scanOcrLangDefault(), SCAN_OCR_LANGS);
     scanEl('scanner').classList.add('open');
     if (typeof closeFullMenu === 'function' && typeof isFullMenuOpen === 'function' && isFullMenuOpen() && state.format) closeFullMenu();
     scanRenderList();

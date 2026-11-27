@@ -262,6 +262,26 @@ check('20c the PDF carries each page\'s JPEG as the Blob itself (no copy in JS m
           const xref = +t.match(/startxref\\n(\\d+)/)[1]; const offs = t.slice(xref).match(/\\d{10} 00000 n/g).map(x => +x.slice(0, 10));
           return t.startsWith('xref', xref) && offs.every((o, i) => t.startsWith((i + 1) + ' 0 obj', o)) || JSON.stringify(offs.slice(0, 8)); })()""", timeout=20)
 
+# ---- Text language for OCR: the page's language, not the interface's (owner 2026-11-27: «Сканер не читає французької»)
+check('21 OCR language: Ukrainian interface without a book language → French; the book\'s own language wins (a manual choice over metadata); a choice the person made stays',
+      """(() => { const keep = { ui: state.uiLang, man: state.bookLangManual, meta: state.bookLangMeta, ls: localStorage.getItem('reader_scan_ocr_lang') };
+          const at = (ui, man, meta) => { state.uiLang = ui; state.bookLangManual = man; state.bookLangMeta = meta; openScanner(); return document.getElementById('scan-ocr-lang').value; };
+          try { localStorage.removeItem('reader_scan_ocr_lang');
+                const got = [at('uk', '', ''), at('en', '', ''), at('uk', 'en', 'uk'), at('uk', '', 'uk')];
+                localStorage.setItem('reader_scan_ocr_lang', 'deu'); got.push(at('uk', 'fr', ''));
+                return got.join() === 'fra,fra,eng,ukr,deu' || got.join(); }
+          finally { state.uiLang = keep.ui; state.bookLangManual = keep.man; state.bookLangMeta = keep.meta;
+                    if (keep.ls === null) localStorage.removeItem('reader_scan_ocr_lang'); else localStorage.setItem('reader_scan_ocr_lang', keep.ls); openScanner(); } })()""")
+c.js("""window.__ocrFr = null; (async () => { const keep = { ui: state.uiLang, man: state.bookLangManual, meta: state.bookLangMeta };
+  try { state.uiLang = 'uk'; state.bookLangManual = ''; state.bookLangMeta = '';
+    const cv = document.createElement('canvas'); cv.width = 1700; cv.height = 300; const x = cv.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, 1700, 300); x.fillStyle = '#000'; x.font = '40px serif';
+    x.fillText('Le cœur a ses raisons que la raison ne connaît point.', 40, 110); x.fillText("Êtes-vous déjà allé à l'école française ?", 40, 210);
+    const worker = await scanOcrWorkerFor(scanOcrLangDefault()); const { data } = await worker.recognize(cv); window.__ocrFr = data.text;
+  } catch (e) { window.__ocrFr = 'ERROR ' + e; } finally { await scanOcrStop(); state.uiLang = keep.ui; state.bookLangManual = keep.man; state.bookLangMeta = keep.meta; } })(); 1""")
+check('21b ... and that default really reads a French page with its accents (the Ukrainian model gave «Ге совиг а 5е5 гаізоп5»)',
+      "typeof __ocrFr === 'string' && ['cœur', 'connaît', 'Êtes', 'déjà', 'française'].every(w => __ocrFr.includes(w)) || __ocrFr", timeout=180)
+
 # ---- Escape / Back
 c.js("scanOpenEditor(scanState.pages[0]); 1"); time.sleep(1.0)
 check('13 Back (overlay stack) closes the editor first', "topOpenOverlay() === 'scanner' && (closeTopOverlay('scanner'), !scanState.edit && scanIsOpen())", timeout=2)
