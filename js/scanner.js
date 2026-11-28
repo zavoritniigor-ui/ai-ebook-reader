@@ -420,12 +420,28 @@ async function scanOcrPage(page, lang) {
     }
     const { data } = await worker.recognize(image, {}, { blocks: true, text: false });
     const words = [];
-    for (const block of data.blocks || []) for (const para of block.paragraphs || []) for (const line of para.lines || []) for (const w of line.words || []) {
-        const text = (w.text || '').trim();
-        if (!text || w.confidence < 20) continue;
-        words.push({ t: text, x0: w.bbox.x0 * back, y0: w.bbox.y0 * back, x1: w.bbox.x1 * back, y1: w.bbox.y1 * back, ly0: line.bbox.y0 * back, ly1: line.bbox.y1 * back });
+    for (const block of data.blocks || []) for (const para of block.paragraphs || []) for (const line of para.lines || []) {
+        const kept = (line.words || []).filter(w => (w.text || '').trim() && w.confidence >= 20);
+        for (const [w, band] of scanWordBands(line, kept)) words.push({ t: w.text.trim(), x0: w.bbox.x0 * back, y0: w.bbox.y0 * back, x1: w.bbox.x1 * back, y1: w.bbox.y1 * back, ly0: band[0] * back, ly1: band[1] * back });
     }
     page.ocr = { out: page.out, lang, words };
+}
+// Смуга тексту (верх, низ) для кожного слова рядка. Рамка всього рядка не годиться: на фото, знятому під кутом, рядок
+// похилий, його прямокутник заввишки у два-три рядки, і кожне слово текстового шару накривало сусідні рядки
+// (власник, 2026-11-28, скріншот). Тому — похила лінія основи рядка в точці самого слова; висота над нею — медіана слів
+// рядка (смуга однакова на весь рядок), під нею — чверть цієї висоти на хвостики j/p/q. Без лінії основи або коли вона
+// не сходиться зі словом — власна рамка слова.
+function scanWordBands(line, words) {
+    const b = line.baseline, slope = b && b.x1 !== b.x0 ? (b.y1 - b.y0) / (b.x1 - b.x0) : null;
+    const base = w => b.y0 + slope * ((w.bbox.x0 + w.bbox.x1) / 2 - b.x0);
+    const own = w => [w, [w.bbox.y0, w.bbox.y1]];
+    if (slope === null || !Number.isFinite(slope) || !words.length) return words.map(own);
+    const above = words.map(w => base(w) - w.bbox.y0).sort((x, y) => x - y)[words.length >> 1];
+    if (!(above > 0)) return words.map(own);
+    return words.map(w => {
+        const y = base(w), top = y - above, bottom = y + above * 0.25;
+        return Math.min(bottom, w.bbox.y1) - Math.max(top, w.bbox.y0) < (w.bbox.y1 - w.bbox.y0) * 0.5 ? own(w) : [w, [top, bottom]];
+    });
 }
 // Пам'ять WebAssembly розпізнавача лише росте й назад не віддається, тож на довгій серії робітник перезапускається кожні
 // SCAN_OCR_RECYCLE сторінок, а після останньої — закривається (наступний експорт підніме його знову за секунду-дві).
