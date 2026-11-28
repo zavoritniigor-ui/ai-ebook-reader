@@ -263,7 +263,7 @@ check('20c the PDF carries each page\'s JPEG as the Blob itself (no copy in JS m
           return t.startsWith('xref', xref) && offs.every((o, i) => t.startsWith((i + 1) + ' 0 obj', o)) || JSON.stringify(offs.slice(0, 8)); })()""", timeout=20)
 
 # ---- Text language for OCR: the page's language, not the interface's (owner 2026-11-27: «Сканер не читає французької»)
-check('21 OCR language: Ukrainian interface without a book language → French; the book\'s own language wins (a manual choice over metadata); a choice the person made stays',
+check('23 OCR language: Ukrainian interface without a book language → French; the book\'s own language wins (a manual choice over metadata); a choice the person made stays',
       """(() => { const keep = { ui: state.uiLang, man: state.bookLangManual, meta: state.bookLangMeta, ls: localStorage.getItem('reader_scan_ocr_lang') };
           const at = (ui, man, meta) => { state.uiLang = ui; state.bookLangManual = man; state.bookLangMeta = meta; openScanner(); return document.getElementById('scan-ocr-lang').value; };
           try { localStorage.removeItem('reader_scan_ocr_lang');
@@ -279,8 +279,23 @@ c.js("""window.__ocrFr = null; (async () => { const keep = { ui: state.uiLang, m
     x.fillText('Le cœur a ses raisons que la raison ne connaît point.', 40, 110); x.fillText("Êtes-vous déjà allé à l'école française ?", 40, 210);
     const worker = await scanOcrWorkerFor(scanOcrLangDefault()); const { data } = await worker.recognize(cv); window.__ocrFr = data.text;
   } catch (e) { window.__ocrFr = 'ERROR ' + e; } finally { await scanOcrStop(); state.uiLang = keep.ui; state.bookLangManual = keep.man; state.bookLangMeta = keep.meta; } })(); 1""")
-check('21b ... and that default really reads a French page with its accents (the Ukrainian model gave «Ге совиг а 5е5 гаізоп5»)',
+check('23b ... and that default really reads a French page with its accents (the Ukrainian model gave «Ге совиг а 5е5 гаізоп5»)',
       "typeof __ocrFr === 'string' && ['cœur', 'connaît', 'Êtes', 'déjà', 'française'].every(w => __ocrFr.includes(w)) || __ocrFr", timeout=180)
+
+# ---- Word boxes on a page photographed at an angle (owner 2026-11-28 screenshot: boxes two lines tall, off the words)
+c.js("""window.__tilt = null; (async () => { try {
+    const cv = document.createElement('canvas'); cv.width = 1800; cv.height = 700; const x = cv.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, 1800, 700); x.translate(900, 350); x.rotate(-3 * Math.PI / 180); x.translate(-900, -350);
+    x.fillStyle = '#000'; x.font = '44px serif';
+    ['Sur une autoroute reliant les deux villes, des milliers', 'de conducteurs se retrouvent bloqués pendant des jours', 'et des chauffeurs routiers dorment dans leur camion.'].forEach((l, i) => x.fillText(l, 120, 230 + i * 110));
+    const out = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92)); const page = { out, w: 1800, h: 700, ocr: null };
+    await scanOcrPage(page, 'fra'); await scanOcrStop();
+    const ws = page.ocr.words, h = ws.map(w => w.y1 - w.y0).sort((a, b) => a - b)[ws.length >> 1];
+    const bad = ws.filter(w => w.ly1 - w.ly0 > 2 * h || Math.min(w.ly1, w.y1) - Math.max(w.ly0, w.y0) < 0.5 * (w.y1 - w.y0));
+    window.__tilt = { words: ws.length, wordH: Math.round(h), bad: bad.map(w => w.t + ':' + Math.round(w.ly1 - w.ly0)) };
+  } catch (e) { window.__tilt = { error: String(e) }; } })(); 1""")
+check('24 a page photographed at 3°: every word\'s text-layer band sits on the word and is not lines tall (it took the whole sloped line\'s box)',
+      "!!__tilt && __tilt.words >= 20 && __tilt.bad.length === 0 || (__tilt && JSON.stringify(__tilt))", timeout=180)
 
 # ---- Escape / Back
 c.js("scanOpenEditor(scanState.pages[0]); 1"); time.sleep(1.0)
